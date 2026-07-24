@@ -1,23 +1,26 @@
 "use client";
-// v466 → v471 — Desktop reel side panels, now wrapped in a single unified
-// "desktop app window" on wide screens.
+// v466 → v471 — Desktop reel side panels, unified into a "desktop app window".
 //
 //   • v466: two frosted panels flanking the centred phone frame
 //     (RIGHT "Now playing", LEFT "Up next").
-//   • v471 (this): on ≥1440px the two panels + a full-width **Flash Deals
-//     stories rail** are merged into ONE glass stage — a real desktop app
-//     window. The rail spans all three columns at the top; the portrait reel
-//     frame floats in the centre slot BELOW the rail (same size, still centred).
-//     The in-frame flash rail is hidden on desktop (app/desktop.css) so it is
-//     never shown twice.
+//   • v471 (this): on ≥1440px + home the two panels sit inside ONE frosted-glass
+//     window with a full-width **Flash Deals stories rail** across the top. The
+//     portrait reel frame (.reel-page-root, a separate fixed element) is pushed
+//     BELOW the rail, still centred, same 9:16 size. The in-frame flash rail is
+//     hidden on desktop (app/desktop.css) so it is never shown twice.
+//
+// ROBUST layout (v471.1): the glass window + the top rail are just two fixed,
+// viewport-centred boxes drawn BEHIND the frame + panels. The panels keep the
+// proven v466/v470 fixed positioning (left: 50% ± half-frame ± gap), merely
+// shifted DOWN by the rail height and stripped of their own glass (the window
+// provides it). No flex "centre slot", no display:contents alignment — the
+// frame and panels share the exact same top+height so they always line up.
 //
 // Fully driven by DiscoverPage's existing `items` + active index — NO edits to
-// the load-bearing InstagramHotelFeed, no new store, no data/dedup touch. The
-// stage/panels are `position: fixed` and ENTIRELY hidden below the wide
-// breakpoints via app/desktop.css (unified window ≥1440px; right panel alone
-// 1200–1439px; nothing below 1024px). CTAs are plain deep-links into the
-// existing hotel page. The rail reuses the SAME FlashDealStoryRail /
-// FlashDealStoryViewer / useFlashDealStories the mobile feed uses.
+// the load-bearing InstagramHotelFeed, no new store, no data/dedup touch.
+// Everything is `position: fixed` and hidden below the wide breakpoints via
+// app/desktop.css (window ≥1440px home; right panel alone 1200–1439px; nothing
+// below 1024px). Mobile renders + fetches nothing.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,9 +58,8 @@ export default function DesktopReelPanels({
 }: {
   items: Item[];
   activeIndex: number;
-  /** v471 — true on the home route (`/`). Renders the full-width Flash Deals
-      rail across the top of the unified window and flips `body.reel-with-rail`
-      so app/desktop.css lays out the merged stage. On /discover (false) the
+  /** v471 — true on the home route (`/`). Draws the unified window + the
+      full-width Flash Deals rail across the top. On /discover (false) the
       panels stay as the v470 fixed frosted companions (no window). */
   showRail?: boolean;
 }) {
@@ -93,19 +95,26 @@ export default function DesktopReelPanels({
     return () => mq.removeEventListener?.("change", apply);
   }, []);
 
-  // v471 — toggle the body flag that switches app/desktop.css into unified-
-  // window mode. Only on the home route (where the rail lives). Cleaned up on
-  // unmount / route change so /discover never inherits the window layout.
+  // Flash deals for the rail (home only, wide only). Hook is always called.
+  const { deals: flashDeals } = useFlashDealStories(city || "all", wide && !!showRail);
+  const [flashIdx, setFlashIdx] = useState<number | null>(null);
+  const railOn = !!showRail && wide && flashDeals.length > 0;
+
+  // v471 — body flags that switch app/desktop.css into window mode.
+  //   • reel-with-rail — home route → draw the glass window (≥1440px).
+  //   • reel-has-rail  — home + wide + deals exist → reserve the rail row +
+  //     push the frame/panels down. Without deals the window has no rail and
+  //     the frame keeps its full height (graceful, no empty top band).
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.classList.toggle("reel-with-rail", !!showRail);
     return () => { document.body.classList.remove("reel-with-rail"); };
   }, [showRail]);
-
-  // Flash deals for the rail (home only). Hook is always called (rules of
-  // hooks); the rail element only renders when showRail is true + deals exist.
-  const { deals: flashDeals } = useFlashDealStories(city || "all", wide && !!showRail);
-  const [flashIdx, setFlashIdx] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("reel-has-rail", railOn);
+    return () => { document.body.classList.remove("reel-has-rail"); };
+  }, [railOn]);
 
   const onBookDeal = useCallback((d: FlashDealStory) => {
     const url =
@@ -121,7 +130,6 @@ export default function DesktopReelPanels({
 
   // v467 (Phase 3) — desktop keyboard navigation between reels: ↑/↓ + PageUp/
   // Down scroll the feed's snap container by one frame, mirroring mobile swipe.
-  // Ignored while typing in a field; harmless on mobile (no arrow keys).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -154,92 +162,79 @@ export default function DesktopReelPanels({
 
   return (
     <>
-      {/* v471 — the unified stage. On ≥1440px + home it becomes a glass "desktop
-          app window" (rail on top spanning all columns, left/right panels as
-          static sidebars, a transparent centre slot the portrait frame floats
-          into). Below 1440 / on /discover, .reel-stage + .reel-stage-cols are
-          `display: contents` so the panels fall back to their v470 fixed
-          positioning and the rail row is hidden. */}
-      <div className="reel-stage" aria-hidden={false}>
-        {showRail && flashDeals.length > 0 && (
-          <div className="reel-stage-rail">
-            <FlashDealStoryRail
-              deals={flashDeals}
-              onOpen={(i) => setFlashIdx(i)}
-            />
-          </div>
-        )}
+      {/* v471 — the glass window shell (drawn BEHIND the frame + panels).
+          Home + ≥1440px only, via app/desktop.css. */}
+      <div className="reel-window" aria-hidden />
 
-        <div className="reel-stage-cols">
-          {/* LEFT — up-next queue */}
-          <aside className="reel-side reel-side-left" aria-label="Up next">
-            <div className="reel-side-kicker">Up next</div>
-            {upNext.length > 0 ? (
-              <div className="reel-queue">
-                {upNext.map((it, i) => {
-                  const uh = it.hotel || {};
-                  const up = priceOf(uh);
-                  const targetIdx = idx + 1 + i;
-                  return (
-                    <button
-                      key={targetIdx}
-                      type="button"
-                      className="reel-queue-item"
-                      onClick={() => scrollFeedToIndex(targetIdx)}
-                      title={`Play ${uh.name || "this reel"}`}
-                    >
-                      <span className="reel-queue-thumb" style={{ backgroundImage: `url("${imgOf(uh)}")` }} aria-hidden />
-                      <span className="reel-queue-info">
-                        <span className="reel-queue-name">{uh.name || "Stay"}</span>
-                        <span className="reel-queue-sub">
-                          {uh.city || ""}{up > 0 ? `${uh.city ? " · " : ""}${inr(up)}/n` : ""}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="reel-side-empty">You&apos;re all caught up ✨</div>
-            )}
-          </aside>
-
-          {/* CENTRE — transparent slot the portrait reel frame floats into (the
-              frame is .reel-page-root, a separate fixed element positioned to
-              sit exactly here by app/desktop.css). */}
-          <div className="reel-stage-center" aria-hidden />
-
-          {/* RIGHT — now-playing context + booking actions. No cover image:
-              the reel itself is the visual in the centre. Clean info card. */}
-          <aside className="reel-side reel-side-right" aria-label="Current stay">
-            <div className="reel-side-body">
-              <div className="reel-side-kicker">Now playing</div>
-              <h3 className="reel-side-title">{h.name || "Stay"}</h3>
-              <div className="reel-side-meta">
-                {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
-                {place && <span className="reel-side-place">{place}</span>}
-              </div>
-              {price > 0 && (
-                <div className="reel-side-price">
-                  <span>From</span> <b className="tabular-nums">{inr(price)}</b> <em>/night</em>
-                </div>
-              )}
-              {hotelId && (
-                <div className="reel-side-cta">
-                  <Link href={`/hotels/${hotelId}`} className="reel-side-btn primary">View &amp; Book</Link>
-                  <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
-                </div>
-              )}
-              {h.description && <p className="reel-side-desc">{String(h.description).slice(0, 180)}</p>}
-              <div className="reel-side-hint">↑ ↓ to browse reels</div>
-            </div>
-          </aside>
+      {/* Full-width Flash Deals rail across the top of the window (home + wide +
+          deals only). A separate fixed box; its width matches the window. */}
+      {railOn && (
+        <div className="reel-stage-rail">
+          <FlashDealStoryRail deals={flashDeals} onOpen={(i) => setFlashIdx(i)} />
         </div>
-      </div>
+      )}
+
+      {/* LEFT — up-next queue (fixed, flanking the frame; ≥1440px) */}
+      <aside className="reel-side reel-side-left" aria-label="Up next">
+        <div className="reel-side-kicker">Up next</div>
+        {upNext.length > 0 ? (
+          <div className="reel-queue">
+            {upNext.map((it, i) => {
+              const uh = it.hotel || {};
+              const up = priceOf(uh);
+              const targetIdx = idx + 1 + i;
+              return (
+                <button
+                  key={targetIdx}
+                  type="button"
+                  className="reel-queue-item"
+                  onClick={() => scrollFeedToIndex(targetIdx)}
+                  title={`Play ${uh.name || "this reel"}`}
+                >
+                  <span className="reel-queue-thumb" style={{ backgroundImage: `url("${imgOf(uh)}")` }} aria-hidden />
+                  <span className="reel-queue-info">
+                    <span className="reel-queue-name">{uh.name || "Stay"}</span>
+                    <span className="reel-queue-sub">
+                      {uh.city || ""}{up > 0 ? `${uh.city ? " · " : ""}${inr(up)}/n` : ""}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="reel-side-empty">You&apos;re all caught up ✨</div>
+        )}
+      </aside>
+
+      {/* RIGHT — now-playing context + booking actions. No cover image: the
+          reel itself is the visual in the centre. Clean info card. */}
+      <aside className="reel-side reel-side-right" aria-label="Current stay">
+        <div className="reel-side-body">
+          <div className="reel-side-kicker">Now playing</div>
+          <h3 className="reel-side-title">{h.name || "Stay"}</h3>
+          <div className="reel-side-meta">
+            {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
+            {place && <span className="reel-side-place">{place}</span>}
+          </div>
+          {price > 0 && (
+            <div className="reel-side-price">
+              <span>From</span> <b className="tabular-nums">{inr(price)}</b> <em>/night</em>
+            </div>
+          )}
+          {hotelId && (
+            <div className="reel-side-cta">
+              <Link href={`/hotels/${hotelId}`} className="reel-side-btn primary">View &amp; Book</Link>
+              <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
+            </div>
+          )}
+          {h.description && <p className="reel-side-desc">{String(h.description).slice(0, 180)}</p>}
+          <div className="reel-side-hint">↑ ↓ to browse reels</div>
+        </div>
+      </aside>
 
       {/* Flash-deal fullscreen viewer (home rail taps). Separate instance from
-          the in-frame one (which is hidden on desktop) — only this one can be
-          triggered on the desktop window. */}
+          the in-frame one (hidden on desktop) — only this one triggers here. */}
       {showRail && (
         <FlashDealStoryViewer
           open={flashIdx !== null}

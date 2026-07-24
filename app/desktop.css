@@ -250,12 +250,10 @@
      • LEFT  (≥1440px) — "Up next": queue of the following reels.
    Rendered by <DesktopReelPanels/> (a sibling of .reel-page-root). Hidden by
    default so phones/tablets show nothing. ───────────────────────────────── */
-/* v471 — the stage wrapper + columns row DISSOLVE (display: contents) by
-   default so below the unified-window breakpoint the .reel-side panels keep
-   their v470 fixed positioning exactly. The rail row + centre spacer only
-   exist inside the ≥1440 window, hidden otherwise. */
-.reel-stage, .reel-stage-cols { display: contents; }
-.reel-stage-rail, .reel-stage-center { display: none; }
+/* v471 — the glass window shell + the full-width rail are hidden by default;
+   they only appear inside the ≥1440px home window. The .reel-side panels keep
+   their v470 fixed positioning at all widths. */
+.reel-window, .reel-stage-rail { display: none; }
 .reel-side { display: none; }
 .reel-side-empty {
   padding: 10px 18px 18px;
@@ -410,103 +408,91 @@
    3c. v471 — UNIFIED DESKTOP WINDOW (home · ≥1440px)
    ─────────────────────────────────────────────────────────────────────────
    On the home route the two side panels + a full-width Flash Deals stories
-   rail merge into ONE frosted-glass "desktop app window". The rail spans all
-   three columns at the top; the portrait reel frame (.reel-page-root, a
-   separate fixed element) floats in the transparent centre slot BELOW the
-   rail, still centred on the viewport. Gated on body.reel-with-rail (set by
-   DesktopReelPanels only on `/`), so /discover keeps the v470 fixed panels.
-   ───────────────────────────────────────────────────────────────────────── */
+   rail read as ONE frosted-glass "desktop app window". The window shell + the
+   rail are two fixed, viewport-CENTRED boxes drawn BEHIND the frame + panels.
+   The panels keep their proven v466/v470 fixed positioning (left/right: 50% ±
+   half-frame ± gap), just shifted DOWN by the rail height and stripped of
+   their own glass. Frame + panels share the SAME top + height → always aligned.
+   Gated on body.reel-with-rail (home). Rail row only when body.reel-has-rail
+   (deals exist); without it the window simply has no rail, frame full height.
+   /discover keeps the v470 fixed panels (no window). ─────────────────────── */
 @media (min-width: 1440px) {
-  /* Window geometry vars. The frame height is the stage height minus the rail
-     row minus the 16px top/bottom padding of the columns row, so the frame and
-     the two sidebars line up exactly. The frame WIDTH is derived from that
-     height at a true 9:16 ratio, capped at 468. */
   body.reel-with-rail:has(.reel-page-root) {
-    --reel-side-w: 344px;
-    --reel-col-gap: 22px;
-    --reel-rail-h: 112px;
+    --reel-side-w: 348px;                 /* both sidebars equal → window centred */
+    --reel-col-gap: 20px;                 /* frame ↔ sidebar gap */
+    --reel-rail-h: 0px;                    /* set to a real height by reel-has-rail */
     --reel-stage-h: min(calc(100vh - 128px), 900px);
-    --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - 32px);
+    --reel-win-pad: 16px;                  /* inner padding above/below content */
+    --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - (var(--reel-win-pad) * 2));
     --reel-frame-w: min(468px, calc(var(--reel-frame-h) * 0.5625));
+    --reel-window-w: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2) + 40px);
   }
+  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 100px; }
 
-  /* The glass window shell */
-  body.reel-with-rail .reel-stage {
-    display: flex;
-    flex-direction: column;
+  /* The glass window shell — a centred box behind everything (z below frame). */
+  body.reel-with-rail .reel-window {
+    display: block;
     position: fixed;
     top: 88px;
     left: 50%;
     transform: translateX(-50%);
-    width: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2) + 32px);
+    width: var(--reel-window-w);
     height: var(--reel-stage-h);
-    max-height: 900px;
-    z-index: 20;
+    z-index: 8;
     border-radius: 34px;
-    background: rgba(18, 14, 10, 0.44);
-    -webkit-backdrop-filter: blur(30px) saturate(1.25);
-    backdrop-filter: blur(30px) saturate(1.25);
+    background: rgba(18, 14, 10, 0.42);
+    -webkit-backdrop-filter: blur(30px) saturate(1.2);
+    backdrop-filter: blur(30px) saturate(1.2);
     border: 1px solid rgba(255, 255, 255, 0.09);
     box-shadow:
       0 50px 120px -40px rgba(0, 0, 0, 0.82),
       0 0 0 1px rgba(201, 166, 107, 0.10),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    overflow: hidden;
-    animation: reelSideIn 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: reelSideIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
-  /* Full-width Flash Deals rail across the top of the window */
-  body.reel-with-rail .reel-stage-rail {
+  /* Full-width Flash Deals rail across the top of the window (same centred
+     box width). Sits above the window glass; frame + panels are below it. */
+  body.reel-has-rail .reel-stage-rail {
     display: block;
-    flex-shrink: 0;
+    position: fixed;
+    top: 88px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--reel-window-w);
     height: var(--reel-rail-h);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 12;
     overflow: hidden;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 34px 34px 0 0;
   }
   /* Re-skin the (cream, mobile) rail into the dark glass window */
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-wrap {
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-wrap {
     background: transparent !important;
     border-bottom: none !important;
     box-shadow: none !important;
-    padding: 14px 22px 8px !important;
+    padding: 12px 24px 6px !important;
     animation: none !important;
   }
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 8px !important; }
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-title,
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-brand { color: #f6efe1 !important; }
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-brand-sep,
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-brand-dot { color: #e0c68c !important; }
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-name { color: rgba(242, 236, 221, 0.82) !important; }
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-avatar { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.10); }
-  body.reel-with-rail .reel-stage-rail .fdeal-rail-scroll { padding: 0 2px 2px !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 6px !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-title,
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: #f6efe1 !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-brand-sep,
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-brand-dot { color: #e0c68c !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-name { color: rgba(242, 236, 221, 0.82) !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-avatar { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.10); }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { padding: 0 2px 2px !important; }
 
-  /* Columns row — left sidebar | centre slot | right sidebar */
-  body.reel-with-rail .reel-stage-cols {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    align-items: stretch;
-    gap: var(--reel-col-gap);
-    padding: 16px;
-  }
-  /* Transparent centre slot reserving the frame column (frame floats over it) */
-  body.reel-with-rail .reel-stage-center {
-    display: block;
-    width: var(--reel-frame-w);
-    flex-shrink: 0;
-  }
-
-  /* Panels become STATIC flex sidebars inside the window (drop their own
-     glass — the window provides it). A hairline divides each from the centre. */
+  /* Panels: keep v470 fixed flanking, but strip their own glass (the window
+     provides it), unify widths + gap, and align to the frame's top + height
+     (below the rail). A hairline divides each sidebar from the centre. */
   body.reel-with-rail .reel-side {
-    position: static;
-    transform: none;
-    top: auto;
-    left: auto;
-    right: auto;
+    top: calc(88px + var(--reel-rail-h) + var(--reel-win-pad)) !important;
+    transform: none !important;
+    height: var(--reel-frame-h);
+    max-height: var(--reel-frame-h) !important;
     width: var(--reel-side-w);
-    max-height: none;
-    flex-shrink: 0;
+    z-index: 15;
     background: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -516,12 +502,20 @@
     animation: none;
     overflow: hidden auto;
   }
-  body.reel-with-rail .reel-side-left { display: flex; border-right: 1px solid rgba(255, 255, 255, 0.07); }
-  body.reel-with-rail .reel-side-right { border-left: 1px solid rgba(255, 255, 255, 0.07); }
+  body.reel-with-rail .reel-side-right {
+    left: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  body.reel-with-rail .reel-side-left {
+    display: flex;
+    right: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
+    left: auto !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+  }
 
   /* The portrait frame: pushed below the rail, shorter, ABOVE the window. */
   body.reel-with-rail .reel-page-root {
-    top: calc(88px + var(--reel-rail-h) + 16px) !important;
+    top: calc(88px + var(--reel-rail-h) + var(--reel-win-pad)) !important;
     height: var(--reel-frame-h) !important;
     max-height: none !important;
     z-index: 25 !important;
