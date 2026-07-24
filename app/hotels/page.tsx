@@ -1371,8 +1371,8 @@ function CardLink({
   const competitorMin = h.competitor_min || h.competitorMin;
   const beatsMarket = competitorMin && minPrice && competitorMin > minPrice;
   const belowPct = beatsMarket ? Math.round((1 - minPrice / competitorMin) * 100) : 0;
-  const reviewsCount = Number(h.reviewsCount || h.reviews_count || 0);
-  const guestFavorite = (Number(h.avgRating) || 0) >= 4.6 && (h.reviewsCount || 0) >= 10;
+  const reviewsCount = Number(h.totalReviews || 0);
+  const guestFavorite = (Number(h.avgRating) || 0) >= 4.6 && (Number(h.totalReviews) || 0) >= 10;
 
   return (
     <Link
