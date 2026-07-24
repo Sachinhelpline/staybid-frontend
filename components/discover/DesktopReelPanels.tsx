@@ -68,7 +68,6 @@ export default function DesktopReelPanels({ items, activeIndex }: { items: Item[
   const price = priceOf(h);
   const rating = Math.round(Number(h.starRating || 0));
   const hotelId = h.id || h._taggedHotelId || "";
-  const cover = imgOf(h);
   const place = [h.city, h.state].filter(Boolean).join(", ");
 
   const upNext: Item[] = [];
@@ -76,9 +75,10 @@ export default function DesktopReelPanels({ items, activeIndex }: { items: Item[
 
   return (
     <>
-      {/* RIGHT — now-playing context + booking actions */}
+      {/* RIGHT — now-playing context + booking actions. No cover image here:
+          the reel itself is the visual in the centre; a duplicate cover only
+          went black on image-less reels. This is a clean info card. */}
       <aside className="reel-side reel-side-right" aria-label="Current stay">
-        {cover && <div className="reel-side-cover" style={{ backgroundImage: `url("${cover}")` }} aria-hidden />}
         <div className="reel-side-body">
           <div className="reel-side-kicker">Now playing</div>
           <h3 className="reel-side-title">{h.name || "Stay"}</h3>
