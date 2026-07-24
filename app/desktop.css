@@ -1399,6 +1399,28 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   18g. v489 — /trade browse desktop: widen column + densify lot grid
+   ─────────────────────────────────────────────────────────────────────────
+   /trade (agent auction browse) caps every wrapper at max-w-6xl (1152px),
+   which escapes §9's widen list (2xl/xl/3xl/4xl only) AND §18d's lux-bg
+   variant (the page uses a plain inline-gradient bg, not .lux-bg). So on
+   wide monitors the whole page — header, chips, filters, lot grid, footer —
+   sat as a 1152px island with growing dead gutters and the
+   sm:grid-cols-2/lg:grid-cols-3 lot grid could never open past 3 columns.
+   Widen the trade wrappers and let the lot grid densify to 4-up @1280 /
+   5-up @1536 (mirrors /hotels). Scoped to .trd-root so only the trade
+   vertical is affected; my-bids/review use max-w-3xl (already §9-widened)
+   and the tour uses .sbt-wrap, so neither is touched. Desktop-gated. */
+@media (min-width: 1280px) {
+  .trd-root .max-w-6xl { max-width: 1360px !important; }
+  .trd-root .grid.sm\:grid-cols-2.lg\:grid-cols-3 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1536px) {
+  .trd-root .max-w-6xl { max-width: 1500px !important; }
+  .trd-root .grid.sm\:grid-cols-2.lg\:grid-cols-3 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    19. v122.6 — ALL-VIEWPORT DENSITY PASS (mobile + tablet + desktop)
    ─────────────────────────────────────────────────────────────────────────
    v122.5 reduced size only on desktop AND only inside .lux-bg / .fd-root.

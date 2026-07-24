@@ -10538,3 +10538,24 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 [data-theme="dark"] .trd-root .bg-amber-50 { background: rgba(201, 145, 26, .12) !important; }
 [data-theme="dark"] .trd-root .border-amber-200 { border-color: rgba(201, 145, 26, .30) !important; }
 [data-theme="dark"] .trd-root .text-amber-800 { color: #E7CFA0 !important; }
+/* v489 — Trade TOUR (.sbt-* styled-jsx) dark-mode fix. The v456b retrofit
+   tokenised surfaces + headings but left a set of muted-text rules on
+   hardcoded `rgba(74,56,32,.x)` brown ink that never flips → invisible on
+   the dark #14110B canvas (worst: the bid-form field labels). Flip those to
+   the trd ink tokens in DARK MODE ONLY (light mode byte-identical). The
+   .sbt-basket sticky fade was a hardcoded white gradient → a bright band at
+   page bottom in dark; repoint it at the page token. */
+[data-theme="dark"] .trd-root .sbt-desc,
+[data-theme="dark"] .trd-root .sbt-h2sub,
+[data-theme="dark"] .trd-root .sbt-field > span,
+[data-theme="dark"] .trd-root .sbt-amen-chip { color: var(--trd-ink-2) !important; }
+[data-theme="dark"] .trd-root .sbt-field small,
+[data-theme="dark"] .trd-root .sbt-slider-val span,
+[data-theme="dark"] .trd-root .sbt-mkt-cell span,
+[data-theme="dark"] .trd-root .sbt-range-ends,
+[data-theme="dark"] .trd-root .sbt-coach-tip,
+[data-theme="dark"] .trd-root .sbt-pick-sub,
+[data-theme="dark"] .trd-root .sbt-load { color: var(--trd-ink-3) !important; }
+[data-theme="dark"] .trd-root .sbt-basket {
+  background: linear-gradient(0deg, var(--trd-page-a) 55%, transparent) !important;
+}
