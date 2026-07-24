@@ -959,6 +959,7 @@
 }
 .lux-cal-leg-value {
   display: block; font-size: 0.88rem; font-weight: 700; color: #2b1d05;
+  font-variant-numeric: tabular-nums;
 }
 .lux-cal-arrow {
   display: flex; align-items: center; color: #c9911a; font-size: 1.1rem; font-weight: 800;
@@ -1074,10 +1075,12 @@
 
 .lux-cal-daynum {
   font-size: 0.86rem; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 .lux-cal-dayprice {
   font-size: 0.56rem; font-weight: 800; line-height: 1; margin-top: 0.16rem;
   letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
 }
 .lux-cal-daylabel {
   font-size: 0.5rem; font-weight: 800; line-height: 1; margin-top: 0.18rem;
@@ -1174,6 +1177,7 @@
 .lux-cal-nights {
   font-family: var(--font-display, "Cormorant Garamond"), serif;
   font-size: 1.05rem; font-weight: 700; color: #2b1d05;
+  font-variant-numeric: tabular-nums;
 }
 .lux-cal-footer-sub {
   font-size: 0.6rem; color: #8a6a18; font-weight: 600; letter-spacing: 0.03em;
@@ -2885,7 +2889,7 @@
   position: relative;
   background: linear-gradient(135deg, var(--cozy-cream-50) 0%, var(--cozy-cream-200) 100%);
   border: 1.5px solid var(--border-soft);
-  border-radius: 16px;
+  border-radius: 22px;
   padding: 18px 18px 14px;
   text-align: center;
   overflow: hidden;
@@ -2919,6 +2923,7 @@
   text-align: center;
   width: 100%;
   max-width: 280px;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   padding: 0;
@@ -3284,12 +3289,13 @@
   font-size: 0.82rem; font-weight: 700;
   color: var(--cozy-warm-dark);
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 .bx-review-budget {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   background: linear-gradient(135deg, var(--cozy-cream-50), var(--cozy-cream-200));
   border: 1px solid rgba(201, 166, 107, 0.35);
-  border-radius: 16px;
+  border-radius: 22px;
   padding: 14px 16px;
 }
 .bx-review-budget-l-l {
@@ -3741,7 +3747,7 @@
   margin-top: 12px;
   background: var(--bg-card);
   border: 1px solid rgba(201, 166, 107, 0.32);
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 14px;
   box-shadow: 0 14px 30px -16px rgba(31, 26, 15, 0.2);
 }
@@ -4101,13 +4107,14 @@
 
 /* v164 — auction saving line (proof it beats the market) */
 .bx-live-save { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
-.bx-live-save-strike { font-size: 0.7rem; color: var(--text-muted); text-decoration: line-through; }
+.bx-live-save-strike { font-size: 0.7rem; color: var(--text-muted); text-decoration: line-through; font-variant-numeric: tabular-nums; }
 .bx-live-save-tag {
   font-size: 0.64rem; font-weight: 800;
   color: #5f7a4a;
   background: rgba(127, 146, 105, 0.14);
   border: 1px solid rgba(127, 146, 105, 0.3);
   border-radius: 999px; padding: 2px 9px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Tablet+: split hero passage gets a touch more room */
@@ -6795,6 +6802,9 @@
 }
 .pgp-sub-amber   { color: #b8871a; }
 .pgp-sub-emerald { color: #4a7f4a; }
+/* v426 — these sublabels sit on the theme-flipping --bg-card; brighten in dark so they don't go dim */
+[data-theme="dark"] .pgp-sub-amber   { color: var(--cozy-champagne-light, #d9be82); }
+[data-theme="dark"] .pgp-sub-emerald { color: #86c095; }
 
 @media (prefers-reduced-motion: reduce) {
   .pgp,
@@ -6879,6 +6889,8 @@
   box-shadow: 0 4px 12px -4px rgba(201,166,107,0.30);
   transform: translateY(-1px);
 }
+/* v426 — done-crumb sage sits on a theme-flipping chip; brighten it in dark */
+[data-theme="dark"] .bcs-crumb.is-done { color: #9db07f; }
 .bcs-crumb.is-done {
   background: rgba(127,146,105,0.14);
   color: #5a6e44;
@@ -6964,8 +6976,9 @@
   min-width: 0;
 }
 .bcs-card-title {
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-base);
   line-height: 1.15;
@@ -7022,7 +7035,7 @@
   align-items: center;
   justify-content: center;
   padding: 14px 18px;
-  border-radius: 16px;
+  border-radius: 20px;
   font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -7111,7 +7124,7 @@
 .bcs-photo-tile {
   position: relative;
   aspect-ratio: 4 / 5;
-  border-radius: 18px;
+  border-radius: 22px;
   overflow: hidden;
   border: 2px solid transparent;
   background: #1f1a0f;
@@ -7706,7 +7719,7 @@
 .bgz-boot-step-card {
   min-width: 0;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 22px;
   background: linear-gradient(180deg, #FFFCF6 0%, #FAF5EB 100%);
   border: 1px solid rgba(201,166,107,0.40);
   box-shadow:
@@ -7806,6 +7819,7 @@
   font-family: var(--font-display, "Cormorant Garamond"), serif;
   font-style: italic;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   font-size: 1.15rem;
   color: #2B2415;
 }
@@ -9748,6 +9762,7 @@
   font-weight: 800;
   color: #FFFCEC;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
 
@@ -10014,6 +10029,7 @@
   font-weight: 700;
   color: #8B6914;
   padding: 4px 9px;
+  font-variant-numeric: tabular-nums;
   border-radius: 999px;
   background: rgba(201, 166, 107, 0.18);
   flex: 0 0 auto;
