@@ -4123,7 +4123,7 @@ export default function HotelDetail() {
                                   </div>
                                 ))}
                                 <div className="hx-ota-winner">
-                                  <span className="hx-ota-winner-l">🏆 StayBid Price</span>
+                                  <span className="hx-ota-winner-l"><SecIcon name="award" className="inline-block align-[-0.15em] mr-1" /> StayBid Price</span>
                                   <span className="hx-ota-bar-wrap" aria-hidden="true">
                                     <span
                                       className="hx-ota-bar is-stayBid"
