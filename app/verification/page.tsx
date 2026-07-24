@@ -261,7 +261,7 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
     <div className="card-luxury sb-card-lift p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="font-semibold text-luxury-900 truncate">{booking.hotelName || "Hotel"}</div>
+          <div className="font-display text-lg font-semibold text-luxury-900 truncate">{booking.hotelName || "Hotel"}</div>
           <div className="text-xs text-luxury-500 mt-1">
             {booking.checkIn && new Date(booking.checkIn).toLocaleDateString("en-IN", { day:"numeric", month:"short" })}
             {booking.checkOut && ` → ${new Date(booking.checkOut).toLocaleDateString("en-IN",{ day:"numeric", month:"short" })}`}
@@ -279,7 +279,7 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
       )}
 
       {!r && (
-        <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-luxury-50 border border-luxury-100">
+        <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-[22px] bg-luxury-50 border border-luxury-100">
           <div className="text-sm text-luxury-700">Request a {tier === "platinum" ? 180 : tier === "gold" ? 120 : 60}s verification video from the hotel.</div>
           <button onClick={requestVideo} disabled={busy} className="btn-luxury text-sm whitespace-nowrap disabled:opacity-50">
             {busy ? "Requesting…" : "Request Verification Video"}
@@ -288,7 +288,7 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
       )}
 
       {r && r.status === "pending" && (
-        <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900">
+        <div className="mt-4 p-3 rounded-[22px] bg-amber-50 border border-amber-200 text-sm text-amber-900">
           ⏳ Hotel has up to <span className="font-bold">{Math.max(0, Math.round((new Date(r.due_by).getTime() - Date.now()) / 3600000))} hrs</span> to upload your verification video.
           <div className="text-xs mt-1 font-mono">Code they must speak: <span className="font-bold">{r.verification_code}</span></div>
         </div>
@@ -326,7 +326,7 @@ function StatusBadge({ r, report }: { r: any; report: any }) {
   if (!r) return <span className="text-xs px-2.5 py-1 rounded-full bg-luxury-100 text-luxury-600 shrink-0">Not requested</span>;
   if (r.status === "verified") {
     const score = report?.trust_score ?? 0;
-    return <span className={`text-xs px-2.5 py-1 rounded-full font-bold shrink-0 ${score >= 80 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>Verified · {score}/100</span>;
+    return <span className={`text-xs px-2.5 py-1 rounded-full font-bold shrink-0 tabular-nums ${score >= 80 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>Verified · {score}/100</span>;
   }
   if (r.status === "rejected") return <span className="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-bold shrink-0">Flagged</span>;
   if (r.status === "uploaded") return <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 shrink-0">Uploaded</span>;
@@ -386,7 +386,7 @@ function TierExplainer({ tier }: { tier: string }) {
           { t: "gold",   d: 120, hrs: 12, emoji: "🥇" },
           { t: "platinum", d: 180, hrs: 4, emoji: "💎" },
         ].map((row) => (
-          <div key={row.t} className={`p-3 rounded-xl border sb-card-lift transition-all ${tier === row.t ? "border-gold-400 bg-gold-50 shadow-sm" : "border-luxury-100 bg-white"}`}>
+          <div key={row.t} className={`p-3 rounded-2xl border sb-card-lift transition-all ${tier === row.t ? "border-gold-400 bg-gold-50 shadow-sm" : "border-luxury-100 bg-white"}`}>
             <div className="text-base mb-0.5">{row.emoji}</div>
             <div className="font-bold uppercase tracking-wider text-luxury-700">{row.t}</div>
             <div className="text-luxury-500 mt-1">{row.d}s video · {row.hrs}h SLA</div>
