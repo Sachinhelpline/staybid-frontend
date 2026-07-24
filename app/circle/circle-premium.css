@@ -2716,3 +2716,47 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-home .sbc-qa-ic        { border-radius: 16px; }
 .sbc-home .sbc-home-bell    { border-radius: 16px; }
 .sbc-home .sbc-home-bundle-ic { border-radius: 16px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v456 — Circle dark-mode support.
+   The hub / dashboard / account surfaces read the --sbc-c-* "cozy" token family,
+   all scoped to the `.sbc` wrapper (circle layout). Redefining those tokens under
+   [data-theme="dark"] .sbc flips every token-driven card, border and text at once
+   — light mode is byte-identical. The immersive reel shell uses the SEPARATE
+   --sbc-* walnut/gold tokens (already dark by design) and is untouched. A few
+   chrome surfaces hardcode a cream gradient start; those are overridden below.
+   Dark values mirror the app-wide dark tokens (globals.css) for one consistent
+   dark language across the whole product.
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .sbc {
+  --sbc-c-bg:         #0F0C08;
+  --sbc-c-bg-2:       #0B0906;
+  --sbc-c-surface:    #1A1610;
+  --sbc-c-surface-2:  #14110B;
+  --sbc-c-line:       rgba(213, 200, 175, .14);
+  --sbc-c-line-soft:  rgba(213, 200, 175, .08);
+  --sbc-c-ink:        #F5EFE0;
+  --sbc-c-ink-soft:   #D6C9AE;
+  --sbc-c-ink-faint:  rgba(213, 200, 175, .60);
+  --sbc-c-sage:       #A9BC8E;
+  --sbc-c-sage-deep:  #C0CFA6;
+  --sbc-c-sage-tint:  rgba(169, 188, 142, .15);
+  --sbc-c-shadow:     0 12px 30px -14px rgba(0, 0, 0, .7);
+}
+/* Cream-gradient page canvases → dark walnut canvas. */
+[data-theme="dark"] .sbc .sbc-home {
+  background:
+    radial-gradient(115% 68% at 88% -8%, rgba(127,146,105,.14), transparent 56%),
+    radial-gradient(88% 52% at 3% 105%, rgba(201,166,107,.10), transparent 60%),
+    linear-gradient(172deg, #17130D 0%, var(--sbc-c-bg) 46%, var(--sbc-c-bg-2) 100%);
+}
+[data-theme="dark"] .sbc .sbc-dash {
+  background:
+    radial-gradient(120% 60% at 90% -6%, rgba(127,146,105,.13), transparent 55%),
+    linear-gradient(172deg, #17130D 0%, var(--sbc-c-bg) 46%, var(--sbc-c-bg-2) 100%);
+}
+/* Frosted top bar (hardcodes the cream --sbc-cream walnut token) → dark frost. */
+[data-theme="dark"] .sbc .sbc-topbar {
+  background: color-mix(in srgb, var(--sbc-c-bg) 84%, transparent);
+  border-bottom-color: var(--sbc-c-line);
+}
