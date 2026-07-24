@@ -70,6 +70,10 @@ export default function DesktopReelPanels({
   const [ready, setReady] = useState(false);
   useEffect(() => { setReady(true); }, []);
 
+  // v475.1 — track up-next thumbnails whose <img> actually failed to load so
+  // we swap to a clean initial-letter card (not a dull empty gradient box).
+  const [brokenThumb, setBrokenThumb] = useState<Record<string, boolean>>({});
+
   // v471 — the current city (drives the flash-deal rail, same source the
   // feed's fallback uses). Kept in sync with the globe picker's event.
   const [city, setCity] = useState<string>("");
@@ -196,14 +200,16 @@ export default function DesktopReelPanels({
                   onClick={() => scrollFeedToIndex(targetIdx)}
                   title={`Play ${uh.name || "this reel"}`}
                 >
-                  <span
-                    className="reel-queue-thumb"
-                    style={imgOf(uh)
-                      ? { backgroundImage: `url("${imgOf(uh)}"), linear-gradient(135deg, #2a2018, #17110b)` }
-                      : undefined}
-                    aria-hidden
-                  >
-                    {!imgOf(uh) && (
+                  <span className="reel-queue-thumb" aria-hidden>
+                    {imgOf(uh) && !brokenThumb[imgOf(uh)] ? (
+                      <img
+                        src={imgOf(uh)}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        onError={() => setBrokenThumb((b) => ({ ...b, [imgOf(uh)]: true }))}
+                      />
+                    ) : (
                       <span className="reel-queue-thumb-fallback">{(uh.name || "S").slice(0, 1).toUpperCase()}</span>
                     )}
                   </span>
