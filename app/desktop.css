@@ -325,6 +325,36 @@
   .reel-side-group { display: flex; flex-direction: column; gap: 6px; }
   .reel-side-group-top { gap: 7px; }
   .reel-side-body .reel-side-kicker { padding: 0 0 3px; }
+
+  /* v473.1 — now-playing cover image (top of the right panel) + its overlays.
+     Base styling so BOTH /discover and the home window render it cleanly. */
+  .reel-np-cover {
+    position: relative;
+    flex-shrink: 0;
+    height: 172px;
+    border-radius: 18px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(255, 255, 255, 0.05);
+    margin-bottom: 4px;
+  }
+  .reel-np-cover-shade {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0) 45%, rgba(14, 11, 8, 0.82) 100%);
+  }
+  .reel-np-cover-kicker {
+    position: absolute; top: 12px; left: 13px; z-index: 2;
+    font-size: 0.58rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #fff; padding: 4px 10px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .reel-np-cover-fallback {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 2.6rem; font-weight: 700; color: rgba(255, 235, 190, 0.55);
+    background: linear-gradient(135deg, #3a2c1a, #241a10);
+  }
   .reel-side-title {
     font-family: var(--font-display, "Cormorant Garamond", serif);
     font-size: 1.55rem;
@@ -443,73 +473,43 @@
    /discover keeps the v470 fixed panels (no window). ─────────────────────── */
 @media (min-width: 1440px) {
   body.reel-with-rail:has(.reel-page-root) {
-    --reel-side-w: 300px;                 /* both sidebars equal → window centred */
-    --reel-col-gap: 18px;                 /* frame ↔ sidebar gap (tighter = cohesive) */
-    --reel-rail-h: 0px;                    /* set to a real height by reel-has-rail */
-    --reel-stage-h: min(calc(100vh - 128px), 900px);
-    --reel-win-pad: 16px;                  /* inner padding above/below content */
-    --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - (var(--reel-win-pad) * 2));
+    --reel-pad-x: 34px;                    /* screen side padding (fill the margins) */
+    --reel-col-gap: 26px;                  /* frame ↔ sidebar gap */
+    --reel-rail-h: 0px;                     /* set to a real height by reel-has-rail */
+    --reel-stage-h: min(calc(100vh - 122px), 920px);
+    --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - 10px);
     --reel-frame-w: min(468px, calc(var(--reel-frame-h) * 0.5625));
-    --reel-window-w: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2) + 36px);
   }
-  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 130px; }
+  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 132px; }
 
-  /* The window surface — a COZY warm-dark frosted panel with NO hard border
-     (a crisp outline read as a "pasted box"). Defined only by a soft warm fill
-     a touch above the now-calm backdrop (radial: a little lifted at the top,
-     melting to near-backdrop at the base), a whisper top-edge highlight, and a
-     large soft drop shadow for elevation — so it reads as a gentle cozy surface,
-     not a rectangle with a hard colour line. */
-  body.reel-with-rail .reel-window {
-    display: block;
-    position: fixed;
-    top: 88px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: var(--reel-window-w);
-    height: var(--reel-stage-h);
-    z-index: 8;
-    border-radius: 30px;
-    background:
-      radial-gradient(120% 90% at 50% 0%, rgba(40, 32, 24, 0.5) 0%, rgba(24, 19, 14, 0.42) 55%, rgba(18, 14, 10, 0.36) 100%);
-    -webkit-backdrop-filter: blur(38px) saturate(1.12);
-    backdrop-filter: blur(38px) saturate(1.12);
-    border: none;
-    box-shadow:
-      0 60px 140px -55px rgba(0, 0, 0, 0.82),
-      inset 0 1px 0 rgba(255, 240, 220, 0.07);
-    animation: reelSideIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
+  /* v473.1 — NO floating window box (its edges read as a centre-vs-side colour
+     difference). The whole reel page is one calm cozy canvas; the rail spans
+     the FULL width and the two columns FILL the side margins right up to the
+     frame. Nothing has a hard rectangle edge. */
+  body.reel-with-rail .reel-window { display: none; }
 
-  /* Full-width Flash Deals rail across the top of the window (same centred
-     box width). Sits above the window glass; frame + panels are below it. */
+  /* FULL-WIDTH Flash Deals rail across the very top (edge to edge, screen pad). */
   body.reel-has-rail .reel-stage-rail {
     display: block;
     position: fixed;
-    top: 88px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: var(--reel-window-w);
+    top: 84px;
+    left: var(--reel-pad-x);
+    right: var(--reel-pad-x);
     height: var(--reel-rail-h);
     z-index: 12;
     overflow: hidden;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 30px 30px 0 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
-  /* Re-skin the (cream, mobile) rail into the dark glass window. Taller row so
-     avatars + labels are FULLY visible (were clipped at 100px). */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-wrap {
     background: transparent !important;
     border-bottom: none !important;
     box-shadow: none !important;
-    padding: 14px 26px 10px !important;
+    padding: 14px 4px 10px !important;
     animation: none !important;
   }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 8px !important; }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { align-items: flex-start; }
-  /* Hide the variable-height "Circle Operated" sub-tag so every avatar column
-     is the same height (mixed heights clipped the row). City stays the label. */
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { align-items: flex-start; padding: 0 2px 2px !important; }
+  /* Uniform avatar columns (hide the variable-height Circle sub-tag). */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-tag { display: none; }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-title,
   body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: #f6efe1 !important; }
@@ -517,17 +517,15 @@
   body.reel-has-rail .reel-stage-rail .fdeal-rail-brand-dot { color: #e0c68c !important; }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-name { color: rgba(242, 236, 221, 0.82) !important; }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-avatar { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.10); }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { padding: 0 2px 2px !important; }
 
-  /* Panels: keep v470 fixed flanking, but strip their own glass (the window
-     provides it), unify widths + gap, and align to the frame's top + height
-     (below the rail). A hairline divides each sidebar from the centre. */
+  /* Columns: transparent, aligned to the frame's top + height, FILLING the
+     side margins (from the screen padding right up to the frame gap). */
   body.reel-with-rail .reel-side {
-    top: calc(88px + var(--reel-rail-h) + var(--reel-win-pad)) !important;
+    top: calc(84px + var(--reel-rail-h) + 12px) !important;
     transform: none !important;
-    height: var(--reel-frame-h);
-    max-height: var(--reel-frame-h) !important;
-    width: var(--reel-side-w);
+    height: calc(var(--reel-frame-h) - 4px);
+    max-height: calc(var(--reel-frame-h) - 4px) !important;
+    width: auto !important;
     z-index: 15;
     background: transparent;
     -webkit-backdrop-filter: none;
@@ -536,33 +534,81 @@
     border-radius: 0;
     box-shadow: none;
     animation: none;
-    overflow: hidden auto;
-  }
-  body.reel-with-rail .reel-side-right {
-    left: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
-    padding: 2px 6px;
-  }
-  /* The now-playing card FILLS the column top→bottom (no centred void). */
-  body.reel-with-rail .reel-side-right .reel-side-body {
-    height: 100%;
-    justify-content: space-between;
-    padding: 22px 18px 24px;
+    overflow: hidden;
   }
   body.reel-with-rail .reel-side-left {
     display: flex;
+    left: var(--reel-pad-x) !important;
     right: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
-    left: auto !important;
-    padding: 4px 6px 0;
+    padding: 2px 8px 0 4px;
+    overflow: hidden auto;
+    scrollbar-width: none;
+  }
+  body.reel-with-rail .reel-side-left::-webkit-scrollbar { display: none; }
+  body.reel-with-rail .reel-side-right {
+    left: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
+    right: var(--reel-pad-x) !important;
+    padding: 0;
   }
 
-  /* The portrait frame: pushed below the rail, shorter, ABOVE the window. */
+  /* Up-next: wider premium rows (bigger thumb, price pinned right). */
+  body.reel-with-rail .reel-queue { gap: 6px; padding: 6px 4px 14px; }
+  body.reel-with-rail .reel-queue-item { gap: 13px; padding: 9px 10px; border-radius: 15px; }
+  body.reel-with-rail .reel-queue-thumb { width: 66px; height: 74px; border-radius: 12px; }
+  body.reel-with-rail .reel-queue-info { flex: 1; }
+  body.reel-with-rail .reel-queue-name { max-width: none; font-size: 0.9rem; }
+  body.reel-with-rail .reel-queue-sub { font-size: 0.76rem; }
+  body.reel-with-rail .reel-queue-price { margin-left: auto; flex-shrink: 0; display: flex; align-items: baseline; gap: 1px; }
+  body.reel-with-rail .reel-queue-price b { font-size: 0.98rem; color: #fbf5ea; font-weight: 700; }
+  body.reel-with-rail .reel-queue-price em { font-style: normal; font-size: 0.68rem; color: rgba(242, 236, 221, 0.5); }
+  body.reel-with-rail .reel-side-left .reel-side-kicker { padding: 6px 8px 8px; }
+
+  /* Now-playing: a big cover image (fills the top), details below, CTAs pinned
+     to the bottom → the column is full, no dead space. */
+  body.reel-with-rail .reel-side-right { flex-direction: column; }
+  body.reel-with-rail .reel-np-cover {
+    position: relative;
+    flex-shrink: 0;
+    height: 44%;
+    min-height: 220px;
+    border-radius: 22px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  body.reel-with-rail .reel-np-cover-shade {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0) 42%, rgba(14, 11, 8, 0.85) 100%);
+  }
+  body.reel-with-rail .reel-np-cover-kicker {
+    position: absolute; top: 14px; left: 15px; z-index: 2;
+    font-size: 0.6rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+    color: #fff; padding: 5px 11px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  body.reel-with-rail .reel-np-cover-fallback {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 3.4rem; font-weight: 700; color: rgba(255, 235, 190, 0.6);
+    background: linear-gradient(135deg, #3a2c1a, #241a10);
+  }
+  body.reel-with-rail .reel-side-right .reel-side-body {
+    flex: 1;
+    padding: 16px 16px 4px;
+    gap: 8px;
+    overflow: hidden auto;
+  }
+  body.reel-with-rail .reel-side-right .reel-side-cta { margin-top: auto; }
+
+  /* The portrait frame: pushed below the rail, ABOVE the canvas, centred. */
   body.reel-with-rail .reel-page-root {
-    top: calc(88px + var(--reel-rail-h) + var(--reel-win-pad)) !important;
+    top: calc(84px + var(--reel-rail-h) + 12px) !important;
     height: var(--reel-frame-h) !important;
     max-height: none !important;
     z-index: 25 !important;
   }
-  /* Hide the in-frame flash rail on desktop — the window's rail replaces it. */
+  /* Hide the in-frame flash rail on desktop — the top rail replaces it. */
   body.reel-with-rail .reel-page-root .fdeal-rail-wrap { display: none !important; }
 }
 

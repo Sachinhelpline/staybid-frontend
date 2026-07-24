@@ -186,6 +186,7 @@ export default function DesktopReelPanels({
             {upNext.map((it, i) => {
               const uh = it.hotel || {};
               const up = priceOf(uh);
+              const uplace = [uh.city, uh.state].filter(Boolean).join(", ");
               const targetIdx = idx + 1 + i;
               return (
                 <button
@@ -206,10 +207,11 @@ export default function DesktopReelPanels({
                   </span>
                   <span className="reel-queue-info">
                     <span className="reel-queue-name">{uh.name || "Stay"}</span>
-                    <span className="reel-queue-sub">
-                      {uh.city || ""}{up > 0 ? `${uh.city ? " · " : ""}${inr(up)}/n` : ""}
-                    </span>
+                    <span className="reel-queue-sub">{uplace || uh.city || ""}</span>
                   </span>
+                  {up > 0 && (
+                    <span className="reel-queue-price"><b className="tabular-nums">{inr(up)}</b><em>/n</em></span>
+                  )}
                 </button>
               );
             })}
@@ -219,40 +221,44 @@ export default function DesktopReelPanels({
         )}
       </aside>
 
-      {/* RIGHT — now-playing context + booking actions. No cover image: the
-          reel itself is the visual in the centre. Clean info card. */}
+      {/* RIGHT — now-playing: a cover image (fills the top) + booking context.
+          Cover falls back to a gradient + initial when the reel has no image. */}
       <aside className="reel-side reel-side-right" aria-label="Current stay">
+        <div
+          className="reel-np-cover"
+          style={imgOf(h) ? { backgroundImage: `url("${imgOf(h)}")` } : undefined}
+          aria-hidden
+        >
+          {!imgOf(h) && <span className="reel-np-cover-fallback">{(h.name || "S").slice(0, 1).toUpperCase()}</span>}
+          <span className="reel-np-cover-kicker">Now playing</span>
+          <span className="reel-np-cover-shade" />
+        </div>
         <div className="reel-side-body">
-          <div className="reel-side-group reel-side-group-top">
-            <div className="reel-side-kicker">Now playing</div>
-            <h3 className="reel-side-title">{h.name || "Stay"}</h3>
-            <div className="reel-side-meta">
-              {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
-              {place && <span className="reel-side-place">{place}</span>}
+          <h3 className="reel-side-title">{h.name || "Stay"}</h3>
+          <div className="reel-side-meta">
+            {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
+            {place && <span className="reel-side-place">{place}</span>}
+          </div>
+          {price > 0 && (
+            <div className="reel-side-price">
+              <span>From</span> <b className="tabular-nums">{inr(price)}</b> <em>/night</em>
             </div>
-            {price > 0 && (
-              <div className="reel-side-price">
-                <span>From</span> <b className="tabular-nums">{inr(price)}</b> <em>/night</em>
-              </div>
-            )}
-            {amenities.length > 0 && (
-              <div className="reel-side-amenities">
-                {amenities.map((a, i) => (
-                  <span key={i} className="reel-side-amenity">{a}</span>
-                ))}
-              </div>
-            )}
-            {h.description && <p className="reel-side-desc">{String(h.description).slice(0, 200)}</p>}
-          </div>
-          <div className="reel-side-group reel-side-group-bottom">
-            {hotelId && (
-              <div className="reel-side-cta">
-                <Link href={`/hotels/${hotelId}`} className="reel-side-btn primary">View &amp; Book</Link>
-                <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
-              </div>
-            )}
-            <div className="reel-side-hint">↑ ↓ to browse reels</div>
-          </div>
+          )}
+          {amenities.length > 0 && (
+            <div className="reel-side-amenities">
+              {amenities.map((a, i) => (
+                <span key={i} className="reel-side-amenity">{a}</span>
+              ))}
+            </div>
+          )}
+          {h.description && <p className="reel-side-desc">{String(h.description).slice(0, 220)}</p>}
+          {hotelId && (
+            <div className="reel-side-cta">
+              <Link href={`/hotels/${hotelId}`} className="reel-side-btn primary">View &amp; Book</Link>
+              <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
+            </div>
+          )}
+          <div className="reel-side-hint">↑ ↓ to browse reels</div>
         </div>
       </aside>
 

@@ -600,7 +600,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v473 — bump (v283 -> v284). Cozy canvas: calmed even backdrop (no disturbing
 // colour), borderless warm window (no box edge / divider lines), now-playing
 // fills top→bottom (no dead space).
-const HTML_CACHE = 'staybid-html-v284';
+// v474 — bump (v284 -> v285). Full-width layout: removed the floating window box
+// (killed the centre-vs-side colour difference), full-width flash rail, columns
+// fill the side margins, now-playing cover image back (no dead space).
+const HTML_CACHE = 'staybid-html-v285';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
