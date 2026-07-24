@@ -196,7 +196,7 @@ function Card({ c }: { c: Complaint }) {
         <div className="flex items-center gap-2">
           <span className="text-2xl leading-none">{t.icon}</span>
           <div>
-            <div className="font-semibold text-luxury-900">{c.subject || t.label}</div>
+            <div className="font-display text-lg font-semibold text-luxury-900">{c.subject || t.label}</div>
             <div className="text-xs text-luxury-500 mt-0.5">
               {c.id?.slice(0, 12)} · {c.createdAt ? new Date(c.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
             </div>
@@ -230,11 +230,11 @@ function Card({ c }: { c: Complaint }) {
       )}
 
       {adminMsg && (
-        <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+        <div className="mt-3 p-3.5 rounded-[22px] bg-emerald-50 border border-emerald-200">
           <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1">Reply from StayBid</div>
           <p className="text-sm text-emerald-900 leading-relaxed whitespace-pre-wrap">{adminMsg}</p>
           {Number(c.refundAmount) > 0 && (
-            <div className="mt-2 text-xs font-semibold text-emerald-800">
+            <div className="mt-2 text-xs font-semibold text-emerald-800 tabular-nums">
               💸 Refund ₹{Number(c.refundAmount).toLocaleString("en-IN")} processed
             </div>
           )}
@@ -348,7 +348,7 @@ function Composer({
                     key={t}
                     onClick={() => setType(t)}
                     type="button"
-                    className={`px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+                    className={`px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all border ${
                       active
                         ? "bg-gold-500 text-white border-gold-500 shadow-gold"
                         : "bg-white border-luxury-200 text-luxury-700 hover:border-gold-300"
@@ -376,7 +376,7 @@ function Composer({
                     key={p}
                     onClick={() => setPriority(p)}
                     type="button"
-                    className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                    className={`flex-1 px-3 py-2 rounded-2xl text-sm font-semibold transition-all border ${
                       priority === p ? styles.active : "bg-white border-luxury-200 text-luxury-700 hover:border-luxury-300"
                     }`}
                   >
@@ -436,7 +436,7 @@ function Composer({
               className="input-luxury w-full resize-none"
               maxLength={4000}
             />
-            <div className="text-[10px] text-luxury-400 mt-1 text-right">{description.length}/4000</div>
+            <div className="text-[10px] text-luxury-400 mt-1 text-right tabular-nums">{description.length}/4000</div>
           </div>
 
           {err && (
