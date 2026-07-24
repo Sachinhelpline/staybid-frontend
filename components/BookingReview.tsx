@@ -194,10 +194,10 @@ export default function BookingReview(p: BookingReviewProps) {
       onClick={p.onClose}
     >
       <div
-        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden relative flex flex-col"
+        className="lux-soft w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden relative flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "linear-gradient(180deg,#fff 0%,#fafaf7 100%)",
+          background: "var(--bg-card)",
           boxShadow: "0 30px 80px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(240,180,41,0.12)",
           // v228 — flex column with capped height. Header + footer are
           // shrink-0 (auto-size to content); body is flex-1 + scrolls.
@@ -383,7 +383,8 @@ export default function BookingReview(p: BookingReviewProps) {
           )}
 
           {/* Rate breakdown */}
-          <div className="br-section rounded-2xl p-4 border-2 border-gold-200 bg-linear-to-br from-gold-50 to-amber-50">
+          <div className="br-section rounded-2xl p-4 border-2 border-gold-200"
+            style={{ background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))" }}>
             <p className="text-[0.6rem] font-bold text-gold-600 uppercase tracking-[0.2em] mb-2.5">Rate Breakdown</p>
             <div className="space-y-1.5 text-sm">
               {p.rateLines.map((line, i) => (
