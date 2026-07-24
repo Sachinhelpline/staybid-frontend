@@ -98,6 +98,11 @@ function SecIcon({ name, className }: { name: string; className?: string }) {
     case "award":        return (<svg {...p}><circle cx="12" cy="9" r="4.8" /><path d="M9.2 13.2 7.8 21l4.2-2.4L16.2 21l-1.4-7.8" /></svg>);
     case "map":          return (<svg {...p}><path d="M9 4.2 3.5 6.6v13.2L9 17.4l6 2.4 5.5-2.4V4.2L15 6.6 9 4.2Z" /><path d="M9 4.2v13.2M15 6.6v13.2" /></svg>);
     case "negotiate":    return (<svg {...p}><path d="M8 5 4 9l4 4" /><path d="M4 9h12" /><path d="M16 19l4-4-4-4" /><path d="M20 15H8" /></svg>);
+    case "idea":         return (<svg {...p}><path d="M9.5 18h5" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-3.8 10.7c.6.5 1.1 1.2 1.3 2h5c.2-.8.7-1.5 1.3-2A6 6 0 0 0 12 3Z" /></svg>);
+    case "shield":       return (<svg {...p}><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3Z" /><path d="m9.2 11.5 1.9 1.9 3.7-3.8" /></svg>);
+    case "building":     return (<svg {...p}><path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16" /><path d="M14 9h4a1 1 0 0 1 1 1v11" /><path d="M8 8h2M8 12h2M8 16h2" /><path d="M3 21h18" /></svg>);
+    case "check":        return (<svg {...p}><path d="M20 6 9 17l-5-5" /></svg>);
+    case "pricetag":     return (<svg {...p}><path d="M20.5 12.6 12.4 20.7a1.5 1.5 0 0 1-2.1 0l-6.9-6.9a1.5 1.5 0 0 1-.4-1V4.5A1.5 1.5 0 0 1 4.5 3h8.3c.4 0 .8.2 1 .4l6.7 6.7a1.5 1.5 0 0 1 0 2.5Z" /><circle cx="8.2" cy="8.2" r="1.3" /></svg>);
     default:             return null;
   }
 }
@@ -4244,7 +4249,7 @@ export default function HotelDetail() {
                 border: "1px solid rgba(201, 166, 107, 0.3)",
                 borderRadius: "12px",
               }}>
-                <span style={{ fontSize: "1rem" }}>💡</span>
+                <SecIcon name="idea" />
                 <p style={{ fontSize: "0.74rem", color: "var(--text-soft)", margin: 0, lineHeight: 1.45 }}>
                   Set dates &amp; negotiate to unlock the lowest price for your exact stay.
                 </p>
@@ -4285,15 +4290,15 @@ export default function HotelDetail() {
                 display: "flex", flexDirection: "column", gap: "8px",
               }}>
                 {[
-                  { i: "🛡", t: "Verified by StayBid" },
-                  { i: "💰", t: "Best-price guarantee" },
-                  { i: "🔄", t: "Free cancellation 24h prior" },
+                  { i: "shield", t: "Verified by StayBid" },
+                  { i: "pricetag", t: "Best-price guarantee" },
+                  { i: "cancellation", t: "Free cancellation 24h prior" },
                 ].map(({ i, t }) => (
                   <div key={t} style={{
                     display: "flex", alignItems: "center", gap: "10px",
                     fontSize: "0.78rem", color: "var(--text-soft)",
                   }}>
-                    <span style={{ fontSize: "0.95rem" }}>{i}</span>
+                    <SecIcon name={i} className="text-[color:var(--accent)]" />
                     {t}
                   </div>
                 ))}
@@ -4646,7 +4651,7 @@ export default function HotelDetail() {
                   disabled={bookLoading}
                   className="btn-3d btn-3d-white w-full"
                 >
-                  🏨 View Hotel Details First
+                  <SecIcon name="building" className="inline-block align-[-0.15em] mr-1" /> View Hotel Details First
                 </button>
                 <p className="text-center text-[0.65rem] text-luxury-400 tracking-wide">
                   Explore photos, amenities &amp; reviews before booking
@@ -4724,7 +4729,7 @@ export default function HotelDetail() {
                 );
               })()}
               <button onClick={handleBookNow} disabled={bnLoading} className="btn-3d btn-3d-gold btn-3d-lg w-full">
-                {bnLoading ? "Confirming…" : "✨ Confirm Booking"}
+                {bnLoading ? "Confirming…" : <><SecIcon name="check" className="inline-block align-[-0.15em] mr-1" /> Confirm Booking</>}
               </button>
             </div>
           </div>
@@ -5035,7 +5040,7 @@ export default function HotelDetail() {
                   <div className="rounded-xl p-3 border"
                     style={{ background:"rgba(245,158,11,0.08)", borderColor:"rgba(245,158,11,0.3)" }}>
                     <p className="text-[0.7rem] text-amber-200 leading-relaxed">
-                      💡 Your ₹{negAmt.toLocaleString()} is below the hotel's minimum.
+                      <SecIcon name="idea" className="inline-block align-[-0.15em] mr-1" /> Your ₹{negAmt.toLocaleString()} is below the hotel's minimum.
                       We'll forward your preferred price — hotel may counter or accept on your terms.
                       <span className="text-white/40"> No charge unless accepted.</span>
                     </p>
