@@ -590,7 +590,30 @@ const CACHE_NAME = 'staybid-static-v2';
 // labels, accent stat pill, stable-price trend chip — swapped fixed
 // --cozy-warm-dark/--cozy-cocoa/--cozy-cocoa-soft to the theme-aware
 // --text-base/--text-soft/--text-muted (byte-identical in light).
-const HTML_CACHE = 'staybid-html-v276';
+// v471 — HTML_CACHE bump (v280 -> v281). Desktop reel unified window: the two
+// side panels + a full-width Flash Deals rail merge into one glass "desktop app
+// window" on ≥1440px home. Bumping drops the stale cached reel markup.
+// v471.2 — bump (v281 -> v282). Aesthetic pass on the window: defined frosted
+// card, fixed broken up-next thumbnails, amenity chips, centred now-playing.
+// v472 — bump (v282 -> v283). Seamless window: neutral blend (no pasted-box
+// colour edge), taller flash rail (fully visible), tighter cohesive columns.
+// v473 — bump (v283 -> v284). Cozy canvas: calmed even backdrop (no disturbing
+// colour), borderless warm window (no box edge / divider lines), now-playing
+// fills top→bottom (no dead space).
+// v474 — bump (v284 -> v285). Full-width layout: removed the floating window box
+// (killed the centre-vs-side colour difference), full-width flash rail, columns
+// fill the side margins, now-playing cover image back (no dead space).
+// v475 — bump (v285 -> v286). Rebalanced: bigger prominent frame, moderate
+// columns (not stretched), rail spans the 3-column cluster; thumbnail/cover
+// gradient fallbacks (no black boxes); now-playing cover fills the column.
+// v476 — bump (v286 -> v287). Up-next thumbnails: broken images now fall back
+// to a clean initial-letter card (was a dull empty gradient box).
+// v477 — bump (v287 -> v288). Home desktop reel canvas flipped to LIGHT cozy
+// cream (dark text/chips/rail/navbar); /discover + /reels stay dark.
+// v478 — bump (v288 -> v289). Flash rail: taller (labels not clipped) +
+// readable dark names + scroll arrows/edge-fade (drag affordance); now-playing
+// cover cream placeholder (no black box on the light canvas).
+const HTML_CACHE = 'staybid-html-v289';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

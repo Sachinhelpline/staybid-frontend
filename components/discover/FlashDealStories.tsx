@@ -1469,12 +1469,16 @@ export function FlashDealStoryViewer({
 }
 
 // ─── Convenience hook: fetch live flash deals + filter by current city ─────
-export function useFlashDealStories(city: string) {
+export function useFlashDealStories(city: string, enabled: boolean = true) {
   const [deals, setDeals] = useState<FlashDealStory[]>([]);
   const [loading, setLoading] = useState(true);
   const reqIdRef = useRef(0);
 
   useEffect(() => {
+    // v471 — skip the network entirely when disabled (e.g. the desktop-only
+    // stage rail on a narrow/mobile viewport). Keeps mobile fetch behaviour
+    // byte-identical: callers that omit `enabled` always fetch as before.
+    if (!enabled) { setDeals([]); setLoading(false); return; }
     const myId = ++reqIdRef.current;
     setLoading(true);
     // Send viewed deal ids so the API can push already-seen deals to the
@@ -1504,7 +1508,7 @@ export function useFlashDealStories(city: string) {
       })
       .catch(() => { if (myId === reqIdRef.current) setDeals([]); })
       .finally(() => { if (myId === reqIdRef.current) setLoading(false); });
-  }, [city]);
+  }, [city, enabled]);
 
   return { deals, loading };
 }
