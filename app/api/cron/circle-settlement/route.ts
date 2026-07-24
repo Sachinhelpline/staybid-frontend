@@ -78,12 +78,16 @@ async function run(req: NextRequest) {
   const cancelledIds = cancelled.map((b) => String(b.id));
   for (const bid of cancelledIds) {
     try {
+      // Match on metadata->>bookingId (exact) rather than ref_id LIKE — a
+      // booking id could contain SQL-LIKE metacharacters (_ / %) that would
+      // make a `like.<id>:*` pattern match unrelated rows. return=representation
+      // so `reversed` counts rows actually flipped, not bookings processed.
       const r = await fetch(
-        `${SB_URL}/rest/v1/settlement_ledger?kind=eq.guest_booking&payout_status=eq.owed&ref_id=like.${encodeURIComponent(bid + ":")}*`,
-        { method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+        `${SB_URL}/rest/v1/settlement_ledger?kind=eq.guest_booking&payout_status=eq.owed&metadata->>bookingId=eq.${encodeURIComponent(bid)}`,
+        { method: "PATCH", headers: { ...SB_H, Prefer: "return=representation" },
           body: JSON.stringify({ payout_status: "cancelled", updated_at: new Date().toISOString() }) },
       );
-      if (r.ok) reversed += 1;
+      if (r.ok) { const rows = await r.json().catch(() => []); reversed += Array.isArray(rows) ? rows.length : 0; }
     } catch { /* best-effort */ }
   }
 
@@ -130,21 +134,29 @@ async function run(req: NextRequest) {
     const payees = Object.keys(counts);
     if (!payees.length) continue;               // fully StayBid-retained → no owed row (decision 2)
 
-    const paid = round0(bk.paidAmount);
+    // paidAmount covers ALL rooms of the booking, but only the single
+    // `assignedUnitId` (= one room) is attributed here. Divide by numRooms so
+    // the unit's owner is credited exactly ONE room's share — never the whole
+    // multi-room payment (the other rooms sit on other units / StayBid).
+    const rooms = Math.max(1, round0(bk.numRooms) || 1);
+    const paid = round0(round0(bk.paidAmount) / rooms);
     const totalNights = nights.length;
     let wroteAny = false;
+    const setlIds: string[] = [];
     for (const payee of payees) {
       const myNights = counts[payee];
       const gross = round0(paid * (myNights / totalNights));
       const platformFee = round0(gross * (feePct / 100));
       const net = gross - platformFee;
       const refId = `${bk.id}:${payee}`;
+      const setlId = `setl_gb_${bk.id}_${payee}`.slice(0, 190);
+      setlIds.push(setlId);
       try {
         const r = await fetch(`${SB_URL}/rest/v1/settlement_ledger`, {
           method: "POST",
           headers: { ...SB_H, Prefer: "resolution=ignore-duplicates,return=minimal" },
           body: JSON.stringify({
-            id: `setl_gb_${bk.id}_${payee}`.slice(0, 190),
+            id: setlId,
             kind: "guest_booking",
             ref_id: refId,
             payee_user_id: payee,
@@ -152,13 +164,25 @@ async function run(req: NextRequest) {
             platform_fee: platformFee,
             net_amount: net,
             payout_status: "owed",
-            metadata: { bookingId: String(bk.id), unitId, nights: myNights, totalNights, feePct, paidAmount: paid },
+            metadata: { bookingId: String(bk.id), unitId, nights: myNights, totalNights, feePct, paidAmount: paid, numRooms: rooms },
             created_at: nowIso,
             updated_at: nowIso,
           }),
         });
         if (r.ok) { settledRows += 1; wroteAny = true; }
       } catch { /* best-effort per row */ }
+    }
+    // REVIVE: this booking is confirmed again — if a prior cancellation flipped
+    // its rows to `cancelled`, the ignore-duplicates INSERT above is a no-op on
+    // them, so flip those exact rows back to `owed`. Only touches `cancelled`
+    // rows (never a `paid`/`paying` one), so it can't resurrect a settled payout.
+    if (setlIds.length) {
+      try {
+        await fetch(`${SB_URL}/rest/v1/settlement_ledger?id=in.(${setlIds.map(encodeURIComponent).join(",")})&payout_status=eq.cancelled`, {
+          method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+          body: JSON.stringify({ payout_status: "owed", updated_at: nowIso }),
+        });
+      } catch { /* best-effort revive */ }
     }
     if (wroteAny) settledBookings += 1;
   }

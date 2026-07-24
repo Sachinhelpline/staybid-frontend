@@ -490,16 +490,28 @@ export async function POST(req: NextRequest) {
     const acct = (await sb(`circle_payout_accounts?user_id=eq.${encodeURIComponent(payeeUserId)}&select=*&limit=1`))[0];
     if (!acct) return NextResponse.json({ error: "This owner hasn't added a payout account yet." }, { status: 409 });
 
-    // 1) CLAIM: flip this owner's owed guest_booking rows → paying.
+    // 1) CLAIM: flip this owner's owed rows → paying, capturing EXACTLY the rows
+    //    THIS request transitioned (return=representation). Processing only the
+    //    self-claimed set — never a follow-up "select all paying" — closes the
+    //    double-pay race: a concurrent/retried run can no longer fold another
+    //    request's in-flight rows into a second, different-keyed payout.
+    const encPayee = encodeURIComponent(payeeUserId);
+    let claimed: any[] = [];
     try {
-      await fetch(`${SB_URL}/rest/v1/settlement_ledger?kind=eq.guest_booking&payee_user_id=eq.${encodeURIComponent(payeeUserId)}&payout_status=eq.owed`, {
-        method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+      const cr = await fetch(`${SB_URL}/rest/v1/settlement_ledger?kind=eq.guest_booking&payee_user_id=eq.${encPayee}&payout_status=eq.owed`, {
+        method: "PATCH", headers: { ...SB_H, Prefer: "return=representation" },
         body: JSON.stringify({ payout_status: "paying", updated_at: nowIso }),
       });
-    } catch { /* fall through — the select below is the source of truth */ }
+      if (cr.ok) { const j = await cr.json().catch(() => []); claimed = Array.isArray(j) ? j : []; }
+    } catch { /* fall through to crash-recovery */ }
 
-    // 2) The claimed set = all paying rows for this owner (recovers a prior crash).
-    const claimed = await sb(`settlement_ledger?kind=eq.guest_booking&payee_user_id=eq.${encodeURIComponent(payeeUserId)}&payout_status=eq.paying&select=id,net_amount&limit=500`);
+    // 2) Crash-recovery ONLY: this request claimed nothing new (rows already
+    //    `paying` from a prior crashed attempt) → adopt that stale set so the
+    //    owner still gets paid. No fresh owed→paying happened here, so there is
+    //    no new set to overlap — the idempotency key stays stable.
+    if (!claimed.length) {
+      claimed = await sb(`settlement_ledger?kind=eq.guest_booking&payee_user_id=eq.${encPayee}&payout_status=eq.paying&select=id,net_amount&limit=500`);
+    }
     if (!claimed.length) return NextResponse.json({ error: "Nothing to pay for this owner." }, { status: 409 });
 
     const ids = claimed.map((r: any) => String(r.id)).sort();
@@ -531,10 +543,12 @@ export async function POST(req: NextRequest) {
       }
       const payout = await createPayout({ fundAccountId: fa.fundAccountId, amountPaise, idempotencyKey: idemKey, referenceId: idemKey, narration: "StayBid Circle payout" });
 
-      // 3) SUCCESS: paying → paid (status only; per-row metadata preserved).
+      // 3) SUCCESS: paying → paid + stamp the payout_ref so the async payout
+      //    webhook can later claw the exact rows back to `owed` if RazorpayX
+      //    reverses/fails the payout (createPayout returning ≠ money delivered).
       await fetch(`${SB_URL}/rest/v1/settlement_ledger?id=in.(${idList(ids)})&payout_status=eq.paying`, {
         method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
-        body: JSON.stringify({ payout_status: "paid", paid_at: nowIso, updated_at: nowIso }),
+        body: JSON.stringify({ payout_status: "paid", paid_at: nowIso, payout_ref: String(payout.id), updated_at: nowIso }),
       });
       logAdminAction({ admin, action: "circle_inventory.payout_executed", targetType: "user", targetId: payeeUserId, details: { rows: ids.length, total: totalRupees, payoutId: payout.id, status: payout.status } });
       return NextResponse.json({ ok: true, payoutId: payout.id, status: payout.status, paidRows: ids.length, paidTotal: totalRupees });
