@@ -378,7 +378,8 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, p
 
 function TierExplainer({ tier }: { tier: string }) {
   return (
-    <div className="mt-10 card-luxury sb-fade-in p-5 bg-linear-to-br from-luxury-50 to-gold-50/40">
+    <div className="mt-10 card-luxury sb-fade-in p-5"
+      style={{ background: "color-mix(in srgb, var(--accent) 8%, var(--bg-card))" }}>
       <div className="font-display text-lg text-luxury-900 mb-3">Your tier benefits</div>
       <div className="grid grid-cols-3 gap-2 text-xs">
         {[

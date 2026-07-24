@@ -96,7 +96,7 @@ export default function SavedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50">
+    <div className="lux-soft min-h-screen" style={{ background: "var(--bg-page)" }}>
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-24">
 
         {/* Header */}
