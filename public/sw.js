@@ -625,7 +625,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // 5-col collateral on its KPI chips + card details strip.
 // v484 — bump (v294 -> v295). /passport desktop 2-column hub (mobile identical
 // via display:contents) + fixed the 5-col strip bug.
-const HTML_CACHE = 'staybid-html-v295';
+// v485 — bump (v295 -> v296). /saved (.lux-soft max-w-5xl) widened on desktop so
+// its lg:grid-cols-4 grid breathes.
+const HTML_CACHE = 'staybid-html-v296';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

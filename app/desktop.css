@@ -1327,10 +1327,14 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
    Widening the column lets the existing 2-col grid breathe (~570-620px cards) —
    zero TSX change, zero risk to the card's payment/hold/chat logic. ─────────── */
 @media (min-width: 1280px) {
-  .lux-bg > div.max-w-5xl { max-width: 1200px !important; }
+  /* .lux-bg (/bookings) + .lux-soft (/saved, /complaints) — both cap at
+     max-w-5xl and escape §9's widen list. /saved's lg:grid-cols-4 grid + the
+     /bookings xl:grid-cols-2 grid both then breathe instead of squeezing into
+     1024px with dead side gutters on wide monitors. */
+  :is(.lux-bg, .lux-soft) > div.max-w-5xl { max-width: 1200px !important; }
 }
 @media (min-width: 1536px) {
-  .lux-bg > div.max-w-5xl { max-width: 1320px !important; }
+  :is(.lux-bg, .lux-soft) > div.max-w-5xl { max-width: 1320px !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
