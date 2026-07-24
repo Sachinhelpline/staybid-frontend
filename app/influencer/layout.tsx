@@ -58,7 +58,7 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
 
   if (authLoading || checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-luxury-50">
+      <div className="lux-bg inf-root min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="shimmer w-16 h-16 rounded-full mx-auto mb-3" />
           <p className="text-luxury-600 text-sm font-medium">Loading creator hub…</p>
@@ -71,7 +71,7 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50">
+    <div className="lux-bg inf-root min-h-screen">
       <div className="max-w-6xl mx-auto px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-2">
           <span className="text-3xl">✨</span>
