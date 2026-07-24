@@ -294,6 +294,7 @@
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 999px; font-size: .7rem; font-weight: 600;
   color: var(--sbc-gold-deep); background: rgba(201,166,107,.14); border: 1px solid rgba(201,166,107,.3);
+  font-variant-numeric: tabular-nums;
 }
 .sbc-card-actions { display: flex; gap: 8px; margin-top: 14px; }
 .sbc-btn-detail {
@@ -1998,7 +1999,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   box-shadow: var(--sbc-c-shadow);
 }
 .sbc-earn-hero-k { display: block; font-size: .64rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--sbc-c-sage-deep); }
-.sbc-earn-hero-v { display: block; font-size: 2rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 4px; line-height: 1.05; }
+.sbc-earn-hero-v { display: block; font-size: 2rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 4px; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .sbc-earn-hero-sub { display: block; font-size: .74rem; color: var(--sbc-c-ink-soft); margin-top: 6px; line-height: 1.45; }
 
 .sbc-earn-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 12px; }
@@ -2017,7 +2018,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-earn-row-main b { display: block; font-size: .9rem; color: var(--sbc-c-ink); font-weight: 800; }
 .sbc-earn-row-main span { display: block; font-size: .7rem; color: var(--sbc-c-ink-soft); margin-top: 2px; }
 .sbc-earn-row-amt { flex: 0 0 auto; text-align: right; }
-.sbc-earn-row-amt b { display: block; font-size: 1rem; font-weight: 900; color: var(--sbc-c-ink); }
+.sbc-earn-row-amt b { display: block; font-size: 1rem; font-weight: 900; color: var(--sbc-c-ink); font-variant-numeric: tabular-nums; }
 .sbc-earn-status { display: inline-block; margin-top: 3px; font-size: .58rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
 .sbc-earn-status.paid    { color: var(--sbc-c-sage-deep); background: var(--sbc-c-sage-tint); }
 .sbc-earn-status.pending { color: #8a6b18; background: rgba(201,166,107,.16); }

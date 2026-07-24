@@ -150,15 +150,15 @@ export default function CircleEarningsPage() {
                 <span style={{ fontSize: ".62rem", fontWeight: 800, color: "#a9791f", background: "rgba(201,166,107,.16)", padding: "3px 9px", borderRadius: 999 }}>PREVIEW</span>
               </div>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "8px 15px 4px" }}>
-                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>PROJECTED NET</div><b style={{ fontSize: "1.35rem", color: "#047857" }}>{fmtINR(Number(projected.projectedNetOwed) || 0)}</b></div>
-                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>GROSS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)" }}>{fmtINR(Number(projected.projectedGross) || 0)}</b></div>
-                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>BOOKINGS · NIGHTS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)" }}>{Number(projected.bookingCount) || 0} · {Number(projected.nightsCount) || 0}</b></div>
+                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>PROJECTED NET</div><b style={{ fontSize: "1.35rem", color: "#047857", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(projected.projectedNetOwed) || 0)}</b></div>
+                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>GROSS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(projected.projectedGross) || 0)}</b></div>
+                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>BOOKINGS · NIGHTS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)", fontVariantNumeric: "tabular-nums" }}>{Number(projected.bookingCount) || 0} · {Number(projected.nightsCount) || 0}</b></div>
               </div>
               <div style={{ display: "grid", gap: 6, padding: "6px 15px 4px" }}>
                 {(projected.items || []).slice(0, 6).map((it: any) => (
                   <div key={it.bookingId} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: ".78rem", color: "rgba(74,56,32,.85)" }}>
                     <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.hotelName} · {it.checkIn} → {it.checkOut} · {it.nights}n</span>
-                    <b style={{ color: "#047857", whiteSpace: "nowrap" }}>{fmtINR(Number(it.net) || 0)}</b>
+                    <b style={{ color: "#047857", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(it.net) || 0)}</b>
                   </div>
                 ))}
               </div>
