@@ -205,7 +205,7 @@ function SaveCard({
       <Wrap href={`/influencer/public/${t.id}`} onUnsave={() => onUnsave(s)}>
         <div className="aspect-4/3 bg-linear-to-br from-gold-100 to-luxury-100 flex flex-col items-center justify-center p-3 text-center">
           {t.avatar_url
-            ? <img src={t.avatar_url} className="w-16 h-16 rounded-full object-cover ring-4 ring-white shadow-sm" />
+            ? <img src={t.avatar_url} alt={t.display_name ? `${t.display_name} avatar` : "Creator avatar"} className="w-16 h-16 rounded-full object-cover ring-4 ring-white shadow-sm" />
             : <div className="w-16 h-16 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-xl ring-4 ring-white shadow-sm">
                 {(t.display_name || "C").slice(0, 1).toUpperCase()}
               </div>}

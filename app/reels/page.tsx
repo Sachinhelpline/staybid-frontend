@@ -465,7 +465,7 @@ function CommentDrawer({
         </div>
         <div className="flex items-center justify-between px-5 pb-3">
           <h3 className="font-bold text-luxury-900">Comments ({fmtNum(comments.length)})</h3>
-          <button onClick={onClose} className="text-luxury-500 text-xl">×</button>
+          <button onClick={onClose} aria-label="Close" className="text-luxury-500 text-xl">×</button>
         </div>
 
         {/* List */}
@@ -572,7 +572,7 @@ function ShareSheet({ video, onClose }: { video: Video | null; onClose: () => vo
       <div className="bg-white rounded-t-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-luxury-900">Share</h3>
-          <button onClick={onClose} className="text-luxury-500 text-xl">×</button>
+          <button onClick={onClose} aria-label="Close" className="text-luxury-500 text-xl">×</button>
         </div>
         <div className="grid grid-cols-4 gap-3">
           {[
