@@ -4347,7 +4347,7 @@ export default function HotelDetail() {
       {verifyOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 backdrop-blur-xs"
           onClick={() => setVerifyOpen(false)}>
-          <div className="bg-white w-full max-w-sm mx-4 rounded-3xl shadow-luxury-lg p-7"
+          <div className="hx-modal w-full max-w-sm mx-4 rounded-3xl shadow-luxury-lg p-7"
             onClick={(e) => e.stopPropagation()}>
             <div className="text-center mb-6">
               <div className="w-14 h-14 rounded-full bg-gold-50 border-2 border-gold-200 flex items-center justify-center mx-auto mb-4">
@@ -4423,7 +4423,7 @@ export default function HotelDetail() {
       {flashBookOpen && dealPrice && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs"
           onClick={() => setFlashBookOpen(false)}>
-          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden"
+          <div className="hx-modal w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden"
             onClick={(e) => e.stopPropagation()}>
             {/* Gold header */}
             <div className="bg-linear-to-r from-gold-600 to-gold-400 px-6 py-4 flex items-center justify-between">
@@ -4638,7 +4638,7 @@ export default function HotelDetail() {
       {/* ══ BOOK NOW MODAL ══ */}
       {bnRoom && !bnSuccess && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setBnRoom(null)}>
-          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="hx-modal w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="bg-linear-to-r from-luxury-900 to-luxury-800 px-6 py-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Instant Booking</p>
@@ -4710,7 +4710,7 @@ export default function HotelDetail() {
       )}
       {bnSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setBnRoom(null)}>
-          <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
+          <div className="hx-modal max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">🎉</span></div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">Booking Confirmed!</h3>
             <p className="text-luxury-400 text-sm mb-6">Your booking at <span className="font-semibold text-luxury-700">{hotel.name}</span> is confirmed.</p>
@@ -5050,7 +5050,7 @@ export default function HotelDetail() {
       })()}
       {negSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setNegRoom(null)}>
-          <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
+          <div className="hx-modal max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">{negAuto ? "🎉" : "✅"}</span></div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">{negAuto ? "Booking Confirmed!" : "Bid Submitted!"}</h3>
             <p className="text-luxury-400 text-sm mb-6">{negAuto ? "The hotel confirmed your bid. Check My Bookings." : "The hotel will review your offer and respond soon. You'll be notified."}</p>
@@ -5079,7 +5079,7 @@ export default function HotelDetail() {
       {flashBookSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
           onClick={() => setFlashBookSuccess(false)}>
-          <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center"
+          <div className="hx-modal max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center"
             onClick={(e) => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">🎉</span>
@@ -5116,7 +5116,7 @@ export default function HotelDetail() {
       {bidRoom && !bidSuccess && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs"
           onClick={() => setBidRoom(null)}>
-          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-luxury-lg p-6"
+          <div className="hx-modal w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-luxury-lg p-6"
             onClick={(e) => e.stopPropagation()}>
             <div className="w-12 h-1 bg-linear-to-r from-gold-500 to-gold-300 rounded-full mx-auto mb-6" />
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-1">Place Your Bid</h3>
@@ -5465,7 +5465,7 @@ export default function HotelDetail() {
       {bidSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
           onClick={() => setBidSuccess(false)}>
-          <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center"
+          <div className="hx-modal max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center"
             onClick={(e) => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">🎉</span>
