@@ -416,7 +416,7 @@ function TourStyles() {
       .sbt-hero img { width: 100%; height: 100%; object-fit: cover; }
       .sbt-noimg { display: grid; place-items: center; font-size: 3rem; width: 100%; height: 100%; color: #ffe9b8; }
       .sbt-hero-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 34px 17px 15px; background: linear-gradient(0deg, rgba(18,12,6,.9), transparent); color: #fff; }
-      .sbt-hero-title { font-size: 1.55rem; font-weight: 800; line-height: 1.08; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+      .sbt-hero-title { font-family: var(--font-display, "Cormorant Garamond", Georgia, serif); font-size: 1.85rem; font-weight: 600; letter-spacing: .005em; line-height: 1.06; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
       .sbt-hero-loc { font-size: .84rem; opacity: .92; margin-top: 3px; }
       .sbt-hero-star { color: #ffcf6e; }
       .sbt-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(20,14,7,.55); color: #ffe9b8; font-size: 1.3rem; cursor: pointer; z-index: 2; }
@@ -429,11 +429,11 @@ function TourStyles() {
       .sbt-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0 14px; }
       @media (min-width: 560px) { .sbt-metrics { grid-template-columns: repeat(4, 1fr); } }
       .sbt-metric { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(212,162,74,.25); border-radius: 13px; padding: 12px 13px; }
-      .sbt-metric b { display: block; color: #ffd98a; font-size: 1.02rem; font-weight: 800; }
+      .sbt-metric b { display: block; color: #ffd98a; font-size: 1.02rem; font-weight: 800; font-variant-numeric: tabular-nums; }
       .sbt-metric span { font-size: .54rem; letter-spacing: .06em; color: rgba(243,231,208,.55); font-weight: 700; }
       .sbt-desc { font-size: .84rem; line-height: 1.55; color: rgba(74,56,32,.75); margin: 0 0 16px; }
       .sbt-desc.sm { font-size: .78rem; margin: 8px 0 14px; }
-      .sbt-h2 { font-size: 1.35rem; font-weight: 800; color: #3a2c17; margin-top: 6px; }
+      .sbt-h2 { font-family: var(--font-display, "Cormorant Garamond", Georgia, serif); font-size: 1.5rem; font-weight: 600; letter-spacing: .005em; color: #3a2c17; margin-top: 6px; }
       .sbt-h2sub { font-size: .82rem; color: rgba(74,56,32,.65); margin: 4px 0 14px; line-height: 1.5; }
       .sbt-roomgal { position: relative; height: 190px; border-radius: 14px; overflow: hidden; margin: 6px 0 10px; background: #e2d4bb; }
       .sbt-roomgal img { width: 100%; height: 100%; object-fit: cover; }
