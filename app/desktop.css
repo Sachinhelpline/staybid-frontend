@@ -1271,11 +1271,11 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
   .lux-bg .mb-8 { margin-bottom: 1rem !important; }
   .lux-bg .mb-10 { margin-bottom: 1.25rem !important; }
 
-  /* /flash-deals: cards in the grid were hitting a min-width of 320px
-     which forced ~3-col on 1280-wide displays. Drop to 280 so a wide
-     desktop sees 4 cards per row. */
+  /* /flash-deals: v480 — larger, more premium cards on desktop (min 300px,
+     was 280) so each deal reads as a rich flagship tile, not a dense thumbnail
+     grid. ~4 across at 1280, ~3 across at 1024. */
   .fd-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
   }
 
   /* Admin panel info-density bump (separate from admin.css since this
@@ -1289,9 +1289,10 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
   .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
     gap: 1.5rem !important;
   }
-  /* Flash deals — 5 cols at this width. */
+  /* Flash deals — v480 — keep the premium 300px min so cards stay large;
+     column count grows with the viewport (4 at 1440, 5 on ultra-wide). */
   .fd-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
   }
 }
 

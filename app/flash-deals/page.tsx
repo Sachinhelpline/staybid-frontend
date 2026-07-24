@@ -1152,8 +1152,11 @@ function FdStyles() {
         position: relative; height: 168px; overflow: hidden; background: #0d0d1a;
       }
       @media (min-width: 640px)  { .fd-img-wrap { height: 180px; } }
-      @media (min-width: 1024px) { .fd-img-wrap { height: 192px; } }
-      @media (min-width: 1280px) { .fd-img-wrap { height: 200px; } }
+      /* v480 — taller, more premium imagery on desktop (was capped at 200px,
+         which read letterboxed on a wide card). */
+      @media (min-width: 1024px) { .fd-img-wrap { height: 210px; } }
+      @media (min-width: 1280px) { .fd-img-wrap { height: 232px; } }
+      @media (min-width: 1536px) { .fd-img-wrap { height: 248px; } }
       .fd-img {
         width: 100%; height: 100%; object-fit: cover;
         transform: scale(1.05);

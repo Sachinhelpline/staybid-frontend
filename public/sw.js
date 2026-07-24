@@ -615,7 +615,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // cover cream placeholder (no black box on the light canvas).
 // v479 — bump (v289 -> v290). Hotel detail desktop: revived the 2-column
 // sticky-rail layout (dead .max-w-6xl selectors -> .max-w-7xl).
-const HTML_CACHE = 'staybid-html-v290';
+// v480 — bump (v290 -> v291). Flash Deals desktop: bigger premium card
+// images + larger cards (300px min).
+const HTML_CACHE = 'staybid-html-v291';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
