@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense, useRef, type Dispatch, type SetStateAction } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -179,6 +179,12 @@ function HotelList() {
   })();
   const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc" | "rating">(initialSort);
   const [selectedStars, setSelectedStars] = useState<Set<number>>(initialStars);
+  // v433 — smart filters (session-only; not URL-mirrored to keep the shallow
+  // sort/stars mirror untouched). priceMax=null → no price cap; minScore=0 → any.
+  const [priceMax, setPriceMax] = useState<number | null>(null);
+  const [minScore, setMinScore] = useState<number>(0);
+  const [propTypes, setPropTypes] = useState<Set<string>>(new Set());
+  const [amenitySel, setAmenitySel] = useState<Set<string>>(new Set());
 
   // Mirror sort + stars into URL (replace, no history pollution).
   useEffect(() => {
@@ -354,13 +360,55 @@ function HotelList() {
     });
   }, [hotels]);
 
+  // v433 — filter option sets derived from the fetched hotels.
+  const priceBounds = useMemo(() => {
+    const ps = enrichedHotels
+      .map((h: any) => h._minPrice)
+      .filter((n: any) => Number.isFinite(n)) as number[];
+    if (!ps.length) return null;
+    const lo = Math.floor(Math.min(...ps) / 100) * 100;
+    const hi = Math.ceil(Math.max(...ps) / 100) * 100;
+    return hi > lo ? { lo, hi } : null;
+  }, [enrichedHotels]);
+  const propTypeOpts = useMemo(() => {
+    const s = new Set<string>();
+    hotels.forEach((h: any) => { if (h.property_type) s.add(String(h.property_type)); });
+    return Array.from(s).slice(0, 8);
+  }, [hotels]);
+  const amenityOpts = useMemo(() => {
+    const freq = new Map<string, number>();
+    hotels.forEach((h: any) => {
+      (Array.isArray(h.amenities) ? h.amenities : []).forEach((a: string) => {
+        if (a) freq.set(a, (freq.get(a) || 0) + 1);
+      });
+    });
+    return Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map((e) => e[0]);
+  }, [hotels]);
+
   const filteredHotels = useMemo(() => {
     let list = enrichedHotels;
     if (selectedStars.size > 0) {
       list = list.filter((h: any) => selectedStars.has(Number(h.starRating) || 0));
     }
+    if (priceMax != null) {
+      list = list.filter((h: any) => h._minPrice != null && h._minPrice <= priceMax);
+    }
+    if (minScore > 0) {
+      list = list.filter((h: any) => (Number(h.avgRating) || 0) >= minScore);
+    }
+    if (propTypes.size > 0) {
+      list = list.filter((h: any) => h.property_type && propTypes.has(String(h.property_type)));
+    }
+    if (amenitySel.size > 0) {
+      list = list.filter((h: any) => {
+        const set = new Set(Array.isArray(h.amenities) ? h.amenities : []);
+        let ok = true;
+        amenitySel.forEach((a) => { if (!set.has(a)) ok = false; });
+        return ok;
+      });
+    }
     return list;
-  }, [enrichedHotels, selectedStars]);
+  }, [enrichedHotels, selectedStars, priceMax, minScore, propTypes, amenitySel]);
 
   const displayHotels = useMemo(() => {
     if (sortBy === "default") return filteredHotels;
@@ -375,7 +423,8 @@ function HotelList() {
     return cloned;
   }, [filteredHotels, sortBy]);
 
-  const filtersActive = sortBy !== "default" || selectedStars.size > 0;
+  const filtersActive = sortBy !== "default" || selectedStars.size > 0
+    || priceMax != null || minScore > 0 || propTypes.size > 0 || amenitySel.size > 0;
   const inSearchMode = !!debouncedSearch.trim() || filtersActive;
 
   // v159.8 — Search summary shown inside the trigger button.
@@ -413,7 +462,17 @@ function HotelList() {
       return next;
     });
   };
-  const resetFilters = () => { setSortBy("default"); setSelectedStars(new Set()); };
+  const resetFilters = () => {
+    setSortBy("default"); setSelectedStars(new Set());
+    setPriceMax(null); setMinScore(0); setPropTypes(new Set()); setAmenitySel(new Set());
+  };
+  const toggleInSet = (setter: Dispatch<SetStateAction<Set<string>>>, v: string) => {
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v); else next.add(v);
+      return next;
+    });
+  };
 
   // ───────────────────────── Rails ─────────────────────────
   // We always build from `filteredHotels` so star-filter is honoured.
@@ -689,6 +748,85 @@ function HotelList() {
                       ))}
                     </div>
                   </div>
+                  {priceBounds && (
+                    <div className="sb-cbar-pop-grp">
+                      <p className="sb-cbar-pop-h">
+                        Price / night
+                        <span className="sb-cbar-pop-hval">
+                          {priceMax == null ? "Any" : `up to ₹${priceMax.toLocaleString("en-IN")}`}
+                        </span>
+                      </p>
+                      <input
+                        type="range"
+                        className="sb-cbar-pop-range"
+                        min={priceBounds.lo}
+                        max={priceBounds.hi}
+                        step={100}
+                        value={priceMax ?? priceBounds.hi}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          setPriceMax(v >= priceBounds.hi ? null : v);
+                        }}
+                        aria-label="Maximum price per night"
+                      />
+                      <div className="sb-cbar-pop-rangeends">
+                        <span>₹{priceBounds.lo.toLocaleString("en-IN")}</span>
+                        <span>₹{priceBounds.hi.toLocaleString("en-IN")}+</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="sb-cbar-pop-grp">
+                    <p className="sb-cbar-pop-h">Guest rating</p>
+                    <div className="sb-cbar-pop-stars">
+                      {[{ v: 0, l: "Any" }, { v: 4, l: "4.0+" }, { v: 4.5, l: "4.5+" }].map((o) => (
+                        <button
+                          key={o.v}
+                          type="button"
+                          className={`sb-cbar-pop-star ${minScore === o.v ? "is-on" : ""}`}
+                          onClick={() => setMinScore(o.v)}
+                          aria-pressed={minScore === o.v}
+                        >
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {propTypeOpts.length > 0 && (
+                    <div className="sb-cbar-pop-grp">
+                      <p className="sb-cbar-pop-h">Property type</p>
+                      <div className="sb-cbar-pop-chips">
+                        {propTypeOpts.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            className={`sb-cbar-pop-chip ${propTypes.has(t) ? "is-on" : ""}`}
+                            onClick={() => toggleInSet(setPropTypes, t)}
+                            aria-pressed={propTypes.has(t)}
+                          >
+                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {amenityOpts.length > 0 && (
+                    <div className="sb-cbar-pop-grp">
+                      <p className="sb-cbar-pop-h">Amenities</p>
+                      <div className="sb-cbar-pop-chips">
+                        {amenityOpts.map((a) => (
+                          <button
+                            key={a}
+                            type="button"
+                            className={`sb-cbar-pop-chip ${amenitySel.has(a) ? "is-on" : ""}`}
+                            onClick={() => toggleInSet(setAmenitySel, a)}
+                            aria-pressed={amenitySel.has(a)}
+                          >
+                            {a}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {filtersActive && (
                     <button type="button" className="sb-cbar-pop-reset" onClick={resetFilters}>
                       ✕ Reset all
