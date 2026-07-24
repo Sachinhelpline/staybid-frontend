@@ -708,11 +708,14 @@
 .lux-soft .text-luxury-300 { color: var(--text-muted) !important; }
 .lux-soft .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
 .lux-soft .bg-white { background: var(--bg-card) !important; }
+.lux-soft .bg-white\/95,
+.lux-soft .bg-white\/90 { background: color-mix(in srgb, var(--bg-card) 94%, transparent) !important; }
 .lux-soft .bg-luxury-50,
 .lux-soft .bg-luxury-100 { background: var(--bg-pill) !important; }
 .lux-soft .input-luxury { background: var(--bg-card); border-color: var(--border-soft); color: var(--text-base); }
 .lux-soft .border-luxury-100,
 .lux-soft .border-luxury-200 { border-color: var(--border-soft) !important; }
+.lux-soft .hover\:bg-white:hover { background: var(--bg-pill) !important; }
 [data-theme="dark"] .lux-soft .text-gold-700,
 [data-theme="dark"] .lux-soft .text-gold-800 { color: var(--cozy-champagne-light) !important; }
 

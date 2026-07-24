@@ -4717,7 +4717,7 @@ export default function HotelDetail() {
                     {globalNumRooms>1?` · ${globalNumRooms} rooms`:""}
                   </p>
                 </div>
-                <span className="text-[0.6rem] text-luxury-400 bg-white border border-luxury-200 px-2.5 py-1 rounded-full">from Availability</span>
+                <span className="text-[0.6rem] text-luxury-400 px-2.5 py-1 rounded-full" style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)" }}>from Availability</span>
               </div>
 
               {/* Rate breakdown */}
