@@ -613,7 +613,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // v478 — bump (v288 -> v289). Flash rail: taller (labels not clipped) +
 // readable dark names + scroll arrows/edge-fade (drag affordance); now-playing
 // cover cream placeholder (no black box on the light canvas).
-const HTML_CACHE = 'staybid-html-v289';
+// v479 — bump (v289 -> v290). Hotel detail desktop: revived the 2-column
+// sticky-rail layout (dead .max-w-6xl selectors -> .max-w-7xl).
+const HTML_CACHE = 'staybid-html-v290';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

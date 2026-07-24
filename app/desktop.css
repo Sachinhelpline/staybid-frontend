@@ -1695,7 +1695,7 @@ body main textarea.input-luxury {
    or reviews the customer has scrolled.
 
    Zero JSX changes — pure CSS retrofit. The page already wraps every
-   section as a flat direct child of `.hx-shell > .max-w-6xl > div`, so
+   section as a flat direct child of `.hx-shell > .max-w-7xl`, so
    `:not(#availability-picker)` cleanly forces them into column 1.
 
    `grid-row: 1 / span 999` puts the picker at the top of column 2 from
@@ -1707,7 +1707,7 @@ body main textarea.input-luxury {
   /* Make the page wrapper a 2-col grid. The max-width is bumped from
      1152 (Tailwind max-w-6xl) to 1280 so the new right rail doesn't
      squeeze the room cards in column 1. */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) 340px !important;
     column-gap: 32px !important;
@@ -1719,7 +1719,7 @@ body main textarea.input-luxury {
      picker flows in column 1. `min-width: 0` prevents long content
      (hotel name, OTA comparison table) from forcing the grid track
      wider than 1fr. */
-  .hx-shell > .max-w-6xl > :not(#availability-picker) {
+  .hx-shell > .max-w-7xl > :not(#availability-picker) {
     grid-column: 1 !important;
     min-width: 0;
   }
@@ -1727,7 +1727,7 @@ body main textarea.input-luxury {
   /* The availability picker becomes the sticky right rail. Spans all
      rows of the grid so column 2 stays "owned" by the picker — no
      phantom empty space at the bottom right of the page. */
-  .hx-shell > .max-w-6xl > #availability-picker {
+  .hx-shell > .max-w-7xl > #availability-picker {
     grid-column: 2 !important;
     grid-row: 1 / span 999 !important;
     position: sticky !important;
@@ -1743,21 +1743,21 @@ body main textarea.input-luxury {
 
   /* Slim scrollbar inside the picker so it's discoverable but doesn't
      fight the cozy parchment palette. */
-  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar {
+  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar {
     width: 5px;
   }
-  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-thumb {
+  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar-thumb {
     background: rgba(201, 145, 26, 0.30);
     border-radius: 3px;
   }
-  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-track {
+  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar-track {
     background: transparent;
   }
 }
 
 @media (min-width: 1440px) {
   /* Wider monitors get a roomier right rail + wider page cap. */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     grid-template-columns: minmax(0, 1fr) 380px !important;
     column-gap: 40px !important;
     max-width: 1340px !important;
@@ -1767,7 +1767,7 @@ body main textarea.input-luxury {
 @media (min-width: 1700px) {
   /* On true wide-screens cap at 1440 so the page doesn't feel
      stretched. Right rail can grow a touch more. */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     grid-template-columns: minmax(0, 1fr) 400px !important;
     max-width: 1440px !important;
   }
@@ -1880,7 +1880,7 @@ body main textarea.input-luxury {
   /* Hotel detail page: bump max-width so the photo gallery + room cards
      get more horizontal room. Mobile defaults were too cramped on a
      800-1000px tablet. Single column flow preserved (no 2-col grid). */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     padding-left: 24px !important;
     padding-right: 24px !important;
   }
