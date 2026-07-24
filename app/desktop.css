@@ -353,6 +353,26 @@
   .reel-side-btn.ghost:hover { background: rgba(255, 255, 255, 0.09); }
   .reel-side-desc { margin-top: 14px; font-size: 0.78rem; line-height: 1.55; color: rgba(242, 236, 221, 0.58); }
 
+  /* v471 — amenity chips in the now-playing card */
+  .reel-side-amenities { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .reel-side-amenity {
+    font-size: 0.72rem; font-weight: 600;
+    color: rgba(242, 236, 221, 0.78);
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    white-space: nowrap;
+  }
+  /* v471 — up-next thumb fallback (no image → gradient + initial, not a black box) */
+  .reel-queue-thumb-fallback {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%;
+    font-size: 1.2rem; font-weight: 700;
+    color: rgba(255, 235, 190, 0.85);
+    background: linear-gradient(135deg, #3a2c1a, #241a10);
+    border-radius: inherit;
+  }
+
   /* LEFT — up-next queue */
   .reel-queue { display: flex; flex-direction: column; gap: 4px; padding: 4px 10px 14px; }
   .reel-queue-item {
@@ -429,7 +449,10 @@
   }
   body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 100px; }
 
-  /* The glass window shell — a centred box behind everything (z below frame). */
+  /* The glass window shell — a DEFINED frosted card (not invisible dark-on-
+     dark). A warm walnut gradient a touch lighter than the ambient backdrop,
+     a clear rim, a gold hairline + real elevation so it reads as one crafted
+     desktop window sitting on the cinematic blur. */
   body.reel-with-rail .reel-window {
     display: block;
     position: fixed;
@@ -439,16 +462,27 @@
     width: var(--reel-window-w);
     height: var(--reel-stage-h);
     z-index: 8;
-    border-radius: 34px;
-    background: rgba(18, 14, 10, 0.42);
-    -webkit-backdrop-filter: blur(30px) saturate(1.2);
-    backdrop-filter: blur(30px) saturate(1.2);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 32px;
+    background:
+      linear-gradient(180deg, rgba(38, 30, 22, 0.74) 0%, rgba(22, 17, 12, 0.80) 100%);
+    -webkit-backdrop-filter: blur(40px) saturate(1.35);
+    backdrop-filter: blur(40px) saturate(1.35);
+    border: 1px solid rgba(255, 255, 255, 0.13);
     box-shadow:
-      0 50px 120px -40px rgba(0, 0, 0, 0.82),
-      0 0 0 1px rgba(201, 166, 107, 0.10),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      0 60px 150px -50px rgba(0, 0, 0, 0.92),
+      0 0 0 1px rgba(201, 166, 107, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.09),
+      inset 0 -40px 80px -50px rgba(0, 0, 0, 0.5);
     animation: reelSideIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* A soft warm glow rim just outside the window so it lifts off the backdrop. */
+  body.reel-with-rail .reel-window::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 60px -30px rgba(201, 166, 107, 0.22);
   }
 
   /* Full-width Flash Deals rail across the top of the window (same centred
@@ -463,8 +497,9 @@
     height: var(--reel-rail-h);
     z-index: 12;
     overflow: hidden;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 34px 34px 0 0;
+    background: linear-gradient(180deg, rgba(46, 36, 26, 0.55) 0%, rgba(46, 36, 26, 0) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 32px 32px 0 0;
   }
   /* Re-skin the (cream, mobile) rail into the dark glass window */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-wrap {
@@ -504,13 +539,16 @@
   }
   body.reel-with-rail .reel-side-right {
     left: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 1px solid rgba(255, 255, 255, 0.10);
+    justify-content: center;   /* vertically centre the now-playing card */
+    padding: 0 4px;
   }
   body.reel-with-rail .reel-side-left {
     display: flex;
     right: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
     left: auto !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    border-right: 1px solid rgba(255, 255, 255, 0.10);
+    padding: 4px 4px 0;
   }
 
   /* The portrait frame: pushed below the rail, shorter, ABOVE the window. */

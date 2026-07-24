@@ -157,8 +157,12 @@ export default function DesktopReelPanels({
   const hotelId = h.id || h._taggedHotelId || "";
   const place = [h.city, h.state].filter(Boolean).join(", ");
 
+  const amenities: string[] = (Array.isArray(h.amenities) ? h.amenities : [])
+    .filter((a: any) => typeof a === "string" && a.trim())
+    .slice(0, 5);
+
   const upNext: Item[] = [];
-  for (let k = 1; k <= 6 && items[idx + k]; k++) upNext.push(items[idx + k]);
+  for (let k = 1; k <= 8 && items[idx + k]; k++) upNext.push(items[idx + k]);
 
   return (
     <>
@@ -191,7 +195,15 @@ export default function DesktopReelPanels({
                   onClick={() => scrollFeedToIndex(targetIdx)}
                   title={`Play ${uh.name || "this reel"}`}
                 >
-                  <span className="reel-queue-thumb" style={{ backgroundImage: `url("${imgOf(uh)}")` }} aria-hidden />
+                  <span
+                    className="reel-queue-thumb"
+                    style={imgOf(uh) ? { backgroundImage: `url("${imgOf(uh)}")` } : undefined}
+                    aria-hidden
+                  >
+                    {!imgOf(uh) && (
+                      <span className="reel-queue-thumb-fallback">{(uh.name || "S").slice(0, 1).toUpperCase()}</span>
+                    )}
+                  </span>
                   <span className="reel-queue-info">
                     <span className="reel-queue-name">{uh.name || "Stay"}</span>
                     <span className="reel-queue-sub">
@@ -220,6 +232,13 @@ export default function DesktopReelPanels({
           {price > 0 && (
             <div className="reel-side-price">
               <span>From</span> <b className="tabular-nums">{inr(price)}</b> <em>/night</em>
+            </div>
+          )}
+          {amenities.length > 0 && (
+            <div className="reel-side-amenities">
+              {amenities.map((a, i) => (
+                <span key={i} className="reel-side-amenity">{a}</span>
+              ))}
             </div>
           )}
           {hotelId && (

@@ -593,7 +593,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // v471 — HTML_CACHE bump (v280 -> v281). Desktop reel unified window: the two
 // side panels + a full-width Flash Deals rail merge into one glass "desktop app
 // window" on ≥1440px home. Bumping drops the stale cached reel markup.
-const HTML_CACHE = 'staybid-html-v281';
+// v471.2 — bump (v281 -> v282). Aesthetic pass on the window: defined frosted
+// card, fixed broken up-next thumbnails, amenity chips, centred now-playing.
+const HTML_CACHE = 'staybid-html-v282';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
