@@ -2489,7 +2489,7 @@ const HotelCard = memo(function HotelCard({
           "buttons neeche ho gaye" — they were never gone, the dock was sitting
           on top of them. */}
       <div
-        className="absolute left-3 right-20 z-30"
+        className="ig-reel-caption absolute left-3 right-20 z-30"
         style={{ bottom: "calc(20px + 64px + env(safe-area-inset-bottom, 0px))" }}
       >
         <div className="flex items-center gap-2 mb-2 flex-wrap">

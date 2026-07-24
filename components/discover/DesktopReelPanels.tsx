@@ -32,8 +32,26 @@ import {
   useFlashDealStories,
   type FlashDealStory,
 } from "@/components/discover/FlashDealStories";
+import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 
 type Item = { hotel: any };
+
+// v491 — deterministic per-hotel "views" for the now-playing panel (mirrors the
+// reel's own pseudo social-proof stat; the center overlay is hidden on the
+// desktop-home window, so this is now the single place that number is shown).
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function pseudoViews(id: string): number {
+  return 14000 + (hashStr(`${id || "x"}::views`) % (580000 - 14000));
+}
+function fmtCount(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(n);
+}
 
 // Scroll the reel feed's snap container to a given reel index (used by the
 // up-next queue and the ↑/↓ keyboard handler). The feed renders every card in
@@ -45,6 +63,14 @@ function scrollFeedToIndex(i: number) {
   const el = cards[i];
   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   else feed.scrollTo({ top: feed.clientHeight * i, behavior: "smooth" });
+}
+
+// v492 — scroll the reel feed one frame up (-1 = previous) or down (+1 = next),
+// used by the visible ↑/↓ "browse reels" control in the now-playing panel.
+function scrollFeedByDir(dir: number) {
+  const feed = document.querySelector<HTMLElement>(".ig-feed");
+  if (!feed) return;
+  feed.scrollBy({ top: dir * feed.clientHeight, behavior: "smooth" });
 }
 
 const inr = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN");
@@ -73,6 +99,14 @@ export default function DesktopReelPanels({
   // v475.1 — track up-next thumbnails whose <img> actually failed to load so
   // we swap to a clean initial-letter card (not a dull empty gradient box).
   const [brokenThumb, setBrokenThumb] = useState<Record<string, boolean>>({});
+
+  // v491 — now-playing cover: track broken cover images so a video reel with no
+  // (or a broken) poster shows the cream initial-letter fallback, never a black box.
+  const [coverBroken, setCoverBroken] = useState<Record<string, boolean>>({});
+
+  // v491 — scroll-aware flash-rail arrows: show ‹ only when scrolled right, › only
+  // when there is more to the right (both when scrollable, mirroring the drag).
+  const [railNav, setRailNav] = useState<{ left: boolean; right: boolean }>({ left: false, right: true });
 
   // v471 — the current city (drives the flash-deal rail, same source the
   // feed's fallback uses). Kept in sync with the globe picker's event.
@@ -150,6 +184,35 @@ export default function DesktopReelPanels({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // v491 — watch the flash-rail scroll position so both ‹ › arrows reflect what
+  // is actually draggable (left appears once scrolled; right hides at the end).
+  useEffect(() => {
+    if (!railOn) return;
+    let s: HTMLElement | null = null;
+    const update = () => {
+      if (!s) return;
+      const left = s.scrollLeft > 4;
+      const right = s.scrollLeft < s.scrollWidth - s.clientWidth - 4;
+      setRailNav((p) => (p.left === left && p.right === right ? p : { left, right }));
+    };
+    // The scroll container is rendered by FlashDealStoryRail inside .reel-stage-rail.
+    const attach = () => {
+      s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
+      if (!s) return false;
+      update();
+      s.addEventListener("scroll", update, { passive: true });
+      return true;
+    };
+    let raf = 0;
+    if (!attach()) raf = requestAnimationFrame(() => attach());
+    window.addEventListener("resize", update);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      s?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [railOn, flashDeals.length]);
+
   if (!ready || !items?.length) return null;
 
   const idx = Math.max(0, Math.min(Number(activeIndex) || 0, items.length - 1));
@@ -185,6 +248,7 @@ export default function DesktopReelPanels({
             type="button"
             className="reel-rail-nav reel-rail-nav-left"
             aria-label="Previous flash deals"
+            style={{ opacity: railNav.left ? 1 : 0.32, pointerEvents: railNav.left ? "auto" : "none" }}
             onClick={() => {
               const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
               s?.scrollBy({ left: -320, behavior: "smooth" });
@@ -194,6 +258,7 @@ export default function DesktopReelPanels({
             type="button"
             className="reel-rail-nav reel-rail-nav-right"
             aria-label="More flash deals"
+            style={{ opacity: railNav.right ? 1 : 0.32, pointerEvents: railNav.right ? "auto" : "none" }}
             onClick={() => {
               const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
               s?.scrollBy({ left: 320, behavior: "smooth" });
@@ -252,12 +317,19 @@ export default function DesktopReelPanels({
       {/* RIGHT — now-playing: a cover image (fills the top) + booking context.
           Cover falls back to a gradient + initial when the reel has no image. */}
       <aside className="reel-side reel-side-right" aria-label="Current stay">
-        <div
-          className="reel-np-cover"
-          style={imgOf(h) ? { backgroundImage: `url("${imgOf(h)}")` } : undefined}
-          aria-hidden
-        >
-          {!imgOf(h) && <span className="reel-np-cover-fallback">{(h.name || "S").slice(0, 1).toUpperCase()}</span>}
+        <div className="reel-np-cover" aria-hidden>
+          {imgOf(h) && !coverBroken[imgOf(h)] ? (
+            <img
+              className="reel-np-cover-img"
+              src={imgOf(h)}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              onError={() => setCoverBroken((b) => ({ ...b, [imgOf(h)]: true }))}
+            />
+          ) : (
+            <span className="reel-np-cover-fallback">{(h.name || "S").slice(0, 1).toUpperCase()}</span>
+          )}
           <span className="reel-np-cover-kicker">Now playing</span>
           <span className="reel-np-cover-shade" />
         </div>
@@ -266,6 +338,18 @@ export default function DesktopReelPanels({
           <div className="reel-side-meta">
             {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
             {place && <span className="reel-side-place">{place}</span>}
+          </div>
+          {/* v491 — rank + views moved here from the reel overlay (single source). */}
+          <div className="reel-side-stat">
+            {hotelId && <HotelScoreBadge hotelId={hotelId} variant="compact" />}
+            <span className="reel-side-views">▶ {fmtCount(pseudoViews(hotelId || h.name || "x"))} views</span>
+          </div>
+          {/* v492 — visible, clickable "browse reels" control (the how-does-the-
+              next-reel-come affordance, no longer buried at the panel bottom). */}
+          <div className="reel-nav">
+            <button type="button" className="reel-nav-btn" onClick={() => scrollFeedByDir(-1)} aria-label="Previous reel" title="Previous reel">↑</button>
+            <span className="reel-nav-label">Browse reels</span>
+            <button type="button" className="reel-nav-btn" onClick={() => scrollFeedByDir(1)} aria-label="Next reel" title="Next reel">↓</button>
           </div>
           {price > 0 && (
             <div className="reel-side-price">
@@ -286,7 +370,6 @@ export default function DesktopReelPanels({
               <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
             </div>
           )}
-          <div className="reel-side-hint">↑ ↓ to browse reels</div>
         </div>
       </aside>
 
