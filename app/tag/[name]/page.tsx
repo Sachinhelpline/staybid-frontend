@@ -24,12 +24,12 @@ export default function HashtagPage() {
   }, [name]);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-luxury-50"><p className="text-luxury-500 text-sm">Loading #{name}…</p></div>;
+    return <div className="lux-bg inf-root min-h-screen flex items-center justify-center"><p className="text-luxury-500 text-sm">Loading #{name}…</p></div>;
   }
 
   if (!data || data.count === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-luxury-50 px-8 text-center">
+      <div className="lux-bg inf-root min-h-screen flex flex-col items-center justify-center px-8 text-center">
         <div className="text-6xl mb-4 sb-fade-in">🔖</div>
         <p className="font-display text-2xl font-bold text-luxury-900 sb-fade-in">#{name}</p>
         <p className="text-luxury-500 text-sm mt-2">No reels yet for this tag.</p>
@@ -39,7 +39,7 @@ export default function HashtagPage() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50">
+    <div className="lux-bg inf-root min-h-screen">
       <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
 
         {/* Hero */}

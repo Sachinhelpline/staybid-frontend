@@ -37,7 +37,7 @@ export default function ReferralRedirect() {
   }, [code, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-luxury-50">
+    <div className="lux-bg min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="shimmer w-12 h-12 rounded-full mx-auto mb-3" />
         <p className="text-luxury-700 font-semibold">{msg}</p>

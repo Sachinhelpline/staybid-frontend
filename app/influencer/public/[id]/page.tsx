@@ -70,11 +70,11 @@ export default function PublicInfluencerPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-luxury-50"><p className="text-luxury-500 text-sm">Loading…</p></div>;
+    return <div className="lux-bg inf-root min-h-screen flex items-center justify-center"><p className="text-luxury-500 text-sm">Loading…</p></div>;
   }
   if (error || !inf) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-luxury-50">
+      <div className="lux-bg inf-root min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-2xl">🔍</p>
           <p className="text-luxury-700 text-lg font-semibold mt-2">Creator not found</p>
@@ -87,7 +87,7 @@ export default function PublicInfluencerPage() {
   const tier = TIER[inf.tier] || TIER[1];
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50">
+    <div className="lux-bg inf-root min-h-screen">
       <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
 
         {/* Hero card */}
