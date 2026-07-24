@@ -588,6 +588,51 @@
 [data-theme="dark"] .lux-bg .group-hover\:text-gold-600:hover { color: var(--cozy-champagne-light) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v486 — Flash Deals dark-mode canvas. The page's own FdStyles block
+   hardcodes a cream canvas + cocoa hero/category/refine chrome (the
+   --cozy-* values are a FIXED palette that never flips), while the deal
+   cards below already read the flipping theme tokens (--bg-card/
+   --text-base). In dark mode that left dark cards floating on a cream
+   page. These rules flip ONLY the hardcoded-cream chrome (canvas, sticky,
+   hero, stats, category pills, refine chips) + the one card-interior
+   slots pill whose text was pinned near-black. Every selector is scoped
+   to [data-theme="dark"] .fd-root, so LIGHT mode stays byte-identical and
+   the theme-token cards/drawer are untouched (already dark-aware). */
+[data-theme="dark"] .fd-root {
+  background:
+    radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 90% 30%, rgba(217, 190, 130, 0.06), transparent 55%),
+    linear-gradient(180deg, #0f0c08 0%, #14100a 50%, #0f0c08 100%) !important;
+  color: var(--text-base);
+}
+[data-theme="dark"] .fd-root .fd-sticky {
+  background: var(--bg-card) !important;
+  border-bottom-color: var(--border-soft) !important;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.55) !important;
+}
+[data-theme="dark"] .fd-root .fd-hero-title,
+[data-theme="dark"] .fd-root .fd-stat { color: var(--text-base) !important; }
+[data-theme="dark"] .fd-root .fd-hero-count,
+[data-theme="dark"] .fd-root .fd-hero-dot,
+[data-theme="dark"] .fd-root .fd-hero-stats { color: var(--text-muted) !important; }
+[data-theme="dark"] .fd-root .fd-stat-gold { color: var(--cozy-champagne-light) !important; }
+[data-theme="dark"] .fd-root .fd-cat { color: var(--text-muted) !important; }
+[data-theme="dark"] .fd-root .fd-cat:hover { color: var(--text-soft) !important; }
+[data-theme="dark"] .fd-root .fd-cat-active { color: var(--text-base) !important; }
+[data-theme="dark"] .fd-root .fd-cat-active::after {
+  background: var(--accent) !important;
+  box-shadow: 0 0 0 0.5px var(--accent) !important;
+}
+[data-theme="dark"] .fd-root .fd-refine-chip {
+  background: var(--bg-pill) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-soft) !important;
+}
+[data-theme="dark"] .fd-root .fd-refine-select { color: var(--text-base) !important; }
+[data-theme="dark"] .fd-root .fd-slots-pill { color: var(--text-base) !important; }
+[data-theme="dark"] .fd-root .fd-slots-pill.urgent { color: #e0a595 !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
    v453 — Influencer creator hub uplift. The surface was 100% legacy
    luxury/gold palette (white cards, no theme response, no tabular nums).
    Its layout now wraps every tab in `.lux-bg .inf-root`, so the text
