@@ -2180,7 +2180,7 @@ const HotelCard = memo(function HotelCard({
 
       {/* Top + bottom dark gradients */}
       <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-80 bg-linear-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-96 bg-linear-to-t from-black/90 via-black/45 to-transparent pointer-events-none" />
 
       {/* Top-LEFT: hotel profile chip. v88 — pushed down to `top: 38` so
           the brand wordmark restored on /discover + / sits ABOVE the chip
@@ -4286,12 +4286,15 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           display: inline-flex; align-items: center; gap: 4px;
           padding: 2px 8px; border-radius: 9999px;
           font-size: 0.58rem; font-weight: 700; letter-spacing: 0.04em;
-          background: rgba(255,255,255,0.14);
-          border: 1px solid rgba(255,255,255,0.22);
+          /* v444 — cocoa-frosted champagne base (matches the action-rail discs);
+             raises contrast over bright video vs the old translucent white. */
+          background: linear-gradient(135deg, rgba(31,26,15,0.46), rgba(31,26,15,0.28));
+          border: 1px solid rgba(217,190,130,0.30);
           color: #fff;
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+          backdrop-filter: blur(10px) saturate(1.2);
+          -webkit-backdrop-filter: blur(10px) saturate(1.2);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+          font-variant-numeric: tabular-nums;
         }
         .ig-pill-gold {
           background: linear-gradient(135deg, rgba(240,180,41,0.35), rgba(240,180,41,0.10));
