@@ -137,45 +137,39 @@
      showed → the centered frame floated on a plain page bg, reading as
      "not set up for desktop"). :has(.reel-page-root) shows it on every desktop
      reel surface (/, /discover, /reels). */
-  /* Base page wash under the reel frame — a STRONGER luxe radial (the old
-     0.10/0.08 gold was imperceptible on cream → read as a blank white void).
-     This is the no-image fallback; even before an ambient cover loads the
-     canvas never looks unfinished. */
-  body:has(.reel-page-root) {
-    background:
-      radial-gradient(ellipse 70% 55% at 22% 28%, rgba(201, 166, 107, 0.22), transparent 62%),
-      radial-gradient(ellipse 75% 60% at 82% 74%, rgba(110, 84, 48, 0.16), transparent 62%),
-      var(--bg-page, #FAF5EB) !important;
-  }
-  [data-theme="dark"] body:has(.reel-page-root) {
-    background:
-      radial-gradient(ellipse 70% 55% at 22% 28%, rgba(217, 190, 130, 0.16), transparent 62%),
-      radial-gradient(ellipse 75% 60% at 82% 74%, rgba(74, 56, 32, 0.42), transparent 62%),
-      #0F0C08 !important;
-  }
+  /* v468 — IMMERSIVE CINEMATIC CANVAS. The reel is a dark, full-bleed video
+     world; on desktop the WHOLE surface now becomes that world instead of a
+     cream page with two white boxes floating on it. The active reel's own
+     imagery fills the viewport, heavily blurred + darkened, so the phone frame
+     and the frosted-glass side panels all sit inside one unified scene
+     (Spotify/Apple-Music now-playing · TikTok-web). Forced dark in BOTH themes
+     — the reel content is dark regardless of the app's cozy-cream chrome. */
+  body:has(.reel-page-root) { background: #0a0806 !important; }
 
-  /* v465 — CINEMATIC AMBIENT: a heavily-blurred wash of the ACTIVE reel's cover
-     image (published to --reel-ambient-img by the reel card on desktop) fills
-     the gutters, tinting them with the reel's own colours — Spotify/Apple-Music
-     now-playing style. Low opacity so it harmonises with the light sticky
-     navbar rather than fighting it; crossfades as you move between reels. */
+  /* Layer 1 — the blurred, darkened cover image (z -2, behind everything). */
   body:has(.reel-page-root)::before {
     content: "";
     position: fixed;
-    inset: -12%;                /* bleed so the blur has no hard edges */
-    z-index: -1;
+    inset: -8%;                 /* bleed so the blur has no hard edges */
+    z-index: -2;
     background-image: var(--reel-ambient-img, none);
     background-size: cover;
     background-position: center;
-    filter: blur(90px) saturate(1.45) brightness(0.95);
-    opacity: 0.32;
-    transform: scale(1.15);
+    filter: blur(64px) saturate(1.5) brightness(0.44);
+    transform: scale(1.12);
     pointer-events: none;
-    transition: opacity 0.6s ease;
+    transition: background-image 0.6s ease;
   }
-  [data-theme="dark"] body:has(.reel-page-root)::before {
-    filter: blur(90px) saturate(1.35) brightness(0.7);
-    opacity: 0.42;
+  /* Layer 2 — a soft vignette (z -1) that deepens the edges so the centred
+     frame + panels read as the focal point, not lost in the wash. */
+  body:has(.reel-page-root)::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 62% 74% at 50% 46%, rgba(10, 8, 6, 0) 32%, rgba(6, 5, 3, 0.62) 100%);
   }
 
   /* The reel CSS card uses `height: 100%` against parent.
@@ -243,75 +237,94 @@
 .reel-side { display: none; }
 
 @media (min-width: 1200px) {
+  /* v468 — FROSTED-GLASS panels. Sized to their CONTENT and vertically
+     centred beside the frame (no more full-height white slabs with a big
+     empty void). Translucent dark glass over the immersive backdrop, so they
+     read as part of the cinematic scene, not two white boxes bolted on. */
   .reel-side {
     position: fixed;
-    top: 96px;
-    bottom: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    max-height: calc(100vh - 132px);
     z-index: 30;
     display: flex;
     flex-direction: column;
     overflow: hidden auto;
     scrollbar-width: thin;
-    background: var(--bg-card, #fff);
-    border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.16));
-    border-radius: 24px;
-    box-shadow: 0 24px 64px -24px rgba(15, 12, 8, 0.35);
-    color: var(--text-base, #1f1a0f);
-    animation: reelSideIn 0.4s ease both;
+    background: rgba(20, 16, 11, 0.42);
+    -webkit-backdrop-filter: blur(30px) saturate(1.3);
+    backdrop-filter: blur(30px) saturate(1.3);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 26px;
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    color: #f2ecdd;
+    animation: reelSideIn 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
-  @keyframes reelSideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes reelSideIn { from { opacity: 0; transform: translateY(-50%) translateX(6px); } to { opacity: 1; transform: translateY(-50%); } }
 
   .reel-side-right {
-    left: calc(50% + 236px);
-    width: 320px;
+    left: calc(50% + 240px);
+    width: 322px;
+    animation-name: reelSideInR;
   }
+  @keyframes reelSideInR { from { opacity: 0; transform: translateY(-50%) translateX(12px); } to { opacity: 1; transform: translateY(-50%); } }
   .reel-side-left { display: none; }
 
   .reel-side-kicker {
     font-size: 0.6rem;
     font-weight: 800;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--accent, #c9a66b);
+    color: rgba(224, 198, 140, 0.92);
     padding: 16px 18px 8px;
   }
 
   /* RIGHT — now-playing card */
   .reel-side-cover {
-    height: 172px;
+    height: 176px;
     background-size: cover;
     background-position: center;
     flex-shrink: 0;
+    position: relative;
   }
-  .reel-side-body { padding: 4px 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+  .reel-side-cover::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 40%, rgba(20, 16, 11, 0.85) 100%);
+  }
+  .reel-side-body { padding: 4px 20px 22px; display: flex; flex-direction: column; gap: 6px; }
   .reel-side-body .reel-side-kicker { padding: 14px 0 2px; }
   .reel-side-title {
     font-family: var(--font-display, "Cormorant Garamond", serif);
-    font-size: 1.5rem;
+    font-size: 1.55rem;
     font-weight: 600;
-    line-height: 1.15;
-    color: var(--text-base, #1f1a0f);
+    line-height: 1.12;
+    color: #fbf5ea;
   }
-  .reel-side-meta { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-soft, #6e5430); }
-  .reel-side-stars { color: #e0a72a; letter-spacing: 1px; }
-  .reel-side-price { margin-top: 6px; font-size: 0.9rem; color: var(--text-soft, #6e5430); }
-  .reel-side-price b { font-size: 1.35rem; color: var(--text-base, #1f1a0f); font-weight: 700; }
-  .reel-side-price em { font-style: normal; font-size: 0.78rem; color: var(--text-muted, #9a8a6f); }
-  .reel-side-cta { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .reel-side-meta { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: rgba(242, 236, 221, 0.72); }
+  .reel-side-stars { color: #f0c24a; letter-spacing: 1px; }
+  .reel-side-place { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reel-side-price { margin-top: 8px; font-size: 0.9rem; color: rgba(242, 236, 221, 0.7); }
+  .reel-side-price b { font-size: 1.4rem; color: #fff; font-weight: 700; margin: 0 2px; }
+  .reel-side-price em { font-style: normal; font-size: 0.78rem; color: rgba(242, 236, 221, 0.55); }
+  .reel-side-cta { display: flex; flex-direction: column; gap: 9px; margin-top: 16px; }
   .reel-side-btn {
     text-align: center;
-    padding: 11px 14px;
+    padding: 12px 14px;
     border-radius: 14px;
     font-size: 0.86rem;
     font-weight: 700;
-    transition: filter 0.15s ease, transform 0.1s ease;
+    transition: filter 0.15s ease, transform 0.1s ease, background 0.15s ease;
   }
   .reel-side-btn:active { transform: scale(0.985); }
-  .reel-side-btn.primary { background: linear-gradient(135deg, #b8871a, #f0b429, #c9911a); color: #1a1208; }
-  .reel-side-btn.primary:hover { filter: brightness(1.06); }
-  .reel-side-btn.ghost { border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.28)); color: var(--text-soft, #6e5430); }
-  .reel-side-btn.ghost:hover { background: var(--bg-pill, rgba(184, 134, 11, 0.08)); }
-  .reel-side-desc { margin-top: 12px; font-size: 0.78rem; line-height: 1.5; color: var(--text-muted, #9a8a6f); }
+  .reel-side-btn.primary {
+    background: linear-gradient(135deg, #b8871a, #f0b429, #c9911a);
+    color: #1a1208;
+    box-shadow: 0 8px 22px -8px rgba(240, 180, 41, 0.5);
+  }
+  .reel-side-btn.primary:hover { filter: brightness(1.07); }
+  .reel-side-btn.ghost { border: 1px solid rgba(255, 255, 255, 0.22); color: #f2ecdd; }
+  .reel-side-btn.ghost:hover { background: rgba(255, 255, 255, 0.09); }
+  .reel-side-desc { margin-top: 14px; font-size: 0.78rem; line-height: 1.55; color: rgba(242, 236, 221, 0.58); }
 
   /* LEFT — up-next queue */
   .reel-queue { display: flex; flex-direction: column; gap: 4px; padding: 4px 10px 14px; }
@@ -330,31 +343,30 @@
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
   }
-  .reel-queue-item:hover { background: var(--bg-pill, rgba(184, 134, 11, 0.08)); }
-  .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.5); }
+  .reel-queue-item:hover { background: rgba(255, 255, 255, 0.08); }
+  .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(240, 194, 74, 0.6); }
   .reel-queue-item:active { transform: scale(0.99); }
 
   /* keyboard hint */
   .reel-side-hint {
-    margin-top: 14px;
+    margin-top: 16px;
     font-size: 0.66rem;
-    letter-spacing: 0.06em;
-    color: var(--text-muted, #9a8a6f);
-    opacity: 0.8;
+    letter-spacing: 0.08em;
+    color: rgba(242, 236, 221, 0.45);
   }
   .reel-queue-thumb {
     width: 52px; height: 66px;
     border-radius: 10px;
     background-size: cover; background-position: center;
-    background-color: var(--bg-pill, rgba(184, 134, 11, 0.1));
+    background-color: rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
   }
   .reel-queue-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
   .reel-queue-name {
-    font-size: 0.82rem; font-weight: 600; color: var(--text-base, #1f1a0f);
+    font-size: 0.82rem; font-weight: 600; color: #f2ecdd;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
   }
-  .reel-queue-sub { font-size: 0.72rem; color: var(--text-muted, #9a8a6f); }
+  .reel-queue-sub { font-size: 0.72rem; color: rgba(242, 236, 221, 0.55); }
 }
 
 @media (min-width: 1440px) {
@@ -393,13 +405,17 @@
 }
 
 @media (min-width: 1024px) {
-  /* On desktop, the reel-route navbar IS visible. Give it a slight
-     translucency over the reel backdrop. */
+  /* v468 — On desktop the reel-route navbar sits over the immersive dark
+     reel scene, so it becomes translucent DARK glass (the bar's own content is
+     already ~all white text, so this also fixes the prior white-on-cream
+     low-contrast). The lone dark brand word flips to light. */
   .nav3d-bar[data-reel-route="true"] {
-    background: var(--bg-elevated, rgba(250, 245, 235, 0.92)) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    background: rgba(14, 11, 8, 0.5) !important;
+    backdrop-filter: blur(24px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
+  .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #f6efe1 !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
