@@ -597,7 +597,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // card, fixed broken up-next thumbnails, amenity chips, centred now-playing.
 // v472 — bump (v282 -> v283). Seamless window: neutral blend (no pasted-box
 // colour edge), taller flash rail (fully visible), tighter cohesive columns.
-const HTML_CACHE = 'staybid-html-v283';
+// v473 — bump (v283 -> v284). Cozy canvas: calmed even backdrop (no disturbing
+// colour), borderless warm window (no box edge / divider lines), now-playing
+// fills top→bottom (no dead space).
+const HTML_CACHE = 'staybid-html-v284';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

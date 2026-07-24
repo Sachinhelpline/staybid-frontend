@@ -223,32 +223,36 @@ export default function DesktopReelPanels({
           reel itself is the visual in the centre. Clean info card. */}
       <aside className="reel-side reel-side-right" aria-label="Current stay">
         <div className="reel-side-body">
-          <div className="reel-side-kicker">Now playing</div>
-          <h3 className="reel-side-title">{h.name || "Stay"}</h3>
-          <div className="reel-side-meta">
-            {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
-            {place && <span className="reel-side-place">{place}</span>}
+          <div className="reel-side-group reel-side-group-top">
+            <div className="reel-side-kicker">Now playing</div>
+            <h3 className="reel-side-title">{h.name || "Stay"}</h3>
+            <div className="reel-side-meta">
+              {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
+              {place && <span className="reel-side-place">{place}</span>}
+            </div>
+            {price > 0 && (
+              <div className="reel-side-price">
+                <span>From</span> <b className="tabular-nums">{inr(price)}</b> <em>/night</em>
+              </div>
+            )}
+            {amenities.length > 0 && (
+              <div className="reel-side-amenities">
+                {amenities.map((a, i) => (
+                  <span key={i} className="reel-side-amenity">{a}</span>
+                ))}
+              </div>
+            )}
+            {h.description && <p className="reel-side-desc">{String(h.description).slice(0, 200)}</p>}
           </div>
-          {price > 0 && (
-            <div className="reel-side-price">
-              <span>From</span> <b className="tabular-nums">{inr(price)}</b> <em>/night</em>
-            </div>
-          )}
-          {amenities.length > 0 && (
-            <div className="reel-side-amenities">
-              {amenities.map((a, i) => (
-                <span key={i} className="reel-side-amenity">{a}</span>
-              ))}
-            </div>
-          )}
-          {hotelId && (
-            <div className="reel-side-cta">
-              <Link href={`/hotels/${hotelId}`} className="reel-side-btn primary">View &amp; Book</Link>
-              <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
-            </div>
-          )}
-          {h.description && <p className="reel-side-desc">{String(h.description).slice(0, 180)}</p>}
-          <div className="reel-side-hint">↑ ↓ to browse reels</div>
+          <div className="reel-side-group reel-side-group-bottom">
+            {hotelId && (
+              <div className="reel-side-cta">
+                <Link href={`/hotels/${hotelId}`} className="reel-side-btn primary">View &amp; Book</Link>
+                <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
+              </div>
+            )}
+            <div className="reel-side-hint">↑ ↓ to browse reels</div>
+          </div>
         </div>
       </aside>
 
