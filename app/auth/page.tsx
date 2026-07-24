@@ -286,8 +286,7 @@ function AuthPage() {
   );
 
   return (
-    <div className="min-h-[88vh] flex items-center justify-center px-4 py-10"
-      style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f4f2ec 100%)" }}>
+    <div className="auth-root lux-bg min-h-[88vh] flex items-center justify-center px-4 py-10">
       <div id="recaptcha-container" />
       <div className="w-full max-w-sm">
 
