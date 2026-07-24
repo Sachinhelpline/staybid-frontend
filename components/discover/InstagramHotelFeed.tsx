@@ -2120,7 +2120,7 @@ const HotelCard = memo(function HotelCard({
         <div
           className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
           style={{
-            background: "linear-gradient(135deg,#3a1f5c 0%,#1a2050 50%,#0a0816 100%)",
+            background: "linear-gradient(135deg,#2A2013 0%,#1A130A 55%,#0d0a05 100%)",
           }}
         >
           <span className="text-6xl mb-3 opacity-90">
@@ -2141,7 +2141,7 @@ const HotelCard = memo(function HotelCard({
         </div>
       ) : (
         <div className="absolute inset-0 flex items-center justify-center text-7xl opacity-40"
-          style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)" }}>🏨</div>
+          style={{ background: "linear-gradient(135deg,#2A2013,#1A130A)" }}>🏨</div>
       ))}
 
       {/* Pause overlay icon when video paused */}
@@ -2292,8 +2292,8 @@ const HotelCard = memo(function HotelCard({
           <span
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[0.7rem] font-bold shrink-0"
             style={{
-              background: "linear-gradient(135deg, rgba(255,69,141,0.20), rgba(185,100,255,0.15))",
-              border: "1px solid rgba(255,69,141,0.40)",
+              background: "linear-gradient(135deg, rgba(240,180,41,0.22), rgba(201,166,107,0.14))",
+              border: "1px solid rgba(217,190,130,0.42)",
               color: "#fff",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
@@ -2569,7 +2569,7 @@ const HotelCard = memo(function HotelCard({
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full mb-2"
             style={{
-              background: "linear-gradient(135deg, rgba(240,180,41,0.20), rgba(255,69,141,0.14))",
+              background: "linear-gradient(135deg, rgba(240,180,41,0.22), rgba(201,166,107,0.13))",
               border: "1px solid rgba(240,180,41,0.55)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
@@ -2577,7 +2577,7 @@ const HotelCard = memo(function HotelCard({
           >
             <span
               className="w-5 h-5 rounded-md overflow-hidden flex items-center justify-center text-[0.66rem]"
-              style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)" }}
+              style={{ background: "linear-gradient(135deg,#2A2013,#1A130A)" }}
             >
               {h._userPostTaggedHotel.image ? (
                 <img src={h._userPostTaggedHotel.image} alt="" decoding="async" loading="lazy" className="w-full h-full object-cover" />
@@ -4273,7 +4273,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
 
         .ig-disc {
           width: 36px; height: 36px; border-radius: 9999px;
-          background: linear-gradient(135deg,#1a1530,#0d1a2e);
+          background: linear-gradient(135deg,#2A2013,#1A130A);
           border: 2px solid rgba(255,255,255,0.7);
           overflow: hidden;
           animation: igDiscSpin 6s linear infinite;
@@ -4412,7 +4412,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           position: absolute;
           z-index: 50;
           pointer-events: none;
-          filter: drop-shadow(0 4px 10px rgba(255,69,141,0.55));
+          filter: drop-shadow(0 4px 10px rgba(255,77,109,0.55));
           animation: igHeartFly var(--dur,1500ms) cubic-bezier(0.22,0.85,0.3,1) forwards;
           will-change: transform, opacity;
           transform: translate(-50%,-50%) scale(0.6);
