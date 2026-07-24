@@ -1011,7 +1011,7 @@ export default function PartnerDashboard() {
   ].filter((t: any) => tabAllowed(role, t.id));
 
   return (
-    <div className="min-h-screen bg-luxury-50">
+    <div className="min-h-screen bg-luxury-50 pdash-root">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap');
         .font-display { font-family:'Cormorant Garamond',serif; }
@@ -1033,6 +1033,11 @@ export default function PartnerDashboard() {
         .btn-ghost:hover:not(:disabled) { border-color:#c9911a; color:#3d2c14; background:#fdfaf2; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .fade-up { animation:fadeUp 0.3s ease-out both; }
+        /* v449 — data-dense partner panel: tabular numerals everywhere so every
+           ₹, count, date and KPI aligns in columns and doesn't reflow as values
+           change. Digit-advance only — never affects letterforms. This <style>
+           is global (not scoped), so the rule cascades into all tab components. */
+        .pdash-root { font-variant-numeric: tabular-nums; }
         /* premium clickable hub launcher tile (dashboard boxes) */
         .hub-tile { background:#fff; border:1px solid #efe7d7; border-radius:14px; padding:12px; text-align:left; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:5px; min-height:96px; }
         .hub-tile:hover { transform:translateY(-2px); border-color:#e3c98f; box-shadow:0 9px 24px rgba(160,130,80,0.14); }
@@ -1323,21 +1328,21 @@ export default function PartnerDashboard() {
             <h2 className="sec-title text-xl">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {pUser?.name?.split(" ")[0] || "Partner"} 👋</h2>
 
             {/* ── Quick Walk-in / PMS Control ── */}
-            <div className="rounded-3xl overflow-hidden bg-linear-to-br from-purple-600 via-indigo-600 to-blue-600 shadow-xl border border-white/20 relative">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 0%, transparent 50%), radial-gradient(circle at 80% 80%, white 0%, transparent 50%)" }} />
+            <div className="rounded-3xl overflow-hidden bg-linear-to-br from-luxury-900 via-luxury-800 to-luxury-900 shadow-xl border border-gold-500/20 relative">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #f0b429 0%, transparent 50%), radial-gradient(circle at 80% 80%, #c9911a 0%, transparent 50%)" }} />
               <div className="relative p-5 flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-[0.65rem] font-bold text-white/80 uppercase tracking-[0.25em]">🏨 Front Desk</p>
+                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.25em]">🏨 Front Desk</p>
                   <h3 className="font-display text-2xl text-white font-light mt-1">Walk-in Guest Arrived?</h3>
-                  <p className="text-white/80 text-sm mt-1">Check room availability & check them in — auto-blocks the room across StayBid, Booking.com, Airbnb everywhere.</p>
+                  <p className="text-white/75 text-sm mt-1">Check room availability & check them in — auto-blocks the room across StayBid, Booking.com, Airbnb everywhere.</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button onClick={() => setQuickWalkInOpen(true)}
-                    className="bg-white text-indigo-700 font-bold px-5 py-3 rounded-xl hover:scale-105 transition-all shadow-lg text-sm">
+                    className="bg-linear-to-r from-gold-400 to-amber-400 text-luxury-900 font-bold px-5 py-3 rounded-xl hover:scale-105 transition-all shadow-lg text-sm">
                     ➕ New Walk-in
                   </button>
                   <button onClick={() => setTab("availability")}
-                    className="bg-white/20 text-white border border-white/30 font-bold px-5 py-3 rounded-xl hover:bg-white/30 transition-all text-sm backdrop-blur-sm">
+                    className="bg-white/10 text-white border border-white/25 font-bold px-5 py-3 rounded-xl hover:bg-white/20 transition-all text-sm backdrop-blur-sm">
                     🗓️ Availability
                   </button>
                 </div>
@@ -2297,9 +2302,9 @@ export default function PartnerDashboard() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
             onClick={() => setWalkInOpen(null)}>
             <div className="bg-white rounded-3xl max-w-md w-full mx-4 overflow-hidden" onClick={e=>e.stopPropagation()}>
-              <div className="bg-linear-to-r from-purple-600 to-purple-500 px-6 py-4 flex items-center justify-between">
+              <div className="bg-linear-to-r from-luxury-900 to-luxury-800 px-6 py-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[0.65rem] font-bold text-white/70 uppercase tracking-widest">Walk-in Booking</p>
+                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest">Walk-in Booking</p>
                   <p className="text-white font-semibold text-lg">{rooms.find(r=>r.id===walkInOpen.roomId)?.type || "Room"}</p>
                 </div>
                 <button onClick={()=>setWalkInOpen(null)} className="text-white/70 hover:text-white text-2xl">✕</button>
@@ -2385,9 +2390,9 @@ export default function PartnerDashboard() {
               onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }}>
               <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden my-0 sm:my-8"
                 onClick={e => e.stopPropagation()}>
-                <div className="bg-linear-to-r from-purple-600 via-indigo-600 to-blue-600 px-6 py-4 flex items-center justify-between">
+                <div className="bg-linear-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-6 py-4 flex items-center justify-between">
                   <div>
-                    <p className="text-[0.65rem] font-bold text-white/70 uppercase tracking-widest">🏨 Front Desk</p>
+                    <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest">🏨 Front Desk</p>
                     <p className="text-white font-display text-xl font-light">Walk-in Booking</p>
                   </div>
                   <button onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }}
@@ -2510,7 +2515,7 @@ export default function PartnerDashboard() {
 
                   <button onClick={async () => { await submitWalkIn(); setQuickWalkInOpen(false); }}
                     disabled={walkInSaving || !walkInOpen?.roomId || !walkIn.fromDate || !walkIn.toDate}
-                    className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:shadow-xl transition-all disabled:opacity-40">
+                    className="w-full py-3 rounded-xl bg-linear-to-r from-gold-400 to-amber-400 text-luxury-900 font-bold text-sm hover:shadow-xl transition-all disabled:opacity-40">
                     {walkInSaving ? "Saving…" : walkIn.assignedUnitNumber ? `✓ Check-in · Room #${walkIn.assignedUnitNumber}` : "✓ Confirm Walk-in (auto-assign)"}
                   </button>
                 </div>
