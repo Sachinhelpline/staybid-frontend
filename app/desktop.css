@@ -232,6 +232,122 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   3b. v466 — DESKTOP REEL SIDE PANELS (Phase 2)
+   ─────────────────────────────────────────────────────────────────────────
+   Flank the centred 424px phone frame with real content so the wide canvas
+   is used (TikTok/YouTube-web pattern) instead of empty gutters:
+     • RIGHT (≥1200px) — "Now playing": active hotel card + Book / Offer CTAs.
+     • LEFT  (≥1440px) — "Up next": queue of the following reels.
+   Rendered by <DesktopReelPanels/> (a sibling of .reel-page-root). Hidden by
+   default so phones/tablets show nothing. ───────────────────────────────── */
+.reel-side { display: none; }
+
+@media (min-width: 1200px) {
+  .reel-side {
+    position: fixed;
+    top: 96px;
+    bottom: 40px;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden auto;
+    scrollbar-width: thin;
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.16));
+    border-radius: 24px;
+    box-shadow: 0 24px 64px -24px rgba(15, 12, 8, 0.35);
+    color: var(--text-base, #1f1a0f);
+    animation: reelSideIn 0.4s ease both;
+  }
+  @keyframes reelSideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .reel-side-right {
+    left: calc(50% + 236px);
+    width: 320px;
+  }
+  .reel-side-left { display: none; }
+
+  .reel-side-kicker {
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent, #c9a66b);
+    padding: 16px 18px 8px;
+  }
+
+  /* RIGHT — now-playing card */
+  .reel-side-cover {
+    height: 172px;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+  }
+  .reel-side-body { padding: 4px 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+  .reel-side-body .reel-side-kicker { padding: 14px 0 2px; }
+  .reel-side-title {
+    font-family: var(--font-display, "Cormorant Garamond", serif);
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--text-base, #1f1a0f);
+  }
+  .reel-side-meta { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-soft, #6e5430); }
+  .reel-side-stars { color: #e0a72a; letter-spacing: 1px; }
+  .reel-side-price { margin-top: 6px; font-size: 0.9rem; color: var(--text-soft, #6e5430); }
+  .reel-side-price b { font-size: 1.35rem; color: var(--text-base, #1f1a0f); font-weight: 700; }
+  .reel-side-price em { font-style: normal; font-size: 0.78rem; color: var(--text-muted, #9a8a6f); }
+  .reel-side-cta { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .reel-side-btn {
+    text-align: center;
+    padding: 11px 14px;
+    border-radius: 14px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .reel-side-btn:active { transform: scale(0.985); }
+  .reel-side-btn.primary { background: linear-gradient(135deg, #b8871a, #f0b429, #c9911a); color: #1a1208; }
+  .reel-side-btn.primary:hover { filter: brightness(1.06); }
+  .reel-side-btn.ghost { border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.28)); color: var(--text-soft, #6e5430); }
+  .reel-side-btn.ghost:hover { background: var(--bg-pill, rgba(184, 134, 11, 0.08)); }
+  .reel-side-desc { margin-top: 12px; font-size: 0.78rem; line-height: 1.5; color: var(--text-muted, #9a8a6f); }
+
+  /* LEFT — up-next queue */
+  .reel-queue { display: flex; flex-direction: column; gap: 4px; padding: 4px 10px 14px; }
+  .reel-queue-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 8px;
+    border-radius: 14px;
+    transition: background 0.15s ease;
+  }
+  .reel-queue-item:hover { background: var(--bg-pill, rgba(184, 134, 11, 0.08)); }
+  .reel-queue-thumb {
+    width: 52px; height: 66px;
+    border-radius: 10px;
+    background-size: cover; background-position: center;
+    background-color: var(--bg-pill, rgba(184, 134, 11, 0.1));
+    flex-shrink: 0;
+  }
+  .reel-queue-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+  .reel-queue-name {
+    font-size: 0.82rem; font-weight: 600; color: var(--text-base, #1f1a0f);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
+  }
+  .reel-queue-sub { font-size: 0.72rem; color: var(--text-muted, #9a8a6f); }
+}
+
+@media (min-width: 1440px) {
+  .reel-side-left {
+    display: flex;
+    right: calc(50% + 236px);
+    width: 300px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    4. NAVBAR — show on reel routes on desktop
    ─────────────────────────────────────────────────────────────────────────
    The Navbar component currently returns null on /, /discover, /reels,
