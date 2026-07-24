@@ -198,7 +198,9 @@ export default function DesktopReelPanels({
                 >
                   <span
                     className="reel-queue-thumb"
-                    style={imgOf(uh) ? { backgroundImage: `url("${imgOf(uh)}")` } : undefined}
+                    style={imgOf(uh)
+                      ? { backgroundImage: `url("${imgOf(uh)}"), linear-gradient(135deg, #2a2018, #17110b)` }
+                      : undefined}
                     aria-hidden
                   >
                     {!imgOf(uh) && (
@@ -226,7 +228,9 @@ export default function DesktopReelPanels({
       <aside className="reel-side reel-side-right" aria-label="Current stay">
         <div
           className="reel-np-cover"
-          style={imgOf(h) ? { backgroundImage: `url("${imgOf(h)}")` } : undefined}
+          style={imgOf(h)
+            ? { backgroundImage: `url("${imgOf(h)}"), linear-gradient(135deg, #2a2018, #17110b)` }
+            : undefined}
           aria-hidden
         >
           {!imgOf(h) && <span className="reel-np-cover-fallback">{(h.name || "S").slice(0, 1).toUpperCase()}</span>}

@@ -603,7 +603,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v474 — bump (v284 -> v285). Full-width layout: removed the floating window box
 // (killed the centre-vs-side colour difference), full-width flash rail, columns
 // fill the side margins, now-playing cover image back (no dead space).
-const HTML_CACHE = 'staybid-html-v285';
+// v475 — bump (v285 -> v286). Rebalanced: bigger prominent frame, moderate
+// columns (not stretched), rail spans the 3-column cluster; thumbnail/cover
+// gradient fallbacks (no black boxes); now-playing cover fills the column.
+const HTML_CACHE = 'staybid-html-v286';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -473,14 +473,15 @@
    /discover keeps the v470 fixed panels (no window). ─────────────────────── */
 @media (min-width: 1440px) {
   body.reel-with-rail:has(.reel-page-root) {
-    --reel-pad-x: 34px;                    /* screen side padding (fill the margins) */
-    --reel-col-gap: 26px;                  /* frame ↔ sidebar gap */
-    --reel-rail-h: 0px;                     /* set to a real height by reel-has-rail */
-    --reel-stage-h: min(calc(100vh - 122px), 920px);
-    --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - 10px);
-    --reel-frame-w: min(468px, calc(var(--reel-frame-h) * 0.5625));
+    --reel-side-w: 356px;                   /* moderate sidebars (not stretched) */
+    --reel-col-gap: 24px;                   /* frame ↔ sidebar gap */
+    --reel-rail-h: 0px;                      /* set to a real height by reel-has-rail */
+    --reel-stage-h: min(calc(100vh - 112px), 948px);
+    --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - 8px);
+    --reel-frame-w: min(512px, calc(var(--reel-frame-h) * 0.5625));   /* bigger, prominent frame */
+    --reel-cluster-w: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2));
   }
-  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 132px; }
+  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 122px; }
 
   /* v473.1 — NO floating window box (its edges read as a centre-vs-side colour
      difference). The whole reel page is one calm cozy canvas; the rail spans
@@ -488,13 +489,15 @@
      frame. Nothing has a hard rectangle edge. */
   body.reel-with-rail .reel-window { display: none; }
 
-  /* FULL-WIDTH Flash Deals rail across the very top (edge to edge, screen pad). */
+  /* Flash Deals rail spanning the full 3-column cluster (up-next + frame +
+     now-playing), centred over the content — not stretched past it. */
   body.reel-has-rail .reel-stage-rail {
     display: block;
     position: fixed;
     top: 84px;
-    left: var(--reel-pad-x);
-    right: var(--reel-pad-x);
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--reel-cluster-w);
     height: var(--reel-rail-h);
     z-index: 12;
     overflow: hidden;
@@ -525,7 +528,7 @@
     transform: none !important;
     height: calc(var(--reel-frame-h) - 4px);
     max-height: calc(var(--reel-frame-h) - 4px) !important;
-    width: auto !important;
+    width: var(--reel-side-w) !important;
     z-index: 15;
     background: transparent;
     -webkit-backdrop-filter: none;
@@ -538,16 +541,16 @@
   }
   body.reel-with-rail .reel-side-left {
     display: flex;
-    left: var(--reel-pad-x) !important;
     right: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
-    padding: 2px 8px 0 4px;
+    left: auto !important;
+    padding: 2px 6px 0 2px;
     overflow: hidden auto;
     scrollbar-width: none;
   }
   body.reel-with-rail .reel-side-left::-webkit-scrollbar { display: none; }
   body.reel-with-rail .reel-side-right {
     left: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
-    right: var(--reel-pad-x) !important;
+    right: auto !important;
     padding: 0;
   }
 
@@ -569,8 +572,8 @@
   body.reel-with-rail .reel-np-cover {
     position: relative;
     flex-shrink: 0;
-    height: 44%;
-    min-height: 220px;
+    height: 50%;
+    min-height: 240px;
     border-radius: 22px;
     overflow: hidden;
     background-size: cover;
