@@ -2729,6 +2729,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
    dark language across the whole product.
    ═══════════════════════════════════════════════════════════════════════════ */
 [data-theme="dark"] .sbc {
+  /* the .sbc wrapper's own base canvas is `var(--sbc-cream)` (light); flip it
+     so no cream shows through below a short page section / around the dock. */
+  background: #0F0C08;
   --sbc-c-bg:         #0F0C08;
   --sbc-c-bg-2:       #0B0906;
   --sbc-c-surface:    #1A1610;
@@ -2759,4 +2762,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 [data-theme="dark"] .sbc .sbc-topbar {
   background: color-mix(in srgb, var(--sbc-c-bg) 84%, transparent);
   border-bottom-color: var(--sbc-c-line);
+}
+/* Bottom step-nav dock (v294.15 re-skinned it to cream rgba(255,253,248,.92)). */
+[data-theme="dark"] .sbc .sbc-dock {
+  background: color-mix(in srgb, var(--sbc-c-bg) 90%, transparent);
+  border-top-color: var(--sbc-c-line);
 }
