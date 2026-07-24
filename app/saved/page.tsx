@@ -112,7 +112,7 @@ export default function SavedPage() {
         <div className="flex gap-2 mb-6 overflow-x-auto -mx-1 px-1">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`shrink-0 px-4 py-2 rounded-xl text-sm font-semibold border transition-all sb-card-lift ${
+              className={`shrink-0 px-4 py-2 rounded-2xl text-sm font-semibold border transition-all sb-card-lift ${
                 tab === t.id
                   ? "bg-gold-500 text-white border-gold-600 shadow-gold"
                   : "bg-white text-luxury-700 border-luxury-200 hover:border-gold-400"
@@ -127,7 +127,7 @@ export default function SavedPage() {
         ) : saves.length === 0 ? (
           <div className="card-luxury sb-card-lift sb-fade-in p-10 text-center">
             <div className="text-5xl mb-3">📭</div>
-            <p className="font-bold text-luxury-900">Nothing saved yet</p>
+            <p className="font-display text-lg font-bold text-luxury-900">Nothing saved yet</p>
             <p className="text-luxury-500 text-sm mt-1">Tap the bookmark icon on any reel, hotel or deal to save it for later.</p>
             <div className="mt-5 flex gap-2 justify-center">
               <Link href="/reels"  className="btn-luxury px-4 py-2 rounded-full text-sm sb-card-lift sb-shimmer relative"><span className="relative" style={{ zIndex: 2 }}>Browse Reels</span></Link>
@@ -176,7 +176,7 @@ function SaveCard({
           <div className="absolute bottom-2 left-2 right-2 text-white text-[0.7rem] font-bold drop-shadow-sm line-clamp-2">
             {t.title || "Reel"}
           </div>
-          <div className="absolute top-2 left-2 text-white text-[0.6rem] font-bold drop-shadow-sm">▶ {fmtNum(t.views_count || 0)}</div>
+          <div className="absolute top-2 left-2 text-white text-[0.6rem] font-bold drop-shadow-sm tabular-nums">▶ {fmtNum(t.views_count || 0)}</div>
         </div>
       </ClickWrap>
     );
@@ -191,7 +191,7 @@ function SaveCard({
             : <div className="w-full h-full flex items-center justify-center text-3xl">🏨</div>}
           <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 text-white">
-            <p className="text-sm font-bold drop-shadow-sm line-clamp-1">{t.name}</p>
+            <p className="font-display text-base font-bold drop-shadow-sm line-clamp-1">{t.name}</p>
             <p className="text-[0.65rem] font-semibold opacity-90 drop-shadow-sm">{t.city} {t.star_rating ? `· ${"★".repeat(t.star_rating)}` : ""}</p>
           </div>
         </div>
@@ -208,8 +208,8 @@ function SaveCard({
             : <div className="w-16 h-16 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-xl ring-4 ring-white shadow-sm">
                 {(t.display_name || "C").slice(0, 1).toUpperCase()}
               </div>}
-          <p className="font-bold text-luxury-900 text-sm mt-2 line-clamp-1">{t.display_name || "Creator"}</p>
-          <p className="text-luxury-500 text-[0.7rem]">{fmtNum(t.followers_count || 0)} followers</p>
+          <p className="font-display text-base font-bold text-luxury-900 mt-2 line-clamp-1">{t.display_name || "Creator"}</p>
+          <p className="text-luxury-500 text-[0.7rem] tabular-nums">{fmtNum(t.followers_count || 0)} followers</p>
         </div>
       </Wrap>
     );
@@ -223,7 +223,7 @@ function SaveCard({
             <p className="text-[0.65rem] font-bold uppercase tracking-widest text-amber-700">⚡ Flash Deal</p>
             <p className="font-bold text-luxury-900 text-sm mt-1 line-clamp-2">{t.title || "Deal"}</p>
           </div>
-          {t.price && <p className="font-display text-xl font-bold text-amber-800">₹{Number(t.price).toLocaleString("en-IN")}</p>}
+          {t.price && <p className="font-display text-xl font-bold text-amber-800 tabular-nums">₹{Number(t.price).toLocaleString("en-IN")}</p>}
         </div>
       </Wrap>
     );
