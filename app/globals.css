@@ -5969,6 +5969,39 @@
   cursor: pointer;
 }
 
+/* ── Shared empty / error state (v451) ───────────────────────────────
+   One premium block for every "nothing here yet" / "couldn't load" surface,
+   replacing 5 divergent per-page treatments across two palettes. Cozy tokens,
+   theme-aware, editorial serif title to match the app-wide design language.
+   Used via <SbState variant="empty|error" …/> (components/SbState.tsx). */
+.sb-state { text-align: center; padding: 52px 20px; max-width: 440px; margin: 0 auto; }
+.sb-state-glyph {
+  width: 72px; height: 72px; border-radius: 999px;
+  background: var(--accent-soft);
+  display: grid; place-items: center;
+  margin: 0 auto 16px; font-size: 1.9rem;
+}
+.sb-state--error .sb-state-glyph { background: color-mix(in srgb, #d98c4a 16%, transparent); }
+.sb-state-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.3rem; font-weight: 600; color: var(--text-base);
+}
+.sb-state-sub { margin: 0 auto 18px; max-width: 36ch; font-size: 0.86rem; line-height: 1.55; color: var(--text-muted); }
+.sb-state-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.sb-state-btn {
+  padding: 10px 20px; border-radius: 999px;
+  background: var(--bg-pill-active); color: var(--text-inverse);
+  font-size: 0.84rem; font-weight: 700;
+  border: 1px solid var(--border-strong);
+  cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.sb-state-btn:hover { box-shadow: var(--shadow-soft); }
+.sb-state-btn:active { transform: scale(0.97); }
+.sb-state-btn--ghost { background: transparent; color: var(--text-soft); border-color: var(--border-soft); }
+
 /* Reduced motion — kill hover lifts + image zooms */
 @media (prefers-reduced-motion: reduce) {
   .hxr-card,

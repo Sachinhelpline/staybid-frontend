@@ -15,6 +15,7 @@ import {
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import BookingChat from "@/components/BookingChat";
 import ModalCloseButton from "@/components/ModalCloseButton";
+import SbState from "@/components/SbState";
 // Phase 4 tier-system — "Share your trip" nudge shown to users who have
 // at least one booking. Self-dismisses on tap, persistence via localStorage.
 import InspirationBanner from "@/components/tier/InspirationBanner";
@@ -649,6 +650,8 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [units, setUnits] = useState<Record<string, { unitId: string; unitNumber: string }>>({});
   const [loading, setLoading]   = useState(true);
+  const [loadErr, setLoadErr]   = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   // v141 — Phase 5 — bookings tour. delayMs:1400 so /api/bookings/my
   // populates at least one .card before fire.
   usePageTour("bookings", "bookings", { delayMs: 1400 });
@@ -665,10 +668,14 @@ export default function BookingsPage() {
     // merges into localStorage so HoldBanner renders even on a fresh browser).
     hydrateHoldsFromServer().catch(() => {});
 
+    setLoading(true);
     Promise.all([
-      api.getMyBookings().catch(() => ({ bookings: [] })),
-      api.getMyBids().catch(() => ({ bids: [] })),
+      api.getMyBookings().catch(() => ({ bookings: [], _failed: true })),
+      api.getMyBids().catch(() => ({ bids: [], _failed: true })),
     ]).then(async ([bookData, bidData]) => {
+      // Only surface an error screen when BOTH sources fail — a partial
+      // failure still shows whatever data we did get.
+      setLoadErr(Boolean((bookData as any)._failed && (bidData as any)._failed));
       const fromBookings = (bookData.bookings || []).map((b: any) => ({ ...b, _source: "booking" }));
       const fromBids = (bidData.bids || [])
         .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
@@ -734,7 +741,7 @@ export default function BookingsPage() {
         }
       } catch {}
     }).finally(() => setLoading(false));
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, reloadTick]);
 
   // Shared cozy styles for this page.
   const styleBlock = (
@@ -804,7 +811,16 @@ export default function BookingsPage() {
           />
         )}
 
-        {bookings.length === 0 && (
+        {loadErr && bookings.length === 0 && (
+          <SbState
+            variant="error"
+            title="Couldn't load your bookings"
+            subtitle="Something went wrong reaching the server. Please try again."
+            actions={[{ label: "Try again", onClick: () => setReloadTick((t) => t + 1) }]}
+          />
+        )}
+
+        {!loadErr && bookings.length === 0 && (
           <div className="text-center py-20">
             <div className="w-20 h-20 rounded-full bk-card flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">📋</span>

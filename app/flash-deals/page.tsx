@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import ModalCloseButton from "@/components/ModalCloseButton";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+import SbState from "@/components/SbState";
 // v129 — every flash-deal price is a ₹100 multiple. Same rule as the
 // Negotiate slider, /bid presets, and partner counter slider.
 import { snap100 } from "@/lib/price-snap";
@@ -158,6 +159,8 @@ function FlashDealsContent() {
   const searchParams = useSearchParams();
   const [deals, setDeals]     = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   // v139 — Tutorial Layer 2 — flash deals tour. Delay 1100ms so the
   // ticker animates in + at least one .fd-card renders before fire.
   usePageTour("flash", "flash", { delayMs: 1100 });
@@ -201,10 +204,10 @@ function FlashDealsContent() {
     if (!hydrated) return;
     setLoading(true);
     api.getFlashDeals(city || undefined)
-      .then((d) => setDeals(d.deals || []))
-      .catch(() => setDeals([]))
+      .then((d) => { setDeals(d.deals || []); setLoadErr(false); })
+      .catch(() => setLoadErr(true))
       .finally(() => setLoading(false));
-  }, [city, hydrated]);
+  }, [city, hydrated, reloadTick]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -432,7 +435,16 @@ function FlashDealsContent() {
       <div className="fd-grid-wrap" data-autonext="fd-results">
         {loading && <SkeletonGrid />}
 
-        {!loading && deals.length === 0 && (
+        {!loading && loadErr && deals.length === 0 && (
+          <SbState
+            variant="error"
+            title="Couldn't load tonight's deals"
+            subtitle="Something went wrong reaching the server. Please try again."
+            actions={[{ label: "Try again", onClick: () => setReloadTick((t) => t + 1) }]}
+          />
+        )}
+
+        {!loading && !loadErr && deals.length === 0 && (
           <div className="fd-empty">
             <div className="fd-empty-icon">⚡</div>
             <p className="fd-empty-title">All deals sold out for tonight</p>

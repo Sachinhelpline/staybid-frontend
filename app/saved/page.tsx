@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
+import SbState from "@/components/SbState";
 // v142 — Phase-6 saved tour. 3 steps: filter tabs → grid → tip.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 
@@ -125,15 +126,15 @@ export default function SavedPage() {
         {loading ? (
           <div className="card-luxury p-10 text-center text-luxury-500 text-sm">Loading…</div>
         ) : saves.length === 0 ? (
-          <div className="card-luxury sb-card-lift sb-fade-in p-10 text-center">
-            <div className="text-5xl mb-3">📭</div>
-            <p className="font-display text-lg font-bold text-luxury-900">Nothing saved yet</p>
-            <p className="text-luxury-500 text-sm mt-1">Tap the bookmark icon on any reel, hotel or deal to save it for later.</p>
-            <div className="mt-5 flex gap-2 justify-center">
-              <Link href="/reels"  className="btn-luxury px-4 py-2 rounded-full text-sm sb-card-lift sb-shimmer relative"><span className="relative" style={{ zIndex: 2 }}>Browse Reels</span></Link>
-              <Link href="/hotels" className="px-4 py-2 rounded-full text-sm font-semibold border border-luxury-200 sb-card-lift">Browse Hotels</Link>
-            </div>
-          </div>
+          <SbState
+            glyph="📭"
+            title="Nothing saved yet"
+            subtitle="Tap the bookmark icon on any reel, hotel or deal to save it for later."
+            actions={[
+              { label: "Browse Reels", href: "/reels" },
+              { label: "Browse Hotels", href: "/hotels", ghost: true },
+            ]}
+          />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sb-stagger">
             {saves.map(s => (

@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import ModalCloseButton from "@/components/ModalCloseButton";
+import SbState from "@/components/SbState";
 // v142 — Phase-6 complaints tour. 3 steps: new CTA → faster routes → list.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 
@@ -154,17 +155,12 @@ function ComplaintsInner() {
         {loading ? (
           <div className="card-luxury p-10 text-center text-luxury-500 shimmer">Loading your complaints…</div>
         ) : list.length === 0 ? (
-          <div className="card-luxury sb-card-lift sb-fade-in p-10 text-center" style={{ animationDelay: "0.15s" }}>
-            <div className="text-5xl mb-3">🙌</div>
-            <div className="font-display text-xl text-luxury-900 mb-1">No complaints on record</div>
-            <p className="text-sm text-luxury-500">If something goes wrong, raise it here and our team takes a look right away.</p>
-            <button
-              onClick={() => setComposerOpen(true)}
-              className="btn-luxury sb-shimmer mt-5 text-sm px-5 py-2.5 relative"
-            >
-              <span className="relative" style={{ zIndex: 2 }}>Raise a complaint</span>
-            </button>
-          </div>
+          <SbState
+            glyph="🙌"
+            title="No complaints on record"
+            subtitle="If something goes wrong, raise it here and our team takes a look right away."
+            actions={[{ label: "Raise a complaint", onClick: () => setComposerOpen(true) }]}
+          />
         ) : (
           <div className="space-y-3 sb-stagger">
             {list.map((c) => <Card key={c.id} c={c} />)}
