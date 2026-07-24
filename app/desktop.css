@@ -438,21 +438,22 @@
    /discover keeps the v470 fixed panels (no window). ─────────────────────── */
 @media (min-width: 1440px) {
   body.reel-with-rail:has(.reel-page-root) {
-    --reel-side-w: 348px;                 /* both sidebars equal → window centred */
-    --reel-col-gap: 20px;                 /* frame ↔ sidebar gap */
+    --reel-side-w: 300px;                 /* both sidebars equal → window centred */
+    --reel-col-gap: 18px;                 /* frame ↔ sidebar gap (tighter = cohesive) */
     --reel-rail-h: 0px;                    /* set to a real height by reel-has-rail */
     --reel-stage-h: min(calc(100vh - 128px), 900px);
     --reel-win-pad: 16px;                  /* inner padding above/below content */
     --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - (var(--reel-win-pad) * 2));
     --reel-frame-w: min(468px, calc(var(--reel-frame-h) * 0.5625));
-    --reel-window-w: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2) + 40px);
+    --reel-window-w: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2) + 36px);
   }
-  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 100px; }
+  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 130px; }
 
-  /* The glass window shell — a DEFINED frosted card (not invisible dark-on-
-     dark). A warm walnut gradient a touch lighter than the ambient backdrop,
-     a clear rim, a gold hairline + real elevation so it reads as one crafted
-     desktop window sitting on the cinematic blur. */
+  /* The glass window shell. KEY: a NEUTRAL, translucent frosted surface that
+     BLENDS with the cinematic dark backdrop (a subtle neutral DARKEN, never a
+     warmer/lighter block — that read as a pasted rectangle). Defined by a
+     faint hairline + a soft drop shadow (elevation), so it reads as one
+     cohesive window WITHOUT a hard colour edge. */
   body.reel-with-rail .reel-window {
     display: block;
     position: fixed;
@@ -462,27 +463,15 @@
     width: var(--reel-window-w);
     height: var(--reel-stage-h);
     z-index: 8;
-    border-radius: 32px;
-    background:
-      linear-gradient(180deg, rgba(38, 30, 22, 0.74) 0%, rgba(22, 17, 12, 0.80) 100%);
-    -webkit-backdrop-filter: blur(40px) saturate(1.35);
-    backdrop-filter: blur(40px) saturate(1.35);
-    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 30px;
+    background: rgba(10, 9, 12, 0.34);
+    -webkit-backdrop-filter: blur(34px) saturate(1.08);
+    backdrop-filter: blur(34px) saturate(1.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow:
-      0 60px 150px -50px rgba(0, 0, 0, 0.92),
-      0 0 0 1px rgba(201, 166, 107, 0.16),
-      inset 0 1px 0 rgba(255, 255, 255, 0.09),
-      inset 0 -40px 80px -50px rgba(0, 0, 0, 0.5);
+      0 55px 130px -50px rgba(0, 0, 0, 0.85),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
     animation: reelSideIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-  /* A soft warm glow rim just outside the window so it lifts off the backdrop. */
-  body.reel-with-rail .reel-window::after {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    pointer-events: none;
-    box-shadow: inset 0 0 60px -30px rgba(201, 166, 107, 0.22);
   }
 
   /* Full-width Flash Deals rail across the top of the window (same centred
@@ -497,19 +486,24 @@
     height: var(--reel-rail-h);
     z-index: 12;
     overflow: hidden;
-    background: linear-gradient(180deg, rgba(46, 36, 26, 0.55) 0%, rgba(46, 36, 26, 0) 100%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 32px 32px 0 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px 30px 0 0;
   }
-  /* Re-skin the (cream, mobile) rail into the dark glass window */
+  /* Re-skin the (cream, mobile) rail into the dark glass window. Taller row so
+     avatars + labels are FULLY visible (were clipped at 100px). */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-wrap {
     background: transparent !important;
     border-bottom: none !important;
     box-shadow: none !important;
-    padding: 12px 24px 6px !important;
+    padding: 14px 26px 10px !important;
     animation: none !important;
   }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 6px !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 8px !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { align-items: flex-start; }
+  /* Hide the variable-height "Circle Operated" sub-tag so every avatar column
+     is the same height (mixed heights clipped the row). City stays the label. */
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-tag { display: none; }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-title,
   body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: #f6efe1 !important; }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-brand-sep,
