@@ -410,7 +410,7 @@ export default function CircleHomePage() {
         ) : filtered.length === 0 ? (
           <div className="sbc-home-empty">
             <div style={{ fontSize: 40 }}>🏔️</div>
-            <p>Is city me abhi koi property nahi — All India dekhein.</p>
+            <p>No properties in this city yet — try All India.</p>
             <button className="sbc-hp-cta" onClick={() => setCity("all")}>Show all properties</button>
           </div>
         ) : (

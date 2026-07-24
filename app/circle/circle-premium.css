@@ -2657,3 +2657,61 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   .sbc-mkt-grid { grid-template-columns: 1fr; }
   .sbc-mkt-dategrid { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Circle HUB — premium design-language uplift (v429)
+   Appended last so it wins by source order over the base + light-override
+   cascade. Every selector is .sbc-home-scoped, so it touches ONLY the hub
+   page — no other Circle surface is affected. Light-only (the hub has no
+   dark theme by design); this pass keeps the cream/sage palette and layers
+   on: editorial Cormorant serif section headers + titles, tabular-nums on
+   every ₹/ROI/stat, and a deeper (22px) card-radius language.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Editorial serif section headers — the tiny uppercase gold eyebrows become
+   proper sentence-case Cormorant headers (JSX copy is already sentence case). */
+.sbc-home .sbc-home-sec-h {
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.28rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--sbc-c-ink);
+  margin-bottom: 14px;
+}
+
+/* Editorial serif on the card & step titles (matches the greeting + model
+   titles, which are already Cormorant). */
+.sbc-home .sbc-pcard-title {
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.06rem;
+  font-weight: 600;
+  letter-spacing: .005em;
+}
+.sbc-home .sbc-jbody b {
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: .005em;
+}
+
+/* tabular-nums on every figure so ₹, ROI and stats align in columns. */
+.sbc-home .sbc-hp-value,
+.sbc-home .sbc-hp-v,
+.sbc-home .sbc-hp-note b,
+.sbc-home .sbc-pcard-rate b,
+.sbc-home .sbc-pcard-stats b,
+.sbc-home .sbc-jnum,
+.sbc-home .sbc-model-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Deeper, consistent card-radius language (toward the 22px portfolio card). */
+.sbc-home .sbc-pcard        { border-radius: 22px; }
+.sbc-home .sbc-model        { border-radius: 22px; }
+.sbc-home .sbc-home-bundle  { border-radius: 22px; }
+.sbc-home .sbc-jstep        { border-radius: 20px; }
+.sbc-home .sbc-qa-item      { border-radius: 18px; }
+.sbc-home .sbc-qa-ic        { border-radius: 16px; }
+.sbc-home .sbc-home-bell    { border-radius: 16px; }
+.sbc-home .sbc-home-bundle-ic { border-radius: 16px; }
