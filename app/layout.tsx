@@ -3,6 +3,8 @@
 // cozy palette overrides live in globals.css after this import.
 import "driver.js/dist/driver.css";
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
+import RouteProgress from "@/components/RouteProgress";
 import { AuthProvider } from "@/lib/auth";
 import { TierProvider } from "@/lib/tier-store";
 import { SoundProvider } from "@/lib/sound-store";
@@ -179,6 +181,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             CSS above): stops the installed-PWA window background showing as a
             black band above the content on non-reel pages. */}
         <div id="sb-safe-top-fill" aria-hidden="true" />
+        {/* v450 — global top route-progress bar: instant gold bar on every
+            internal navigation (starts on link tap, completes when the route
+            commits) so nav feels responsive even on routes without a
+            loading.tsx. Suspense-wrapped because it reads useSearchParams. */}
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         <ThemeProvider>
         <AuthProvider>
          {/* v109 — single source of truth for "is this user a creator /
@@ -246,7 +255,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v449</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v450</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -267,7 +276,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v449-partner-dashboard-polish";
+var SB_BUILD="v450-perceived-speed";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
