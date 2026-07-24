@@ -610,7 +610,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // to a clean initial-letter card (was a dull empty gradient box).
 // v477 — bump (v287 -> v288). Home desktop reel canvas flipped to LIGHT cozy
 // cream (dark text/chips/rail/navbar); /discover + /reels stay dark.
-const HTML_CACHE = 'staybid-html-v288';
+// v478 — bump (v288 -> v289). Flash rail: taller (labels not clipped) +
+// readable dark names + scroll arrows/edge-fade (drag affordance); now-playing
+// cover cream placeholder (no black box on the light canvas).
+const HTML_CACHE = 'staybid-html-v289';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -175,10 +175,30 @@ export default function DesktopReelPanels({
       <div className="reel-window" aria-hidden />
 
       {/* Full-width Flash Deals rail across the top of the window (home + wide +
-          deals only). A separate fixed box; its width matches the window. */}
+          deals only). A separate fixed box; its width matches the window.
+          The ‹ › buttons scroll the avatar strip so it's obvious there are more
+          deals than the ones on screen (a horizontal drag/scroll list). */}
       {railOn && (
         <div className="reel-stage-rail">
           <FlashDealStoryRail deals={flashDeals} onOpen={(i) => setFlashIdx(i)} />
+          <button
+            type="button"
+            className="reel-rail-nav reel-rail-nav-left"
+            aria-label="Previous flash deals"
+            onClick={() => {
+              const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
+              s?.scrollBy({ left: -320, behavior: "smooth" });
+            }}
+          >‹</button>
+          <button
+            type="button"
+            className="reel-rail-nav reel-rail-nav-right"
+            aria-label="More flash deals"
+            onClick={() => {
+              const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
+              s?.scrollBy({ left: 320, behavior: "smooth" });
+            }}
+          >›</button>
         </div>
       )}
 
@@ -234,9 +254,7 @@ export default function DesktopReelPanels({
       <aside className="reel-side reel-side-right" aria-label="Current stay">
         <div
           className="reel-np-cover"
-          style={imgOf(h)
-            ? { backgroundImage: `url("${imgOf(h)}"), linear-gradient(135deg, #2a2018, #17110b)` }
-            : undefined}
+          style={imgOf(h) ? { backgroundImage: `url("${imgOf(h)}")` } : undefined}
           aria-hidden
         >
           {!imgOf(h) && <span className="reel-np-cover-fallback">{(h.name || "S").slice(0, 1).toUpperCase()}</span>}

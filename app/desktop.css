@@ -496,7 +496,7 @@
     --reel-frame-w: min(512px, calc(var(--reel-frame-h) * 0.5625));   /* bigger, prominent frame */
     --reel-cluster-w: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2));
   }
-  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 122px; }
+  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 146px; }
 
   /* v473.1 — NO floating window box (its edges read as a centre-vs-side colour
      difference). The whole reel page is one calm cozy canvas; the rail spans
@@ -531,6 +531,51 @@
   body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { align-items: flex-start; padding: 0 2px 2px !important; }
   /* Uniform avatar columns (hide the variable-height Circle sub-tag). */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-tag { display: none; }
+  /* Readable dark labels on the cream canvas. */
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-name { color: #5a3f0a !important; font-size: 0.66rem; font-weight: 600; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-title { color: #6e4a08 !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: #4a3820 !important; }
+
+  /* Horizontal-scroll affordance — a right-edge fade + ‹ › nav buttons so it's
+     obvious the flash-deal strip scrolls to MORE deals (users missed this). */
+  body.reel-has-rail .reel-stage-rail::after {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; right: 0;
+    width: 70px;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(241, 232, 214, 0) 0%, rgba(241, 232, 214, 0.92) 78%);
+    z-index: 3;
+  }
+  body.reel-has-rail .reel-rail-nav {
+    position: absolute;
+    top: calc(50% + 13px);
+    transform: translateY(-50%);
+    z-index: 4;
+    width: 34px; height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(122, 88, 30, 0.26);
+    background: rgba(255, 250, 240, 0.92);
+    color: #5a3f0a;
+    font-size: 1.3rem; line-height: 1; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 14px -4px rgba(122, 88, 30, 0.4);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  body.reel-has-rail .reel-rail-nav:hover { background: #fff; transform: translateY(-50%) scale(1.07); }
+  body.reel-has-rail .reel-rail-nav:active { transform: translateY(-50%) scale(0.93); }
+  /* Right arrow ALWAYS visible (an obvious "more this way" cue); left arrow only
+     on hover (nothing sits to the left at the start of the strip). */
+  body.reel-has-rail .reel-rail-nav-right { right: 2px; opacity: 1; }
+  body.reel-has-rail .reel-rail-nav-left {
+    left: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.15s ease, background 0.15s ease;
+  }
+  body.reel-has-rail .reel-stage-rail:hover .reel-rail-nav-left { opacity: 1; pointer-events: auto; }
 
   /* Columns: transparent, aligned to the frame's top + height, FILLING the
      side margins (from the screen padding right up to the frame gap). */
@@ -640,7 +685,13 @@
   body.reel-with-rail .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.5); }
   body.reel-with-rail .reel-side-btn.ghost { border-color: rgba(58, 44, 24, 0.3); color: #33260f; }
   body.reel-with-rail .reel-side-btn.ghost:hover { background: rgba(122, 88, 30, 0.09); }
-  /* Now-playing cover keeps its own dark image + overlay (unchanged). */
+  /* Now-playing cover: a CREAM placeholder while the reel image loads (a dark
+     placeholder read as a black box on the light canvas). */
+  body.reel-with-rail .reel-np-cover { background-color: #e7dbc2; }
+  body.reel-with-rail .reel-np-cover-fallback {
+    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    color: rgba(122, 88, 30, 0.55);
+  }
 
   /* The portrait frame: pushed below the rail, ABOVE the canvas, centred. */
   body.reel-with-rail .reel-page-root {
