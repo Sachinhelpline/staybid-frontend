@@ -39,7 +39,7 @@ export default function TrustReviewsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: "var(--bg-page)" }}>
+    <div className="trust-root min-h-screen pb-24" style={{ background: "var(--bg-page)" }}>
       <div className="max-w-3xl mx-auto px-5 py-8 sm:py-12">
         {/* Header */}
         <header className="sb-fade-in mb-5">

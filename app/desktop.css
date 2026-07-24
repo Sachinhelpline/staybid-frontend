@@ -1381,6 +1381,24 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   18f. v487 — Small-page desktop: undo §9's grid-cols-3 -> 5-col collateral
+   ─────────────────────────────────────────────────────────────────────────
+   §9's page-agnostic `main .grid.grid-cols-3 -> 5 cols @1280px` rule (meant
+   for /my-bids + /bookings KPI strips) also force-widens three small pages'
+   3-item rows into 5 columns with 2 empty tracks at >=1280px:
+     • /profile      — the 3-stat strip inside the hero (.pf-hero)
+     • /verification — the TierExplainer 3-tier grid (.verif-root)
+     • /trust        — the 3 explainer chips (.trust-root)
+   Re-pin each back to 3-up (mirrors §18d/§18e), scoped to each page's own
+   root/hero class so nothing else is touched. The column widen those pages
+   already get from §9 stays. Mobile is byte-identical (desktop-gated). */
+@media (min-width: 1280px) {
+  .pf-hero .grid.grid-cols-3,
+  .verif-root .grid.grid-cols-3,
+  .trust-root .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    19. v122.6 — ALL-VIEWPORT DENSITY PASS (mobile + tablet + desktop)
    ─────────────────────────────────────────────────────────────────────────
    v122.5 reduced size only on desktop AND only inside .lux-bg / .fd-root.
