@@ -590,7 +590,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // labels, accent stat pill, stable-price trend chip — swapped fixed
 // --cozy-warm-dark/--cozy-cocoa/--cozy-cocoa-soft to the theme-aware
 // --text-base/--text-soft/--text-muted (byte-identical in light).
-const HTML_CACHE = 'staybid-html-v280';
+// v471 — HTML_CACHE bump (v280 -> v281). Desktop reel unified window: the two
+// side panels + a full-width Flash Deals rail merge into one glass "desktop app
+// window" on ≥1440px home. Bumping drops the stale cached reel markup.
+const HTML_CACHE = 'staybid-html-v281';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

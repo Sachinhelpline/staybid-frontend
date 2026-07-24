@@ -343,7 +343,7 @@ export default function DiscoverPage() {
     {/* v466 — desktop-only side panels (right: now-playing hotel + CTAs,
         left: up-next queue). Hidden below the wide breakpoints via
         app/desktop.css; driven purely by the existing items + active index. */}
-    <DesktopReelPanels items={items} activeIndex={hotelIdx} />
+    <DesktopReelPanels items={items} activeIndex={hotelIdx} showRail={pathname === "/"} />
     <div
       className="reel-page-root fixed inset-0 bg-black overflow-hidden select-none"
       // Belt-and-braces: even if the body class lock is somehow stripped
