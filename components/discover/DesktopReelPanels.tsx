@@ -248,7 +248,7 @@ export default function DesktopReelPanels({
             type="button"
             className="reel-rail-nav reel-rail-nav-left"
             aria-label="Previous flash deals"
-            style={{ opacity: railNav.left ? 1 : 0, pointerEvents: railNav.left ? "auto" : "none" }}
+            style={{ opacity: railNav.left ? 1 : 0.32, pointerEvents: railNav.left ? "auto" : "none" }}
             onClick={() => {
               const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
               s?.scrollBy({ left: -320, behavior: "smooth" });
@@ -258,7 +258,7 @@ export default function DesktopReelPanels({
             type="button"
             className="reel-rail-nav reel-rail-nav-right"
             aria-label="More flash deals"
-            style={{ opacity: railNav.right ? 1 : 0, pointerEvents: railNav.right ? "auto" : "none" }}
+            style={{ opacity: railNav.right ? 1 : 0.32, pointerEvents: railNav.right ? "auto" : "none" }}
             onClick={() => {
               const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
               s?.scrollBy({ left: 320, behavior: "smooth" });
@@ -370,7 +370,6 @@ export default function DesktopReelPanels({
               <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
             </div>
           )}
-          <div className="reel-side-hint">↑ ↓ to browse reels</div>
         </div>
       </aside>
 

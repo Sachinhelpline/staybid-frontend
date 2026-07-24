@@ -569,8 +569,11 @@
   /* v491 — BOTH arrows are scroll-position-aware (opacity/pointer-events set
      inline from railNav): ‹ fades in once the strip is scrolled, › hides at the
      end. So the drag affordance shows on whichever side actually has more. */
-  body.reel-has-rail .reel-rail-nav-right { right: 2px; }
-  body.reel-has-rail .reel-rail-nav-left { left: 2px; }
+  /* v493 — arrows sit OUTSIDE the rail box, in the empty side margins, so they
+     never overlap the avatars/labels. Both are always visible (dimmed to 0.32
+     inline when that direction can't scroll). */
+  body.reel-has-rail .reel-rail-nav-right { right: -50px; }
+  body.reel-has-rail .reel-rail-nav-left { left: -50px; }
   body.reel-has-rail .reel-rail-nav { transition: opacity 0.18s ease, transform 0.15s ease, background 0.15s ease; }
 
   /* Columns: transparent, aligned to the frame's top + height, FILLING the
@@ -636,13 +639,20 @@
   body.reel-with-rail .reel-np-cover {
     position: relative;
     flex-shrink: 0;
-    height: 40%;                               /* v492 — shorter cover → the details + browse-reels control below never get cut */
-    min-height: 190px;
-    border-radius: 22px;
+    height: 150px;                             /* v493 — compact fixed cover so EVERY row below (price, amenities, both CTAs) stays visible, nothing cut */
+    min-height: 150px;
+    border-radius: 20px;
     overflow: hidden;
     background-size: cover;
     background-position: center;
     background-color: rgba(255, 255, 255, 0.05);
+  }
+  /* v493 — tighten the body so the full column (through "Make an offer") fits
+     without scrolling; clamp the description to two lines. */
+  body.reel-with-rail .reel-side-right .reel-side-body { padding: 12px 15px 8px; gap: 7px; }
+  body.reel-with-rail .reel-side-desc {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; margin: 0;
   }
   body.reel-with-rail .reel-np-cover-shade {
     position: absolute; inset: 0;
@@ -761,6 +771,15 @@
    byte-identical (that surface never gets the class). ───────────────────────── */
 @media (min-width: 1200px) {
   body.reel-with-rail .reel-page-root .ig-reel-caption { display: none !important; }
+  /* v493 — move the author/follower chip from the TOP to the BOTTOM of the reel
+     (the top is now clean video; the bottom caption is hidden so there's room).
+     The chip is a self-contained dark-glass pill, readable over any frame.
+     Cap its width to clear the right action rail. */
+  body.reel-with-rail .reel-page-root .ig-profile-chip {
+    top: auto !important;
+    bottom: 14px !important;
+    max-width: calc(100% - 68px) !important;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
