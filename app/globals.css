@@ -4930,7 +4930,7 @@
   font-family: var(--font-display, "Cormorant Garamond"), serif;
   font-weight: 500;
   font-style: italic;
-  font-size: 0.95rem;
+  font-size: 1.12rem;   /* v432 — a touch more presence (was 0.95rem) */
   color: var(--text-base);
   letter-spacing: -0.005em;
 }
@@ -4944,11 +4944,11 @@
 .hxr-hero-dot { color: var(--text-muted); opacity: 0.5; }
 @media (min-width: 1024px) {
   .hxr-hero-eyebrow { font-size: 0.6rem; }
-  .hxr-hero-title   { font-size: 1.2rem; }
+  .hxr-hero-title   { font-size: 1.5rem; }
   .hxr-hero-count   { font-size: 0.85rem; }
 }
 @media (min-width: 1280px) {
-  .hxr-hero-title { font-size: 1.4rem; }
+  .hxr-hero-title { font-size: 1.75rem; }
 }
 
 /* Search pill — slim. v159.2: height ~40px mobile, ~46px desktop. */
@@ -5507,18 +5507,27 @@
 }
 .hxr-rail-end { flex: 0 0 8px; }
 
-/* CARD — Airbnb-style */
+/* CARD — v432 premium elevated photo-top card (was flat/transparent).
+   Surface + soft depth + refined hover lift so the browse grid reads like a
+   2026 marketplace, not a flat gallery wall. Applies at every breakpoint. */
 .hxr-card {
   display: flex;
   flex-direction: column;
   text-decoration: none;
   color: inherit;
-  background: transparent;
-  border-radius: 18px;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px -10px rgba(31, 26, 15, 0.20);
+  transition: transform 0.26s cubic-bezier(.2,.7,.2,1), box-shadow 0.26s ease, border-color 0.26s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.hxr-card:hover { transform: translateY(-3px); }
+.hxr-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 44px -20px rgba(31, 26, 15, 0.36);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border-soft));
+}
 .hxr-card:active { transform: scale(0.985); }
 
 /* Rail card responsive widths — peek-of-next on every breakpoint.
@@ -5545,12 +5554,22 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 14px;
+  border-radius: 0;          /* v432 — flush to the card top; card overflow clips the corners */
   overflow: hidden;
   background: var(--accent-soft);
 }
-@media (min-width: 640px) { .hxr-card-imgwrap { aspect-ratio: 5 / 6; border-radius: 15px; } }
-@media (min-width: 1024px) { .hxr-card-imgwrap { aspect-ratio: 4 / 5; border-radius: 16px; } }
+@media (min-width: 640px) { .hxr-card-imgwrap { aspect-ratio: 5 / 6; } }
+@media (min-width: 1024px) { .hxr-card-imgwrap { aspect-ratio: 4 / 5; } }
+/* v432 — bottom scrim so the score chip + price never fight a bright photo */
+.hxr-card-imgwrap::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  background: linear-gradient(to top, rgba(15, 12, 6, 0.34), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
 .hxr-card-img {
   width: 100%;
   height: 100%;
@@ -5564,8 +5583,11 @@
   height: 100%;
   display: grid;
   place-items: center;
-  font-size: 3rem;
-  opacity: 0.4;
+  font-size: 2.4rem;
+  opacity: 0.5;
+  background:
+    radial-gradient(120% 100% at 30% 20%, color-mix(in srgb, var(--accent) 22%, var(--bg-card)), transparent 60%),
+    linear-gradient(150deg, var(--accent-soft), var(--bg-pill));
 }
 
 /* Badge top-left — tighter on mobile to fit small cards. v159.1. */
@@ -5652,7 +5674,7 @@
 /* Card info (padding handled by v159.1 responsive block below) */
 .hxr-card-row1 {
   display: flex;
-  align-items: baseline;
+  align-items: center;   /* v432 — center the rating pill against the name (was baseline) */
   gap: 8px;
   justify-content: space-between;
 }
@@ -5673,14 +5695,25 @@
   flex: 1 1 auto;
 }
 @media (min-width: 1024px) { .hxr-card-name { font-size: 1.16rem; } }
+/* v432 — colored guest-rating pill with review count (was a bare "★ 4.5"). */
 .hxr-card-rating {
   flex: 0 0 auto;
-  font-size: 0.74rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--text-base);
   white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  font-variant-numeric: tabular-nums;
 }
-@media (min-width: 1024px) { .hxr-card-rating { font-size: 0.78rem; } }
+.hxr-card-rating-star { color: var(--accent); font-size: 0.7rem; line-height: 1; }
+.hxr-card-rating-count { color: var(--text-muted); font-weight: 600; font-size: 0.64rem; }
+@media (min-width: 1024px) { .hxr-card-rating { font-size: 0.76rem; } }
 .hxr-card-loc {
   margin: 2px 0 0;
   font-size: 0.72rem;
@@ -5713,12 +5746,34 @@
 }
 .hxr-card-per { color: var(--text-muted); font-size: 0.72rem; }
 .hxr-card-strike { color: var(--text-muted); font-size: 0.7rem; text-decoration: line-through; margin-right: 2px; }
+/* v432 — price-intelligence chip: "▼ X% below market" (from competitor_min).
+   Sits on its own line under the price as a compact pill. */
+.hxr-card-below {
+  margin-top: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--cozy-sage, #5C6B45);
+  background: color-mix(in srgb, var(--cozy-sage, #7F9269) 16%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--cozy-sage, #7F9269) 30%, transparent);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1024px) { .hxr-card-below { font-size: 0.66rem; } }
+/* v432 — heart-burst on save */
+@keyframes hxrHeartBurst { 0%{transform:scale(1)} 35%{transform:scale(1.32)} 60%{transform:scale(0.9)} 100%{transform:scale(1)} }
+.hxr-heart-on svg { animation: hxrHeartBurst 0.42s cubic-bezier(.2,.7,.2,1); }
 
-/* Tighter card-info padding on mobile so the card height stays close
-   to the image height. v159.1. */
-.hxr-card-info { padding: 8px 2px 4px; }
-@media (min-width: 640px)  { .hxr-card-info { padding: 9px 3px 4px; } }
-@media (min-width: 1024px) { .hxr-card-info { padding: 10px 4px 4px; } }
+/* v432 — info block now sits on the card surface, so it gets real horizontal
+   padding + breathing room (was 2px, flush to a transparent card). */
+.hxr-card-info { padding: 10px 12px 12px; }
+@media (min-width: 640px)  { .hxr-card-info { padding: 11px 13px 13px; } }
+@media (min-width: 1024px) { .hxr-card-info { padding: 13px 15px 15px; } }
 
 /* Grid view — 2 cols on mobile by default (Airbnb pattern), scaling up. */
 .hxr-grid-wrap { display: flex; flex-direction: column; gap: 14px; }
@@ -5737,8 +5792,9 @@
 @media (min-width: 560px)  { .hxr-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
 @media (min-width: 768px)  { .hxr-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
 @media (min-width: 1024px) { .hxr-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
-@media (min-width: 1280px) { .hxr-grid { grid-template-columns: repeat(5, 1fr); gap: 20px; } }
-@media (min-width: 1536px) { .hxr-grid { grid-template-columns: repeat(6, 1fr); gap: 22px; } }
+@media (min-width: 1280px) { .hxr-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+/* v432 — calmer wide-desktop grid: 5 large cards (was 6 cramped) with more air. */
+@media (min-width: 1536px) { .hxr-grid { grid-template-columns: repeat(5, 1fr); gap: 24px; } }
 
 /* Skeleton */
 .hxr-skel-rail {
@@ -6276,9 +6332,9 @@
 
 .hxr-card-compact .hxr-card-imgwrap {
   aspect-ratio: 1 / 1;
-  border-radius: 14px;
+  border-radius: 0;   /* v432 — flush to the elevated surface (was a floating 14px inset) */
 }
-.hxr-card-compact .hxr-card-info { padding: 8px 2px 2px; }
+.hxr-card-compact .hxr-card-info { padding: 8px 10px 10px; }
 .hxr-card-compact .hxr-card-name { font-size: 0.78rem; }
 .hxr-card-compact .hxr-card-rating { font-size: 0.68rem; }
 .hxr-card-compact .hxr-card-loc {

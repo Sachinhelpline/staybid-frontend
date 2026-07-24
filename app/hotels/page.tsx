@@ -1232,6 +1232,8 @@ function CardLink({
   const isSaved = savedSet.has(String(h.id));
   const competitorMin = h.competitor_min || h.competitorMin;
   const beatsMarket = competitorMin && minPrice && competitorMin > minPrice;
+  const belowPct = beatsMarket ? Math.round((1 - minPrice / competitorMin) * 100) : 0;
+  const reviewsCount = Number(h.reviewsCount || h.reviews_count || 0);
   const guestFavorite = (Number(h.avgRating) || 0) >= 4.6 && (h.reviewsCount || 0) >= 10;
 
   return (
@@ -1296,7 +1298,10 @@ function CardLink({
         <div className="hxr-card-row1">
           <h3 className="hxr-card-name">{h.name}</h3>
           {(Number(h.avgRating) || 0) > 0 && (
-            <span className="hxr-card-rating">★ {Number(h.avgRating).toFixed(1)}</span>
+            <span className="hxr-card-rating">
+              <span className="hxr-card-rating-star">★</span>{Number(h.avgRating).toFixed(1)}
+              {reviewsCount > 0 && <span className="hxr-card-rating-count">({reviewsCount})</span>}
+            </span>
           )}
         </div>
         <p className="hxr-card-loc">
@@ -1312,6 +1317,9 @@ function CardLink({
             </span>
             <span className="hxr-card-per">/night</span>
           </p>
+        )}
+        {!compact && beatsMarket && belowPct >= 5 && (
+          <span className="hxr-card-below">▼ {belowPct}% below market</span>
         )}
       </div>
     </Link>
