@@ -1768,6 +1768,20 @@ const HotelCard = memo(function HotelCard({
   const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
 
+  // v465 — Desktop-only cinematic ambient backdrop. When THIS card is the
+  // active reel on a wide screen (>=1024px), publish its cover image to a CSS
+  // custom property that app/desktop.css paints (blurred, low-opacity colour
+  // wash) into the empty gutters flanking the centred phone frame — turning the
+  // "floating frame in a white void" into a Spotify-now-playing-style ambience.
+  // No-op on mobile (the whole reel is fullscreen there); reads only, never
+  // touches the reel data / dedup / fullscreen paths.
+  const ambientCover = images[0] || (item as any)?.posterUrl || (item as any)?._poster || "";
+  useEffect(() => {
+    if (!active || !ambientCover) return;
+    if (typeof window === "undefined" || window.innerWidth < 1024) return;
+    document.documentElement.style.setProperty("--reel-ambient-img", `url("${ambientCover}")`);
+  }, [active, ambientCover]);
+
   // GLOBAL follow state — shared across cards, profile sheets, sub-chips
   const { isFollowing, toggleFollow, followerCount, myAvatarUrl, myDisplayName } = useFollow();
   const followed = isFollowing(hotelEntity.handle);

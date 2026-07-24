@@ -590,7 +590,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // labels, accent stat pill, stable-price trend chip — swapped fixed
 // --cozy-warm-dark/--cozy-cocoa/--cozy-cocoa-soft to the theme-aware
 // --text-base/--text-soft/--text-muted (byte-identical in light).
-const HTML_CACHE = 'staybid-html-v274';
+const HTML_CACHE = 'staybid-html-v275';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
