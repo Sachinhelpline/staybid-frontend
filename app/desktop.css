@@ -878,7 +878,13 @@
     max-width: 935px;
     margin-inline: auto;
     padding-top: 8px;
-    background: var(--bg-page);
+    /* v490 — /me is a hardcoded LIGHT design (mobile uses a fixed cream
+       gradient; the .me-* name/bio/stats text is hardcoded dark-brown with
+       no dark-mode override). This desktop rule used var(--bg-page), which
+       flips to near-black in dark mode → dark-brown text on near-black =
+       invisible on the transparent header/bio/stats sections. Pin a static
+       cream so /me stays always-light on desktop, matching mobile. */
+    background: var(--cozy-cream-100);
   }
   /* Top bar — sticky pin to the page, not the small mobile drawer. */
   .me-top {
@@ -1418,6 +1424,34 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
 @media (min-width: 1536px) {
   .trd-root .max-w-6xl { max-width: 1500px !important; }
   .trd-root .grid.sm\:grid-cols-2.lg\:grid-cols-3 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18h. v490 — /host vertical desktop (StayBid for Hosts)
+   ─────────────────────────────────────────────────────────────────────────
+   The host layout root is `.hostos` (NOT .lux-bg), so §5's centering/cap
+   never applied and there was zero host styling here — yet host children
+   render inside <main>, so §9's max-w widen AND its grid-cols-3 -> 5-col
+   collateral BOTH engage. Fixes:
+   • /host/me caps every wrapper at max-w-5xl (1024px) — escapes §9's widen
+     list (2xl/xl/3xl/4xl) → big dead gutters at 1280/1536. Widen it.
+   • /host/studio caps at max-w-6xl (1152px) — same escape → widen.
+   • §9 mangles /host/build's 3-item plan summary + city mini-stats (bare
+     grid-cols-3 -> 5 cols = 2 dead tracks) AND the /host hub's 6-stat band
+     (grid-cols-3 sm:grid-cols-6 -> 5+1 orphan). Re-pin the true 3-item host
+     grids to 3-up and RESTORE the 6-stat band to 6-up (only that grid
+     carries sm:grid-cols-6). All other host grids use grid-cols-2/sm:/lg:
+     tokens (no literal .grid-cols-3) so §9 never touched them.
+   .hostos-scoped + desktop-gated → mobile/tablet + all other verticals
+   untouched. */
+@media (min-width: 1280px) {
+  .hostos .max-w-5xl { max-width: 1200px !important; }
+  .hostos .max-w-6xl { max-width: 1360px !important; }
+  .hostos .grid.grid-cols-3:not(.sm\:grid-cols-6) { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .hostos .grid.grid-cols-3.sm\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1536px) {
+  .hostos .max-w-5xl { max-width: 1320px !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
