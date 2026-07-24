@@ -115,15 +115,12 @@
      in app/discover/page.tsx and app/reels/page.tsx. */
   .reel-page-root {
     position: fixed !important;
-    top: 88px !important;
-    left: calc(50% - 212px) !important;
-    right: auto !important;
-    bottom: auto !important;
-    margin: 0 !important;
+    inset: 88px 0 auto 0 !important;   /* top:88 · left/right:0 + margin auto = centred, no transform */
+    margin: 0 auto !important;
     height: calc(100vh - 128px) !important;
     max-height: 900px !important;
     min-height: 560px !important;
-    width: 424px !important;
+    width: var(--reel-frame-w, 424px) !important;
     border-radius: 38px !important;
     overflow: hidden !important;
     /* v465 — premium multi-layer depth: a wide ambient drop, a tight contact
@@ -153,7 +150,14 @@
      and the frosted-glass side panels all sit inside one unified scene
      (Spotify/Apple-Music now-playing · TikTok-web). Forced dark in BOTH themes
      — the reel content is dark regardless of the app's cozy-cream chrome. */
-  body:has(.reel-page-root) { background: #0a0806 !important; }
+  body:has(.reel-page-root) {
+    /* v470 — the frame width is DERIVED from the available height at a true
+       9:16 ratio (0.5625), so the reel is as large as the viewport allows
+       (up to 468px) instead of a fixed 424. The side panels read the same var
+       so they always hug the frame at a constant gap, whatever its size. */
+    --reel-frame-w: min(468px, calc((100vh - 132px) * 0.5625));
+    background: #0a0806 !important;
+  }
 
   /* Layer 1 — the blurred, darkened cover image (z -2, behind everything). */
   body:has(.reel-page-root)::before {
@@ -277,8 +281,8 @@
   @keyframes reelSideIn { from { opacity: 0; transform: translateY(-50%) translateX(6px); } to { opacity: 1; transform: translateY(-50%); } }
 
   .reel-side-right {
-    left: calc(50% + 232px);
-    width: 356px;
+    left: calc(50% + (var(--reel-frame-w, 424px) / 2) + 22px);
+    width: 372px;
     animation-name: reelSideInR;
   }
   @keyframes reelSideInR { from { opacity: 0; transform: translateY(-50%) translateX(12px); } to { opacity: 1; transform: translateY(-50%); } }
@@ -386,8 +390,8 @@
 @media (min-width: 1440px) {
   .reel-side-left {
     display: flex;
-    right: calc(50% + 232px);
-    width: 332px;
+    right: calc(50% + (var(--reel-frame-w, 424px) / 2) + 22px);
+    width: 348px;
   }
 }
 
