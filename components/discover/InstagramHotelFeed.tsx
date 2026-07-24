@@ -50,6 +50,29 @@ import {
 // already obeys the platform rule. Defensive: the hotel page re-snaps too.
 import { snap100 } from "@/lib/price-snap";
 
+// v442 — clean inline-SVG icon set for the reel action rail (replaces the
+// cross-platform-inconsistent emoji glyphs 🔊🤍💬↗📑⋯). A plain module-scope
+// component (NOT an IIFE inside the feed's return) so it never affects the
+// styled-jsx block count. Inherits currentColor from .ig-icon (white on video).
+function RailIcon({ name, filled }: { name: string; filled?: boolean }) {
+  const p: any = {
+    width: 25, height: 25, viewBox: "0 0 24 24",
+    fill: filled ? "currentColor" : "none",
+    stroke: "currentColor", strokeWidth: 1.9,
+    strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true,
+  };
+  switch (name) {
+    case "soundOn":  return (<svg {...p} fill="none"><path d="M5 9v6h3.5L14 19V5L8.5 9H5Z" /><path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12" /></svg>);
+    case "soundOff": return (<svg {...p} fill="none"><path d="M5 9v6h3.5L14 19V5L8.5 9H5Z" /><path d="m17 9.5 4 5M21 9.5l-4 5" /></svg>);
+    case "heart":    return (<svg {...p}><path d="M12 20.3s-6.8-4.4-6.8-9.5A4.1 4.1 0 0 1 12 7.2a4.1 4.1 0 0 1 6.8 3.6c0 5.1-6.8 9.5-6.8 9.5Z" /></svg>);
+    case "comment":  return (<svg {...p} fill="none"><path d="M20 11.4a7.4 7.4 0 0 1-10.8 6.6L4.5 19.3l1.3-4.6A7.4 7.4 0 1 1 20 11.4Z" /></svg>);
+    case "share":    return (<svg {...p} fill="none"><path d="M21.5 3 10.6 13.9" /><path d="M21.5 3 14.6 22l-3.9-8.1L2.5 10 21.5 3Z" /></svg>);
+    case "bookmark": return (<svg {...p}><path d="M6.5 4h11v16l-5.5-3.6L6.5 20V4Z" /></svg>);
+    case "more":     return (<svg {...p} fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" /></svg>);
+    default:         return null;
+  }
+}
+
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
 type Props = {
@@ -2332,7 +2355,7 @@ const HotelCard = memo(function HotelCard({
           className="ig-rail-btn"
           aria-label={muted ? "Unmute" : "Mute"}
         >
-          <span className="ig-icon">{muted ? "🔇" : "🔊"}</span>
+          <span className="ig-icon">{muted ? <RailIcon name="soundOff" /> : <RailIcon name="soundOn" />}</span>
           {/* Volume booster label removed in v82 — was showing "1.8×"
               even when nobody used the booster, just adds noise. Now
               shows simple On/Off state. */}
@@ -2347,7 +2370,7 @@ const HotelCard = memo(function HotelCard({
           }}
           className="ig-rail-btn"
         >
-          <span className={`ig-icon ${liked ? "ig-liked" : ""}`}>{liked ? "❤️" : "🤍"}</span>
+          <span className={`ig-icon ${liked ? "ig-liked ig-icon-liked" : ""}`}><RailIcon name="heart" filled={liked} /></span>
           <span className="ig-rail-count">{fmtCount(likeCount)}</span>
         </button>
         <button
@@ -2355,7 +2378,7 @@ const HotelCard = memo(function HotelCard({
           onClick={(e) => { e.stopPropagation(); onOpenComments(h); onTrackEvent?.("ig_comment_open", { hotelId: h.id }); }}
           className="ig-rail-btn"
         >
-          <span className="ig-icon">💬</span>
+          <span className="ig-icon"><RailIcon name="comment" /></span>
           <span className="ig-rail-count">{fmtCount(comments)}</span>
         </button>
         <button
@@ -2363,7 +2386,7 @@ const HotelCard = memo(function HotelCard({
           onClick={(e) => { e.stopPropagation(); onShare(h); }}
           className="ig-rail-btn"
         >
-          <span className="ig-icon">↗</span>
+          <span className="ig-icon"><RailIcon name="share" /></span>
           <span className="ig-rail-count">Share</span>
         </button>
         <button
@@ -2429,7 +2452,7 @@ const HotelCard = memo(function HotelCard({
           }}
           className="ig-rail-btn"
         >
-          <span className="ig-icon">{saved ? "🔖" : "📑"}</span>
+          <span className={`ig-icon ${saved ? "ig-icon-saved" : ""}`}><RailIcon name="bookmark" filled={saved} /></span>
           <span className="ig-rail-count">{saved ? "Saved" : "Save"}</span>
         </button>
         <button
@@ -2437,7 +2460,7 @@ const HotelCard = memo(function HotelCard({
           onClick={(e) => { e.stopPropagation(); onOpenMore(h); }}
           className="ig-rail-btn"
         >
-          <span className="ig-icon">⋯</span>
+          <span className="ig-icon"><RailIcon name="more" /></span>
           <span className="ig-rail-count">More</span>
         </button>
 
@@ -4211,7 +4234,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           gap: 4px;
           color: #fff;
-          font-size: 0.52rem; font-weight: 700;
+          font-size: 0.56rem; font-weight: 700;
           transition: transform 0.14s cubic-bezier(.32,1.2,.36,1);
           background: transparent;
           border: 0;
@@ -4220,6 +4243,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           box-shadow: none;
         }
         .ig-rail-btn:active { transform: scale(0.86); }
+        /* v442 — SVG rail icons: fixed size + white with a soft drop-shadow so
+           they read on any video, replacing the old emoji glyphs. */
+        .ig-icon svg { width: 25px; height: 25px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45)); }
+        .ig-icon-liked { color: #ff4d6d; }   /* filled heart when liked */
+        .ig-icon-saved { color: var(--cozy-gold-2, #E7CFA0); }  /* filled bookmark when saved */
         .ig-icon {
           font-size: 1.18rem; line-height: 1;
           width: 42px; height: 42px;
@@ -4238,8 +4266,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         }
         .ig-liked { animation: igLikePop 0.4s ease-out; }
         .ig-rail-count {
-          font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em;
+          font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em;
           text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+          font-variant-numeric: tabular-nums;
         }
 
         .ig-disc {
