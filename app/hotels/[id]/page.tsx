@@ -2751,16 +2751,32 @@ export default function HotelDetail() {
               </div>
               <p className="text-luxury-800 font-semibold text-base">{hotel.city}{hotel.state ? `, ${hotel.state}` : ""}</p>
               <p className="text-xs text-luxury-400 mt-1 mb-4">Located in the heart of {hotel.city} — popular area with easy access to local attractions</p>
-              <div className="rounded-2xl overflow-hidden bg-luxury-100 h-36 relative mb-3 flex items-center justify-center border border-luxury-200">
-                <div className="absolute inset-0 bg-linear-to-br from-blue-50 to-green-50 opacity-60" />
-                <div className="relative text-center">
-                  <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-2 shadow-lg">
-                    <span className="text-white text-lg">📍</span>
-                  </div>
-                  <p className="text-xs font-semibold text-luxury-700">{hotel.city} Area</p>
-                  <p className="text-[0.6rem] text-luxury-400">Exact pin shared post-booking</p>
+              {Number(hotel.lat) && Number(hotel.lng) ? (
+                <div className="rounded-2xl overflow-hidden h-44 relative mb-3 border border-luxury-200">
+                  <iframe
+                    title={`${hotel.city} area map`}
+                    className="w-full h-full"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(hotel.lng) - 0.05}%2C${Number(hotel.lat) - 0.034}%2C${Number(hotel.lng) + 0.05}%2C${Number(hotel.lat) + 0.034}&layer=mapnik`}
+                  />
+                  <span className="absolute bottom-2 left-2 text-[0.58rem] font-semibold px-2 py-1 rounded-full bg-white/90 text-luxury-600 border border-luxury-200 backdrop-blur-sm">
+                    Approximate area · exact address after booking
+                  </span>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-2xl overflow-hidden bg-luxury-100 h-36 relative mb-3 flex items-center justify-center border border-luxury-200">
+                  <div className="absolute inset-0 bg-linear-to-br from-blue-50 to-green-50 opacity-60" />
+                  <div className="relative text-center">
+                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-2 shadow-lg">
+                      <span className="text-white text-lg">📍</span>
+                    </div>
+                    <p className="text-xs font-semibold text-luxury-700">{hotel.city} Area</p>
+                    <p className="text-[0.6rem] text-luxury-400">Exact pin shared post-booking</p>
+                  </div>
+                </div>
+              )}
               <a
                 href={`https://maps.google.com/?q=${encodeURIComponent(hotel.city + (hotel.state ? ", " + hotel.state : ""))}`}
                 target="_blank" rel="noreferrer"
