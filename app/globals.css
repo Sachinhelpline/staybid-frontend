@@ -660,6 +660,44 @@
 [data-theme="dark"] .auth-root .text-red-400 { color: #e0a297 !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v460 — Verification + Upgrade uplift. Both were legacy luxury palette
+   with no dark response. Each now wraps its root in `.lux-bg .{verif,upg}-root`,
+   so the page gets the themed cozy background + the text bridge remaps
+   text-luxury/gold/white → tokens. These blocks flip what the bridge
+   doesn't: the legacy white/luxury card + pill + border surfaces → dark
+   tokens (cozy-cream in light, correct in dark). The verification hero
+   (inline-styled dark walnut) and the AI Trust Report card are handled
+   as fixed artifacts — see the `.verif-report` re-pin below. */
+.verif-root .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
+.verif-root .bg-white { background: var(--bg-card) !important; }
+.verif-root .bg-luxury-50,
+.verif-root .bg-luxury-100 { background: var(--bg-pill) !important; }
+.verif-root .bg-gold-50,
+.verif-root .bg-gold-100 { background: color-mix(in srgb, var(--accent) 14%, transparent) !important; }
+.verif-root .border-luxury-100,
+.verif-root .border-luxury-200 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .verif-root .text-gold-700,
+[data-theme="dark"] .verif-root .text-gold-900 { color: var(--cozy-champagne-light) !important; }
+/* The AI Trust Report card is a fixed cream "report" artifact (its
+   TrustRing + VerifChecklist are tone="light"); re-pin its inner text to
+   fixed dark values so the .lux-bg bridge can't flip it near-white on the
+   cream surface in dark mode. Higher specificity (0,3,0) beats the bridge. */
+.verif-root .verif-report .text-luxury-900 { color: var(--cozy-warm-dark, #1F1A0F) !important; }
+.verif-root .verif-report .text-luxury-700,
+.verif-root .verif-report .text-luxury-600 { color: var(--cozy-cocoa, #4A3820) !important; }
+.verif-root .verif-report .text-luxury-500 { color: var(--cozy-cocoa-soft, #6E5430) !important; }
+.verif-root .verif-report .text-gold-700 { color: #8B6914 !important; }
+
+.upg-root .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
+.upg-root .bg-white { background: var(--bg-card) !important; }
+.upg-root .bg-luxury-50,
+.upg-root .bg-luxury-100 { background: var(--bg-pill) !important; }
+.upg-root .input-luxury { background: var(--bg-card); border-color: var(--border-soft); color: var(--text-base); }
+.upg-root .border-luxury-100,
+.upg-root .border-luxury-200 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .upg-root .text-gold-700 { color: var(--cozy-champagne-light) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
    v455 — Accessibility sweep (global foundations).
 
    (1) Global keyboard-focus ring. The app had focus styling on only two
