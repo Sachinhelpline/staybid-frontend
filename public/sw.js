@@ -617,7 +617,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // sticky-rail layout (dead .max-w-6xl selectors -> .max-w-7xl).
 // v480 — bump (v290 -> v291). Flash Deals desktop: bigger premium card
 // images + larger cards (300px min).
-const HTML_CACHE = 'staybid-html-v291';
+// v481 — bump (v291 -> v292). /bid Step-2 form centered on desktop (climber
+// stays fullscreen per owner decision).
+const HTML_CACHE = 'staybid-html-v292';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

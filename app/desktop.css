@@ -1304,6 +1304,20 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   18b. v481 — /bid Step 2 "Your Price" form: centered column on desktop
+   ─────────────────────────────────────────────────────────────────────────
+   The Step-1 climber (BidGameZone) is portaled to <body> and intentionally
+   FULLSCREEN edge-to-edge (owner decision v237 — a centered portrait card left
+   empty cream side-bands on a 1920px monitor, rejected). So we ONLY cap the
+   Step-2 legacy form wrapper `.bx-page-wrap` (presets + budget input +
+   probability dial + Launch), which otherwise spans the full monitor width.
+   `.bx-page-wrap` is already `mx-auto`, so a max-width centres it. The climber
+   is unaffected (it lives on <body>, not inside this wrapper). ─────────────── */
+@media (min-width: 1024px) {
+  .bx-shell .bx-page-wrap { max-width: 700px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    19. v122.6 — ALL-VIEWPORT DENSITY PASS (mobile + tablet + desktop)
    ─────────────────────────────────────────────────────────────────────────
    v122.5 reduced size only on desktop AND only inside .lux-bg / .fd-root.
