@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function OnboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-linear-to-br from-luxury-50 via-white to-gold-50">
+    <div className="lux-bg onb-root min-h-screen">
       <header className="sticky top-0 z-30 backdrop-blur-sm bg-white/70 border-b border-luxury-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/onboard" className="flex items-center gap-3">
