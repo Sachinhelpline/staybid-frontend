@@ -80,6 +80,27 @@ import AutoAcceptCountdown from "@/components/AutoAcceptCountdown";
 // path: never blocks on a missing column — falls back to 'auto'.
 import { getAutopilotMode, resolveAutoAcceptMs } from "@/lib/autopilot";
 
+// v438 — minimal, consistent line-icon set for the detail-page section headers
+// (replaces the emoji 📍🕐✨📋🔄🏆🗺 for a cleaner, modern look). Inherits
+// currentColor, so it picks up whatever text colour the header already uses.
+function SecIcon({ name, className }: { name: string; className?: string }) {
+  const p = {
+    width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+    strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+    className, "aria-hidden": true, style: { flex: "0 0 auto" },
+  };
+  switch (name) {
+    case "location":     return (<svg {...p}><path d="M12 21s-6.5-5.7-6.5-10.5A6.5 6.5 0 0 1 18.5 10.5C18.5 15.3 12 21 12 21Z" /><circle cx="12" cy="10.3" r="2.4" /></svg>);
+    case "clock":        return (<svg {...p}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.2v5l3 1.8" /></svg>);
+    case "amenities":    return (<svg {...p}><path d="M12 3.2l2.1 4.8 5.2.5-3.9 3.4 1.2 5.1L12 14l-4.6 2.5 1.2-5.1-3.9-3.4 5.2-.5L12 3.2Z" /></svg>);
+    case "policies":     return (<svg {...p}><path d="M7 3.2h7l4 4v13.6H7z" /><path d="M14 3.2v4h4" /><path d="M9.6 12h5M9.6 15.4h5" /></svg>);
+    case "cancellation": return (<svg {...p}><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1" /><path d="M20.5 4.2v4h-4" /></svg>);
+    case "award":        return (<svg {...p}><circle cx="12" cy="9" r="4.8" /><path d="M9.2 13.2 7.8 21l4.2-2.4L16.2 21l-1.4-7.8" /></svg>);
+    case "map":          return (<svg {...p}><path d="M9 4.2 3.5 6.6v13.2L9 17.4l6 2.4 5.5-2.4V4.2L15 6.6 9 4.2Z" /><path d="M9 4.2v13.2M15 6.6v13.2" /></svg>);
+    default:             return null;
+  }
+}
+
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
 const API = typeof window === "undefined" ? RAILWAY : "/api/proxy";
@@ -2746,7 +2767,7 @@ export default function HotelDetail() {
             {/* Location — preferred area, exact after booking */}
             <div className="card-luxury p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest">📍 Location</p>
+                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest inline-flex items-center gap-1.5"><SecIcon name="location" /> Location</p>
                 <span className="text-[0.6rem] font-semibold px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-full">Exact address after booking</span>
               </div>
               <p className="text-luxury-800 font-semibold text-base">{hotel.city}{hotel.state ? `, ${hotel.state}` : ""}</p>
@@ -2782,13 +2803,13 @@ export default function HotelDetail() {
                 target="_blank" rel="noreferrer"
                 className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl transition-colors"
               >
-                🗺 View Area on Maps
+                <SecIcon name="map" /> View Area on Maps
               </a>
             </div>
 
             {/* Check-in / Check-out Policy */}
             <div className="card-luxury p-5">
-              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">🕐 Check-in & Check-out</p>
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4 inline-flex items-center gap-1.5"><SecIcon name="clock" /> Check-in & Check-out</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-emerald-50 rounded-2xl p-4 text-center border border-emerald-100">
                   <p className="text-2xl font-bold text-emerald-700">12:00</p>
@@ -2806,7 +2827,7 @@ export default function HotelDetail() {
             {/* Amenities */}
             {hotel.amenities?.length > 0 && (
               <div className="card-luxury p-5">
-                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">✨ Amenities & Facilities</p>
+                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4 inline-flex items-center gap-1.5"><SecIcon name="amenities" /> Amenities & Facilities</p>
                 <div className="grid grid-cols-2 gap-2">
                   {hotel.amenities.map((a: string) => (
                     <div key={a} className="flex items-center gap-2 text-sm text-luxury-700">
@@ -2820,7 +2841,7 @@ export default function HotelDetail() {
 
             {/* Hotel Policies */}
             <div className="card-luxury p-5">
-              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">📋 Hotel Policies</p>
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4 inline-flex items-center gap-1.5"><SecIcon name="policies" /> Hotel Policies</p>
               <div className="space-y-3">
                 {[
                   { icon: "🚭", label: "Smoking", value: "Non-smoking property" },
@@ -2842,7 +2863,7 @@ export default function HotelDetail() {
 
             {/* Cancellation Policy */}
             <div className="card-luxury p-5">
-              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">🔄 Cancellation Policy</p>
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4 inline-flex items-center gap-1.5"><SecIcon name="cancellation" /> Cancellation Policy</p>
               <div className="space-y-3">
                 <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
                   <span className="text-emerald-500 font-bold text-sm mt-0.5">✓</span>
@@ -2863,7 +2884,7 @@ export default function HotelDetail() {
 
             {/* StayBid vs OTA comparison strip */}
             <div className="card-luxury p-5">
-              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">🏆 Why Book on StayBid?</p>
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4 inline-flex items-center gap-1.5"><SecIcon name="award" /> Why Book on StayBid?</p>
               <div className="space-y-3">
                 {[
                   { platform: "MakeMyTrip",  pct: "up to 13% higher",  icon: "🔴" },
