@@ -991,7 +991,7 @@ function MyBidsPageInner() {
             ].map((s, i) => (
               <div key={s.label} className="mb-card rounded-2xl py-3.5 px-2 text-center"
                 style={{ animation: `fadeUp 0.5s ease ${i*0.08}s both` }}>
-                <p className="text-2xl sm:text-3xl font-bold" style={{ color: s.color }}>
+                <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: s.color }}>
                   <CountUp value={s.value} duration={900} />
                 </p>
                 <p className="text-[0.58rem] mt-0.5 tracking-[0.18em] uppercase" style={{ color: "var(--text-muted)" }}>{s.label}</p>
@@ -1045,7 +1045,7 @@ function MyBidsPageInner() {
           <div className="text-center py-16">
             <div className="w-20 h-20 rounded-full mb-card flex items-center justify-center mx-auto mb-5 text-3xl"
               style={{ animation: "floaty 3s ease-in-out infinite" }}>👑</div>
-            <p className="text-lg font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bids placed yet</p>
+            <p className="font-display text-xl font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bids placed yet</p>
             <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Browse hotels and place your first bid.</p>
             <Link href="/hotels" className="gold-btn px-6 py-3 rounded-2xl text-sm inline-block">Browse Hotels</Link>
           </div>
@@ -1139,7 +1139,7 @@ function MyBidsPageInner() {
                 </div>
 
                 {/* Details */}
-                <div className="grid grid-cols-3 gap-2 mb-3 rounded-xl p-2.5"
+                <div className="grid grid-cols-3 gap-2 mb-3 rounded-2xl p-2.5"
                   style={{ background: "var(--bg-pill)" }}>
                   <div>
                     <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Your Bid</p>
@@ -1151,11 +1151,11 @@ function MyBidsPageInner() {
                   </div>
                   <div>
                     <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Check-in</p>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>{fmtDate(b.checkIn)}</p>
+                    <p className="text-sm font-medium tabular-nums" style={{ color: "var(--text-base)" }}>{fmtDate(b.checkIn)}</p>
                   </div>
                   <div>
                     <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Check-out</p>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>{fmtDate(b.checkOut)}</p>
+                    <p className="text-sm font-medium tabular-nums" style={{ color: "var(--text-base)" }}>{fmtDate(b.checkOut)}</p>
                   </div>
                 </div>
 
