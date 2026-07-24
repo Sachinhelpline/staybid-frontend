@@ -65,6 +65,14 @@ function scrollFeedToIndex(i: number) {
   else feed.scrollTo({ top: feed.clientHeight * i, behavior: "smooth" });
 }
 
+// v492 — scroll the reel feed one frame up (-1 = previous) or down (+1 = next),
+// used by the visible ↑/↓ "browse reels" control in the now-playing panel.
+function scrollFeedByDir(dir: number) {
+  const feed = document.querySelector<HTMLElement>(".ig-feed");
+  if (!feed) return;
+  feed.scrollBy({ top: dir * feed.clientHeight, behavior: "smooth" });
+}
+
 const inr = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const priceOf = (h: any): number => Number(h?.minPrice || h?.rooms?.[0]?.floorPrice || 0);
 const imgOf = (h: any): string => (Array.isArray(h?.images) ? h.images.filter(Boolean) : [])[0] || "";
@@ -335,6 +343,13 @@ export default function DesktopReelPanels({
           <div className="reel-side-stat">
             {hotelId && <HotelScoreBadge hotelId={hotelId} variant="compact" />}
             <span className="reel-side-views">▶ {fmtCount(pseudoViews(hotelId || h.name || "x"))} views</span>
+          </div>
+          {/* v492 — visible, clickable "browse reels" control (the how-does-the-
+              next-reel-come affordance, no longer buried at the panel bottom). */}
+          <div className="reel-nav">
+            <button type="button" className="reel-nav-btn" onClick={() => scrollFeedByDir(-1)} aria-label="Previous reel" title="Previous reel">↑</button>
+            <span className="reel-nav-label">Browse reels</span>
+            <button type="button" className="reel-nav-btn" onClick={() => scrollFeedByDir(1)} aria-label="Next reel" title="Next reel">↓</button>
           </div>
           {price > 0 && (
             <div className="reel-side-price">

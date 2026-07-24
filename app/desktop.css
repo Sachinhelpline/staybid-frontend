@@ -509,7 +509,7 @@
   body.reel-has-rail .reel-stage-rail {
     display: block;
     position: fixed;
-    top: 70px;                               /* v491 — tight under the 64px navbar (was 84px dead band) */
+    top: 66px;                               /* v492 — flush under the 64px navbar */
     left: 50%;
     transform: translateX(-50%);
     width: var(--reel-cluster-w);
@@ -524,10 +524,10 @@
     background: transparent !important;
     border-bottom: none !important;
     box-shadow: none !important;
-    padding: 8px 4px 8px !important;
+    padding: 3px 4px 4px !important;
     animation: none !important;
   }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 8px !important; }
+  body.reel-has-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 3px !important; }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { align-items: flex-start; padding: 0 2px 2px !important; }
   /* Uniform avatar columns (hide the variable-height Circle sub-tag). */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-tag { display: none; }
@@ -549,10 +549,10 @@
   }
   body.reel-has-rail .reel-rail-nav {
     position: absolute;
-    top: calc(50% + 13px);
+    top: 42px;                                /* v492 — centred on the AVATAR circles, not down on the name labels */
     transform: translateY(-50%);
-    z-index: 20;                              /* v491 — above the side panels (z-15) so the arrows are never covered */
-    width: 34px; height: 34px;
+    z-index: 20;                              /* above the side panels (z-15) so the arrows are never covered */
+    width: 38px; height: 38px;
     border-radius: 999px;
     border: 1px solid rgba(122, 88, 30, 0.26);
     background: rgba(255, 250, 240, 0.92);
@@ -576,7 +576,7 @@
   /* Columns: transparent, aligned to the frame's top + height, FILLING the
      side margins (from the screen padding right up to the frame gap). */
   body.reel-with-rail .reel-side {
-    top: calc(70px + var(--reel-rail-h) + 12px) !important;
+    top: calc(66px + var(--reel-rail-h) + 12px) !important;
     transform: none !important;
     height: calc(var(--reel-frame-h) - 4px);
     max-height: calc(var(--reel-frame-h) - 4px) !important;
@@ -609,10 +609,22 @@
   /* Up-next: wider premium rows (bigger thumb, price pinned right). */
   body.reel-with-rail .reel-queue { gap: 6px; padding: 6px 4px 14px; }
   body.reel-with-rail .reel-queue-item { gap: 13px; padding: 9px 10px; border-radius: 15px; }
-  body.reel-with-rail .reel-queue-thumb { width: 66px; height: 74px; border-radius: 12px; }
+  /* v492 — premium up-next: larger portrait reel thumbnails (matches the
+     now-playing frame's prominence) on a cream base so an empty/broken image
+     never reads as a black box. */
+  body.reel-with-rail .reel-queue-thumb {
+    width: 92px; height: 120px; border-radius: 15px;
+    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+  }
+  body.reel-with-rail .reel-queue-thumb-fallback {
+    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    color: rgba(122, 88, 30, 0.6);
+    font-size: 1.7rem;
+  }
+  body.reel-with-rail .reel-queue-item { gap: 15px; padding: 10px 10px; }
   body.reel-with-rail .reel-queue-info { flex: 1; }
-  body.reel-with-rail .reel-queue-name { max-width: none; font-size: 0.9rem; }
-  body.reel-with-rail .reel-queue-sub { font-size: 0.76rem; }
+  body.reel-with-rail .reel-queue-name { max-width: none; font-size: 0.96rem; }
+  body.reel-with-rail .reel-queue-sub { font-size: 0.8rem; }
   body.reel-with-rail .reel-queue-price { margin-left: auto; flex-shrink: 0; display: flex; align-items: baseline; gap: 1px; }
   body.reel-with-rail .reel-queue-price b { font-size: 0.98rem; color: #fbf5ea; font-weight: 700; }
   body.reel-with-rail .reel-queue-price em { font-style: normal; font-size: 0.68rem; color: rgba(242, 236, 221, 0.5); }
@@ -624,8 +636,8 @@
   body.reel-with-rail .reel-np-cover {
     position: relative;
     flex-shrink: 0;
-    height: 50%;
-    min-height: 240px;
+    height: 40%;                               /* v492 — shorter cover → the details + browse-reels control below never get cut */
+    min-height: 190px;
     border-radius: 22px;
     overflow: hidden;
     background-size: cover;
@@ -702,10 +714,31 @@
     font-size: 0.74rem; font-weight: 600; color: rgba(58, 44, 24, 0.66);
     display: inline-flex; align-items: center; gap: 4px;
   }
+  /* v492 — visible "browse reels" control (↑ prev / ↓ next), so how the next
+     reel comes is obvious, not a hint hidden at the bottom. */
+  body.reel-with-rail .reel-nav {
+    display: flex; align-items: center; gap: 10px; margin: 2px 0 2px;
+  }
+  body.reel-with-rail .reel-nav-btn {
+    width: 34px; height: 34px; flex-shrink: 0;
+    border-radius: 999px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; line-height: 1; font-weight: 700;
+    color: #5a3f0a;
+    background: rgba(122, 88, 30, 0.09);
+    border: 1px solid rgba(122, 88, 30, 0.26);
+    transition: transform 0.14s ease, background 0.14s ease;
+  }
+  body.reel-with-rail .reel-nav-btn:hover { background: rgba(122, 88, 30, 0.16); transform: scale(1.08); }
+  body.reel-with-rail .reel-nav-btn:active { transform: scale(0.94); }
+  body.reel-with-rail .reel-nav-label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: rgba(58, 44, 24, 0.6);
+  }
 
   /* The portrait frame: pushed below the rail, ABOVE the canvas, centred. */
   body.reel-with-rail .reel-page-root {
-    top: calc(70px + var(--reel-rail-h) + 12px) !important;
+    top: calc(66px + var(--reel-rail-h) + 12px) !important;
     height: var(--reel-frame-h) !important;
     max-height: none !important;
     z-index: 25 !important;
