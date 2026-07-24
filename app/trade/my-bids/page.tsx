@@ -155,15 +155,15 @@ export default function TradeMyBidsPage() {
             {/* Awards */}
             {awards.length > 0 && (
               <div>
-                <div className="font-bold text-luxury-900 mb-2">🏆 Won allotments</div>
+                <div className="font-display text-lg font-semibold text-luxury-900 mb-2">🏆 Won allotments</div>
                 <div className="space-y-2">
                   {awards.map((a) => (
-                    <div key={a.id} className="rounded-2xl bg-white border border-green-200 p-3">
+                    <div key={a.id} className="rounded-[22px] bg-white border border-green-200 p-3.5 shadow-[0_4px_16px_-10px_rgba(31,26,15,0.2)]">
                       <div className="flex justify-between items-start gap-3">
                         <div className="min-w-0">
-                          <div className="font-bold text-luxury-900 truncate">{a.metadata?.hotel_name || a.hotel_id} · {a.city}</div>
-                          <div className="text-[0.75rem] text-luxury-500">{a.segment_label} · {monthLabel(a.month_key)} · {a.rooms_awarded} rooms</div>
-                          <div className="text-[0.75rem] mt-0.5">Bid {inr(a.base_total)} + premium {inr(a.buyer_fee)}{Number(a.deposit_applied) > 0 ? ` − EMD ${inr(a.deposit_applied)}` : ""}</div>
+                          <div className="font-display text-base font-semibold text-luxury-900 truncate">{a.metadata?.hotel_name || a.hotel_id} · {a.city}</div>
+                          <div className="text-[0.75rem] text-luxury-500 tabular-nums">{a.segment_label} · {monthLabel(a.month_key)} · {a.rooms_awarded} rooms</div>
+                          <div className="text-[0.75rem] mt-0.5 tabular-nums">Bid {inr(a.base_total)} + premium {inr(a.buyer_fee)}{Number(a.deposit_applied) > 0 ? ` − EMD ${inr(a.deposit_applied)}` : ""}</div>
                         </div>
                         <div className="text-right shrink-0">
                           {a.status === "voucher_issued" ? (
@@ -208,7 +208,7 @@ export default function TradeMyBidsPage() {
 
             {/* Bids */}
             <div>
-              <div className="font-bold text-luxury-900 mb-2">My bids</div>
+              <div className="font-display text-lg font-semibold text-luxury-900 mb-2">My bids</div>
               {bids.length === 0 ? (
                 <div className="text-center text-luxury-400 py-8">No bids yet. <button onClick={() => router.push("/trade")} className="underline text-gold-600">Browse lots</button></div>
               ) : (
@@ -216,12 +216,12 @@ export default function TradeMyBidsPage() {
                   {bids.map((b) => {
                     const st = ST[b.status] || ST.active;
                     return (
-                      <div key={b.id} className="rounded-2xl bg-white border border-luxury-200 p-3 flex gap-3">
+                      <div key={b.id} className="rounded-[22px] bg-white border border-luxury-200 p-3.5 flex gap-3 shadow-[0_4px_16px_-10px_rgba(31,26,15,0.2)]">
                         <div className="w-14 h-14 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${b.lot?.metadata?.room_img || ""})`, background: b.lot?.metadata?.room_img ? undefined : "#e7d9c2" }} />
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-luxury-900 truncate">{b.lot?.category || b.metadata?.room_id || b.lot_id}</div>
+                          <div className="font-display text-base font-semibold text-luxury-900 truncate">{b.lot?.category || b.metadata?.room_id || b.lot_id}</div>
                           <div className="text-[0.72rem] text-luxury-400">{b.lot?.metadata?.hotel_name || ""} · {b.lot?.city || b.metadata?.city} · {monthLabel(b.lot?.month_key || b.metadata?.month_key || "")}</div>
-                          <div className="text-[0.75rem] text-luxury-600 mt-0.5">{b.segment_label} · {inr(b.per_room_per_night)}/night × {b.rooms_wanted} rooms</div>
+                          <div className="text-[0.75rem] text-luxury-600 mt-0.5 tabular-nums">{b.segment_label} · {inr(b.per_room_per_night)}/night × {b.rooms_wanted} rooms</div>
                           <div className="text-[0.72rem] text-amber-700 mt-0.5">
                             {b.metadata?.sale_mode === "live" || Number(b.deposit_amount) === 0
                               ? "⚡ Live · no deposit"
