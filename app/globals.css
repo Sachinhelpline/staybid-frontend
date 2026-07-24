@@ -1252,12 +1252,12 @@
 /* ─── Editorial mosaic gallery. v159.9 — Hidden on mobile; the
    .hx-hero-swipe-wrap full-bleed carousel owns the small-screen
    first view.
-   v159.13 — User wants the SAME auto-scrolling swipe carousel on
-   every device (so auto-scroll + ‹›  arrows + manual swipe work
-   uniformly), so the editorial mosaic is now hidden on all
-   breakpoints. The 5 photos still exist as slides in the swipe. */
+   v433 (Phase 3) — REVIVED for tablet+/desktop: the editorial 5-up mosaic
+   is the premium desktop gallery; the swipe carousel now owns only mobile
+   (<768). The mosaic markup already exists in HotelHero; this just re-enables
+   it at ≥768 (the !important kill from v159.13 is removed). */
 .hx-mosaic {
-  display: none !important;
+  display: none;
   grid-template-columns: 1fr;
   grid-template-rows: auto;
   gap: 8px;
@@ -2151,7 +2151,9 @@
 .hx-sticky-rail {
   display: none;
 }
-@media (min-width: 1100px) {
+/* v433 (Phase 3) — sticky booking rail now engages at 1024px (covers laptops,
+   was 1100) — kept in sync with .hx-page-grid + .hx-mobile-cta-wrap. */
+@media (min-width: 1024px) {
   .hx-sticky-rail {
     display: block;
     position: sticky;
@@ -2261,9 +2263,11 @@
   grid-template-columns: 1fr;
   gap: 24px;
 }
-@media (min-width: 1100px) {
+@media (min-width: 1024px) {
   .hx-page-grid {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    /* v433 (Phase 3) — fluid rail track (was fixed 320px) so the wide-desktop
+       whitespace band closes; scales 300→360px with the viewport. */
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 360px);
     gap: 36px;
   }
 }
@@ -2282,8 +2286,8 @@
   display: flex;
   justify-content: center;
 }
-@media (min-width: 1100px) {
-  .hx-mobile-cta-wrap { display: none; }
+@media (min-width: 1024px) {
+  .hx-mobile-cta-wrap { display: none; }   /* v433 — synced with the rail's 1024 breakpoint */
 }
 .hx-mobile-cta-pill {
   pointer-events: auto;
@@ -6444,15 +6448,10 @@
   overflow: hidden;
 }
 @media (min-width: 640px) { .hx-hero-swipe-wrap { margin: 0 -22px; } }
-/* v159.13 — Swipe carousel is now the SINGLE hero on every device.
-   Tablet+ keeps the carousel (was display:none), gets rounded
-   corners + a max-height cap so it doesn't dominate the fold. */
+/* v433 (Phase 3) — the editorial mosaic owns tablet+/desktop, so the swipe
+   carousel is hidden at ≥768 (it owns mobile only). */
 @media (min-width: 768px) {
-  .hx-hero-swipe-wrap {
-    margin: 0;
-    border-radius: 24px;
-    box-shadow: 0 12px 32px -16px rgba(31, 26, 15, 0.32);
-  }
+  .hx-hero-swipe-wrap { display: none; }
 }
 .hx-hero-swipe {
   display: flex;
@@ -6753,13 +6752,12 @@
    the sticky's height was less than the left column's. Tighten the
    grid + cap the rail's max-width so it visually anchors right
    instead of leaving acres of blank space on either side. */
-@media (min-width: 1100px) {
-  .hx-page-grid { gap: 24px !important; }
+@media (min-width: 1024px) {   /* v433 — synced to the rail's 1024 breakpoint */
+  .hx-page-grid { gap: 28px !important; }
   .hx-page-grid > div:first-child { min-width: 0; }
-  /* The sticky rail is the SECOND immediate child. Cap its width so
-     the gap between the rail and the page edge reads as a deliberate
-     margin, not as dead space. */
-  .hx-page-grid > div:last-child { max-width: 340px !important; }
+  /* The sticky rail is the SECOND immediate child. Cap matches the fluid
+     clamp() track max so the rail fills its column instead of leaving a band. */
+  .hx-page-grid > div:last-child { max-width: 360px !important; }
 }
 
 /* v159.13 — Room photo arrows. Hidden on touch; ≥1024 px shows on
