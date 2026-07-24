@@ -1249,6 +1249,25 @@
   position: relative;
 }
 
+/* ─── v437 — theme-consistent modal surface. Replaces the hard `bg-white` on
+   the detail-page modals. In LIGHT mode --bg-card is #fff, so modals look
+   IDENTICAL to before (zero light-mode change). In DARK mode the surface goes
+   dark AND a scoped bridge remaps the fixed `text-luxury-*` / `bg-luxury-*`
+   children to theme tokens so the modal is legible + on-brand. Gated on
+   [data-theme="dark"] so light mode carries no remap risk at all. */
+.hx-modal { background: var(--bg-card); }
+[data-theme="dark"] .hx-modal .text-luxury-900,
+[data-theme="dark"] .hx-modal .text-luxury-800 { color: var(--text-base) !important; }
+[data-theme="dark"] .hx-modal .text-luxury-700,
+[data-theme="dark"] .hx-modal .text-luxury-600,
+[data-theme="dark"] .hx-modal .text-luxury-500 { color: var(--text-soft) !important; }
+[data-theme="dark"] .hx-modal .text-luxury-400,
+[data-theme="dark"] .hx-modal .text-luxury-300 { color: var(--text-muted) !important; }
+[data-theme="dark"] .hx-modal .bg-luxury-50,
+[data-theme="dark"] .hx-modal .bg-luxury-100 { background-color: var(--bg-pill) !important; }
+[data-theme="dark"] .hx-modal .border-luxury-100,
+[data-theme="dark"] .hx-modal .border-luxury-200 { border-color: var(--border-soft) !important; }
+
 /* ─── Editorial mosaic gallery. v159.9 — Hidden on mobile; the
    .hx-hero-swipe-wrap full-bleed carousel owns the small-screen
    first view.
