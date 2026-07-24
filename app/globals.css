@@ -629,6 +629,37 @@
 [data-theme="dark"] .onb-root .text-gold-800 { color: var(--cozy-champagne-light) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v458 — Auth (sign-in) uplift. The single highest-traffic customer
+   screen was 100% legacy palette: pure-white cards on a hardcoded light
+   gradient (#faf9f6→#f4f2ec), no dark-mode response. Its outer div now
+   wraps content in `.lux-bg .auth-root`, so the page gets the themed
+   cozy background + the text bridge remaps text-luxury/gold/white →
+   tokens. This block flips the legacy white cards + inputs + luxury
+   pills/borders → dark-aware tokens (cozy-cream in light, correct in
+   dark), and gives the branded provider tints (Google/Facebook/WhatsApp
+   blue/green, and the red error box) dark-appropriate translucent
+   surfaces so they read on the dark card. Scoped to `.auth-root`. */
+.auth-root .bg-white { background: var(--bg-card) !important; }
+.auth-root .bg-luxury-50 { background: var(--bg-pill) !important; }
+.auth-root .bg-luxury-100 { background: var(--bg-pill) !important; }
+.auth-root .input-luxury { background: var(--bg-card); border-color: var(--border-soft); color: var(--text-base); }
+.auth-root .border-luxury-100,
+.auth-root .border-luxury-200 { border-color: var(--border-soft) !important; }
+/* Branded provider tints — keep the hue, darken the surface in dark mode
+   so the button reads against the dark card (light mode untouched). */
+[data-theme="dark"] .auth-root .bg-gold-50 { background: color-mix(in srgb, var(--accent) 16%, transparent) !important; }
+[data-theme="dark"] .auth-root .bg-blue-50 { background: color-mix(in srgb, #1877F2 18%, transparent) !important; }
+[data-theme="dark"] .auth-root .bg-green-50 { background: color-mix(in srgb, #25D366 15%, transparent) !important; }
+[data-theme="dark"] .auth-root .bg-green-100 { background: color-mix(in srgb, #25D366 22%, transparent) !important; }
+[data-theme="dark"] .auth-root .bg-red-50 { background: color-mix(in srgb, #a85b4e 20%, transparent) !important; }
+[data-theme="dark"] .auth-root .border-green-200 { border-color: color-mix(in srgb, #25D366 40%, transparent) !important; }
+[data-theme="dark"] .auth-root .border-red-200 { border-color: color-mix(in srgb, #a85b4e 45%, transparent) !important; }
+[data-theme="dark"] .auth-root .text-green-700,
+[data-theme="dark"] .auth-root .text-green-800 { color: #7fd8a0 !important; }
+[data-theme="dark"] .auth-root .text-red-600,
+[data-theme="dark"] .auth-root .text-red-400 { color: #e0a297 !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
    v455 — Accessibility sweep (global foundations).
 
    (1) Global keyboard-focus ring. The app had focus styling on only two
