@@ -97,6 +97,7 @@ function SecIcon({ name, className }: { name: string; className?: string }) {
     case "cancellation": return (<svg {...p}><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1" /><path d="M20.5 4.2v4h-4" /></svg>);
     case "award":        return (<svg {...p}><circle cx="12" cy="9" r="4.8" /><path d="M9.2 13.2 7.8 21l4.2-2.4L16.2 21l-1.4-7.8" /></svg>);
     case "map":          return (<svg {...p}><path d="M9 4.2 3.5 6.6v13.2L9 17.4l6 2.4 5.5-2.4V4.2L15 6.6 9 4.2Z" /><path d="M9 4.2v13.2M15 6.6v13.2" /></svg>);
+    case "negotiate":    return (<svg {...p}><path d="M8 5 4 9l4 4" /><path d="M4 9h12" /><path d="M16 19l4-4-4-4" /><path d="M20 15H8" /></svg>);
     default:             return null;
   }
 }
@@ -2161,7 +2162,7 @@ export default function HotelDetail() {
       numRooms: ncrCA,
       capacityMismatch: !!bid.capacityMismatch,
       rateLines, totalAmount: total,
-      flowLabel: "🤝 Accept Counter",
+      flowLabel: "Accept Counter",
       onUpdate: () => setReview(null),
       onPayFull: (final, applied) => executeCounterAccept(bid, "full", 0, { nights, total }, final, applied),
       onHold:    (h, final, applied) => executeCounterAccept(bid, "hold", h, { nights, total }, final, applied),
@@ -3464,7 +3465,7 @@ export default function HotelDetail() {
                   className="hx-cta hx-cta-primary"
                   style={{ width: "100%", background: "linear-gradient(135deg,#a85b26 0%,#C77B43 50%,#a85b26 100%)", color: "#fff" }}
                 >
-                  🤝 Review Counter — ₹{Number(myRoomCountered.counterAmount || 0).toLocaleString("en-IN")}/night →
+                  <SecIcon name="negotiate" className="inline-block align-[-0.15em] mr-1" /> Review Counter — ₹{Number(myRoomCountered.counterAmount || 0).toLocaleString("en-IN")}/night →
                 </button>
               ) : myRoomPending ? (
                 <div className="hx-cta hx-cta-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.85, cursor: "default" }}>
@@ -3631,7 +3632,7 @@ export default function HotelDetail() {
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
                         boxShadow: "0 4px 12px rgba(199,123,67,0.38)",
-                      }}>🤝 Counter Offer</span>
+                      }}><SecIcon name="negotiate" className="inline-block align-[-0.15em] mr-1" /> Counter Offer</span>
                     )}
                     {!isFlashRoom && !isLockedRoom && !myRoomCountered && myRoomPending && (
                       <span style={{
@@ -3792,7 +3793,7 @@ export default function HotelDetail() {
                       border: "1px solid rgba(199,123,67,0.42)",
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: "1.05rem" }}>🤝</span>
+                      <SecIcon name="negotiate" />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a5a26", margin: 0 }}>
                           Hotel countered at ₹{Number(myRoomCountered.counterAmount || 0).toLocaleString("en-IN")}/night
@@ -3921,7 +3922,7 @@ export default function HotelDetail() {
                                 onClick={() => withBackendAuth(() => openNegotiate(r))}
                                 className="hx-cta hx-cta-secondary"
                               >
-                                🤝 Negotiate
+                                <SecIcon name="negotiate" className="inline-block align-[-0.15em] mr-1" /> Negotiate
                               </button>
                             </div>
                           )}
@@ -4147,7 +4148,7 @@ export default function HotelDetail() {
                                 onClick={() => withBackendAuth(() => openNegotiate(r))}
                                 className="hx-cta hx-cta-secondary"
                               >
-                                🤝 Negotiate
+                                <SecIcon name="negotiate" className="inline-block align-[-0.15em] mr-1" /> Negotiate
                               </button>
                             </div>
                           )}
@@ -4222,7 +4223,7 @@ export default function HotelDetail() {
                     className="hx-cta hx-cta-primary"
                     style={{ width: "100%", marginTop: 14, marginBottom: 8, background: "linear-gradient(135deg,#a85b26 0%,#C77B43 50%,#a85b26 100%)", color: "#fff" }}
                   >
-                    🤝 Review Counter →
+                    <SecIcon name="negotiate" className="inline-block align-[-0.15em] mr-1" /> Review Counter →
                   </button>
                 </>
               ) : (
@@ -4272,7 +4273,7 @@ export default function HotelDetail() {
                     className="hx-cta hx-cta-secondary"
                     style={{ width: "100%" }}
                   >
-                    🤝 Negotiate Price
+                    <SecIcon name="negotiate" className="inline-block align-[-0.15em] mr-1" /> Negotiate Price
                   </button>
                 );
               })()}
@@ -5058,8 +5059,8 @@ export default function HotelDetail() {
                     : isInstant
                       ? `⚡ Instant Confirm · ₹${totalBid.toLocaleString()}`
                       : (nrNeg > 1 || nights > 1)
-                        ? `🤝 Submit Negotiation · ₹${negAmt.toLocaleString()}/night · ₹${totalBid.toLocaleString()} total`
-                        : `🤝 Submit Negotiation · ₹${negAmt.toLocaleString()}/night`}
+                        ? `Submit Negotiation · ₹${negAmt.toLocaleString()}/night · ₹${totalBid.toLocaleString()} total`
+                        : `Submit Negotiation · ₹${negAmt.toLocaleString()}/night`}
                 </button>
                 <p className="text-[0.6rem] text-center text-white/30 -mt-1">
                   {isInstant ? "Paid via Razorpay · 100% refundable if hotel rejects" : "No payment now · Hotel will counter or accept"}
