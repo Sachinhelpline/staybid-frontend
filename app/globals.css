@@ -629,6 +629,34 @@
 [data-theme="dark"] .onb-root .text-gold-800 { color: var(--cozy-champagne-light) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v455 — Accessibility sweep (global foundations).
+
+   (1) Global keyboard-focus ring. The app had focus styling on only two
+   scoped selectors; every other button / link / chip / dock item fell back
+   to the inconsistent (sometimes invisible) browser default. This gives a
+   consistent, visible ring on `:focus-visible` ONLY — so it fires for
+   keyboard / assistive-tech navigation and NEVER on mouse click, meaning
+   mouse users see zero change. Champagne on cream/dark surfaces; a brighter
+   gold on the dark reel stage. Components with their own :focus-visible
+   (.sb-modal-close, .sb-focus-glow) keep theirs by higher specificity. */
+:focus-visible {
+  outline: 2px solid var(--accent, #c9a66b);
+  outline-offset: 2px;
+}
+html.is-reel-page :focus-visible { outline-color: #ffd98a; }
+
+/* (2) Reduced-motion for the reel feed. The reel's ig* keyframes (Ken Burns
+   pan, audio disc/marquee, story ring, live dot, fab pulse, like burst) are
+   applied via ig- classes AND inline style, and were the one prominent
+   animated surface not reached by the app's ~25 existing scoped
+   reduced-motion blocks. Scoped to reel pages; the !important beats inline
+   `style={{animation}}` too. Video autoplay is JS-driven and unaffected. */
+@media (prefers-reduced-motion: reduce) {
+  html.is-reel-page [class*="ig-"],
+  html.is-reel-page [style*="animation"] { animation: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    3D Button system — physical "punching" feel, works everywhere.
    Usage: `btn-3d` (base), then a color variant (`btn-3d-gold`,
    `btn-3d-dark`, `btn-3d-emerald`, `btn-3d-white`). Optional `btn-3d-sm`
