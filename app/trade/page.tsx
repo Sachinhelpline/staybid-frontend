@@ -66,7 +66,7 @@ export default function TradeBrowsePage() {
       <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div>
-            <div className="font-extrabold text-lg" style={{ color: "#ffd98a" }}>StayBid Trade</div>
+            <div className="text-xl font-semibold" style={{ color: "#ffd98a", fontFamily: "var(--font-display, 'Cormorant Garamond', serif)" }}>StayBid Trade</div>
             <div className="text-[0.72rem] opacity-80">Monthly inventory auction · for travel agents</div>
           </div>
           <div className="flex items-center gap-2">
@@ -124,25 +124,30 @@ export default function TradeBrowsePage() {
         ) : visibleLots.length === 0 ? (
           <div className="col-span-full text-center text-luxury-400 py-10">No {mode === "all" ? "" : mode + " "}lots{city === "All" ? "" : ` in ${city}`} right now.</div>
         ) : visibleLots.map((l) => (
-          <button key={l.id} onClick={() => router.push(`/trade/${l.id}`)} className="text-left rounded-2xl overflow-hidden bg-white border border-luxury-200 flex flex-col hover:shadow-lg transition-shadow">
+          <button key={l.id} onClick={() => router.push(`/trade/${l.id}`)}
+            className="text-left rounded-[22px] overflow-hidden bg-white border border-luxury-200 flex flex-col transition-all duration-200 hover:-translate-y-1"
+            style={{ boxShadow: "0 4px 16px -10px rgba(31,26,15,0.22)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 40px -20px rgba(31,26,15,0.34)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px -10px rgba(31,26,15,0.22)"; }}>
             <div className="relative">
               {l.image
                 ? <img src={l.image} alt={l.category || l.room_id} className="w-full aspect-[4/3] object-cover" />
                 : <div className="w-full aspect-[4/3] grid place-items-center text-3xl" style={{ background: "#e7d9c2" }}>🏔️</div>}
-              <span className="absolute top-2 left-2 text-[0.66rem] font-bold px-2 py-0.5 rounded-full"
+              <div className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(15,12,6,0.28), transparent)" }} />
+              <span className="absolute top-2 left-2 text-[0.66rem] font-bold px-2.5 py-1 rounded-full"
                 style={l.sale_mode === "live" ? { background: "#ecfdf5", color: "#047857" } : { background: "#f5f3ff", color: "#6d28d9" }}>
                 {l.sale_mode === "live" ? "⚡ Live · bid now" : "🔒 Sealed · month-end"}
               </span>
             </div>
-            <div className="p-3 flex-1 flex flex-col">
+            <div className="p-3.5 flex-1 flex flex-col">
               <div className="text-[0.72rem] text-luxury-400">{l.metadata?.hotel_name || l.hotel_id} · {l.city}</div>
-              <div className="font-bold text-luxury-900">{l.category || l.room_id}</div>
-              <div className="text-[0.78rem] text-luxury-500 mt-0.5">{monthLabel(l.month_key)} · {l.num_rooms} rooms</div>
+              <div className="font-display text-lg font-semibold text-luxury-900 leading-tight mt-0.5">{l.category || l.room_id}</div>
+              <div className="text-[0.78rem] text-luxury-500 mt-0.5 tabular-nums">{monthLabel(l.month_key)} · {l.num_rooms} rooms</div>
               <div className="mt-2 text-sm">
                 <span className="text-luxury-400 text-[0.72rem]">Min bid</span>{" "}
-                <b className="text-luxury-900">{inr(l.min_bid_per_room_night)}</b><span className="text-luxury-400 text-[0.72rem]">/room/night</span>
+                <b className="text-luxury-900 tabular-nums">{inr(l.min_bid_per_room_night)}</b><span className="text-luxury-400 text-[0.72rem]">/room/night</span>
               </div>
-              <div className="mt-3 w-full py-2 rounded-xl font-bold text-white text-center" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+              <div className="mt-3 w-full py-2.5 rounded-2xl font-bold text-white text-center" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
                 View & bid
               </div>
             </div>
