@@ -175,28 +175,28 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
           <div
             className="fp-comb rounded-3xl p-5"
             style={{
-              background: "linear-gradient(160deg,#fffdf8,#fbf3e2)",
+              background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))",
               border: "1px solid rgba(201,166,107,0.4)",
-              boxShadow: "0 14px 34px -16px rgba(120,90,20,0.45), inset 0 1px 0 rgba(255,255,255,0.7)",
+              boxShadow: "0 14px 34px -16px rgba(120,90,20,0.45)",
             }}
           >
-            <p className="text-[0.6rem] uppercase tracking-widest font-bold relative z-10" style={{ color: "#8B6914" }}>
+            <p className="text-[0.6rem] uppercase tracking-widest font-bold relative z-10" style={{ color: "var(--accent)" }}>
               {family.name}
             </p>
             <div className="flex items-end gap-4 mt-1 relative z-10">
               <div>
-                <p className="font-display text-3xl font-bold leading-none tabular-nums" style={{ color: "#3A2D10" }}>
+                <p className="font-display text-3xl font-bold leading-none tabular-nums" style={{ color: "var(--text-base)" }}>
                   <CountUp value={combined.stamps} duration={1000} />
                 </p>
-                <p className="text-[0.6rem] uppercase tracking-widest font-bold mt-1" style={{ color: "#8B6914" }}>
+                <p className="text-[0.6rem] uppercase tracking-widest font-bold mt-1" style={{ color: "var(--accent)" }}>
                   Family stamps
                 </p>
               </div>
               <div className="ml-auto text-right">
-                <p className="font-display text-2xl font-bold leading-none tabular-nums" style={{ color: "#3A2D10" }}>
+                <p className="font-display text-2xl font-bold leading-none tabular-nums" style={{ color: "var(--text-base)" }}>
                   {combined.members}
                 </p>
-                <p className="text-[0.6rem] uppercase tracking-widest font-bold mt-1" style={{ color: "#8B6914" }}>
+                <p className="text-[0.6rem] uppercase tracking-widest font-bold mt-1" style={{ color: "var(--accent)" }}>
                   Members
                 </p>
               </div>
@@ -228,7 +228,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
                       {m.name}{m.isYou && " (You)"}
                     </p>
                     {m.role === "owner" && (
-                      <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(201,166,107,0.2)", color: "#8B6914" }}>
+                      <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(201,166,107,0.2)", color: "var(--accent)" }}>
                         OWNER
                       </span>
                     )}
@@ -283,7 +283,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
           {/* Your Explorer ID — easy share so the owner can add you */}
           {myExplorerId && (
             <button onClick={copyMyId} className="fp-id-btn w-full py-2.5 px-3 flex items-center justify-center gap-2">
-              <span className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "#8B6914" }}>Your ID</span>
+              <span className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "var(--accent)" }}>Your ID</span>
               <span className="fp-id-val">{myExplorerId}</span>
               {/* .fp-id-btn is a FIXED dark surface → use fixed light-muted, not the flipping --text-muted (dark-brown, unreadable on near-black in light mode) */}
               <span className="text-[0.6rem]" style={{ color: copied ? "#a9d6b8" : "rgba(243,230,200,0.55)" }}>

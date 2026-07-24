@@ -492,19 +492,21 @@ function RewardsTab({
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
           onClick={() => !busy && setConfirm(null)}>
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-3xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
             <p className="text-3xl text-center mb-2">{confirm.icon || kindIcon(confirm.kind)}</p>
-            <h3 className="font-display text-xl font-semibold text-center text-luxury-900">{confirm.title}</h3>
-            <p className="text-sm text-luxury-500 text-center mt-1">{confirm.description}</p>
+            <h3 className="font-display text-xl font-semibold text-center" style={{ color: "var(--text-base)" }}>{confirm.title}</h3>
+            <p className="text-sm text-center mt-1" style={{ color: "var(--text-muted)" }}>{confirm.description}</p>
             <div className="flex items-center justify-center gap-2 mt-3">
-              <span className="text-sm font-bold text-gold-600 tabular-nums">{fmt(confirm.points_cost)} pts</span>
-              <span className="text-luxury-300">→</span>
-              <span className="text-sm font-bold text-luxury-900 tabular-nums">{fmt(stayPoints - confirm.points_cost)} left</span>
+              <span className="text-sm font-bold tabular-nums" style={{ color: "var(--accent)" }}>{fmt(confirm.points_cost)} pts</span>
+              <span style={{ color: "var(--text-muted)" }}>→</span>
+              <span className="text-sm font-bold tabular-nums" style={{ color: "var(--text-base)" }}>{fmt(stayPoints - confirm.points_cost)} left</span>
             </div>
             {error && <p className="text-xs text-red-500 text-center mt-3">{error}</p>}
             <div className="flex gap-2 mt-5">
               <button onClick={() => setConfirm(null)} disabled={busy}
-                className="flex-1 py-2.5 rounded-xl font-semibold text-sm border border-luxury-200 text-luxury-600">
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                style={{ border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
                 Cancel
               </button>
               <button onClick={doRedeem} disabled={busy}
@@ -521,16 +523,19 @@ function RewardsTab({
       {success && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
           onClick={() => setSuccess(null)}>
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-3xl p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
             <p className="text-4xl mb-2">🎉</p>
-            <h3 className="font-display text-xl font-semibold text-luxury-900">Reward unlocked!</h3>
-            <p className="text-sm text-luxury-500 mt-1">{success.title}</p>
-            <div className="mt-4 rounded-2xl border-2 border-dashed border-gold-300 bg-gold-50 py-3">
-              <p className="font-mono text-lg font-bold text-luxury-900 tracking-wide">{success.code}</p>
+            <h3 className="font-display text-xl font-semibold" style={{ color: "var(--text-base)" }}>Reward unlocked!</h3>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{success.title}</p>
+            <div className="mt-4 rounded-2xl border-2 border-dashed py-3"
+              style={{ borderColor: "rgba(201,166,107,0.5)", background: "color-mix(in srgb, var(--accent) 12%, transparent)" }}>
+              <p className="font-mono text-lg font-bold tracking-wide" style={{ color: "var(--text-base)" }}>{success.code}</p>
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setSuccess(null)}
-                className="flex-1 py-2.5 rounded-xl font-semibold text-sm border border-luxury-200 text-luxury-600">
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                style={{ border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
                 Close
               </button>
               <button onClick={() => { setSuccess(null); onGoCodes(); }}
@@ -580,11 +585,12 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
     <div className="space-y-4 sb-fade-in">
       {walletCredit > 0 && (
         <div className="rounded-[22px] p-4 sb-card-lift flex items-center justify-between"
-          style={{ background: "linear-gradient(160deg,#fffdf8,#fbf3e2)", border: "1px solid rgba(201,166,107,0.4)" }}>
+          style={{ background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))", border: "1px solid rgba(201,166,107,0.4)" }}>
           <div>
-            <p className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "#8B6914" }}>Wallet Credit</p>
-            {/* fixed cream surface never flips → keep the amount a fixed walnut, not the flipping --text-base (which would go near-white on cream in dark) */}
-            <p className="font-display text-2xl font-bold tabular-nums" style={{ color: "#3A2D10" }}>₹<CountUp value={walletCredit} duration={900} /></p>
+            {/* the card surface now flips with the theme (gold-tinted cream in light,
+                gold-tinted dark card in dark), so the text uses normal tokens. */}
+            <p className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "var(--accent)" }}>Wallet Credit</p>
+            <p className="font-display text-2xl font-bold tabular-nums" style={{ color: "var(--text-base)" }}>₹<CountUp value={walletCredit} duration={900} /></p>
           </div>
           <span className="text-2xl">💰</span>
         </div>

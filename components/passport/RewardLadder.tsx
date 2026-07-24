@@ -125,7 +125,7 @@ export function RewardLadder({
               onClick={() => setOpenKey(r.key)}
               className="w-full rounded-[22px] p-3 flex items-center gap-3 text-left sb-card-lift"
               style={{
-                background: r.unlocked ? "linear-gradient(160deg,#fffdf8,#fbf3e2)" : "var(--bg-card)",
+                background: r.unlocked ? "color-mix(in srgb, var(--accent) 10%, var(--bg-card))" : "var(--bg-card)",
                 border: r.unlocked ? "1px solid rgba(201,166,107,0.4)" : "1px solid var(--border-soft)",
               }}
             >
@@ -141,15 +141,16 @@ export function RewardLadder({
               />
 
               <div className="flex-1 min-w-0">
-                {/* unlocked row = fixed cream gradient (never flips) → fixed dark text; locked row = flipping --bg-card → theme-aware tokens */}
-                <p className="font-bold text-sm leading-tight" style={{ color: r.unlocked ? "#3A2D10" : "var(--text-base)" }}>
+                {/* both rows now flip with the theme (unlocked = gold-tinted card,
+                    locked = --bg-card) → all copy uses theme-aware tokens. */}
+                <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-base)" }}>
                   {r.title}
                 </p>
-                <p className="text-[0.66rem] mt-0.5" style={{ color: r.unlocked ? "#6E5430" : "var(--text-muted)" }}>
+                <p className="text-[0.66rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
                   {r.sub}
                 </p>
                 {!r.unlocked ? (
-                  <p className="text-[0.6rem] mt-1 font-semibold tabular-nums" style={{ color: "#8B6914" }}>
+                  <p className="text-[0.6rem] mt-1 font-semibold tabular-nums" style={{ color: "var(--accent)" }}>
                     {r.remaining} more stamp{r.remaining === 1 ? "" : "s"} to unlock
                   </p>
                 ) : claimed ? (
@@ -157,7 +158,7 @@ export function RewardLadder({
                     ✓ Claimed
                   </p>
                 ) : (
-                  <p className="text-[0.62rem] mt-1 font-bold" style={{ color: "#8B6914" }}>
+                  <p className="text-[0.62rem] mt-1 font-bold" style={{ color: "var(--accent)" }}>
                     Ready to claim — tap to open
                   </p>
                 )}

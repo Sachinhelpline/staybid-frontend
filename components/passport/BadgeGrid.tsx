@@ -65,7 +65,7 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
               className="flex flex-col items-center gap-1.5 rounded-[22px] py-3 px-1.5 sb-card-lift"
               style={{
                 background: b.earned
-                  ? "linear-gradient(160deg,#fffdf8,#fbf3e2)"
+                  ? "color-mix(in srgb, var(--accent) 10%, var(--bg-card))"
                   : "var(--bg-card)",
                 border: b.earned
                   ? "1px solid rgba(201,166,107,0.4)"
@@ -83,13 +83,13 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
               />
               <p
                 className="text-[0.64rem] font-bold leading-tight text-center"
-                /* earned = fixed cream surface (never flips) → fixed walnut label; locked = flipping --bg-card → theme-aware --text-base */
-                style={{ color: b.earned ? "#3A2D10" : "var(--text-base)" }}
+                /* both surfaces now flip with the theme → single token label */
+                style={{ color: "var(--text-base)" }}
               >
                 {b.label}
               </p>
               {!b.earned && b.need > 1 && (
-                <p className="text-[0.55rem] font-semibold tabular-nums" style={{ color: "#8B6914" }}>
+                <p className="text-[0.55rem] font-semibold tabular-nums" style={{ color: "var(--accent)" }}>
                   {b.have}/{b.need}
                 </p>
               )}

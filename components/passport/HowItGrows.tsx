@@ -45,17 +45,17 @@ export function HowItGrows() {
             }
             className="rounded-[22px] p-3 flex items-center gap-3 text-left sb-card-lift"
             style={{
-              background: "linear-gradient(160deg,#fffdf8,#fbf3e2)",
+              background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))",
               border: "1px solid rgba(201,166,107,0.32)",
               boxShadow: "0 6px 16px -10px rgba(201,166,107,0.5)",
             }}
           >
             <PassportMedal glyph={x.glyph} size={42} m={MEDAL_CHAMPAGNE} pulse ariaLabel={x.t} />
             <div className="min-w-0">
-              <p className="font-bold text-sm leading-tight" style={{ color: "#3A2D10" }}>
+              <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-base)" }}>
                 {x.t}
               </p>
-              <p className="text-[0.62rem] mt-0.5 leading-snug" style={{ color: "#6E5430" }}>
+              <p className="text-[0.62rem] mt-0.5 leading-snug" style={{ color: "var(--text-muted)" }}>
                 {x.s}
               </p>
             </div>
