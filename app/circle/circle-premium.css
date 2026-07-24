@@ -2217,6 +2217,23 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-home .sbc-home-bundle-go { color: var(--sbc-gold-deep); }
 .sbc-home .sbc-home-bundle-eyebrow { color: var(--sbc-c-sage-deep); }
 
+/* ---- MARKETPLACE SHELL (.sbc-ms-*) text → cream/dark-safe tokens ----
+   v488: CircleStepShell (and model3/model4 which render it) emit
+   .sbc-ms-title/-sub/-note/-steplabel/-tag/-chip with HARDCODED cream
+   literals (#FBF3E2, rgba(245,236,216,…), rgba(231,207,160,…)). Those sit
+   directly on the LIGHT cozy-cream .sbc-home canvas → invisible in light
+   mode (the flagged latent bug; model2/* pages patched it inline with a
+   fixed coffee that then breaks in DARK). Remap them here to the SAME
+   --sbc-c-* / --sbc-c-sage-deep tokens the .sbc-home-* block uses — these
+   flip automatically under [data-theme="dark"] (redefs ~line 2741), so
+   BOTH modes read. Higher specificity than the base defs, so it wins. */
+.sbc-home .sbc-ms-title     { color: var(--sbc-c-ink); }
+.sbc-home .sbc-ms-sub       { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-ms-note      { color: var(--sbc-c-ink-faint); }
+.sbc-home .sbc-ms-steplabel { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-ms-tag       { color: var(--sbc-c-sage-deep); }
+.sbc-home .sbc-ms-chip      { color: var(--sbc-c-sage-deep); }
+
 /* ---- BUILD result panel + KPIs + plan chips → cream ---- */
 .sbc-panel-walnut {
   color: var(--sbc-c-ink);
