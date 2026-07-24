@@ -1353,6 +1353,30 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   18e. v484 — /passport desktop 2-column hub
+   ─────────────────────────────────────────────────────────────────────────
+   /passport is a tall single stack. On ≥1024px it becomes a 2-column hub:
+   left = passport book + member card + stamps, right = reward ladder + family +
+   badges + how-it-grows. The two `.pp-col` wrappers are `display: contents`
+   BELOW 1024px, so their 7 children flow in the SAME source order as before
+   inside `.pp-hub`'s flex column with the same 28px gap — mobile is
+   byte-identical (no reorder, no spacing change). Also undoes §9's
+   `grid-cols-3 -> 5-col` bump on this page (it mis-shifted the book/wallet
+   3-stat strips; 3-up is correct in the narrower columns). ─────────────────── */
+.pp-hub { display: flex; flex-direction: column; gap: 28px; }
+.pp-col { display: contents; }
+@media (min-width: 1024px) {
+  .pp-hub {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  .pp-col { display: flex; flex-direction: column; gap: 28px; }
+  .passport-root .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    19. v122.6 — ALL-VIEWPORT DENSITY PASS (mobile + tablet + desktop)
    ─────────────────────────────────────────────────────────────────────────
    v122.5 reduced size only on desktop AND only inside .lux-bg / .fd-root.

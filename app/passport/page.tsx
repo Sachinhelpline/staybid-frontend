@@ -124,7 +124,7 @@ function PassportHub() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-page)" }}>
+    <div className="min-h-screen passport-root" style={{ background: "var(--bg-page)" }}>
       <div className="max-w-xl mx-auto px-5 pt-8 pb-28">
         {/* Header */}
         <div className="flex items-end justify-between mb-5 sb-fade-in">
@@ -171,34 +171,43 @@ function PassportHub() {
         {tab === "passport" && (
           <div className="space-y-7 sb-fade-in">
             {passport?.profile ? (
-              <>
-                <PassportBook
-                  explorerId={passport.profile.explorer_id}
-                  displayName={passport.profile.display_name || user?.name}
-                  memberSince={passport.profile.member_since}
-                  rank={passport.rank}
-                  stats={passport.stats}
-                />
+              /* v484 — desktop 2-column hub. On ≥1024px `.pp-hub` becomes a
+                 grid (passport book + card + stamps on the left, progression +
+                 badges on the right); below that, `.pp-col` is `display:contents`
+                 so all 7 blocks flow in the SAME source order with the same 28px
+                 gap → mobile is byte-identical (see app/desktop.css §18e). */
+              <div className="pp-hub">
+                <div className="pp-col pp-col-l">
+                  <PassportBook
+                    explorerId={passport.profile.explorer_id}
+                    displayName={passport.profile.display_name || user?.name}
+                    memberSince={passport.profile.member_since}
+                    rank={passport.rank}
+                    stats={passport.stats}
+                  />
 
-                <MemberCard
-                  explorerId={passport.profile.explorer_id}
-                  displayName={passport.profile.display_name || user?.name}
-                  rank={passport.rank}
-                  walletBalance={walletBalance}
-                  stayPoints={stayPoints}
-                />
+                  <MemberCard
+                    explorerId={passport.profile.explorer_id}
+                    displayName={passport.profile.display_name || user?.name}
+                    rank={passport.rank}
+                    walletBalance={walletBalance}
+                    stayPoints={stayPoints}
+                  />
 
-                <StampGrid stamps={passport.stamps || []} />
-                <RewardLadder
-                  rewards={passport.rewards || []}
-                  stampCount={passport.stats?.stampCount || 0}
-                  onClaimed={load}
-                />
-                <FamilyPassport myExplorerId={passport.profile.explorer_id} />
-                <BadgeGrid badges={passport.badges || []} />
+                  <StampGrid stamps={passport.stamps || []} />
+                </div>
+                <div className="pp-col pp-col-r">
+                  <RewardLadder
+                    rewards={passport.rewards || []}
+                    stampCount={passport.stats?.stampCount || 0}
+                    onClaimed={load}
+                  />
+                  <FamilyPassport myExplorerId={passport.profile.explorer_id} />
+                  <BadgeGrid badges={passport.badges || []} />
 
-                <HowItGrows />
-              </>
+                  <HowItGrows />
+                </div>
+              </div>
             ) : (
               <div className="rounded-3xl p-8 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
                 <p className="text-4xl mb-2">🛂</p>
