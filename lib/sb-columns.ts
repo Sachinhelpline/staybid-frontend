@@ -16,10 +16,12 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 // Used on listing surfaces (/hotels, /flash-deals rail, search), Discover
-// feed enrichment. Excludes description / address / reviewsCount which only
-// the hotel-detail page needs.
+// feed enrichment. Excludes description / address which only the
+// hotel-detail page needs. NOTE: the review-count column is "totalReviews"
+// (NOT "reviewsCount" — that column does not exist; selecting it 400s the
+// whole hotels query and empties every card/deal/discover surface).
 export const HOTEL_CARD_COLS =
-  "id,name,city,state,lat,lng,starRating,avgRating,reviewsCount,images,amenities,trustBadge,createdAt,ownerId,property_type,meal_plans,addon_services";
+  "id,name,city,state,lat,lng,starRating,avgRating,totalReviews,images,amenities,trustBadge,createdAt,ownerId,property_type,meal_plans,addon_services";
 
 // Hotel-detail page (full page above the fold). Includes description fields.
 export const HOTEL_DETAIL_COLS =
