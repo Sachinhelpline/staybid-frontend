@@ -21,7 +21,7 @@ export default function UpgradePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-luxury-50">
+      <div className="lux-bg upg-root min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="shimmer w-16 h-16 rounded-full mx-auto mb-3" />
           <p className="text-luxury-600 text-sm font-medium">Checking your account…</p>
@@ -32,7 +32,7 @@ export default function UpgradePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50 px-4 py-10">
+      <div className="lux-bg upg-root min-h-screen px-4 py-10">
         <div className="max-w-md mx-auto card-luxury sb-card-lift sb-fade-in p-6 text-center">
           <p className="text-3xl mb-2">🔒</p>
           <h1 className="font-display text-2xl font-bold text-luxury-900 mb-1">Sign in first</h1>
@@ -51,7 +51,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50 px-4 py-8">
+    <div className="lux-bg upg-root min-h-screen px-4 py-8">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-6 sb-fade-in">
           <p className="text-gold-700 text-xs uppercase tracking-widest font-bold">Upgrade your StayBid</p>

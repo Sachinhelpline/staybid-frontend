@@ -145,7 +145,7 @@ export default function VerificationPage() {
   }
 
   return (
-    <div className="bg-luxury-50 min-h-screen">
+    <div className="lux-bg verif-root min-h-screen">
       <div className="max-w-4xl mx-auto px-5 py-10">
         {/* ── Premium hero ─────────────────────────────────────────── */}
         <div className="sb-fade-in relative overflow-hidden rounded-3xl p-6 mb-6"
@@ -340,7 +340,7 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, p
         <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
       </div>
       {report ? (
-        <div className="rounded-2xl p-4 border border-luxury-100"
+        <div className="verif-report rounded-2xl p-4 border border-luxury-100"
              style={{ background: "linear-gradient(135deg, var(--cozy-cream-50,#FFFCF6), var(--cozy-cream-200,#F2EAD8))" }}>
           <div className="flex items-center gap-4">
             <TrustRing score={report.trust_score ?? 0} size={92} tone="light" />
