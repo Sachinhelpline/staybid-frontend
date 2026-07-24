@@ -691,6 +691,31 @@
 .verif-root .verif-report .text-luxury-500 { color: var(--cozy-cocoa-soft, #6E5430) !important; }
 .verif-root .verif-report .text-gold-700 { color: #8B6914 !important; }
 
+/* ═══════════════════════════════════════════════════════════════════
+   v462 — `.lux-soft` shared dark scope for image/colored-button-heavy
+   pages (complaints, saved). Unlike `.lux-bg`, it deliberately does NOT
+   remap `text-white` — so white captions over image thumbnails and white
+   labels on solid colored buttons (bg-luxury-700 / bg-gold-500 / bg-black)
+   stay white in BOTH themes. It flips only the legacy text-luxury family
+   + the white/luxury card & pill & border surfaces → dark-aware tokens.
+   Pair with an inline `background: var(--bg-page)` on the root. */
+.lux-soft .text-luxury-900,
+.lux-soft .text-luxury-800 { color: var(--text-base) !important; }
+.lux-soft .text-luxury-700,
+.lux-soft .text-luxury-600 { color: var(--text-soft) !important; }
+.lux-soft .text-luxury-500,
+.lux-soft .text-luxury-400,
+.lux-soft .text-luxury-300 { color: var(--text-muted) !important; }
+.lux-soft .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
+.lux-soft .bg-white { background: var(--bg-card) !important; }
+.lux-soft .bg-luxury-50,
+.lux-soft .bg-luxury-100 { background: var(--bg-pill) !important; }
+.lux-soft .input-luxury { background: var(--bg-card); border-color: var(--border-soft); color: var(--text-base); }
+.lux-soft .border-luxury-100,
+.lux-soft .border-luxury-200 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .lux-soft .text-gold-700,
+[data-theme="dark"] .lux-soft .text-gold-800 { color: var(--cozy-champagne-light) !important; }
+
 .upg-root .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
 .upg-root .bg-white { background: var(--bg-card) !important; }
 .upg-root .bg-luxury-50,

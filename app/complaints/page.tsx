@@ -122,7 +122,7 @@ function ComplaintsInner() {
   }
 
   return (
-    <div className="min-h-screen bg-luxury-50 pb-24">
+    <div className="lux-soft min-h-screen pb-24" style={{ background: "var(--bg-page)" }}>
       <div className="max-w-3xl mx-auto px-5 py-8 sm:py-12">
         <header className="flex items-start justify-between gap-3 mb-6 sb-fade-in">
           <div className="min-w-0">
