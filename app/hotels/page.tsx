@@ -1037,22 +1037,62 @@ function HotelList() {
             </header>
 
             <div className="hxr-sheet-body hxr-steps">
-              {/* ── WHERE ── (v517 Airbnb-style progressive step) */}
-              <section className={`hxr-step${openStep === "where" ? " is-open" : ""}`}>
+              {/* v518 — Airbnb-style: 3 PARALLEL tabs (Where / When / Who) on
+                  one row + a single full-width editor panel below. Replaces the
+                  vertical accordion so the tabs sit side-by-side on desktop and
+                  the pricing calendar in "When" gets the full width and is never
+                  clipped (the panel grows and the body scrolls instead). */}
+              <div className="hxr-step-tabs" role="tablist" aria-label="Search steps">
                 <button
                   type="button"
-                  className="hxr-step-head"
+                  role="tab"
+                  aria-selected={openStep === "where"}
+                  className={`hxr-tab${openStep === "where" ? " is-open" : ""}`}
                   onClick={() => setOpenStep(openStep === "where" ? null : "where")}
-                  aria-expanded={openStep === "where"}
                 >
-                  <span className="hxr-step-lbl">Where</span>
-                  <span className={`hxr-step-val${(search.trim() || city) ? " is-set" : ""}`}>
+                  <span className="hxr-tab-lbl">Where</span>
+                  <span className={`hxr-tab-val${(search.trim() || city) ? " is-set" : ""}`}>
                     {search.trim() ? `“${search.trim()}”` : (city || "Anywhere")}
                   </span>
-                  <span className="hxr-step-caret" aria-hidden="true">▾</span>
                 </button>
-                {openStep === "where" && (
-                  <div className="hxr-step-body">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={openStep === "when"}
+                  className={`hxr-tab${openStep === "when" ? " is-open" : ""}`}
+                  onClick={() => setOpenStep(openStep === "when" ? null : "when")}
+                >
+                  <span className="hxr-tab-lbl">When</span>
+                  <span className={`hxr-tab-val${searchCheckIn ? " is-set" : ""}`}>
+                    {searchCheckIn && searchCheckOut
+                      ? `${new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(searchCheckOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+                      : searchCheckIn
+                        ? new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                        : "Any dates"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={openStep === "who"}
+                  className={`hxr-tab${openStep === "who" ? " is-open" : ""}`}
+                  onClick={() => setOpenStep(openStep === "who" ? null : "who")}
+                >
+                  <span className="hxr-tab-lbl">Who</span>
+                  <span className={`hxr-tab-val${(searchAdults + searchChildren + searchKids) > 0 ? " is-set" : ""}`}>
+                    {(() => {
+                      const t = searchAdults + searchChildren + searchKids;
+                      return t > 0 ? `${t} guest${t === 1 ? "" : "s"}` : "Add guests";
+                    })()}
+                  </span>
+                </button>
+              </div>
+
+              {openStep && (
+                <div className="hxr-step-panel">
+                  {/* ── WHERE ── */}
+                  {openStep === "where" && (
+                  <div className="hxr-panel">
                     <div className="hxr-sheet-search">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -1170,29 +1210,11 @@ function HotelList() {
                       </div>
                     )}
                   </div>
-                )}
-              </section>
+                  )}
 
-              {/* ── WHEN ── (inline pricing calendar — StayBid's edge over Airbnb) */}
-              <section className={`hxr-step${openStep === "when" ? " is-open" : ""}`}>
-                <button
-                  type="button"
-                  className="hxr-step-head"
-                  onClick={() => setOpenStep(openStep === "when" ? null : "when")}
-                  aria-expanded={openStep === "when"}
-                >
-                  <span className="hxr-step-lbl">When</span>
-                  <span className={`hxr-step-val${searchCheckIn ? " is-set" : ""}`}>
-                    {searchCheckIn && searchCheckOut
-                      ? `${new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(searchCheckOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
-                      : searchCheckIn
-                        ? new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-                        : "Any dates"}
-                  </span>
-                  <span className="hxr-step-caret" aria-hidden="true">▾</span>
-                </button>
-                {openStep === "when" && (
-                  <div className="hxr-step-body hxr-step-cal">
+                  {/* ── WHEN ── (inline pricing calendar — StayBid's edge over Airbnb) */}
+                  {openStep === "when" && (
+                  <div className="hxr-panel hxr-step-cal">
                     <LuxuryCalendar
                       inline
                       open
@@ -1210,28 +1232,11 @@ function HotelList() {
                       onClose={() => {}}
                     />
                   </div>
-                )}
-              </section>
+                  )}
 
-              {/* ── WHO ── */}
-              <section className={`hxr-step${openStep === "who" ? " is-open" : ""}`}>
-                <button
-                  type="button"
-                  className="hxr-step-head"
-                  onClick={() => setOpenStep(openStep === "who" ? null : "who")}
-                  aria-expanded={openStep === "who"}
-                >
-                  <span className="hxr-step-lbl">Who</span>
-                  <span className={`hxr-step-val${(searchAdults + searchChildren + searchKids) > 0 ? " is-set" : ""}`}>
-                    {(() => {
-                      const t = searchAdults + searchChildren + searchKids;
-                      return t > 0 ? `${t} guest${t === 1 ? "" : "s"}` : "Add guests";
-                    })()}
-                  </span>
-                  <span className="hxr-step-caret" aria-hidden="true">▾</span>
-                </button>
-                {openStep === "who" && (
-                  <div className="hxr-step-body">
+                  {/* ── WHO ── */}
+                  {openStep === "who" && (
+                  <div className="hxr-panel">
                     <div className="hxr-sheet-guests">
                       <GuestRow
                         label="Adults"
@@ -1259,8 +1264,9 @@ function HotelList() {
                       />
                     </div>
                   </div>
-                )}
-              </section>
+                  )}
+                </div>
+              )}
             </div>
 
             <footer className="hxr-sheet-foot">
