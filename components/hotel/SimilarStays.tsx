@@ -18,12 +18,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { getAffinity, rankCandidates } from "@/lib/hotel-affinity";
 
 type Props = {
   hotelId: string;
   city?: string;
   state?: string;
   starRating?: number;
+  /** The property_type of the hotel the customer is currently viewing —
+   *  same-type stays are surfaced first ("same style" rule). */
+  propertyType?: string;
+  /** Current hotel's from-price + rating, so each suggestion can say WHY it's
+   *  a good alternative (cheaper / higher rated) vs. this one. */
+  currentPrice?: number;
+  currentRating?: number;
 };
 
 type SimHotel = {
@@ -35,9 +43,11 @@ type SimHotel = {
   avgRating?: number;
   starRating?: number;
   fromPrice?: number;
+  propertyType?: string;
+  _reason?: string;
 };
 
-export default function SimilarStays({ hotelId, city, state, starRating }: Props) {
+export default function SimilarStays({ hotelId, city, state, starRating, propertyType, currentPrice, currentRating }: Props) {
   const [hotels, setHotels] = useState<SimHotel[]>([]);
   const railRef = useRef<HTMLDivElement>(null);
 
@@ -64,22 +74,25 @@ export default function SimilarStays({ hotelId, city, state, starRating }: Props
               avgRating: Number(h.avgRating) || undefined,
               starRating: Number(h.starRating) || undefined,
               fromPrice: prices.length ? Math.min(...prices) : undefined,
+              propertyType: h.property_type || undefined,
             };
           });
-        // Rank: same star-category first, then higher rating.
-        mapped.sort((a, b) => {
-          const sameA = starRating && a.starRating === starRating ? 1 : 0;
-          const sameB = starRating && b.starRating === starRating ? 1 : 0;
-          if (sameA !== sameB) return sameB - sameA;
-          return (b.avgRating || 0) - (a.avgRating || 0);
-        });
-        if (alive) setHotels(mapped.slice(0, 12));
+
+        // Same-type stays first (the owner's "show the same style they picked"
+        // rule), then ranked by the customer's inferred price/quality affinity
+        // — captured silently from their click trail across hotel pages.
+        const ranked = rankCandidates(
+          mapped.map((h) => ({ ...h, avgRating: h.avgRating })),
+          { propertyType, currentPrice, currentRating, affinity: getAffinity() }
+        );
+        const out: SimHotel[] = ranked.map((r: any) => ({ ...r }));
+        if (alive) setHotels(out.slice(0, 12));
       } catch {
         /* silent — a recommendations rail must never break the page */
       }
     })();
     return () => { alive = false; };
-  }, [hotelId, city, starRating]);
+  }, [hotelId, city, propertyType, currentPrice, currentRating]);
 
   const scrollBy = (dir: 1 | -1) => {
     const el = railRef.current;
@@ -113,6 +126,7 @@ export default function SimilarStays({ hotelId, city, state, starRating }: Props
                     onError={(e: any) => { e.currentTarget.style.display = "none"; }} />
                 : <span className="sim-card-ph">🏨</span>}
               {h.starRating ? <span className="sim-card-badge">{"★".repeat(Math.min(5, h.starRating))}</span> : null}
+              {h._reason ? <span className="sim-card-reason">{h._reason}</span> : null}
             </div>
             <div className="sim-card-body">
               <p className="sim-card-name" title={h.name}>{h.name}</p>
@@ -172,9 +186,12 @@ export default function SimilarStays({ hotelId, city, state, starRating }: Props
           display: flex; flex-direction: column;
           background: var(--bg-card);
           border: 1px solid var(--border-soft);
-          border-radius: 18px; overflow: hidden;
+          /* v508 — match the app's premium rounded cards (room cards use 24px).
+             The image sits inside, so the card's overflow:hidden rounds it too. */
+          border-radius: 22px;
+          overflow: hidden;
           text-decoration: none;
-          box-shadow: 0 8px 24px -18px rgba(31, 26, 15, 0.22);
+          box-shadow: 0 10px 28px -18px rgba(31, 26, 15, 0.24);
           transition: transform 0.22s ease, box-shadow 0.24s ease, border-color 0.24s ease;
         }
         .sim-card:hover {
@@ -187,8 +204,19 @@ export default function SimilarStays({ hotelId, city, state, starRating }: Props
           background: linear-gradient(135deg, #efe4cf, #ddcbaa);
           display: flex; align-items: center; justify-content: center;
           overflow: hidden;
+          /* explicit top rounding so the photo's corners always read as curved */
+          border-top-left-radius: 21px;
+          border-top-right-radius: 21px;
         }
         .sim-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sim-card-reason {
+          position: absolute; bottom: 10px; left: 10px;
+          font-size: 0.62rem; font-weight: 800; letter-spacing: 0.02em;
+          color: #2a1f0c;
+          background: linear-gradient(135deg, #f4e3b8, #e9c877);
+          padding: 4px 9px; border-radius: 999px;
+          box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.45);
+        }
         .sim-card-ph { font-size: 2rem; opacity: 0.5; }
         .sim-card-badge {
           position: absolute; top: 10px; left: 10px;

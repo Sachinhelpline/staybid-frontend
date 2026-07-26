@@ -9,6 +9,7 @@ import InspirationBanner from "@/components/tier/InspirationBanner";
 import { AmbientBackdrop } from "@/components/AmbientBackdrop";
 import SimilarStays from "@/components/hotel/SimilarStays";
 import PhotoGallery from "@/components/hotel/PhotoGallery";
+import { recordHotelView } from "@/lib/hotel-affinity";
 import { api, ApiError } from "@/lib/api";
 // 409 city-conflict sheet — one active bid per (customer × city). Surfaces
 // the existing bid + inline "Update Budget" instead of a new bid.
@@ -627,6 +628,21 @@ export default function HotelDetail() {
   // the lightbox JSX.
   // v507 — keyboard nav now lives inside <PhotoGallery> (it owns Esc/←/→ so
   // Esc-in-zoom returns to the grid instead of closing the whole gallery).
+
+  // v508 — record this hotel view into the local preference trail so the "More
+  // stays" rail can silently learn whether the customer leans cheaper vs.
+  // higher-rated and re-rank the next set of suggestions accordingly.
+  useEffect(() => {
+    if (!hotel?.id) return;
+    const rooms = Array.isArray(hotel.rooms) ? hotel.rooms : [];
+    const prices = rooms.map((r: any) => Number(r?.floorPrice)).filter((n: number) => Number.isFinite(n) && n > 0);
+    recordHotelView({
+      id: String(hotel.id),
+      price: prices.length ? Math.min(...prices) : undefined,
+      rating: Number(hotel.avgRating) || undefined,
+      type: hotel.property_type || undefined,
+    });
+  }, [hotel?.id]);
 
   // v124.2 — toggle sb-modal-open whenever an inline modal is open so the
   // BottomDock / DialerNav / BackChip auto-hide. Decoupled from the
@@ -4323,6 +4339,9 @@ export default function HotelDetail() {
           city={hotel.city}
           state={hotel.state}
           starRating={Number(hotel.starRating) || undefined}
+          propertyType={hotel.property_type || undefined}
+          currentPrice={lowestForRibbon || undefined}
+          currentRating={Number(hotel.avgRating) || undefined}
         />
 
       </div>{/* /max-w-6xl */}
