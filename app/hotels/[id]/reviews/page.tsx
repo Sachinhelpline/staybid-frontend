@@ -357,8 +357,10 @@ function ReviewsPageInner() {
           height: 38px;
           border-radius: 50%;
           border: 1px solid rgba(201, 166, 107, 0.35);
-          background: rgba(255, 252, 246, 0.85);
-          color: var(--cozy-cocoa, #4a3820);
+          /* v499 — theme tokens (was fixed cream/cocoa → a stray light circle
+             on the dark shell). Flips with Appearance. */
+          background: var(--bg-pill, rgba(255, 252, 246, 0.85));
+          color: var(--text-soft, #4a3820);
           font-size: 1rem;
           cursor: pointer;
           display: inline-flex;

@@ -821,6 +821,50 @@
 .upg-root .border-luxury-200 { border-color: var(--border-soft) !important; }
 [data-theme="dark"] .upg-root .text-gold-700 { color: var(--cozy-champagne-light) !important; }
 
+/* v499 — Trust & Reviews (/trust) dark-mode fix. `.card-luxury` paints the
+   non-flipping `--card-bg: #ffffff` (defined only in :root), so in dark mode
+   its cards stayed pure white with near-white token text on top = unreadable.
+   Every other card-luxury page is rescued by a scoped-root remap (lux-soft /
+   verif-root / inf-root / onb-root / upg-root above); `.trust-root` was the one
+   customer page missing it. This single rule flips its cards to the dark
+   surface token (page text is already `var(--text-*)`, so it becomes visible). */
+.trust-root .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
+
+/* v500 — "adaptive black" ambient backdrop (dark mode only). A fixed, heavily
+   blurred + darkened copy of the page hero image, painted behind content so the
+   near-black canvas softly reflects the hotel's own photo colours. Rendered by
+   <AmbientBackdrop image=.. />. Hidden entirely in light mode; sits over the
+   opaque --bg-page so it only tints the dark ground (never under text → contrast
+   unchanged). */
+.sb-ambient-backdrop {
+  position: fixed;
+  inset: -12%;                 /* bleed so the blur has no hard edges */
+  z-index: -1;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  /* heavy blur + low saturation + darkened = a quiet ambient wash, not a busy
+     patchwork of the photo. */
+  filter: blur(96px) saturate(1.1) brightness(0.36);
+  transform: scale(1.12);
+  opacity: 0;                  /* invisible in light mode (default) */
+  transition: opacity 0.8s ease, background-image 0.6s ease;
+}
+[data-theme="dark"] .sb-ambient-backdrop { opacity: 0.55; }
+/* A soft warm vignette over the wash so the edges melt into the cocoa night and
+   the centre content stays calm — mirrors the reel canvas treatment. */
+[data-theme="dark"] .sb-ambient-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 72% 80% at 50% 42%, rgba(15, 12, 8, 0) 30%, rgba(15, 12, 8, 0.72) 100%),
+    linear-gradient(180deg, rgba(15, 12, 8, 0.28) 0%, rgba(10, 8, 6, 0.5) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-ambient-backdrop { transition: none; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    v455 — Accessibility sweep (global foundations).
 
@@ -1509,6 +1553,13 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     var(--bg-page);
   min-height: 100dvh;
   position: relative;
+}
+/* v500 — dark mode: drop the opaque --bg-page fill (keep the gold radial) so the
+   fixed <AmbientBackdrop> tints through from behind. The body still paints
+   --bg-page underneath, so the base stays a solid cocoa night; content cards keep
+   their own --bg-card, so text contrast is unchanged. Light mode untouched. */
+[data-theme="dark"] .hx-shell {
+  background: radial-gradient(900px 520px at 10% -5%, rgba(201, 166, 107, 0.10), transparent 60%);
 }
 
 /* ─── v437 — theme-consistent modal surface. Replaces the hard `bg-white` on

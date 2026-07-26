@@ -6,6 +6,7 @@ import Link from "next/link";
 // Phase 4 tier-system — Inspiration nudge embedded in the booking-confirmed
 // success modal. Self-dismissing per (user, hotel) via localStorage.
 import InspirationBanner from "@/components/tier/InspirationBanner";
+import { AmbientBackdrop } from "@/components/AmbientBackdrop";
 import { api, ApiError } from "@/lib/api";
 // 409 city-conflict sheet — one active bid per (customer × city). Surfaces
 // the existing bid + inline "Update Budget" instead of a new bid.
@@ -2455,6 +2456,9 @@ export default function HotelDetail() {
 
   return (
     <div className="hx-shell">
+      {/* v500 — dark-mode adaptive ambient: the near-black canvas softly reflects
+          this hotel's own photo colours. Renders nothing in light mode. */}
+      <AmbientBackdrop image={Array.isArray(hotel?.images) ? hotel.images[0] : null} />
       <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 sm:py-7 lg:py-9">
 
         {/* ── Toolbar — Back chip + crumb ── */}
