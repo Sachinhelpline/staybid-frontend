@@ -927,6 +927,18 @@
     z-index: 1100 !important;
   }
   body.reel-with-rail .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #33260f !important; }
+
+  /* v499 — DARK MODE: the home reel canvas is dark (v498), so its navbar must
+     return to the dark frosted glass + cream text. The v477 light-cream bar
+     above is theme-INDEPENDENT, so without this it stayed cream in dark mode
+     (and the gold Explore chip + dark-on-cream location/profile text read as
+     invisible). The position pin (fixed/top:0) is inherited from the rule above
+     — we only re-skin the colours here. */
+  [data-theme="dark"] body.reel-with-rail .nav3d-bar[data-reel-route="true"] {
+    background: rgba(14, 11, 8, 0.5) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+  [data-theme="dark"] body.reel-with-rail .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #f6efe1 !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
