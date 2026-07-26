@@ -1221,11 +1221,12 @@ function MoreDrawer({
   // toggle + Sign-in CTA only). Showing user-specific items here would
   // either deep-link them to a logged-out version of /bookings, /wallet
   // etc. (confusing) or 401 immediately.
+  // v494 — Creator Hub / Hotel Partner no longer appended (like Circle / Hosts,
+  // they're verticals reached via "Switch experience", so listing them in this
+  // flat drawer too was a duplicate).
   const links: DrawerLink[] = signedIn
     ? [
         ...DRAWER_LINKS_BASE,
-        ...(isCreator    ? [CREATOR_LINK] : []),
-        ...(isHotelOwner ? [HOTEL_LINK]   : []),
         ACCOUNT_LINK,
       ]
     : [];
@@ -1287,25 +1288,10 @@ function MoreDrawer({
           <li className="me-drawer-theme">
             <ThemeToggle variant="lg" />
           </li>
-          {/* v140 — App Tour replay list. Lets the user re-watch any
-              tutorial + toggle the master auto-tour switch + flip the
-              tutorial language (EN ⇄ Hinglish). Mounted INSIDE the
-              drawer so the same control surface is reachable from
-              both /me and the floating "?" help button. */}
-          <li className="me-drawer-tutorial">
-            <details className="me-drawer-tutorial-details">
-              <summary className="me-drawer-link me-drawer-tutorial-summary">
-                <DrawerRow
-                  icon="🎓"
-                  label="App Tour"
-                  sub="Replay any walkthrough · EN ⇄ Hinglish"
-                />
-              </summary>
-              <div style={{ padding: "10px 14px 14px 14px" }}>
-                <TutorialReplayList onAfterReplay={onClose} />
-              </div>
-            </details>
-          </li>
+          {/* v494 — removed the duplicate "App Tour" entry here. The drawer
+              already has an "App Tour" row up top (fires sb:open-tour); showing a
+              second "App Tour" (the replay-list <details>) directly below it read
+              as a duplicate. The single top entry is the canonical one. */}
           <li>
             {/* v132.15 — same button, label flips with auth state.
                 Signed-in → "Log out" → fires onLogout (clears state + redirects to /auth).

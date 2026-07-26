@@ -11,7 +11,7 @@ import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import { useTier } from "@/lib/tier-store";
 // v125.3 — single source of truth for the customer Menu. Edit
 // lib/user-links.ts; both mobile drawer and desktop dropdown update.
-import { USER_LINKS_BASE, CREATOR_LINK, HOTEL_LINK } from "@/lib/user-links";
+import { USER_LINKS_BASE, ACCOUNT_LINK } from "@/lib/user-links";
 // v392 — single canonical city list (hill-stations + 12-month demand-cycle hubs).
 import { CITY_DISPLAY_ORDER } from "@/lib/cities";
 
@@ -51,36 +51,20 @@ const BOTTOM_PRIMARY = [
   { href: "/bid",         label: "Bid",       icon: "🎯" },
 ];
 
+// v495 — the OFFICIAL StayBid logo: the gold reflective SB monogram
+// (public/brand/staybid-mark.png, cropped from the master lockup). Framed as a
+// premium gold-rimmed tile with a live shine sweep (.sb-logo-mark, globals.css).
 function LogoMark({ size = 36 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f0b429"/>
-          <stop offset="100%" stopColor="#c9911a"/>
-        </linearGradient>
-        <linearGradient id="sG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff"/>
-          <stop offset="100%" stopColor="#e2e8f0"/>
-        </linearGradient>
-      </defs>
-      <rect width="120" height="120" rx="22" fill="#0d1b2e"/>
-      <path d="M60 20 L90 46 L84 46 L84 76 L36 76 L36 46 L30 46 Z" fill="none" stroke="#c9911a" strokeWidth="3" strokeLinejoin="round"/>
-      <rect x="50" y="58" width="20" height="18" rx="3" fill="#c9911a" opacity="0.75"/>
-      <text x="18" y="112" fontFamily="Inter,Arial,sans-serif" fontWeight="900" fontSize="58" fill="url(#gG)" letterSpacing="-3">S</text>
-      <text x="63" y="112" fontFamily="Inter,Arial,sans-serif" fontWeight="900" fontSize="58" fill="url(#sG)" letterSpacing="-3">B</text>
-    </svg>
+    <span className="sb-logo-mark" style={{ width: size, height: size }} aria-hidden>
+      <img src="/brand/staybid-mark.png" alt="StayBid" width={size} height={size} decoding="async" />
+    </span>
   );
 }
 
+// v495 — "StayBid" as the official gold metallic serif wordmark (.sb-wordmark).
 function BrandText({ className = "", dark = false }: { className?: string; dark?: boolean }) {
-  return (
-    <span className={`font-black tracking-tight leading-none select-none ${className}`}
-      style={{ fontFamily: "'Inter', sans-serif" }}>
-      <span className={dark ? "text-white" : "text-luxury-900"}>stay</span>
-      <span style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>bid</span>
-    </span>
-  );
+  return <span className={`sb-wordmark select-none ${className}`}>StayBid</span>;
 }
 
 /* ── Premium Location Chip — opens the shared globe modal ──────────── */
@@ -132,12 +116,12 @@ export function Navbar() {
   const { isCreator, isHotelOwner } = useTier();
   const showCreator = isCreator;
   const showHotel   = isHotelOwner;
-  const userLinks = useMemo(() => {
-    const out: any[] = [...USER_LINKS_BASE];
-    if (showCreator) out.push(CREATOR_LINK);
-    if (showHotel)   out.push(HOTEL_LINK);
-    return out;
-  }, [showCreator, showHotel]);
+  // v494 — the Menu lists only the customer's own pages. Creator Hub / Hotel
+  // Partner (like Circle / Hosts) are verticals reached via "Switch experience",
+  // so they're no longer duplicated into this flat list. Account settings is
+  // appended (it was previously only on the mobile drawer — the desktop dropdown
+  // was missing it).
+  const userLinks = useMemo(() => [...USER_LINKS_BASE, ACCOUNT_LINK], []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -212,7 +196,10 @@ export function Navbar() {
           position: relative; overflow: hidden;
           background: var(--bg-pill);
           border: 1px solid var(--border-soft);
-          color: var(--text-soft);
+          /* v494 — bolder, higher-contrast resting text (was --text-soft). The
+             chips no longer carry an inline text-white/N, so this token is the
+             single source: dark cocoa on the light bar, cream on the dark bars. */
+          color: var(--text-base);
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 4px rgba(31,26,15,0.06);
           transition: transform .25s cubic-bezier(.3,1,.3,1), box-shadow .25s, border-color .25s, color .2s;
         }
@@ -453,7 +440,7 @@ export function Navbar() {
               const isReels = item.href === "/reels";
               return (
                 <Link key={item.href} href={item.href}
-                  className={`nav3d-chip relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70 ${active ? "nav3d-chip-active" : ""}`}>
+                  className={`nav3d-chip relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8rem] font-semibold tracking-wide ${active ? "nav3d-chip-active" : ""}`}>
                   <span className="text-sm">{item.icon}</span>
                   {item.label}
                   {item.pulse && !active && (
@@ -487,7 +474,7 @@ export function Navbar() {
                   <button
                     type="button"
                     onClick={() => setMoreOpen((s) => !s)}
-                    className={`nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70 ${moreOpen ? "nav3d-chip-active" : ""}`}
+                    className={`nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8rem] font-semibold tracking-wide ${moreOpen ? "nav3d-chip-active" : ""}`}
                     aria-haspopup="menu"
                     aria-expanded={moreOpen}
                   >
@@ -554,7 +541,7 @@ export function Navbar() {
                               key={item.href}
                               href={item.href}
                               onClick={() => setMoreOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2.5 text-[0.82rem] font-medium transition-colors"
+                              className="flex items-center gap-3 px-3.5 py-2.5 text-[0.82rem] font-semibold transition-colors"
                               style={{
                                 color: active ? "var(--accent, #f0b429)" : "var(--text-soft, rgba(255,255,255,0.78))",
                                 background: active ? "rgba(240,180,41,0.10)" : "transparent",
@@ -577,13 +564,15 @@ export function Navbar() {
                     style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>
-                  <span className="text-xs font-semibold text-white/80 leading-none">
+                  {/* v494 — was text-white/80 → invisible on the light bar (only
+                      "SA" showed). text-luxury-900 is theme/route-aware. */}
+                  <span className="text-xs font-semibold text-luxury-900 leading-none">
                     {user.name ? user.name.split(" ")[0] : "Profile"}
                   </span>
                 </Link>
 
                 <button onClick={logout}
-                  className="nav3d-chip ml-1 text-xs px-3 py-2 rounded-xl text-white/50 hover:text-red-400">
+                  className="nav3d-chip ml-1 text-xs font-semibold px-3 py-2 rounded-xl hover:text-red-500">
                   Sign Out
                 </button>
               </>

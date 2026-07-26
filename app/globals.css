@@ -488,6 +488,54 @@
 .lux-fade-up { animation: lux-fadeUp 0.55s ease both; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v495 — Official StayBid brand mark + wordmark (single source).
+   The real logo is the gold reflective SB monogram (public/brand/
+   staybid-mark.png, cropped from the master lockup in public/brand/
+   staybid-logo-master.png). `.sb-logo-mark` frames it as a premium
+   rounded gold-rimmed tile with a live reflective shine sweep; the
+   `.sb-wordmark` renders "StayBid" as a gold metallic serif. Used in the
+   navbar (desktop + mobile sheet) and the /auth brand lockup so the logo
+   is consistent everywhere. Reduced-motion users get the static premium
+   look (no sweep).
+   ═══════════════════════════════════════════════════════════════════ */
+.sb-logo-mark {
+  position: relative; display: inline-block; flex-shrink: 0;
+  box-sizing: border-box;
+  /* v495.1 — premium gold SEAL, not a hard box: a soft squircle (small
+     corners) with a crisp gold rim and a soft gold halo that eases the edge
+     into whatever surface it sits on. The dark ground stays (a reflective gold
+     mark needs it for contrast + depth) but no longer reads as a closed box. */
+  border-radius: 36%; overflow: hidden;
+  background: #141009;
+  border: 1.5px solid rgba(243,197,92,0.5);
+  box-shadow:
+    0 0 0 3px rgba(240,180,41,0.09),
+    0 6px 18px -5px rgba(201,145,26,0.5);
+}
+.sb-logo-mark img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sb-logo-mark::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 34%, rgba(255,255,255,0.50) 48%, transparent 60%);
+  transform: translateX(-135%);
+  animation: sbLogoShine 5s ease-in-out infinite;
+}
+@keyframes sbLogoShine {
+  0%, 58% { transform: translateX(-135%); }
+  80%, 100% { transform: translateX(135%); }
+}
+.sb-wordmark {
+  display: inline-block;
+  font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, 'Times New Roman', serif;
+  font-weight: 700; letter-spacing: 0.005em; line-height: 1;
+  background: linear-gradient(96deg, #a9741a 0%, #e6b552 44%, #fce6ab 52%, #cf9a24 66%, #a9741a 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-logo-mark::after { animation: none; opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    v90 — Theme-aware text overrides for legacy Tailwind utility classes
    used INSIDE .lux-bg containers (which are the customer-facing pages
    that were originally designed against a dark navy surface but now
