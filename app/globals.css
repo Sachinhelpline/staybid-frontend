@@ -2051,15 +2051,18 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
    width — never cramped, never stretched. */
 .hx-room-list { display: flex; flex-direction: column; gap: 22px; }
 .hx-room-list.is-hidden { display: none; }
+/* 2-up only when there are 2+ room types. `.is-single` (exactly one room type)
+   keeps the base full-width stacked card (image-left row layout) — a lone
+   half-width card in a 2-col grid would leave the row half empty. */
 @media (min-width: 1440px) {
-  .hx-room-list:not(.is-hidden) {
+  .hx-room-list:not(.is-hidden):not(.is-single) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
     align-items: start;
   }
-  .hx-room-list:not(.is-hidden) .hx-room-body { flex-direction: column; }
-  .hx-room-list:not(.is-hidden) .hx-room-media {
+  .hx-room-list:not(.is-hidden):not(.is-single) .hx-room-body { flex-direction: column; }
+  .hx-room-list:not(.is-hidden):not(.is-single) .hx-room-media {
     width: 100%;
     aspect-ratio: 16 / 10;
     min-height: 0;

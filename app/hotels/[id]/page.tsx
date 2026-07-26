@@ -3401,7 +3401,7 @@ export default function HotelDetail() {
             onNegotiate={(room) => withBackendAuth(() => openNegotiate(room))}
           />
         )}
-        <div className={`hx-room-list${hotel.individualRooms ? " is-hidden" : ""}`} style={{ marginBottom: "40px" }}>
+        <div className={`hx-room-list${hotel.individualRooms ? " is-hidden" : ""}${(hotel.rooms?.length || 0) <= 1 ? " is-single" : ""}`} style={{ marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
             const isHeadlineRoom = dealRoomId === r.id;
             // A room is available unless explicitly flagged otherwise.
