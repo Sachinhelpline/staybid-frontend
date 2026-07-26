@@ -4,6 +4,7 @@ import { SB_URL, SB_KEY } from "@/lib/sb";
 import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
 // v168 — synthetic flash prices come from the unified pricing spine.
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
+import { computeFlashLadder, tierRanks } from "@/lib/pricing/flash-ladder";
 
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
@@ -282,6 +283,11 @@ export async function GET(req: NextRequest) {
     const headline = available.slice().sort((a, b) => a.aiPrice - b.aiPrice)[0];
     const headlineRoom = allRooms.find((r: any) => r.id === headline.roomId);
 
+    // v526 — tier ranks (cheapest room = 0) drive the upgrade-incentive
+    // discount ladder: a pricier category shows a DEEPER % off so a guest is
+    // pulled up into it instead of it sitting empty at 0% off.
+    const tierRank = tierRanks(allRooms as any[]);
+
     // Upgrade ladder: every OTHER room in this hotel, with availability + delta
     const upgrades = allRooms
       .filter((r: any) => r.id !== headline.roomId)
@@ -289,16 +295,16 @@ export async function GET(req: NextRequest) {
         const free  = unitsFree(r.id);
         const floor = Number(r.floorPrice) || 0;
         if (floor <= 0) return null;
-        // v525 — each upgrade room is priced by its OWN spine flash price
-        // (= its live price − 20%, ≥ its flash floor), NOT the headline
-        // deal's discount smeared onto this room's floor. This makes the
-        // price INTRINSIC to the room — it no longer changes based on which
-        // deal the customer tapped to arrive. Falls back to floor×(1−disc)
-        // only when the spine has no row for this room.
-        const usp   = spineMap[r.id];
+        // v526 — each upgrade room is priced by the shared flash ladder off its
+        // OWN live price: base 20% + 5% per category up (capped 40%), clamped to
+        // its flash floor (owner's manual flashFloorPrice, else live × 55%). The
+        // price is INTRINSIC to the room — it never changes with the entry deal —
+        // and pricier rooms get a deeper, more tempting discount. Falls back to
+        // floor×(1−disc) only when the spine has no live row for this room.
+        const usp    = spineMap[r.id];
         const market = Number(usp?.livePrice) || 0;
-        const price = (usp && Number(usp.flashPrice) > 0)
-          ? Number(usp.flashPrice)
+        const price = market > 0
+          ? computeFlashLadder({ live: market, tierIndex: tierRank[r.id] ?? 1, ownerFlashFloor: r.flashFloorPrice }).flash
           : Math.max(500, Math.round(floor * (100 - headline.discount) / 100));
         return {
           roomId:        r.id,

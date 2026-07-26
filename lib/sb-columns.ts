@@ -39,7 +39,7 @@ export const HOTEL_DETAIL_COLS =
 //
 // Including mrp so detail pages can show strikethrough original prices.
 export const ROOM_CARD_COLS =
-  "id,hotelId,type,name,capacity,floorPrice,mrp,images,amenities";
+  "id,hotelId,type,name,capacity,floorPrice,mrp,flashFloorPrice,images,amenities";
 
 // Social posts (Discover reel feed).
 //

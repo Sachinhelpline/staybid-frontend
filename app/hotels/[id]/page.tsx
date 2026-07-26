@@ -57,6 +57,7 @@ import {
 } from "@/lib/attribution";
 // v129 — every bid/counter/flash price is a ₹100 multiple. See lib/price-snap.ts.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+import { computeFlashLadder, tierRanks } from "@/lib/pricing/flash-ladder";
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
 import { filterActiveBids, filterUserVisibleBids, isBidPaid, isBidPayWindowOpen } from "@/lib/bid-expiry";
@@ -3193,6 +3194,8 @@ export default function HotelDetail() {
           // flash available room. Other rooms then auto-surface as Upgrade
           // candidates via the existing isOtherWhenActive path.
           const allRoomIds = new Set((hotel.rooms || []).map((r: any) => String(r.id)));
+          // v526 — tier ranks (cheapest = 0) for the flash upgrade-incentive ladder.
+          const hotelTierRank = tierRanks(hotel.rooms || []);
           const cheapestEligibleRoom = (hotel.rooms || [])
             .filter((r: any) => r.isAvailable !== false && (r.quantity == null || Number(r.quantity) > 0))
             .slice()
@@ -3250,8 +3253,12 @@ export default function HotelDetail() {
               ? (isHeadlineRoom
                   ? Math.round(parseFloat(dealPrice || "0"))   // tapped room: honour the locked price the customer came for
                   : (roomMarket > 0
-                      // upgrade/sibling: its own live market − 20%, floored at its rack floor
-                      ? Math.max(Math.round(r.floorPrice || 0), Math.round((roomMarket * 0.80) / 100) * 100)
+                      // v526 — upgrade/sibling: the shared flash ladder (base 20%
+                      // + 5% per category up, capped 40%) off its OWN live price,
+                      // clamped to its flash floor (owner's manual flashFloorPrice
+                      // else live × 55%). Pricier rooms get a DEEPER, more tempting
+                      // discount so upgrading is worth it — entry-independent.
+                      ? computeFlashLadder({ live: roomMarket, tierIndex: hotelTierRank[String(r.id)] ?? 1, ownerFlashFloor: r.flashFloorPrice }).flash
                       // fallback (no spine market): legacy floor × (1 − disc%)
                       : Math.max(100, Math.round((r.floorPrice || 0) * (1 - flashDiscPct / 100) / 100) * 100)))
               : 0;
