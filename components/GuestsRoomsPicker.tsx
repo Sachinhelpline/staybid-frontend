@@ -207,6 +207,26 @@ export default function GuestsRoomsPicker({
           .grp-rooms { min-width: 140px; }
           .grp-row-name { font-size: 0.86rem; }
         }
+        /* v504 — wide desktop: spread Adults/Children/Kids into 3 columns so each
+           +/- stepper sits beside its own label (no marooned gap across a wide
+           card) and the guests card fills its width richly instead of stretching. */
+        @media (min-width: 1280px) {
+          .grp-guests {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            column-gap: 12px;
+            row-gap: 2px;
+            align-items: center;
+          }
+          .grp-guests .grp-head { grid-column: 1 / -1; }
+          .grp-guests .grp-row {
+            padding: 7px 11px;
+            border-radius: 12px;
+            background: rgba(201, 166, 107, 0.06);
+            border: 1px solid rgba(201, 166, 107, 0.12);
+          }
+          .grp-guests .grp-row + .grp-row { border-top: 1px solid rgba(201, 166, 107, 0.12); }
+        }
       `}</style>
     </div>
   );

@@ -1197,6 +1197,22 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 @media (min-width: 640px) {
   .lux-cal-sheet { border-radius: 28px; max-width: 540px; }
 }
+/* v510 — inline mode: render the calendar as a normal in-page card (no modal
+   sheet framing / slide-up / max-width). Used on the hotel detail page desktop. */
+.lux-cal-inline-wrap { width: 100%; }
+.lux-cal-sheet.lux-cal-sheet-inline {
+  max-width: 100%;
+  max-height: none;
+  border-radius: 20px;
+  animation: none;
+  box-shadow: 0 10px 34px -22px rgba(20, 10, 2, 0.26), 0 0 0 1px rgba(201, 145, 26, 0.2);
+}
+/* Desktop-only inline calendar block + hide the modal-trigger date row on desktop. */
+.hx-cal-inline { display: none; }
+@media (min-width: 1024px) {
+  .hx-cal-inline { display: block; margin-bottom: 4px; }
+  .hx-availability .hx-dates-row { display: none; }
+}
 
 .lux-cal-sheet::before {
   content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
@@ -2041,6 +2057,52 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     min-height: 280px;
   }
   .hx-room-content-wrap { flex: 1; }
+}
+
+/* v503 — Available Rooms list. Mobile/tablet: a single stacked column (image
+   LEFT via the row rule above). Wide desktop (≥1440): a 2-UP grid so the
+   reclaimed width is FILLED with more cards instead of stretching one card
+   across the whole column. In 2-up, each half-width card goes VERTICAL (image
+   on top, details below) so amenities + price + both CTAs always have full
+   width — never cramped, never stretched. */
+.hx-room-list { display: flex; flex-direction: column; gap: 22px; }
+.hx-room-list.is-hidden { display: none; }
+/* 2-up only when there are 2+ room types. `.is-single` (exactly one room type)
+   keeps the base full-width stacked card (image-left row layout) — a lone
+   half-width card in a 2-col grid would leave the row half empty. */
+@media (min-width: 1440px) {
+  .hx-room-list:not(.is-hidden):not(.is-single) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-items: start;
+  }
+  .hx-room-list:not(.is-hidden):not(.is-single) .hx-room-body { flex-direction: column; }
+  .hx-room-list:not(.is-hidden):not(.is-single) .hx-room-media {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 0;
+  }
+}
+
+/* v504 — "About this stay" tab. Mobile/laptop: a single stacked column. Wide
+   desktop (≥1440): a 2-column MASONRY so the info cards (About, Location,
+   Check-in/out, Amenities, Policies, Cancellation, Why-book) sit side-by-side
+   and fill the reclaimed width instead of stretching as flat full-width bands.
+   `columns` handles the variable heights (map card is tall) with no JS. */
+.hx-about-masonry > * { margin-bottom: 20px; }
+.hx-about-masonry > *:last-child { margin-bottom: 0; }
+@media (min-width: 1440px) {
+  .hx-about-masonry {
+    columns: 2;
+    column-gap: 20px;
+    orphans: 1;
+    widows: 1;
+  }
+  .hx-about-masonry > * {
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+  }
 }
 .hx-room-media-img {
   position: absolute; inset: 0;

@@ -7,6 +7,10 @@ import Link from "next/link";
 // success modal. Self-dismissing per (user, hotel) via localStorage.
 import InspirationBanner from "@/components/tier/InspirationBanner";
 import { AmbientBackdrop } from "@/components/AmbientBackdrop";
+import SimilarStays from "@/components/hotel/SimilarStays";
+import PhotoGallery from "@/components/hotel/PhotoGallery";
+import { recordHotelView } from "@/lib/hotel-affinity";
+import GuestFavourite from "@/components/hotel/GuestFavourite";
 import { api, ApiError } from "@/lib/api";
 // 409 city-conflict sheet — one active bid per (customer × city). Surfaces
 // the existing bid + inline "Update Budget" instead of a new bid.
@@ -623,25 +627,23 @@ export default function HotelDetail() {
   // at fire-time so it's always in sync with the latest image set; the
   // `Math.max(5, base.length)` mirrors the same total computed inside
   // the lightbox JSX.
+  // v507 — keyboard nav now lives inside <PhotoGallery> (it owns Esc/←/→ so
+  // Esc-in-zoom returns to the grid instead of closing the whole gallery).
+
+  // v508 — record this hotel view into the local preference trail so the "More
+  // stays" rail can silently learn whether the customer leans cheaper vs.
+  // higher-rated and re-rank the next set of suggestions accordingly.
   useEffect(() => {
-    if (!galleryOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      const base = Array.isArray(hotel?.images) ? hotel.images : [];
-      const total = Math.max(5, base.length);
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        setGalleryIdx((i) => Math.max(0, i - 1));
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        setGalleryIdx((i) => Math.min(total - 1, i + 1));
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        setGalleryOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [galleryOpen, hotel?.images]);
+    if (!hotel?.id) return;
+    const rooms = Array.isArray(hotel.rooms) ? hotel.rooms : [];
+    const prices = rooms.map((r: any) => Number(r?.floorPrice)).filter((n: number) => Number.isFinite(n) && n > 0);
+    recordHotelView({
+      id: String(hotel.id),
+      price: prices.length ? Math.min(...prices) : undefined,
+      rating: Number(hotel.avgRating) || undefined,
+      type: hotel.property_type || undefined,
+    });
+  }, [hotel?.id]);
 
   // v124.2 — toggle sb-modal-open whenever an inline modal is open so the
   // BottomDock / DialerNav / BackChip auto-hide. Decoupled from the
@@ -2659,6 +2661,15 @@ export default function HotelDetail() {
           </div>
         </div>
 
+        {/* v509 — "Guest Favourite" laurel honour (only for genuinely top-tier
+            stays; renders nothing otherwise). Driven by the real hotel scorecard. */}
+        <GuestFavourite
+          hotelId={String(id)}
+          city={hotel.city}
+          avgRating={Number(hotel.avgRating) || undefined}
+          totalReviews={Number(hotel.totalReviews) || undefined}
+        />
+
         {/* ── Two-column page grid (sticky rail on desktop ≥1100px). v159.9
             — marginTop 22 → 10 so the About section follows the medal
             block tightly instead of leaving a chunk of dead space. */}
@@ -2783,7 +2794,7 @@ export default function HotelDetail() {
 
         {/* ── ABOUT TAB ── */}
         {tab === "about" && (
-          <div className="mb-10 space-y-5">
+          <div className="mb-10 hx-about-masonry">
 
             {/* Description */}
             {hotel.description && (
@@ -3178,8 +3189,27 @@ export default function HotelDetail() {
             </div>
           )}
 
-          {/* Dates row — opens LuxuryCalendar with per-day live pricing */}
-          <div className="grid grid-cols-2 gap-3 mb-3 relative z-2">
+          {/* v510 — Desktop: an INLINE live-pricing calendar (per-day Spine
+              prices + demand colours) right on the page. Mobile keeps the
+              tap-to-open modal via the date-row below (hidden on desktop). */}
+          {!datesLocked && (
+            <div className="hx-cal-inline">
+              <LuxuryCalendar
+                inline
+                open
+                mode="checkIn"
+                checkIn={globalCheckIn}
+                checkOut={globalCheckOut}
+                rooms={hotel.rooms || []}
+                city={hotel.city}
+                onApply={({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); }}
+                onClose={() => {}}
+              />
+            </div>
+          )}
+
+          {/* Dates row — opens LuxuryCalendar with per-day live pricing (mobile) */}
+          <div className="grid grid-cols-2 gap-3 mb-3 relative z-2 hx-dates-row">
             <button
               type="button"
               disabled={datesLocked}
@@ -3401,7 +3431,7 @@ export default function HotelDetail() {
             onNegotiate={(room) => withBackendAuth(() => openNegotiate(room))}
           />
         )}
-        <div style={{ display: hotel.individualRooms ? "none" : "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
+        <div className={`hx-room-list${hotel.individualRooms ? " is-hidden" : ""}${(hotel.rooms?.length || 0) <= 1 ? " is-single" : ""}`} style={{ marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
             const isHeadlineRoom = dealRoomId === r.id;
             // A room is available unless explicitly flagged otherwise.
@@ -4330,66 +4360,32 @@ export default function HotelDetail() {
           </aside>
         </div>{/* /hx-page-grid */}
 
+        {/* v506 — "More stays in <city>" recommendation carousel (full-width,
+            below the two-column content). Similar approved hotels in the same
+            city so the customer can compare without going back to browse-all. */}
+        <SimilarStays
+          hotelId={String(id)}
+          city={hotel.city}
+          state={hotel.state}
+          starRating={Number(hotel.starRating) || undefined}
+          propertyType={hotel.property_type || undefined}
+          currentPrice={lowestForRibbon || undefined}
+          currentRating={Number(hotel.avgRating) || undefined}
+        />
+
       </div>{/* /max-w-6xl */}
 
       {/* ══════════════════════════════════════════
-          PHOTO GALLERY LIGHTBOX
+          PHOTO GALLERY — v507 Airbnb-style full-screen grid + Rooms tab + zoom
       ══════════════════════════════════════════ */}
-      {galleryOpen && (() => {
-        const PLACEHOLDERS = [
-          "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800&q=80",
-          "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
-          "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80",
-          "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
-          "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80",
-          "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
-        ];
-        const base = Array.isArray(hotel.images) ? hotel.images : [];
-        const allImgs = [...base, ...PLACEHOLDERS].slice(0, Math.max(5, base.length));
-        return (
-          <div className="fixed inset-0 z-70 bg-black/95 flex items-center justify-center"
-            onClick={() => setGalleryOpen(false)}>
-            <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
-              <ModalCloseButton onClose={() => setGalleryOpen(false)} tone="dark" className="absolute -top-12 right-0 z-10" />
-
-              <div className="relative rounded-2xl overflow-hidden bg-black/50 max-h-[70vh] flex items-center justify-center">
-                <img
-                  src={allImgs[galleryIdx] || PLACEHOLDERS[0]}
-                  alt={`${hotel.name} — Photo ${galleryIdx + 1}`}
-                  className="max-h-[70vh] max-w-full object-contain"
-                  onError={(e: any) => { e.target.src = PLACEHOLDERS[galleryIdx % PLACEHOLDERS.length]; }}
-                />
-                {galleryIdx > 0 && (
-                  <button onClick={() => setGalleryIdx(galleryIdx - 1)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">‹</button>
-                )}
-                {galleryIdx < allImgs.length - 1 && (
-                  <button onClick={() => setGalleryIdx(galleryIdx + 1)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">›</button>
-                )}
-              </div>
-
-              <p className="text-center text-white/50 text-sm mt-3">
-                {galleryIdx + 1} / {allImgs.length}
-                {/* v132.6 — desktop-only keyboard shortcut hint */}
-                <span className="hidden lg:inline text-white/30 ml-3 text-xs tracking-wide">
-                  · ← → navigate · Esc to close
-                </span>
-              </p>
-
-              <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-                {allImgs.map((img: string, i: number) => (
-                  <button key={i} onClick={() => setGalleryIdx(i)}
-                    className={`shrink-0 w-16 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIdx ? "border-gold-400 scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}>
-                    <img src={img} alt="" className="w-full h-full object-cover"
-                      onError={(e: any) => { e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length]; }} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <PhotoGallery
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        hotelName={hotel.name}
+        images={hotel.images}
+        rooms={hotel.rooms}
+        initialIndex={galleryIdx}
+      />
 
       {/* ══════════════════════════════════════════
           INLINE PHONE VERIFY (Google/Social users)

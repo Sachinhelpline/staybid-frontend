@@ -29,6 +29,10 @@ interface Props {
   headerBanner?: React.ReactNode;
   onClose: () => void;
   onApply: (range: { checkIn: string; checkOut: string }) => void;
+  /** v510 — render the calendar INLINE on the page (no modal backdrop / portal /
+   *  scroll-lock / close button) instead of as an overlay. Used on the hotel
+   *  detail page (desktop) so live per-day prices are visible without a tap. */
+  inline?: boolean;
 }
 
 const WEEK = ["S", "M", "T", "W", "T", "F", "S"];
@@ -67,7 +71,7 @@ function formatPrice(n: number) {
 export default function LuxuryCalendar({
   open, mode, checkIn, checkOut, rooms, city, minCheckIn,
   pricingMode = "hotel", headerBanner,
-  onClose, onApply,
+  onClose, onApply, inline = false,
 }: Props) {
   // Local draft so user can change both legs without committing until "Apply"
   const [draftIn,  setDraftIn]  = useState<string>(checkIn  || "");
@@ -88,14 +92,16 @@ export default function LuxuryCalendar({
   const [portalReady, setPortalReady] = useState(false);
   useEffect(() => { setPortalReady(true); }, []);
 
-  // Reset when opened
+  // Reset when opened (or, inline, whenever the parent's dates change).
   useEffect(() => {
-    if (!open) return;
+    if (!inline && !open) return;
     setDraftIn(checkIn || "");
     setDraftOut(checkOut || "");
     setPicking(mode);
     const base = fromIso(checkIn) || fromIso(checkOut) || new Date();
     setCursor(startOfMonth(base));
+    // Inline: no scroll lock / no dock-hide (it lives in the page flow).
+    if (inline) return;
     // body scroll lock + hide dock/dialer/back-chip while calendar is open
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -104,7 +110,7 @@ export default function LuxuryCalendar({
       document.body.style.overflow = prev;
       document.body.classList.remove("sb-modal-open");
     };
-  }, [open, mode, checkIn, checkOut]);
+  }, [open, mode, checkIn, checkOut, inline]);
 
   // Cheapest room floor price as anchor
   const floorAnchor = useMemo(() => {
@@ -227,20 +233,14 @@ export default function LuxuryCalendar({
     ? Math.max(1, Math.ceil((new Date(draftOut).getTime() - new Date(draftIn).getTime()) / 86400000))
     : 0;
 
-  if (!open) return null;
-  if (!portalReady || typeof document === "undefined") return null;
+  if (!inline && !open) return null;
+  if (!inline && (!portalReady || typeof document === "undefined")) return null;
 
-  const calendarUi = (
-    <div
-      className="lux-cal-backdrop"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
+  const sheet = (
       <div
         ref={sheetRef}
-        className="lux-cal-sheet"
-        onClick={e => e.stopPropagation()}
+        className={`lux-cal-sheet${inline ? " lux-cal-sheet-inline" : ""}`}
+        onClick={inline ? undefined : (e => e.stopPropagation())}
       >
         {/* Top brand bar */}
         <div className="lux-cal-topbar">
@@ -251,7 +251,7 @@ export default function LuxuryCalendar({
               </p>
               <h3 className="lux-cal-title">Select your stay</h3>
             </div>
-            <button onClick={onClose} aria-label="Close" className="lux-cal-close">✕</button>
+            {!inline && <button onClick={onClose} aria-label="Close" className="lux-cal-close">✕</button>}
           </div>
 
           {/* Selected range chips */}
@@ -429,8 +429,11 @@ export default function LuxuryCalendar({
           </div>
         </div>
       </div>
-    </div>
   );
 
-  return createPortal(calendarUi, document.body);
+  if (inline) return <div className="lux-cal-inline-wrap">{sheet}</div>;
+  return createPortal(
+    <div className="lux-cal-backdrop" onClick={onClose} role="dialog" aria-modal="true">{sheet}</div>,
+    document.body,
+  );
 }
