@@ -761,6 +761,12 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           ) : null}
         </div>
 
+        {/* v523 — split body: info left, price+CTA panel right, so a wide
+            (mobile 1-col) card fills its right half instead of dead space.
+            Narrow desktop cards collapse this back to a stacked column. */}
+        <div className="fd-body-split">
+        <div className="fd-body-main">
+
         {/* Row 2 — rating + stars + room type + capacity, all inline */}
         <div className="fd-meta-line">
           {ratingVal > 0 ? (
@@ -835,15 +841,20 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           </span>
         </div>
 
-        {/* Price + CTA — horizontal row, no dividers */}
-        <div className="fd-price-row">
+        </div>{/* /fd-body-main */}
+
+        {/* Price + CTA — a right-side panel on wide cards, a bottom row on
+            narrow desktop cards. */}
+        <div className="fd-price-panel">
           <div className="fd-price-block">
             <div className="fd-price-line">
               {showOriginal > showAiPrice && (
                 <span className="fd-price-strike">{fmtINR(showOriginal)}</span>
               )}
-              <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
-              <span className="fd-price-unit">/night</span>
+              <span className="fd-price-hero">
+                <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
+                <span className="fd-price-unit">/night</span>
+              </span>
             </div>
             {saveAmt > 0 && (
               <p className="fd-price-save">
@@ -867,6 +878,8 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
             {sold ? "Sold Out" : "⚡ Grab Now"}
           </button>
         </div>
+
+        </div>{/* /fd-body-split */}
       </div>
     </div>
   );
@@ -1738,10 +1751,30 @@ function FdStyles() {
          separator turns the leftover whitespace below the chips into an
          intentional zone (native app pattern) instead of a floating gap, and
          anchors the price + Grab CTA as one crisp row. */
-      .fd-price-row {
+      /* v523 — body splits into info (left) + price/CTA panel (right) so a
+         WIDE mobile 1-col card fills its right half. Default = stacked column
+         (desktop/tablet unchanged); side-by-side only on the widest (<640) card. */
+      .fd-body-split { display: flex; flex-direction: column; }
+      .fd-body-main  { display: flex; flex-direction: column; min-width: 0; }
+      .fd-price-panel {
         display: flex; align-items: center; justify-content: space-between;
-        gap: 10px; padding-top: 11px;
+        gap: 10px; padding-top: 11px; margin-top: 2px;
         border-top: 1px solid var(--border-soft);
+      }
+      @media (max-width: 639px) {
+        .fd-body-split { flex-direction: row; align-items: stretch; gap: 13px; }
+        .fd-body-main  { flex: 1 1 auto; }
+        .fd-price-panel {
+          flex: 0 0 auto; width: 42%; min-width: 132px; max-width: 182px;
+          flex-direction: column; align-items: flex-end; justify-content: center;
+          gap: 11px; margin-top: 0;
+          border-top: none; padding-top: 0;
+          border-left: 1px solid var(--border-soft); padding-left: 13px;
+        }
+        .fd-price-panel .fd-price-block { align-items: flex-end; text-align: right; }
+        .fd-price-panel .fd-price-line { justify-content: flex-end; }
+        .fd-price-panel .fd-price-save { justify-content: flex-end; }
+        .fd-price-panel .fd-cta { width: 100%; justify-content: center; }
       }
       .fd-price-block {
         flex: 1 1 auto; min-width: 0;
@@ -1757,12 +1790,39 @@ function FdStyles() {
         text-decoration: line-through;
         text-decoration-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
       }
+      /* v523 — advertisement-style GOLD-FOIL price: a warm gold gradient
+         clipped into the digits with a bright sheen band that sweeps across
+         (reflective), plus a drop-shadow so the number pops off the card in
+         3D. Dark bronze end-stops keep it high-contrast + readable (not fake). */
+      .fd-price-hero { display: inline-flex; align-items: baseline; gap: 5px; }
       .fd-price-now {
-        color: var(--text-base); font-size: 1.34rem; font-weight: 800; line-height: 1;
-        letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+        font-size: 1.7rem; font-weight: 900; line-height: 1;
+        letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+        background: linear-gradient(115deg, #6a4a12 0%, #b98a24 32%, #f7e6ac 50%, #b98a24 68%, #6a4a12 100%);
+        background-size: 240% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+        filter: drop-shadow(0 2px 3px rgba(74,56,32,0.34)) drop-shadow(0 1px 0 rgba(255,255,255,0.5));
+        animation: fdPriceShine 3.6s linear infinite;
       }
-      @media (min-width: 1024px) { .fd-price-now { font-size: 1.46rem; } }
-      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
+      @keyframes fdPriceShine {
+        0%   { background-position: 130% 0; }
+        100% { background-position: -130% 0; }
+      }
+      [data-theme="dark"] .fd-price-now {
+        background: linear-gradient(115deg, #c9992f 0%, #eabf55 32%, #fff2c8 50%, #eabf55 68%, #c9992f 100%);
+        background-size: 240% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 6px rgba(235,191,85,0.3));
+      }
+      @media (min-width: 1024px) { .fd-price-now { font-size: 1.62rem; } }
+      /* Mobile wide-card price panel — big, breathable "ad" price. */
+      @media (max-width: 639px) {
+        .fd-price-panel .fd-price-now { font-size: 2.45rem; }
+        .fd-price-panel .fd-price-line { flex-direction: column; align-items: flex-end; gap: 1px; }
+        .fd-price-panel .fd-price-strike { font-size: 0.9rem; }
+      }
+      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
       .fd-price-save {
         display: inline-flex; align-items: center; gap: 6px;
         margin: 3px 0 0; color: var(--cozy-sage, #5d7a52);
