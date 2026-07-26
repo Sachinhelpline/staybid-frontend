@@ -7,6 +7,7 @@ import Link from "next/link";
 // success modal. Self-dismissing per (user, hotel) via localStorage.
 import InspirationBanner from "@/components/tier/InspirationBanner";
 import { AmbientBackdrop } from "@/components/AmbientBackdrop";
+import SimilarStays from "@/components/hotel/SimilarStays";
 import { api, ApiError } from "@/lib/api";
 // 409 city-conflict sheet — one active bid per (customer × city). Surfaces
 // the existing bid + inline "Update Budget" instead of a new bid.
@@ -4329,6 +4330,16 @@ export default function HotelDetail() {
             </div>
           </aside>
         </div>{/* /hx-page-grid */}
+
+        {/* v506 — "More stays in <city>" recommendation carousel (full-width,
+            below the two-column content). Similar approved hotels in the same
+            city so the customer can compare without going back to browse-all. */}
+        <SimilarStays
+          hotelId={String(id)}
+          city={hotel.city}
+          state={hotel.state}
+          starRating={Number(hotel.starRating) || undefined}
+        />
 
       </div>{/* /max-w-6xl */}
 
