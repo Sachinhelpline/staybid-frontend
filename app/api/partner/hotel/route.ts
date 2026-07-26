@@ -187,6 +187,8 @@ export async function PATCH(req: NextRequest) {
   const fields = [
     "name","description","amenities","images","city","state","starRating",
     "property_type","meal_plans","addon_services",
+    // v511 — Phase B: per-photo gallery category map { url: slug }.
+    "image_categories",
   ];
   for (const f of fields) { if (updates[f] !== undefined) allowed[f] = updates[f]; }
 

@@ -10,13 +10,17 @@
 //   • ZOOM — tap any photo → full-bleed viewer with ‹ › + thumbnail strip +
 //     counter + keyboard (← → Esc).
 //
-// Category filtering by space-type (Bedroom / Bathroom / Exterior …) is Phase B
-// (needs per-photo tags in the DB) — this Phase A ships the grid + Rooms tab
-// from data that already exists (hotels.images + rooms.images).
+// Category filtering by space-type (Bedroom / Bathroom / Exterior …) is v511
+// (Phase B): each gallery image URL can carry a category slug via
+// `hotels.image_categories` ({ url: slug }). The rail shows a chip per category
+// that actually HAS photos — so an untagged hotel is byte-identical to before
+// (only All + Rooms). Plus the grid + Rooms tab from data that already exists
+// (hotels.images + rooms.images).
 //
 // Self-contained: owns its mode/index/keyboard. The parent only toggles `open`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from "react";
+import { PHOTO_CATEGORIES, categoryMeta } from "@/lib/hotel/photo-categories";
 
 type RoomLike = { name?: string; type?: string; images?: string[] };
 
@@ -27,11 +31,13 @@ type Props = {
   images?: string[];
   rooms?: RoomLike[];
   initialIndex?: number;
+  /** v511 — per-photo category map { imageUrl: slug } from hotels.image_categories. */
+  imageCategories?: Record<string, string> | null;
 };
 
 const PLACEHOLDER = "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800&q=80";
 
-export default function PhotoGallery({ open, onClose, hotelName, images, rooms, initialIndex = 0 }: Props) {
+export default function PhotoGallery({ open, onClose, hotelName, images, rooms, initialIndex = 0, imageCategories }: Props) {
   const allImages = useMemo(
     () => (Array.isArray(images) ? images.filter(Boolean) : []),
     [images]
@@ -50,7 +56,17 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
 
   const hasRooms = roomGroups.length > 0;
 
-  const [tab, setTab] = useState<"all" | "rooms">("all");
+  // v511 — category chips, ONLY for slugs that actually have tagged photos in
+  // this hotel's gallery (so an untagged hotel shows no category rail at all).
+  const cats = useMemo(() => {
+    const map = imageCategories && typeof imageCategories === "object" ? imageCategories : {};
+    return PHOTO_CATEGORIES
+      .map((c) => ({ ...c, imgs: allImages.filter((im) => map[im] === c.id) }))
+      .filter((c) => c.imgs.length > 0);
+  }, [imageCategories, allImages]);
+
+  // Tab is "all", "rooms", or a category slug.
+  const [tab, setTab] = useState<string>("all");
   const [zoom, setZoom] = useState(false);
   // The zoom viewer works over the CURRENTLY visible flat photo set.
   const [flatSet, setFlatSet] = useState<string[]>(allImages);
@@ -108,13 +124,27 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
           <span className="pg-head-name">{hotelName}</span>
           <span className="pg-head-count">{total} photo{total === 1 ? "" : "s"}</span>
         </div>
-        {hasRooms && !zoom ? (
-          <div className="pg-tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={tab === "all"} className={`pg-tab${tab === "all" ? " is-on" : ""}`} onClick={() => setTab("all")}>All</button>
-            <button type="button" role="tab" aria-selected={tab === "rooms"} className={`pg-tab${tab === "rooms" ? " is-on" : ""}`} onClick={() => setTab("rooms")}>Rooms</button>
-          </div>
-        ) : <span className="pg-head-spacer" />}
+        <span className="pg-head-spacer" />
       </header>
+
+      {/* ── v511 Category rail (All · space-type chips · Rooms) ── */}
+      {!zoom && (cats.length > 0 || hasRooms) && (
+        <div className="pg-catbar" role="tablist" aria-label="Filter photos by category">
+          <button type="button" role="tab" aria-selected={tab === "all"} className={`pg-chip${tab === "all" ? " is-on" : ""}`} onClick={() => setTab("all")}>
+            All <span className="pg-chip-n">{total}</span>
+          </button>
+          {cats.map((c) => (
+            <button key={c.id} type="button" role="tab" aria-selected={tab === c.id} className={`pg-chip${tab === c.id ? " is-on" : ""}`} onClick={() => setTab(c.id)}>
+              <span className="pg-chip-emo" aria-hidden>{c.emoji}</span> {c.label} <span className="pg-chip-n">{c.imgs.length}</span>
+            </button>
+          ))}
+          {hasRooms && (
+            <button type="button" role="tab" aria-selected={tab === "rooms"} className={`pg-chip${tab === "rooms" ? " is-on" : ""}`} onClick={() => setTab("rooms")}>
+              🛎️ Rooms
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── ZOOM viewer ── */}
       {zoom ? (
@@ -140,16 +170,7 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
       ) : (
         /* ── GRID ── */
         <div className="pg-scroll">
-          {tab === "all" || !hasRooms ? (
-            <div className="pg-grid">
-              {allImages.map((im, i) => (
-                <button key={i} type="button" className={`pg-cell${i === 0 ? " pg-cell-hero" : ""}`} onClick={() => openZoom(allImages, i)}>
-                  <img src={im} alt={`${hotelName} — photo ${i + 1}`} loading="lazy" onError={onImgErr} />
-                </button>
-              ))}
-              {allImages.length === 0 && <p className="pg-empty">No photos yet.</p>}
-            </div>
-          ) : (
+          {tab === "rooms" && hasRooms ? (
             <div className="pg-rooms">
               {roomGroups.map((g, gi) => (
                 <section key={gi} className="pg-room">
@@ -164,6 +185,23 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
                 </section>
               ))}
             </div>
+          ) : (
+            (() => {
+              // "all" or a category slug → a flat grid over the selected set.
+              const sel = cats.find((c) => c.id === tab);
+              const gridImages = sel ? sel.imgs : allImages;
+              const isAll = !sel;
+              return (
+                <div className="pg-grid">
+                  {gridImages.map((im, i) => (
+                    <button key={i} type="button" className={`pg-cell${isAll && i === 0 ? " pg-cell-hero" : ""}`} onClick={() => openZoom(gridImages, i)}>
+                      <img src={im} alt={`${hotelName} — photo ${i + 1}`} loading="lazy" onError={onImgErr} />
+                    </button>
+                  ))}
+                  {gridImages.length === 0 && <p className="pg-empty">No photos yet.</p>}
+                </div>
+              );
+            })()
           )}
         </div>
       )}
@@ -203,6 +241,37 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
           transition: background 0.16s ease, color 0.16s ease;
         }
         .pg-tab.is-on { background: #efe6d2; color: #2a2115; }
+
+        /* v511 — category rail */
+        .pg-catbar {
+          flex-shrink: 0;
+          display: flex; gap: 8px; align-items: center;
+          padding: 11px 16px;
+          overflow-x: auto; scrollbar-width: none;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          background: rgba(11, 10, 8, 0.85);
+          -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+        }
+        .pg-catbar::-webkit-scrollbar { display: none; }
+        .pg-chip {
+          flex-shrink: 0; white-space: nowrap; cursor: pointer;
+          font-size: 0.78rem; font-weight: 700; color: rgba(242, 236, 221, 0.72);
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          padding: 7px 14px; border-radius: 999px;
+          display: inline-flex; align-items: center; gap: 5px;
+          transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+        }
+        .pg-chip:hover { background: rgba(255, 255, 255, 0.13); color: #fbf5ea; }
+        .pg-chip.is-on {
+          background: #efe6d2; color: #2a2115; border-color: #efe6d2;
+        }
+        .pg-chip-emo { font-size: 0.9rem; line-height: 1; }
+        .pg-chip-n {
+          font-size: 0.64rem; font-weight: 800; opacity: 0.7;
+          font-variant-numeric: tabular-nums;
+        }
+        .pg-chip.is-on .pg-chip-n { opacity: 0.55; }
 
         .pg-scroll { flex: 1; overflow-y: auto; padding: 18px 16px 60px; }
         .pg-grid {

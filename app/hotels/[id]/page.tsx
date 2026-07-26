@@ -4385,6 +4385,7 @@ export default function HotelDetail() {
         images={hotel.images}
         rooms={hotel.rooms}
         initialIndex={galleryIdx}
+        imageCategories={hotel.image_categories}
       />
 
       {/* ══════════════════════════════════════════
