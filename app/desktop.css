@@ -205,6 +205,25 @@
       linear-gradient(180deg, rgba(248, 242, 229, 0.42) 0%, rgba(234, 224, 203, 0.62) 100%);
   }
 
+  /* v498 — DARK MODE for the HOME reel canvas. The light cozy-cream canvas
+     above (v477) was theme-INDEPENDENT, so switching Appearance → Dark left
+     the home surface stuck on cream while every other page flipped. In dark
+     mode the home window now falls back to the SAME dark cinematic wash that
+     /discover already uses (proven), so Appearance controls the home page too.
+     Light mode is byte-identical (these rules only apply under [data-theme=dark]). */
+  [data-theme="dark"] body.reel-with-rail:has(.reel-page-root) {
+    background: #0a0806 !important;
+  }
+  [data-theme="dark"] body.reel-with-rail:has(.reel-page-root)::before {
+    filter: blur(74px) saturate(1.05) brightness(0.34);
+    opacity: 1;
+  }
+  [data-theme="dark"] body.reel-with-rail:has(.reel-page-root)::after {
+    background:
+      radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.78) 100%),
+      linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
+  }
+
   /* The reel CSS card uses `height: 100%` against parent.
      With the new wrapper height that resolves to 9:16-ish (420 x ~745). */
 
@@ -755,6 +774,77 @@
   }
   /* Hide the in-frame flash rail on desktop — the top rail replaces it. */
   body.reel-with-rail .reel-page-root .fdeal-rail-wrap { display: none !important; }
+
+  /* ───────────────────────────────────────────────────────────────────────
+     v498 — DARK MODE for the HOME reel chrome (rail + side panels). The v477
+     light-canvas overrides above flipped every label to dark cocoa (great on
+     cream, INVISIBLE on the dark canvas). Under [data-theme=dark] we restore
+     the cream/glass treatment the /discover dark surface already uses, so no
+     text/price/emoji is ever hidden. Light mode is untouched. ─────────────── */
+  /* Flash Deals rail labels → readable cream on dark. */
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail { border-bottom-color: rgba(255, 255, 255, 0.08); }
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-name { color: #efe6d2 !important; }
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-title { color: rgba(240, 194, 74, 0.92) !important; }
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: rgba(242, 236, 221, 0.82) !important; }
+  /* Right-edge scroll fade → dark. */
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail::after {
+    background: linear-gradient(90deg, rgba(10, 8, 6, 0) 0%, rgba(10, 8, 6, 0.92) 78%);
+  }
+  /* Rail ‹ › nav buttons → dark glass + cream glyph. */
+  [data-theme="dark"] body.reel-has-rail .reel-rail-nav {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(28, 22, 15, 0.82);
+    color: #efe6d2;
+    box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.6);
+  }
+  [data-theme="dark"] body.reel-has-rail .reel-rail-nav:hover { background: rgba(40, 32, 22, 0.92); }
+
+  /* Left "Up next" queue → cream text + dark thumbs. */
+  [data-theme="dark"] body.reel-with-rail .reel-queue-name { color: #f2ecdd; }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-sub { color: rgba(242, 236, 221, 0.58); }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-price b { color: #fbf5ea; }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-price em { color: rgba(242, 236, 221, 0.5); }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-item:hover { background: rgba(255, 255, 255, 0.07); }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-thumb { background: linear-gradient(135deg, #2a2018, #17110b); }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-thumb-fallback {
+    background: linear-gradient(135deg, #2a2018, #17110b);
+    color: rgba(255, 235, 190, 0.55);
+  }
+
+  /* Right "Now playing" panel text → cream on dark. */
+  [data-theme="dark"] body.reel-with-rail .reel-side-kicker { color: rgba(224, 198, 140, 0.92); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-title { color: #fbf5ea; }
+  [data-theme="dark"] body.reel-with-rail .reel-side-meta,
+  [data-theme="dark"] body.reel-with-rail .reel-side-place { color: rgba(242, 236, 221, 0.72); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-price { color: rgba(242, 236, 221, 0.7); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-price b { color: #fff; }
+  [data-theme="dark"] body.reel-with-rail .reel-side-price em { color: rgba(242, 236, 221, 0.55); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-desc { color: rgba(242, 236, 221, 0.6); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-hint { color: rgba(242, 236, 221, 0.45); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-empty { color: rgba(242, 236, 221, 0.55); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-views { color: rgba(242, 236, 221, 0.66); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-amenity {
+    color: rgba(242, 236, 221, 0.78);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  [data-theme="dark"] body.reel-with-rail .reel-side-btn.ghost { border-color: rgba(255, 255, 255, 0.22); color: #f2ecdd; }
+  [data-theme="dark"] body.reel-with-rail .reel-side-btn.ghost:hover { background: rgba(255, 255, 255, 0.09); }
+  /* Now-playing cover placeholder + fallback → dark (a cream box read as a
+     bright rectangle on the dark canvas). */
+  [data-theme="dark"] body.reel-with-rail .reel-np-cover { background-color: rgba(255, 255, 255, 0.05); }
+  [data-theme="dark"] body.reel-with-rail .reel-np-cover-fallback {
+    background: linear-gradient(135deg, #3a2c1a, #241a10);
+    color: rgba(255, 235, 190, 0.6);
+  }
+  /* Reel ↑/↓ nav buttons + label → dark glass + cream. */
+  [data-theme="dark"] body.reel-with-rail .reel-nav-btn {
+    color: #efe6d2;
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+  [data-theme="dark"] body.reel-with-rail .reel-nav-btn:hover { background: rgba(255, 255, 255, 0.13); }
+  [data-theme="dark"] body.reel-with-rail .reel-nav-label { color: rgba(242, 236, 221, 0.6); }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
