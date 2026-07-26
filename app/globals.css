@@ -320,7 +320,10 @@
     --bg-pill-active: linear-gradient(135deg, #d9be82, #c9a66b);
     --text-base: var(--cozy-warm-dark);
     --text-soft: var(--cozy-cocoa);
-    --text-muted: var(--cozy-cocoa-soft);
+    /* v515 — app-wide legibility: the faintest text tier was too light in light
+       mode. Nudge it ~22% toward --text-soft so muted labels read cleanly while
+       keeping the hierarchy (base > soft > muted). Refined, not heavy. */
+    --text-muted: color-mix(in srgb, var(--cozy-cocoa-soft) 78%, var(--cozy-cocoa));
     --text-inverse: var(--cozy-warm-dark);
     --border-soft: var(--cozy-taupe);
     --border-strong: rgba(110, 84, 48, 0.3);
@@ -343,7 +346,9 @@
     --bg-pill-active: linear-gradient(135deg, #c9a66b, #9c7e48);
     --text-base: #f5efe0;
     --text-soft: #d6c9ae;
-    --text-muted: rgba(213, 200, 175, 0.62);
+    /* v515 — app-wide legibility (dark): raise the faintest tier's opacity so
+       muted labels don't disappear against the cocoa-night background. */
+    --text-muted: rgba(216, 203, 178, 0.76);
     --text-inverse: #0f0c08;
     --border-soft: rgba(217, 190, 130, 0.1);
     --border-strong: rgba(217, 190, 130, 0.28);
