@@ -875,7 +875,14 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
               onOpen();
             }}
           >
-            {sold ? "Sold Out" : "⚡ Grab Now"}
+            {sold ? "Sold Out" : (
+              <>
+                <svg className="fd-cta-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M13 2 L4 13 h6 l-1 9 L20 10 h-6 z" />
+                </svg>
+                Grab Now
+              </>
+            )}
           </button>
         </div>
 
@@ -1887,26 +1894,67 @@ function FdStyles() {
       }
       .fd-scarcity.urgent .fd-scarcity-lbl { color: #b3600f; }
       .fd-scarcity.soldout .fd-scarcity-lbl { color: var(--text-muted); }
+
+      /* v524 — DARK MODE legibility fix. These elements used fixed dark-brown
+         palette hex (--cozy-warm-dark / --cozy-cocoa / --cozy-cocoa-soft) which
+         are NOT redefined for dark mode, so they vanished on dark cards. Re-map
+         them to the theme-adaptive text tokens (light mode is unchanged — those
+         tokens equal the same cozy values in light). */
+      [data-theme="dark"] .fd-hero-title,
+      [data-theme="dark"] .fd-stat,
+      [data-theme="dark"] .fd-stat-gold { color: var(--text-base); }
+      [data-theme="dark"] .fd-rating,
+      [data-theme="dark"] .fd-amen-chip { color: var(--text-soft); }
+      [data-theme="dark"] .fd-hero-stats-inline,
+      [data-theme="dark"] .fd-rating .fd-rating-cnt,
+      [data-theme="dark"] .fd-scarcity-lbl { color: var(--text-muted); }
+
+      /* v524 — Grab Now: 3D reflective gold button (was flat + dull). Layered
+         bevel (bright top inset + dark bottom inset) + a moving gloss sweep. */
       .fd-cta {
+        position: relative; overflow: hidden;
         flex: 0 0 auto;
-        /* a11y: 9 → 12px vertical padding lifts the primary "Grab Now"
-           CTA to a ~44px tap target without disrupting the card layout. */
-        padding: 12px 17px;
-        background: linear-gradient(135deg, #f6dd80, #ebb63c 58%, #c98a16);
-        color: #231907; font-size: 0.76rem; font-weight: 800;
-        border: none; border-radius: 13px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        /* a11y: 12px vertical padding → ~44px tap target. */
+        padding: 12px 18px;
+        background: linear-gradient(160deg, #ffe9a6 0%, #f4c748 42%, #e0a521 70%, #c88914 100%);
+        color: #2a1d05; font-size: 0.78rem; font-weight: 900;
+        border: none; border-radius: 14px;
         cursor: pointer;
-        box-shadow: 0 8px 20px -6px rgba(235,182,60,0.5), inset 0 1px 0 rgba(255,255,255,0.55);
-        transition: all 0.2s ease;
+        box-shadow:
+          0 10px 22px -6px rgba(200,140,20,0.55),
+          0 2px 5px -1px rgba(120,80,10,0.4),
+          inset 0 1.5px 0 rgba(255,255,255,0.75),
+          inset 0 -3px 6px rgba(150,95,10,0.4);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
         letter-spacing: 0.02em;
         white-space: nowrap;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.35);
       }
-      @media (min-width: 1024px) { .fd-cta { padding: 10px 18px; font-size: 0.78rem; } }
-      .fd-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }
+      /* reflective gloss sweep */
+      .fd-cta::after {
+        content: ""; position: absolute; inset: 0;
+        background: linear-gradient(115deg, transparent 36%, rgba(255,255,255,0.55) 50%, transparent 64%);
+        background-size: 250% 100%;
+        animation: fdCtaShine 3.4s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes fdCtaShine { 0% { background-position: 230% 0; } 100% { background-position: -230% 0; } }
+      .fd-cta-bolt { width: 14px; height: 14px; flex-shrink: 0; filter: drop-shadow(0 1px 0 rgba(255,255,255,0.4)); }
+      @media (min-width: 1024px) { .fd-cta { padding: 11px 18px; font-size: 0.8rem; } }
+      .fd-cta:hover {
+        transform: translateY(-2px);
+        box-shadow:
+          0 16px 32px -8px rgba(200,140,20,0.6),
+          0 3px 8px -1px rgba(120,80,10,0.4),
+          inset 0 1.5px 0 rgba(255,255,255,0.8),
+          inset 0 -3px 6px rgba(150,95,10,0.4);
+      }
       .fd-cta.sold {
         background: var(--accent-soft); color: var(--text-muted);
-        cursor: not-allowed; box-shadow: none;
+        cursor: not-allowed; box-shadow: none; text-shadow: none;
       }
+      .fd-cta.sold::after { display: none; }
 
       /* v92 — Skeleton uses taupe shimmer so it's visible on cream cards too */
       .fd-card-skel { cursor: default; pointer-events: none; }
