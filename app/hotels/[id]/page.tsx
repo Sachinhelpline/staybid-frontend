@@ -2661,54 +2661,11 @@ export default function HotelDetail() {
           </div>
         </div>
 
-        {/* v509 — "Guest Favourite" laurel honour (only for genuinely top-tier
-            stays; renders nothing otherwise). Driven by the real hotel scorecard. */}
-        <GuestFavourite
-          hotelId={String(id)}
-          city={hotel.city}
-          avgRating={Number(hotel.avgRating) || undefined}
-          totalReviews={Number(hotel.totalReviews) || undefined}
-        />
-
         {/* ── Two-column page grid (sticky rail on desktop ≥1100px). v159.9
             — marginTop 22 → 10 so the About section follows the medal
             block tightly instead of leaving a chunk of dead space. */}
         <div className="hx-page-grid" style={{ marginTop: "10px" }}>
           <div>
-
-        {/* ── Description — v159.9 tight section rhythm. */}
-        {hotel.description && (
-          <div className="hx-reveal" style={{ marginTop: "2px" }}>
-            <div className="hx-section-h">
-              <span className="hx-section-h-label">About</span>
-              <span className="hx-section-h-rule" />
-            </div>
-            <p style={{
-              color: "var(--text-soft)",
-              fontSize: "0.96rem",
-              lineHeight: 1.68,
-              margin: 0,
-              maxWidth: "720px",
-            }}>
-              {hotel.description}
-            </p>
-          </div>
-        )}
-
-        {/* ── Amenities ── */}
-        {hotel.amenities?.length > 0 && (
-          <div className="hx-reveal">
-            <div className="hx-section-h">
-              <span className="hx-section-h-label">Amenities</span>
-              <span className="hx-section-h-rule" />
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {hotel.amenities.map((a: string) => (
-                <span key={a} className="hx-amenity-chip" style={{ fontSize: "0.78rem", padding: "7px 14px" }}>{a}</span>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── Premium Tabs (v128.3 — +Guest Feedback) ── */}
         <div className="hx-tabs hx-reveal">
@@ -3156,162 +3113,6 @@ export default function HotelDetail() {
           </div>
           );
         })()}
-
-        {/* ── v123 Availability Picker — premium glass-on-cream ── */}
-        <div id="availability-picker" className="hx-availability hx-reveal" style={{ marginBottom: "24px" }}>
-          <div className="hx-availability-head">
-            <span className="hx-availability-badge">🔍</span>
-            <div>
-              <h3 className="hx-availability-title">Check availability &amp; get your best price</h3>
-              <p className="hx-availability-sub">
-                <span className="hx-availability-sub-dot" />
-                AI live engine · real-time rates
-              </p>
-            </div>
-          </div>
-
-          {/* v198 — Locked-dates banner. When the customer already has an
-              ACCEPTED bid for this hotel, the dates are bound to that bid.
-              Picker becomes read-only so the customer doesn't try to
-              change to a different stay. */}
-          {datesLocked && (
-            <div className="mb-3 p-3 rounded-2xl flex items-center gap-2 border" style={{
-              background: "linear-gradient(135deg, #fff9e6 0%, #fff4cc 100%)",
-              borderColor: "rgba(184,134,11,0.30)",
-            }}>
-              <span style={{ fontSize: "1.1rem" }}>🔒</span>
-              <div style={{ fontSize: "0.72rem", lineHeight: 1.35 }}>
-                <p style={{ fontWeight: 700, color: "#6e5430" }}>Dates locked to your accepted bid</p>
-                <p style={{ color: "#8a6f3a", marginTop: 2 }}>
-                  Pay now to confirm. Need different dates? Cancel the offer first from My Bids.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* v510 — Desktop: an INLINE live-pricing calendar (per-day Spine
-              prices + demand colours) right on the page. Mobile keeps the
-              tap-to-open modal via the date-row below (hidden on desktop). */}
-          {!datesLocked && (
-            <div className="hx-cal-inline">
-              <LuxuryCalendar
-                inline
-                open
-                mode="checkIn"
-                checkIn={globalCheckIn}
-                checkOut={globalCheckOut}
-                rooms={hotel.rooms || []}
-                city={hotel.city}
-                onApply={({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); }}
-                onClose={() => {}}
-              />
-            </div>
-          )}
-
-          {/* Dates row — opens LuxuryCalendar with per-day live pricing (mobile) */}
-          <div className="grid grid-cols-2 gap-3 mb-3 relative z-2 hx-dates-row">
-            <button
-              type="button"
-              disabled={datesLocked}
-              onClick={() => {
-                if (datesLocked) return;
-                openCalendar({
-                  mode: "checkIn",
-                  checkIn: globalCheckIn,
-                  checkOut: globalCheckOut,
-                  onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
-                });
-              }}
-              className="picker-tile block text-left"
-              style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
-            >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
-              <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
-                {globalCheckIn
-                  ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
-                  : "Add date"}
-              </span>
-            </button>
-            <button
-              type="button"
-              disabled={datesLocked}
-              onClick={() => {
-                if (datesLocked) return;
-                openCalendar({
-                  mode: "checkOut",
-                  checkIn: globalCheckIn,
-                  checkOut: globalCheckOut,
-                  onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
-                });
-              }}
-              className="picker-tile block text-left"
-              style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
-            >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
-              <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
-                {globalCheckOut
-                  ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
-                  : "Add date"}
-              </span>
-            </button>
-          </div>
-
-          {/* v243 — GuestsRoomsPicker: Adults/Children/Kids combined into ONE
-              "Guests" card (slim rows) + a compact "Rooms" card beside it,
-              replacing the bulky 2×2 grid of four separate tiles (ss1 ask).
-              Rooms still drives every booking-creation CTA on this page. */}
-          <GuestsRoomsPicker
-            adults={globalAdults}
-            children={globalChildren}
-            kids={globalKids}
-            rooms={globalNumRooms}
-            onAdults={setGlobalAdults}
-            onChildren={setGlobalChildren}
-            onKids={setGlobalKids}
-            onRooms={setGlobalNumRooms}
-            suggested={suggestedRooms}
-          />
-
-          {/* Availability warning when dates overlap blocks */}
-          {datesSelected && dateRangeBlocked(globalCheckIn, globalCheckOut) && (
-            <div className="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2">
-              <span className="text-amber-600 text-base">⚠️</span>
-              <div className="text-xs text-amber-800">
-                <p className="font-bold">Limited availability on these dates</p>
-                <p className="text-amber-700 mt-0.5">Some rooms may be booked. Other rooms shown below are still available — scroll down to pick.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Summary strip */}
-          {datesSelected ? (
-            <div className="flex flex-wrap items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
-              <span className="text-emerald-600 text-sm font-bold">✓</span>
-              <span className="text-xs font-semibold text-emerald-800">
-                {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} →{" "}
-                {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
-                {" · "}{globalNights} night{globalNights > 1 ? "s" : ""}
-              </span>
-              <span className="text-xs text-emerald-700">·</span>
-              <span className="text-xs font-semibold text-emerald-800">
-                {globalAdults} adult{globalAdults > 1 ? "s" : ""}
-                {globalChildren > 0 ? ` · ${globalChildren} child${globalChildren > 1 ? "ren" : ""}` : ""}
-                {globalKids > 0 ? ` · ${globalKids} kid${globalKids > 1 ? "s" : ""} (free)` : ""}
-              </span>
-              {globalChildren > 0 && (
-                <span className="ml-auto text-[0.65rem] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  +₹{globalChildren * 200}/night for children
-                </span>
-              )}
-              <span className="w-full text-[0.6rem] text-emerald-600 font-medium mt-0.5">↓ Live prices updated below</span>
-            </div>
-          ) : (
-            <div className="p-3 bg-gold-50 border border-gold-200 rounded-2xl text-center">
-              <p className="text-xs font-bold text-gold-700">← Select check-in & check-out dates to see live prices</p>
-              <p className="text-[0.6rem] text-gold-500 mt-0.5">AI engine calculates the best rate for your exact travel dates</p>
-            </div>
-          )}
-        </div>
 
         {/* ── Available Rooms — v123 premium ──
             v238 — Removed `.hx-reveal-io` defensively. Same root cause
@@ -4225,7 +4026,206 @@ export default function HotelDetail() {
           );
         })()}
 
+        {/* ── v123 Availability Picker — premium glass-on-cream ── */}
+        <div id="availability-picker" className="hx-availability hx-reveal" style={{ marginBottom: "24px" }}>
+          <div className="hx-availability-head">
+            <span className="hx-availability-badge">🔍</span>
+            <div>
+              <h3 className="hx-availability-title">Check availability &amp; get your best price</h3>
+              <p className="hx-availability-sub">
+                <span className="hx-availability-sub-dot" />
+                AI live engine · real-time rates
+              </p>
+            </div>
+          </div>
+
+          {/* v198 — Locked-dates banner. When the customer already has an
+              ACCEPTED bid for this hotel, the dates are bound to that bid.
+              Picker becomes read-only so the customer doesn't try to
+              change to a different stay. */}
+          {datesLocked && (
+            <div className="mb-3 p-3 rounded-2xl flex items-center gap-2 border" style={{
+              background: "linear-gradient(135deg, #fff9e6 0%, #fff4cc 100%)",
+              borderColor: "rgba(184,134,11,0.30)",
+            }}>
+              <span style={{ fontSize: "1.1rem" }}>🔒</span>
+              <div style={{ fontSize: "0.72rem", lineHeight: 1.35 }}>
+                <p style={{ fontWeight: 700, color: "#6e5430" }}>Dates locked to your accepted bid</p>
+                <p style={{ color: "#8a6f3a", marginTop: 2 }}>
+                  Pay now to confirm. Need different dates? Cancel the offer first from My Bids.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* v510 — Desktop: an INLINE live-pricing calendar (per-day Spine
+              prices + demand colours) right on the page. Mobile keeps the
+              tap-to-open modal via the date-row below (hidden on desktop). */}
+          {!datesLocked && (
+            <div className="hx-cal-inline">
+              <LuxuryCalendar
+                inline
+                open
+                mode="checkIn"
+                checkIn={globalCheckIn}
+                checkOut={globalCheckOut}
+                rooms={hotel.rooms || []}
+                city={hotel.city}
+                onApply={({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); }}
+                onClose={() => {}}
+              />
+            </div>
+          )}
+
+          {/* Dates row — opens LuxuryCalendar with per-day live pricing (mobile) */}
+          <div className="grid grid-cols-2 gap-3 mb-3 relative z-2 hx-dates-row">
+            <button
+              type="button"
+              disabled={datesLocked}
+              onClick={() => {
+                if (datesLocked) return;
+                openCalendar({
+                  mode: "checkIn",
+                  checkIn: globalCheckIn,
+                  checkOut: globalCheckOut,
+                  onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+                });
+              }}
+              className="picker-tile block text-left"
+              style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
+            >
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
+              <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
+                {globalCheckIn
+                  ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                  : "Add date"}
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={datesLocked}
+              onClick={() => {
+                if (datesLocked) return;
+                openCalendar({
+                  mode: "checkOut",
+                  checkIn: globalCheckIn,
+                  checkOut: globalCheckOut,
+                  onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+                });
+              }}
+              className="picker-tile block text-left"
+              style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
+            >
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
+              <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
+                {globalCheckOut
+                  ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                  : "Add date"}
+              </span>
+            </button>
+          </div>
+
+          {/* v243 — GuestsRoomsPicker: Adults/Children/Kids combined into ONE
+              "Guests" card (slim rows) + a compact "Rooms" card beside it,
+              replacing the bulky 2×2 grid of four separate tiles (ss1 ask).
+              Rooms still drives every booking-creation CTA on this page. */}
+          <GuestsRoomsPicker
+            adults={globalAdults}
+            children={globalChildren}
+            kids={globalKids}
+            rooms={globalNumRooms}
+            onAdults={setGlobalAdults}
+            onChildren={setGlobalChildren}
+            onKids={setGlobalKids}
+            onRooms={setGlobalNumRooms}
+            suggested={suggestedRooms}
+          />
+
+          {/* Availability warning when dates overlap blocks */}
+          {datesSelected && dateRangeBlocked(globalCheckIn, globalCheckOut) && (
+            <div className="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2">
+              <span className="text-amber-600 text-base">⚠️</span>
+              <div className="text-xs text-amber-800">
+                <p className="font-bold">Limited availability on these dates</p>
+                <p className="text-amber-700 mt-0.5">Some rooms may be booked. Other rooms shown below are still available — scroll down to pick.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Summary strip */}
+          {datesSelected ? (
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <span className="text-emerald-600 text-sm font-bold">✓</span>
+              <span className="text-xs font-semibold text-emerald-800">
+                {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} →{" "}
+                {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
+                {" · "}{globalNights} night{globalNights > 1 ? "s" : ""}
+              </span>
+              <span className="text-xs text-emerald-700">·</span>
+              <span className="text-xs font-semibold text-emerald-800">
+                {globalAdults} adult{globalAdults > 1 ? "s" : ""}
+                {globalChildren > 0 ? ` · ${globalChildren} child${globalChildren > 1 ? "ren" : ""}` : ""}
+                {globalKids > 0 ? ` · ${globalKids} kid${globalKids > 1 ? "s" : ""} (free)` : ""}
+              </span>
+              {globalChildren > 0 && (
+                <span className="ml-auto text-[0.65rem] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  +₹{globalChildren * 200}/night for children
+                </span>
+              )}
+              <span className="w-full text-[0.6rem] text-emerald-600 font-medium mt-0.5">↓ Live prices updated below</span>
+            </div>
+          ) : (
+            <div className="p-3 bg-gold-50 border border-gold-200 rounded-2xl text-center">
+              <p className="text-xs font-bold text-gold-700">← Select check-in & check-out dates to see live prices</p>
+              <p className="text-[0.6rem] text-gold-500 mt-0.5">AI engine calculates the best rate for your exact travel dates</p>
+            </div>
+          )}
+        </div>
+
         </> /* end rooms tab */}
+
+        {/* ── Description — v159.9 tight section rhythm. */}
+        {hotel.description && (
+          <div className="hx-reveal" style={{ marginTop: "2px" }}>
+            <div className="hx-section-h">
+              <span className="hx-section-h-label">About</span>
+              <span className="hx-section-h-rule" />
+            </div>
+            <p style={{
+              color: "var(--text-soft)",
+              fontSize: "0.96rem",
+              lineHeight: 1.68,
+              margin: 0,
+              maxWidth: "720px",
+            }}>
+              {hotel.description}
+            </p>
+          </div>
+        )}
+
+        {/* ── Amenities ── */}
+        {hotel.amenities?.length > 0 && (
+          <div className="hx-reveal">
+            <div className="hx-section-h">
+              <span className="hx-section-h-label">Amenities</span>
+              <span className="hx-section-h-rule" />
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {hotel.amenities.map((a: string) => (
+                <span key={a} className="hx-amenity-chip" style={{ fontSize: "0.78rem", padding: "7px 14px" }}>{a}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* v509 — "Guest Favourite" laurel honour (only for genuinely top-tier
+            stays; renders nothing otherwise). Driven by the real hotel scorecard. */}
+        <GuestFavourite
+          hotelId={String(id)}
+          city={hotel.city}
+          avgRating={Number(hotel.avgRating) || undefined}
+          totalReviews={Number(hotel.totalReviews) || undefined}
+        />
 
           </div>{/* /column main */}
 
