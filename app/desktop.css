@@ -2043,87 +2043,40 @@ body main textarea.input-luxury {
    item #5). The "999" span is harmless — grid creates as many implicit
    rows as auto-placed siblings require, no more.
    ───────────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────
+   v503 — REAL fix for the hotel-page right-side "dead space" (root cause).
+
+   The old retrofit turned `.hx-shell > .max-w-7xl` into a 2-col grid and
+   reserved column 2 (340–460px) for `#availability-picker` via
+   `> #availability-picker`. But that element was later moved INSIDE
+   `.hx-page-grid`'s first column, so the DIRECT-CHILD selector stopped
+   matching — column 2 was never filled and stayed PERMANENTLY EMPTY. That
+   empty ~400px column IS the right-side void, and no max-width tweak could
+   ever remove it (it scales with the container).
+
+   The page already has a correct, self-contained 2-column layout:
+   `.hx-page-grid` = [ main content | sticky booking rail (.hx-sticky-rail) ]
+   (globals.css). So we DROP the broken outer grid and just centre + widen the
+   container. Result: the gallery + stats span the full width, and
+   `.hx-page-grid` puts the booking rail flush to the true right edge — no
+   phantom column. Bulletproof: one grid, no fragile direct-child coupling.
+   ───────────────────────────────────────────────────────────────────────── */
 @media (min-width: 1280px) {
-  /* Make the page wrapper a 2-col grid. The max-width is bumped from
-     1152 (Tailwind max-w-6xl) to 1280 so the new right rail doesn't
-     squeeze the room cards in column 1. */
   .hx-shell > .max-w-7xl {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 340px !important;
-    column-gap: 32px !important;
-    align-items: start !important;
-    max-width: 1280px !important;
-  }
-
-  /* Every direct child of the page wrapper EXCEPT the availability
-     picker flows in column 1. `min-width: 0` prevents long content
-     (hotel name, OTA comparison table) from forcing the grid track
-     wider than 1fr. */
-  .hx-shell > .max-w-7xl > :not(#availability-picker) {
-    grid-column: 1 !important;
-    min-width: 0;
-  }
-
-  /* The availability picker becomes the sticky right rail. Spans all
-     rows of the grid so column 2 stays "owned" by the picker — no
-     phantom empty space at the bottom right of the page. */
-  .hx-shell > .max-w-7xl > #availability-picker {
-    grid-column: 2 !important;
-    grid-row: 1 / span 999 !important;
-    position: sticky !important;
-    top: 88px !important;                       /* below 64px sticky navbar + 24px breathing */
-    align-self: start !important;
-    max-height: calc(100vh - 110px);
-    overflow-x: hidden;                         /* preserve picker's hx-availability::before clip */
-    overflow-y: auto;                           /* scroll inside picker if content is tall */
-    margin-top: 0 !important;                   /* override inline marginBottom:24px from JSX */
-    margin-bottom: 0 !important;
-    width: auto;                                /* let grid track width drive size */
-  }
-
-  /* Slim scrollbar inside the picker so it's discoverable but doesn't
-     fight the cozy parchment palette. */
-  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar {
-    width: 5px;
-  }
-  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar-thumb {
-    background: rgba(201, 145, 26, 0.30);
-    border-radius: 3px;
-  }
-  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar-track {
-    background: transparent;
+    max-width: min(1500px, 94vw) !important;
   }
 }
 
+/* v503 — width caps only (no grid; .hx-page-grid owns the columns). Centered
+   container fills large screens with a thin, even gutter. */
 @media (min-width: 1440px) {
-  /* v502 — DECISIVE fill. The v501 96/94vw gutter barely beat the old fixed cap
-     on a ~1500px screen, so the void looked unchanged. Now 96vw with a high px
-     ceiling so the page genuinely reaches the edges (thin, even gutter). */
-  .hx-shell > .max-w-7xl {
-    grid-template-columns: minmax(0, 1fr) 400px !important;
-    column-gap: 44px !important;
-    max-width: min(1620px, 96vw) !important;
-  }
+  .hx-shell > .max-w-7xl { max-width: min(1600px, 94vw) !important; }
 }
-
 @media (min-width: 1700px) {
-  /* v502 — wide laptops/monitors: fill to 96vw (≤1820px) — the big right-side
-     void is gone; only a thin symmetric gutter remains. */
-  .hx-shell > .max-w-7xl {
-    grid-template-columns: minmax(0, 1fr) 420px !important;
-    column-gap: 48px !important;
-    max-width: min(1820px, 96vw) !important;
-  }
+  .hx-shell > .max-w-7xl { max-width: min(1760px, 93vw) !important; }
 }
-
 @media (min-width: 1920px) {
-  /* v502 — 4K / ultrawide: fill to 95vw (≤2040px) so the content uses the whole
-     monitor instead of floating in an island. Rail grows to 460. */
-  .hx-shell > .max-w-7xl {
-    grid-template-columns: minmax(0, 1fr) 460px !important;
-    column-gap: 52px !important;
-    max-width: min(2040px, 95vw) !important;
-  }
+  .hx-shell > .max-w-7xl { max-width: min(1960px, 92vw) !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

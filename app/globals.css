@@ -2042,6 +2042,29 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   }
   .hx-room-content-wrap { flex: 1; }
 }
+
+/* v503 — Available Rooms list. Mobile/tablet: a single stacked column (image
+   LEFT via the row rule above). Wide desktop (≥1440): a 2-UP grid so the
+   reclaimed width is FILLED with more cards instead of stretching one card
+   across the whole column. In 2-up, each half-width card goes VERTICAL (image
+   on top, details below) so amenities + price + both CTAs always have full
+   width — never cramped, never stretched. */
+.hx-room-list { display: flex; flex-direction: column; gap: 22px; }
+.hx-room-list.is-hidden { display: none; }
+@media (min-width: 1440px) {
+  .hx-room-list:not(.is-hidden) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-items: start;
+  }
+  .hx-room-list:not(.is-hidden) .hx-room-body { flex-direction: column; }
+  .hx-room-list:not(.is-hidden) .hx-room-media {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 0;
+  }
+}
 .hx-room-media-img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
