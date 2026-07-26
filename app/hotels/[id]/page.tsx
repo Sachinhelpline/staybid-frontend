@@ -3189,8 +3189,27 @@ export default function HotelDetail() {
             </div>
           )}
 
-          {/* Dates row — opens LuxuryCalendar with per-day live pricing */}
-          <div className="grid grid-cols-2 gap-3 mb-3 relative z-2">
+          {/* v510 — Desktop: an INLINE live-pricing calendar (per-day Spine
+              prices + demand colours) right on the page. Mobile keeps the
+              tap-to-open modal via the date-row below (hidden on desktop). */}
+          {!datesLocked && (
+            <div className="hx-cal-inline">
+              <LuxuryCalendar
+                inline
+                open
+                mode="checkIn"
+                checkIn={globalCheckIn}
+                checkOut={globalCheckOut}
+                rooms={hotel.rooms || []}
+                city={hotel.city}
+                onApply={({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); }}
+                onClose={() => {}}
+              />
+            </div>
+          )}
+
+          {/* Dates row — opens LuxuryCalendar with per-day live pricing (mobile) */}
+          <div className="grid grid-cols-2 gap-3 mb-3 relative z-2 hx-dates-row">
             <button
               type="button"
               disabled={datesLocked}

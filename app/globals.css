@@ -1197,6 +1197,22 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 @media (min-width: 640px) {
   .lux-cal-sheet { border-radius: 28px; max-width: 540px; }
 }
+/* v510 — inline mode: render the calendar as a normal in-page card (no modal
+   sheet framing / slide-up / max-width). Used on the hotel detail page desktop. */
+.lux-cal-inline-wrap { width: 100%; }
+.lux-cal-sheet.lux-cal-sheet-inline {
+  max-width: 100%;
+  max-height: none;
+  border-radius: 20px;
+  animation: none;
+  box-shadow: 0 10px 34px -22px rgba(20, 10, 2, 0.26), 0 0 0 1px rgba(201, 145, 26, 0.2);
+}
+/* Desktop-only inline calendar block + hide the modal-trigger date row on desktop. */
+.hx-cal-inline { display: none; }
+@media (min-width: 1024px) {
+  .hx-cal-inline { display: block; margin-bottom: 4px; }
+  .hx-availability .hx-dates-row { display: none; }
+}
 
 .lux-cal-sheet::before {
   content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
