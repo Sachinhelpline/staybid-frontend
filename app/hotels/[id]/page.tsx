@@ -3249,16 +3249,24 @@ export default function HotelDetail() {
             // this room's floor — so a room's price is intrinsic and never
             // changes based on which deal the customer entered through.
             const roomMarket = Number(roomPrices[r.id]?.price) || 0;
+            const lockedDeal = Math.round(parseFloat(dealPrice || "0"));
+            // v526/v527 — EVERY room (base + upgrades) is priced by the shared
+            // flash ladder off its OWN live price: base 20% + 5% per category up
+            // (capped 40%), clamped to its flash floor (owner's manual
+            // flashFloorPrice, else live × 55% so a room whose floor == its live
+            // price still gets real discount headroom → never "0% off"). Pricier
+            // rooms get a DEEPER, more tempting discount so upgrading is worth it,
+            // and the price is intrinsic (entry-independent).
+            const ladderFlash = roomMarket > 0
+              ? computeFlashLadder({ live: roomMarket, tierIndex: hotelTierRank[String(r.id)] ?? (isHeadlineRoom ? 0 : 1), ownerFlashFloor: r.flashFloorPrice }).flash
+              : 0;
             const roomFlashPrice = flashMode
               ? (isHeadlineRoom
-                  ? Math.round(parseFloat(dealPrice || "0"))   // tapped room: honour the locked price the customer came for
-                  : (roomMarket > 0
-                      // v526 — upgrade/sibling: the shared flash ladder (base 20%
-                      // + 5% per category up, capped 40%) off its OWN live price,
-                      // clamped to its flash floor (owner's manual flashFloorPrice
-                      // else live × 55%). Pricier rooms get a DEEPER, more tempting
-                      // discount so upgrading is worth it — entry-independent.
-                      ? computeFlashLadder({ live: roomMarket, tierIndex: hotelTierRank[String(r.id)] ?? 1, ownerFlashFloor: r.flashFloorPrice }).flash
+                  // base/headline: the ladder guarantees ≥20% off; a genuinely
+                  // lower locked deal price the guest came for still wins via min.
+                  ? (ladderFlash > 0 ? (lockedDeal > 0 ? Math.min(lockedDeal, ladderFlash) : ladderFlash) : lockedDeal)
+                  : (ladderFlash > 0
+                      ? ladderFlash
                       // fallback (no spine market): legacy floor × (1 − disc%)
                       : Math.max(100, Math.round((r.floorPrice || 0) * (1 - flashDiscPct / 100) / 100) * 100)))
               : 0;

@@ -288,6 +288,19 @@ export async function GET(req: NextRequest) {
     // pulled up into it instead of it sitting empty at 0% off.
     const tierRank = tierRanks(allRooms as any[]);
 
+    // v527 — the BASE/headline room goes through the SAME ladder (tier 0 =
+    // base 20% off its live price, floored at live×55%) so it NEVER shows
+    // "0% off" when the room's floor happens to equal its live price
+    // (off-season, live sitting at floor). A genuinely lower cron-managed deal
+    // price still wins via min() — the ladder is only a guaranteed FLOOR of
+    // discount, never a cap on a real deal.
+    const headlineLadder = headline.marketRate > 0
+      ? computeFlashLadder({ live: headline.marketRate, tierIndex: tierRank[headline.roomId] ?? 0, ownerFlashFloor: (headlineRoom as any)?.flashFloorPrice }).flash
+      : 0;
+    const headlineFlash = headlineLadder > 0
+      ? Math.min(headline.aiPrice || headlineLadder, headlineLadder)
+      : headline.aiPrice;
+
     // Upgrade ladder: every OTHER room in this hotel, with availability + delta
     const upgrades = allRooms
       .filter((r: any) => r.id !== headline.roomId)
@@ -314,7 +327,7 @@ export async function GET(req: NextRequest) {
           floorPrice:    floor,
           dealPrice:     price,
           marketRate:    market,
-          extraPerNight: Math.max(0, price - headline.aiPrice),
+          extraPerNight: Math.max(0, price - headlineFlash),
           unitsFree:     free,
           available:     free > 0,
           amenities:     r.amenities || [],
@@ -328,7 +341,7 @@ export async function GET(req: NextRequest) {
       hotelId:      headline.hotelId,
       roomId:       headline.roomId,
       city:         headline.city,
-      aiPrice:      headline.aiPrice,
+      aiPrice:      headlineFlash,
       floorPrice:   headline.floorPrice,
       discount:     headline.discount,
       marketRate:   headline.marketRate,   // v525 — honest "was" anchor (spine live price)
