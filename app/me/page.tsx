@@ -1241,26 +1241,6 @@ function MoreDrawer({
           <ModalCloseButton onClose={onClose} tone="light" ariaLabel="Close menu" className="me-drawer-close-btn" />
         </div>
         <ul className="me-drawer-list">
-          {/* v404 — App Tour + Help & Support in the menu (the floating "?" +
-              support bubble were removed from every screen). */}
-          <li>
-            <button
-              type="button"
-              className="me-drawer-link"
-              onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-tour")); }}
-            >
-              <DrawerRow icon="❓" label="App Tour" sub="Replay any guided tour" />
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              className="me-drawer-link"
-              onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-support")); }}
-            >
-              <DrawerRow icon="🎧" label="Help & Support" sub="Chat with our team" />
-            </button>
-          </li>
           {/* v322 — Switch experience (opens the global panel switcher). */}
           <li>
             <button
@@ -1288,10 +1268,26 @@ function MoreDrawer({
           <li className="me-drawer-theme">
             <ThemeToggle variant="lg" />
           </li>
-          {/* v494 — removed the duplicate "App Tour" entry here. The drawer
-              already has an "App Tour" row up top (fires sb:open-tour); showing a
-              second "App Tour" (the replay-list <details>) directly below it read
-              as a duplicate. The single top entry is the canonical one. */}
+          {/* v497 — App Tour + Help & Support moved DOWN here (below Account
+              settings + Appearance). They had no use at the top of the menu. */}
+          <li>
+            <button
+              type="button"
+              className="me-drawer-link"
+              onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-tour")); }}
+            >
+              <DrawerRow icon="❓" label="App Tour" sub="Replay any guided tour" />
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="me-drawer-link"
+              onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-support")); }}
+            >
+              <DrawerRow icon="🎧" label="Help & Support" sub="Chat with our team" />
+            </button>
+          </li>
           <li>
             {/* v132.15 — same button, label flips with auth state.
                 Signed-in → "Log out" → fires onLogout (clears state + redirects to /auth).
