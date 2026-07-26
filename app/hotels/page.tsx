@@ -14,6 +14,9 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v392 — canonical city pills (hill-stations + 12-month demand-cycle hubs).
 import { cityPills, HUB_CITIES, SATELLITE_CITIES } from "@/lib/cities";
 import DemandCycleStrip from "@/components/discover/DemandCycleStrip";
+// v517 — trending destinations for the redesigned "Find your stay" search
+// (Airbnb-style Where step — curated shortlist instead of a 50-pill wall).
+import { currentMonthDemand } from "@/lib/circle/demand-cycle";
 
 // v394 — new demand-cycle destinations (hubs + satellites), lowercased, for the
 // "Explore India" rail. Hubs first so they lead the rail.
@@ -158,8 +161,37 @@ function HotelList() {
   const [searchAdults, setSearchAdults] = useState(2);
   const [searchChildren, setSearchChildren] = useState(0);
   const [searchKids, setSearchKids] = useState(0);
-  const [calOpen, setCalOpen] = useState(false);
-  const [calMode, setCalMode] = useState<"checkIn" | "checkOut">("checkIn");
+  // v517 — Airbnb-style progressive search: only one step open at a time.
+  const [openStep, setOpenStep] = useState<"where" | "when" | "who" | null>("where");
+  const [showAllCities, setShowAllCities] = useState(false);
+
+  // v517 — curated "Trending this month" destinations for the Where step
+  // (real demand-cycle data mapped to the canonical city pills), so the
+  // default view is a short shortlist, not a 50-chip wall.
+  const trending = useMemo(() => {
+    try {
+      const row = currentMonthDemand();
+      const keys = [...(row.primary || []), ...(row.secondary || [])];
+      const seen = new Set<string>();
+      const pills: typeof CITY_PILLS = [];
+      keys.forEach((k) => {
+        const kk = String(k).toLowerCase();
+        if (seen.has(kk)) return;
+        seen.add(kk);
+        const pill = CITY_PILLS.find((p) => p.key.toLowerCase() === kk);
+        if (pill) pills.push(pill);
+      });
+      return { month: row.long as string, pills: pills.slice(0, 10) };
+    } catch {
+      return { month: "", pills: [] as typeof CITY_PILLS };
+    }
+  }, []);
+
+  // Re-open on the Where step + collapse the full-city list every time the
+  // sheet opens, so it always starts calm.
+  useEffect(() => {
+    if (searchOpen) { setOpenStep("where"); setShowAllCities(false); }
+  }, [searchOpen]);
   // Pending bookings — surfaces "Continue your booking" card at top of body
   const [pendingBids, setPendingBids] = useState<any[]>([]);
 
@@ -1004,161 +1036,230 @@ function HotelList() {
               >×</button>
             </header>
 
-            <div className="hxr-sheet-body">
-              {/* Where */}
-              <section className="hxr-sheet-section">
-                <h3 className="hxr-sheet-h">Where?</h3>
-                <div className="hxr-sheet-search">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                  </svg>
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search city or hotel name…"
-                    type="search"
-                    autoComplete="off"
-                    autoFocus
-                    aria-label="Search hotels"
-                  />
-                  {search && (
-                    <button type="button" onClick={() => setSearch("")} aria-label="Clear search">✕</button>
-                  )}
-                </div>
-                {/* v159.10 — Live suggestions as the user types. Filters
-                    the already-loaded hotels list by name/city/area; no
-                    extra API hit. Tap a suggestion → navigate straight
-                    to the hotel detail page (with current dates/guests). */}
-                {search.trim().length >= 1 && (() => {
-                  const q = search.trim().toLowerCase();
-                  const matches = hotels
-                    .filter((h: any) => {
-                      const name = String(h?.name || "").toLowerCase();
-                      const hcity = String(h?.city || "").toLowerCase();
-                      const area = getHotelArea(h?.city, h?.lat, h?.lng) || "";
-                      return name.includes(q) || hcity.includes(q) || area.toLowerCase().includes(q);
-                    })
-                    .slice(0, 5);
-                  if (!matches.length) {
-                    return (
-                      <p className="hxr-sheet-empty">
-                        No hotels match “{search}”. Try a different name or city.
-                      </p>
-                    );
-                  }
-                  return (
-                    <ul className="hxr-sheet-suggest" role="list">
-                      {matches.map((h: any) => {
-                        const img = h.images?.[0];
-                        const area = getHotelArea(h.city, h.lat, h.lng);
+            <div className="hxr-sheet-body hxr-steps">
+              {/* ── WHERE ── (v517 Airbnb-style progressive step) */}
+              <section className={`hxr-step${openStep === "where" ? " is-open" : ""}`}>
+                <button
+                  type="button"
+                  className="hxr-step-head"
+                  onClick={() => setOpenStep(openStep === "where" ? null : "where")}
+                  aria-expanded={openStep === "where"}
+                >
+                  <span className="hxr-step-lbl">Where</span>
+                  <span className={`hxr-step-val${(search.trim() || city) ? " is-set" : ""}`}>
+                    {search.trim() ? `“${search.trim()}”` : (city || "Anywhere")}
+                  </span>
+                  <span className="hxr-step-caret" aria-hidden="true">▾</span>
+                </button>
+                {openStep === "where" && (
+                  <div className="hxr-step-body">
+                    <div className="hxr-sheet-search">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                      </svg>
+                      <input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search city or hotel name…"
+                        type="search"
+                        autoComplete="off"
+                        autoFocus
+                        aria-label="Search hotels"
+                      />
+                      {search && (
+                        <button type="button" onClick={() => setSearch("")} aria-label="Clear search">✕</button>
+                      )}
+                    </div>
+                    {search.trim().length >= 1 ? (
+                      /* v159.10 — Live suggestions as the user types (no extra API hit). */
+                      (() => {
+                        const q = search.trim().toLowerCase();
+                        const matches = hotels
+                          .filter((h: any) => {
+                            const name = String(h?.name || "").toLowerCase();
+                            const hcity = String(h?.city || "").toLowerCase();
+                            const area = getHotelArea(h?.city, h?.lat, h?.lng) || "";
+                            return name.includes(q) || hcity.includes(q) || area.toLowerCase().includes(q);
+                          })
+                          .slice(0, 5);
+                        if (!matches.length) {
+                          return (
+                            <p className="hxr-sheet-empty">
+                              No hotels match “{search}”. Try a different name or city.
+                            </p>
+                          );
+                        }
                         return (
-                          <li key={h.id} role="listitem">
-                            <Link
-                              href={`/hotels/${h.id}${searchUrlParams || ""}`}
-                              onClick={() => setSearchOpen(false)}
-                              className="hxr-sheet-suggest-row"
-                            >
-                              {img ? (
-                                <img src={sbImage(img, SB_IMG_CARD)} alt="" className="hxr-sheet-suggest-img" loading="lazy" />
-                              ) : (
-                                <span className="hxr-sheet-suggest-img hxr-sheet-suggest-img-fallback" aria-hidden="true">🏨</span>
-                              )}
-                              <span className="hxr-sheet-suggest-text">
-                                <span className="hxr-sheet-suggest-name">{h.name}</span>
-                                <span className="hxr-sheet-suggest-meta">
-                                  📍 {area ? `${area}, ` : ""}{h.city}
-                                </span>
-                              </span>
-                              <span className="hxr-sheet-suggest-arrow" aria-hidden="true">›</span>
-                            </Link>
-                          </li>
+                          <ul className="hxr-sheet-suggest" role="list">
+                            {matches.map((h: any) => {
+                              const img = h.images?.[0];
+                              const area = getHotelArea(h.city, h.lat, h.lng);
+                              return (
+                                <li key={h.id} role="listitem">
+                                  <Link
+                                    href={`/hotels/${h.id}${searchUrlParams || ""}`}
+                                    onClick={() => setSearchOpen(false)}
+                                    className="hxr-sheet-suggest-row"
+                                  >
+                                    {img ? (
+                                      <img src={sbImage(img, SB_IMG_CARD)} alt="" className="hxr-sheet-suggest-img" loading="lazy" />
+                                    ) : (
+                                      <span className="hxr-sheet-suggest-img hxr-sheet-suggest-img-fallback" aria-hidden="true">🏨</span>
+                                    )}
+                                    <span className="hxr-sheet-suggest-text">
+                                      <span className="hxr-sheet-suggest-name">{h.name}</span>
+                                      <span className="hxr-sheet-suggest-meta">
+                                        📍 {area ? `${area}, ` : ""}{h.city}
+                                      </span>
+                                    </span>
+                                    <span className="hxr-sheet-suggest-arrow" aria-hidden="true">›</span>
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
                         );
-                      })}
-                    </ul>
-                  );
-                })()}
-                <div className="hxr-sheet-cities">
-                  {CITY_PILLS.map((c) => {
-                    const active = c.key === city;
-                    return (
-                      <button
-                        key={c.key || "all"}
-                        type="button"
-                        onClick={() => {
-                          setCity(c.key);
-                          try { localStorage.setItem("sb_city", c.key); } catch {}
-                        }}
-                        className={`hxr-sheet-city ${active ? "hxr-sheet-city-active" : ""}`}
-                        aria-pressed={active}
-                      >
-                        <span aria-hidden="true">{c.icon}</span>
-                        <span>{c.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                      })()
+                    ) : (
+                      /* Not searching → a curated shortlist (Trending), NOT a 50-pill wall.
+                         "Show all cities" reveals the full list on demand. */
+                      <div className="hxr-where-picks">
+                        <p className="hxr-step-hint">
+                          {showAllCities
+                            ? "All destinations"
+                            : (trending.pills.length ? `🔥 Trending in ${trending.month}` : "Popular destinations")}
+                        </p>
+                        <div className="hxr-sheet-cities">
+                          <button
+                            type="button"
+                            className={`hxr-sheet-city${city === "" ? " hxr-sheet-city-active" : ""}`}
+                            aria-pressed={city === ""}
+                            onClick={() => {
+                              setCity("");
+                              try { localStorage.setItem("sb_city", ""); } catch {}
+                              setOpenStep("when");
+                            }}
+                          >
+                            <span aria-hidden="true">🌏</span>
+                            <span>Anywhere</span>
+                          </button>
+                          {(showAllCities ? CITY_PILLS.filter((p) => p.key) : trending.pills).map((c) => (
+                            <button
+                              key={c.key}
+                              type="button"
+                              className={`hxr-sheet-city${c.key === city ? " hxr-sheet-city-active" : ""}`}
+                              aria-pressed={c.key === city}
+                              onClick={() => {
+                                setCity(c.key);
+                                try { localStorage.setItem("sb_city", c.key); } catch {}
+                                setOpenStep("when");
+                              }}
+                            >
+                              <span aria-hidden="true">{c.icon}</span>
+                              <span>{c.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="hxr-step-more"
+                          onClick={() => setShowAllCities((v) => !v)}
+                        >
+                          {showAllCities ? "↑ Show less" : "Show all cities →"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
-              {/* When */}
-              <section className="hxr-sheet-section">
-                <h3 className="hxr-sheet-h">When?</h3>
-                <div className="hxr-sheet-dates">
-                  <button
-                    type="button"
-                    onClick={() => { setCalMode("checkIn"); setCalOpen(true); }}
-                    className="hxr-sheet-date"
-                  >
-                    <span className="hxr-sheet-date-lbl">📅 Check-in</span>
-                    <span className={`hxr-sheet-date-val ${searchCheckIn ? "" : "muted"}`}>
-                      {searchCheckIn
-                        ? new Date(searchCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
-                        : "Add date"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCalMode("checkOut"); setCalOpen(true); }}
-                    className="hxr-sheet-date"
-                  >
-                    <span className="hxr-sheet-date-lbl">📅 Check-out</span>
-                    <span className={`hxr-sheet-date-val ${searchCheckOut ? "" : "muted"}`}>
-                      {searchCheckOut
-                        ? new Date(searchCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
-                        : "Add date"}
-                    </span>
-                  </button>
-                </div>
+              {/* ── WHEN ── (inline pricing calendar — StayBid's edge over Airbnb) */}
+              <section className={`hxr-step${openStep === "when" ? " is-open" : ""}`}>
+                <button
+                  type="button"
+                  className="hxr-step-head"
+                  onClick={() => setOpenStep(openStep === "when" ? null : "when")}
+                  aria-expanded={openStep === "when"}
+                >
+                  <span className="hxr-step-lbl">When</span>
+                  <span className={`hxr-step-val${searchCheckIn ? " is-set" : ""}`}>
+                    {searchCheckIn && searchCheckOut
+                      ? `${new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(searchCheckOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+                      : searchCheckIn
+                        ? new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                        : "Any dates"}
+                  </span>
+                  <span className="hxr-step-caret" aria-hidden="true">▾</span>
+                </button>
+                {openStep === "when" && (
+                  <div className="hxr-step-body hxr-step-cal">
+                    <LuxuryCalendar
+                      inline
+                      open
+                      mode="checkIn"
+                      checkIn={searchCheckIn}
+                      checkOut={searchCheckOut}
+                      rooms={[]}
+                      city={city || "Mussoorie"}
+                      pricingMode="demand"
+                      onApply={({ checkIn: ci, checkOut: co }) => {
+                        setSearchCheckIn(ci);
+                        setSearchCheckOut(co);
+                        if (ci && co) setOpenStep("who");
+                      }}
+                      onClose={() => {}}
+                    />
+                  </div>
+                )}
               </section>
 
-              {/* Who */}
-              <section className="hxr-sheet-section">
-                <h3 className="hxr-sheet-h">Who?</h3>
-                <div className="hxr-sheet-guests">
-                  <GuestRow
-                    label="Adults"
-                    sub="Ages 12+"
-                    value={searchAdults}
-                    min={1}
-                    max={8}
-                    onChange={setSearchAdults}
-                  />
-                  <GuestRow
-                    label="Children"
-                    sub="Ages 5–12 · +₹200/night"
-                    value={searchChildren}
-                    min={0}
-                    max={6}
-                    onChange={setSearchChildren}
-                  />
-                  <GuestRow
-                    label="Kids"
-                    sub="Under 5 · FREE"
-                    value={searchKids}
-                    min={0}
-                    max={6}
-                    onChange={setSearchKids}
-                  />
-                </div>
+              {/* ── WHO ── */}
+              <section className={`hxr-step${openStep === "who" ? " is-open" : ""}`}>
+                <button
+                  type="button"
+                  className="hxr-step-head"
+                  onClick={() => setOpenStep(openStep === "who" ? null : "who")}
+                  aria-expanded={openStep === "who"}
+                >
+                  <span className="hxr-step-lbl">Who</span>
+                  <span className={`hxr-step-val${(searchAdults + searchChildren + searchKids) > 0 ? " is-set" : ""}`}>
+                    {(() => {
+                      const t = searchAdults + searchChildren + searchKids;
+                      return t > 0 ? `${t} guest${t === 1 ? "" : "s"}` : "Add guests";
+                    })()}
+                  </span>
+                  <span className="hxr-step-caret" aria-hidden="true">▾</span>
+                </button>
+                {openStep === "who" && (
+                  <div className="hxr-step-body">
+                    <div className="hxr-sheet-guests">
+                      <GuestRow
+                        label="Adults"
+                        sub="Ages 12+"
+                        value={searchAdults}
+                        min={1}
+                        max={8}
+                        onChange={setSearchAdults}
+                      />
+                      <GuestRow
+                        label="Children"
+                        sub="Ages 5–12 · +₹200/night"
+                        value={searchChildren}
+                        min={0}
+                        max={6}
+                        onChange={setSearchChildren}
+                      />
+                      <GuestRow
+                        label="Kids"
+                        sub="Under 5 · FREE"
+                        value={searchKids}
+                        min={0}
+                        max={6}
+                        onChange={setSearchKids}
+                      />
+                    </div>
+                  </div>
+                )}
               </section>
             </div>
 
@@ -1192,22 +1293,8 @@ function HotelList() {
         </div>
       )}
 
-      {/* LuxuryCalendar — controlled by SearchSheet's "When" buttons */}
-      <LuxuryCalendar
-        open={calOpen}
-        mode={calMode}
-        checkIn={searchCheckIn}
-        checkOut={searchCheckOut}
-        rooms={[]}
-        city={city || "Mussoorie"}
-        pricingMode="demand"
-        onClose={() => setCalOpen(false)}
-        onApply={({ checkIn: ci, checkOut: co }) => {
-          setSearchCheckIn(ci);
-          setSearchCheckOut(co);
-          setCalOpen(false);
-        }}
-      />
+      {/* v517 — the date calendar now renders INLINE inside the SearchSheet's
+          "When" step (see above), so no standalone calendar modal here. */}
 
       {/* v160 — Location globe picker, opened by the control-bar location
           button. Writes sb_city + fires sb:city-change, which the

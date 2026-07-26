@@ -6639,6 +6639,61 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   letter-spacing: -0.005em;
 }
 
+/* ── v517 — Airbnb-style progressive search (Where / When / Who accordion).
+   Only one step is open at a time; collapsed rows show their chosen value,
+   the open row reveals its editor. Same on mobile + desktop. ── */
+.hxr-steps { gap: 12px; }
+.hxr-step {
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  background: var(--bg-card);
+  overflow: hidden;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.hxr-step.is-open {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-soft));
+  box-shadow: 0 12px 32px -20px rgba(31, 26, 15, 0.3);
+}
+.hxr-step-head {
+  width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  padding: 15px 18px;
+  background: transparent; border: none; cursor: pointer;
+  text-align: left; font-family: inherit;
+}
+.hxr-step-lbl {
+  flex: 0 0 auto;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hxr-step-val {
+  flex: 1 1 auto; min-width: 0; text-align: right;
+  font-size: 0.9rem; font-weight: 600; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hxr-step-val.is-set { color: var(--text-base); font-weight: 700; }
+.hxr-step-caret {
+  flex: 0 0 auto; color: var(--text-muted); font-size: 0.8rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.hxr-step.is-open .hxr-step-caret { transform: rotate(180deg); color: var(--accent); }
+.hxr-step-body {
+  padding: 2px 18px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+  animation: hxrStepIn 0.22s ease both;
+}
+@keyframes hxrStepIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.hxr-step-cal { padding-top: 6px; }
+.hxr-where-picks { display: flex; flex-direction: column; gap: 10px; }
+.hxr-step-hint { margin: 2px 0 0; font-size: 0.78rem; font-weight: 700; color: var(--text-soft); }
+.hxr-step-more {
+  align-self: flex-start; margin-top: 2px; padding: 4px 2px;
+  font-size: 0.8rem; font-weight: 700; color: var(--accent);
+  background: none; border: none; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.hxr-step-more:hover { color: color-mix(in srgb, var(--accent) 72%, #000); }
+
 /* Where — search input + city chips */
 .hxr-sheet-search {
   position: relative;
