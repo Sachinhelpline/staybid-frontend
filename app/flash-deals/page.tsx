@@ -851,8 +851,10 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
               {showOriginal > showAiPrice && (
                 <span className="fd-price-strike">{fmtINR(showOriginal)}</span>
               )}
-              <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
-              <span className="fd-price-unit">/night</span>
+              <span className="fd-price-hero">
+                <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
+                <span className="fd-price-unit">/night</span>
+              </span>
             </div>
             {saveAmt > 0 && (
               <p className="fd-price-save">
@@ -1788,12 +1790,39 @@ function FdStyles() {
         text-decoration: line-through;
         text-decoration-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
       }
+      /* v523 — advertisement-style GOLD-FOIL price: a warm gold gradient
+         clipped into the digits with a bright sheen band that sweeps across
+         (reflective), plus a drop-shadow so the number pops off the card in
+         3D. Dark bronze end-stops keep it high-contrast + readable (not fake). */
+      .fd-price-hero { display: inline-flex; align-items: baseline; gap: 5px; }
       .fd-price-now {
-        color: var(--text-base); font-size: 1.34rem; font-weight: 800; line-height: 1;
-        letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+        font-size: 1.7rem; font-weight: 900; line-height: 1;
+        letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+        background: linear-gradient(115deg, #6a4a12 0%, #b98a24 32%, #f7e6ac 50%, #b98a24 68%, #6a4a12 100%);
+        background-size: 240% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+        filter: drop-shadow(0 2px 3px rgba(74,56,32,0.34)) drop-shadow(0 1px 0 rgba(255,255,255,0.5));
+        animation: fdPriceShine 3.6s linear infinite;
       }
-      @media (min-width: 1024px) { .fd-price-now { font-size: 1.46rem; } }
-      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
+      @keyframes fdPriceShine {
+        0%   { background-position: 130% 0; }
+        100% { background-position: -130% 0; }
+      }
+      [data-theme="dark"] .fd-price-now {
+        background: linear-gradient(115deg, #c9992f 0%, #eabf55 32%, #fff2c8 50%, #eabf55 68%, #c9992f 100%);
+        background-size: 240% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 6px rgba(235,191,85,0.3));
+      }
+      @media (min-width: 1024px) { .fd-price-now { font-size: 1.62rem; } }
+      /* Mobile wide-card price panel — big, breathable "ad" price. */
+      @media (max-width: 639px) {
+        .fd-price-panel .fd-price-now { font-size: 2.45rem; }
+        .fd-price-panel .fd-price-line { flex-direction: column; align-items: flex-end; gap: 1px; }
+        .fd-price-panel .fd-price-strike { font-size: 0.9rem; }
+      }
+      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
       .fd-price-save {
         display: inline-flex; align-items: center; gap: 6px;
         margin: 3px 0 0; color: var(--cozy-sage, #5d7a52);
