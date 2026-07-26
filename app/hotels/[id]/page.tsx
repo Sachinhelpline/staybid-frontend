@@ -2783,7 +2783,7 @@ export default function HotelDetail() {
 
         {/* ── ABOUT TAB ── */}
         {tab === "about" && (
-          <div className="mb-10 space-y-5">
+          <div className="mb-10 hx-about-masonry">
 
             {/* Description */}
             {hotel.description && (
