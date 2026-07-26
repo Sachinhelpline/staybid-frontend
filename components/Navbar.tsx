@@ -9,6 +9,8 @@ import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 // instance); now the same context drives /me drawer, DialerNav, /upgrade
 // banner together, and an auto-refresh trigger flips everyone in sync.
 import { useTier } from "@/lib/tier-store";
+// v497 — Appearance (theme) row inside the desktop Menu dropdown.
+import { useTheme } from "@/lib/theme-store";
 // v125.3 — single source of truth for the customer Menu. Edit
 // lib/user-links.ts; both mobile drawer and desktop dropdown update.
 import { USER_LINKS_BASE, ACCOUNT_LINK } from "@/lib/user-links";
@@ -122,6 +124,8 @@ export function Navbar() {
   // appended (it was previously only on the mobile drawer — the desktop dropdown
   // was missing it).
   const userLinks = useMemo(() => [...USER_LINKS_BASE, ACCOUNT_LINK], []);
+  // v497 — theme state for the in-dropdown Appearance row.
+  const { theme, toggle: toggleTheme } = useTheme();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -501,27 +505,6 @@ export function Navbar() {
                         }}
                         role="menu"
                       >
-                        {/* v404 — App Tour + Help & Support (floating buttons removed). */}
-                        <button
-                          type="button"
-                          onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-tour")); }}
-                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
-                          style={{ color: "var(--text-base, #1F1A0F)" }}
-                          role="menuitem"
-                        >
-                          <span className="text-base">❓</span>
-                          App Tour
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-support")); }}
-                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
-                          style={{ color: "var(--text-base, #1F1A0F)", borderBottom: "1px solid rgba(240,180,41,0.14)" }}
-                          role="menuitem"
-                        >
-                          <span className="text-base">🎧</span>
-                          Help &amp; Support
-                        </button>
                         {/* v322 — Switch experience (opens the global panel
                             switcher). Sits at the top of the menu. */}
                         <button
@@ -553,6 +536,42 @@ export function Navbar() {
                             </Link>
                           );
                         })}
+                        {/* v497 — Appearance (theme) + App Tour + Help & Support
+                            moved BELOW Account settings (they had no use at the
+                            top). Appearance was previously desktop-missing. */}
+                        <button
+                          type="button"
+                          onClick={toggleTheme}
+                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          style={{ color: "var(--text-base, #1F1A0F)", borderTop: "1px solid rgba(240,180,41,0.14)" }}
+                          role="menuitem"
+                        >
+                          <span className="text-base">{theme === "dark" ? "🌙" : "☀️"}</span>
+                          Appearance
+                          <span className="ml-auto text-[0.7rem] font-medium" style={{ color: "var(--text-muted, rgba(120,110,90,0.8))" }}>
+                            {theme === "dark" ? "Dark" : "Light"}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-tour")); }}
+                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          style={{ color: "var(--text-base, #1F1A0F)" }}
+                          role="menuitem"
+                        >
+                          <span className="text-base">❓</span>
+                          App Tour
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-support")); }}
+                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          style={{ color: "var(--text-base, #1F1A0F)" }}
+                          role="menuitem"
+                        >
+                          <span className="text-base">🎧</span>
+                          Help &amp; Support
+                        </button>
                       </div>
                     </>
                   )}
