@@ -15,6 +15,7 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 import { useTutorial } from "@/lib/tutorial/tutorial-store";
 // v160 — shared globe picker for the unified control bar.
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
+import StaySearchSheet from "@/components/hotel/StaySearchSheet";
 // v329 — Circle Phase C3: member-resale offers on the consumer feed.
 import ResaleOffers from "@/components/circle/ResaleOffers";
 
@@ -282,6 +283,58 @@ function FlashDealsContent() {
     return cloned;
   }, [deals, sortBy, query]);
 
+  // v520 — same "Find your stay" search as /hotels (shared StaySearchSheet).
+  // Flash deals are same-day, so check-in is LOCKED to today while checkout
+  // stays selectable (a flash stay can still span multiple nights).
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [fdCheckIn, setFdCheckIn]   = useState("");
+  const [fdCheckOut, setFdCheckOut] = useState("");
+  const [fdAdults, setFdAdults]     = useState(2);
+  const [fdChildren, setFdChildren] = useState(0);
+  const [fdKids, setFdKids]         = useState(0);
+  const fdGuests = fdAdults + fdChildren + fdKids;
+
+  // De-duped hotels-shaped list (from the live deals) for the Where step's
+  // live suggestions — so the search sheet behaves exactly like /hotels.
+  const dealHotels = useMemo(() => {
+    const seen = new Set<string>();
+    const out: any[] = [];
+    for (const d of deals) {
+      if (!d.hotelId || seen.has(d.hotelId)) continue;
+      seen.add(d.hotelId);
+      out.push({
+        id: d.hotelId,
+        name: d.hotel?.name || d.city,
+        city: d.city,
+        images: d.hotel?.images || d.room?.images,
+        lat: d.hotel?.lat,
+        lng: d.hotel?.lng,
+      });
+    }
+    return out;
+  }, [deals]);
+
+  const fdSearchUrlParams = (() => {
+    const p = new URLSearchParams();
+    if (fdCheckIn)  p.set("checkIn",  fdCheckIn);
+    if (fdCheckOut) p.set("checkOut", fdCheckOut);
+    if (fdAdults !== 2)   p.set("adults",   String(fdAdults));
+    if (fdChildren !== 0) p.set("children", String(fdChildren));
+    if (fdKids !== 0)     p.set("kids",     String(fdKids));
+    const s = p.toString();
+    return s ? `?${s}` : "";
+  })();
+
+  const fmtFd = (iso: string) =>
+    iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "";
+  const searchSummary = (() => {
+    if (query.trim()) return `“${query.trim()}”`;
+    const parts: string[] = [city || "All deals"];
+    if (fdCheckOut) parts.push(`Today – ${fmtFd(fdCheckOut)}`);
+    if (fdGuests !== 2) parts.push(`${fdGuests} guest${fdGuests === 1 ? "" : "s"}`);
+    return parts.join(" · ");
+  })();
+
   return (
     <div className="fd-root">
       <FdStyles />
@@ -351,40 +404,22 @@ function FlashDealsContent() {
                 <span className="sb-cbar-loc-caret" aria-hidden="true">▾</span>
               </button>
 
-              {/* Search — center. Real live filter over hotel / city / area /
-                  room type. A live-count pill sits at the right until the user
-                  types, then a clear (×) takes its place. */}
-              <div className={`fd-search ${query ? "is-set" : ""}`}>
-                <svg className="fd-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} aria-hidden="true">
-                  <circle cx="11" cy="11" r="7" />
-                  <path strokeLinecap="round" d="M21 21l-4.2-4.2" />
+              {/* Search — center, taps open the shared "Find your stay" sheet
+                  (identical to /hotels; check-in locked to today for flash). */}
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="sb-cbar-search"
+                aria-label="Open search"
+              >
+                <svg className="sb-cbar-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
-                <input
-                  className="fd-search-input"
-                  type="text"
-                  inputMode="search"
-                  enterKeyHint="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={loading ? "Loading deals…" : "Search deals · hotel or city"}
-                  aria-label="Search flash deals"
-                />
-                {query ? (
-                  <button
-                    type="button"
-                    className="fd-search-clear"
-                    onClick={() => setQuery("")}
-                    aria-label="Clear search"
-                  >
-                    ×
-                  </button>
-                ) : (
-                  <span className="fd-search-live" aria-hidden="true">
-                    <span className="fd-search-live-dot" />
-                    {loading ? "…" : stats.dealsLive}
-                  </span>
-                )}
-              </div>
+                <span className={`sb-cbar-search-txt ${(query || city || fdCheckOut || fdGuests !== 2) ? "is-set" : ""}`}>
+                  {searchSummary}
+                </span>
+                <span className="sb-cbar-search-kbd" aria-hidden="true">⌕</span>
+              </button>
 
               {/* Sort — 3D button, opens popover */}
               <button
@@ -519,6 +554,30 @@ function FlashDealsContent() {
       {locOpen && (
         <LocationGlobeModal activeCity={city} onClose={() => setLocOpen(false)} />
       )}
+
+      {/* v520 — shared "Find your stay" search sheet (same as /hotels), with
+          check-in locked to today because flash deals are same-day. */}
+      <StaySearchSheet
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        hotels={dealHotels}
+        city={city}
+        setCity={setCity}
+        search={query}
+        setSearch={setQuery}
+        checkIn={fdCheckIn}
+        setCheckIn={setFdCheckIn}
+        checkOut={fdCheckOut}
+        setCheckOut={setFdCheckOut}
+        adults={fdAdults}
+        setAdults={setFdAdults}
+        childrenCount={fdChildren}
+        setChildren={setFdChildren}
+        kids={fdKids}
+        setKids={setFdKids}
+        searchUrlParams={fdSearchUrlParams}
+        lockCheckInToday
+      />
     </div>
   );
 }
