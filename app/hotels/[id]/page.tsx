@@ -10,6 +10,7 @@ import { AmbientBackdrop } from "@/components/AmbientBackdrop";
 import SimilarStays from "@/components/hotel/SimilarStays";
 import PhotoGallery from "@/components/hotel/PhotoGallery";
 import { recordHotelView } from "@/lib/hotel-affinity";
+import GuestFavourite from "@/components/hotel/GuestFavourite";
 import { api, ApiError } from "@/lib/api";
 // 409 city-conflict sheet — one active bid per (customer × city). Surfaces
 // the existing bid + inline "Update Budget" instead of a new bid.
@@ -2659,6 +2660,15 @@ export default function HotelDetail() {
             </div>
           </div>
         </div>
+
+        {/* v509 — "Guest Favourite" laurel honour (only for genuinely top-tier
+            stays; renders nothing otherwise). Driven by the real hotel scorecard. */}
+        <GuestFavourite
+          hotelId={String(id)}
+          city={hotel.city}
+          avgRating={Number(hotel.avgRating) || undefined}
+          totalReviews={Number(hotel.totalReviews) || undefined}
+        />
 
         {/* ── Two-column page grid (sticky rail on desktop ≥1100px). v159.9
             — marginTop 22 → 10 so the About section follows the medal
