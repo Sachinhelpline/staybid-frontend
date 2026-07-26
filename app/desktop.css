@@ -2096,31 +2096,33 @@ body main textarea.input-luxury {
 }
 
 @media (min-width: 1440px) {
-  /* v501 — the old 1340 cap left a big dead margin on 1440–1680 laptops. Use
-     more of the width (min(1480, 94vw) keeps a sane gutter) + a roomier rail. */
+  /* v502 — DECISIVE fill. The v501 96/94vw gutter barely beat the old fixed cap
+     on a ~1500px screen, so the void looked unchanged. Now 96vw with a high px
+     ceiling so the page genuinely reaches the edges (thin, even gutter). */
   .hx-shell > .max-w-7xl {
     grid-template-columns: minmax(0, 1fr) 400px !important;
     column-gap: 44px !important;
-    max-width: min(1480px, 94vw) !important;
+    max-width: min(1620px, 96vw) !important;
   }
 }
 
 @media (min-width: 1700px) {
-  /* v501 — true wide-screens: was a hard 1440 wall (huge void beyond). Now
-     min(1600, 92vw) so the page reaches toward the edges with a clean gutter. */
+  /* v502 — wide laptops/monitors: fill to 96vw (≤1820px) — the big right-side
+     void is gone; only a thin symmetric gutter remains. */
   .hx-shell > .max-w-7xl {
     grid-template-columns: minmax(0, 1fr) 420px !important;
     column-gap: 48px !important;
-    max-width: min(1600px, 92vw) !important;
+    max-width: min(1820px, 96vw) !important;
   }
 }
 
 @media (min-width: 1920px) {
-  /* v501 — 4K / ultrawide: cap generously at 1760 (90vw) so the content fills a
-     large monitor instead of floating in a ~1440 island. Rail grows to 440. */
+  /* v502 — 4K / ultrawide: fill to 95vw (≤2040px) so the content uses the whole
+     monitor instead of floating in an island. Rail grows to 460. */
   .hx-shell > .max-w-7xl {
-    grid-template-columns: minmax(0, 1fr) 440px !important;
-    max-width: min(1760px, 90vw) !important;
+    grid-template-columns: minmax(0, 1fr) 460px !important;
+    column-gap: 52px !important;
+    max-width: min(2040px, 95vw) !important;
   }
 }
 
