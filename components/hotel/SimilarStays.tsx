@@ -49,34 +49,61 @@ type SimHotel = {
 
 export default function SimilarStays({ hotelId, city, state, starRating, propertyType, currentPrice, currentRating }: Props) {
   const [hotels, setHotels] = useState<SimHotel[]>([]);
+  // v516 — where the shown stays came from, so the heading reads honestly:
+  // "in <city>" when the city had enough peers, else "in <state>" / "nearby".
+  const [scope, setScope] = useState<"city" | "state">("city");
   const railRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
     if (!city) return;
+
+    const mapHotel = (h: any): SimHotel | null => {
+      if (!h || !h.id || String(h.id) === String(hotelId)) return null;
+      const rooms = Array.isArray(h.rooms) ? h.rooms : [];
+      const prices = rooms
+        .map((r: any) => Number(r?.floorPrice))
+        .filter((n: number) => Number.isFinite(n) && n > 0);
+      return {
+        id: String(h.id),
+        name: h.name,
+        city: h.city,
+        state: h.state,
+        images: Array.isArray(h.images) ? h.images : [],
+        avgRating: Number(h.avgRating) || undefined,
+        starRating: Number(h.starRating) || undefined,
+        fromPrice: prices.length ? Math.min(...prices) : undefined,
+        propertyType: h.property_type || undefined,
+      };
+    };
+    const unwrap = (res: any): any[] =>
+      Array.isArray(res) ? res : (res?.hotels || res?.data || []);
+
     (async () => {
       try {
-        const res = await api.getHotels({ city });
-        const list: any[] = Array.isArray(res) ? res : (res?.hotels || res?.data || []);
-        const mapped: SimHotel[] = list
-          .filter((h) => h && h.id && String(h.id) !== String(hotelId))
-          .map((h) => {
-            const rooms = Array.isArray(h.rooms) ? h.rooms : [];
-            const prices = rooms
-              .map((r: any) => Number(r?.floorPrice))
-              .filter((n: number) => Number.isFinite(n) && n > 0);
-            return {
-              id: String(h.id),
-              name: h.name,
-              city: h.city,
-              state: h.state,
-              images: Array.isArray(h.images) ? h.images : [],
-              avgRating: Number(h.avgRating) || undefined,
-              starRating: Number(h.starRating) || undefined,
-              fromPrice: prices.length ? Math.min(...prices) : undefined,
-              propertyType: h.property_type || undefined,
-            };
-          });
+        let mapped: SimHotel[] = unwrap(await api.getHotels({ city }))
+          .map(mapHotel)
+          .filter((h): h is SimHotel => !!h);
+        let usedScope: "city" | "state" = "city";
+
+        // v516 — Fallback so the rail still shows in thin cities (e.g. Goa):
+        // if the same city has <2 comparable stays, broaden to the same STATE
+        // (which covers nearby cities). Same-city results are still ranked in.
+        if (mapped.length < 2 && state) {
+          const seen = new Set(mapped.map((h) => h.id).concat(String(hotelId)));
+          const stateExtra = unwrap(await api.getHotels({}))
+            .map(mapHotel)
+            .filter((h): h is SimHotel => !!h)
+            .filter(
+              (h) =>
+                !seen.has(h.id) &&
+                String(h.state || "").toLowerCase() === String(state).toLowerCase()
+            );
+          if (stateExtra.length) {
+            mapped = [...mapped, ...stateExtra];
+            usedScope = "state";
+          }
+        }
 
         // Same-type stays first (the owner's "show the same style they picked"
         // rule), then ranked by the customer's inferred price/quality affinity
@@ -86,13 +113,13 @@ export default function SimilarStays({ hotelId, city, state, starRating, propert
           { propertyType, currentPrice, currentRating, affinity: getAffinity() }
         );
         const out: SimHotel[] = ranked.map((r: any) => ({ ...r }));
-        if (alive) setHotels(out.slice(0, 12));
+        if (alive) { setHotels(out.slice(0, 12)); setScope(usedScope); }
       } catch {
         /* silent — a recommendations rail must never break the page */
       }
     })();
     return () => { alive = false; };
-  }, [hotelId, city, propertyType, currentPrice, currentRating]);
+  }, [hotelId, city, state, propertyType, currentPrice, currentRating]);
 
   const scrollBy = (dir: 1 | -1) => {
     const el = railRef.current;
@@ -100,15 +127,20 @@ export default function SimilarStays({ hotelId, city, state, starRating, propert
     el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.9, 720), behavior: "smooth" });
   };
 
-  const cityLabel = useMemo(() => city || "this area", [city]);
+  // Heading follows the scope: same-city when the city had peers, else the
+  // state (covers nearby cities) so "More stays in <X>" is always truthful.
+  const headLabel = useMemo(
+    () => (scope === "state" ? (state || "nearby") : (city || "this area")),
+    [scope, state, city]
+  );
 
   if (hotels.length < 2) return null;
 
   return (
-    <section className="sim-stays hx-reveal" aria-label={`More stays in ${cityLabel}`}>
+    <section className="sim-stays hx-reveal" aria-label={`More stays in ${headLabel}`}>
       <div className="sim-head">
         <div>
-          <h2 className="sim-title">More stays in {cityLabel}</h2>
+          <h2 className="sim-title">More stays in {headLabel}</h2>
           <p className="sim-sub">Similar properties you can compare · book or negotiate on StayBid</p>
         </div>
         <div className="sim-nav">
