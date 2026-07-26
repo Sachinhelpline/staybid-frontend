@@ -7,6 +7,17 @@
      • Fires   `sb:city-change` window event
      • Reads   geolocation via Nominatim reverse-geocode
 
+   v519 upgrade (high-tech, real data only — no external map):
+     • GPS "Use my live location" now SORTS every city by real distance
+       (haversine over city coords) and floats the nearest into a
+       "📍 Nearby you" group — the actual point of a location picker.
+     • The flat wall is grouped: Nearby → Trending this month (demand
+       cycle) → All destinations. Real region/state meta + real city icon
+       replace the fake "live deals available" line.
+     • Per-city REAL supply ("24 stays · from ₹1,200") from /api/cities/stats.
+     • Recent cities remembered (last 3) as one-tap chips.
+     • Search matches city / state / region / hub, not just the name.
+
    Used by:
      • <LocationChip /> in components/Navbar.tsx (top-nav globe pill)
      • <FilterSheet /> in components/discover/InstagramHotelFeed.tsx (reels)
@@ -16,12 +27,28 @@
    traps `position: fixed` children — was the original "modal trapped in
    navbar" bug).
    ────────────────────────────────────────────────────────────────────── */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 // v392 — single canonical city list (hill-stations + 12-month demand-cycle hubs).
-import { CITY_DISPLAY_ORDER } from "@/lib/cities";
+import { CITY_DISPLAY_ORDER, CITY_ICON, cityMeta } from "@/lib/cities";
+import { currentMonthDemand } from "@/lib/circle/demand-cycle";
 
 export const LOCATION_CITIES = CITY_DISPLAY_ORDER;
+
+// Pure haversine (km) — inlined so the modal pulls no heavy deps.
+function distKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLng = ((bLng - aLng) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+
+type CityStat = { count: number; from: number };
 
 export function LocationGlobeModal({ activeCity, onClose }: {
   activeCity: string;
@@ -29,16 +56,33 @@ export function LocationGlobeModal({ activeCity, onClose }: {
 }) {
   const [search, setSearch]     = useState("");
   const [detected, setDetected] = useState<{ city?: string; area?: string; lat?: number; lng?: number } | null>(null);
-  const [status, setStatus]     = useState<"idle" | "locating" | "denied" | "fallback">("idle");
+  const [coords, setCoords]     = useState<{ lat: number; lng: number } | null>(null);
+  const [status, setStatus]     = useState<"idle" | "locating" | "denied" | "located">("idle");
   const [loading, setLoading]   = useState(false);
   const [mounted, setMounted]   = useState(false);
+  const [stats, setStats]       = useState<Record<string, CityStat>>({});
+  const [recent, setRecent]     = useState<string[]>([]);
 
   useEffect(() => {
     setMounted(true);
     const old = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     document.body.classList.add("sb-modal-open");
+    // Recent cities (last 3 picked).
+    try {
+      const raw = localStorage.getItem("sb_city_recent");
+      const arr = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(arr)) setRecent(arr.filter((x) => typeof x === "string" && x).slice(0, 3));
+    } catch {}
+    // Real per-city supply (count + from-price). Best-effort — a failure just
+    // falls back to region/state meta.
+    let alive = true;
+    fetch("/api/cities/stats")
+      .then((r) => r.json())
+      .then((d) => { if (alive && d?.stats) setStats(d.stats); })
+      .catch(() => {});
     return () => {
+      alive = false;
       document.body.style.overflow = old;
       document.body.classList.remove("sb-modal-open");
     };
@@ -49,11 +93,23 @@ export function LocationGlobeModal({ activeCity, onClose }: {
     window.dispatchEvent(new Event("sb:city-change"));
   };
 
+  const pushRecent = (c: string) => {
+    if (!c) return; // "Show me all" (empty) is never a "recent city"
+    try {
+      const raw = localStorage.getItem("sb_city_recent");
+      const arr: string[] = raw ? JSON.parse(raw) : [];
+      const next = [c, ...arr.filter((x) => x !== c)].slice(0, 3);
+      localStorage.setItem("sb_city_recent", JSON.stringify(next));
+    } catch {}
+  };
+
   const detect = () => {
     if (!navigator.geolocation) { setStatus("denied"); return; }
     setStatus("locating"); setLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        // Store coords first — nearby-sort works even if reverse-geocode fails.
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json&zoom=10`,
@@ -67,9 +123,9 @@ export function LocationGlobeModal({ activeCity, onClose }: {
             data.address?.suburb || data.address?.neighbourhood || data.address?.county || "";
           setDetected({ city: detCity, area: detArea, lat: pos.coords.latitude, lng: pos.coords.longitude });
           const match = LOCATION_CITIES.find(c => detCity.toLowerCase().includes(c.toLowerCase()));
-          if (match) { setAndBroadcast(match); setStatus("idle"); onClose(); }
-          else { setStatus("fallback"); }
-        } catch { setStatus("fallback"); }
+          if (match) { setAndBroadcast(match); pushRecent(match); setStatus("idle"); onClose(); }
+          else { setStatus("located"); } // stay open — the Nearby group is now sorted for them
+        } catch { setStatus("located"); }
         finally { setLoading(false); }
       },
       () => { setStatus("denied"); setLoading(false); },
@@ -78,14 +134,92 @@ export function LocationGlobeModal({ activeCity, onClose }: {
   };
 
   const trimmed = search.trim().toLowerCase();
-  const filtered = trimmed
-    ? LOCATION_CITIES.filter(c => c.toLowerCase().includes(trimmed))
-    : LOCATION_CITIES;
-  const customMatch = trimmed && !filtered.some(c => c.toLowerCase() === trimmed);
 
-  const pick = (c: string) => { setAndBroadcast(c); onClose(); };
+  // Smarter search — city / state / region / hub label.
+  const matchCity = (k: string) => {
+    if (!trimmed) return true;
+    const m = cityMeta(k);
+    return (
+      k.toLowerCase().includes(trimmed) ||
+      (m?.name || "").toLowerCase().includes(trimmed) ||
+      (m?.state || "").toLowerCase().includes(trimmed) ||
+      (m?.region || "").toLowerCase().includes(trimmed) ||
+      (m?.hubLabel || "").toLowerCase().includes(trimmed)
+    );
+  };
+
+  const dist = (k: string): number | null => {
+    const m = cityMeta(k);
+    if (!coords || !m) return null;
+    return distKm(coords.lat, coords.lng, m.lat, m.lng);
+  };
+
+  // Grouped view (no active search).
+  const { nearby, trending, rest } = useMemo(() => {
+    if (trimmed) return { nearby: [] as string[], trending: [] as string[], rest: [] as string[] };
+    const all = CITY_DISPLAY_ORDER.filter((k) => cityMeta(k));
+    const near = coords
+      ? [...all].sort((a, b) => (dist(a) ?? 9e9) - (dist(b) ?? 9e9)).slice(0, 5)
+      : [];
+    const nearSet = new Set(near);
+    let trend: string[] = [];
+    try {
+      const d = currentMonthDemand();
+      trend = [...(d.primary || []), ...(d.secondary || [])]
+        .filter((k) => all.includes(k) && !nearSet.has(k));
+      trend = Array.from(new Set(trend)).slice(0, 6);
+    } catch { trend = []; }
+    const used = new Set([...near, ...trend]);
+    const others = all.filter((k) => !used.has(k));
+    return { nearby: near, trending: trend, rest: others };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trimmed, coords, stats]);
+
+  const results = trimmed ? CITY_DISPLAY_ORDER.filter(matchCity) : [];
+  const customMatch = trimmed && !results.some((c) => c.toLowerCase() === trimmed);
+
+  const pick = (c: string) => { setAndBroadcast(c); pushRecent(c); onClose(); };
+
+  // Row meta — REAL supply if we have it, else geography. No fake copy.
+  const metaLine = (k: string): string => {
+    const s = stats[k.toLowerCase()];
+    const parts: string[] = [];
+    if (s?.count) parts.push(`${s.count} stay${s.count === 1 ? "" : "s"}`);
+    if (s?.from) parts.push(`from ${inr(s.from)}`);
+    if (parts.length === 0) {
+      const m = cityMeta(k);
+      const geo = [m?.state, m?.region].filter(Boolean).join(" · ");
+      if (geo) parts.push(geo);
+    }
+    return parts.join(" · ") || "Explore stays";
+  };
+
+  const cityIcon = (k: string) => CITY_ICON[k] || "📍";
+
+  const Row = (k: string) => {
+    const d = dist(k);
+    return (
+      <button
+        key={k}
+        className={`loc-row ${activeCity === k ? "active" : ""}`}
+        onClick={() => pick(k)}
+      >
+        <span className="loc-row-emoji">{cityIcon(k)}</span>
+        <div className="loc-row-text">
+          <div className="loc-row-name">{cityMeta(k)?.name || k}</div>
+          <div className="loc-row-meta">{metaLine(k)}</div>
+        </div>
+        {d != null && (
+          <span className="loc-dist-badge">{d < 1 ? "<1" : Math.round(d)} km</span>
+        )}
+        <span className="loc-row-arrow">›</span>
+      </button>
+    );
+  };
 
   if (!mounted) return null;
+
+  const demandMonth = (() => { try { return currentMonthDemand().long; } catch { return ""; } })();
 
   return createPortal(
     <>
@@ -232,6 +366,7 @@ export function LocationGlobeModal({ activeCity, onClose }: {
         }
         .loc-detect:hover { transform: translateY(-1px); border-color: rgba(46,204,113,0.55); }
         .loc-detect.locating { border-color: rgba(240,180,41,0.5); animation: locPulse 1.6s infinite; }
+        .loc-detect.located { border-color: rgba(240,180,41,0.5); background: linear-gradient(135deg, rgba(240,180,41,0.16), rgba(240,180,41,0.04)); }
         .loc-detect-icon {
           width: 38px; height: 38px;
           border-radius: 50%;
@@ -241,7 +376,8 @@ export function LocationGlobeModal({ activeCity, onClose }: {
           flex-shrink: 0;
           box-shadow: 0 6px 18px rgba(46,204,113,0.35);
         }
-        .loc-detect.locating .loc-detect-icon { background: linear-gradient(135deg, #f0d060, #f0b429); color: #0a0814; box-shadow: 0 6px 18px rgba(240,180,41,0.35); }
+        .loc-detect.locating .loc-detect-icon,
+        .loc-detect.located .loc-detect-icon { background: linear-gradient(135deg, #f0d060, #f0b429); color: #0a0814; box-shadow: 0 6px 18px rgba(240,180,41,0.35); }
         .loc-detect-text { flex: 1; min-width: 0; }
         .loc-detect-title { font-size: 0.86rem; font-weight: 700; line-height: 1.2; color: #fff; }
         .loc-detect-sub { font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
@@ -261,12 +397,26 @@ export function LocationGlobeModal({ activeCity, onClose }: {
         .loc-search::placeholder { color: rgba(255,255,255,0.35); }
         .loc-search-icon { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); color: rgba(255,255,255,0.4); }
 
-        .loc-wheel-title { padding: 0 22px; font-size: 0.6rem; font-weight: 700; color: rgba(240,180,41,0.85); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 8px; }
+        /* Recent cities — quick one-tap re-pick */
+        .loc-recent-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 22px 12px; }
+        .loc-recent-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 6px 11px;
+          background: rgba(240,180,41,0.10);
+          border: 1px solid rgba(240,180,41,0.28);
+          border-radius: 999px;
+          color: #f0d98a; font-size: 0.75rem; font-weight: 600;
+          cursor: pointer; transition: all 0.2s ease;
+        }
+        .loc-recent-chip:hover { background: rgba(240,180,41,0.18); border-color: rgba(240,180,41,0.5); transform: translateY(-1px); }
+
+        .loc-wheel-title { padding: 0 22px; font-size: 0.6rem; font-weight: 700; color: rgba(240,180,41,0.85); letter-spacing: 0.18em; text-transform: uppercase; margin: 10px 0 8px; display: flex; align-items: center; gap: 6px; }
+        .loc-wheel-title:first-child { margin-top: 0; }
         .loc-wheel-wrap {
           position: relative;
           margin: 0 16px;
-          padding: 8px 0;
-          max-height: 280px;
+          padding: 4px 0;
+          max-height: 300px;
           overflow-y: auto;
           scrollbar-width: thin;
           scrollbar-color: rgba(240,180,41,0.4) transparent;
@@ -291,7 +441,17 @@ export function LocationGlobeModal({ activeCity, onClose }: {
         .loc-row-emoji { font-size: 1.1rem; line-height: 1; }
         .loc-row-text { flex: 1; min-width: 0; }
         .loc-row-name { font-size: 0.92rem; font-weight: 600; color: #fff; }
-        .loc-row-meta { font-size: 0.68rem; color: rgba(255,255,255,0.45); margin-top: 1px; }
+        .loc-row-meta { font-size: 0.68rem; color: rgba(255,255,255,0.5); margin-top: 1px; }
+        .loc-dist-badge {
+          flex-shrink: 0;
+          font-size: 0.64rem; font-weight: 800;
+          color: #f0b429;
+          background: rgba(240,180,41,0.12);
+          border: 1px solid rgba(240,180,41,0.28);
+          border-radius: 999px;
+          padding: 2px 8px;
+          font-variant-numeric: tabular-nums;
+        }
         .loc-row-arrow { color: rgba(240,180,41,0.7); font-size: 0.9rem; }
 
         .loc-empty { padding: 16px; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.78rem; }
@@ -341,23 +501,25 @@ export function LocationGlobeModal({ activeCity, onClose }: {
           </div>
 
           <button
-            className={`loc-detect ${status === "locating" ? "locating" : ""}`}
+            className={`loc-detect ${status === "locating" ? "locating" : status === "located" ? "located" : ""}`}
             onClick={detect}
             disabled={loading}
           >
-            <div className="loc-detect-icon">{status === "locating" ? "⏳" : "🛰"}</div>
+            <div className="loc-detect-icon">
+              {status === "locating" ? "⏳" : status === "located" ? "📍" : "🛰"}
+            </div>
             <div className="loc-detect-text">
               <div className="loc-detect-title">
                 {status === "locating" ? "Pinging satellites…" :
                  status === "denied"   ? "Permission denied · pick below" :
-                 status === "fallback" ? `Detected ${detected?.city || "?"} — not yet in list` :
+                 status === "located"  ? (detected?.city ? `📍 Near ${detected.city}` : "Located — nearest first") :
                                          "Use my live location"}
               </div>
               <div className="loc-detect-sub">
                 {status === "locating" ? "Reverse-geocoding your coordinates" :
                  status === "denied"   ? "Allow location in browser settings" :
-                 status === "fallback" ? "Choose nearest supported city below" :
-                                         "GPS · accurate to your district"}
+                 status === "located"  ? "Cities below are sorted by distance" :
+                                         "GPS · sorts cities by how close you are"}
               </div>
             </div>
           </button>
@@ -366,11 +528,10 @@ export function LocationGlobeModal({ activeCity, onClose }: {
             <span className="loc-search-icon">🔎</span>
             {/* No autoFocus — opening the modal must NOT pop up the mobile
                 keyboard. The user explicitly taps this input when they want
-                to search; otherwise the popular-destinations wheel below is
-                the primary affordance. */}
+                to search; otherwise the wheel below is the primary affordance. */}
             <input
               className="loc-search"
-              placeholder="Search city — Goa, Jaipur, Manali…"
+              placeholder="Search city, state or region — Goa, Rajasthan…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               inputMode="search"
@@ -378,36 +539,54 @@ export function LocationGlobeModal({ activeCity, onClose }: {
             />
           </div>
 
-          <div className="loc-wheel-title">{trimmed ? "Matching cities" : "Popular destinations"}</div>
+          {/* Recent picks (only when not actively searching) */}
+          {!trimmed && recent.length > 0 && (
+            <div className="loc-recent-wrap">
+              {recent.map((c) => (
+                <button key={c} className="loc-recent-chip" onClick={() => pick(c)}>
+                  <span>{cityIcon(c)}</span>
+                  <span>{cityMeta(c)?.name || c}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="loc-wheel-wrap">
-            {filtered.map(c => (
-              <button
-                key={c}
-                className={`loc-row ${activeCity === c ? "active" : ""}`}
-                onClick={() => pick(c)}
-              >
-                <span className="loc-row-emoji">📍</span>
-                <div className="loc-row-text">
-                  <div className="loc-row-name">{c}</div>
-                  <div className="loc-row-meta">India · live deals available</div>
-                </div>
-                <span className="loc-row-arrow">›</span>
-              </button>
-            ))}
-
-            {customMatch && (
-              <button className="loc-row" onClick={() => pick(search.trim())}>
-                <span className="loc-row-emoji">✨</span>
-                <div className="loc-row-text">
-                  <div className="loc-row-name">Use "{search.trim()}"</div>
-                  <div className="loc-row-meta">Search hotels anywhere — we'll match what we have</div>
-                </div>
-                <span className="loc-row-arrow">›</span>
-              </button>
-            )}
-
-            {filtered.length === 0 && !customMatch && (
-              <div className="loc-empty">No matches. Try a different name.</div>
+            {trimmed ? (
+              <>
+                <div className="loc-wheel-title">Matching cities</div>
+                {results.map((c) => Row(c))}
+                {customMatch && (
+                  <button className="loc-row" onClick={() => pick(search.trim())}>
+                    <span className="loc-row-emoji">✨</span>
+                    <div className="loc-row-text">
+                      <div className="loc-row-name">Use “{search.trim()}”</div>
+                      <div className="loc-row-meta">Search hotels anywhere — we’ll match what we have</div>
+                    </div>
+                    <span className="loc-row-arrow">›</span>
+                  </button>
+                )}
+                {results.length === 0 && !customMatch && (
+                  <div className="loc-empty">No matches. Try a different name.</div>
+                )}
+              </>
+            ) : (
+              <>
+                {nearby.length > 0 && (
+                  <>
+                    <div className="loc-wheel-title">📍 Nearby you</div>
+                    {nearby.map((c) => Row(c))}
+                  </>
+                )}
+                {trending.length > 0 && (
+                  <>
+                    <div className="loc-wheel-title">🔥 Trending{demandMonth ? ` in ${demandMonth}` : ""}</div>
+                    {trending.map((c) => Row(c))}
+                  </>
+                )}
+                <div className="loc-wheel-title">🌏 All destinations</div>
+                {rest.map((c) => Row(c))}
+              </>
             )}
           </div>
 
@@ -416,7 +595,7 @@ export function LocationGlobeModal({ activeCity, onClose }: {
               className={`loc-anywhere ${!activeCity ? "active" : ""}`}
               onClick={() => pick("")}
             >
-              🌐 Show me everywhere
+              🌐 Show me all
             </button>
           </div>
         </div>
