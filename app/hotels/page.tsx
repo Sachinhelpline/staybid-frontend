@@ -641,16 +641,6 @@ function HotelList() {
         </p>
       </header>
 
-      {/* v392 — 12-month demand cycle: this month's peak destinations. Every
-          city is bookable all year; this only highlights where demand peaks. */}
-      <DemandCycleStrip
-        activeCity={city}
-        onPick={(c) => {
-          setCity(c);
-          try { localStorage.setItem("sb_city", c); } catch {}
-        }}
-      />
-
       {/* v160 — Unified premium control bar. Centered (not full-bleed):
           [📍 Location ▾] · [ 🔍 Search ] · [⚙ Filter ▾]. Location opens the
           globe picker; Filter opens a sort + star-rating popover. */}
@@ -838,6 +828,18 @@ function HotelList() {
           </div>
         </div>
       </div>
+
+      {/* v392/v513 — 12-month demand cycle: this month's peak destinations.
+          Slim single-line trending row BELOW the search bar (Airbnb-style) so
+          it never pushes the content down. Every city is bookable all year;
+          this only highlights where demand peaks. */}
+      <DemandCycleStrip
+        activeCity={city}
+        onPick={(c) => {
+          setCity(c);
+          try { localStorage.setItem("sb_city", c); } catch {}
+        }}
+      />
 
       {/* Body */}
       <div className="hxr-body" data-autonext="hotels-results">
