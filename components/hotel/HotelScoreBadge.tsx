@@ -51,7 +51,7 @@ export function seedScorecardCache(scorecards: Record<string, Scorecard | null> 
   }
 }
 
-async function fetchScorecard(
+export async function fetchScorecard(
   hotelId: string,
   opts?: { force?: boolean },
 ): Promise<Scorecard | null> {

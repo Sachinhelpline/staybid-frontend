@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import ModalCloseButton from "@/components/ModalCloseButton";
-import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+import HotelScoreBadge, { fetchScorecard } from "@/components/hotel/HotelScoreBadge";
 import SbState from "@/components/SbState";
 // v129 — every flash-deal price is a ₹100 multiple. Same rule as the
 // Negotiate slider, /bid presets, and partner counter slider.
@@ -77,6 +77,68 @@ type Deal = {
 const fmtINR = (n: number) =>
   "₹" + snap100(n).toLocaleString("en-IN");
 const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// v522 — amenity → icon map for the card's amenity chips (real hotel data).
+const AMENITY_ICONS: Array<[RegExp, string]> = [
+  [/wi-?fi|internet/i, "📶"],
+  [/breakfast|meal|dining|restaurant/i, "🍳"],
+  [/pool|swim/i, "🏊"],
+  [/parking|valet/i, "🅿️"],
+  [/spa|massage/i, "💆"],
+  [/gym|fitness/i, "🏋️"],
+  [/air.?condition|\bac\b/i, "❄️"],
+  [/bar|lounge/i, "🍸"],
+  [/pet/i, "🐾"],
+  [/view|mountain|lake|valley|scenic/i, "🏔️"],
+  [/hot ?water|geyser|heater/i, "♨️"],
+  [/room ?service/i, "🛎️"],
+  [/garden|lawn/i, "🌿"],
+  [/fireplace|bonfire|campfire/i, "🔥"],
+];
+function amenityChips(list: string[] | undefined, max = 3): Array<{ icon: string; label: string }> {
+  const out: Array<{ icon: string; label: string }> = [];
+  const seen = new Set<string>();
+  for (const raw of list || []) {
+    const a = String(raw || "").trim();
+    if (!a) continue;
+    const m = AMENITY_ICONS.find(([re]) => re.test(a));
+    const icon = m ? m[1] : "✓";
+    const label = a.length > 13 ? a.slice(0, 12) + "…" : a;
+    const key = icon + "|" + label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ icon, label });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+// v522 — compact "Guest Favourite" chip. Reuses the shared scorecard cache
+// (fetchScorecard) that HotelScoreBadge already populates, so no extra network.
+// Renders ONLY when the hotel qualifies (owner rule: overall ≥85 AND top ~10%
+// in city), else null — stays exclusive, never clutters.
+function FlashGuestFav({ hotelId }: { hotelId?: string }) {
+  const [fav, setFav] = useState(false);
+  useEffect(() => {
+    if (!hotelId) return;
+    let alive = true;
+    fetchScorecard(hotelId)
+      .then((c) => {
+        if (!alive || !c) return;
+        const overall = typeof c.overall === "number" ? c.overall : null;
+        const pct = c.rank?.percentile ?? null;
+        if (overall !== null && overall >= 85 && pct !== null && pct >= 90) setFav(true);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [hotelId]);
+  if (!fav) return null;
+  return (
+    <span className="fd-fav-chip" title="Guest Favourite — top-rated by real guests">
+      <span aria-hidden="true">🏅</span> Guest Favourite
+    </span>
+  );
+}
 
 /* Animated number that counts up smoothly ----------------------------------- */
 function CountUp({ value, duration = 900 }: { value: number; duration?: number }) {
@@ -606,6 +668,19 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
   const showFloor   = pickedUp ? pickedUp.floorPrice : deal.floorPrice;
   const showType    = pickedUp ? pickedUp.type       : (deal.room?.type || "Room");
 
+  // v522 — MRP (the room's original rack price for the day) derived from the
+  // deal's discount %, struck through so the saving is obvious. Falls back to
+  // the floor if there's no discount. Always ≥ the deal price.
+  const discPct = Math.max(0, Math.min(90, Math.round(deal.discount || 0)));
+  const mrp = discPct > 0 ? snap100(Math.round(showAiPrice / (1 - discPct / 100))) : showFloor;
+  const showOriginal = mrp > showAiPrice ? mrp : (showFloor > showAiPrice ? showFloor : 0);
+  const saveAmt = showOriginal > showAiPrice ? showOriginal - showAiPrice : 0;
+
+  // v522 — real hotel info to fill the card (amenity chips + rating).
+  const amen = amenityChips(deal.hotel?.amenities || deal.room?.amenities);
+  const ratingVal = Number(deal.hotel?.avgRating ?? deal.hotel?.rating ?? 0);
+  const reviewCnt = Number(deal.hotel?.reviewCount ?? deal.hotel?.totalReviews ?? deal.hotel?.reviews ?? 0);
+
   const img = deal.hotel?.images?.[0] || deal.room?.images?.[0];
 
   const sold = leftSlots === 0;
@@ -686,20 +761,36 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           ) : null}
         </div>
 
-        {/* Row 2 — stars + room type + capacity + units left, all inline */}
+        {/* Row 2 — rating + stars + room type + capacity, all inline */}
         <div className="fd-meta-line">
-          {deal.hotel?.starRating ? (
-            <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
+          {ratingVal > 0 ? (
+            <>
+              <span className="fd-rating">★ {ratingVal.toFixed(1)}{reviewCnt > 0 ? <span className="fd-rating-cnt"> ({reviewCnt})</span> : null}</span>
+              <span className="fd-meta-sep">·</span>
+            </>
+          ) : deal.hotel?.starRating ? (
+            <>
+              <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
+              <span className="fd-meta-sep">·</span>
+            </>
           ) : null}
-          <span className="fd-meta-sep">·</span>
           <span className="fd-room-type">{showType}</span>
           <span className="fd-meta-sep">·</span>
           <span className="fd-room-cap">sleeps {pickedUp?.capacity || deal.room?.capacity || 2}</span>
-          <span className="fd-meta-sep">·</span>
-          <span className={`fd-slots-pill ${leftSlots <= 2 ? "urgent" : ""} ${sold ? "soldout" : ""}`}>
-            {sold ? "Sold out" : `${leftSlots} of ${totalSlots} left`}
-          </span>
         </div>
+
+        {/* v522 — Guest Favourite (when it qualifies) + real amenity chips.
+            Fills the card with scannable, trust-building info. */}
+        {(amen.length > 0 || deal.hotelId) && (
+          <div className="fd-chip-row">
+            <FlashGuestFav hotelId={deal.hotelId} />
+            {amen.map((a) => (
+              <span key={a.label} className="fd-amen-chip">
+                <span aria-hidden="true">{a.icon}</span> {a.label}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Upgrade chips — slim horizontal row, no big wrapper box */}
         {deal.upgrades.length > 0 && (
@@ -729,19 +820,35 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           </div>
         )}
 
+        {/* v522 — scarcity bar: how many rooms remain at this flash price.
+            Positive framing when plenty left, urgent when low. */}
+        <div className={`fd-scarcity ${leftSlots <= 2 && !sold ? "urgent" : ""} ${sold ? "soldout" : ""}`}>
+          <div className="fd-scarcity-track">
+            <div className="fd-scarcity-fill" style={{ width: `${Math.max(6, fillPct)}%` }} />
+          </div>
+          <span className="fd-scarcity-lbl">
+            {sold
+              ? "Sold out"
+              : leftSlots <= 2
+                ? `🔥 Only ${leftSlots} left at this price`
+                : `${leftSlots} rooms left at this price`}
+          </span>
+        </div>
+
         {/* Price + CTA — horizontal row, no dividers */}
         <div className="fd-price-row">
           <div className="fd-price-block">
             <div className="fd-price-line">
-              {showFloor > showAiPrice && (
-                <span className="fd-price-strike">{fmtINR(showFloor)}</span>
+              {showOriginal > showAiPrice && (
+                <span className="fd-price-strike">{fmtINR(showOriginal)}</span>
               )}
               <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
               <span className="fd-price-unit">/night</span>
             </div>
-            {showFloor > showAiPrice && (
+            {saveAmt > 0 && (
               <p className="fd-price-save">
-                Save {fmtINR(Math.max(0, showFloor - showAiPrice))}
+                Save {fmtINR(saveAmt)}
+                {discPct > 0 && <span className="fd-price-off">{discPct}% OFF</span>}
               </p>
             )}
           </div>
@@ -1644,9 +1751,11 @@ function FdStyles() {
         display: flex; align-items: baseline; gap: 4px;
         flex-wrap: wrap;
       }
+      /* v522 — MRP struck through so the deal reads as a real markdown. */
       .fd-price-strike {
-        color: var(--text-muted); font-size: 0.7rem;
+        color: var(--text-muted); font-size: 0.82rem; font-weight: 600;
         text-decoration: line-through;
+        text-decoration-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
       }
       .fd-price-now {
         color: var(--text-base); font-size: 1.34rem; font-weight: 800; line-height: 1;
@@ -1655,9 +1764,69 @@ function FdStyles() {
       @media (min-width: 1024px) { .fd-price-now { font-size: 1.46rem; } }
       .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
       .fd-price-save {
-        margin: 2px 0 0; color: var(--cozy-sage, #5d7a52);
-        font-size: 0.6rem; font-weight: 700;
+        display: inline-flex; align-items: center; gap: 6px;
+        margin: 3px 0 0; color: var(--cozy-sage, #5d7a52);
+        font-size: 0.64rem; font-weight: 800;
       }
+      /* small gold "N% OFF" pill next to the saving */
+      .fd-price-off {
+        display: inline-flex; align-items: center;
+        padding: 1px 7px; border-radius: 999px;
+        font-size: 0.58rem; font-weight: 900; letter-spacing: 0.03em;
+        color: #3a2606;
+        background: linear-gradient(135deg, #ffe6a3, #ecc04c 60%, #d69a1e);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px -2px rgba(180,130,25,0.5);
+      }
+
+      /* v522 — rating chip in the meta line */
+      .fd-rating { color: var(--cozy-cocoa, #4A3820); font-size: 0.72rem; font-weight: 800; }
+      .fd-rating .fd-rating-cnt { color: var(--text-muted); font-weight: 600; }
+
+      /* v522 — Guest Favourite + amenity chip row */
+      .fd-chip-row {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+        margin-top: 7px;
+      }
+      .fd-fav-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 9px; border-radius: 999px;
+        font-size: 0.62rem; font-weight: 800; letter-spacing: 0.01em;
+        color: #6a4a0e;
+        background: linear-gradient(135deg, #fff2cc, #f4d98a 60%, #e6bf5c);
+        border: 1px solid rgba(214,166,60,0.5);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 3px 8px -4px rgba(180,130,25,0.45);
+      }
+      .fd-amen-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 8px; border-radius: 999px;
+        font-size: 0.62rem; font-weight: 600;
+        color: var(--cozy-cocoa, #4A3820);
+        background: color-mix(in srgb, var(--cozy-champagne, #C9A66B) 12%, var(--bg-card));
+        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 26%, var(--border-soft));
+      }
+
+      /* v522 — scarcity bar */
+      .fd-scarcity {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 9px;
+      }
+      .fd-scarcity-track {
+        flex: 1 1 auto; height: 5px; border-radius: 999px; overflow: hidden;
+        background: color-mix(in srgb, var(--cozy-champagne, #C9A66B) 18%, var(--border-soft));
+      }
+      .fd-scarcity-fill {
+        height: 100%; border-radius: 999px;
+        background: linear-gradient(90deg, #f0c24a, #e0a020);
+        box-shadow: 0 0 6px rgba(224,160,32,0.5);
+        transition: width 0.6s cubic-bezier(.4,0,.2,1);
+      }
+      .fd-scarcity.urgent .fd-scarcity-fill { background: linear-gradient(90deg, #f6a721, #e07d12); }
+      .fd-scarcity-lbl {
+        flex: 0 0 auto; font-size: 0.6rem; font-weight: 700;
+        color: var(--cozy-cocoa-soft, #6E5430); white-space: nowrap;
+      }
+      .fd-scarcity.urgent .fd-scarcity-lbl { color: #b3600f; }
+      .fd-scarcity.soldout .fd-scarcity-lbl { color: var(--text-muted); }
       .fd-cta {
         flex: 0 0 auto;
         /* a11y: 9 → 12px vertical padding lifts the primary "Grab Now"
