@@ -8,6 +8,7 @@ import Link from "next/link";
 import InspirationBanner from "@/components/tier/InspirationBanner";
 import { AmbientBackdrop } from "@/components/AmbientBackdrop";
 import SimilarStays from "@/components/hotel/SimilarStays";
+import PhotoGallery from "@/components/hotel/PhotoGallery";
 import { api, ApiError } from "@/lib/api";
 // 409 city-conflict sheet — one active bid per (customer × city). Surfaces
 // the existing bid + inline "Update Budget" instead of a new bid.
@@ -624,25 +625,8 @@ export default function HotelDetail() {
   // at fire-time so it's always in sync with the latest image set; the
   // `Math.max(5, base.length)` mirrors the same total computed inside
   // the lightbox JSX.
-  useEffect(() => {
-    if (!galleryOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      const base = Array.isArray(hotel?.images) ? hotel.images : [];
-      const total = Math.max(5, base.length);
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        setGalleryIdx((i) => Math.max(0, i - 1));
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        setGalleryIdx((i) => Math.min(total - 1, i + 1));
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        setGalleryOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [galleryOpen, hotel?.images]);
+  // v507 — keyboard nav now lives inside <PhotoGallery> (it owns Esc/←/→ so
+  // Esc-in-zoom returns to the grid instead of closing the whole gallery).
 
   // v124.2 — toggle sb-modal-open whenever an inline modal is open so the
   // BottomDock / DialerNav / BackChip auto-hide. Decoupled from the
@@ -4344,63 +4328,16 @@ export default function HotelDetail() {
       </div>{/* /max-w-6xl */}
 
       {/* ══════════════════════════════════════════
-          PHOTO GALLERY LIGHTBOX
+          PHOTO GALLERY — v507 Airbnb-style full-screen grid + Rooms tab + zoom
       ══════════════════════════════════════════ */}
-      {galleryOpen && (() => {
-        const PLACEHOLDERS = [
-          "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800&q=80",
-          "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
-          "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80",
-          "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
-          "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80",
-          "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
-        ];
-        const base = Array.isArray(hotel.images) ? hotel.images : [];
-        const allImgs = [...base, ...PLACEHOLDERS].slice(0, Math.max(5, base.length));
-        return (
-          <div className="fixed inset-0 z-70 bg-black/95 flex items-center justify-center"
-            onClick={() => setGalleryOpen(false)}>
-            <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
-              <ModalCloseButton onClose={() => setGalleryOpen(false)} tone="dark" className="absolute -top-12 right-0 z-10" />
-
-              <div className="relative rounded-2xl overflow-hidden bg-black/50 max-h-[70vh] flex items-center justify-center">
-                <img
-                  src={allImgs[galleryIdx] || PLACEHOLDERS[0]}
-                  alt={`${hotel.name} — Photo ${galleryIdx + 1}`}
-                  className="max-h-[70vh] max-w-full object-contain"
-                  onError={(e: any) => { e.target.src = PLACEHOLDERS[galleryIdx % PLACEHOLDERS.length]; }}
-                />
-                {galleryIdx > 0 && (
-                  <button onClick={() => setGalleryIdx(galleryIdx - 1)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">‹</button>
-                )}
-                {galleryIdx < allImgs.length - 1 && (
-                  <button onClick={() => setGalleryIdx(galleryIdx + 1)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">›</button>
-                )}
-              </div>
-
-              <p className="text-center text-white/50 text-sm mt-3">
-                {galleryIdx + 1} / {allImgs.length}
-                {/* v132.6 — desktop-only keyboard shortcut hint */}
-                <span className="hidden lg:inline text-white/30 ml-3 text-xs tracking-wide">
-                  · ← → navigate · Esc to close
-                </span>
-              </p>
-
-              <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-                {allImgs.map((img: string, i: number) => (
-                  <button key={i} onClick={() => setGalleryIdx(i)}
-                    className={`shrink-0 w-16 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIdx ? "border-gold-400 scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}>
-                    <img src={img} alt="" className="w-full h-full object-cover"
-                      onError={(e: any) => { e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length]; }} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <PhotoGallery
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        hotelName={hotel.name}
+        images={hotel.images}
+        rooms={hotel.rooms}
+        initialIndex={galleryIdx}
+      />
 
       {/* ══════════════════════════════════════════
           INLINE PHONE VERIFY (Google/Social users)
