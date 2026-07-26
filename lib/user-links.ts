@@ -49,16 +49,13 @@ export const USER_LINKS_BASE: UserLink[] = [
   { href: "/passport",     label: "Passport & Wallet",  sub: "Stamps · rank · balance · points", icon: "🛂" },
   { href: "/complaints",   label: "Complaints & Help",  sub: "Raise an issue · ~24 hr reply", icon: "🚩" },
   { href: "/verification", label: "Verify Stay",        sub: "Hotel verification",            icon: "✅" },
-  // v275 — StayBid for Hosts (Managed Portfolio Platform). Ungated upsell
-  // entry: any signed-in user can explore investing in a managed BnB
-  // portfolio. The /host vertical hides its own chrome, so this menu row is
-  // the only discoverable way into it from the customer app.
-  { href: "/host",         label: "StayBid for Hosts",  sub: "Invest in a managed BnB portfolio", icon: "🏠" },
-  // v288 — StayCircle™ Community Partner Platform. Room-level hospitality
-  // investing: discover properties as reels → lock → build a bundle → earn
-  // monthly returns. The /circle vertical hides its own chrome, so this menu
-  // row is the discoverable entry from the customer app.
-  { href: "/circle",       label: "StayCircle",         sub: "Invest in rooms · earn monthly returns", icon: "◎" },
+  // v494 — StayBid for Hosts (/host) + StayCircle (/circle) were BOTH removed
+  // from this flat menu. They are verticals, and every vertical (Circle, Hosts,
+  // Hotel Partner, Creator, Onboard, Worker, Kiosk) is already listed in the
+  // "Switch experience" sheet (lib/panels.ts → visiblePanels shows every
+  // non-admin panel in join/joined state to ALL users). Listing them here AND
+  // in Switch experience was a confusing duplicate. Discovery is unchanged —
+  // Switch experience is the single, canonical entry into every vertical.
 ];
 
 export const CREATOR_LINK: UserLink = {
@@ -93,9 +90,11 @@ export function userLinksForTier(opts: {
   isHotelOwner: boolean;
   includeAccount?: boolean;
 }): UserLink[] {
+  // v494 — Creator Hub (/influencer) + Hotel Partner (/partner) are no longer
+  // appended here. They are verticals, reachable via "Switch experience"
+  // (lib/panels.ts) like Circle/Hosts — listing them in the flat menu too was a
+  // duplicate. Kept the params + consts for back-compat; they're just not pushed.
   const out: UserLink[] = [...USER_LINKS_BASE];
-  if (opts.isCreator)    out.push(CREATOR_LINK);
-  if (opts.isHotelOwner) out.push(HOTEL_LINK);
   if (opts.includeAccount) out.push(ACCOUNT_LINK);
   return out;
 }
