@@ -35,11 +35,13 @@ export default function DemandCycleStrip({
 
   return (
     <section className="dcs-wrap" aria-label={`Top destinations in ${row.long}`}>
-      <div className="dcs-head">
-        <span className="dcs-eyebrow">🗓 {row.long} · In season now</span>
-        <span className="dcs-sub">Peak demand this month — every city stays bookable all year</span>
-      </div>
+      {/* v513 — slim single-line trending row (sits below the search bar,
+          Airbnb-style) so the seasonal note never pushes the content down.
+          The "In season now / peak demand" copy is compressed to one label. */}
       <div className="dcs-chips">
+        <span className="dcs-eyebrow" title={`Peak demand this month — every city stays bookable all year`}>
+          🔥 Trending in {row.long}
+        </span>
         {chips.map((m) => {
           const tier = demandTier(m.key, row.month);
           const active = (activeCity || "").toLowerCase() === m.key.toLowerCase();
@@ -60,11 +62,13 @@ export default function DemandCycleStrip({
         })}
       </div>
       <style jsx>{`
-        .dcs-wrap { max-width: 1120px; margin: 8px auto 0; padding: 10px 16px 2px; }
-        .dcs-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
-        .dcs-eyebrow { font-size: 0.82rem; font-weight: 700; letter-spacing: .01em; color: var(--sb-fg, #1a1a1a); }
-        .dcs-sub { font-size: 0.72rem; color: rgba(120,110,95,0.9); }
-        .dcs-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .dcs-wrap { max-width: 1120px; margin: 4px auto 0; padding: 4px 16px 2px; }
+        .dcs-eyebrow {
+          flex: 0 0 auto; display: inline-flex; align-items: center;
+          font-size: 0.78rem; font-weight: 700; letter-spacing: .01em;
+          color: var(--sb-fg, #1a1a1a); white-space: nowrap; margin-right: 2px;
+        }
+        .dcs-chips { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
         .dcs-chips::-webkit-scrollbar { display: none; }
         .dcs-chip {
           flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
