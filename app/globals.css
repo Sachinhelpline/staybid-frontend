@@ -500,9 +500,17 @@
    ═══════════════════════════════════════════════════════════════════ */
 .sb-logo-mark {
   position: relative; display: inline-block; flex-shrink: 0;
-  border-radius: 27%; overflow: hidden;
+  box-sizing: border-box;
+  /* v495.1 — premium gold SEAL, not a hard box: a soft squircle (small
+     corners) with a crisp gold rim and a soft gold halo that eases the edge
+     into whatever surface it sits on. The dark ground stays (a reflective gold
+     mark needs it for contrast + depth) but no longer reads as a closed box. */
+  border-radius: 36%; overflow: hidden;
   background: #141009;
-  box-shadow: 0 3px 12px rgba(201,145,26,0.30), inset 0 0 0 1px rgba(240,180,41,0.30);
+  border: 1.5px solid rgba(243,197,92,0.5);
+  box-shadow:
+    0 0 0 3px rgba(240,180,41,0.09),
+    0 6px 18px -5px rgba(201,145,26,0.5);
 }
 .sb-logo-mark img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .sb-logo-mark::after {
