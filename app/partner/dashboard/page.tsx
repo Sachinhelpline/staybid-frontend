@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } from "@/lib/ai-pricing";
 import { ImageUpload } from "@/components/ImageUpload";
+import { PHOTO_CATEGORIES } from "@/lib/hotel/photo-categories";
 import BookingChat from "@/components/BookingChat";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
@@ -2881,6 +2882,56 @@ export default function PartnerDashboard() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* v511 — Phase B: tag each gallery photo by space-type so guests
+                  can browse "Bedroom / Bathroom / Views…" like Airbnb. Untagged
+                  photos still show under "All". Saved with the profile below. */}
+              <div className="pt-1">
+                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Photo Categories</label>
+                {Array.isArray(editHotel.images) && editHotel.images.length > 0 ? (
+                  <>
+                    <p className="text-[0.68rem] text-luxury-500 mb-2.5 leading-relaxed">
+                      Label each photo so guests can browse by space. Optional — untagged photos still appear under “All”.
+                    </p>
+                    <div className="space-y-2">
+                      {editHotel.images.map((url: string, i: number) => {
+                        const cur = (editHotel.image_categories && editHotel.image_categories[url]) || "";
+                        return (
+                          <div key={i} className="flex items-center gap-2.5 rounded-xl border border-luxury-200 bg-white p-2">
+                            <img
+                              src={url}
+                              alt={`Photo ${i + 1}`}
+                              className="w-14 h-14 rounded-lg object-cover shrink-0 bg-luxury-100"
+                              onError={(e: any) => { e.currentTarget.style.opacity = "0.35"; }}
+                            />
+                            <select
+                              value={cur}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setEditHotel((p: any) => {
+                                  const next = { ...(p.image_categories || {}) };
+                                  if (v) next[url] = v; else delete next[url];
+                                  return { ...p, image_categories: next };
+                                });
+                              }}
+                              className="inp-p flex-1 text-sm"
+                            >
+                              <option value="">— Uncategorized —</option>
+                              {PHOTO_CATEGORIES.map((c) => (
+                                <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[0.68rem] text-luxury-500 leading-relaxed">
+                    No gallery photos yet. Add property photos during onboarding, then return here to tag them by space-type.
+                  </p>
+                )}
               </div>
 
               <button onClick={saveHotelProfile} disabled={profileSaving} className="btn-gold w-full py-3 text-sm">
