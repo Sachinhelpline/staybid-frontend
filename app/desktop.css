@@ -2096,20 +2096,31 @@ body main textarea.input-luxury {
 }
 
 @media (min-width: 1440px) {
-  /* Wider monitors get a roomier right rail + wider page cap. */
+  /* v501 — the old 1340 cap left a big dead margin on 1440–1680 laptops. Use
+     more of the width (min(1480, 94vw) keeps a sane gutter) + a roomier rail. */
   .hx-shell > .max-w-7xl {
-    grid-template-columns: minmax(0, 1fr) 380px !important;
-    column-gap: 40px !important;
-    max-width: 1340px !important;
+    grid-template-columns: minmax(0, 1fr) 400px !important;
+    column-gap: 44px !important;
+    max-width: min(1480px, 94vw) !important;
   }
 }
 
 @media (min-width: 1700px) {
-  /* On true wide-screens cap at 1440 so the page doesn't feel
-     stretched. Right rail can grow a touch more. */
+  /* v501 — true wide-screens: was a hard 1440 wall (huge void beyond). Now
+     min(1600, 92vw) so the page reaches toward the edges with a clean gutter. */
   .hx-shell > .max-w-7xl {
-    grid-template-columns: minmax(0, 1fr) 400px !important;
-    max-width: 1440px !important;
+    grid-template-columns: minmax(0, 1fr) 420px !important;
+    column-gap: 48px !important;
+    max-width: min(1600px, 92vw) !important;
+  }
+}
+
+@media (min-width: 1920px) {
+  /* v501 — 4K / ultrawide: cap generously at 1760 (90vw) so the content fills a
+     large monitor instead of floating in a ~1440 island. Rail grows to 440. */
+  .hx-shell > .max-w-7xl {
+    grid-template-columns: minmax(0, 1fr) 440px !important;
+    max-width: min(1760px, 90vw) !important;
   }
 }
 
