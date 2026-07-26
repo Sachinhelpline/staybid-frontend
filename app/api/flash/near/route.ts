@@ -101,6 +101,7 @@ export async function GET(req: NextRequest) {
     aiPrice:       number;
     floorPrice:    number;
     discount:      number;
+    marketRate:    number;   // v525 — spine live price (the honest "was" anchor)
     validUntil:    string;
     maxBookings?:  number;
     bookingCount?: number;
@@ -118,6 +119,10 @@ export async function GET(req: NextRequest) {
     if (!hotel || !room) continue;
     const floor   = Number(room.floorPrice) || Number(d.floorPrice) || 0;
     const ai      = Number(d.aiPrice ?? d.dealPrice ?? d.price) || 0;
+    // v525 — market anchor = the room's live spine price (same number the
+    // hotel page shows as "Market Rate"). Used to strike + compute % off
+    // consistently on every surface. 0 when the spine has no row (fail-open).
+    const market  = Number(spineMap[roomId]?.livePrice) || 0;
     const disc    = Number(d.discount) || (floor > 0 ? Math.round(((floor - ai) / floor) * 100) : 0);
     const c: Candidate = {
       id:           String(d.id),
@@ -126,6 +131,7 @@ export async function GET(req: NextRequest) {
       aiPrice:      ai,
       floorPrice:   floor,
       discount:     disc,
+      marketRate:   market,
       validUntil:   d.validUntil || d.valid_until || d.expiresAt || "",
       maxBookings:  d.maxBookings || d.max_bookings,
       bookingCount: d.bookingCount || d.booking_count,
@@ -183,6 +189,7 @@ export async function GET(req: NextRequest) {
       aiPrice:    ai,
       floorPrice: floor,
       discount:   disc,
+      marketRate: Number(sp?.livePrice) || Number(sp?.baseRate) || 0,   // v525
       validUntil: validUntilDefault,
       _synthetic: true,
       raw:        { _synthetic: true },
@@ -282,11 +289,15 @@ export async function GET(req: NextRequest) {
         const free  = unitsFree(r.id);
         const floor = Number(r.floorPrice) || 0;
         if (floor <= 0) return null;
-        // v168 — when the headline is a synthetic deal, price upgrades from
-        // the spine too (consistent with the headline). Real flash deals
-        // keep the legacy same-discount formula.
-        const usp = spineMap[r.id];
-        const price = (headline._synthetic && usp && Number(usp.flashPrice) > 0)
+        // v525 — each upgrade room is priced by its OWN spine flash price
+        // (= its live price − 20%, ≥ its flash floor), NOT the headline
+        // deal's discount smeared onto this room's floor. This makes the
+        // price INTRINSIC to the room — it no longer changes based on which
+        // deal the customer tapped to arrive. Falls back to floor×(1−disc)
+        // only when the spine has no row for this room.
+        const usp   = spineMap[r.id];
+        const market = Number(usp?.livePrice) || 0;
+        const price = (usp && Number(usp.flashPrice) > 0)
           ? Number(usp.flashPrice)
           : Math.max(500, Math.round(floor * (100 - headline.discount) / 100));
         return {
@@ -296,6 +307,7 @@ export async function GET(req: NextRequest) {
           images:        r.images || [],
           floorPrice:    floor,
           dealPrice:     price,
+          marketRate:    market,
           extraPerNight: Math.max(0, price - headline.aiPrice),
           unitsFree:     free,
           available:     free > 0,
@@ -313,6 +325,7 @@ export async function GET(req: NextRequest) {
       aiPrice:      headline.aiPrice,
       floorPrice:   headline.floorPrice,
       discount:     headline.discount,
+      marketRate:   headline.marketRate,   // v525 — honest "was" anchor (spine live price)
       validUntil:   headline.validUntil,
       maxBookings:  headline.maxBookings || 5,
       bookingCount: headline.bookingCount || 0,

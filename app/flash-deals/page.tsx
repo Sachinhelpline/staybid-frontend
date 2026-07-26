@@ -42,6 +42,7 @@ type Upgrade = {
   capacity: number;
   floorPrice: number;
   dealPrice: number;
+  marketRate?: number;   // v525 — spine live price (the "was" anchor)
   extraPerNight: number;
   unitsFree: number;
   available: boolean;
@@ -57,6 +58,7 @@ type Deal = {
   aiPrice: number;
   floorPrice: number;
   discount: number;
+  marketRate?: number;   // v525 — spine live price (the "was" anchor)
   validUntil?: string;
   maxBookings: number;
   bookingCount: number;
@@ -584,9 +586,12 @@ function FlashDealsContent() {
               rid === open.roomId
                 ? open
                 : { ...open, roomId: rid, aiPrice: open.upgrades.find(u => u.roomId === rid)?.dealPrice ?? open.aiPrice };
+            // v525 — market-based discount for the chosen room (vs its spine live price).
+            const fMkt = Number(rid === open.roomId ? open.marketRate : open.upgrades.find(u => u.roomId === rid)?.marketRate) || 0;
+            const fDisc = fMkt > finalRoom.aiPrice ? Math.round((1 - finalRoom.aiPrice / fMkt) * 100) : (open.discount || 0);
             // v129 — URL carries the snapped ₹100-multiple so the receiving
             // hotel page paints a price that already obeys the platform rule.
-            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${snap100(finalRoom.aiPrice)}&roomId=${finalRoom.roomId}&discount=${open.discount}&directBook=true`;
+            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${snap100(finalRoom.aiPrice)}&roomId=${finalRoom.roomId}&discount=${fDisc}&directBook=true`;
             router.push(url);
           }}
           onViewHotel={(rid) => {
@@ -598,7 +603,9 @@ function FlashDealsContent() {
               rid === open.roomId
                 ? open
                 : { ...open, roomId: rid, aiPrice: open.upgrades.find(u => u.roomId === rid)?.dealPrice ?? open.aiPrice };
-            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${snap100(finalRoom.aiPrice)}&roomId=${finalRoom.roomId}&discount=${open.discount}`;
+            const fMkt = Number(rid === open.roomId ? open.marketRate : open.upgrades.find(u => u.roomId === rid)?.marketRate) || 0;
+            const fDisc = fMkt > finalRoom.aiPrice ? Math.round((1 - finalRoom.aiPrice / fMkt) * 100) : (open.discount || 0);
+            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${snap100(finalRoom.aiPrice)}&roomId=${finalRoom.roomId}&discount=${fDisc}`;
             router.push(url);
           }}
         />
@@ -668,13 +675,23 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
   const showFloor   = pickedUp ? pickedUp.floorPrice : deal.floorPrice;
   const showType    = pickedUp ? pickedUp.type       : (deal.room?.type || "Room");
 
-  // v522 — MRP (the room's original rack price for the day) derived from the
-  // deal's discount %, struck through so the saving is obvious. Falls back to
-  // the floor if there's no discount. Always ≥ the deal price.
-  const discPct = Math.max(0, Math.min(90, Math.round(deal.discount || 0)));
-  const mrp = discPct > 0 ? snap100(Math.round(showAiPrice / (1 - discPct / 100))) : showFloor;
-  const showOriginal = mrp > showAiPrice ? mrp : (showFloor > showAiPrice ? showFloor : 0);
+  // v525 — the "was" price is the room's REAL live market rate (spine
+  // livePrice), the SAME number the hotel page shows as "Market Rate" — not a
+  // discount-derived MRP. So the strike + "% off" are honest and identical on
+  // every surface. Falls back to the floor only if the spine has no market row.
+  const showMarket = Number(pickedUp ? pickedUp.marketRate : deal.marketRate) || 0;
+  const showOriginal = showMarket > showAiPrice
+    ? showMarket
+    : (showFloor > showAiPrice ? showFloor : 0);
   const saveAmt = showOriginal > showAiPrice ? showOriginal - showAiPrice : 0;
+  const discPct = showOriginal > showAiPrice
+    ? Math.round((1 - showAiPrice / showOriginal) * 100)
+    : 0;
+  // Deal-level discount for the image %OFF stamp (headline/base room vs market).
+  const headlineMarket = Number(deal.marketRate) || 0;
+  const headlineDisc = headlineMarket > deal.aiPrice
+    ? Math.round((1 - deal.aiPrice / headlineMarket) * 100)
+    : Math.max(0, Math.round(deal.discount || 0));
 
   // v522 — real hotel info to fill the card (amenity chips + rating).
   const amen = amenityChips(deal.hotel?.amenities || deal.room?.amenities);
@@ -689,7 +706,7 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
   // with the deal context, NOT the booking flow. The deal room shows the
   // locked flash price; other rooms show upgrade prices. No directBook.
   const openHotelTour = () => {
-    const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${deal.discount}`;
+    const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${headlineDisc}`;
     router.push(url);
   };
 
@@ -718,8 +735,8 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
         </div>
 
         {/* Discount stamp (animated) */}
-        <div className={`fd-disc-stamp ${deal.discount >= 25 ? "fire" : ""}`}>
-          <span className="fd-disc-num">{deal.discount}%</span>
+        <div className={`fd-disc-stamp ${headlineDisc >= 25 ? "fire" : ""}`}>
+          <span className="fd-disc-num">{headlineDisc}%</span>
           <span className="fd-disc-off">OFF</span>
         </div>
 
