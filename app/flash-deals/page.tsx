@@ -107,14 +107,14 @@ function CountdownRing({ pctRemaining, urgent }: { pctRemaining: number; urgent:
   const dash = (pctRemaining / 100) * c;
   return (
     <svg width="38" height="38" viewBox="0 0 38 38" style={{ flexShrink: 0 }}>
-      <circle cx="19" cy="19" r={r} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="2.4" />
+      <circle cx="19" cy="19" r={r} fill="none" stroke="rgba(255,246,226,0.14)" strokeWidth="2.6" />
       <circle
         cx="19" cy="19" r={r} fill="none"
-        stroke={urgent ? "#ff3859" : "#f0b429"}
-        strokeWidth="2.4" strokeLinecap="round"
+        stroke={urgent ? "#f6a721" : "#f0c24a"}
+        strokeWidth="2.6" strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
         transform="rotate(-90 19 19)"
-        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 5px #ff3859)" : "drop-shadow(0 0 5px #f0b429)" }}
+        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 6px rgba(246,167,33,0.9))" : "drop-shadow(0 0 5px rgba(240,194,74,0.75))" }}
       />
     </svg>
   );
@@ -345,6 +345,8 @@ function FlashDealsContent() {
       {/* v159.5 — Hero ABOVE sticky. Single-line: eyebrow · italic title ·
           count. Scrolls away cleanly on first scroll. Half the height of
           the v159.3 stacked block (~22px vs ~50px on mobile). */}
+      {/* v521 — single compact hero line (title + inline stats) so it takes
+          ~half the height and the cards sit higher. */}
       <header className="fd-hero-slim sb-fade-in">
         <p className="fd-hero-line">
           <span className="fd-dot-live" aria-hidden="true" />
@@ -353,27 +355,19 @@ function FlashDealsContent() {
           <span className="fd-hero-title">
             Flash <span className="fd-title-gold">Deals</span>
           </span>
-          <span className="fd-hero-dot" aria-hidden="true">·</span>
-          <span className="fd-hero-count">
-            {loading
-              ? "loading…"
-              : `${stats.dealsLive} deal${stats.dealsLive !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
+          <span className="fd-hero-stats-inline">
+            <span className="fd-stat">
+              {loading ? "…" : <><CountUp value={stats.dealsLive} /> live</>}
+              {city ? ` in ${city}` : ""}
+            </span>
+            <span className="fd-stat-sep">·</span>
+            <span className="fd-stat"><CountUp value={stats.avgDisc} />% off</span>
+            <span className="fd-stat-sep">·</span>
+            <span className="fd-stat fd-stat-gold">
+              ₹<CountUp value={stats.totalSaving} /> saved
+            </span>
           </span>
         </p>
-        {/* Mini stat strip — keeps the headline numbers above-fold but as
-            a tiny secondary row, not a full hero block. */}
-        <div className="fd-hero-stats">
-          <span className="fd-stat-dot" />
-          <span className="fd-stat"><CountUp value={stats.dealsLive} /> live</span>
-          <span className="fd-stat-sep">·</span>
-          <span className="fd-stat"><CountUp value={stats.hotelsHot} /> hotels</span>
-          <span className="fd-stat-sep">·</span>
-          <span className="fd-stat"><CountUp value={stats.avgDisc} />% off</span>
-          <span className="fd-stat-sep">·</span>
-          <span className="fd-stat fd-stat-gold">
-            ₹<CountUp value={stats.totalSaving} /> saved
-          </span>
-        </div>
       </header>
 
       {/* v160 — Unified premium control bar. Centered (not full-bleed):
@@ -975,11 +969,13 @@ function FdStyles() {
       /* v159.6 — Sticky reads as distinct floating layer: cream-50
          (slight elevation vs cream-100 hero bg) + champagne-tinted edge
          + stronger drop-shadow. Solid bg, no backdrop-blur. */
+      /* v521 — match the page canvas (was cream-50, read as a pale slab
+         floating over the grid). Now blends like the /hotels control bar. */
       .fd-sticky {
         position: sticky; top: 0; z-index: 30;
-        background: var(--cozy-cream-50, #FFFCF6);
-        border-bottom: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 28%, var(--cozy-taupe, #E8DCC8));
-        box-shadow: 0 8px 18px -8px rgba(31, 26, 15, 0.20);
+        background: var(--bg-page);
+        border-bottom: 1px solid var(--border-soft);
+        box-shadow: 0 6px 16px -12px rgba(31, 26, 15, 0.28);
       }
       .fd-sticky-inner {
         max-width: 1480px; margin: 0 auto;
@@ -988,15 +984,17 @@ function FdStyles() {
       @media (min-width: 640px)  { .fd-sticky-inner { padding: 12px 24px 13px; } }
       @media (min-width: 1024px) { .fd-sticky-inner { padding: 15px 32px 16px; } }
 
+      /* v521 — champagne-gold live dot (cozy theme; no red/pink). */
       .fd-dot-live {
         width: 7px; height: 7px; border-radius: 50%;
-        background: #ff3859; box-shadow: 0 0 0 0 rgba(255, 56, 89, 0.6);
-        animation: fdPulse 1.6s infinite;
+        background: radial-gradient(circle at 35% 35%, #ffe6a8, #e6b84f 55%, #c9932f);
+        box-shadow: 0 0 0 0 rgba(224, 176, 74, 0.7), 0 0 6px rgba(224,176,74,0.55);
+        animation: fdPulse 1.7s infinite;
       }
       @keyframes fdPulse {
-        0%   { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0.55); }
-        70%  { box-shadow: 0 0 0 12px rgba(255, 56, 89, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0); }
+        0%   { box-shadow: 0 0 0 0 rgba(224, 176, 74, 0.6), 0 0 6px rgba(224,176,74,0.5); }
+        70%  { box-shadow: 0 0 0 11px rgba(224, 176, 74, 0), 0 0 6px rgba(224,176,74,0.2); }
+        100% { box-shadow: 0 0 0 0 rgba(224, 176, 74, 0), 0 0 6px rgba(224,176,74,0.5); }
       }
 
       /* v159.5 — Single-line hero ABOVE the sticky. Scrolls away first.
@@ -1005,15 +1003,25 @@ function FdStyles() {
       .fd-hero-slim {
         position: relative; z-index: 1;
         max-width: 1480px; margin: 0 auto;
-        padding: 8px 16px 6px;
+        padding: 6px 16px 5px;
       }
-      @media (min-width: 640px)  { .fd-hero-slim { padding: 12px 22px 8px; } }
-      @media (min-width: 1024px) { .fd-hero-slim { padding: 16px 32px 10px; } }
+      @media (min-width: 640px)  { .fd-hero-slim { padding: 8px 24px 6px; } }
+      @media (min-width: 1024px) { .fd-hero-slim { padding: 10px 32px 7px; } }
       .fd-hero-line {
         display: flex; align-items: baseline; flex-wrap: wrap;
         justify-content: center; text-align: center;
         gap: 6px; margin: 0;
-        line-height: 1.25;
+        line-height: 1.2;
+      }
+      /* v521 — stats now sit INLINE with the title (one compact row). */
+      .fd-hero-stats-inline {
+        display: inline-flex; align-items: baseline; flex-wrap: wrap;
+        gap: 5px;
+        font-size: 0.66rem; color: var(--cozy-cocoa-soft, #6E5430);
+      }
+      @media (min-width: 640px) {
+        .fd-hero-stats-inline { margin-left: 8px; padding-left: 10px;
+          border-left: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 34%, transparent); }
       }
       .fd-hero-eyebrow {
         font-size: 0.5rem; font-weight: 700;
@@ -1184,22 +1192,37 @@ function FdStyles() {
          cocoa in dark. Champagne accent on hover stays brand-consistent. */
       /* v415 — premium flagship card: rounder corners + a layered depth on
          top of the theme-aware token shadow (works in both light + dark). */
+      /* v521 — cozy 3D lift: warm layered resting shadow + champagne hairline
+         + a soft top-inset highlight, and a deeper raise on hover. */
       .fd-card {
         position: relative;
         background: var(--bg-card);
-        border: 1px solid var(--border-soft);
+        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 22%, var(--border-soft));
         border-radius: 24px;
         overflow: hidden;
         cursor: pointer;
         color: var(--text-base);
         transition: transform 0.4s cubic-bezier(.4,.0,.2,1), border-color 0.3s, box-shadow 0.3s;
         animation: fdFadeUp 0.55s cubic-bezier(.2,.7,.2,1) both;
-        box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.04);
+        box-shadow:
+          0 14px 30px -18px rgba(74, 56, 32, 0.5),
+          0 3px 10px -6px rgba(74, 56, 32, 0.3),
+          inset 0 1px 0 rgba(255,255,255,0.06);
       }
       .fd-card:hover {
-        transform: translateY(-5px);
-        border-color: color-mix(in srgb, var(--accent) 60%, var(--border-soft));
-        box-shadow: var(--shadow-card), 0 0 0 1px var(--accent-soft);
+        transform: translateY(-6px);
+        border-color: color-mix(in srgb, var(--accent) 62%, var(--border-soft));
+        box-shadow:
+          0 26px 50px -20px rgba(74, 56, 32, 0.6),
+          0 8px 18px -8px rgba(120, 90, 40, 0.32),
+          0 0 0 1px var(--accent-soft),
+          inset 0 1px 0 rgba(255,255,255,0.08);
+      }
+      [data-theme="dark"] .fd-card {
+        box-shadow: 0 16px 34px -18px rgba(0,0,0,0.7), 0 3px 10px -6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+      [data-theme="dark"] .fd-card:hover {
+        box-shadow: 0 28px 54px -20px rgba(0,0,0,0.8), 0 0 0 1px var(--accent-soft), inset 0 1px 0 rgba(255,255,255,0.07);
       }
       @keyframes fdFadeUp {
         from { opacity: 0; transform: translateY(22px); }
@@ -1248,39 +1271,68 @@ function FdStyles() {
         100% { background-position: -250% 0; }
       }
 
+      /* v521 — premium cozy LIVE chip: warm dark glass + champagne edge +
+         cream text + a gold gloss (was pink-on-glass, low contrast). */
       .fd-live-pill {
         position: absolute; top: 12px; left: 12px; z-index: 2;
         display: inline-flex; align-items: center; gap: 6px;
-        padding: 5px 10px;
-        background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
-        border: 1px solid rgba(255, 56, 89, 0.45);
+        padding: 5px 11px;
+        background: linear-gradient(135deg, rgba(31,24,14,0.72), rgba(18,13,7,0.82));
+        backdrop-filter: blur(8px) saturate(140%);
+        -webkit-backdrop-filter: blur(8px) saturate(140%);
+        border: 1px solid rgba(217, 190, 130, 0.5);
         border-radius: 999px;
-        font-size: 0.6rem; font-weight: 700;
-        letter-spacing: 0.18em; color: #ff7088;
+        font-size: 0.6rem; font-weight: 800;
+        letter-spacing: 0.2em; color: #F7EEDA;
+        box-shadow: 0 6px 16px -8px rgba(0,0,0,0.55),
+          inset 0 1px 0 rgba(255,246,226,0.22);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.45);
       }
 
+      /* v521 — premium embossed GOLD coin (no pink). 3D bevel = bright top
+         inset highlight + dark bottom inset + drop shadow, plus a slow shine
+         sweep. Big discounts (.fire) get a richer, deeper gold — still cozy. */
       .fd-disc-stamp {
         position: absolute; top: 12px; right: 12px; z-index: 2;
-        background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
-        border-radius: 14px;
+        background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+        border-radius: 15px;
         padding: 8px 12px;
         display: flex; flex-direction: column; align-items: center;
         line-height: 1;
-        box-shadow: 0 8px 22px rgba(240,180,41,0.35), inset 0 0 0 1px rgba(255,255,255,0.25);
-        animation: fdStamp 2.4s ease-in-out infinite;
+        overflow: hidden;
+        box-shadow:
+          0 10px 24px -6px rgba(170,120,25,0.5),
+          inset 0 1.5px 0 rgba(255,255,255,0.7),
+          inset 0 -3px 6px rgba(150,95,10,0.4);
+        animation: fdStamp 2.6s ease-in-out infinite;
+      }
+      /* moving gloss sweep across the coin */
+      .fd-disc-stamp::after {
+        content: ""; position: absolute; inset: 0;
+        background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.5) 50%, transparent 62%);
+        background-size: 250% 100%;
+        animation: fdCoinShine 3.6s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes fdCoinShine {
+        0%   { background-position: 230% 0; }
+        100% { background-position: -230% 0; }
       }
       .fd-disc-stamp.fire {
-        background: linear-gradient(135deg, #ff7088, #ff3859 60%, #d12d4a);
-        box-shadow: 0 8px 22px rgba(255,56,89,0.45), inset 0 0 0 1px rgba(255,255,255,0.25);
+        background: linear-gradient(140deg, #ffdd90 0%, #eab52f 46%, #c5850f 100%);
+        box-shadow:
+          0 11px 26px -6px rgba(150,100,15,0.55),
+          inset 0 1.5px 0 rgba(255,255,255,0.62),
+          inset 0 -3px 7px rgba(120,75,8,0.45);
       }
       @keyframes fdStamp {
         0%, 100% { transform: rotate(-3deg) scale(1); }
-        50%      { transform: rotate(-3deg) scale(1.05); }
+        50%      { transform: rotate(-3deg) scale(1.045); }
       }
-      .fd-disc-num { color: #0a0814; font-weight: 900; font-size: 1.1rem; letter-spacing: -0.02em; }
-      .fd-disc-stamp.fire .fd-disc-num { color: var(--text-base); }
-      .fd-disc-off { color: #0a0814; font-weight: 800; font-size: 0.55rem; letter-spacing: 0.18em; }
-      .fd-disc-stamp.fire .fd-disc-off { color: var(--text-base); opacity: 0.9; }
+      .fd-disc-num { position: relative; z-index: 1; color: #3a2606; font-weight: 900; font-size: 1.12rem; letter-spacing: -0.02em; text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
+      .fd-disc-stamp.fire .fd-disc-num { color: #3a2606; }
+      .fd-disc-off { position: relative; z-index: 1; color: #6a4a0e; font-weight: 800; font-size: 0.55rem; letter-spacing: 0.18em; }
+      .fd-disc-stamp.fire .fd-disc-off { color: #6a4a0e; }
 
       .fd-img-bottom {
         position: absolute; bottom: 12px; left: 12px; z-index: 2;
@@ -1304,19 +1356,23 @@ function FdStyles() {
          padding, softer warm-cocoa gradient bg with subtle champagne
          outline so it reads as a luxe accent on the photo instead of a
          heavy badge. */
+      /* v521 — raised 3D luxe glass timer chip (deeper shadow + champagne
+         edge + top gloss so it lifts off the photo). */
       .fd-ring-wrap {
         position: absolute; bottom: 8px; right: 8px; z-index: 2;
         display: flex; align-items: center; gap: 6px;
         background:
-          linear-gradient(135deg, rgba(31, 26, 15, 0.78), rgba(20, 16, 10, 0.92));
-        backdrop-filter: blur(10px) saturate(140%);
-        -webkit-backdrop-filter: blur(10px) saturate(140%);
+          linear-gradient(135deg, rgba(38, 30, 17, 0.82), rgba(18, 14, 8, 0.94));
+        backdrop-filter: blur(12px) saturate(150%);
+        -webkit-backdrop-filter: blur(12px) saturate(150%);
         border-radius: 999px;
         padding: 3px 11px 3px 3px;
-        border: 1px solid rgba(217, 190, 130, 0.28);
+        border: 1px solid rgba(224, 190, 120, 0.42);
         box-shadow:
-          0 6px 18px -8px rgba(0, 0, 0, 0.4),
-          inset 0 1px 0 rgba(255, 246, 226, 0.10);
+          0 9px 22px -7px rgba(0, 0, 0, 0.6),
+          0 2px 6px -2px rgba(0,0,0,0.4),
+          inset 0 1px 0 rgba(255, 246, 226, 0.2),
+          inset 0 -2px 5px rgba(0,0,0,0.3);
       }
       .fd-ring-wrap > svg { width: 38px !important; height: 38px !important; }
       .fd-ring-time {
@@ -1331,7 +1387,7 @@ function FdStyles() {
         color: #F5EFE0;
         text-shadow: 0 1px 2px rgba(0,0,0,0.4);
       }
-      .fd-ring-digits.urgent { color: #ff9aaa; }
+      .fd-ring-digits.urgent { color: #ffd487; }
       .fd-ring-lbl {
         font-size: 0.46rem; font-weight: 700; letter-spacing: 0.22em;
         color: rgba(217, 190, 130, 0.78); text-transform: uppercase;
