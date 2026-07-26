@@ -761,6 +761,12 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           ) : null}
         </div>
 
+        {/* v523 — split body: info left, price+CTA panel right, so a wide
+            (mobile 1-col) card fills its right half instead of dead space.
+            Narrow desktop cards collapse this back to a stacked column. */}
+        <div className="fd-body-split">
+        <div className="fd-body-main">
+
         {/* Row 2 — rating + stars + room type + capacity, all inline */}
         <div className="fd-meta-line">
           {ratingVal > 0 ? (
@@ -835,8 +841,11 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           </span>
         </div>
 
-        {/* Price + CTA — horizontal row, no dividers */}
-        <div className="fd-price-row">
+        </div>{/* /fd-body-main */}
+
+        {/* Price + CTA — a right-side panel on wide cards, a bottom row on
+            narrow desktop cards. */}
+        <div className="fd-price-panel">
           <div className="fd-price-block">
             <div className="fd-price-line">
               {showOriginal > showAiPrice && (
@@ -867,6 +876,8 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
             {sold ? "Sold Out" : "⚡ Grab Now"}
           </button>
         </div>
+
+        </div>{/* /fd-body-split */}
       </div>
     </div>
   );
@@ -1738,10 +1749,30 @@ function FdStyles() {
          separator turns the leftover whitespace below the chips into an
          intentional zone (native app pattern) instead of a floating gap, and
          anchors the price + Grab CTA as one crisp row. */
-      .fd-price-row {
+      /* v523 — body splits into info (left) + price/CTA panel (right) so a
+         WIDE mobile 1-col card fills its right half. Default = stacked column
+         (desktop/tablet unchanged); side-by-side only on the widest (<640) card. */
+      .fd-body-split { display: flex; flex-direction: column; }
+      .fd-body-main  { display: flex; flex-direction: column; min-width: 0; }
+      .fd-price-panel {
         display: flex; align-items: center; justify-content: space-between;
-        gap: 10px; padding-top: 11px;
+        gap: 10px; padding-top: 11px; margin-top: 2px;
         border-top: 1px solid var(--border-soft);
+      }
+      @media (max-width: 639px) {
+        .fd-body-split { flex-direction: row; align-items: stretch; gap: 13px; }
+        .fd-body-main  { flex: 1 1 auto; }
+        .fd-price-panel {
+          flex: 0 0 auto; width: 42%; min-width: 132px; max-width: 182px;
+          flex-direction: column; align-items: flex-end; justify-content: center;
+          gap: 11px; margin-top: 0;
+          border-top: none; padding-top: 0;
+          border-left: 1px solid var(--border-soft); padding-left: 13px;
+        }
+        .fd-price-panel .fd-price-block { align-items: flex-end; text-align: right; }
+        .fd-price-panel .fd-price-line { justify-content: flex-end; }
+        .fd-price-panel .fd-price-save { justify-content: flex-end; }
+        .fd-price-panel .fd-cta { width: 100%; justify-content: center; }
       }
       .fd-price-block {
         flex: 1 1 auto; min-width: 0;
