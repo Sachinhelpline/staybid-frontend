@@ -6,17 +6,14 @@ import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelScoreBadge";
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
-import LuxuryCalendar from "@/components/LuxuryCalendar";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
+import StaySearchSheet from "@/components/hotel/StaySearchSheet";
 // v141 — Phase-5 explore tour. 4 steps: search → city filter →
 // sort+stars → first hotel card.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v392 — canonical city pills (hill-stations + 12-month demand-cycle hubs).
-import { cityPills, HUB_CITIES, SATELLITE_CITIES } from "@/lib/cities";
+import { HUB_CITIES, SATELLITE_CITIES } from "@/lib/cities";
 import DemandCycleStrip from "@/components/discover/DemandCycleStrip";
-// v517 — trending destinations for the redesigned "Find your stay" search
-// (Airbnb-style Where step — curated shortlist instead of a 50-pill wall).
-import { currentMonthDemand } from "@/lib/circle/demand-cycle";
 
 // v394 — new demand-cycle destinations (hubs + satellites), lowercased, for the
 // "Explore India" rail. Hubs first so they lead the rail.
@@ -42,7 +39,6 @@ const SORT_OPTS: Array<{ v: "default" | "price-asc" | "price-desc" | "rating"; l
 // `sb_search_state` and propagates to /hotels/[id] via URL params on
 // card tap so the detail picker arrives pre-filled.
 
-const CITY_PILLS: Array<{ key: string; label: string; icon: string }> = cityPills();
 
 // Per-card min price (best of active flash + lowest room floor).
 function minPriceFor(h: any) {
@@ -161,37 +157,7 @@ function HotelList() {
   const [searchAdults, setSearchAdults] = useState(2);
   const [searchChildren, setSearchChildren] = useState(0);
   const [searchKids, setSearchKids] = useState(0);
-  // v517 — Airbnb-style progressive search: only one step open at a time.
-  const [openStep, setOpenStep] = useState<"where" | "when" | "who" | null>("where");
-  const [showAllCities, setShowAllCities] = useState(false);
 
-  // v517 — curated "Trending this month" destinations for the Where step
-  // (real demand-cycle data mapped to the canonical city pills), so the
-  // default view is a short shortlist, not a 50-chip wall.
-  const trending = useMemo(() => {
-    try {
-      const row = currentMonthDemand();
-      const keys = [...(row.primary || []), ...(row.secondary || [])];
-      const seen = new Set<string>();
-      const pills: typeof CITY_PILLS = [];
-      keys.forEach((k) => {
-        const kk = String(k).toLowerCase();
-        if (seen.has(kk)) return;
-        seen.add(kk);
-        const pill = CITY_PILLS.find((p) => p.key.toLowerCase() === kk);
-        if (pill) pills.push(pill);
-      });
-      return { month: row.long as string, pills: pills.slice(0, 10) };
-    } catch {
-      return { month: "", pills: [] as typeof CITY_PILLS };
-    }
-  }, []);
-
-  // Re-open on the Where step + collapse the full-city list every time the
-  // sheet opens, so it always starts calm.
-  useEffect(() => {
-    if (searchOpen) { setOpenStep("where"); setShowAllCities(false); }
-  }, [searchOpen]);
   // Pending bookings — surfaces "Continue your booking" card at top of body
   const [pendingBids, setPendingBids] = useState<any[]>([]);
 
@@ -1014,293 +980,29 @@ function HotelList() {
         )}
       </div>
 
-      {/* v159.8 — Multi-level SearchSheet modal (Airbnb-style: Where ·
-          When · Who collapsed sections). Opens on search-pill tap.
-          Reuses LuxuryCalendar for the date picker. */}
-      {searchOpen && (
-        <div
-          className="hxr-sheet-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Search filters"
-          onClick={() => setSearchOpen(false)}
-        >
-          <div className="hxr-sheet" onClick={(e) => e.stopPropagation()}>
-            <header className="hxr-sheet-head">
-              <h2 className="hxr-sheet-title">Find your stay</h2>
-              <button
-                type="button"
-                onClick={() => setSearchOpen(false)}
-                className="hxr-sheet-close"
-                aria-label="Close search"
-              >×</button>
-            </header>
+      {/* v520 — shared StaySearchSheet (Airbnb-style Where/When/Who). Same
+          component powers /flash-deals (with check-in locked to today). */}
+      <StaySearchSheet
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        hotels={hotels}
+        city={city}
+        setCity={setCity}
+        search={search}
+        setSearch={setSearch}
+        checkIn={searchCheckIn}
+        setCheckIn={setSearchCheckIn}
+        checkOut={searchCheckOut}
+        setCheckOut={setSearchCheckOut}
+        adults={searchAdults}
+        setAdults={setSearchAdults}
+        childrenCount={searchChildren}
+        setChildren={setSearchChildren}
+        kids={searchKids}
+        setKids={setSearchKids}
+        searchUrlParams={searchUrlParams}
+      />
 
-            <div className="hxr-sheet-body hxr-steps">
-              {/* v518 — Airbnb-style: 3 PARALLEL tabs (Where / When / Who) on
-                  one row + a single full-width editor panel below. Replaces the
-                  vertical accordion so the tabs sit side-by-side on desktop and
-                  the pricing calendar in "When" gets the full width and is never
-                  clipped (the panel grows and the body scrolls instead). */}
-              <div className="hxr-step-tabs" role="tablist" aria-label="Search steps">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={openStep === "where"}
-                  className={`hxr-tab${openStep === "where" ? " is-open" : ""}`}
-                  onClick={() => setOpenStep(openStep === "where" ? null : "where")}
-                >
-                  <span className="hxr-tab-lbl">Where</span>
-                  <span className={`hxr-tab-val${(search.trim() || city) ? " is-set" : ""}`}>
-                    {search.trim() ? `“${search.trim()}”` : (city || "Anywhere")}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={openStep === "when"}
-                  className={`hxr-tab${openStep === "when" ? " is-open" : ""}`}
-                  onClick={() => setOpenStep(openStep === "when" ? null : "when")}
-                >
-                  <span className="hxr-tab-lbl">When</span>
-                  <span className={`hxr-tab-val${searchCheckIn ? " is-set" : ""}`}>
-                    {searchCheckIn && searchCheckOut
-                      ? `${new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(searchCheckOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
-                      : searchCheckIn
-                        ? new Date(searchCheckIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-                        : "Any dates"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={openStep === "who"}
-                  className={`hxr-tab${openStep === "who" ? " is-open" : ""}`}
-                  onClick={() => setOpenStep(openStep === "who" ? null : "who")}
-                >
-                  <span className="hxr-tab-lbl">Who</span>
-                  <span className={`hxr-tab-val${(searchAdults + searchChildren + searchKids) > 0 ? " is-set" : ""}`}>
-                    {(() => {
-                      const t = searchAdults + searchChildren + searchKids;
-                      return t > 0 ? `${t} guest${t === 1 ? "" : "s"}` : "Add guests";
-                    })()}
-                  </span>
-                </button>
-              </div>
-
-              {openStep && (
-                <div className="hxr-step-panel">
-                  {/* ── WHERE ── */}
-                  {openStep === "where" && (
-                  <div className="hxr-panel">
-                    <div className="hxr-sheet-search">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                      </svg>
-                      <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search city or hotel name…"
-                        type="search"
-                        autoComplete="off"
-                        autoFocus
-                        aria-label="Search hotels"
-                      />
-                      {search && (
-                        <button type="button" onClick={() => setSearch("")} aria-label="Clear search">✕</button>
-                      )}
-                    </div>
-                    {search.trim().length >= 1 ? (
-                      /* v159.10 — Live suggestions as the user types (no extra API hit). */
-                      (() => {
-                        const q = search.trim().toLowerCase();
-                        const matches = hotels
-                          .filter((h: any) => {
-                            const name = String(h?.name || "").toLowerCase();
-                            const hcity = String(h?.city || "").toLowerCase();
-                            const area = getHotelArea(h?.city, h?.lat, h?.lng) || "";
-                            return name.includes(q) || hcity.includes(q) || area.toLowerCase().includes(q);
-                          })
-                          .slice(0, 5);
-                        if (!matches.length) {
-                          return (
-                            <p className="hxr-sheet-empty">
-                              No hotels match “{search}”. Try a different name or city.
-                            </p>
-                          );
-                        }
-                        return (
-                          <ul className="hxr-sheet-suggest" role="list">
-                            {matches.map((h: any) => {
-                              const img = h.images?.[0];
-                              const area = getHotelArea(h.city, h.lat, h.lng);
-                              return (
-                                <li key={h.id} role="listitem">
-                                  <Link
-                                    href={`/hotels/${h.id}${searchUrlParams || ""}`}
-                                    onClick={() => setSearchOpen(false)}
-                                    className="hxr-sheet-suggest-row"
-                                  >
-                                    {img ? (
-                                      <img src={sbImage(img, SB_IMG_CARD)} alt="" className="hxr-sheet-suggest-img" loading="lazy" />
-                                    ) : (
-                                      <span className="hxr-sheet-suggest-img hxr-sheet-suggest-img-fallback" aria-hidden="true">🏨</span>
-                                    )}
-                                    <span className="hxr-sheet-suggest-text">
-                                      <span className="hxr-sheet-suggest-name">{h.name}</span>
-                                      <span className="hxr-sheet-suggest-meta">
-                                        📍 {area ? `${area}, ` : ""}{h.city}
-                                      </span>
-                                    </span>
-                                    <span className="hxr-sheet-suggest-arrow" aria-hidden="true">›</span>
-                                  </Link>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        );
-                      })()
-                    ) : (
-                      /* Not searching → a curated shortlist (Trending), NOT a 50-pill wall.
-                         "Show all cities" reveals the full list on demand. */
-                      <div className="hxr-where-picks">
-                        <p className="hxr-step-hint">
-                          {showAllCities
-                            ? "All destinations"
-                            : (trending.pills.length ? `🔥 Trending in ${trending.month}` : "Popular destinations")}
-                        </p>
-                        <div className="hxr-sheet-cities">
-                          <button
-                            type="button"
-                            className={`hxr-sheet-city${city === "" ? " hxr-sheet-city-active" : ""}`}
-                            aria-pressed={city === ""}
-                            onClick={() => {
-                              setCity("");
-                              try { localStorage.setItem("sb_city", ""); } catch {}
-                              setOpenStep("when");
-                            }}
-                          >
-                            <span aria-hidden="true">🌏</span>
-                            <span>Anywhere</span>
-                          </button>
-                          {(showAllCities ? CITY_PILLS.filter((p) => p.key) : trending.pills).map((c) => (
-                            <button
-                              key={c.key}
-                              type="button"
-                              className={`hxr-sheet-city${c.key === city ? " hxr-sheet-city-active" : ""}`}
-                              aria-pressed={c.key === city}
-                              onClick={() => {
-                                setCity(c.key);
-                                try { localStorage.setItem("sb_city", c.key); } catch {}
-                                setOpenStep("when");
-                              }}
-                            >
-                              <span aria-hidden="true">{c.icon}</span>
-                              <span>{c.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          className="hxr-step-more"
-                          onClick={() => setShowAllCities((v) => !v)}
-                        >
-                          {showAllCities ? "↑ Show less" : "Show all cities →"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  )}
-
-                  {/* ── WHEN ── (inline pricing calendar — StayBid's edge over Airbnb) */}
-                  {openStep === "when" && (
-                  <div className="hxr-panel hxr-step-cal">
-                    <LuxuryCalendar
-                      inline
-                      open
-                      mode="checkIn"
-                      checkIn={searchCheckIn}
-                      checkOut={searchCheckOut}
-                      rooms={[]}
-                      city={city || "Mussoorie"}
-                      pricingMode="demand"
-                      onApply={({ checkIn: ci, checkOut: co }) => {
-                        setSearchCheckIn(ci);
-                        setSearchCheckOut(co);
-                        if (ci && co) setOpenStep("who");
-                      }}
-                      onClose={() => {}}
-                    />
-                  </div>
-                  )}
-
-                  {/* ── WHO ── */}
-                  {openStep === "who" && (
-                  <div className="hxr-panel">
-                    <div className="hxr-sheet-guests">
-                      <GuestRow
-                        label="Adults"
-                        sub="Ages 12+"
-                        value={searchAdults}
-                        min={1}
-                        max={8}
-                        onChange={setSearchAdults}
-                      />
-                      <GuestRow
-                        label="Children"
-                        sub="Ages 5–12 · +₹200/night"
-                        value={searchChildren}
-                        min={0}
-                        max={6}
-                        onChange={setSearchChildren}
-                      />
-                      <GuestRow
-                        label="Kids"
-                        sub="Under 5 · FREE"
-                        value={searchKids}
-                        min={0}
-                        max={6}
-                        onChange={setSearchKids}
-                      />
-                    </div>
-                  </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <footer className="hxr-sheet-foot">
-              <button
-                type="button"
-                className="hxr-sheet-clear"
-                onClick={() => {
-                  setSearch("");
-                  setCity("");
-                  setSearchCheckIn("");
-                  setSearchCheckOut("");
-                  setSearchAdults(2);
-                  setSearchChildren(0);
-                  setSearchKids(0);
-                  try { localStorage.setItem("sb_city", ""); } catch {}
-                }}
-              >Clear all</button>
-              <button
-                type="button"
-                className="hxr-sheet-apply"
-                onClick={() => setSearchOpen(false)}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-                Search
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
-
-      {/* v517 — the date calendar now renders INLINE inside the SearchSheet's
-          "When" step (see above), so no standalone calendar modal here. */}
 
       {/* v160 — Location globe picker, opened by the control-bar location
           button. Writes sb_city + fires sb:city-change, which the
@@ -1308,42 +1010,6 @@ function HotelList() {
       {locOpen && (
         <LocationGlobeModal activeCity={city} onClose={() => setLocOpen(false)} />
       )}
-    </div>
-  );
-}
-
-// ───────── Guest counter row inside SearchSheet ─────────
-function GuestRow({
-  label, sub, value, min, max, onChange,
-}: {
-  label: string;
-  sub: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <div className="hxr-guest-row">
-      <div className="hxr-guest-text">
-        <p className="hxr-guest-label">{label}</p>
-        <p className="hxr-guest-sub">{sub}</p>
-      </div>
-      <div className="hxr-guest-stepper">
-        <button
-          type="button"
-          onClick={() => onChange(Math.max(min, value - 1))}
-          disabled={value <= min}
-          aria-label={`Decrease ${label}`}
-        >−</button>
-        <span className="hxr-guest-value">{value}</span>
-        <button
-          type="button"
-          onClick={() => onChange(Math.min(max, value + 1))}
-          disabled={value >= max}
-          aria-label={`Increase ${label}`}
-        >+</button>
-      </div>
     </div>
   );
 }
