@@ -62,30 +62,36 @@ export default function DemandCycleStrip({
         })}
       </div>
       <style jsx>{`
+        /* v514 — drives off the APP theme (data-theme) via CSS variables, NOT
+           @media(prefers-color-scheme) which keyed off the OS and made the label
+           invisible when OS=dark but app=light. Legible in both modes now. */
         .dcs-wrap { max-width: 1120px; margin: 4px auto 0; padding: 4px 16px 2px; }
         .dcs-eyebrow {
           flex: 0 0 auto; display: inline-flex; align-items: center;
-          font-size: 0.78rem; font-weight: 700; letter-spacing: .01em;
-          color: var(--sb-fg, #1a1a1a); white-space: nowrap; margin-right: 2px;
+          font-size: 0.8rem; font-weight: 800; letter-spacing: .01em;
+          color: var(--text-base); white-space: nowrap; margin-right: 2px;
         }
         .dcs-chips { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
         .dcs-chips::-webkit-scrollbar { display: none; }
         .dcs-chip {
           flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
-          padding: 8px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
-          border: 1px solid rgba(180,150,90,0.35); background: rgba(255,252,245,0.9);
-          color: #4a3820; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease;
+          padding: 8px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 700;
+          border: 1px solid var(--border-soft); background: var(--bg-card);
+          color: var(--text-base); cursor: pointer;
+          transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
           white-space: nowrap;
+          /* v514 — subtle reflective top highlight (premium sheen) */
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 1px 2px rgba(31,26,15,0.06);
         }
-        .dcs-chip:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(180,150,90,0.18); }
-        .dcs-chip-p { background: linear-gradient(135deg, #fff6e2, #ffe9bf); border-color: rgba(200,150,50,0.5); }
-        .dcs-chip-on { outline: 2px solid rgba(200,150,50,0.85); outline-offset: 1px; }
+        .dcs-chip:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 6px 16px rgba(180,150,90,0.22); border-color: var(--accent); }
+        .dcs-chip-p {
+          background: color-mix(in srgb, var(--accent) 16%, var(--bg-card));
+          border-color: color-mix(in srgb, var(--accent) 45%, var(--border-soft));
+        }
+        .dcs-chip-on { outline: 2px solid var(--accent); outline-offset: 1px; }
         .dcs-flame { font-size: 0.72rem; }
-        @media (prefers-color-scheme: dark) {
-          .dcs-eyebrow { color: #f1e6d2; }
-          .dcs-chip { background: rgba(40,34,26,0.85); color: #f1e2c6; border-color: rgba(180,150,90,0.4); }
-          .dcs-chip-p { background: linear-gradient(135deg, #3a2f1c, #4a3a1f); }
-        }
+        :global([data-theme="dark"]) .dcs-chip { box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 1px 2px rgba(0,0,0,0.3); }
+        :global([data-theme="dark"]) .dcs-chip:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 6px 16px rgba(0,0,0,0.4); }
       `}</style>
     </section>
   );
