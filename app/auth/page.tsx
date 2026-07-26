@@ -279,8 +279,13 @@ function AuthPage() {
 
   const Brand = ({ subtitle }: { subtitle: string }) => (
     <div className="text-center mb-8">
-      <div className="w-16 h-16 rounded-2xl btn-luxury flex items-center justify-center text-white text-2xl font-bold mx-auto mb-5 shadow-gold-lg">S</div>
-      <h1 className="font-display font-light text-luxury-900 text-3xl mb-1.5">StayBid</h1>
+      {/* v495 — official StayBid gold monogram + metallic serif wordmark. */}
+      <div className="flex justify-center mb-5">
+        <span className="sb-logo-mark" style={{ width: 64, height: 64 }} aria-hidden>
+          <img src="/brand/staybid-mark.png" alt="StayBid" width={64} height={64} decoding="async" />
+        </span>
+      </div>
+      <h1 className="sb-wordmark text-4xl mb-1.5">StayBid</h1>
       <p className="text-luxury-400 text-sm tracking-wide">{subtitle}</p>
     </div>
   );

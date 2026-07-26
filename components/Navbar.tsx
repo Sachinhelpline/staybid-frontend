@@ -51,40 +51,20 @@ const BOTTOM_PRIMARY = [
   { href: "/bid",         label: "Bid",       icon: "🎯" },
 ];
 
+// v495 — the OFFICIAL StayBid logo: the gold reflective SB monogram
+// (public/brand/staybid-mark.png, cropped from the master lockup). Framed as a
+// premium gold-rimmed tile with a live shine sweep (.sb-logo-mark, globals.css).
 function LogoMark({ size = 36 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f0b429"/>
-          <stop offset="100%" stopColor="#c9911a"/>
-        </linearGradient>
-        <linearGradient id="sG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff"/>
-          <stop offset="100%" stopColor="#cbd5e0"/>
-        </linearGradient>
-      </defs>
-      <rect width="120" height="120" rx="22" fill="#0d1b2e"/>
-      <path d="M60 18 L88 42 L84 42 L84 72 L36 72 L36 42 L32 42 Z" fill="#c9911a" opacity="0.15"/>
-      <path d="M60 22 L86 44 L82 44 L82 70 L38 70 L38 44 L34 44 Z" fill="none" stroke="#c9911a" strokeWidth="2.5" strokeLinejoin="round"/>
-      <rect x="51" y="55" width="18" height="15" rx="3" fill="#c9911a" opacity="0.7"/>
-      <text x="30" y="108" fontFamily="Inter,Arial,sans-serif" fontWeight="900" fontSize="52" fill="url(#gG)" letterSpacing="-2">s</text>
-      <text x="68" y="108" fontFamily="Inter,Arial,sans-serif" fontWeight="900" fontSize="52" fill="url(#sG)" letterSpacing="-2">b</text>
-    </svg>
+    <span className="sb-logo-mark" style={{ width: size, height: size }} aria-hidden>
+      <img src="/brand/staybid-mark.png" alt="StayBid" width={size} height={size} decoding="async" />
+    </span>
   );
 }
 
+// v495 — "StayBid" as the official gold metallic serif wordmark (.sb-wordmark).
 function BrandText({ className = "", dark = false }: { className?: string; dark?: boolean }) {
-  return (
-    <span className={`font-black tracking-tight leading-none select-none ${className}`}
-      style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* v494 — "stay" uses text-luxury-900 (theme/route-aware via desktop.css)
-          so it is DARK on the light bar and LIGHT on the dark reel bars. It was
-          hardcoded white before → invisible on the cream home navbar. */}
-      <span className="text-luxury-900">stay</span>
-      <span style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>bid</span>
-    </span>
-  );
+  return <span className={`sb-wordmark select-none ${className}`}>StayBid</span>;
 }
 
 /* ── Premium Location Chip — opens the shared globe modal ──────────── */
