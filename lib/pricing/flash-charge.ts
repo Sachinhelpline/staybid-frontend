@@ -32,6 +32,7 @@ export interface FlashOrderCharge {
   grandTotal: number;  // pre-discount authoritative total
   perNight: number;
   discount: number;    // validated redemption actually allowed
+  hotelId?: string;    // for the hold-deposit tier lookup
 }
 
 export async function resolveFlashOrderCharge(opts: {
@@ -61,9 +62,11 @@ export async function resolveFlashOrderCharge(opts: {
 
     // ── extras (mirror the client: baseCapacity = room.capacity || 2) ──
     let capacity = 2;
+    let hotelId: string | undefined;
     try {
-      const rc = await sbSelect<any>("rooms", `id=eq.${enc(roomId)}&select=capacity`);
+      const rc = await sbSelect<any>("rooms", `id=eq.${enc(roomId)}&select=capacity,hotelId`);
       capacity = Number(rc?.[0]?.capacity) || 2;
+      hotelId = rc?.[0]?.hotelId ? String(rc[0].hotelId) : undefined;
     } catch { /* default 2 */ }
     const extraAdults = Math.max(0, adults - capacity);
     const extras = extraAdults * EXTRA_ADULT_RATE * nights + children * CHILD_RATE * nights;
@@ -79,7 +82,7 @@ export async function resolveFlashOrderCharge(opts: {
     });
 
     const charge = Math.max(0, grandTotal - discount);
-    return { charge, grandTotal, perNight, discount };
+    return { charge, grandTotal, perNight, discount, hotelId };
   } catch {
     return null;
   }

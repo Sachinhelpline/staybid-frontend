@@ -29,19 +29,43 @@ function nightsBetween(ci: any, co: any): number {
   return Math.max(1, Math.round((b - a) / 86_400_000));
 }
 
+/** The hotel's admin-configured hold tiers (per-hotel ?? global ?? default) —
+ *  the SAME rule set in the admin "Hold Payment Config" page. */
+export async function resolveHoldTiers(hotelId?: string | null): Promise<HoldTier[]> {
+  try {
+    const [hotelRows, globalRows] = await Promise.all([
+      hotelId
+        ? sbSelect<any>("hotel_hold_config", `hotel_id=eq.${enc(String(hotelId))}&select=tier_overrides`)
+        : Promise.resolve([] as any[]),
+      sbSelect<any>("hotel_hold_config", `hotel_id=eq.${enc(HOLD_CONFIG_GLOBAL)}&select=tier_overrides`),
+    ]);
+    const ov = hotelRows?.[0]?.tier_overrides ?? globalRows?.[0]?.tier_overrides ?? null;
+    if (Array.isArray(ov) && ov.length) return ov as HoldTier[];
+  } catch { /* fall through to default */ }
+  return DEFAULT_HOLD_TIERS;
+}
+
+/** The admin-configured hold DEPOSIT (₹) owed for a booking total — the exact
+ *  number the customer UI shows (computeHoldAmount over the hotel's tiers). */
+export async function resolveHoldDeposit(total: number, hotelId?: string | null): Promise<number> {
+  const t = Math.max(0, Number(total) || 0);
+  if (t <= 0) return 0;
+  return computeHoldAmount(t, await resolveHoldTiers(hotelId));
+}
+
 /** Authoritative full-payment charge for paying/accepting an existing bid. */
 export async function resolveBidOrderCharge(opts: {
   bidId: string;
   userId: string | null;
   couponCode?: string | null;
   walletCreditInr?: number | null;
-}): Promise<{ charge: number } | null> {
+}): Promise<{ charge: number; hotelId?: string } | null> {
   const bidId = String(opts.bidId || "");
   if (!bidId) return null;
   try {
     const bids = await sbSelect<any>(
       "bids",
-      `id=eq.${enc(bidId)}&select=amount,counterAmount,numRooms,requestId`,
+      `id=eq.${enc(bidId)}&select=amount,counterAmount,numRooms,requestId,hotelId`,
     );
     const b = bids?.[0];
     if (!b) return null;
@@ -68,7 +92,7 @@ export async function resolveBidOrderCharge(opts: {
       walletCreditInr: opts.walletCreditInr,
       cap: base,
     });
-    return { charge: Math.max(0, base - discount) };
+    return { charge: Math.max(0, base - discount), hotelId: b.hotelId ? String(b.hotelId) : undefined };
   } catch {
     return null;
   }
@@ -82,13 +106,13 @@ export async function resolveInstantOrderCharge(opts: {
   rooms: number;
   couponCode?: string | null;
   walletCreditInr?: number | null;
-}): Promise<{ minCharge: number } | null> {
+}): Promise<{ minCharge: number; hotelId?: string } | null> {
   const roomId = String(opts.roomId || "");
   if (!roomId) return null;
   const nights = Math.max(1, Math.floor(Number(opts.nights) || 1));
   const rooms = Math.max(1, Math.floor(Number(opts.rooms) || 1));
   try {
-    const rc = await sbSelect<any>("rooms", `id=eq.${enc(roomId)}&select=floorPrice`);
+    const rc = await sbSelect<any>("rooms", `id=eq.${enc(roomId)}&select=floorPrice,hotelId`);
     const floor = Number(rc?.[0]?.floorPrice) || 0;
     if (!(floor > 0)) return null;
     const base = floor * nights * rooms;
@@ -98,7 +122,7 @@ export async function resolveInstantOrderCharge(opts: {
       walletCreditInr: opts.walletCreditInr,
       cap: base,
     });
-    return { minCharge: Math.max(0, base - discount) };
+    return { minCharge: Math.max(0, base - discount), hotelId: rc?.[0]?.hotelId ? String(rc[0].hotelId) : undefined };
   } catch {
     return null;
   }
@@ -166,19 +190,8 @@ export async function resolveBalanceCharge(opts: {
 
     const finalTotal = Math.max(0, base - appliedRedemption);
 
-    // The hotel's real hold tiers (per-hotel ?? global ?? default).
-    let tiers: HoldTier[] = DEFAULT_HOLD_TIERS;
-    try {
-      const [hotelRows, globalRows] = await Promise.all([
-        b.hotelId
-          ? sbSelect<any>("hotel_hold_config", `hotel_id=eq.${enc(String(b.hotelId))}&select=tier_overrides`)
-          : Promise.resolve([]),
-        sbSelect<any>("hotel_hold_config", `hotel_id=eq.${enc(HOLD_CONFIG_GLOBAL)}&select=tier_overrides`),
-      ]);
-      const ov = hotelRows?.[0]?.tier_overrides ?? globalRows?.[0]?.tier_overrides ?? null;
-      if (Array.isArray(ov) && ov.length) tiers = ov as HoldTier[];
-    } catch { /* default tiers */ }
-
+    // The hotel's real hold tiers → the admin-configured deposit.
+    const tiers = await resolveHoldTiers(b.hotelId);
     const deposit = computeHoldAmount(finalTotal, tiers);
     const balance = Math.max(0, finalTotal - deposit);
     return { balance };
