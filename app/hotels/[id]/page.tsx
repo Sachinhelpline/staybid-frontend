@@ -57,6 +57,7 @@ import {
 } from "@/lib/attribution";
 // v129 — every bid/counter/flash price is a ₹100 multiple. See lib/price-snap.ts.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+import { computeFlashLadder, tierRanks } from "@/lib/pricing/flash-ladder";
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
 import { filterActiveBids, filterUserVisibleBids, isBidPaid, isBidPayWindowOpen } from "@/lib/bid-expiry";
@@ -3193,6 +3194,8 @@ export default function HotelDetail() {
           // flash available room. Other rooms then auto-surface as Upgrade
           // candidates via the existing isOtherWhenActive path.
           const allRoomIds = new Set((hotel.rooms || []).map((r: any) => String(r.id)));
+          // v526 — tier ranks (cheapest = 0) for the flash upgrade-incentive ladder.
+          const hotelTierRank = tierRanks(hotel.rooms || []);
           const cheapestEligibleRoom = (hotel.rooms || [])
             .filter((r: any) => r.isAvailable !== false && (r.quantity == null || Number(r.quantity) > 0))
             .slice()
@@ -3238,14 +3241,38 @@ export default function HotelDetail() {
             // A room is available unless explicitly flagged otherwise.
             const roomAvailable = r.isAvailable !== false
               && (r.quantity == null || Number(r.quantity) > 0);
-            // Per-room flash price: headline → locked URL dealPrice;
-            // upgrade → floorPrice × (1 − disc%) snapped to ₹100. Same
-            // percentage as the headline so the saving is consistent.
+            // v525 — the room's live market price (spine livePrice) is the
+            // single "was" anchor for the flash block. Fixes the two pricing
+            // bugs: (a) headline no longer strikes its own floor (→ "0% off"),
+            // (b) upgrade rooms are priced by THEIR OWN market − 20% (the same
+            // spine flash rule), NOT the tapped deal's discount smeared onto
+            // this room's floor — so a room's price is intrinsic and never
+            // changes based on which deal the customer entered through.
+            const roomMarket = Number(roomPrices[r.id]?.price) || 0;
+            const lockedDeal = Math.round(parseFloat(dealPrice || "0"));
+            // v526/v527 — EVERY room (base + upgrades) is priced by the shared
+            // flash ladder off its OWN live price: base 20% + 5% per category up
+            // (capped 40%), clamped to its flash floor (owner's manual
+            // flashFloorPrice, else live × 55% so a room whose floor == its live
+            // price still gets real discount headroom → never "0% off"). Pricier
+            // rooms get a DEEPER, more tempting discount so upgrading is worth it,
+            // and the price is intrinsic (entry-independent).
+            const ladderFlash = roomMarket > 0
+              ? computeFlashLadder({ live: roomMarket, tierIndex: hotelTierRank[String(r.id)] ?? (isHeadlineRoom ? 0 : 1), ownerFlashFloor: r.flashFloorPrice }).flash
+              : 0;
             const roomFlashPrice = flashMode
               ? (isHeadlineRoom
-                  ? Math.round(parseFloat(dealPrice || "0"))
-                  : Math.max(100, Math.round((r.floorPrice || 0) * (1 - flashDiscPct / 100) / 100) * 100))
+                  // base/headline: the ladder guarantees ≥20% off; a genuinely
+                  // lower locked deal price the guest came for still wins via min.
+                  ? (ladderFlash > 0 ? (lockedDeal > 0 ? Math.min(lockedDeal, ladderFlash) : ladderFlash) : lockedDeal)
+                  : (ladderFlash > 0
+                      ? ladderFlash
+                      // fallback (no spine market): legacy floor × (1 − disc%)
+                      : Math.max(100, Math.round((r.floorPrice || 0) * (1 - flashDiscPct / 100) / 100) * 100)))
               : 0;
+            // The "was" price we strike + measure "% off" against (market rate,
+            // else the room floor when the spine has no row).
+            const roomWasPrice = roomMarket > 0 ? roomMarket : (r.floorPrice || roomFlashPrice);
             const flashUpgradeDiff = Math.max(0, roomFlashPrice - Math.round(parseFloat(dealPrice || "0")));
             // Render the flash pricing block for EVERY available room when
             // a flash deal brought the customer here.
@@ -3718,11 +3745,13 @@ export default function HotelDetail() {
                               {isHeadlineRoom ? "⚡ Flash Deal Price" : "⚡ Flash Deal · Upgrade"}
                             </p>
                             <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                              <span className="hx-price-strike">₹{r.floorPrice.toLocaleString()}</span>
+                              {roomWasPrice > roomFlashPrice && (
+                                <span className="hx-price-strike">₹{roomWasPrice.toLocaleString()}</span>
+                              )}
                               <span className="hx-price-amount flash">₹{roomFlashPrice.toLocaleString()}</span>
                             </div>
                             <p className="hx-price-sub">
-                              /night · {Math.max(0, Math.round((1 - roomFlashPrice / (r.floorPrice || roomFlashPrice)) * 100))}% off
+                              /night · {Math.max(0, Math.round((1 - roomFlashPrice / (roomWasPrice || roomFlashPrice)) * 100))}% off
                             </p>
                             {!isHeadlineRoom && flashUpgradeDiff > 0 && (
                               <p className="hx-price-sub" style={{ marginTop: "3px", color: "var(--cozy-cocoa-soft)" }}>

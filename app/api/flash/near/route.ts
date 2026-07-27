@@ -4,6 +4,7 @@ import { SB_URL, SB_KEY } from "@/lib/sb";
 import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
 // v168 — synthetic flash prices come from the unified pricing spine.
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
+import { computeFlashLadder, tierRanks } from "@/lib/pricing/flash-ladder";
 
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
@@ -101,6 +102,7 @@ export async function GET(req: NextRequest) {
     aiPrice:       number;
     floorPrice:    number;
     discount:      number;
+    marketRate:    number;   // v525 — spine live price (the honest "was" anchor)
     validUntil:    string;
     maxBookings?:  number;
     bookingCount?: number;
@@ -118,6 +120,10 @@ export async function GET(req: NextRequest) {
     if (!hotel || !room) continue;
     const floor   = Number(room.floorPrice) || Number(d.floorPrice) || 0;
     const ai      = Number(d.aiPrice ?? d.dealPrice ?? d.price) || 0;
+    // v525 — market anchor = the room's live spine price (same number the
+    // hotel page shows as "Market Rate"). Used to strike + compute % off
+    // consistently on every surface. 0 when the spine has no row (fail-open).
+    const market  = Number(spineMap[roomId]?.livePrice) || 0;
     const disc    = Number(d.discount) || (floor > 0 ? Math.round(((floor - ai) / floor) * 100) : 0);
     const c: Candidate = {
       id:           String(d.id),
@@ -126,6 +132,7 @@ export async function GET(req: NextRequest) {
       aiPrice:      ai,
       floorPrice:   floor,
       discount:     disc,
+      marketRate:   market,
       validUntil:   d.validUntil || d.valid_until || d.expiresAt || "",
       maxBookings:  d.maxBookings || d.max_bookings,
       bookingCount: d.bookingCount || d.booking_count,
@@ -183,6 +190,7 @@ export async function GET(req: NextRequest) {
       aiPrice:    ai,
       floorPrice: floor,
       discount:   disc,
+      marketRate: Number(sp?.livePrice) || Number(sp?.baseRate) || 0,   // v525
       validUntil: validUntilDefault,
       _synthetic: true,
       raw:        { _synthetic: true },
@@ -275,6 +283,24 @@ export async function GET(req: NextRequest) {
     const headline = available.slice().sort((a, b) => a.aiPrice - b.aiPrice)[0];
     const headlineRoom = allRooms.find((r: any) => r.id === headline.roomId);
 
+    // v526 — tier ranks (cheapest room = 0) drive the upgrade-incentive
+    // discount ladder: a pricier category shows a DEEPER % off so a guest is
+    // pulled up into it instead of it sitting empty at 0% off.
+    const tierRank = tierRanks(allRooms as any[]);
+
+    // v527 — the BASE/headline room goes through the SAME ladder (tier 0 =
+    // base 20% off its live price, floored at live×55%) so it NEVER shows
+    // "0% off" when the room's floor happens to equal its live price
+    // (off-season, live sitting at floor). A genuinely lower cron-managed deal
+    // price still wins via min() — the ladder is only a guaranteed FLOOR of
+    // discount, never a cap on a real deal.
+    const headlineLadder = headline.marketRate > 0
+      ? computeFlashLadder({ live: headline.marketRate, tierIndex: tierRank[headline.roomId] ?? 0, ownerFlashFloor: (headlineRoom as any)?.flashFloorPrice }).flash
+      : 0;
+    const headlineFlash = headlineLadder > 0
+      ? Math.min(headline.aiPrice || headlineLadder, headlineLadder)
+      : headline.aiPrice;
+
     // Upgrade ladder: every OTHER room in this hotel, with availability + delta
     const upgrades = allRooms
       .filter((r: any) => r.id !== headline.roomId)
@@ -282,12 +308,16 @@ export async function GET(req: NextRequest) {
         const free  = unitsFree(r.id);
         const floor = Number(r.floorPrice) || 0;
         if (floor <= 0) return null;
-        // v168 — when the headline is a synthetic deal, price upgrades from
-        // the spine too (consistent with the headline). Real flash deals
-        // keep the legacy same-discount formula.
-        const usp = spineMap[r.id];
-        const price = (headline._synthetic && usp && Number(usp.flashPrice) > 0)
-          ? Number(usp.flashPrice)
+        // v526 — each upgrade room is priced by the shared flash ladder off its
+        // OWN live price: base 20% + 5% per category up (capped 40%), clamped to
+        // its flash floor (owner's manual flashFloorPrice, else live × 55%). The
+        // price is INTRINSIC to the room — it never changes with the entry deal —
+        // and pricier rooms get a deeper, more tempting discount. Falls back to
+        // floor×(1−disc) only when the spine has no live row for this room.
+        const usp    = spineMap[r.id];
+        const market = Number(usp?.livePrice) || 0;
+        const price = market > 0
+          ? computeFlashLadder({ live: market, tierIndex: tierRank[r.id] ?? 1, ownerFlashFloor: r.flashFloorPrice }).flash
           : Math.max(500, Math.round(floor * (100 - headline.discount) / 100));
         return {
           roomId:        r.id,
@@ -296,7 +326,8 @@ export async function GET(req: NextRequest) {
           images:        r.images || [],
           floorPrice:    floor,
           dealPrice:     price,
-          extraPerNight: Math.max(0, price - headline.aiPrice),
+          marketRate:    market,
+          extraPerNight: Math.max(0, price - headlineFlash),
           unitsFree:     free,
           available:     free > 0,
           amenities:     r.amenities || [],
@@ -310,9 +341,10 @@ export async function GET(req: NextRequest) {
       hotelId:      headline.hotelId,
       roomId:       headline.roomId,
       city:         headline.city,
-      aiPrice:      headline.aiPrice,
+      aiPrice:      headlineFlash,
       floorPrice:   headline.floorPrice,
       discount:     headline.discount,
+      marketRate:   headline.marketRate,   // v525 — honest "was" anchor (spine live price)
       validUntil:   headline.validUntil,
       maxBookings:  headline.maxBookings || 5,
       bookingCount: headline.bookingCount || 0,
