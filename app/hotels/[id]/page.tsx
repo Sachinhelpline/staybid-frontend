@@ -1119,7 +1119,31 @@ export default function HotelDetail() {
   // upgrade), else the URL headline. The modal + handleFlashBook read
   // these instead of the raw URL params so upgrades book correctly.
   const fbRoomId       = flashSel?.roomId || dealRoomId;
-  const fbPrice        = flashSel ? flashSel.price : parseFloat(dealPrice || "0");
+  // v528 — display == charge for the HEADLINE room booked via the auto-opened
+  // modal (no card tap). The room card SHOWS the ladder-min price
+  // (min of the URL-locked deal price and the freshly-computed live ladder,
+  // page ~3260-3267), but the old fallback charged the raw URL `dealPrice`.
+  // When the live ladder sits BELOW the locked price the guest saw the lower
+  // number yet was charged the higher one. Mirror the per-room computation
+  // here so `fbPrice` equals the shown price. Only overrides when there IS a
+  // locked deal (>0) AND a live ladder — every other case keeps the old
+  // `parseFloat(dealPrice)` behaviour byte-for-byte (zero clash). The ladder
+  // is floored at the flash floor, so the charge never drops below cost.
+  const headlineLockedDeal = Math.round(parseFloat(dealPrice || "0"));
+  const headlineRoom       = hotel?.rooms?.find((r: any) => String(r.id) === String(dealRoomId));
+  const headlineMarket     = Number(roomPrices[dealRoomId as any]?.price) || 0;
+  const headlineLadderFlash = headlineMarket > 0
+    ? computeFlashLadder({
+        live: headlineMarket,
+        tierIndex: tierRanks(hotel?.rooms || [])[String(dealRoomId)] ?? 0,
+        ownerFlashFloor: headlineRoom?.flashFloorPrice,
+      }).flash
+    : 0;
+  const fbPrice        = flashSel
+    ? flashSel.price
+    : (headlineLockedDeal > 0 && headlineLadderFlash > 0
+        ? Math.min(headlineLockedDeal, headlineLadderFlash)
+        : parseFloat(dealPrice || "0"));
   const flashRoom      = hotel?.rooms?.find((r: any) => r.id === fbRoomId);
   const baseCapacity   = flashRoom?.capacity || 2;
   const flashNights    = Math.max(1, Math.ceil(
