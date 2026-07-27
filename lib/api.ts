@@ -53,11 +53,30 @@ export class ApiError extends Error {
 }
 async function direct(path: string, opts?: RequestInit): Promise<any> {
   const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+  // Identity fallback headers (x-email / x-phone) from the stored session user.
+  // Some server routes bridge a person's multiple identity rows via email /
+  // phone (resolveUserIds). A Firebase/Google session token may not carry the
+  // email, but the client always has it in sb_user — so pass it as a hint. This
+  // is the user's own data going to our own same-origin API; routes that don't
+  // read these headers simply ignore them.
+  let idEmail = "";
+  let idPhone = "";
+  if (typeof window !== "undefined") {
+    try {
+      const u = JSON.parse(localStorage.getItem("sb_user") || "null");
+      if (u && typeof u === "object") {
+        idEmail = String(u.email || "").trim();
+        idPhone = String(u.phone || "").trim();
+      }
+    } catch { /* ignore malformed sb_user */ }
+  }
   const res = await fetch(path, {
     ...opts,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(idEmail && /@/.test(idEmail) ? { "x-email": idEmail } : {}),
+      ...(idPhone && !/^unknown_/i.test(idPhone) ? { "x-phone": idPhone } : {}),
       ...opts?.headers,
     },
   });
