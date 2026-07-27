@@ -5,6 +5,7 @@ import { resolveAutoAction, extractPreferredPrice, counterBandForVacancy, AUTO_C
 import { loadServerScore, loadEffectiveAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
+import { resolveFlashFloorPerNight } from "@/lib/pricing/flash-authority";
 import { logPricingDecision } from "@/lib/pricing/decision-log";
 import { resolveOwnedUnit, isUnitFreeForRange } from "@/lib/circle/room-listings";
 
@@ -230,6 +231,38 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+  }
+
+  // v529 — FLASH tamper-safe floor. A flash bid skips the normal floor check
+  // above (dealId present), but its per-night `amount` must still be the honest
+  // server-derived flash price — never a client-tampered lower number. We
+  // re-derive the SAME spine + discount-ladder floor the customer UI shows
+  // (`resolveFlashFloorPerNight`) and reject a materially-below-floor flash bid.
+  // Redemption-independent (this validates the deal price, not the post-coupon
+  // charge). FAIL OPEN on any resolver gap — a pricing hiccup must never block a
+  // legit flash booking. The 10% grace absorbs spine/rounding drift between the
+  // page load and checkout while still catching any real underpayment.
+  if (dealId) {
+    try {
+      let flashCheckIn: string | null = null;
+      if (requestId) {
+        const rr = await sbSelect(`bid_requests?id=eq.${requestId}&select=checkIn`);
+        flashCheckIn = rr[0]?.checkIn ? toISODate(rr[0].checkIn) : null;
+      }
+      const authority = await resolveFlashFloorPerNight({
+        roomId: String(roomId),
+        checkInISO: flashCheckIn || new Date().toISOString().slice(0, 10),
+      });
+      if (authority && authority.perNight > 0 && Number(amount) < authority.perNight * 0.9) {
+        return NextResponse.json(
+          {
+            error: "This flash price is no longer available. Please refresh the deal and try again.",
+            minPerNight: authority.perNight,
+          },
+          { status: 400 }
+        );
+      }
+    } catch { /* fail open — never block a legit flash booking on a pricing error */ }
   }
 
   // v241 — Inventory + capacity resolution against THIS hotel's actual
