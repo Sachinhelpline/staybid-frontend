@@ -5896,6 +5896,45 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   border-color: var(--border-strong);
 }
 
+/* v535 — launch zone/region chip row (below the demand strip). Horizontally
+   scrollable, cozy-gold pills; the active zone fills with the gold accent. */
+.hxr-zonebar {
+  max-width: 1480px;
+  margin: 2px auto 0;
+  padding: 0 16px;
+}
+@media (min-width: 640px) { .hxr-zonebar { padding: 0 24px; } }
+@media (min-width: 1024px) { .hxr-zonebar { padding: 0 32px; } }
+.hxr-zonebar-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 0 6px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.hxr-zonebar-scroll::-webkit-scrollbar { display: none; }
+.hxr-zone-chip {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: var(--surface-1, transparent);
+  border: 1px solid var(--gold-border);
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+.hxr-zone-chip:hover { color: var(--text-base); border-color: var(--gold); }
+.hxr-zone-chip.is-on {
+  color: #1a1206;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  border-color: var(--gold);
+  box-shadow: 0 1px 6px rgba(201, 145, 26, 0.28);
+}
+
 /* Body */
 .hxr-body {
   max-width: 1480px;

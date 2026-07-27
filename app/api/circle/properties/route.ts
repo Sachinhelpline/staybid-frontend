@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
+import { curateCircleProperties } from "@/lib/launch/curation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
   const maxBudget = Number(url.searchParams.get("maxBudget") || 0);
 
   try {
-    const [props, roomTypes] = await Promise.all([
+    const [propsRaw, roomTypes] = await Promise.all([
       sbCached(
         "circle:properties",
         () =>
@@ -39,6 +40,11 @@ export async function GET(req: Request) {
         TTL_CATALOG,
       ),
     ]);
+
+    // v536 — launch curation: keep only the one curated Model-1 investment
+    // property per launch city (the circle_properties table — a different table
+    // from `hotels`, so a dedicated id allow-list). Fail-open (off → unchanged).
+    const props = curateCircleProperties(Array.isArray(propsRaw) ? propsRaw : []);
 
     const rtByProp: Record<string, any[]> = {};
     (Array.isArray(roomTypes) ? roomTypes : []).forEach((rt: any) => {

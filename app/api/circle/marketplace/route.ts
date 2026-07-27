@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
+import { curateHotels } from "@/lib/launch/curation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,7 +58,9 @@ export async function GET(req: NextRequest) {
   // Operated host-circle properties open for pre-buy.
   let hq = `owner_type=eq.host_circle&prebuy_enabled=eq.true&select=${HOTEL_CARD_COLS}&order=name.asc&limit=60`;
   if (city) hq += `&city=ilike.${encodeURIComponent(city)}`;
-  const hotels = await sb(`hotels?${hq}`);
+  const hotelsRaw = await sb(`hotels?${hq}`);
+  // v536 — launch curation: only curated launch host-circle hotels. Fail-open.
+  const hotels = curateHotels(hotelsRaw);
   if (!hotels.length) return NextResponse.json({ hotels: [] }, { headers: { "Cache-Control": "no-store" } });
 
   const hotelIds = hotels.map((h: any) => String(h.id));

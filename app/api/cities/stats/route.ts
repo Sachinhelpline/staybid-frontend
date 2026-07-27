@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
+import { curateHotels } from "@/lib/launch/curation";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/cities/stats
@@ -39,6 +40,12 @@ export async function GET() {
       } catch {
         hotels = [];
       }
+
+      // v536 — launch curation: count only the curated launch hotels, so the
+      // location picker lists exactly the launch cities (1 stay each) and never
+      // advertises a city whose catalog is then empty. Fail-open (curation off →
+      // unchanged).
+      hotels = curateHotels(hotels);
 
       const cityByHotel: Record<string, string> = {};
       const out: Record<string, CityStat> = {};
