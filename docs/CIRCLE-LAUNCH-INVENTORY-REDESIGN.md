@@ -1,71 +1,59 @@
-# 🚀 StayBid Circle — REAL launch inventory redesign (PLANNING)
+# 🚀 StayBid Circle — launch inventory CURATION (PLANNING)
 
-**Status:** PLANNING / spec-gathering. Owner (2026-07-27) wants to launch the Circle-based
-platform for real with a curated inventory. NOT started — build in a fresh session once the
-property list + decisions below are in.
+**Status:** PLANNING / spec locked, not started. Build in a fresh session, plan-first.
+**Owner direction (2026-07-27) — read this exactly, it overrides the earlier draft of this doc.**
 
-## The vision (owner's words, distilled)
-Replace the scattered demo/seed inventory with a clean, **curated real launch set**:
-- **1 property per city.**
-- **10–12 different cities / locations** total (owner will supply the exact list).
-- Each property set up for **12 months** of operation / availability.
-- This is the **actual go-live of StayBid Circle** (the multi-investor operated-property
-  platform), not demo data.
+## ⛔ HARD CONSTRAINTS (owner, emphatic)
+- **DO NOT change ANY rule / engine / pricing / contract.** Nothing in the money, spine,
+  Circle, availability, or provisioning logic changes.
+- **DO NOT create / provision / seed any new property.** No blind creation.
+- This is **ONLY an inventory FILTER (curation layer)** over the EXISTING inventory.
+- **Additive + fully reversible.** Removing the filter later = everything back exactly as now.
+- Understand the real data FIRST; no building blind; no breakdown of existing flows.
 
-## What the codebase already has (reuse, don't reinvent)
-- **Circle-operated hotels** = `hotels.owner_type='host_circle'`, per-property owner id
-  `hco_<propId>` (never a real user id). Operated-only + owner-invisible.
-- **Provisioning:** `lib/circle/provision.ts` (`provisionBundle`, `stampOwnedUnits` → stamps
-  `hotel_room_units.owner_user_id` + `is_listed`).
-- **Go-live gate:** `approval_status='approved'` is the SINGLE customer-feed gate. Provision as
-  DRAFT; admin "Go Live" flips it (guarded `owner_type='host_circle'`).
-- **Pre-buy window:** `prebuy_window_start` (incl) / `prebuy_window_end` (excl) bounds check-in.
-- **Pricing spine:** `lib/pricing/spine.ts` + `room_date_price` + `/api/cron/price-spine`
-  (dynamic per-date pricing, already runs).
-- **Investor journeys (LOCKED contracts):** Model 1 (co-own & operate), Model 2 (buy inventory
-  bundles), Model 3 (travel-agent auction). Ownership transfer moves only
-  `inventory_blocks.investor_user_id`; `owner_user_id` never transfers (SEBI-safe).
-- ⚠ **Money-out is inert** until RazorpayX is set up — see `docs/PENDING-RAZORPAYX-SETUP.md`.
+## The goal
+Launch StayBid Circle with a **curated view**: in the launch phase, the customer sees
+**exactly ONE premium property per city**, drawn from the EXISTING (demo/current) inventory.
+Later, remove/relax the filter to expand (multiple properties per city) — the platform already
+supports that, so nothing structural changes.
 
-## OPEN QUESTIONS (must answer before build)
-1. **Property list** — the 10–12 cities + the 1 property each (see the data template below).
-2. **Real or placeholder?** Are these physically tied-up hotels (real names/photos/rooms) or
-   launch placeholders to fill later?
-3. **Rooms per property** — how many room units each, and room types/categories?
-4. **"12 months" meaning** — availability + dynamic pricing open for the next 12 months
-   (prebuy windows spanning 12 months)? Confirm.
-5. **Which Circle model is the launch hero** — Model 1 / 2 / 3, or all? Who is the primary
-   investor and primary guest journey at launch?
-6. **Existing demo data** — archive/hide the current seed hotels (hco-seed-*, demo listings)
-   so only these 10–12 show, or coexist?
-7. **Pricing** — who sets each property/room base rate (owner-set vs spine-derived)? Base
-   rates per room?
-8. **Investor economics** — monthly acquisition rate / purchase price per property (drives the
-   Circle Model-1/3 floors, e.g. `circle_floor_multiplier` 1.20).
+## Locked answers (owner)
+- **A — properties:** not real yet; use existing inventory. Per city pick **1 premium** listing,
+  preferably a **Resort or Individual Villa**, **5–15 rooms**.
+- **B — duration:** all properties live **all 12 months**; seasonal preference comes from the
+  EXISTING spine seasonality (already implemented) — nothing new.
+- **C — launch model:** **Model 1** (multi-investor co-own & operate).
+- **D — demo data:** keep showing the current data (it is the SOURCE we filter; do not delete).
+- **E — pricing:** the **real spine dynamic price** per location — the core rule, untouched.
 
-## Per-property data template (owner to fill, ×10–12)
-```
-City:
-Property name:
-Location / area (+ Google Maps link if any):
-Star rating / positioning:
-# of rooms (units):
-Room categories (name · capacity · base price/night):
-Images (links):
-Amenities:
-Monthly acquisition rate (investor cost) — for Circle floor:
-Operating window: 12 months from <date>
-```
+## What NOT to touch (from CLAUDE.md "Things to Avoid" / locked)
+Spine engine, money engines, Circle SEBI-safe ownership contracts, availability engine,
+provisioning, `approval_status` feed-gate semantics, prebuy-window. The filter must sit ON TOP,
+not inside, these.
 
-## Suggested approach (to detail in the build session)
-1. **Plan/design phase first** (Plan agent) — map exactly which tables + provisioning paths to
-   use; decide demo-data handling; confirm it honours the LOCKED Circle contracts.
-2. Build a clean **provisioning script/migration** to create the 10–12 host_circle properties
-   + rooms + 12-month prebuy windows, as DRAFT.
-3. Seed spine base rates → let `/api/cron/price-spine` price them.
-4. Admin "Go Live" per property (approval_status=approved) when ready.
-5. Wire the chosen Circle model(s) journey to this real inventory; hide/retire demo.
-6. Live SQL round-trip verify each step (0 leftover), per the ship checklist.
+## Approach (plan-first, in the build session) — NOTHING here is built yet
+1. **READ-ONLY map** the current inventory first: per city, list the properties, their type
+   (resort/villa/hotel), room/unit count, Circle status (`owner_type`, `approval_status`).
+   Only after seeing the real data do we choose the 1 premium property per city.
+2. **Reuse before adding:** check if an existing field/flag can express "launch-featured"
+   (e.g. a curated allow-list) before introducing anything. Prefer a small, explicit
+   **allow-list of property ids** (config or a lightweight flag) — deterministic, controllable,
+   reversible — over any algorithmic guess.
+3. Apply the filter **only at the customer-facing surface(s)** (the feed/listing read), as an
+   EXTRA constraint layered on top of the existing gate — without editing the existing
+   feed-gate rule logic. Admin/partner/data untouched.
+4. **Review the picked list with the owner** before it goes live (no blind selection).
+5. Implement → live SQL round-trip verify (0 leftover) → confirm expand = just relax the filter.
 
-**Next action:** owner fills the property list + answers Q4–Q8 → finalize this brief → build in
-a fresh session.
+## OPEN QUESTIONS (confirm before build)
+1. **Cities:** the existing demo cities (Dehradun / Dhanaulti / Manali / Mussoorie / Rishikesh /
+   Shimla / …) — is the launch set these existing cities, or a specific list you'll give?
+2. **1-per-city = hide the rest?** In a city that currently has several properties, the filter
+   shows ONLY the chosen premium one and hides the others (until expansion). Confirm.
+3. **"Premium" definition:** use existing signals (type = resort/villa + 5–15 rooms + star/score)
+   to pick, then you approve the final list? Or you'll name the exact property per city?
+4. **Filter scope:** customer feed only (hotels list / discover / Circle browse), right? Admin
+   and partner keep seeing everything.
+
+**Next action:** confirm the 4 questions → build session: map inventory → propose the exact
+1-per-city list + filter mechanism → owner approves → implement (additive, reversible).
