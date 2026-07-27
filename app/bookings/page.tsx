@@ -82,6 +82,9 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
         amount: state.balanceDue,
         hotelName: state.hotelName,
         description: `Balance for ${state.hotelName} · ${state.roomType || "Room"}`,
+        // v532 — server re-derives the true balance from the bid (base −
+        // applied redemption − server deposit) and enforces it.
+        balance: { bidId: String(state.bidId) },
       });
       // Record balance payment server-side (paid amount log)
       try {
