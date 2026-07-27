@@ -17,8 +17,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { sbSelect } from "@/lib/onboard/supabase-admin";
 import { resolveValidatedDiscount } from "./redemption-validate";
+import { computeHoldAmount, DEFAULT_HOLD_TIERS, type HoldTier } from "@/lib/hold-amount";
 
 const enc = (s: string) => encodeURIComponent(s);
+const HOLD_CONFIG_GLOBAL = "_global_defaults";
 
 function nightsBetween(ci: any, co: any): number {
   const a = Date.parse(String(ci || "").slice(0, 10));
@@ -97,6 +99,89 @@ export async function resolveInstantOrderCharge(opts: {
       cap: base,
     });
     return { minCharge: Math.max(0, base - discount) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Authoritative BALANCE for settling a held bid (v532).
+ *
+ * expectedBalance = finalTotal − serverDeposit, where
+ *   finalTotal    = authoritative room base − the redemption ACTUALLY applied
+ *                   to this bid (reconstructed from server records, NOT the
+ *                   client — so a coupon/wallet balance never false-rejects)
+ *   serverDeposit = computeHoldAmount(finalTotal, the hotel's real tiers)
+ *
+ * Returns null on any gap → caller FAILS OPEN.
+ */
+export async function resolveBalanceCharge(opts: {
+  bidId: string;
+}): Promise<{ balance: number } | null> {
+  const bidId = String(opts.bidId || "");
+  if (!bidId) return null;
+  try {
+    const bids = await sbSelect<any>(
+      "bids",
+      `id=eq.${enc(bidId)}&select=amount,counterAmount,numRooms,requestId,hotelId`,
+    );
+    const b = bids?.[0];
+    if (!b) return null;
+    const perNight = Number(b.counterAmount) || Number(b.amount) || 0;
+    if (!(perNight > 0)) return null;
+    const numRooms = Math.max(1, Math.floor(Number(b.numRooms) || 1));
+
+    let nights = 1;
+    if (b.requestId) {
+      try {
+        const rr = await sbSelect<any>(
+          "bid_requests",
+          `id=eq.${enc(String(b.requestId))}&select=checkIn,checkOut`,
+        );
+        const n = nightsBetween(rr?.[0]?.checkIn, rr?.[0]?.checkOut);
+        if (n > 0) nights = n;
+      } catch { /* default 1 */ }
+    }
+    const base = perNight * nights * numRooms;
+
+    // Redemption ACTUALLY applied to this bid, from server-written records
+    // (applyRedemption): the coupon marked used_on_bid_id, and the wallet
+    // debit ledger keyed on source_id. Trustworthy (server-written), so
+    // subtracting it means a legit coupon/wallet balance never false-rejects.
+    let appliedRedemption = 0;
+    try {
+      const coupons = await sbSelect<any>(
+        "redemption_codes",
+        `used_on_bid_id=eq.${enc(bidId)}&select=value_inr`,
+      );
+      for (const c of coupons || []) appliedRedemption += Number(c?.value_inr) || 0;
+    } catch { /* none */ }
+    try {
+      const wh = await sbSelect<any>(
+        "wallet_credit_history",
+        `source_id=eq.${enc(bidId)}&type=eq.debit_on_booking&select=delta_inr`,
+      );
+      for (const w of wh || []) appliedRedemption += Math.abs(Number(w?.delta_inr) || 0);
+    } catch { /* none */ }
+
+    const finalTotal = Math.max(0, base - appliedRedemption);
+
+    // The hotel's real hold tiers (per-hotel ?? global ?? default).
+    let tiers: HoldTier[] = DEFAULT_HOLD_TIERS;
+    try {
+      const [hotelRows, globalRows] = await Promise.all([
+        b.hotelId
+          ? sbSelect<any>("hotel_hold_config", `hotel_id=eq.${enc(String(b.hotelId))}&select=tier_overrides`)
+          : Promise.resolve([]),
+        sbSelect<any>("hotel_hold_config", `hotel_id=eq.${enc(HOLD_CONFIG_GLOBAL)}&select=tier_overrides`),
+      ]);
+      const ov = hotelRows?.[0]?.tier_overrides ?? globalRows?.[0]?.tier_overrides ?? null;
+      if (Array.isArray(ov) && ov.length) tiers = ov as HoldTier[];
+    } catch { /* default tiers */ }
+
+    const deposit = computeHoldAmount(finalTotal, tiers);
+    const balance = Math.max(0, finalTotal - deposit);
+    return { balance };
   } catch {
     return null;
   }

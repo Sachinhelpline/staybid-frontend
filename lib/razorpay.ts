@@ -55,6 +55,10 @@ export interface OpenCheckoutOptions {
     couponCode?: string;
     walletCreditInr?: number;
   };
+  // v532 — settle a held bid's remaining balance; server re-derives it from the bid.
+  balance?: {
+    bidId: string;
+  };
 }
 
 export class RazorpayError extends Error {
@@ -174,7 +178,7 @@ export async function openRazorpayCheckout(
     // Bearer so the server can validate the customer's coupon/wallet discount
     // when re-computing the charge.
     const orderHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    const needsAuth = !!(opts.flash || opts.bid || opts.instant);
+    const needsAuth = !!(opts.flash || opts.bid || opts.instant || opts.balance);
     if (needsAuth && typeof window !== "undefined") {
       const tok = localStorage.getItem("sb_token");
       if (tok) orderHeaders.Authorization = `Bearer ${tok}`;
@@ -189,6 +193,7 @@ export async function openRazorpayCheckout(
         ...(opts.flash ? { flash: opts.flash } : {}),
         ...(opts.bid ? { bid: opts.bid } : {}),
         ...(opts.instant ? { instant: opts.instant } : {}),
+        ...(opts.balance ? { balance: opts.balance } : {}),
       }),
     });
     order = await orderRes.json().catch(() => ({}));

@@ -25,7 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userFromReq } from "@/lib/sb";
 import { resolveFlashOrderCharge } from "@/lib/pricing/flash-charge";
-import { resolveBidOrderCharge, resolveInstantOrderCharge } from "@/lib/pricing/order-charge";
+import { resolveBidOrderCharge, resolveInstantOrderCharge, resolveBalanceCharge } from "@/lib/pricing/order-charge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -181,6 +181,28 @@ export async function POST(req: NextRequest) {
         if (amountRupees < minAllowed) {
           return NextResponse.json(
             { error: "This price is no longer available. Please refresh and try again.", expected: sc.minCharge },
+            { status: 400 },
+          );
+        }
+      }
+    } catch { /* fail open */ }
+  }
+
+  // v532 — settle the remaining BALANCE of a held bid. The balance is
+  // otherwise read from client localStorage (a ₹1 balance would "complete" a
+  // full booking for deposit + ₹1). Server re-derives it: authoritative room
+  // base − the redemption ACTUALLY applied to the bid − the server-computed
+  // deposit, and rejects a materially-low amount. No mode gate (a balance is
+  // always a full settlement). FAILS OPEN on any gap.
+  const balanceCtx = body?.balance;
+  if (balanceCtx && balanceCtx.bidId) {
+    try {
+      const sc = await resolveBalanceCharge({ bidId: String(balanceCtx.bidId) });
+      if (sc && sc.balance > 0) {
+        const minAllowed = sc.balance - Math.max(50, sc.balance * 0.05);
+        if (amountRupees < minAllowed) {
+          return NextResponse.json(
+            { error: "This balance is no longer valid. Please reopen the booking and try again.", expected: sc.balance },
             { status: 400 },
           );
         }
