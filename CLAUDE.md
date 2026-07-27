@@ -1006,8 +1006,12 @@ Vercel cron (2-cap): `/api/cron/pricing` (daily 4:00), `/api/cron/lifecycle` (4:
 (Circle markdown/expiry + B2B), `channel-sync`, `auto-approve-content`, `post-stay-nudge`,
 `view-milestone-rewards`, `creator-upgrade-eval`. All accept `?token=<CRON_SECRET||"staybid-cron-dev">`
 / Bearer `CRON_SECRET` / `adm_` x-admin-token. Keep internal budgets ≤24s (cron-job.org ~30s client
-timeout); per-item `withTimeout` in batched loops (Node fetch has no default timeout). ⚠ Pending
-Sachin registrations: `/api/cron/channel-sync` + `/api/cron/inventory-lifecycle` (`*/15 * * * *`).
+timeout); per-item `withTimeout` in batched loops (Node fetch has no default timeout). ✅ Registered
+on cron-job.org (2026-07-27, Option A default token `staybid-cron-dev`): `channel-sync` +
+`inventory-lifecycle` (`*/15`) + `circle-settlement` (`*/30`).
+⏳ **Owner ops still PENDING (deferred 2026-07-27):** RazorpayX live payout setup (the 3
+`RAZORPAYX_*` env vars → Circle owner money-out). Full step-by-step in
+`docs/PENDING-RAZORPAYX-SETUP.md`. Interim: `/admin/circle-inventory` "Mark paid (manual)".
 
 ## Scope / process
 - Only touch repos `sachinhelpline/staybid-frontend` + `sachinhelpline/staybid-live`. Use
