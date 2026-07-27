@@ -23,6 +23,8 @@
 // works even without Vercel env vars").
 
 import { NextRequest, NextResponse } from "next/server";
+import { userFromReq } from "@/lib/sb";
+import { resolveFlashOrderCharge } from "@/lib/pricing/flash-charge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,6 +89,48 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  // v530 — FLASH money-in enforcement. This generic order route otherwise
+  // trusts the client `amount` (the platform-wide hole). For a flash FULL-
+  // payment order we re-compute the authoritative charge server-side
+  // (spine ladder price × nights × rooms + server-priced extras − server-
+  // VALIDATED coupon/wallet discount) and reject a materially-lower amount.
+  // This closes the "pay ₹1 for a confirmed flash booking" exploit. The
+  // redemption is validated (ownership + balance), NOT debited — the existing
+  // post-payment applyRedemption still does the real debit. Only fires for
+  // flash FULL orders; hold / pay-at-hotel deposits (partial by design) and
+  // every non-flash flow are byte-for-byte untouched. FAILS OPEN on any gap so
+  // a legit booking is never blocked by a pricing hiccup. The 5% / ₹50 grace
+  // absorbs spine/rounding drift between page load and checkout.
+  const flash = body?.flash;
+  if (flash && flash.dealId && flash.mode === "full") {
+    try {
+      const u = userFromReq(req);
+      const sc = await resolveFlashOrderCharge({
+        userId: u?.id || null,
+        roomId: String(flash.roomId || ""),
+        checkInISO: String(flash.checkInISO || ""),
+        nights: Number(flash.nights) || 1,
+        rooms: Number(flash.rooms) || 1,
+        adults: Number(flash.adults) || 1,
+        children: Number(flash.children) || 0,
+        couponCode: flash.couponCode || null,
+        walletCreditInr: Number(flash.walletCreditInr) || 0,
+      });
+      if (sc && sc.charge > 0) {
+        const minAllowed = sc.charge - Math.max(50, sc.charge * 0.05);
+        if (amountRupees < minAllowed) {
+          return NextResponse.json(
+            {
+              error: "This flash price is no longer available. Please refresh the deal and try again.",
+              expected: sc.charge,
+            },
+            { status: 400 },
+          );
+        }
+      }
+    } catch { /* fail open — never block a legit booking on a pricing error */ }
+  }
+
   const rawReceipt = String(body?.receipt || `rcpt_${Date.now()}`);
   const receipt = rawReceipt.slice(0, 40);
   const notes =

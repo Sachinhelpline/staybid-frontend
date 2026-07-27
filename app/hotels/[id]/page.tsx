@@ -1357,6 +1357,21 @@ export default function HotelDetail() {
         userName: user!.name || user!.phone || "",
         userPhone: user!.phone,
         userEmail: user!.email,
+        // v530 — flash context so the server re-computes + enforces the
+        // authoritative FULL-payment charge (tamper-safe money-in). Hold /
+        // pay-at-hotel deposits are partial by design and not enforced here.
+        flash: {
+          dealId: String(dealId || ""),
+          roomId: String(fbRoomId || ""),
+          checkInISO: today,
+          nights: flashNights,
+          rooms: flashRoomQty,
+          adults: flashAdults,
+          children: flashChildren,
+          mode,
+          couponCode: applied?.couponCode,
+          walletCreditInr: applied?.walletCreditAppliedInr,
+        },
       });
 
       // Step 2: Confirm booking in backend
