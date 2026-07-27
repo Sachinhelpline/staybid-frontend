@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userFromReq } from "@/lib/sb";
 import { resolveFlashOrderCharge } from "@/lib/pricing/flash-charge";
+import { resolveBidOrderCharge, resolveInstantOrderCharge } from "@/lib/pricing/order-charge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -129,6 +130,62 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch { /* fail open — never block a legit booking on a pricing error */ }
+  }
+
+  // v531 — extend the flash money-in enforcement to the other customer flows.
+  // Same discipline throughout: server re-derives the authoritative charge,
+  // rejects a materially-low FULL-payment amount (5% / ₹50 grace), reads an
+  // optional Bearer to validate the redemption, and FAILS OPEN on any gap.
+  // Hold / pay-at-hotel deposits (partial by design) and every non-customer
+  // flow stay untouched. Two contexts:
+  //   • body.bid     — pay / accept an EXISTING bid (amount already in the row)
+  //   • body.instant — fresh Book Now / Upgrade / Negotiate (floor re-derived)
+  const bidCtx = body?.bid;
+  if (bidCtx && bidCtx.bidId && bidCtx.mode === "full") {
+    try {
+      const u = userFromReq(req);
+      const sc = await resolveBidOrderCharge({
+        bidId: String(bidCtx.bidId),
+        userId: u?.id || null,
+        couponCode: bidCtx.couponCode || null,
+        walletCreditInr: Number(bidCtx.walletCreditInr) || 0,
+      });
+      if (sc && sc.charge > 0) {
+        const minAllowed = sc.charge - Math.max(50, sc.charge * 0.05);
+        if (amountRupees < minAllowed) {
+          return NextResponse.json(
+            { error: "This price is no longer available. Please refresh and try again.", expected: sc.charge },
+            { status: 400 },
+          );
+        }
+      }
+    } catch { /* fail open */ }
+  }
+
+  const instantCtx = body?.instant;
+  if (instantCtx && instantCtx.roomId && instantCtx.mode === "full") {
+    try {
+      const u = userFromReq(req);
+      const sc = await resolveInstantOrderCharge({
+        userId: u?.id || null,
+        roomId: String(instantCtx.roomId),
+        nights: Number(instantCtx.nights) || 1,
+        rooms: Number(instantCtx.rooms) || 1,
+        couponCode: instantCtx.couponCode || null,
+        walletCreditInr: Number(instantCtx.walletCreditInr) || 0,
+      });
+      // minCharge is a FLOOR (Book Now ≈ it, Negotiate/Upgrade ≥ it) — reject
+      // only an amount that falls materially below that floor.
+      if (sc && sc.minCharge > 0) {
+        const minAllowed = sc.minCharge - Math.max(50, sc.minCharge * 0.05);
+        if (amountRupees < minAllowed) {
+          return NextResponse.json(
+            { error: "This price is no longer available. Please refresh and try again.", expected: sc.minCharge },
+            { status: 400 },
+          );
+        }
+      }
+    } catch { /* fail open */ }
   }
 
   const rawReceipt = String(body?.receipt || `rcpt_${Date.now()}`);

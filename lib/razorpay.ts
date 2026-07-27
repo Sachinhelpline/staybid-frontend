@@ -39,6 +39,22 @@ export interface OpenCheckoutOptions {
     couponCode?: string;
     walletCreditInr?: number;
   };
+  // v531 — pay/accept an EXISTING bid; server re-derives the charge from the bid row.
+  bid?: {
+    bidId: string;
+    mode: "full" | "hold" | "payhotel";
+    couponCode?: string;
+    walletCreditInr?: number;
+  };
+  // v531 — fresh Book Now / Upgrade / Negotiate; server enforces a floor-derived minimum.
+  instant?: {
+    roomId: string;
+    nights: number;
+    rooms: number;
+    mode: "full" | "hold" | "payhotel";
+    couponCode?: string;
+    walletCreditInr?: number;
+  };
 }
 
 export class RazorpayError extends Error {
@@ -154,10 +170,12 @@ export async function openRazorpayCheckout(
   // Create the order server-side
   let order: any;
   try {
-    // v530 — for a flash order, carry the Bearer so the server can validate
-    // the customer's coupon/wallet discount when re-computing the charge.
+    // v530/v531 — for a server-enforced order (flash / bid / instant), carry the
+    // Bearer so the server can validate the customer's coupon/wallet discount
+    // when re-computing the charge.
     const orderHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    if (opts.flash && typeof window !== "undefined") {
+    const needsAuth = !!(opts.flash || opts.bid || opts.instant);
+    if (needsAuth && typeof window !== "undefined") {
       const tok = localStorage.getItem("sb_token");
       if (tok) orderHeaders.Authorization = `Bearer ${tok}`;
     }
@@ -169,6 +187,8 @@ export async function openRazorpayCheckout(
         receipt: opts.receipt || `staybid_${Date.now()}`,
         notes: { hotel: opts.hotelName, ...(opts.notes || {}) },
         ...(opts.flash ? { flash: opts.flash } : {}),
+        ...(opts.bid ? { bid: opts.bid } : {}),
+        ...(opts.instant ? { instant: opts.instant } : {}),
       }),
     });
     order = await orderRes.json().catch(() => ({}));

@@ -488,6 +488,8 @@ function MyBidsPageInner() {
           : `🔒 Hold counter · Lock ₹${total.toLocaleString()} for 24h`,
         userName: user?.name || "",
         userPhone: user?.phone || "",
+        // v531 — server re-derives the charge from the bid row + enforces it.
+        bid: { bidId: String(bidId), mode },
       });
       const token = localStorage.getItem("sb_token");
       const res = await fetch(`/api/bids/${bidId}/counter-accept`, {
@@ -628,6 +630,8 @@ function MyBidsPageInner() {
           : `🔒 Hold accepted bid · Lock ₹${total.toLocaleString()} for 24h`,
         userName: user?.name || "",
         userPhone: user?.phone || "",
+        // v531 — server re-derives the charge from the bid row + enforces it.
+        bid: { bidId: String(b.id), mode },
       });
 
       const token = localStorage.getItem("sb_token");
