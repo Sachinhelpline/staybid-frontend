@@ -14,6 +14,10 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v392 — canonical city pills (hill-stations + 12-month demand-cycle hubs).
 import { HUB_CITIES, SATELLITE_CITIES } from "@/lib/cities";
 import DemandCycleStrip from "@/components/discover/DemandCycleStrip";
+// v535 — launch-phase zone/region chips (Garhwal, Himachal, Rajasthan, …). Only
+// shown while launch curation is on; a thin client-side refine over the fetched
+// hotels (no API change) that scopes both the rails and the grid to a zone.
+import { LAUNCH_ZONES, isLaunchCurationOn } from "@/lib/launch/curation";
 
 // v394 — new demand-cycle destinations (hubs + satellites), lowercased, for the
 // "Explore India" rail. Hubs first so they lead the rail.
@@ -183,6 +187,11 @@ function HotelList() {
   const [minScore, setMinScore] = useState<number>(0);
   const [propTypes, setPropTypes] = useState<Set<string>>(new Set());
   const [amenitySel, setAmenitySel] = useState<Set<string>>(new Set());
+  // v535 — active launch zone ("" = all zones). Client-side refine over the
+  // fetched hotels; scopes rails + grid to the zone's cities. Only meaningful
+  // while launch curation is on.
+  const [zone, setZone] = useState("");
+  const zonesOn = isLaunchCurationOn() && LAUNCH_ZONES.length > 0;
 
   // Mirror sort + stars into URL (replace, no history pollution).
   useEffect(() => {
@@ -385,6 +394,15 @@ function HotelList() {
 
   const filteredHotels = useMemo(() => {
     let list = enrichedHotels;
+    // v535 — launch zone refine: keep only hotels whose city is in the picked
+    // zone. "" = all zones (no-op). Case-insensitive city match.
+    if (zone) {
+      const z = LAUNCH_ZONES.find((zz) => zz.id === zone);
+      if (z) {
+        const cityset = new Set(z.cities);
+        list = list.filter((h: any) => cityset.has(String(h.city || "").trim().toLowerCase()));
+      }
+    }
     if (selectedStars.size > 0) {
       list = list.filter((h: any) => selectedStars.has(Number(h.starRating) || 0));
     }
@@ -406,7 +424,7 @@ function HotelList() {
       });
     }
     return list;
-  }, [enrichedHotels, selectedStars, priceMax, minScore, propTypes, amenitySel]);
+  }, [enrichedHotels, zone, selectedStars, priceMax, minScore, propTypes, amenitySel]);
 
   const displayHotels = useMemo(() => {
     if (sortBy === "default") return filteredHotels;
@@ -834,10 +852,52 @@ function HotelList() {
       <DemandCycleStrip
         activeCity={city}
         onPick={(c) => {
+          setZone("");
           setCity(c);
           try { localStorage.setItem("sb_city", c); } catch {}
         }}
       />
+
+      {/* v535 — launch zone/region chips. A curated set of regions (Garhwal,
+          Himachal, Rajasthan, Kumaon, South & Coastal, Leh–Ladakh). "All zones"
+          shows everything; a zone scopes both the rails and the grid to that
+          region's cities. Client-side refine only — no API change. Picking a
+          zone clears any single-city filter so the whole region shows. */}
+      {zonesOn && !debouncedSearch && (
+        <div className="hxr-zonebar" role="tablist" aria-label="Explore by region">
+          <div className="hxr-zonebar-scroll">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!zone}
+              className={`hxr-zone-chip ${!zone ? "is-on" : ""}`}
+              onClick={() => setZone("")}
+            >
+              🗺️ All zones
+            </button>
+            {LAUNCH_ZONES.map((z) => (
+              <button
+                key={z.id}
+                type="button"
+                role="tab"
+                aria-selected={zone === z.id}
+                className={`hxr-zone-chip ${zone === z.id ? "is-on" : ""}`}
+                onClick={() => {
+                  setZone(z.id);
+                  // A zone spans multiple cities → drop the single-city fetch
+                  // filter so the whole region is available to refine client-side.
+                  if (city) {
+                    setCity("");
+                    try { localStorage.removeItem("sb_city"); } catch {}
+                  }
+                }}
+              >
+                {z.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Body */}
       <div className="hxr-body" data-autonext="hotels-results">
