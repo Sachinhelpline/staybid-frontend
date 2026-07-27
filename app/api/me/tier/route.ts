@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
 import { ensureForUser } from "@/lib/social/social-profile.service";
+import { resolveUserIds } from "@/lib/sb-server";
 import {
   listEligibleBookings,
   countActiveLocationVerifications,
@@ -54,6 +55,58 @@ export async function GET(req: Request) {
 
   let tier: ContentTier = (profile?.user_type as ContentTier) || "PUBLIC";
   if (role === "admin" || role === "super_admin") tier = "ADMIN";
+
+  // ── Hotel-owner derivation (unified single-flow upload) ──────────────────
+  // Everyone posts through the SAME reel-app composer + /api/social/posts —
+  // only the author user_type (the tag/badge) differs. Customers are PUBLIC
+  // (need a booking), CREATORs and ADMINs already have canUpload. This closes
+  // the last gap: a property owner (hotels.ownerId ∈ their identities) is a
+  // HOTEL author and can post from the same place, tagged to their hotel —
+  // WITHOUT a booking. Derived at read-time like ADMIN; the profile is then
+  // lazily promoted to HOTEL so the post carries the right author type +
+  // auto-tags the hotel. No-clobber: only user_type/hotel_id/is_verified are
+  // set (display_name/avatar are left untouched).
+  if (tier === "PUBLIC" && profile) {
+    try {
+      const ownerIds = await resolveUserIds(
+        user.id,
+        user.phone ?? undefined,
+        user.email ?? undefined
+      );
+      if (ownerIds.length) {
+        const inList = ownerIds.map(encodeURIComponent).join(",");
+        const hr = await fetch(
+          `${SB_URL}/rest/v1/hotels?ownerId=in.(${inList})&select=id,name&limit=1`,
+          { headers: READ_HEADERS, cache: "no-store" }
+        );
+        if (hr.ok) {
+          const hrows = (await hr.json().catch(() => [])) as any[];
+          const ownedHotel = Array.isArray(hrows) ? hrows[0] : null;
+          if (ownedHotel?.id) {
+            tier = "HOTEL";
+            // Lazily promote the profile so /api/social/posts recognises the
+            // HOTEL author + auto-tags this hotel. Idempotent + best-effort.
+            if (profile.user_type !== "HOTEL") {
+              try {
+                await fetch(
+                  `${SB_URL}/rest/v1/social_profiles?id=eq.${encodeURIComponent(profile.id)}`,
+                  {
+                    method: "PATCH",
+                    headers: { ...READ_HEADERS, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      user_type: "HOTEL",
+                      hotel_id: String(ownedHotel.id),
+                      is_verified: true,
+                    }),
+                  }
+                );
+              } catch { /* non-blocking — read-time derivation still returns HOTEL */ }
+            }
+          }
+        }
+      }
+    } catch { /* fail open — a lookup error never blocks the tier read */ }
+  }
 
   // When location-OTP is disabled, skip the count query entirely — even
   // if stale VERIFIED rows linger from a previous flag-on window, we
