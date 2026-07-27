@@ -1846,6 +1846,15 @@ export default function HotelDetail() {
         userName: user!.name || user!.phone || "",
         userPhone: user!.phone,
         userEmail: user!.email,
+        // v531 — server enforces a floor-based minimum for the full charge.
+        instant: {
+          roomId: String(bnRoom.id),
+          nights,
+          rooms: Math.max(1, globalNumRooms),
+          mode,
+          couponCode: applied?.couponCode,
+          walletCreditInr: applied?.walletCreditAppliedInr,
+        },
       });
 
       // Step 2: Confirm booking in backend
@@ -2074,6 +2083,16 @@ export default function HotelDetail() {
         userName: user!.name || user!.phone || "",
         userPhone: user!.phone,
         userEmail: user!.email,
+        // v531 — server enforces a floor-based minimum (negAmt is customer's
+        // above-floor choice, so only the floor is authoritative).
+        instant: {
+          roomId: String(negRoom.id),
+          nights,
+          rooms: Math.max(1, globalNumRooms),
+          mode,
+          couponCode: applied?.couponCode,
+          walletCreditInr: applied?.walletCreditAppliedInr,
+        },
       });
       const paymentId = payResult.razorpay_payment_id;
       const message = `Paid via Razorpay: ${paymentId} | paid:${charge} | rate:${negAmt}${mode !== "full" ? ` | hold:${charge} | total:${total}${mode === "payhotel" ? " | pay-at-hotel" : ""}` : ""}`;
@@ -2257,6 +2276,14 @@ export default function HotelDetail() {
         userName: user?.name || user?.phone || "",
         userPhone: user?.phone,
         userEmail: user?.email,
+        // v531 — server re-derives the charge from the existing bid row
+        // (counterAmount × nights × numRooms) and enforces it.
+        bid: {
+          bidId: String(bidId),
+          mode,
+          couponCode: applied?.couponCode,
+          walletCreditInr: applied?.walletCreditAppliedInr,
+        },
       });
 
       const token = localStorage.getItem("sb_token");
@@ -2367,6 +2394,13 @@ export default function HotelDetail() {
           userName: user!.name || user!.phone || "",
           userPhone: user!.phone,
           userEmail: user!.email,
+          // v531 — server enforces the target room's floor × nights as a minimum.
+          instant: {
+            roomId: String(upgradeModal.toRoom.id),
+            nights: upgradeModal.nights,
+            rooms: 1,
+            mode: "full",
+          },
         });
       }
       const token = localStorage.getItem("sb_token");

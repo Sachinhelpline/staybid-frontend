@@ -21,7 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { sbSelect } from "@/lib/onboard/supabase-admin";
 import { resolveFlashFloorPerNight } from "./flash-authority";
-import { applyCodeToBooking, normalizeCodeInput } from "@/lib/redemption";
+import { resolveValidatedDiscount } from "./redemption-validate";
 
 const enc = (s: string) => encodeURIComponent(s);
 const EXTRA_ADULT_RATE = 500; // must match app/hotels/[id]/page.tsx flash extras
@@ -71,40 +71,12 @@ export async function resolveFlashOrderCharge(opts: {
     const grandTotal = base + extras;
 
     // ── validated redemption (NO side effects — real debit is post-payment) ──
-    let discount = 0;
-    const userId = opts.userId || "";
-    if (userId) {
-      // coupon — owned + active + unexpired + coupon/voucher kind
-      const codeRaw = String(opts.couponCode || "");
-      if (codeRaw) {
-        try {
-          const code = normalizeCodeInput(codeRaw);
-          const rows = await sbSelect<any>("redemption_codes", `code=eq.${enc(code)}&select=*`);
-          const c = rows?.[0];
-          if (c && c.user_id === userId) {
-            const willApply = applyCodeToBooking(
-              { kind: c.kind, value_inr: c.value_inr, status: c.status, expires_at: c.expires_at },
-              { bookingTotalInr: grandTotal },
-            );
-            const d = willApply && (willApply as any).ok ? Number((willApply as any).discountInr || 0) : 0;
-            if (d > 0) discount += Math.min(d, grandTotal);
-          }
-        } catch { /* invalid coupon → contributes ₹0 */ }
-      }
-      // wallet — clamp to the user's real balance and the remaining total
-      const wantWallet = Math.max(0, Number(opts.walletCreditInr) || 0);
-      if (wantWallet > 0) {
-        try {
-          const wcRows = await sbSelect<any>(
-            "wallet_credits",
-            `user_id=eq.${enc(userId)}&select=balance_inr`,
-          );
-          const bal = Number(wcRows?.[0]?.balance_inr) || 0;
-          const remaining = Math.max(0, grandTotal - discount);
-          discount += Math.min(wantWallet, bal, remaining);
-        } catch { /* wallet unreadable → contributes ₹0 */ }
-      }
-    }
+    const discount = await resolveValidatedDiscount({
+      userId: opts.userId,
+      couponCode: opts.couponCode,
+      walletCreditInr: opts.walletCreditInr,
+      cap: grandTotal,
+    });
 
     const charge = Math.max(0, grandTotal - discount);
     return { charge, grandTotal, perNight, discount };
