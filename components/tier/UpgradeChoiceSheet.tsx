@@ -214,22 +214,25 @@ export default function UpgradeChoiceSheet({
               Choose how to verify yourself below.
             </p>
 
-            {/* Card 1: Verified Guest — booking-based */}
+            {/* Card 1: Verified Guest — booking-based.
+               Always tappable: even with 0 eligible stays the tap opens the
+               booking-picker step, which shows an honest empty-state ("no
+               completed stays — book one to unlock") instead of a dead button.
+               The gate is unchanged (posting still needs a real booking); this
+               only gives the user feedback + a path forward. */}
             <button
               type="button"
               onClick={goToBookingPicker}
-              disabled={eligibleCount === 0}
               style={{
                 width: "100%",
                 textAlign: "left",
                 padding: "16px 16px",
                 borderRadius: 16,
                 border: `1px solid ${COZY.border}`,
-                background:
-                  eligibleCount > 0 ? COZY.paperBg : "rgba(232,220,200,0.30)",
+                background: COZY.paperBg,
                 color: COZY.cocoa,
-                cursor: eligibleCount > 0 ? "pointer" : "not-allowed",
-                opacity: eligibleCount > 0 ? 1 : 0.62,
+                cursor: "pointer",
+                opacity: 1,
                 display: "flex",
                 gap: 12,
                 alignItems: "center",
@@ -440,14 +443,35 @@ export default function UpgradeChoiceSheet({
             {!loadingBookings && bookingErr && (
               <div
                 style={{
-                  color: COZY.cocoaSoft,
-                  fontSize: "0.88rem",
-                  padding: "20px 8px",
+                  padding: "16px 8px 8px",
                   textAlign: "center",
-                  lineHeight: 1.5,
                 }}
               >
-                {bookingErr}
+                <div
+                  style={{
+                    color: COZY.cocoaSoft,
+                    fontSize: "0.88rem",
+                    lineHeight: 1.5,
+                    marginBottom: 16,
+                  }}
+                >
+                  {bookingErr}
+                </div>
+                <a
+                  href="/hotels"
+                  style={{
+                    display: "inline-block",
+                    padding: "11px 22px",
+                    borderRadius: 12,
+                    background: COZY.champagne,
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    textDecoration: "none",
+                  }}
+                >
+                  Browse hotels →
+                </a>
               </div>
             )}
 
