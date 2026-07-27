@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
+import { isLaunchHotel } from "@/lib/launch/curation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,7 +94,9 @@ export async function GET(req: NextRequest) {
       };
     })
     .filter(Boolean)
-    .filter((o: any) => (city ? String(o.hotel.city || "").toLowerCase() === city.toLowerCase() : true));
+    .filter((o: any) => (city ? String(o.hotel.city || "").toLowerCase() === city.toLowerCase() : true))
+    // v534 — launch curation: only resale offers on curated launch properties.
+    .filter((o: any) => isLaunchHotel(o.hotelId));
 
   return NextResponse.json({ offers }, { headers: { "Cache-Control": "no-store" } });
 }

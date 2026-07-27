@@ -47,6 +47,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, authPayload } from "@/lib/sb-server";
 import { sbCached } from "@/lib/sb-cache";
+import { curateHotels } from "@/lib/launch/curation";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +122,8 @@ export async function POST(req: NextRequest) {
       ? fetch(`${SB_URL}/rest/v1/bids?customerId=eq.${userId}&status=eq.ACCEPTED&select=hotelId`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => [])
       : Promise.resolve([]),
   ]);
-  const hotels: any[]   = Array.isArray(hotelsRes) ? hotelsRes : [];
+  // v534 — launch curation (one property per launch-zone city). Additive + fail-open.
+  const hotels: any[]   = curateHotels(Array.isArray(hotelsRes) ? hotelsRes : []);
   const rooms: any[]    = Array.isArray(roomsRes) ? roomsRes : [];
   const bids: any[]     = Array.isArray(bidsRes) ? bidsRes : [];
   const bookings: any[] = Array.isArray(bookingsRes) ? bookingsRes : [];

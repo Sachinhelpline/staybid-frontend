@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
 import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
+import { curateHotels } from "@/lib/launch/curation";
 
 
 const SB_H = {
@@ -39,11 +40,16 @@ export async function GET(req: NextRequest) {
     try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
   }, TTL_CATALOG);
 
+  // v534 — launch curation: keep only the one curated premium property per city
+  // (launch-zone cities). Additive + fail-open; reversible via env. Applied
+  // BEFORE the rooms side-load so we only fetch rooms for the shown hotels.
+  const curated = curateHotels(hotels);
+
   // v131 — scope rooms to ONLY the hotels we're about to return. Previously
   // pulled 500 rooms across every hotel regardless of the city filter; with
   // a 5-hotel Mussoorie filter that's a ~95% over-fetch. The cache key uses
   // the sorted hotelId set so repeat opens of the same city stay warm.
-  const hotelIdList: string[] = hotels.map((h: any) => h.id).filter(Boolean);
+  const hotelIdList: string[] = curated.map((h: any) => h.id).filter(Boolean);
   const rooms: any[] = hotelIdList.length === 0
     ? []
     : await sbCached<any[]>(`hotels:rooms:${hotelIdList.slice().sort().join(",")}`, async () => {
@@ -62,7 +68,7 @@ export async function GET(req: NextRequest) {
     if (!r?.hotelId) continue;
     (roomsByHotel[r.hotelId] ||= []).push(r);
   }
-  const hotelsWithRooms = hotels.map((h: any) => ({
+  const hotelsWithRooms = curated.map((h: any) => ({
     ...h,
     rooms: roomsByHotel[h.id] || [],
   }));

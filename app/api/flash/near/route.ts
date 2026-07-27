@@ -5,6 +5,7 @@ import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
 // v168 — synthetic flash prices come from the unified pricing spine.
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 import { computeFlashLadder, tierRanks } from "@/lib/pricing/flash-ladder";
+import { curateHotels } from "@/lib/launch/curation";
 
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
@@ -66,6 +67,11 @@ export async function GET(req: NextRequest) {
     sbCachedFetch(`rooms?select=${ROOM_CARD_COLS}`, TTL_CATALOG),
   ]);
 
+  // v534 — launch curation: only the one curated property per launch-zone city
+  // surfaces flash deals. Additive + fail-open; all hotel lookups below use this
+  // curated set, so both real and synthesized deals hide non-launch hotels.
+  const curatedHotels = curateHotels(hotels);
+
   // v168 — pricing-spine flash prices for tonight. Used to price the
   // SYNTHESIZED deals (real flash_deals rows stay hotel/cron-managed).
   // Failure → empty map → synthetic path falls back to its legacy
@@ -116,7 +122,7 @@ export async function GET(req: NextRequest) {
     const roomId  = d.roomId || d.room_id;
     if (!hotelId || !roomId) continue;
     const room    = rooms.find((r: any) => r.id === roomId);
-    const hotel   = hotels.find((h: any) => h.id === hotelId);
+    const hotel   = curatedHotels.find((h: any) => h.id === hotelId);
     if (!hotel || !room) continue;
     const floor   = Number(room.floorPrice) || Number(d.floorPrice) || 0;
     const ai      = Number(d.aiPrice ?? d.dealPrice ?? d.price) || 0;
@@ -145,7 +151,7 @@ export async function GET(req: NextRequest) {
   const syntheticByHotel = new Map<string, Candidate[]>();
   const wantCity = city.trim().toLowerCase();
   const validHotelIds = new Set(
-    hotels.filter((h: any) => !wantCity || (h.city || "").toLowerCase().includes(wantCity)).map((h: any) => h.id)
+    curatedHotels.filter((h: any) => !wantCity || (h.city || "").toLowerCase().includes(wantCity)).map((h: any) => h.id)
   );
   // Flash deals are nightly-reset inventory — every unsold room at 12am IST
   // is auto-offered as the next day's deal. Cap the synthesized timer at
@@ -164,7 +170,7 @@ export async function GET(req: NextRequest) {
   for (const r of rooms) {
     if (!validHotelIds.has(r.hotelId)) continue;
     if (realByHotel.has(r.hotelId)) continue;
-    const hotel = hotels.find((h: any) => h.id === r.hotelId);
+    const hotel = curatedHotels.find((h: any) => h.id === r.hotelId);
     if (!hotel) continue;
     const floor = Number(r.floorPrice) || 0;
     if (floor <= 0) continue;
@@ -202,7 +208,7 @@ export async function GET(req: NextRequest) {
   // (avoid `for..of` on Map.keys() — Vercel's tsconfig lacks downlevelIteration)
   const filteredHotelIds = new Set<string>();
   Array.from(realByHotel.keys()).forEach((hid) => {
-    const h = hotels.find((x: any) => x.id === hid);
+    const h = curatedHotels.find((x: any) => x.id === hid);
     if (!h) return;
     if (!wantCity || (h.city || "").toLowerCase().includes(wantCity)) filteredHotelIds.add(hid);
   });
@@ -268,7 +274,7 @@ export async function GET(req: NextRequest) {
   // ─── 4) Per hotel: pick ONE deal + compute upgrade ladder ───────────────
   const out: any[] = [];
   for (const hotelId of hotelIds) {
-    const hotel    = hotels.find((h: any) => h.id === hotelId);
+    const hotel    = curatedHotels.find((h: any) => h.id === hotelId);
     if (!hotel) continue;
     const allRooms = rooms.filter((r: any) => r.hotelId === hotelId);
     // Pool of candidate deals (real preferred over synthetic) for this hotel
