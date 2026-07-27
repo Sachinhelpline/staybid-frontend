@@ -3,6 +3,7 @@
 // still running, enriched with the REAL room image (side-loaded from rooms).
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_READ } from "@/lib/sb";
+import { isLaunchHotel } from "@/lib/launch/curation";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,10 @@ export async function GET(req: NextRequest) {
     `${SB_URL}/rest/v1/auction_lots?${filter}&select=id,hotel_id,room_id,category,city,month_key,month_start,month_end,num_rooms,min_bid_per_room_night,sale_mode,autopilot_mode,window_open_at,window_close_at,status,metadata&order=city.asc,created_at.desc&limit=300`,
     { headers: SB_READ, cache: "no-store" },
   );
-  const lots: any[] = r.ok ? await r.json().catch(() => []) : [];
+  let lots: any[] = r.ok ? await r.json().catch(() => []) : [];
+
+  // v536 — launch curation: only lots on curated launch hotels. Fail-open.
+  lots = lots.filter((l) => isLaunchHotel(l.hotel_id));
 
   // Side-load real room images (first image) for every lot's room.
   const roomIds = Array.from(new Set(lots.map((l) => l.room_id).filter(Boolean)));

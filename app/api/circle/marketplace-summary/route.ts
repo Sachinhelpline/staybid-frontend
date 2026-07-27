@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { curateHotels } from "@/lib/launch/curation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,10 +30,14 @@ async function sb(path: string): Promise<any[]> {
 }
 
 export async function GET() {
-  const [prebuyHotels, liveListings] = await Promise.all([
+  const [prebuyHotelsRaw, liveListings] = await Promise.all([
     sb("hotels?owner_type=eq.host_circle&prebuy_enabled=eq.true&select=id,city"),
     sb("b2b_listings?status=eq.listed&select=id"),
   ]);
+
+  // v536 — launch curation: count/advertise only curated launch host-circle
+  // hotels so the Model-3 shell's "N properties · cities" matches the browse.
+  const prebuyHotels = curateHotels(prebuyHotelsRaw);
 
   const cities = Array.from(
     new Set(

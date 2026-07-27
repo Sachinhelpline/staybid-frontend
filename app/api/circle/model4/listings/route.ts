@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, decodeJwt } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
+import { isLaunchHotel } from "@/lib/launch/curation";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,8 @@ export async function GET(req: NextRequest) {
     const r = await fetch(`${SB_URL}/rest/v1/b2b_listings?${q}`, { headers: SB_H });
     listings = r.ok ? await r.json().catch(() => []) : [];
   } catch { listings = []; }
+  // v536 — launch curation: only exchange listings on curated launch hotels.
+  if (Array.isArray(listings)) listings = listings.filter((l) => isLaunchHotel(l.hotel_id));
   if (!Array.isArray(listings) || !listings.length) return NextResponse.json({ listings: [] }, noStore);
 
   // Side-load unit # + hotel name/city (no PostgREST FK embed — none exists).
