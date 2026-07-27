@@ -23,6 +23,22 @@ export interface OpenCheckoutOptions {
   // v125 — optional metadata so admin/cron can debug a stuck order later.
   notes?: Record<string, string>;
   receipt?: string;
+  // v530 — flash FULL-payment context so the server can re-compute the
+  // authoritative charge (tamper-safe money-in). Sent in the order body (NOT
+  // as Razorpay notes). When present, the order fetch also carries the
+  // customer Bearer so the server can validate any coupon/wallet discount.
+  flash?: {
+    dealId: string;
+    roomId: string;
+    checkInISO: string;
+    nights: number;
+    rooms: number;
+    adults: number;
+    children: number;
+    mode: "full" | "hold" | "payhotel";
+    couponCode?: string;
+    walletCreditInr?: number;
+  };
 }
 
 export class RazorpayError extends Error {
@@ -138,13 +154,21 @@ export async function openRazorpayCheckout(
   // Create the order server-side
   let order: any;
   try {
+    // v530 — for a flash order, carry the Bearer so the server can validate
+    // the customer's coupon/wallet discount when re-computing the charge.
+    const orderHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (opts.flash && typeof window !== "undefined") {
+      const tok = localStorage.getItem("sb_token");
+      if (tok) orderHeaders.Authorization = `Bearer ${tok}`;
+    }
     const orderRes = await fetch("/api/razorpay/order", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: orderHeaders,
       body: JSON.stringify({
         amount: opts.amount,
         receipt: opts.receipt || `staybid_${Date.now()}`,
         notes: { hotel: opts.hotelName, ...(opts.notes || {}) },
+        ...(opts.flash ? { flash: opts.flash } : {}),
       }),
     });
     order = await orderRes.json().catch(() => ({}));
