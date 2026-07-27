@@ -25,7 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userFromReq } from "@/lib/sb";
 import { resolveFlashOrderCharge } from "@/lib/pricing/flash-charge";
-import { resolveBidOrderCharge, resolveInstantOrderCharge, resolveBalanceCharge } from "@/lib/pricing/order-charge";
+import { resolveBidOrderCharge, resolveInstantOrderCharge, resolveBalanceCharge, resolveHoldDeposit } from "@/lib/pricing/order-charge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   // a legit booking is never blocked by a pricing hiccup. The 5% / ₹50 grace
   // absorbs spine/rounding drift between page load and checkout.
   const flash = body?.flash;
-  if (flash && flash.dealId && flash.mode === "full") {
+  if (flash && flash.dealId) {
     try {
       const u = userFromReq(req);
       const sc = await resolveFlashOrderCharge({
@@ -118,13 +118,15 @@ export async function POST(req: NextRequest) {
         walletCreditInr: Number(flash.walletCreditInr) || 0,
       });
       if (sc && sc.charge > 0) {
-        const minAllowed = sc.charge - Math.max(50, sc.charge * 0.05);
-        if (amountRupees < minAllowed) {
+        // full → the whole charge; hold/pay-at-hotel → the admin-configured
+        // deposit tier for that total (v532b — deposit-minimum uses the same
+        // rule set in the admin Hold Payment Config page).
+        const expected = flash.mode === "full"
+          ? sc.charge
+          : await resolveHoldDeposit(sc.charge, sc.hotelId);
+        if (expected > 0 && amountRupees < expected - Math.max(50, expected * 0.05)) {
           return NextResponse.json(
-            {
-              error: "This flash price is no longer available. Please refresh the deal and try again.",
-              expected: sc.charge,
-            },
+            { error: "This flash price is no longer available. Please refresh the deal and try again.", expected },
             { status: 400 },
           );
         }
@@ -141,7 +143,7 @@ export async function POST(req: NextRequest) {
   //   • body.bid     — pay / accept an EXISTING bid (amount already in the row)
   //   • body.instant — fresh Book Now / Upgrade / Negotiate (floor re-derived)
   const bidCtx = body?.bid;
-  if (bidCtx && bidCtx.bidId && bidCtx.mode === "full") {
+  if (bidCtx && bidCtx.bidId) {
     try {
       const u = userFromReq(req);
       const sc = await resolveBidOrderCharge({
@@ -151,10 +153,12 @@ export async function POST(req: NextRequest) {
         walletCreditInr: Number(bidCtx.walletCreditInr) || 0,
       });
       if (sc && sc.charge > 0) {
-        const minAllowed = sc.charge - Math.max(50, sc.charge * 0.05);
-        if (amountRupees < minAllowed) {
+        const expected = bidCtx.mode === "full"
+          ? sc.charge
+          : await resolveHoldDeposit(sc.charge, sc.hotelId);
+        if (expected > 0 && amountRupees < expected - Math.max(50, expected * 0.05)) {
           return NextResponse.json(
-            { error: "This price is no longer available. Please refresh and try again.", expected: sc.charge },
+            { error: "This price is no longer available. Please refresh and try again.", expected },
             { status: 400 },
           );
         }
@@ -163,7 +167,7 @@ export async function POST(req: NextRequest) {
   }
 
   const instantCtx = body?.instant;
-  if (instantCtx && instantCtx.roomId && instantCtx.mode === "full") {
+  if (instantCtx && instantCtx.roomId) {
     try {
       const u = userFromReq(req);
       const sc = await resolveInstantOrderCharge({
@@ -174,13 +178,15 @@ export async function POST(req: NextRequest) {
         couponCode: instantCtx.couponCode || null,
         walletCreditInr: Number(instantCtx.walletCreditInr) || 0,
       });
-      // minCharge is a FLOOR (Book Now ≈ it, Negotiate/Upgrade ≥ it) — reject
-      // only an amount that falls materially below that floor.
+      // minCharge is a FLOOR (Book Now ≈ it, Negotiate/Upgrade ≥ it); for a
+      // hold/pay-at-hotel it becomes the admin deposit tier on that floor.
       if (sc && sc.minCharge > 0) {
-        const minAllowed = sc.minCharge - Math.max(50, sc.minCharge * 0.05);
-        if (amountRupees < minAllowed) {
+        const expected = instantCtx.mode === "full"
+          ? sc.minCharge
+          : await resolveHoldDeposit(sc.minCharge, sc.hotelId);
+        if (expected > 0 && amountRupees < expected - Math.max(50, expected * 0.05)) {
           return NextResponse.json(
-            { error: "This price is no longer available. Please refresh and try again.", expected: sc.minCharge },
+            { error: "This price is no longer available. Please refresh and try again.", expected },
             { status: 400 },
           );
         }
