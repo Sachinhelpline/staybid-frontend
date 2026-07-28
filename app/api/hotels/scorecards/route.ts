@@ -12,8 +12,36 @@
 // sweep populates it.
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
+import { buildMarketFitCard } from "@/lib/hotel-score";
+import { computeMarketFitMap, type MarketFitEntry } from "@/lib/hotel-market-fit";
 
 const MAX_IDS = 80;
+
+// v549 — a hotel with no REAL operational score no longer comes back as
+// "awaiting score"; it gets its deterministic market-fit score + cohort rank
+// (City→Zone→National) from the cached catalogue map. Same shape as a cached
+// row so <HotelScoreBadge> renders a real medal + rank everywhere.
+function fromMarketFit(hotelId: string, e: MarketFitEntry) {
+  const card = buildMarketFitCard(e.attrs);
+  return {
+    hotelId,
+    city: e.city,
+    overall: e.overall,
+    status: e.status,
+    badge: e.badge,
+    rank: {
+      rank: e.rank.rank,
+      total: e.rank.total,
+      percentile: e.rank.percentile,
+      scope: e.rank.scope,
+      scopeLabel: e.rank.scopeLabel,
+    },
+    checkpoints: card.checkpoints,
+    totals: { bookings: 0, stayFeedback: 0, complaints: 0 },
+    computedAt: card.computedAt,
+    marketFit: true,
+  };
+}
 
 function unrated(hotelId: string) {
   return {
@@ -76,9 +104,29 @@ export async function GET(req: NextRequest) {
 
   const byId: Record<string, any> = {};
   for (const row of rows) byId[row.hotel_id] = shape(row);
-  // Fill gaps with a clean placeholder so the caller always gets every id back.
+
+  // v549 — build the market-fit map ONCE (60s-cached) so every requested id
+  // that lacks a REAL operational score still returns a real score + rank
+  // instead of "awaiting score". Fail-open: any error → old placeholder.
+  let mfMap: Record<string, MarketFitEntry> = {};
+  try {
+    mfMap = await computeMarketFitMap();
+  } catch {
+    mfMap = {};
+  }
+
   const scorecards: Record<string, any> = {};
-  for (const id of ids) scorecards[id] = byId[id] || unrated(id);
+  for (const id of ids) {
+    const cached = byId[id];
+    // A cached row with a real score (has data) wins; otherwise market-fit.
+    if (cached && cached.overall != null && Number(cached.overall) > 0) {
+      scorecards[id] = cached;
+    } else if (mfMap[id]) {
+      scorecards[id] = fromMarketFit(id, mfMap[id]);
+    } else {
+      scorecards[id] = unrated(id);
+    }
+  }
 
   return NextResponse.json(
     { scorecards },

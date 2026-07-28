@@ -784,6 +784,117 @@ export function statusForScore(s: number): HotelScorecard["status"] {
   return "developing";
 }
 
+// ── Market-Fit baseline (v549) ─────────────────────────────────────────
+// A property with NO operational data yet (no bids/stays/feedback) used to
+// return overall=null → "New · awaiting score", a weak launch impression.
+// Instead we compute a deterministic MARKET-FIT score from the property's OWN
+// public signals that already exist on day one — guest rating (confidence-
+// weighted), review popularity, property class, and listing completeness.
+// This is additive: it NEVER touches the operational CHECKPOINT_WEIGHTS above.
+// As real bids/stays/feedback accrue, the operational engine takes over
+// naturally (the scorecard route uses market-fit ONLY when operational data
+// is absent). Deterministic + pure → same inputs, same score, every time.
+export type MarketFitInputs = {
+  hotelId: string;
+  starRating?: number | null;   // property class 1..5
+  avgRating?: number | null;    // guest rating 0..5
+  totalReviews?: number | null; // review count (popularity/confidence)
+  imagesCount?: number | null;
+  amenitiesCount?: number | null;
+  hasDescription?: boolean;
+};
+
+// Weights sum to 100. Guest rating leads (it is the signal guests trust most),
+// then popularity (review volume), property class, and listing completeness.
+const MF = { guest: 46, popularity: 12, cls: 22, listing: 20 } as const;
+const MF_FLOOR = 64; // no live property ever reads below "Good" at launch
+
+function mfGuest(avgRating?: number | null, reviews?: number | null): number {
+  const r = clamp(Number(avgRating) || 0, 0, 5);
+  const n = Math.max(0, Number(reviews) || 0);
+  // Bayesian shrink toward a 4.0 prior (weight 8 reviews) so a 5.0 with 2
+  // reviews can't outrank a 4.6 with 120.
+  const PRIOR = 4.0, PRIOR_W = 8;
+  const bayes = n > 0 ? (r * n + PRIOR * PRIOR_W) / (n + PRIOR_W) : PRIOR;
+  return clamp(bayes / 5, 0, 1); // 0..1
+}
+function mfPopularity(reviews?: number | null): number {
+  const n = Math.max(0, Number(reviews) || 0);
+  // log-scaled: ~200 reviews → full credit.
+  return clamp(Math.log10(n + 1) / Math.log10(200), 0, 1); // 0..1
+}
+function mfClass(starRating?: number | null): number {
+  return clamp((Number(starRating) || 3) / 5, 0, 1); // 0..1 (default 3★)
+}
+function mfListing(a: MarketFitInputs): number {
+  const imgs = Number(a.imagesCount) || 0;
+  const amen = Number(a.amenitiesCount) || 0;
+  const pts = (imgs >= 3 ? 7 : imgs >= 1 ? 4 : 0)
+    + (amen >= 5 ? 5 : amen >= 2 ? 3 : 0)
+    + (a.hasDescription ? 3 : 0);
+  return clamp(pts / 15, 0, 1); // 0..1
+}
+
+/** Deterministic 0-100 market-fit score from a property's intrinsic signals. */
+export function computeMarketFitScore(a: MarketFitInputs): number {
+  const raw =
+    mfGuest(a.avgRating, a.totalReviews) * MF.guest +
+    mfPopularity(a.totalReviews) * MF.popularity +
+    mfClass(a.starRating) * MF.cls +
+    mfListing(a) * MF.listing;
+  return +clamp(Math.max(raw, MF_FLOOR), 0, 100).toFixed(1);
+}
+
+/** A full HotelScorecard built from the market-fit signals (checkpoints show
+ *  the real evidence so the drill-down modal is coherent, not "awaiting"). */
+export function buildMarketFitCard(a: MarketFitInputs): HotelScorecard {
+  const overall = computeMarketFitScore(a);
+  const reviews = Math.max(0, Number(a.totalReviews) || 0);
+  const rating = clamp(Number(a.avgRating) || 0, 0, 5);
+  const cls = Number(a.starRating) || 0;
+  const imgs = Number(a.imagesCount) || 0;
+  const amen = Number(a.amenitiesCount) || 0;
+  const mk = (
+    key: string, label: string, emoji: string, weight: number,
+    frac: number, evidence: string, sampleSize: number,
+  ): CheckpointResult => {
+    const pct = +(clamp(frac, 0, 1) * 100).toFixed(1);
+    return {
+      key: key as CheckpointKey,
+      label, emoji, weight,
+      earned: +(clamp(frac, 0, 1) * weight).toFixed(2),
+      pct, evidence, sampleSize,
+      status: statusFromPct(pct, sampleSize > 0),
+    };
+  };
+  const checkpoints: CheckpointResult[] = [
+    mk("mfGuest", "Guest Rating", "⭐", MF.guest, mfGuest(a.avgRating, a.totalReviews),
+      reviews > 0
+        ? `${rating.toFixed(1)} of 5 across ${reviews} review${reviews === 1 ? "" : "s"}.`
+        : "Market-fit estimate — awaiting the first guest rating.",
+      reviews),
+    mk("mfPopularity", "Guest Demand", "🔥", MF.popularity, mfPopularity(a.totalReviews),
+      reviews > 0 ? `${reviews} guest review${reviews === 1 ? "" : "s"} on record.` : "Newly listed.",
+      reviews),
+    mk("mfClass", "Property Class", "🏛️", MF.cls, mfClass(a.starRating),
+      cls ? `${cls}-star property class.` : "Standard property class.", cls ? 1 : 0),
+    mk("mfListing", "Listing Quality", "📸", MF.listing, mfListing(a),
+      `${imgs} photo${imgs === 1 ? "" : "s"}, ${amen} amenit${amen === 1 ? "y" : "ies"}${a.hasDescription ? ", full description" : ""}.`,
+      imgs + amen),
+  ];
+  return {
+    hotelId: a.hotelId,
+    overall,
+    status: statusForScore(overall),
+    badge: badgeForScore(overall),
+    checkpoints,
+    totalBookings: 0,
+    totalStayFeedback: 0,
+    totalComplaints: 0,
+    computedAt: new Date().toISOString(),
+  };
+}
+
 // Compute deterministic rank within a city given a precomputed list.
 export function rankWithinCity(
   scores: Array<{ hotelId: string; overall: number | null }>,

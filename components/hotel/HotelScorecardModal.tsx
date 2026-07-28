@@ -41,7 +41,13 @@ type Scorecard = {
   overall: number | null;
   status: "unrated" | "developing" | "fair" | "good" | "excellent";
   badge: { emoji: string; label: string; color: string };
-  rank: { rank: number | null; total: number; percentile: number | null };
+  rank: {
+    rank: number | null;
+    total: number;
+    percentile: number | null;
+    scope?: "city" | "zone" | "national" | string;
+    scopeLabel?: string | null;
+  };
   checkpoints: any[];
   totals: { bookings: number; stayFeedback: number; complaints: number };
   computedAt: string;
@@ -137,8 +143,9 @@ export default function HotelScorecardModal({
     if (!card) return null;
     const r = card.rank;
     if (r.rank == null || r.total === 0) return null;
+    const where = r.scopeLabel || card.city;
     return `Ranked ${ordinal(r.rank)} of ${r.total}${
-      card.city ? ` in ${card.city}` : ""
+      where ? ` in ${where}` : ""
     }${r.percentile != null ? ` · top ${Math.max(1, 100 - Math.round(r.percentile))}%` : ""}`;
   }, [card]);
 
