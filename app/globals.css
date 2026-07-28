@@ -359,6 +359,21 @@
     --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);
   }
 
+  /* v544 — declare color-scheme so the browser/OS never runs its own "force-dark"
+     (Android Auto Dark Theme / Chrome / Samsung Internet) over our already-themed
+     page. Without this, force-dark re-processes an already-dark surface and shifts
+     warm cream/gold text (hotel names, ratings, bottom-nav labels) toward green.
+     We own both themes fully, so we tell the UA to leave our colors alone. */
+  :root {
+    color-scheme: light dark;
+  }
+  [data-theme='light'] {
+    color-scheme: light;
+  }
+  [data-theme='dark'] {
+    color-scheme: dark;
+  }
+
   /* Smooth theme transition */
   html,
   body {

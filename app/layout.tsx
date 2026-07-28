@@ -36,6 +36,9 @@ export const viewport: Viewport = {
   // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
   // which clashed with the #07060e reel bg.
   themeColor: '#07060e',
+  // v544 — advertise both schemes so the UA respects our own dark/light theme
+  // instead of applying its own force-dark filter (which greened our text).
+  colorScheme: 'light dark',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -255,7 +258,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v543</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v544</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -276,7 +279,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v543-desktop-create-modal";
+var SB_BUILD="v544-color-scheme-force-dark";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
