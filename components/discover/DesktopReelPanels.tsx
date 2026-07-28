@@ -153,14 +153,6 @@ export default function DesktopReelPanels({
     document.body.classList.toggle("reel-has-rail", railOn);
     return () => { document.body.classList.remove("reel-has-rail"); };
   }, [railOn]);
-  // v541 — mark that the desktop dead-space "Create post" CTA is mounted, so
-  // desktop.css can hide the tiny duplicate in-frame FAB ONLY here (this panel
-  // renders only on the discover/home feed; /reels + /me keep the FAB).
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.body.classList.add("reel-has-create-cta");
-    return () => { document.body.classList.remove("reel-has-create-cta"); };
-  }, []);
 
   const onBookDeal = useCallback((d: FlashDealStory) => {
     const url =
@@ -241,24 +233,6 @@ export default function DesktopReelPanels({
 
   return (
     <>
-      {/* v541 — Desktop "Create post" entry in the dead gutter space. The
-          in-frame "+" FAB is pinned inside the 424px overflow:hidden phone
-          frame on desktop (tiny, easy to miss), so this fixed pill sits in the
-          top-right dead space (clear of the frame + both side panels at every
-          desktop width) and opens the SAME create flow via `sb:open-create`.
-          Hidden on mobile via app/desktop.css (phones keep the in-frame FAB). */}
-      <button
-        type="button"
-        className="reel-create-cta"
-        aria-label="Create a post"
-        onClick={() => {
-          try { window.dispatchEvent(new CustomEvent("sb:open-create")); } catch {}
-        }}
-      >
-        <span className="reel-create-cta-plus" aria-hidden>＋</span>
-        <span className="reel-create-cta-label">Create post</span>
-      </button>
-
       {/* v471 — the glass window shell (drawn BEHIND the frame + panels).
           Home + ≥1440px only, via app/desktop.css. */}
       <div className="reel-window" aria-hidden />

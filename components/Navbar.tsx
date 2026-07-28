@@ -459,6 +459,24 @@ export function Navbar() {
                 </Link>
               );
             })}
+            {/* v542 — desktop "Create post" entry, right in the top nav (IG-style).
+                Reel surfaces only (where CreateFlow listens for `sb:open-create`);
+                dispatches the SAME event as the in-frame FAB → SAME tier gate.
+                Fixes the desktop bug where the in-frame FAB was buried inside the
+                overflow:hidden phone frame. Desktop-only (this row is `md:flex`);
+                phones keep the FAB. */}
+            {["/", "/discover", "/reels"].includes(pathname || "") && (
+              <button
+                type="button"
+                aria-label="Create a post"
+                onClick={() => { try { window.dispatchEvent(new CustomEvent("sb:open-create")); } catch {} }}
+                className="nav3d-chip relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8rem] font-bold tracking-wide"
+                style={{ background: "linear-gradient(135deg,#E7CFA0,#D9BE82 45%,#C9A66B)", color: "#1F1A0F" }}
+              >
+                <span className="text-sm leading-none">＋</span>
+                Create
+              </button>
+            )}
           </div>
 
           {/* Desktop user nav — user-specific actions.
