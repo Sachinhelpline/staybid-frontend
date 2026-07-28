@@ -1296,8 +1296,14 @@ function CardLink({
       </div>
 
       <div className="hxr-card-info">
-        <div className="hxr-card-row1">
-          <h3 className="hxr-card-name">{h.name}</h3>
+        {/* v548 — name gets its OWN full-width row (up to 2 lines) so the full
+            property name is always readable; the rating pill moved down onto the
+            location row (was crammed beside the name → ellipsis-truncated). */}
+        <h3 className="hxr-card-name" title={h.name}>{h.name}</h3>
+        <div className="hxr-card-metarow">
+          <p className="hxr-card-loc">
+            {area ? `${area}, ` : ""}{h.city}
+          </p>
           {(Number(h.avgRating) || 0) > 0 && (
             <span className="hxr-card-rating">
               <span className="hxr-card-rating-star">★</span>{Number(h.avgRating).toFixed(1)}
@@ -1305,9 +1311,6 @@ function CardLink({
             </span>
           )}
         </div>
-        <p className="hxr-card-loc">
-          {area ? `${area}, ` : ""}{h.city}
-        </p>
         {minPrice && (
           <p className="hxr-card-price">
             {beatsMarket && (

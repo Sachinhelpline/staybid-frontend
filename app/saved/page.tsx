@@ -192,7 +192,7 @@ function SaveCard({
             : <div className="w-full h-full flex items-center justify-center text-3xl">🏨</div>}
           <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 text-white">
-            <p className="font-display text-base font-bold drop-shadow-sm line-clamp-1">{t.name}</p>
+            <p className="font-display text-base font-bold drop-shadow-sm line-clamp-2" title={t.name}>{t.name}</p>
             <p className="text-[0.65rem] font-semibold opacity-90 drop-shadow-sm">{t.city} {t.star_rating ? `· ${"★".repeat(t.star_rating)}` : ""}</p>
           </div>
         </div>
