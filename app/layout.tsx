@@ -36,9 +36,10 @@ export const viewport: Viewport = {
   // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
   // which clashed with the #07060e reel bg.
   themeColor: '#07060e',
-  // v544 — advertise both schemes so the UA respects our own dark/light theme
-  // instead of applying its own force-dark filter (which greened our text).
-  colorScheme: 'light dark',
+  // v544/v545 — advertise both schemes (dark-first) so the UA respects our own
+  // dark/light theme instead of applying its own force-dark filter (which greened
+  // our text). The no-FOUC script below refines this to the EXACT active theme.
+  colorScheme: 'dark light',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -159,6 +160,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){t='dark';}
               }catch(e){}
               document.documentElement.setAttribute('data-theme',t);
+              // v545 — set color-scheme INLINE on <html> as early as possible,
+              // to the EXACT active theme. Inline style beats every stylesheet
+              // + @layer, and this runs before first paint, so it is the
+              // strongest, earliest "this page IS dark/light" signal a UA can
+              // read when deciding whether to run its own force-dark. Also
+              // refine the color-scheme meta to the single active scheme so
+              // heuristic darkeners (Samsung Internet / WebView) see an explicit
+              // committed scheme rather than the ambiguous "dark light" list.
+              try{
+                document.documentElement.style.colorScheme=t;
+                var cs=document.querySelector('meta[name="color-scheme"]');
+                if(!cs){cs=document.createElement('meta');cs.setAttribute('name','color-scheme');document.head.appendChild(cs);}
+                cs.setAttribute('content',t);
+              }catch(e){}
               // Theme-color meta — matches Android Chrome / iOS PWA chrome
               // to the current theme background so there's no white flash.
               var meta=document.querySelector('meta[name="theme-color"]');
@@ -258,7 +273,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v544</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v545</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -279,7 +294,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v544-color-scheme-force-dark";
+var SB_BUILD="v545-native-dark-media-query";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
