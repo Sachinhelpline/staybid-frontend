@@ -273,7 +273,7 @@ export function CreateSheet({
     { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",  gradient: "linear-gradient(135deg,#D9C19A,#B89B63 55%,#6E5430)" },
   ];
   return (
-    <div className="fixed inset-0 z-90 flex items-end sm:items-center sm:justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-90 flex items-end sm:items-center sm:justify-center sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(15,12,8,0.62)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
       <div
         className="relative w-full sm:max-w-md ig-drawer-up"
@@ -430,7 +430,7 @@ export function LocationPicker({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-93 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-93 flex items-end sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -615,7 +615,7 @@ export function HotelPicker({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-93 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-93 flex items-end sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -912,7 +912,7 @@ export function ProfilePhotoEditor({
   const initials = (name || myDisplayName || "Y").trim().slice(0, 1).toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-94 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-94 flex items-end sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1201,7 +1201,7 @@ export function HighlightPicker({
   };
 
   return (
-    <div className="fixed inset-0 z-93 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-93 flex items-end sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1386,7 +1386,7 @@ export function AudioPicker({
   };
 
   return (
-    <div className="fixed inset-0 z-92 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-92 flex items-end sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1597,7 +1597,7 @@ export function OverlayEmojiPicker({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-1100 flex items-end"
+      className="fixed inset-0 z-1100 flex items-end sb-cmodal"
       onClick={onClose}
       style={{ isolation: "isolate" }}
     >
@@ -2846,7 +2846,7 @@ export function Composer({
     // and any future fixed surface. Combined with the portal-to-body fix
     // (v113), nothing can ever render on top again.
     <div
-      className="fixed inset-0 z-1000 flex items-end"
+      className="fixed inset-0 z-1000 flex items-end sb-cmodal"
       onClick={onClose}
       style={{ isolation: "isolate" }}
     >
