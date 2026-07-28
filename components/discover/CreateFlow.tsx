@@ -4115,6 +4115,19 @@ export function CreateFlow({
     setSheetOpen(true);
   };
 
+  // v541 — desktop dead-space entry point. On desktop the in-frame "+" FAB is
+  // pinned inside the 424px overflow:hidden phone frame (easy to miss), so a
+  // gutter/dead-space "Create post" button (rendered by DesktopReelPanels)
+  // fires this window event to open the SAME flow through the SAME tier gate.
+  // Keep it in a ref so the listener always calls the latest handler.
+  const handleFabClickRef = useRef(handleFabClick);
+  handleFabClickRef.current = handleFabClick;
+  useEffect(() => {
+    const onOpen = () => { void handleFabClickRef.current(); };
+    window.addEventListener("sb:open-create", onOpen as EventListener);
+    return () => window.removeEventListener("sb:open-create", onOpen as EventListener);
+  }, []);
+
   // Resolve effective composer state — controlled (parent-driven) wins.
   const compOpen = composerOpen ?? composer.open;
   const compKind = composerKind ?? composer.kind;
