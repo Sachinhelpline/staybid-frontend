@@ -278,52 +278,6 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   3a-cta. v541 — DESKTOP "CREATE POST" DEAD-SPACE ENTRY
-   ─────────────────────────────────────────────────────────────────────────
-   The in-frame "+" FAB is pinned inside the 424px overflow:hidden phone frame
-   on desktop (a tiny 36px button, easy to miss). This fixed pill lives in the
-   top-right dead space — clear of the frame AND both side panels at every
-   desktop width — and opens the SAME create flow (via the `sb:open-create`
-   event → CreateFlow's tier gate). Rendered by DesktopReelPanels, so it only
-   appears on the discover/home feed. Hidden on mobile (phones keep the FAB).
-   ───────────────────────────────────────────────────────────────────────── */
-.reel-create-cta { display: none; }
-@media (min-width: 1024px) {
-  .reel-create-cta {
-    position: fixed;
-    top: 18px;
-    right: 22px;
-    z-index: 46; /* above frame chrome (≤42), below the composer modal (z-90) */
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 17px 10px 14px;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, #E7CFA0 0%, #D9BE82 45%, #C9A66B 100%);
-    border: 1.5px solid rgba(255, 246, 226, 0.55);
-    color: #1F1A0F;
-    font-weight: 800;
-    font-size: 0.9rem;
-    letter-spacing: 0.01em;
-    cursor: pointer;
-    box-shadow: 0 8px 22px rgba(201, 166, 107, 0.42);
-    transition: transform 0.15s ease, filter 0.15s ease;
-  }
-  .reel-create-cta:hover { filter: brightness(1.05); transform: translateY(-1px); }
-  .reel-create-cta:active { transform: scale(0.97); }
-  .reel-create-cta-plus { font-size: 1.2rem; line-height: 1; margin-top: -1px; }
-  .reel-create-cta-label { white-space: nowrap; }
-
-  /* Avoid two entry points on the discover/home feed: hide the tiny in-frame
-     FAB wherever this dead-space CTA is mounted. /reels + /me (no CTA) keep it. */
-  body.reel-has-create-cta .reel-page-root .ig-create-fab { display: none !important; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .reel-create-cta { transition: none; }
-  .reel-create-cta:hover, .reel-create-cta:active { transform: none; }
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
    3b. v466 — DESKTOP REEL SIDE PANELS (Phase 2)
    ─────────────────────────────────────────────────────────────────────────
    Flank the centred 424px phone frame with real content so the wide canvas
