@@ -272,7 +272,7 @@ export function CreateSheet({
     { kind: "photo", emoji: "📷", title: "Photo", sub: "Single image post · caption · tag a hotel",        gradient: "linear-gradient(135deg,#F0E0BE,#D9BE82 55%,#A6852F)" },
     { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",  gradient: "linear-gradient(135deg,#D9C19A,#B89B63 55%,#6E5430)" },
   ];
-  return (
+  const sheet = (
     <div className="fixed inset-0 z-90 flex items-end sm:items-center sm:justify-center sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(15,12,8,0.62)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
       <div
@@ -345,6 +345,18 @@ export function CreateSheet({
       </div>
     </div>
   );
+
+  // v546 — portal the chooser to <body>, exactly like the Composer below.
+  // On DESKTOP the whole reel controller renders inside .reel-page-root — a
+  // position:fixed, overflow:hidden 424px "phone frame" whose inner swipe
+  // container uses transforms — which becomes the containing block for any
+  // fixed descendant, trapping + clipping this sheet inside that narrow frame
+  // (the bug: "create window opens inside the reel feed on desktop"). Rendering
+  // it as a direct child of <body> escapes the frame so `fixed inset-0` +
+  // .sb-cmodal centering cover the FULL viewport. SSR returns inline (this only
+  // ever opens on a client click, so no hydration mismatch).
+  if (typeof document === "undefined") return sheet;
+  return createPortal(sheet, document.body);
 }
 
 // ─── Location Picker — modern: GPS detect + Nominatim search + popular ───
