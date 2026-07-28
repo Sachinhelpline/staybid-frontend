@@ -359,6 +359,46 @@
     --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);
   }
 
+  /* v545 — REAL native dark mode via @media (prefers-color-scheme: dark).
+     ─────────────────────────────────────────────────────────────────────
+     WHY THIS EXISTS (the actual root cause of the "green text on customer
+     phones" bug): the app applies dark theme through a JS-set
+     `data-theme="dark"` attribute (see the no-FOUC script in layout.tsx).
+     That attribute is INVISIBLE to a browser's *static* "does this site
+     ship a dark mode?" heuristic. Samsung Internet's Dark Mode and Android
+     WebView's algorithmic darkening decide whether to run their OWN
+     force-dark by scanning the stylesheet for a `prefers-color-scheme: dark`
+     rule. Finding none, they concluded "light-only site" and re-darkened an
+     already-dark page — shifting the champagne/gold + card text to green.
+     `color-scheme` alone (v544) does not satisfy those heuristic darkeners.
+
+     This block mirrors the EXACT dark tokens from [data-theme='dark'] above,
+     so the browser now detects a genuine native dark mode and defers to it —
+     ZERO visual change (identical values). Guarded with :not([data-theme='light'])
+     so a user who explicitly picks Light on a dark-OS device still gets light.
+     ⚠ Keep these values byte-identical to the [data-theme='dark'] block. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg-page: #0f0c08;
+      --bg-card: #1a1610;
+      --bg-elevated: rgba(20, 16, 10, 0.92);
+      --bg-input: #211c13;
+      --bg-pill: #211c13;
+      --bg-pill-active: linear-gradient(135deg, #c9a66b, #9c7e48);
+      --text-base: #f5efe0;
+      --text-soft: #d6c9ae;
+      --text-muted: rgba(216, 203, 178, 0.76);
+      --text-inverse: #0f0c08;
+      --border-soft: rgba(217, 190, 130, 0.1);
+      --border-strong: rgba(217, 190, 130, 0.28);
+      --accent: var(--cozy-champagne);
+      --accent-soft: rgba(201, 166, 107, 0.18);
+      --link: var(--cozy-champagne-light);
+      --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
+      --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);
+    }
+  }
+
   /* v544 — declare color-scheme so the browser/OS never runs its own "force-dark"
      (Android Auto Dark Theme / Chrome / Samsung Internet) over our already-themed
      page. Without this, force-dark re-processes an already-dark surface and shifts

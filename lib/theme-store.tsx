@@ -61,6 +61,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const apply = useCallback((t: Theme) => {
     if (typeof document === "undefined") return;
     document.documentElement.setAttribute("data-theme", t);
+    // v545 — keep the color-scheme signal in sync on every runtime toggle
+    // (inline style on <html> = highest authority, + the meta), so a UA never
+    // re-applies its own force-dark after the user switches themes.
+    try {
+      document.documentElement.style.colorScheme = t;
+      const cs = document.querySelector('meta[name="color-scheme"]');
+      if (cs) cs.setAttribute("content", t);
+    } catch {}
     // Also update the meta theme-color so Android Chrome / iOS PWA chrome
     // matches the new background instantly.
     const meta = document.querySelector('meta[name="theme-color"]');
