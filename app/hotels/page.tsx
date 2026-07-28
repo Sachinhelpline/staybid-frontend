@@ -17,7 +17,7 @@ import DemandCycleStrip from "@/components/discover/DemandCycleStrip";
 // v535 — launch-phase zone/region chips (Garhwal, Himachal, Rajasthan, …). Only
 // shown while launch curation is on; a thin client-side refine over the fetched
 // hotels (no API change) that scopes both the rails and the grid to a zone.
-import { LAUNCH_ZONES, isLaunchCurationOn } from "@/lib/launch/curation";
+import { LAUNCH_ZONES, isLaunchCurationOn, zoneForCity } from "@/lib/launch/curation";
 
 // v394 — new demand-cycle destinations (hubs + satellites), lowercased, for the
 // "Explore India" rail. Hubs first so they lead the rail.
@@ -597,30 +597,72 @@ function HotelList() {
       }
     }
 
-    // 5. Per-city rails — only when "All" is selected so we don't show
-    //    the same rail twice. When a specific city is active the existing
-    //    rails above cover it.
+    // 5. Zone-grouped rails (v547) — only on the "All" view (a specific city is
+    //    handled by the `else` below). REPLACES the old flat "one rail per city"
+    //    (v397), which showed a lonely single-card "Stay in {city}" section for
+    //    every city — unprofessional while each city has just one property.
+    //
+    //    Rule (future-proof, no code change as inventory grows):
+    //      • A city with < CITY_SOLO_MIN properties ROLLS UP under its ZONE
+    //        (LAUNCH_ZONES / zoneForCity) — e.g. Garhwal's one-property cities
+    //        all live inside a single full "Garhwal Getaways" rail.
+    //      • A city AUTO-GRADUATES to its own "Stay in {city}" rail the moment
+    //        it reaches CITY_SOLO_MIN, standing alongside the zone rails.
+    //      • A city outside every zone (only possible with curation OFF) falls
+    //        back to its own rail so nothing ever disappears (fail-open).
     if (!city) {
+      const CITY_SOLO_MIN = 2; // a city stands alone once it has this many stays
+
       const cityBuckets: Record<string, any[]> = {};
       filteredHotels.forEach((h: any) => {
-        const key = String(h.city || "Other");
-        (cityBuckets[key] ||= []).push(h);
+        const key = String(h.city || "Other").trim();
+        if (key && key !== "Other") (cityBuckets[key] ||= []).push(h);
       });
-      // Order by hotel count desc — busier cities float up.
-      // v397 — threshold lowered 2→1 so EVERY city with inventory gets its own
-      // "Stay in {city}" rail (the new demand-cycle hubs + satellites each have
-      // one flagship hotel, so ≥2 hid them entirely from the city rails).
-      const ordered = Object.entries(cityBuckets)
-        .sort(([, a], [, b]) => b.length - a.length)
-        .filter(([k, v]) => k !== "Other" && v.length >= 1);
-      for (const [cityName, items] of ordered) {
+
+      const soloCities: [string, any[]][] = [];
+      const zoneRollup: Record<string, { label: string; cities: string[]; items: any[] }> = {};
+      const orphanCities: [string, any[]][] = [];
+
+      Object.entries(cityBuckets).forEach(([cityName, items]) => {
+        if (items.length >= CITY_SOLO_MIN) { soloCities.push([cityName, items]); return; }
+        const zid = zoneForCity(cityName);
+        const zone = zid ? LAUNCH_ZONES.find((z) => z.id === zid) : null;
+        if (zone) {
+          const b = (zoneRollup[zone.id] ||= { label: zone.label, cities: [], items: [] });
+          if (!b.cities.includes(cityName)) b.cities.push(cityName);
+          b.items.push(...items);
+        } else {
+          orphanCities.push([cityName, items]);
+        }
+      });
+
+      // Zone rails first, in the canonical LAUNCH_ZONES order.
+      LAUNCH_ZONES.forEach((z) => {
+        const b = zoneRollup[z.id];
+        if (!b || b.items.length === 0) return;
         out.push({
-          key: `city-${cityName}`,
-          title: `Stay in ${cityName}`,
-          icon: "📍",
-          items,
+          key: `zone-${z.id}`,
+          title: b.label,
+          icon: "🗺️",
+          eyebrow: b.cities.length > 1 ? b.cities.join(" · ") : undefined,
+          items: b.items,
         });
-      }
+      });
+
+      // Then any city that has grown to its own rail (busiest first).
+      soloCities
+        .sort(([, a], [, b]) => b.length - a.length)
+        .forEach(([cityName, items]) => {
+          out.push({ key: `city-${cityName}`, title: `Stay in ${cityName}`, icon: "📍", items });
+        });
+
+      // Finally orphan cities with no zone mapping (curation-off future) — keep
+      // each individually visible so no inventory is ever hidden.
+      orphanCities
+        .sort(([, a], [, b]) => b.length - a.length)
+        .forEach(([cityName, items]) => {
+          out.push({ key: `city-${cityName}`, title: `Stay in ${cityName}`, icon: "📍", items });
+        });
     } else {
       // Specific city active — single "All stays in {city}" rail at the end.
       out.push({
@@ -1254,8 +1296,14 @@ function CardLink({
       </div>
 
       <div className="hxr-card-info">
-        <div className="hxr-card-row1">
-          <h3 className="hxr-card-name">{h.name}</h3>
+        {/* v548 — name gets its OWN full-width row (up to 2 lines) so the full
+            property name is always readable; the rating pill moved down onto the
+            location row (was crammed beside the name → ellipsis-truncated). */}
+        <h3 className="hxr-card-name" title={h.name}>{h.name}</h3>
+        <div className="hxr-card-metarow">
+          <p className="hxr-card-loc">
+            {area ? `${area}, ` : ""}{h.city}
+          </p>
           {(Number(h.avgRating) || 0) > 0 && (
             <span className="hxr-card-rating">
               <span className="hxr-card-rating-star">★</span>{Number(h.avgRating).toFixed(1)}
@@ -1263,9 +1311,6 @@ function CardLink({
             </span>
           )}
         </div>
-        <p className="hxr-card-loc">
-          {area ? `${area}, ` : ""}{h.city}
-        </p>
         {minPrice && (
           <p className="hxr-card-price">
             {beatsMarket && (

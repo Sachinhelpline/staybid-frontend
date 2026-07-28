@@ -766,7 +766,7 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
       <div className="fd-body">
         {/* Row 1 — Hotel name (truncates) + compact score pill (inline) */}
         <div className="fd-name-row">
-          <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
+          <h3 className="fd-hotel-name" title={deal.hotel?.name || "Hotel"}>{deal.hotel?.name || "Hotel"}</h3>
           {deal.hotelId ? (
             <div className="fd-score-inline" onClick={(e) => e.stopPropagation()}>
               <HotelScoreBadge
@@ -1703,17 +1703,21 @@ function FdStyles() {
          .fd-rt-row, .fd-slots, .fd-up-wrap with denser single-row rows.
          Old classes still exist in CSS but are no longer rendered. */
       .fd-name-row {
-        display: flex; align-items: center; justify-content: space-between;
+        display: flex; align-items: flex-start; justify-content: space-between;
         gap: 8px; margin-bottom: 4px;
       }
       /* v415 — editorial serif hotel name (Cormorant, loaded in globals.css)
-         is the single biggest premium lift on the card. */
+         is the single biggest premium lift on the card.
+         v548 — wrap up to 2 lines (was 1-line ellipsis) so the FULL property
+         name is always readable; the score pill aligns to the top-right. */
       .fd-hotel-name {
         flex: 1 1 auto; min-width: 0;
         font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
         font-size: 1.22rem; font-weight: 600; color: var(--text-base);
-        margin: 0; line-height: 1.14;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        margin: 0; line-height: 1.16;
+        display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden;
+        word-break: break-word;
         letter-spacing: 0.005em;
       }
       @media (min-width: 1024px) { .fd-hotel-name { font-size: 1.36rem; } }

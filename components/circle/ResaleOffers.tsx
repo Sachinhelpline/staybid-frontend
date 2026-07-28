@@ -130,7 +130,7 @@ export default function ResaleOffers({ city = "" }: { city?: string }) {
               )}
             </div>
             <div className="p-2.5">
-              <div className="text-sm font-semibold truncate" style={{ color: "var(--text-base)" }}>{o.hotel.name}</div>
+              <div className="text-sm font-semibold line-clamp-2" title={o.hotel.name} style={{ color: "var(--text-base)" }}>{o.hotel.name}</div>
               <div className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>
                 📍 {o.hotel.city}{o.room ? ` · ${o.room.name}` : ""}
               </div>
