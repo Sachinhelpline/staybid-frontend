@@ -278,6 +278,44 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   3a-create. v543 — DESKTOP CREATE FLOW (chooser + composer + pickers) MODAL
+   ─────────────────────────────────────────────────────────────────────────
+   The whole create flow is authored as mobile bottom-sheets (fixed inset-0 +
+   flex items-end + full-width slide-up). On desktop that reads as a cramped
+   bar glued to the bottom / reel frame. On >=1024px, every create surface
+   tagged `.sb-cmodal` becomes a CENTERED, size-capped, all-corners-rounded
+   modal card. The inner card is the `.relative` child (backdrops are
+   `.absolute`, so they're never matched). Each card's own internal flex-column
+   scroll layout is preserved — we only centre + cap + round it.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .sb-cmodal {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px !important;
+  }
+  .sb-cmodal > .relative {
+    width: min(460px, 94vw) !important;
+    max-width: min(460px, 94vw) !important;
+    height: auto !important;
+    max-height: 88vh !important;
+    border-radius: 22px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6) !important;
+    overflow: auto !important;
+  }
+  /* The composer is the full editor (its body is a centred max-w-sm column) —
+     a comfortable single-column modal, header/footer pinned + middle scrolls. */
+  .sb-cmodal > .composer-sheet {
+    width: min(540px, 94vw) !important;
+    max-width: min(540px, 94vw) !important;
+    height: min(88vh, 900px) !important;
+    max-height: 88vh !important;
+    overflow: hidden !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    3b. v466 — DESKTOP REEL SIDE PANELS (Phase 2)
    ─────────────────────────────────────────────────────────────────────────
    Flank the centred 424px phone frame with real content so the wide canvas
