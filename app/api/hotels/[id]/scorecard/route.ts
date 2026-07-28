@@ -23,8 +23,9 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
-import { computeHotelScore, rankWithinCity } from "@/lib/hotel-score";
+import { computeHotelScore, rankWithinCity, buildMarketFitCard } from "@/lib/hotel-score";
 import { loadHotelScoreInputs } from "@/lib/hotel-score-data";
+import { marketFitFor } from "@/lib/hotel-market-fit";
 
 const REFRESH_AFTER_MS = 30 * 60_000; // 30 minutes
 // v131.6 — when the cached row already has a valid score (non-null, > 0),
@@ -123,13 +124,28 @@ async function recompute(hotelId: string, hotelMeta: any, cached: any) {
   }
 
   const inputs = await loadHotelScoreInputs(hotelId);
-  const card = computeHotelScore(inputs);
+  let card = computeHotelScore(inputs);
 
-  // Rank within city: pull every other hotel in the same city + their
-  // cached overall scores. Hotels with no cached row are skipped from
-  // the rank pool (they get included next cron sweep).
-  let cityRank = { rank: null as number | null, total: 0, percentile: null as number | null };
-  if (hotelMeta?.city) {
+  // v549 — Market-fit fallback: a property with no operational data yet gets a
+  // real market-fit score + City→Zone→National cohort rank instead of the weak
+  // "New · awaiting score". The operational engine wins whenever it has data.
+  let cohort:
+    | { rank: number | null; total: number; percentile: number | null; scope: string; scopeLabel: string }
+    | null = null;
+  if (card.overall == null) {
+    const e = await marketFitFor(hotelId).catch(() => null);
+    if (e) {
+      card = buildMarketFitCard(e.attrs);
+      cohort = e.rank;
+    }
+  }
+
+  // Rank: market-fit cohort rank if we used market-fit; otherwise the existing
+  // within-city relative rank (which auto-activates once a city has 2+ rated).
+  let cityRank: any = cohort
+    ? { rank: cohort.rank, total: cohort.total, percentile: cohort.percentile, scope: cohort.scope, scopeLabel: cohort.scopeLabel }
+    : { rank: null as number | null, total: 0, percentile: null as number | null, scope: "city", scopeLabel: hotelMeta?.city || null };
+  if (!cohort && hotelMeta?.city) {
     const cityHotels = await sb(
       `hotels?city=eq.${encodeURIComponent(hotelMeta.city)}&select=id&limit=500`,
     );
@@ -151,7 +167,11 @@ async function recompute(hotelId: string, hotelMeta: any, cached: any) {
       // Dedupe by hotelId, latest wins
       const dedup = new Map<string, { hotelId: string; overall: number | null }>();
       for (const s of scoresForRank) dedup.set(s.hotelId, s);
-      cityRank = rankWithinCity(Array.from(dedup.values()), card.hotelId);
+      cityRank = {
+        ...rankWithinCity(Array.from(dedup.values()), card.hotelId),
+        scope: "city",
+        scopeLabel: hotelMeta.city,
+      };
     }
   }
 
@@ -207,6 +227,10 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         rank_in_city: out.cityRank.rank,
         total_in_city: out.cityRank.total,
         percentile_city: out.cityRank.percentile,
+        // v549 — scope + label are returned live (not persisted; no schema
+        // change). Cached reads fall back to the city label in the client.
+        rank_scope: out.cityRank.scope,
+        rank_scope_label: out.cityRank.scopeLabel,
         status: out.card.status,
         badge_emoji: out.card.badge.emoji,
         badge_label: out.card.badge.label,
@@ -236,6 +260,8 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
           rank: row.rank_in_city,
           total: row.total_in_city,
           percentile: row.percentile_city === null ? null : Number(row.percentile_city),
+          scope: row.rank_scope,
+          scopeLabel: row.rank_scope_label,
         },
         checkpoints: row.checkpoints || [],
         totals: {

@@ -28,7 +28,14 @@ export type Scorecard = {
   overall: number | null;
   status: "unrated" | "developing" | "fair" | "good" | "excellent";
   badge: { emoji: string; label: string; color: string };
-  rank: { rank: number | null; total: number; percentile: number | null };
+  rank: {
+    rank: number | null;
+    total: number;
+    percentile: number | null;
+    // v549 — cohort the rank was computed in: city | zone | national.
+    scope?: "city" | "zone" | "national" | string;
+    scopeLabel?: string | null;
+  };
   checkpoints: any[];
   totals: { bookings: number; stayFeedback: number; complaints: number };
   computedAt: string;
@@ -316,8 +323,9 @@ export default function HotelScoreBadge({
     : rank.rank && rank.rank <= 10 ? "🏆"
     : null;
 
+  const rankWhere = rank.scopeLabel || card!.city || "its area";
   const ariaLabel = `Hotel performance score ${score} out of 100${
-    rank.rank ? `, ranked ${rankLabel} of ${rank.total} in ${card!.city || "city"}` : ""
+    rank.rank ? `, ranked ${rankLabel} of ${rank.total} in ${rankWhere}` : ""
   }. Tap for full breakdown.`;
 
   // v128.6 — Compact pill (used in reels + inline placements). Single
