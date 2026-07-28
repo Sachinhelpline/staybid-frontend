@@ -75,7 +75,7 @@ export function computeMarketFitMap(): Promise<Record<string, MarketFitEntry>> {
     async () => {
       // 1. Every customer-visible hotel + the intrinsic signals it already has.
       let hotels = await sbGet(
-        "hotels?approval_status=eq.approved&select=id,city,star_rating,avgRating,totalReviews,images,amenities,description&limit=1000",
+        "hotels?approval_status=eq.approved&select=id,city,starRating,avgRating,totalReviews,images,amenities,description&limit=1000",
       );
       // Rank within EXACTLY the set the customer sees: during launch curation
       // the feed shows only the curated hotels, so the cohort must match (else a
@@ -185,7 +185,7 @@ export async function marketFitFor(hotelId: string): Promise<MarketFitEntry | nu
   if (map[hotelId]) return map[hotelId];
   // Not in the approved catalogue map — build a solo entry from its own row.
   const rows = await sbGet(
-    `hotels?id=eq.${encodeURIComponent(hotelId)}&select=id,city,star_rating,avgRating,totalReviews,images,amenities,description&limit=1`,
+    `hotels?id=eq.${encodeURIComponent(hotelId)}&select=id,city,starRating,avgRating,totalReviews,images,amenities,description&limit=1`,
   );
   const h = rows[0];
   if (!h) return null;
