@@ -10997,3 +10997,261 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 [data-theme="dark"] .hxr-empty-btn {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 10px -5px rgba(0, 0, 0, 0.4);
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   v558 — MOBILE HOME "The Stage" (.sbh-* below 1024px)
+   ─────────────────────────────────────────────────────────────────────────
+   The desktop Stage (app/desktop.css, >=1024px) squeezed onto a phone would be
+   the same mistake in reverse, so mobile gets its own native sizing here:
+   a compact hero, thumb-sized cards, edge-to-edge rails that are swiped rather
+   than arrow-clicked, and bottom room for the dock. /discover + /reels remain
+   the dedicated reel surfaces; only the ENTRY point changed.
+   Reverts instantly with NEXT_PUBLIC_MOBILE_HOME="0" (app/page.tsx).
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  .sbh-root {
+    --sbh-gut: 16px;
+    --sbh-gold: #c9a66b;
+    --sbh-gold-lt: #d9be82;
+    width: 100%;
+    padding-bottom: 96px;               /* clears the bottom dock */
+    color: var(--text-base, #1f1a0f);
+    background: var(--bg-page, #faf5eb);
+  }
+
+  /* ── hero ─────────────────────────────────────────────────────────── */
+  .sbh-hero {
+    position: relative;
+    width: 100%;
+    min-height: 78svh;
+    display: flex; align-items: flex-end;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .sbh-hero-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    background-color: #171009;
+    animation: sbhHeroInM 0.7s ease both;
+  }
+  @keyframes sbhHeroInM { from { opacity: 0; } to { opacity: 1; } }
+  .sbh-hero-scrim {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(0deg, rgba(10, 8, 5, 0.94) 4%, rgba(10, 8, 5, 0.45) 44%, rgba(10, 8, 5, 0.30) 100%),
+      radial-gradient(circle 70vw at 22% 16%, rgba(201, 166, 107, 0.20), transparent 66%);
+  }
+  .sbh-hero-inner {
+    position: relative; z-index: 2;
+    padding: 0 var(--sbh-gut) 26px;
+    width: 100%;
+    color: #f7f0e2;
+  }
+  .sbh-eyebrow {
+    display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sbh-gold-lt);
+    margin: 0 0 9px;
+  }
+  .sbh-dot { width: 6px; height: 6px; border-radius: 50%; background: #f0b429; }
+  .sbh-hero-title {
+    font-family: var(--font-display, "Cormorant Garamond", serif);
+    font-size: clamp(2rem, 9vw, 2.9rem);
+    line-height: 1.04; font-weight: 600; letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 9px; color: #fffaf0;
+    text-shadow: 0 2px 22px rgba(0, 0, 0, 0.55);
+  }
+  .sbh-hero-meta {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 9px;
+    font-size: 0.82rem; color: rgba(247, 240, 226, 0.88);
+    margin: 0 0 12px;
+  }
+  .sbh-stars { color: #f0c24a; letter-spacing: 1.5px; }
+  .sbh-hero-score {
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.68rem; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px; color: #1d1608;
+    background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
+  }
+  .sbh-hero-price {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
+    font-size: 0.86rem; color: rgba(247, 240, 226, 0.78);
+    margin: 0 0 16px;
+  }
+  .sbh-hero-price b {
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.6rem; font-weight: 700; color: #fffaf0;
+  }
+  .sbh-hero-price em { font-style: normal; font-size: 0.78rem; }
+  .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.78rem; width: 100%; }
+  .sbh-hero-cta { display: flex; gap: 10px; }
+  .sbh-btn {
+    flex: 1;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 14px 16px; border-radius: 14px;
+    font-size: 0.92rem; font-weight: 700;
+    min-height: 48px;                  /* thumb target */
+  }
+  .sbh-btn-primary {
+    color: #1a1208;
+    background: linear-gradient(135deg, #e6bf6f, #f0b429 52%, #c9911a);
+    box-shadow: 0 10px 26px -10px rgba(240, 180, 41, 0.7);
+  }
+  .sbh-btn-ghost {
+    color: #f7f0e2;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  }
+  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .sbh-amen {
+    font-size: 0.68rem; font-weight: 600;
+    color: rgba(247, 240, 226, 0.86);
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .sbh-hero-dots {
+    position: absolute; z-index: 3; left: var(--sbh-gut); top: 16px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sbh-hero-dot {
+    width: 7px; height: 7px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    transition: width 0.26s ease, background 0.2s ease;
+  }
+  .sbh-hero-dot.is-on {
+    width: 22px; border-color: transparent;
+    background: linear-gradient(90deg, var(--sbh-gold-lt), var(--sbh-gold));
+  }
+  .sbh-hero-count { display: none; }
+
+  /* ── ticker ───────────────────────────────────────────────────────── */
+  .sbh-ticker {
+    overflow: hidden;
+    border-block: 1px solid var(--border-soft, #e8dcc8);
+    background: var(--bg-card, #fffcf6);
+  }
+  .sbh-ticker-track { display: flex; width: max-content; animation: sbhTickerM 38s linear infinite; }
+  .sbh-ticker-group { display: flex; }
+  .sbh-ticker-item {
+    display: inline-flex; align-items: center;
+    padding: 9px 16px;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.7rem; color: var(--text-soft, #4a3820); opacity: 0.85;
+    white-space: nowrap;
+  }
+  .sbh-ticker-item::after { content: "•"; margin-left: 16px; opacity: 0.4; color: var(--sbh-gold); }
+  @keyframes sbhTickerM { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* ── rails (swipe, no arrows) ─────────────────────────────────────── */
+  .sbh-rails { margin-top: 22px; display: flex; flex-direction: column; gap: 26px; }
+  .sbh-rail-head {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+    padding: 0 var(--sbh-gut) 10px;
+  }
+  .sbh-rail-title {
+    font-family: var(--font-display, "Cormorant Garamond", serif);
+    font-size: 1.35rem; font-weight: 600; margin: 0;
+    color: var(--text-base, #1f1a0f);
+  }
+  .sbh-rail-sub { margin: 2px 0 0; font-size: 0.74rem; color: var(--text-soft, #4a3820); opacity: 0.75; }
+  .sbh-rail-all {
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #8a6a24; white-space: nowrap;
+  }
+  .sbh-rail-nav { display: none; }          /* swipe on touch, not arrows */
+  .sbh-rail {
+    display: flex; gap: 12px;
+    padding: 4px var(--sbh-gut) 14px;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .sbh-rail::-webkit-scrollbar { display: none; }
+  .sbh-rail > * { scroll-snap-align: start; }
+
+  /* ── cards ────────────────────────────────────────────────────────── */
+  .sbh-card {
+    position: relative; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    border-radius: 16px; overflow: hidden;
+    background: var(--bg-card, #fffcf6);
+    border: 1px solid var(--border-soft, #e8dcc8);
+    box-shadow: 0 2px 5px -3px rgba(31, 26, 15, 0.28), 0 10px 22px -16px rgba(31, 26, 15, 0.5);
+    transition: transform 0.16s ease;
+  }
+  .sbh-card:active { transform: scale(0.985); }
+  .sbh-card-wide { width: 74vw; max-width: 300px; }
+  .sbh-card-tall { width: 42vw; max-width: 190px; }
+  .sbh-card-media { position: relative; overflow: hidden; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
+  .sbh-card-wide .sbh-card-media { aspect-ratio: 16 / 10; }
+  .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
+  .sbh-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
+  .sbh-card-scrim {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0) 36%, rgba(14, 11, 8, 0.58) 100%);
+  }
+  .sbh-card-sheen, .sbh-reel-vid, .sbh-play { display: none; }   /* pointer-only affordances */
+  .sbh-card-body { padding: 10px 12px 13px; display: flex; flex-direction: column; gap: 3px; }
+  .sbh-card-name {
+    font-family: var(--font-display, "Cormorant Garamond", serif);
+    font-size: 1.02rem; font-weight: 600; line-height: 1.16; margin: 0;
+    color: var(--text-base, #1f1a0f);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .sbh-card-meta { margin: 0; font-size: 0.72rem; color: var(--text-soft, #4a3820); opacity: 0.76; }
+  .sbh-card-rank { color: #8a6a24; font-weight: 600; }
+  .sbh-card-price {
+    margin: 4px 0 0; display: flex; align-items: baseline; gap: 4px;
+    font-size: 0.72rem; color: var(--text-soft, #4a3820);
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .sbh-card-price b { font-size: 0.98rem; font-weight: 700; color: var(--text-base, #1f1a0f); }
+  .sbh-card-price s { opacity: 0.5; }
+  .sbh-card-price em { font-style: normal; opacity: 0.66; }
+  .sbh-chip {
+    position: absolute; z-index: 4;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 4px 8px; border-radius: 999px;
+  }
+  .sbh-chip em { font-style: normal; opacity: 0.7; }
+  .sbh-chip-score { top: 9px; right: 9px; color: #1d1608; background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold)); }
+  .sbh-chip-off { top: 9px; left: 9px; color: #fff; background: linear-gradient(135deg, #d9534f, #b3312d); }
+  .sbh-chip-live { top: 9px; right: 9px; color: #fff; background: rgba(20, 15, 9, 0.66); }
+  .sbh-chip-price { bottom: 9px; right: 9px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
+  .sbh-reel-foot {
+    position: absolute; z-index: 4; left: 9px; right: 9px; bottom: 8px;
+    display: flex; flex-direction: column; color: #fff;
+  }
+  .sbh-reel-foot strong { font-size: 0.76rem; font-weight: 700; text-shadow: 0 1px 7px rgba(0, 0, 0, 0.75); }
+  .sbh-reel-foot span {
+    font-size: 0.64rem; opacity: 0.88; text-shadow: 0 1px 7px rgba(0, 0, 0, 0.75);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sbh-loading { padding: 40px var(--sbh-gut); color: var(--text-soft, #4a3820); opacity: 0.7; }
+
+  [data-theme="dark"] .sbh-card {
+    background: var(--bg-card, #1a1610);
+    border-color: rgba(201, 166, 107, 0.16);
+  }
+  [data-theme="dark"] .sbh-chip-price { background: rgba(28, 22, 14, 0.92); color: #f4ead6; }
+  [data-theme="dark"] .sbh-ticker { background: var(--bg-card, #1a1610); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sbh-hero-bg { animation: none !important; }
+    .sbh-ticker-track { animation: none !important; }
+    .sbh-card, .sbh-hero-dot { transition: none !important; }
+  }
+}
