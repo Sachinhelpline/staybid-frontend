@@ -572,7 +572,14 @@
    /discover keeps the v470 fixed panels (no window). ─────────────────────── */
 @media (min-width: 1440px) {
   body.reel-with-rail:has(.reel-page-root) {
-    --reel-side-w: 392px;                   /* v491 — wider panels fill the dead margins + carry the moved-over reel info */
+    /* v554 — FLUID side panels. Previously a hard 392px, so above 1440px the
+       whole cluster stayed ~1376px wide and every extra pixel of a wide laptop
+       (1728 → ~176px per edge) became dead space. Now each panel grows with the
+       viewport so the stage actually fills the screen, with a sane min (never
+       narrower than the proven 392) and a max (never absurd on ultrawide).
+       Formula: half of whatever is left after the reel frame + gaps + a 48px
+       outer breathing margin. */
+    --reel-side-w: clamp(392px, calc((100vw - var(--reel-frame-w) - (var(--reel-col-gap) * 2) - 76px) / 2), 640px);
     --reel-col-gap: 24px;                   /* frame ↔ sidebar gap */
     --reel-rail-h: 0px;                      /* set to a real height by reel-has-rail */
     --reel-stage-h: min(calc(100vh - 100px), 968px);   /* v491 — reclaim the trimmed top band as reel height */
@@ -669,12 +676,19 @@
     max-height: calc(var(--reel-frame-h) - 4px) !important;
     width: var(--reel-side-w) !important;
     z-index: 15;
-    background: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
+    /* v554 — LIGHT frosted-glass CARD (was transparent → floated as flat text on
+       the cream canvas, reading "undesigned"). A warm cream glass with a layered
+       ambient-occlusion shadow + gold-tinted border + inner top highlight so each
+       panel reads as a crafted premium surface catching light. */
+    background: linear-gradient(180deg, rgba(255, 251, 244, 0.82), rgba(250, 243, 231, 0.74));
+    -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    backdrop-filter: blur(26px) saturate(1.4);
+    border: 1px solid rgba(201, 166, 107, 0.34);
+    border-radius: 26px;
+    box-shadow:
+      0 34px 70px -34px rgba(74, 56, 32, 0.46),
+      0 8px 22px -12px rgba(74, 56, 32, 0.20),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
     animation: none;
     overflow: hidden;
   }
@@ -682,7 +696,7 @@
     display: flex;
     right: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
     left: auto !important;
-    padding: 2px 6px 0 2px;
+    padding: 6px 10px 6px 8px;   /* v554 — inset from the glass card edge */
     overflow: hidden auto;
     scrollbar-width: none;
   }
@@ -690,7 +704,16 @@
   body.reel-with-rail .reel-side-right {
     left: calc(50% + (var(--reel-frame-w) / 2) + var(--reel-col-gap)) !important;
     right: auto !important;
-    padding: 0;
+    padding: 8px 8px 10px;       /* v554 — inset from the glass card edge */
+  }
+
+  /* v554 — dark-mode variant of the home glass panels (warm smoked glass). */
+  [data-theme="dark"] body.reel-with-rail .reel-side {
+    background: linear-gradient(180deg, rgba(32, 25, 17, 0.68), rgba(22, 17, 12, 0.62));
+    border-color: rgba(201, 166, 107, 0.26);
+    box-shadow:
+      0 34px 76px -32px rgba(0, 0, 0, 0.78),
+      inset 0 1px 0 rgba(255, 236, 200, 0.10);
   }
 
   /* Up-next: wider premium rows (bigger thumb, price pinned right). */
@@ -716,6 +739,19 @@
   body.reel-with-rail .reel-queue-price b { font-size: 0.98rem; color: #fbf5ea; font-weight: 700; }
   body.reel-with-rail .reel-queue-price em { font-style: normal; font-size: 0.68rem; color: rgba(242, 236, 221, 0.5); }
   body.reel-with-rail .reel-side-left .reel-side-kicker { padding: 6px 8px 8px; }
+
+  /* v554 — a warm gold "stage light" bloom around the centred reel frame, so it
+     reads as lit on a stage instead of pasted onto flat cream. Pure box-shadow
+     on the frame itself (no new element, no pointer interception). */
+  body.reel-with-rail .reel-page-root {
+    box-shadow:
+      0 50px 120px -26px rgba(74, 56, 32, 0.52),
+      0 16px 44px -14px rgba(74, 56, 32, 0.32),
+      0 0 0 1px rgba(201, 166, 107, 0.42),
+      0 0 0 7px rgba(201, 166, 107, 0.10),
+      0 0 90px 12px rgba(201, 166, 107, 0.20),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  }
 
   /* Now-playing: a big cover image (fills the top), details below, CTAs pinned
      to the bottom → the column is full, no dead space. */
