@@ -26,11 +26,11 @@ export interface LaunchZone {
 // (they are different regions/seasons). Kufri/Narkanda/Manikaran deferred — no
 // inventory yet.
 export const LAUNCH_ZONES: LaunchZone[] = [
-  { id: "garhwal",   label: "Garhwal Getaways",   cities: ["dehradun", "mussoorie", "dhanaulti", "kanatal", "rishikesh", "haridwar"] },
+  { id: "garhwal",   label: "Garhwal Getaways",   cities: ["dehradun", "mussoorie", "dhanaulti", "kanatal", "rishikesh"] },
   { id: "himachal",  label: "Himachal Highlands", cities: ["shimla", "manali", "kasol", "kasauli", "chail", "dharamshala", "bir billing"] },
   { id: "rajasthan", label: "Royal Rajasthan",    cities: ["jaipur", "pushkar", "jaisalmer", "udaipur", "neemrana"] },
   { id: "kumaon",    label: "Kumaon Wilds",       cities: ["nainital", "corbett", "lansdowne", "bhimtal", "mukteshwar"] },
-  { id: "spiritual", label: "Spiritual Heartland", cities: ["mathura", "vrindavan", "ayodhya", "varanasi"] },
+  { id: "spiritual", label: "Spiritual Heartland", cities: ["haridwar", "mathura", "vrindavan", "ayodhya", "varanasi"] },
   { id: "south",     label: "South & Coastal",    cities: ["goa", "coorg", "kerala"] },
   { id: "leh",       label: "Leh–Ladakh",         cities: ["leh"] },
 ];
