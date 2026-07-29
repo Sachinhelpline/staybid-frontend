@@ -11219,7 +11219,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
      was missing: v560 stripped every surface cue, so the cards read flat.
      Two geometry fixes go with it, because "stretched" was really SIZE:
        · 56vw → 46vw, so ~2.1 cards + a peek are in view instead of ~1.7
-       · a 1/1 crop → 4/3, so the card is no longer a tower on a phone
+     The crop stays 1/1 — width was the complaint, not height.
      Depth lives on .sbh-card-media (the tile), never on .sbh-card — a box
      shadow around the text block is what made it look heavy before. */
   .sbh-card {
@@ -11251,8 +11251,10 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
       0 12px 22px -14px rgba(31, 26, 15, 0.65);
     transition: box-shadow 0.18s ease;
   }
-  /* 4:3 — hotel photography is landscape, and it keeps the card compact */
-  .sbh-card-wide .sbh-card-media { aspect-ratio: 4 / 3; }
+  /* 1:1. The WIDTH is what was oversized (56vw -> 46vw above); the height was
+     never the problem. Cutting the crop to 4/3 as well left a squat, wide-and-
+     short tile under a two-line title, which read worse than the original. */
+  .sbh-card-wide .sbh-card-media { aspect-ratio: 1 / 1; }
   .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
   .sbh-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
