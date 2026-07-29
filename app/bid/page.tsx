@@ -43,6 +43,7 @@ import BidGameZone from "@/components/BidGameZone";
 import BidConsole from "@/components/bid/BidConsole";
 import BidTerminal from "@/components/bid/BidTerminal";
 import BidCockpit from "@/components/bid/BidCockpit";
+import BidOffer from "@/components/bid/BidOffer";
 
 /* v573/v574/v575 — /bid Step 1 host. Default = v574 BidTerminal
    (draggable price dial, one-screen zero-scroll trading terminal).
@@ -622,7 +623,7 @@ export default function BidPage() {
       if (!q) return;
       const v = q.toLowerCase();
       const next = v === "climber" ? "0"
-        : ["cockpit", "terminal", "console"].includes(v) ? v
+        : ["offer", "cockpit", "terminal", "console"].includes(v) ? v
         : null;
       if (next && next !== bidHost) setBidHost(next);
     } catch { /* no-op */ }
@@ -2416,7 +2417,32 @@ export default function BidPage() {
                hatch — but the default for every viewport is the
                climber. Sachin's spec: "ek hi flow main chalne chahiye
                na ki different different pages par". */
-            (bidHost === "cockpit" ? (
+            (bidHost === "offer" ? (
+              <BidOffer
+                cards={step1Cards}
+                onAllComplete={() => {}}
+                finalCtaLabel={loading ? "Sending your offer…" : "Send my offer →"}
+                signals={{
+                  city: form.city,
+                  nights,
+                  rooms: form.rooms,
+                  marketAdr: presetExpected,
+                  bidPerNight: budget,
+                  totalBudget,
+                  strength: bidStr,
+                  oddsFor: (bpn: number) =>
+                    city && bpn > 0
+                      ? calcBidStrength(bpn, city.avg, form.city, form.checkIn, form.roomTypes || [])
+                      : null,
+                  setBidPerNight: (bpn: number) =>
+                    upd("maxBudget", String(Math.round(bpn * Math.max(1, nights) * form.rooms))),
+                  launched: success !== null || loading,
+                  launching: loading,
+                  canLaunch: !!form.city && nights > 0 && budget > 0,
+                  onLaunch: () => step1Cards[4]?.onDoneClick?.(),
+                }}
+              />
+            ) : bidHost === "cockpit" ? (
               <BidCockpit
                 cards={step1Cards}
                 onAllComplete={() => {}}
