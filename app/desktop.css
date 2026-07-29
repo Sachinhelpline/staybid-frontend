@@ -2300,3 +2300,347 @@ body main textarea.input-luxury {
 }
 
 /* End v122 desktop layer (v122.6 — all-viewport density pass) */
+
+/* ═════════════════════════════════════════════════════════════════════════
+   v555 — DESKTOP HOME "THE STAGE"  (.sbh-* namespace)
+   ─────────────────────────────────────────────────────────────────────────
+   A real desktop home in the streaming-service idiom (Netflix / Prime /
+   Hotstar): a cinematic hero for the featured property, then rows of cards
+   for Flash Deals, Reels and every launch zone. Replaces the "phone frame
+   centred on a wide canvas" layout, which could never read as desktop-native.
+
+   Rendered by components/home/DesktopHome.tsx, which is itself gated to
+   >=1024px — so the whole mobile reel experience is untouched. `body.sbh-on`
+   is the marker that retires the old reel-player chrome on this surface.
+   Everything here is a NEW namespace: no `.sb-*` / `.hx-*` utility is added,
+   renamed or restyled.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* Retire the reel-player chrome + its forced canvas on the desktop home. */
+  body.sbh-on .reel-page-root,
+  body.sbh-on .reel-side,
+  body.sbh-on .reel-stage-rail,
+  body.sbh-on .reel-window { display: none !important; }
+  body.sbh-on,
+  body.sbh-on:has(.reel-page-root) { background: var(--bg-page, #faf5eb) !important; }
+  body.sbh-on::before,
+  body.sbh-on::after { content: none !important; }
+  html.is-reel-page body.sbh-on { background: var(--bg-page, #faf5eb) !important; }
+
+  .sbh-root {
+    --sbh-gut: clamp(26px, 4.2vw, 76px);
+    --sbh-gold: #c9a66b;
+    --sbh-gold-lt: #e2c489;
+    position: relative;
+    width: 100%;
+    padding-bottom: 84px;
+    color: var(--text-base, #1f1a0f);
+  }
+
+  /* ── HERO ─────────────────────────────────────────────────────────── */
+  .sbh-hero {
+    position: relative;
+    width: 100%;
+    height: clamp(520px, 74vh, 780px);
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    isolation: isolate;
+  }
+  .sbh-hero-bg {
+    position: absolute; inset: -4%;
+    background-size: cover; background-position: center;
+    background-color: #171009;
+    transform: scale(1.04);
+    animation: sbhHeroDrift 26s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes sbhHeroDrift {
+    from { transform: scale(1.04) translate3d(0, 0, 0); }
+    to   { transform: scale(1.13) translate3d(-1.2%, -1.4%, 0); }
+  }
+  .sbh-hero-scrim {
+    position: absolute; inset: 0;
+    /* Readable text on the left, but the PHOTO stays the hero — the scrim is a
+       cinematic falloff, not a blackout. */
+    background:
+      linear-gradient(90deg, rgba(12, 9, 6, 0.82) 0%, rgba(12, 9, 6, 0.52) 34%, rgba(12, 9, 6, 0.06) 62%, rgba(12, 9, 6, 0.30) 100%),
+      linear-gradient(0deg, rgba(10, 8, 5, 0.80) 0%, rgba(10, 8, 5, 0.10) 44%, rgba(10, 8, 5, 0.30) 100%),
+      radial-gradient(circle 40vw at 14% 22%, rgba(201, 166, 107, 0.16), transparent 64%);
+  }
+  .sbh-hero-inner {
+    position: relative; z-index: 2;
+    padding: 0 var(--sbh-gut) clamp(44px, 6vh, 76px);
+    max-width: 780px;
+    color: #f7f0e2;
+  }
+  .sbh-eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--sbh-gold-lt);
+    margin: 0 0 14px;
+  }
+  .sbh-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #f0b429; box-shadow: 0 0 0 0 rgba(240, 180, 41, 0.6);
+    animation: sbhPulse 2.4s ease-out infinite;
+  }
+  @keyframes sbhPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(240, 180, 41, 0.55); }
+    70%  { box-shadow: 0 0 0 11px rgba(240, 180, 41, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(240, 180, 41, 0); }
+  }
+  .sbh-hero-title {
+    font-family: var(--font-display, "Cormorant Garamond", serif);
+    font-size: clamp(2.6rem, 4.4vw, 4.4rem);
+    line-height: 1.02;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+    margin: 0 0 14px;
+    color: #fffaf0;
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+  }
+  .sbh-hero-meta {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+    font-size: 0.95rem; color: rgba(247, 240, 226, 0.86);
+    margin: 0 0 18px;
+  }
+  .sbh-stars { color: #f0c24a; letter-spacing: 2px; }
+  .sbh-hero-score {
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 4px 11px; border-radius: 999px;
+    color: #1d1608;
+    background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
+  }
+  .sbh-hero-price {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px;
+    font-size: 0.98rem; color: rgba(247, 240, 226, 0.76);
+    margin: 0 0 26px;
+  }
+  .sbh-hero-price b {
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 2rem; font-weight: 700; color: #fffaf0; letter-spacing: -0.01em;
+  }
+  .sbh-hero-price em { font-style: normal; font-size: 0.86rem; }
+  .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.88rem; }
+  .sbh-hero-cta { display: flex; gap: 13px; flex-wrap: wrap; }
+  .sbh-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 30px; border-radius: 14px;
+    font-size: 0.95rem; font-weight: 700; letter-spacing: 0.01em;
+    transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.16s ease, background 0.16s ease;
+  }
+  .sbh-btn-primary {
+    color: #1a1208;
+    background: linear-gradient(135deg, #e6bf6f, #f0b429 52%, #c9911a);
+    box-shadow: 0 14px 34px -12px rgba(240, 180, 41, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+  .sbh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 44px -12px rgba(240, 180, 41, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
+  .sbh-btn-ghost {
+    color: #f7f0e2;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  }
+  .sbh-btn-ghost:hover { background: rgba(255, 255, 255, 0.18); transform: translateY(-2px); }
+  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .sbh-amen {
+    font-size: 0.74rem; font-weight: 600;
+    color: rgba(247, 240, 226, 0.84);
+    padding: 5px 12px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+
+  /* ── RAILS ────────────────────────────────────────────────────────── */
+  .sbh-rails { margin-top: clamp(30px, 4vh, 52px); display: flex; flex-direction: column; gap: clamp(30px, 4vh, 50px); }
+  .sbh-rail-wrap { position: relative; }
+  .sbh-rail-head {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+    padding: 0 var(--sbh-gut) 14px;
+  }
+  .sbh-rail-title {
+    font-family: var(--font-display, "Cormorant Garamond", serif);
+    font-size: clamp(1.5rem, 2vw, 2.05rem);
+    font-weight: 600; letter-spacing: -0.005em;
+    margin: 0; color: var(--text-base, #1f1a0f);
+  }
+  .sbh-rail-sub {
+    margin: 3px 0 0;
+    font-size: 0.82rem; color: var(--text-soft, #4a3820); opacity: 0.78;
+  }
+  .sbh-rail-all {
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-soft, #4a3820); opacity: 0.8;
+    white-space: nowrap; transition: opacity 0.15s ease, color 0.15s ease;
+  }
+  .sbh-rail-all:hover { opacity: 1; color: #8a6a24; }
+  .sbh-rail-shell { position: relative; }
+  .sbh-rail {
+    display: flex; gap: 18px;
+    padding: 6px var(--sbh-gut) 22px;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .sbh-rail::-webkit-scrollbar { display: none; }
+  .sbh-rail > * { scroll-snap-align: start; }
+  .sbh-rail-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    z-index: 6; width: 44px; height: 44px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; line-height: 1; font-weight: 500;
+    color: #3d2f16;
+    background: rgba(255, 252, 246, 0.94);
+    border: 1px solid rgba(122, 88, 30, 0.2);
+    box-shadow: 0 10px 26px -10px rgba(31, 26, 15, 0.5);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+  }
+  .sbh-rail-nav-l { left: calc(var(--sbh-gut) - 22px); }
+  .sbh-rail-nav-r { right: calc(var(--sbh-gut) - 22px); }
+  .sbh-rail-nav:hover:not(:disabled) { background: #fff; transform: translateY(-50%) scale(1.08); }
+  .sbh-rail-nav:disabled { opacity: 0; pointer-events: none; }
+
+  /* ── CARDS (premium 3D: layered depth + lift + specular sheen) ────── */
+  .sbh-card {
+    position: relative; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    border-radius: 20px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #fffcf6) 96%, #fff), var(--bg-card, #fffcf6) 48%);
+    border: 1px solid var(--border-soft, #e8dcc8);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 2px 6px -4px rgba(31, 26, 15, 0.3),
+      0 16px 32px -22px rgba(31, 26, 15, 0.55);
+    overflow: hidden;
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease, border-color 0.2s ease;
+  }
+  .sbh-card:hover {
+    transform: translateY(-8px) scale(1.018);
+    border-color: color-mix(in srgb, var(--sbh-gold) 42%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      0 3px 9px -5px rgba(31, 26, 15, 0.34),
+      0 30px 58px -26px rgba(31, 26, 15, 0.6),
+      0 0 0 1px color-mix(in srgb, var(--sbh-gold) 32%, transparent),
+      0 22px 60px -30px rgba(201, 166, 107, 0.75);
+  }
+  .sbh-card-wide { width: clamp(258px, 20.5vw, 336px); }
+  .sbh-card-tall { width: clamp(186px, 13.6vw, 236px); }
+  .sbh-card-media { position: relative; overflow: hidden; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
+  .sbh-card-wide .sbh-card-media { aspect-ratio: 16 / 10; }
+  .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
+  .sbh-card-media img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .sbh-card:hover .sbh-card-media img { transform: scale(1.06); }
+  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
+  .sbh-card-scrim {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.14) 0%, rgba(0, 0, 0, 0) 34%, rgba(14, 11, 8, 0.55) 100%);
+  }
+  /* specular sheen sweep — the "light-catching glass" moment on hover */
+  .sbh-card-sheen {
+    position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.40) 50%, transparent 62%);
+    transform: translateX(-130%);
+  }
+  .sbh-card:hover .sbh-card-sheen { transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1); transform: translateX(130%); }
+  .sbh-card-body { padding: 13px 15px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .sbh-card-name {
+    font-family: var(--font-display, "Cormorant Garamond", serif);
+    font-size: 1.16rem; font-weight: 600; line-height: 1.16;
+    margin: 0; color: var(--text-base, #1f1a0f);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .sbh-card-meta { margin: 0; font-size: 0.79rem; color: var(--text-soft, #4a3820); opacity: 0.76; }
+  .sbh-card-rank { color: #8a6a24; font-weight: 600; opacity: 0.95; }
+  .sbh-card-price {
+    margin: 5px 0 0; display: flex; align-items: baseline; gap: 5px;
+    font-size: 0.78rem; color: var(--text-soft, #4a3820);
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .sbh-card-price b { font-size: 1.06rem; font-weight: 700; color: var(--text-base, #1f1a0f); }
+  .sbh-card-price s { opacity: 0.5; }
+  .sbh-card-price em { font-style: normal; opacity: 0.66; }
+
+  /* chips over media */
+  .sbh-chip {
+    position: absolute; z-index: 4;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
+    padding: 5px 10px; border-radius: 999px;
+    -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+  }
+  .sbh-chip em { font-style: normal; opacity: 0.7; font-size: 0.86em; }
+  .sbh-chip-score {
+    top: 11px; right: 11px; color: #1d1608;
+    background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
+    box-shadow: 0 6px 16px -8px rgba(201, 166, 107, 0.9);
+  }
+  .sbh-chip-off {
+    top: 11px; left: 11px; color: #fff;
+    background: linear-gradient(135deg, #d9534f, #b3312d);
+    box-shadow: 0 6px 16px -8px rgba(179, 49, 45, 0.8);
+  }
+  .sbh-chip-live { top: 11px; right: 11px; color: #fff; background: rgba(20, 15, 9, 0.62); border: 1px solid rgba(255, 255, 255, 0.2); }
+  .sbh-chip-price { bottom: 11px; right: 11px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
+  .sbh-play {
+    position: absolute; z-index: 4; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 52px; height: 52px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; color: #1d1608; padding-left: 3px;
+    background: rgba(255, 250, 240, 0.9);
+    box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.6);
+    opacity: 0; transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .sbh-card:hover .sbh-play { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  .sbh-reel-foot {
+    position: absolute; z-index: 4; left: 12px; right: 12px; bottom: 11px;
+    display: flex; flex-direction: column; gap: 1px; color: #fff;
+  }
+  .sbh-reel-foot strong { font-size: 0.85rem; font-weight: 700; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+  .sbh-reel-foot span {
+    font-size: 0.71rem; opacity: 0.86; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sbh-loading { padding: 60px var(--sbh-gut); color: var(--text-soft, #4a3820); opacity: 0.7; }
+
+  /* ── dark mode ────────────────────────────────────────────────────── */
+  [data-theme="dark"] .sbh-rail-nav {
+    color: #f2e8d4; background: rgba(30, 24, 16, 0.9); border-color: rgba(201, 166, 107, 0.28);
+  }
+  [data-theme="dark"] .sbh-rail-nav:hover:not(:disabled) { background: rgba(42, 34, 22, 0.96); }
+  [data-theme="dark"] .sbh-card {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #1a1610) 92%, #fff), var(--bg-card, #1a1610) 52%);
+    border-color: rgba(201, 166, 107, 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(201, 166, 107, 0.14),
+      0 2px 6px -4px rgba(0, 0, 0, 0.6),
+      0 16px 32px -22px rgba(0, 0, 0, 0.8);
+  }
+  [data-theme="dark"] .sbh-chip-price { background: rgba(28, 22, 14, 0.92); color: #f4ead6; }
+
+  /* ── reduced motion ───────────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .sbh-hero-bg { animation: none !important; transform: scale(1.04) !important; }
+    .sbh-dot { animation: none !important; }
+    .sbh-card, .sbh-card-media img, .sbh-card-sheen, .sbh-play, .sbh-btn { transition: none !important; }
+    .sbh-card:hover { transform: none !important; }
+    .sbh-card:hover .sbh-card-media img { transform: none !important; }
+    .sbh-card:hover .sbh-card-sheen { transform: translateX(-130%) !important; }
+  }
+}
