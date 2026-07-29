@@ -257,12 +257,26 @@ function ReelCard({ r }: { r: Reel }) {
   // Motion happens exactly where the pointer already is — never on its own.
   const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
   const [hot, setHot] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const vid = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const v = vid.current;
     if (!v) return;
-    if (hot) { v.currentTime = 0; v.play().catch(() => {}); }
-    else v.pause();
+    if (!hot) {
+      v.pause();
+      setPlaying(false);
+      return;
+    }
+    // Small debounce so a casual mouse sweep across the rail doesn't kick off
+    // a dozen video fetches; a deliberate hover starts loading + playing.
+    let cancelled = false;
+    const t = setTimeout(() => {
+      if (cancelled || !vid.current) return;
+      const el = vid.current;
+      el.muted = true;                       // belt-and-braces for autoplay policy
+      el.play().then(() => { if (cancelled) el.pause(); }).catch(() => {});
+    }, 180);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [hot]);
   return (
     <Link
@@ -276,12 +290,15 @@ function ReelCard({ r }: { r: Reel }) {
         {isVideo ? (
           <video
             ref={vid}
-            className={`sbh-reel-vid${hot ? " is-on" : ""}`}
+            /* only fade in once frames are actually flowing — never a black box */
+            className={`sbh-reel-vid${hot && playing ? " is-on" : ""}`}
             src={r.media_url || undefined}
             muted
             loop
             playsInline
-            preload="none"
+            preload="metadata"
+            onPlaying={() => setPlaying(true)}
+            onEnded={() => setPlaying(false)}
             tabIndex={-1}
             aria-hidden
           />
