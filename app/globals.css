@@ -9094,6 +9094,31 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   padding: 12px 6px 6px 6px;
 }
 
+/* v577 — city search + show-all toggle (cream picker sheet) */
+.bgz-city-search {
+  display: flex; align-items: center; gap: 8px;
+  margin: 2px 4px 2px; padding: 9px 12px; border-radius: 12px;
+  background: rgba(74,56,32,0.06); border: 1px solid rgba(74,56,32,0.16);
+}
+.bgz-city-search-ic { font-size: 0.9rem; opacity: 0.7; flex: 0 0 auto; }
+.bgz-city-search-in {
+  flex: 1 1 auto; min-width: 0; border: 0; background: transparent; outline: none;
+  font-size: 0.94rem; color: #2B2415;
+}
+.bgz-city-search-in::placeholder { color: rgba(74,56,32,0.5); }
+.bgz-city-search-x {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(74,56,32,0.1); color: #4A3820; font-size: 0.82rem; line-height: 1;
+}
+.bgz-city-none { text-align: center; color: rgba(74,56,32,0.72); font-size: 0.86rem; padding: 14px 6px; }
+.bgz-city-toggle {
+  display: block; margin: 6px auto 2px; padding: 9px 18px; border-radius: 999px; cursor: pointer;
+  font-size: 0.85rem; font-weight: 700; color: #4A3820;
+  background: rgba(74,56,32,0.08); border: 1px solid rgba(74,56,32,0.2);
+  transition: transform 0.14s ease, background 0.2s ease;
+}
+.bgz-city-toggle:active { transform: scale(0.97); }
+
 .bgz-city-avatar {
   position: relative;
   display: flex;
