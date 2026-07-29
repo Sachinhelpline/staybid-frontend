@@ -11121,16 +11121,28 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   }
   .sbh-hero-dots {
     position: absolute; z-index: 3; left: var(--sbh-gut); top: 16px;
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center;
+    /* 16px gap so neighbouring hit areas (below) touch but never overlap —
+       a tap can't land on the wrong slide. */
+    gap: 16px;
   }
   .sbh-hero-dot {
-    width: 7px; height: 7px; border-radius: 999px;
+    position: relative;
+    width: 8px; height: 8px; border-radius: 999px;
     background: rgba(255, 255, 255, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.4);
     transition: width 0.26s ease, background 0.2s ease;
   }
+  /* The dot stays 8px visually — the TAP target is a transparent 24x44 box.
+     Measured at 7x7 before this, far under the 24x24 WCAG 2.5.8 minimum and
+     nowhere near a thumb. */
+  .sbh-hero-dot::after {
+    content: ""; position: absolute;
+    top: -18px; bottom: -18px; left: -8px; right: -8px;
+  }
   .sbh-hero-dot.is-on {
     width: 22px; border-color: transparent;
+    /* the active pill is wider, so its hit box needs no extra horizontal reach */
     background: linear-gradient(90deg, var(--sbh-gold-lt), var(--sbh-gold));
   }
   .sbh-hero-count { display: none; }
@@ -11169,6 +11181,9 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
     color: #8a6a24; white-space: nowrap;
+    /* padding grows the hit box to ~36px tall; the negative margin cancels it
+       so the text does not move. Measured at 71x16 before this. */
+    padding: 10px 4px; margin: -10px -4px;
   }
   .sbh-rail-nav { display: none; }          /* swipe on touch, not arrows */
   .sbh-rail {

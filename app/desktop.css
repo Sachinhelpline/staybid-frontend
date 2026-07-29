@@ -2482,6 +2482,8 @@ body main textarea.input-luxury {
     color: var(--text-soft, #4a3820); opacity: 0.8;
     white-space: nowrap; transition: opacity 0.15s ease, color 0.15s ease;
   }
+  /* was an 80x18 target — grow the hit box, keep the text where it is */
+  .sbh-rail-all { padding: 10px 4px; margin: -10px -4px; }
   .sbh-rail-all:hover { opacity: 1; color: #8a6a24; }
   .sbh-rail-shell { position: relative; }
   .sbh-rail {
@@ -2653,13 +2655,22 @@ body main textarea.input-luxury {
 
   .sbh-hero-dots {
     position: absolute; z-index: 3; right: var(--sbh-gut); bottom: clamp(44px, 6vh, 76px);
-    display: flex; align-items: center; gap: 9px;
+    display: flex; align-items: center;
+    /* 16px gap so the transparent hit boxes below reach 24px wide without
+       neighbours overlapping (WCAG 2.5.8 applies to pointer input too). */
+    gap: 16px;
   }
   .sbh-hero-dot {
+    position: relative;
     width: 9px; height: 9px; border-radius: 999px; cursor: pointer;
     background: rgba(255, 255, 255, 0.32);
     border: 1px solid rgba(255, 255, 255, 0.4);
     transition: width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s ease;
+  }
+  /* pointer devices are precise, but a 9px target still punishes a shaky
+     hand — same transparent reach, sized to the 9px gap so no overlap. */
+  .sbh-hero-dot::after {
+    content: ""; position: absolute; top: -14px; bottom: -14px; left: -8px; right: -8px;
   }
   .sbh-hero-dot:hover { background: rgba(255, 255, 255, 0.6); }
   .sbh-hero-dot.is-on {
