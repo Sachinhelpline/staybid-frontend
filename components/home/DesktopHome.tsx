@@ -26,6 +26,8 @@ import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
 import { currentMonthDemand, demandTier } from "@/lib/circle/demand-cycle";
 import { CountUp } from "@/components/CountUp";
 import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -333,6 +335,83 @@ function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: (
         {price ? <span className="sbh-chip sbh-chip-price">{inr(price)}<em>/n</em></span> : null}
       </div>
     </button>
+  );
+}
+
+/* ── PASSPORT — the returning-visitor strip ────────────────────────────
+   The streaming analogue of "Continue watching": your own state, first, above
+   the merchandising. Signed-out renders NOTHING — there is no honest way to
+   show a stranger a progress bar, and a fake one would be worse than absent.
+
+   Every number is computed by lib/passport/engine.ts, the same pure engine the
+   /passport page uses, so the strip can never disagree with the passport
+   itself. Nothing here is recomputed locally. */
+type PassportData = {
+  rank?: {
+    rank?: { label?: string; emoji?: string; color?: string; gradient?: string };
+    next?: { label?: string; emoji?: string; xpMin?: number } | null;
+    xp?: number;
+    progressPct?: number;
+  };
+  stats?: { stampCount?: number; citiesVisited?: number };
+};
+
+function PassportStrip() {
+  const { user, loading } = useAuth();
+  const [d, setD] = useState<PassportData | null>(null);
+
+  useEffect(() => {
+    if (!user) { setD(null); return; }
+    let dead = false;
+    api.getPassport()
+      .then((j: any) => { if (!dead) setD(j || null); }, () => {});
+    return () => { dead = true; };
+  }, [user]);
+
+  if (loading || !user || !d?.rank?.rank) return null;
+
+  const r = d.rank;
+  const rank = r.rank!;
+  const xp = Number(r.xp) || 0;
+  const pct = Math.max(0, Math.min(100, Number(r.progressPct) || 0));
+  const stamps = Number(d.stats?.stampCount) || 0;
+  const cities = Number(d.stats?.citiesVisited) || 0;
+  const toGo = r.next?.xpMin ? Math.max(0, r.next.xpMin - xp) : 0;
+
+  return (
+    <Link href="/passport" className="sbh-pp">
+      <span className="sbh-pp-medal" style={{ background: rank.gradient || undefined }} aria-hidden>
+        {rank.emoji}
+      </span>
+
+      <span className="sbh-pp-main">
+        <span className="sbh-pp-top">
+          <b>{rank.label}</b>
+          <i>{xp.toLocaleString("en-IN")} XP</i>
+        </span>
+        <span className="sbh-pp-bar" aria-hidden>
+          <span style={{ width: `${pct}%`, background: rank.gradient || rank.color || undefined }} />
+        </span>
+        <span className="sbh-pp-sub">
+          {/* A brand-new passport has no next-rank distance worth quoting —
+              it has a first stamp to earn, which is the more useful nudge. */}
+          {stamps === 0
+            ? "Your first confirmed stay earns your first stamp"
+            : r.next && toGo > 0
+              ? <>{toGo.toLocaleString("en-IN")} XP to {r.next.emoji} {r.next.label}</>
+              : "Top rank reached"}
+        </span>
+      </span>
+
+      {stamps > 0 ? (
+        <span className="sbh-pp-stats">
+          <span><b>{stamps}</b> stamp{stamps === 1 ? "" : "s"}</span>
+          <span><b>{cities}</b> cit{cities === 1 ? "y" : "ies"}</span>
+        </span>
+      ) : null}
+
+      <span className="sbh-pp-go" aria-hidden>→</span>
+    </Link>
   );
 }
 
@@ -993,6 +1072,10 @@ export default function DesktopHome() {
 
       {/* ── RAILS ────────────────────────────────────────────────────── */}
       <div className="sbh-rails">
+        {/* Personal state before merchandising — the "Continue watching" slot.
+            Self-gates on sign-in, so a signed-out visitor sees no gap here. */}
+        <PassportStrip />
+
         {deals.length ? (
           <Rail
             title="⚡ Flash Deals"
