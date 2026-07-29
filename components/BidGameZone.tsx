@@ -203,7 +203,7 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
               </div>
               <div className="bgz-boot-headline">
                 <h1 className="bgz-boot-title">Bid Your Stay, Save Big!</h1>
-                <p className="bgz-boot-sub">Name your price. Hotels compete. You win.</p>
+                <p className="bgz-boot-sub">Bid your own price. Hotels accept or counter. You win.</p>
               </div>
             </div>
             <div className="bgz-boot-tracker" aria-hidden="true">
@@ -310,7 +310,7 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
                   <span className="bgz-boot-step-num">5</span>
                   <div className="bgz-boot-step-eyebrow-text">
                     <div className="bgz-boot-step-eye-title">Review &amp; bid</div>
-                    <div className="bgz-boot-step-eye-sub">Name your price — launch the auction.</div>
+                    <div className="bgz-boot-step-eye-sub">Bid your own price — launch the auction.</div>
                   </div>
                 </div>
                 <div className="bgz-boot-step-card">

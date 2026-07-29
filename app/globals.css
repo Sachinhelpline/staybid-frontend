@@ -6071,13 +6071,17 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   padding-left: 16px;
   padding-right: 16px;
   -webkit-overflow-scrolling: touch;
+  /* v572 — same snapport fix as .sbh-rail: without it the mandatory snap
+     settles at scrollLeft = padding-left, so the first card in every rail
+     sat one gutter off the left edge with its photo clipped. */
+  scroll-padding-inline: 16px;
 }
 .hxr-rail::-webkit-scrollbar { display: none; }
 @media (min-width: 640px) {
-  .hxr-rail { gap: 14px; margin: 0 -24px; padding-left: 24px; padding-right: 24px; }
+  .hxr-rail { gap: 14px; margin: 0 -24px; padding-left: 24px; padding-right: 24px; scroll-padding-inline: 24px; }
 }
 @media (min-width: 1024px) {
-  .hxr-rail { gap: 18px; margin: 0 -32px; padding-left: 32px; padding-right: 32px; padding-bottom: 14px; }
+  .hxr-rail { gap: 18px; margin: 0 -32px; padding-left: 32px; padding-right: 32px; padding-bottom: 14px; scroll-padding-inline: 32px; }
 }
 .hxr-rail-end { flex: 0 0 8px; }
 
@@ -6826,8 +6830,8 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 10px 26px -18px rgba(31, 26, 15, 0.4);
 }
-:global([data-theme="dark"]) .hxr-tab { box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
-:global([data-theme="dark"]) .hxr-tab.is-open { box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 10px 26px -18px rgba(0,0,0,0.5); }
+[data-theme="dark"] .hxr-tab { box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+[data-theme="dark"] .hxr-tab.is-open { box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 10px 26px -18px rgba(0,0,0,0.5); }
 .hxr-tab-lbl {
   font-size: 0.64rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--text-muted);
@@ -11085,13 +11089,16 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     font-size: 0.86rem; color: rgba(247, 240, 226, 0.78);
     margin: 0 0 16px;
   }
-  .sbh-hero-price b {
+  /* `>` — the nudge below carries its own <b>, and an unscoped
+     `.sbh-hero-price b` swallowed it into the 1.4rem price style. */
+  .sbh-hero-price > b {
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-variant-numeric: tabular-nums;
     font-size: 1.4rem; font-weight: 700; color: #fffaf0;
   }
-  .sbh-hero-price em { font-style: normal; font-size: 0.78rem; }
+  .sbh-hero-price > em { font-style: normal; font-size: 0.78rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.78rem; width: 100%; }
+  .sbh-hero-nudge b { font-size: inherit; font-weight: 700; color: var(--sbh-gold-lt); }
   .sbh-hero-cta { display: flex; gap: 10px; }
   .sbh-btn {
     flex: 1;
@@ -11211,6 +11218,11 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     padding: 4px var(--sbh-gut) 20px;    /* room for the tile's cast shadow */
     overflow-x: auto; overflow-y: hidden;
     scroll-snap-type: x proximity;
+    /* v572 — without this the snapport starts at the PADDING edge, so the
+       browser's first snap position is scrollLeft = gutter: the rail settles
+       one gutter in and card 1 sits half off the left edge. Matching the
+       scroll padding to the layout padding makes scrollLeft 0 the snap. */
+    scroll-padding-inline: var(--sbh-gut);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
@@ -11274,6 +11286,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     font-size: 0.92rem; font-weight: 600; line-height: 1.2; margin: 0;
     color: var(--text-base, #1f1a0f);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    min-height: 2.4em;   /* reserve both lines so prices align across the rail */
   }
   .sbh-card-meta { margin: 0; font-size: 0.7rem; color: var(--text-soft, #4a3820); opacity: 0.72; }
   .sbh-card-rank { color: #8a6a24; font-weight: 600; }
@@ -11302,7 +11315,11 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
   }
   .sbh-chip-live { top: 9px; right: 9px; color: #fff; background: rgba(20, 15, 9, 0.66); }
-  .sbh-chip-price { bottom: 9px; right: 9px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
+  /* v572 — moved to the TOP of the reel tile. It used to sit bottom-right,
+     which was empty only because most reels resolved no price; now that every
+     tagged reel gets one from /api/hotels/starting-prices it landed straight on
+     the creator/location footer. */
+  .sbh-chip-price { top: 9px; right: 9px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
   .sbh-reel-foot {
     position: absolute; z-index: 4; left: 9px; right: 9px; bottom: 8px;
     display: flex; flex-direction: column; color: #fff;
@@ -11532,163 +11549,6 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 
 @media (prefers-reduced-motion: reduce) {
   .sbh-bid-cta, .sbh-bid-steps li { transition: none !important; }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   v563 — REEL THEATER (both viewports, unlayered — see the v561 note above)
-   The player is one design at every width: a 9:16 stage plus an info panel
-   that sits BESIDE it on a wide screen and BELOW it on a phone.
-   ═════════════════════════════════════════════════════════════════════════ */
-.sbh-th {
-  position: fixed; inset: 0; z-index: 2000;
-  display: grid; place-items: center;
-  /* the top band belongs to the close button — without it the fixed X lands
-     on the frame corner, on top of the mute toggle */
-  padding: 62px 16px 16px;
-  background: rgba(8, 6, 4, 0.9);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
-  animation: sbhThIn 0.18s ease-out;
-}
-@keyframes sbhThIn { from { opacity: 0; } to { opacity: 1; } }
-
-.sbh-th-stage {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 14px; width: 100%; max-width: 460px;
-  /* the panel below the video must stay reachable on a short phone, so the
-     stage scrolls rather than pushing the hotel CTA off the bottom */
-  max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-.sbh-th-stage::-webkit-scrollbar { display: none; }
-.sbh-th-frame {
-  position: relative;
-  width: 100%; aspect-ratio: 9 / 16;
-  max-height: 54svh;                       /* leaves room for the hotel panel */
-  border-radius: 18px; overflow: hidden;
-  background: #0d0a07;
-  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
-}
-.sbh-th-media { width: 100%; height: 100%; object-fit: cover; display: block; }
-.sbh-th-paused {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  font-size: 3rem; color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6); pointer-events: none;
-}
-.sbh-th-mute, .sbh-th-count {
-  position: absolute; z-index: 2;
-  padding: 6px 11px; border-radius: 999px;
-  font-size: 0.74rem; line-height: 1;
-  color: #f7f0e2;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-}
-.sbh-th-mute { top: 12px; right: 12px; cursor: pointer; }
-.sbh-th-count {
-  bottom: 12px; right: 12px;
-  font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
-  color: rgba(247, 240, 226, 0.75);
-}
-
-.sbh-th-side { width: 100%; color: #f7f0e2; }
-.sbh-th-who { margin: 0; font-size: 0.94rem; font-weight: 700; }
-.sbh-th-loc { margin: 3px 0 0; font-size: 0.78rem; color: rgba(247, 240, 226, 0.6); }
-.sbh-th-cap {
-  margin: 9px 0 0; font-size: 0.84rem; line-height: 1.5;
-  color: rgba(247, 240, 226, 0.78);
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-}
-
-/* the ground reality: every post tags a real, bookable hotel */
-.sbh-th-hotel {
-  margin-top: 14px; padding: 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(226, 196, 137, 0.2);
-}
-.sbh-th-hlabel {
-  margin: 0; font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.62rem; font-weight: 600;
-  letter-spacing: 0.15em; text-transform: uppercase;
-  color: #f0b429;
-}
-.sbh-th-hname {
-  margin: 5px 0 0;
-  font-family: var(--font-display, "Cormorant Garamond", serif);
-  font-size: 1.24rem; font-weight: 600; line-height: 1.2;
-}
-.sbh-th-hprice {
-  margin: 4px 0 0; font-size: 0.82rem; color: rgba(247, 240, 226, 0.66);
-}
-.sbh-th-hprice b {
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-variant-numeric: tabular-nums;
-  font-size: 1rem; color: var(--sbh-gold-lt, #e2c489);
-}
-.sbh-th-hprice em { font-style: normal; }
-.sbh-th-cta {
-  display: flex; width: 100%; margin-top: 12px;
-  padding: 12px 18px; text-decoration: none;
-}
-.sbh-th-bid {
-  display: block; margin-top: 9px; text-align: center;
-  font-size: 0.78rem; color: var(--sbh-gold-lt, #e2c489);
-}
-.sbh-th-all {
-  display: block; margin-top: 14px; text-align: center;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.7rem; font-weight: 600;
-  letter-spacing: 0.12em; text-transform: uppercase;
-  color: rgba(247, 240, 226, 0.5);
-}
-
-/* controls */
-.sbh-th-x, .sbh-th-nav {
-  position: fixed; z-index: 3;
-  display: grid; place-items: center;
-  color: #f7f0e2; cursor: pointer;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border-radius: 999px;
-}
-.sbh-th-x { top: 16px; right: 16px; width: 42px; height: 42px; font-size: 1.05rem; }
-.sbh-th-nav {
-  display: none;                           /* touch: swipe left/right instead */
-  top: 50%; transform: translateY(-50%); width: 46px; height: 46px; font-size: 1.7rem;
-}
-.sbh-th-prev { left: 14px; }
-.sbh-th-next { right: 14px; }
-
-@media (min-width: 1024px) {
-  .sbh-th { padding: 40px; }
-  .sbh-th-nav { display: grid; }           /* pointer: real prev/next buttons */
-  .sbh-th-stage { overflow: visible; }
-  /* beside, not below — a wide screen has the room, and the caption + hotel
-     CTA stay readable without pushing the video off the top of the viewport */
-  .sbh-th-stage {
-    flex-direction: row; align-items: stretch; justify-content: center;
-    gap: 28px;
-    /* size to CONTENT, not to the cap — a fixed 1000px left ~185px of dead
-       space at the right end and pushed the whole player off-centre. */
-    width: auto; max-width: min(1000px, 100%);
-  }
-  .sbh-th-frame { width: auto; height: min(80vh, 740px); max-height: none; flex: 0 0 auto; }
-  .sbh-th-side {
-    flex: 1 1 auto; min-width: 0; max-width: 360px;
-    display: flex; flex-direction: column; justify-content: center;
-  }
-  .sbh-th-cap { -webkit-line-clamp: 6; }
-  .sbh-th-x, .sbh-th-nav { transition: background 0.15s ease, transform 0.15s ease; }
-  .sbh-th-x:hover, .sbh-th-nav:hover { background: rgba(255, 255, 255, 0.2); }
-  .sbh-th-nav:hover { transform: translateY(-50%) scale(1.06); }
-  .sbh-th-prev { left: 26px; }
-  .sbh-th-next { right: 26px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sbh-th { animation: none !important; }
-  .sbh-th-x, .sbh-th-nav { transition: none !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -12010,3 +11870,202 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 @media (prefers-reduced-motion: reduce) {
   .sbh-srail-thumb { transition: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v572 — RAIL ACTIONS (both viewports, unlayered — see the v561 note above)
+   The Reels rail carries a create entry beside "See all". When `/` WAS the
+   reel feed, the composer's "+" was on the first screen a phone user saw;
+   the Stage moved that surface, and the FAB now lives one tap away inside
+   /discover. This puts the entry back where it was lost.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-rail-acts { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.sbh-rail-act {
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: #3a2606;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 2px 6px -3px rgba(31, 26, 15, 0.5);
+}
+.sbh-rail-act:active { transform: scale(0.96); }
+
+@media (min-width: 1024px) {
+  .sbh-rail-acts { gap: 16px; }
+  .sbh-rail-act {
+    font-size: 0.74rem; padding: 9px 16px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .sbh-rail-act:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 5px 14px -6px rgba(139, 106, 40, 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sbh-rail-act { transition: none !important; }
+  .sbh-rail-act:hover { transform: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v572 — HERO TOP EDGE (phone only)
+   The OS status bar is painted from <meta name="theme-color">, which can only
+   ever be one flat colour — and the Stage opens on a photograph. Black bar
+   over a bright sky reads as a screen cut in half. StatusBarColor pins the bar
+   to STAGE_INK (#0F0C08) on this surface; this fades the top of the hero into
+   exactly that value so the bar and the image are one continuous surface.
+   ::after, not ::before — a ::before is the FIRST child and would paint under
+   .sbh-hero-bg. .sbh-hero-inner keeps z-index 2, so the headline stays above.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  .sbh-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: min(104px, 13svh);
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      #0f0c08 0%,
+      rgba(15, 12, 8, 0.86) 26%,
+      rgba(15, 12, 8, 0.45) 62%,
+      rgba(15, 12, 8, 0) 100%
+    );
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v572 — /hotels BROWSE CARD: container-less (the Airbnb pattern)
+   The Stage home moved its cards to this shape in v571 — a rounded photo tile
+   carrying the depth, with the name and price sitting on the page beneath it.
+   /hotels was still boxing all of that inside a bordered panel, so the same
+   property looked like two different products depending on the route, and the
+   panel had to be tall enough for photo + two lines + padding, which is what
+   made these read heavy. One shape now, both routes, both viewports.
+
+   Written as an override block at the end of the file rather than by editing
+   the v432/v548 rules in place: those rules are also the source of the dark
+   theme, hover and compact variants, and the base declarations they set are
+   the ones being cancelled here — keeping them adjacent to their cancellation
+   is what makes this readable later.
+   ═════════════════════════════════════════════════════════════════════════ */
+.hxr-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.hxr-card:hover {
+  transform: translateY(-6px);
+  box-shadow: none;
+  border-color: transparent;
+}
+.hxr-card:active { transform: scale(0.975); }
+[data-theme="dark"] .hxr-card,
+[data-theme="dark"] .hxr-card:hover { background: transparent; box-shadow: none; }
+
+/* the image IS the card — radius and depth live here now */
+.hxr-card-imgwrap {
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(139, 106, 40, 0.14),
+    0 2px 6px -3px rgba(31, 26, 15, 0.45),
+    0 12px 22px -14px rgba(31, 26, 15, 0.65);
+  transition: box-shadow 0.28s ease;
+}
+.hxr-card:hover .hxr-card-imgwrap {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 46%, transparent),
+    0 6px 14px -8px rgba(31, 26, 15, 0.5),
+    0 26px 46px -22px rgba(31, 26, 15, 0.7);
+}
+.hxr-card:active .hxr-card-imgwrap {
+  box-shadow:
+    0 0 0 1px rgba(139, 106, 40, 0.2),
+    0 1px 3px -2px rgba(31, 26, 15, 0.5);
+}
+[data-theme="dark"] .hxr-card-imgwrap {
+  box-shadow:
+    0 0 0 1px rgba(217, 190, 130, 0.16),
+    0 2px 8px -4px rgba(0, 0, 0, 0.65),
+    0 14px 26px -16px rgba(0, 0, 0, 0.8);
+}
+[data-theme="dark"] .hxr-card:hover .hxr-card-imgwrap {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 8px 18px -10px rgba(0, 0, 0, 0.7),
+    0 28px 50px -22px rgba(0, 0, 0, 0.85);
+}
+@media (min-width: 1024px) { .hxr-card-imgwrap { border-radius: 18px; } }
+
+/* text on the page, not in a padded panel */
+.hxr-card-info { padding: 10px 2px 0; }
+@media (min-width: 640px)  { .hxr-card-info { padding: 10px 3px 0; } }
+@media (min-width: 1024px) { .hxr-card-info { padding: 11px 3px 0; } }
+.hxr-card-compact .hxr-card-imgwrap { border-radius: 14px; }
+.hxr-card-compact .hxr-card-info { padding: 8px 2px 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hxr-card, .hxr-card-imgwrap { transition: none !important; }
+  .hxr-card:hover, .hxr-card:active { transform: none !important; }
+}
+
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v572 — REEL SWIPE HINT
+   Lives here rather than in InstagramHotelFeed's styled-jsx: that file is at
+   its block ceiling (SWC panics at visitor.rs:597 with a third), and new
+   global styles belong in this file anyway.
+   Sits above the bottom overlay's CTA row and below the dock, centred, and
+   removes itself on first scroll — a teaching aid, not furniture.
+   ═════════════════════════════════════════════════════════════════════════ */
+.ig-swipe-hint {
+  position: fixed;
+  left: 50%;
+  /* TOP, not bottom. The bottom third of a reel is fully occupied — caption,
+     tagged-hotel row, price and the Book/Bid CTAs on the left, the action rail
+     and the create button on the right — so a bottom chip landed on top of the
+     "Explore ›" row. The upper third is pure video. */
+  top: calc(env(safe-area-inset-top, 0px) + 104px);
+  transform: translateX(-50%);
+  z-index: 41;
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 15px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 0.74rem; font-weight: 600; letter-spacing: 0.01em;
+  color: #fff8e9;
+  background: rgba(18, 14, 9, 0.62);
+  border: 1px solid rgba(255, 246, 226, 0.22);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  animation: igSwipeHintIn 0.45s ease both;
+}
+.ig-swipe-hint-chev {
+  font-size: 1rem; line-height: 1;
+  color: var(--cozy-champagne-light, #e7cfa0);
+  animation: igSwipeHintRise 1.6s ease-in-out infinite;
+}
+@keyframes igSwipeHintIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes igSwipeHintRise {
+  0%, 100% { transform: translateY(2px); opacity: 0.65; }
+  50%      { transform: translateY(-3px); opacity: 1; }
+}
+/* Desktop: the reel feed is a centred phone frame, so pin to the frame. */
+@media (min-width: 1024px) {
+  .reel-page-root .ig-swipe-hint { position: absolute; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ig-swipe-hint, .ig-swipe-hint-chev { animation: none !important; }
+}
+

@@ -67,7 +67,7 @@ const BASE_ITEMS: Item[] = [
   { href: "/hotels",       label: "Hotels",       useCase: "browse stays",       icon: "🏨" },
   { href: "/discover",     label: "Reels",        useCase: "watch hotel reels",  icon: "🎬" },
   { href: "/flash-deals",  label: "Deals",        useCase: "live flash sales",   icon: "⚡", pulse: true },
-  { href: "/bid",          label: "Bid",          useCase: "name your price",    icon: "🎯" },
+  { href: "/bid",          label: "Bid",          useCase: "bid your own price",    icon: "🎯" },
   { href: "/my-bids",      label: "My Bids",      useCase: "your active bids",   icon: "📋" },
   { href: "/bookings",     label: "Bookings",     useCase: "your trips",         icon: "🎫" },
   { href: "/saved",        label: "Saved",        useCase: "saved places",       icon: "🔖" },

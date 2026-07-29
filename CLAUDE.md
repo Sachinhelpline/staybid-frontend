@@ -104,11 +104,35 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v571 — Stage depth pass: real surfaces, honest discounts, a scroll rail)
+- **Everything on the Stage that read FLAT or OVERSIZED was fixed at the cause** (owner review of the live site).
+- **Ticker is a row of real LINKS** (deal → its hotel; season/inventory → the surfaces they describe), raised
+  pills with a gold offer badge. Links change what the motion may do: **pointer** = marquee that pauses on
+  `:hover`/`:focus-within`; **touch** = marquee that pauses on **`:active`** — the pause fires at touchstart, so
+  the chip under the finger is frozen by the time the tap resolves. Verified by really clicking/tapping. Only
+  the FIRST group is in the a11y tree; the seamless-loop duplicate is `aria-hidden` + `tabIndex={-1}`.
+- **Cards are CONTAINER-LESS on BOTH viewports** (the Airbnb pattern the owner asked for): name + price sit on
+  the PAGE under the artwork. **Depth belongs on `.sbh-card-media` (the tile), NEVER on `.sbh-card`** — a shadow
+  around the text block is exactly what made them read heavy/"stretched". Mobile `46vw` / max 196px, crop
+  **1:1**; desktop `clamp(258px,20.5vw,336px)`, crop 16:10.
+  ⚠ Two corrections the owner had to make: "resize" meant **width only** (v568 restored the 1:1 crop after v567
+  also cut it to 4:3), and the flash "% OFF" colour is the **`/flash-deals` GOLD stamp**
+  (`#ffe9ad→#f2c650→#d69a1e`), not the home card's old red (v570).
+- **Circle model cards + How-it-works steps + bid stat cards** — layered elevation, embossed numeral, display
+  serif title, hover lift.
+- **`<ScrollRail/>` (v571)** — our own right-edge scrollbar (drag to scroll, click track to page,
+  `ResizeObserver` so the thumb stays honest). Mounts **only** when
+  `innerWidth - documentElement.clientWidth === 0` (native bar takes no layout width ⇒ it is an overlay/hidden
+  one) **and** `pointer:fine` **and** ≥1024px, so a Windows user with a classic bar never gets two. See the
+  scrollbar invariant below for why CSS alone could not do this.
+- `tsc` + `next build` clean; 8 breakpoints pass; reduced-motion audited clean.
+  Badge **v571**, sw HTML_CACHE **v372**.
+
 ## Current production state (v566 — "The Stage": the home surface, desktop AND mobile)
 - **`/` is no longer the reel player.** It is a streaming-service home (Netflix/Prime/Hotstar idiom) rendered by
   **`components/home/DesktopHome.tsx`** for BOTH viewports. Order:
-  **Passport strip → Hero (season-driven) → ⚡ Flash Deals → 🎬 Reels → 7 zone rails → 💎 Circle + 3 models →
-  Live Bidding band.** `/discover` + `/reels` are UNCHANGED and remain the dedicated reel surfaces —
+  **Hero (season-driven) → live ticker → ⚡ Flash Deals → 🎬 Reels → 7 zone rails → 💎 Circle + 3 models →
+  🛂 Passport card → Live Bidding band.** `/discover` + `/reels` are UNCHANGED and remain the dedicated reel surfaces —
   only the ENTRY point moved. Revert switch: `NEXT_PUBLIC_MOBILE_HOME="0"` puts mobile `/` back on the reel feed
   with no code change (desktop always gets the Stage).
 - **Hero is SEASON-driven, not one property** — `currentMonthDemand()` / `demandTier()` from the pre-existing
@@ -132,7 +156,9 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   card shows `monthlyRate` — what the investor PAYS — plus `CIRCLE_INCOME_DISCLOSURE`. See the locked Circle
   legal rule below. `marketplace-summary` still uses the PRE-RENAME `model3`/`model4` keys (both are today's
   Model 2 — v346 rebrand); map them explicitly, never trust the key names.
-- **Passport strip (v565)** — signed-in only; signed-out renders nothing **and never fires the request**. Every
+- **Passport card (v565, redesigned v571)** — signed-in only; signed-out renders nothing **and never fires the
+  request**. A bounded passport-booklet CARD (capped 470px desktop) at the BOTTOM of the rails, not the
+  full-bleed strip it started as. Every
   figure from `GET /api/passport` (the same `lib/passport/engine.ts` the `/passport` page uses) — never recompute
   locally or the strip can disagree with the passport.
 - Circle + Passport data load in their OWN effects, never the hero's `Promise.all`, so below-the-fold requests
@@ -821,8 +847,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at **`v367`** (v566 Stage QA).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at **v566**. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at **`v372`** (v571 depth pass).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at **v571**. Bump both on
   every UI ship.
 - **NOT to be touched casually:** the Stage home order + its `.sbh-*` layer contract (below), scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
@@ -868,7 +894,7 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Never bump `public/sw.js` cache names on a routine UI release** — cache-nuke/SW-unregister/
   force-reload kill-switches are permanently banned (v93). Keep the stable `/sw.js` URL and SWR HTML.
 
-## Stage home / `.sbh-*` (v555–v566)
+## Stage home / `.sbh-*` (v555–v571)
 - **`app/desktop.css` is imported into `layer(utilities)`; `app/globals.css` is UNLAYERED.** Unlayered rules
   therefore BEAT layered ones regardless of source order. Modules that must look identical on both viewports
   (`.sbh-bid-*`, `.sbh-th-*`, `.sbh-circ-*`, `.sbh-pp-*`) are written ONCE, unlayered, at the end of globals.css
@@ -892,7 +918,22 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   `sessionStorage.sb_welcome_shown="1"` in an init script — do NOT remove the node, React then throws
   `removeChild`), and `waitUntil:"networkidle"` never settles (use `domcontentloaded` + an explicit wait).
 - Auto-scrolling rails were considered and REJECTED: Netflix/Prime/Hotstar don't do it, it fails WCAG 2.2.2,
-  and it steals control on the one surface where the user is browsing.
+  and it steals control on the one surface where the user is browsing. (The TICKER is the one exception — it
+  auto-scrolls on both viewports by owner decision, and is only tappable because it pauses on `:active`.)
+- **A headless browser can NEVER tell you anything about scrollbars.** A control run proved headless Chromium
+  renders no classic scrollbar even on a bare tall page with no CSS — 0px with AND without
+  `--disable-features=OverlayScrollbar`. Two rounds were wasted "verifying" a scrollbar fix against a
+  measurement that could only ever return 0. If the question is scrollbars, reason about the browser or ask the
+  owner; do not measure it here.
+- **`::-webkit-scrollbar` cannot guarantee a visible scrollbar.** Chrome turns it into a classic bar; **Safari
+  ignores it for the DOCUMENT scrollbar** and obeys the macOS "Show scroll bars" setting. That is why the fix is
+  `<ScrollRail/>` in `components/home/DesktopHome.tsx`, gated on the zero-layout-width test above — not CSS.
+- **Depth goes on the media tile, never on the card shell.** `.sbh-card` is transparent/borderless/shadowless on
+  BOTH viewports; `.sbh-card-media` carries the ring + contact shadow + cast. Boxing the text is what produces
+  the "stretched" complaint, because the panel must then be tall enough for image + 2 lines + padding.
+- **One deal, one colour.** The flash "% OFF" gold is `.fd-disc-stamp` on `/flash-deals`
+  (`linear-gradient(140deg,#ffe9ad,#f2c650 44%,#d69a1e)`). `.sbh-chip-off` and `.sbh-tk-accent` must match it —
+  assert the computed gradient in the browser rather than eyeballing.
 
 ## Supabase / API
 - **No FK constraints exist** → never use PostgREST embed joins (`users:user_id(...)`). Manual
@@ -958,6 +999,15 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Every price input uses `snap100`** (`lib/price-snap.ts`, ₹100 multiple). Never show the word
   "floor price" in customer UI (show the number). Partner counters use the structured
   `lib/counter-addons.ts` catalog (no free-text — v25 anti-bypass).
+
+## Flash deals
+- ⚠ **`/api/flash/near` returns a STALE `discount`.** Line ~350 recomputes `aiPrice` through the v527 flash
+  ladder but line ~352 passes `discount` straight through from the raw deal row, so the two disagree — live it
+  returns **48%** against a `marketRate 3000 → aiPrice 2400` move, which is **20%**. **Never render that field.**
+  Derive the badge from the two prices you are printing (`offPct(was, now)` in `components/home/DesktopHome.tsx`;
+  the same derivation in `app/flash-deals/page.tsx` `stats.avgDisc`), so a badge can never contradict the prices
+  beside it. The API keeps its own `discount` deliberately — it is also the feed's **sort/bucket key** (line
+  ~385), so changing it there reorders the feed and is an owner decision, not a cleanup.
 
 ## Pricing Spine
 - ONE source of truth: `lib/pricing/spine.ts` + `resolveSpinePrices()` (`lib/pricing/read-spine.ts`)

@@ -85,6 +85,12 @@ type Props = {
       and /reels pass false because those routes are reel-only by user
       design (v84). */
   showFlashDealRail?: boolean;
+  /** v572 — land the feed on ONE specific reel instead of the top.
+      For a community post the Item's `hotel.id` IS the post id (see
+      socialPostToItem in app/discover/page.tsx), so this is the same key
+      `onPickReel` already navigates by. Applied once, on the first render
+      that actually has items; after that the user owns the scroll. */
+  startId?: string | null;
 };
 
 // Dummy hotel reel videos — stable Google CDN test videos, looping. Replace
@@ -2688,7 +2694,7 @@ const HotelCard = memo(function HotelCard({
               className="ig-cta-3d ig-cta-bid"
             >
               <span className="ig-cta-icon">🏷️</span>
-              <span className="ig-cta-text">Make Offer</span>
+              <span className="ig-cta-text">Bid Now</span>
             </button>
           </div>
         ) : null}
@@ -3093,7 +3099,7 @@ function StoryViewer({
 // ─────────────────────────────────────────────────────────────────────────
 // Feed
 // ─────────────────────────────────────────────────────────────────────────
-export default function InstagramHotelFeed({ items: propItems, onIndexChange, onLoadMore, onTrackEvent, showFlashDealRail = true }: Props) {
+export default function InstagramHotelFeed({ items: propItems, onIndexChange, onLoadMore, onTrackEvent, showFlashDealRail = true, startId = null }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -3522,8 +3528,14 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     };
   }, [missingPriceKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When filter changes, reset scroll to top
+  // When filter CHANGES, reset scroll to top.
+  // v572 — skip the mount run. The feed already starts at 0, so on mount this
+  // only ever fired a smooth scroll-to-0 animation into empty space — and that
+  // animation kept running over the top of the `?start=` deep-link jump below,
+  // which is why the deep link silently landed on card 1.
+  const filterMounted = useRef(false);
   useEffect(() => {
+    if (!filterMounted.current) { filterMounted.current = true; return; }
     const root = containerRef.current;
     if (!root) return;
     root.scrollTo({ top: 0, behavior: "smooth" });
@@ -3554,6 +3566,104 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       }
     }, 60);
   }, [filteredItems, items]);
+
+  // v572 — one-time "swipe up" teaching hint (rendered near the bottom of this
+  // file). A full-bleed video with no visible chrome does not tell a first-time
+  // viewer that there is a next one, and the home page's reel rail now sends
+  // people straight in here.
+  // `landedIdx` is the card the viewer STARTED on: 0 normally, or the deep
+  // link's target when they arrived from the home reel rail. Everything below
+  // measures movement from there, so the programmatic landing scroll doesn't
+  // count as "they already know how to swipe" and eat the hint on the exact
+  // journey that needs it most.
+  const landedIdx = useRef(0);
+  const [swipeHint, setSwipeHint] = useState(false);
+  const markSwipeSeen = useCallback(() => {
+    setSwipeHint(false);
+    try { localStorage.setItem("sb_reel_swipe_hint", "1"); } catch {}
+  }, []);
+  useEffect(() => {
+    try { if (localStorage.getItem("sb_reel_swipe_hint") === "1") return; } catch { return; }
+    setSwipeHint(true);
+    // Listen on window (capture) rather than on containerRef: scroll does not
+    // bubble, but a capture listener on an ancestor still sees it, and this
+    // cannot miss the ref not being populated yet. Armed AFTER the deep-link
+    // jump has settled, for the same reason as landedIdx.
+    const opts = { passive: true } as AddEventListenerOptions;
+    let arm: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      arm = null;
+      window.addEventListener("touchmove", markSwipeSeen, opts);
+      window.addEventListener("wheel", markSwipeSeen, opts);
+      window.addEventListener("scroll", markSwipeSeen, { ...opts, capture: true });
+    }, 700);
+    const t = setTimeout(markSwipeSeen, 8000);
+    return () => {
+      if (arm) clearTimeout(arm);
+      clearTimeout(t);
+      window.removeEventListener("touchmove", markSwipeSeen);
+      window.removeEventListener("wheel", markSwipeSeen);
+      window.removeEventListener("scroll", markSwipeSeen, true);
+    };
+  }, [markSwipeSeen]);
+  // Also retire it the moment they actually move off the card they landed on.
+  useEffect(() => {
+    if (activeIdx !== landedIdx.current) markSwipeSeen();
+  }, [activeIdx, markSwipeSeen]);
+
+  // v572 — `?start=<postId>` deep link. The Stage home's reel rail links here
+  // instead of opening a second, feature-poor player of its own, so the reel
+  // you tapped is the reel that plays — with like, comment, share, save and
+  // follow all present, and Back returning you to the page you came from.
+  // For a community post the Item's `hotel.id` IS the post id (see
+  // socialPostToItem in app/discover/page.tsx), the same key `onPickReel`
+  // already navigates by. Fires ONCE — `jumped` stops the effect yanking the
+  // feed out from under someone who has already started scrolling.
+  const jumped = useRef(false);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  useEffect(() => {
+    if (jumped.current || !startId || !items.length) return;
+    if (items.findIndex((it) => String(it.hotel.id) === String(startId)) < 0) return;
+    jumped.current = true;
+    // Deliberately no cleanup on this timer. `items` is rebuilt on every
+    // render, so the effect re-runs constantly — a per-run cleanup cancelled
+    // the pending timer before it could fire, and an unmount-only cleanup was
+    // cancelled by StrictMode's dev remount. The callback is fully guarded, so
+    // a stray timer after unmount does nothing.
+    setTimeout(() => {
+      const root = containerRef.current;
+      if (!root) return;
+      // Resolve the index at SCROLL time, not at schedule time: the feed is
+      // still streaming in during these first frames and the target's position
+      // shifts as items arrive.
+      const idx = itemsRef.current.findIndex((it) => String(it.hotel.id) === String(startId));
+      const el = idx >= 0 ? root.querySelectorAll<HTMLElement>(".ig-card")[idx] : null;
+      if (!el) return;
+      // BOTH of the feed's scroll behaviours have to be suspended for a jump.
+      // `.ig-feed` sets `scroll-behavior: smooth`, so assigning scrollTop only
+      // STARTS an animation (it reads back 0 and lands a second later, where
+      // anything else can interrupt it); and the cards set `scroll-snap-stop:
+      // always`, which Chrome applies to programmatic scrolls too, holding the
+      // scroll at the next snap point. Together they meant a jump of more than
+      // a card or two silently never arrived. Suspended, restored immediately.
+      const go = () => {
+        const snap = root.style.scrollSnapType;
+        const beh = root.style.scrollBehavior;
+        root.style.scrollSnapType = "none";
+        root.style.scrollBehavior = "auto";
+        root.scrollTop += el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+        root.style.scrollSnapType = snap;
+        root.style.scrollBehavior = beh;
+      };
+      go();
+      setActiveIdx(idx);
+      landedIdx.current = idx;
+      // Card height is 100% of --reel-vh, which useReelFullscreen writes from
+      // visualViewport AFTER mount; re-assert once that has landed so the jump
+      // isn't computed against a stale height.
+      setTimeout(go, 260);
+    }, 160);
+  }, [startId, items]);
 
   const handleWatchEntity = useCallback((entity: Creator) => {
     setFilterEntity(entity.handle);
@@ -3949,30 +4059,43 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           0%,100% { box-shadow: 0 8px 22px rgba(201,166,107,0.45), 0 0 0 0 rgba(201,166,107,0.40); }
           50%     { box-shadow: 0 8px 22px rgba(201,166,107,0.45), 0 0 0 14px rgba(201,166,107,0); }
         }
+        /* v572 — the create entry: a 48px disc plus a caption, so it can't be
+           mistaken for another icon in the action rail directly above it.
+           Sits in the one free pocket of the screen: right of the Book/Bid
+           CTA row, below the rail's last button, above the BottomDock. */
         .ig-create-fab {
           position: fixed;
-          right: 12px;
-          /* Sit between the rail's lowest button (bottom:200 in card)
-             and the BottomDock (~57px tall). bottom:130 keeps it clear
-             of both. */
-          bottom: calc(env(safe-area-inset-bottom, 0px) + 130px);
+          right: 8px;
+          bottom: calc(env(safe-area-inset-bottom, 0px) + 118px);
           z-index: 42;
-          width: 36px; height: 36px;
+          display: flex; flex-direction: column; align-items: center; gap: 3px;
+          color: var(--cozy-warm-dark, #1F1A0F);
+          transition: transform 0.15s ease;
+        }
+        .ig-create-fab-disc {
+          position: relative;
+          width: 48px; height: 48px;
           border-radius: 9999px;
           display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(135deg, #E7CFA0 0%, #D9BE82 45%, #C9A66B 100%);
-          border: 1.5px solid rgba(255, 246, 226, 0.55);
-          color: var(--cozy-warm-dark, #1F1A0F);
+          background: linear-gradient(135deg, #FFE9AD 0%, #F2C650 45%, #D69A1E 100%);
+          border: 2px solid rgba(255, 246, 226, 0.75);
           font-weight: 900;
           animation: igFabPulse 2.4s ease-in-out infinite;
-          transition: transform 0.15s ease;
         }
         .ig-create-fab:active { transform: scale(0.92); }
         .ig-create-fab-plus {
-          font-size: 1.25rem;
+          font-size: 1.55rem;
           line-height: 1;
           text-shadow: 0 1px 2px rgba(255, 246, 226, 0.55);
           margin-top: -1px;
+        }
+        .ig-create-fab-label {
+          font-size: 0.6rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          color: #fff;
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
+          line-height: 1;
         }
         .ig-create-fab-glow {
           position: absolute;
@@ -4815,18 +4938,25 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         onApplyHighlight={handleApplyHighlight}
       />
 
-      {/* First-load: prompt user to tap & unmute. Once they've ever toggled
-          mute (hasInteracted=true) we never show this again. Tapping it
-          immediately unmutes (which is the user gesture browsers require). */}
-      {muted && !hasInteracted && items.length > 0 && (
-        <button
-          className="ig-unmute-hint"
-          onClick={() => { toggleMute(); onTrackEvent?.("ig_first_unmute", {}); }}
-          aria-label="Tap to unmute reels"
-        >
-          <span className="ig-unmute-icon">🔇</span>
-          <span>Tap to unmute</span>
-        </button>
+      {/* v572 — the feed-level "Tap to unmute" coach mark is GONE. The active
+          card renders its own (.ig-tap-unmute, same `muted && !hasInteracted`
+          condition), so both were on screen at once, saying the same sentence
+          twice. The card's version is the one that survives: it unmutes THAT
+          card's <video> inside the click's user gesture, which is what the
+          autoplay policy actually requires. */}
+
+      {/* v572 — one-time swipe affordance. A full-bleed video with no visible
+          chrome does not tell a first-time viewer that there is a next one, and
+          the reel rail on the home page now sends people straight in here. Shown
+          once per device, on the first card only, and it disappears the moment
+          they scroll — the point is to teach the gesture, not to sit on top of
+          the content. Styles live in globals.css: this file is at its
+          styled-jsx block ceiling (see the note at the bottom of the file). */}
+      {swipeHint && items.length > 1 && (
+        <div className="ig-swipe-hint" aria-hidden>
+          <span className="ig-swipe-hint-chev">⌃</span>
+          <span>Swipe up for the next reel</span>
+        </div>
       )}
 
       <Toast msg={toast} />
