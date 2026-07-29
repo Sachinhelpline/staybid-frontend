@@ -20,7 +20,7 @@
 //   • Every number is real: prices from /api/hotels rooms, deals from
 //     /api/flash/near, scores + cohort rank from /api/hotels/scorecards.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
 import { currentMonthDemand, demandTier } from "@/lib/circle/demand-cycle";
@@ -250,7 +250,7 @@ function FlashCard({ d, left }: { d: Deal; left: string }) {
   );
 }
 
-function ReelCard({ r, preview }: { r: Reel; preview: boolean }) {
+function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: () => void }) {
   const poster = reelPoster(r);
   const who = r.author?.display_name || r.display_name || "StayBid";
   const price = r.hotel?.minPrice;
@@ -282,9 +282,12 @@ function ReelCard({ r, preview }: { r: Reel; preview: boolean }) {
     return () => { cancelled = true; clearTimeout(t); };
   }, [hot]);
   return (
-    <Link
-      href="/discover"
+    /* A button, not a link: it opens the player for THIS reel in place.
+       /discover is still one tap away from inside the theater. */
+    <button
+      type="button"
       className="sbh-card sbh-card-tall"
+      onClick={onOpen}
       onMouseEnter={() => setHot(true)}
       onMouseLeave={() => setHot(false)}
     >
@@ -315,7 +318,186 @@ function ReelCard({ r, preview }: { r: Reel; preview: boolean }) {
         </div>
         {price ? <span className="sbh-chip sbh-chip-price">{inr(price)}<em>/n</em></span> : null}
       </div>
-    </Link>
+    </button>
+  );
+}
+
+/* ── REEL THEATER — tapping a reel plays THAT reel ──────────────────────
+   Before this, a reel card linked to /discover, which drops you at the top of
+   a generic feed — the one place on the Stage where the card promised
+   something the click did not deliver. The theater plays the reel you picked,
+   lets you move through the rail with keys/swipe/arrows, and keeps StayBid's
+   ground reality attached: every post tags a real hotel, so the panel carries
+   that hotel and its real cheapest nightly price straight to /hotels/[id].
+   No fullscreen API call here — that is the /reels page's deliberate back-
+   gesture behaviour and does not belong on an overlay you can Esc out of. */
+function ReelTheater({
+  reels, idx, onIdx, onClose, priceFor,
+}: {
+  reels: Reel[];
+  idx: number;
+  onIdx: (n: number) => void;
+  onClose: () => void;
+  priceFor: (hotelId?: string | null) => number | null;
+}) {
+  const r = reels[idx];
+  const vid = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
+  const go = (d: number) => {
+    if (!reels.length) return;
+    onIdx((idx + d + reels.length) % reels.length);
+  };
+
+  // Keyboard: the overlay owns the page while it is open.
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); go(1); }
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); go(-1); }
+      else if (e.key === " ") { e.preventDefault(); setPaused((p) => !p); }
+      else if (e.key.toLowerCase() === "m") setMuted((m) => !m);
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  });
+
+  // Scroll lock. Restores the exact previous value rather than clearing it, so
+  // we never stomp on another surface that legitimately set overflow.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Autoplay the current clip. Opening is a user gesture, so sound is allowed;
+  // if the browser still refuses we fall back to muted rather than showing a
+  // frozen frame.
+  useEffect(() => {
+    const v = vid.current;
+    if (!v) return;
+    v.currentTime = 0;
+    setPaused(false);
+    v.play().catch(() => {
+      v.muted = true;
+      setMuted(true);
+      v.play().catch(() => {});
+    });
+  }, [idx]);
+
+  useEffect(() => { if (vid.current) vid.current.muted = muted; }, [muted]);
+  useEffect(() => {
+    const v = vid.current;
+    if (!v) return;
+    if (paused) v.pause(); else v.play().catch(() => {});
+  }, [paused]);
+
+  if (!r) return null;
+  const poster = reelPoster(r);
+  const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
+  const who = r.author?.display_name || r.display_name || "StayBid";
+  const hotelId = r.hotel?.id || null;
+  const price = priceFor(hotelId);
+
+  return (
+    <div
+      className="sbh-th"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Reel player"
+      onClick={onClose}
+      onTouchStart={(e) => { const t = e.touches[0]; touch.current = { x: t.clientX, y: t.clientY }; }}
+      onTouchEnd={(e) => {
+        const s = touch.current;
+        touch.current = null;
+        if (!s) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - s.x;
+        const dy = t.clientY - s.y;
+        // A downward flick closes (the phone gesture people already expect);
+        // a horizontal flick moves through the rail.
+        if (Math.abs(dy) > Math.abs(dx) && dy > 70) onClose();
+        else if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
+      }}
+    >
+      <button className="sbh-th-x" onClick={onClose} aria-label="Close">✕</button>
+      {reels.length > 1 ? (
+        <>
+          <button
+            className="sbh-th-nav sbh-th-prev"
+            onClick={(e) => { e.stopPropagation(); go(-1); }}
+            aria-label="Previous reel"
+          >‹</button>
+          <button
+            className="sbh-th-nav sbh-th-next"
+            onClick={(e) => { e.stopPropagation(); go(1); }}
+            aria-label="Next reel"
+          >›</button>
+        </>
+      ) : null}
+
+      <div className="sbh-th-stage" onClick={(e) => e.stopPropagation()}>
+        <div className="sbh-th-frame">
+          {isVideo ? (
+            <video
+              ref={vid}
+              key={r.id}
+              className="sbh-th-media"
+              src={r.media_url || undefined}
+              poster={poster || undefined}
+              loop
+              playsInline
+              onClick={() => setPaused((p) => !p)}
+              onPlaying={() => setPaused(false)}
+            />
+          ) : poster ? (
+            <img className="sbh-th-media" src={poster} alt={r.caption || ""} />
+          ) : (
+            <div className="sbh-card-ph" />
+          )}
+
+          {isVideo ? (
+            <>
+              {paused ? <span className="sbh-th-paused" aria-hidden>▶</span> : null}
+              <button
+                className="sbh-th-mute"
+                onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+                aria-label={muted ? "Unmute" : "Mute"}
+              >{muted ? "🔇" : "🔊"}</button>
+            </>
+          ) : null}
+          <span className="sbh-th-count">{idx + 1} / {reels.length}</span>
+        </div>
+
+        <aside className="sbh-th-side">
+          <p className="sbh-th-who">{who}</p>
+          {r.location_name ? <p className="sbh-th-loc">📍 {r.location_name}</p> : null}
+          {r.caption ? <p className="sbh-th-cap">{r.caption}</p> : null}
+
+          {hotelId ? (
+            <div className="sbh-th-hotel">
+              <p className="sbh-th-hlabel">Stay in this reel</p>
+              <p className="sbh-th-hname">{r.hotel?.name}</p>
+              {price ? <p className="sbh-th-hprice">from <b>{inr(price)}</b> <em>/night</em></p> : null}
+              <Link href={`/hotels/${hotelId}`} className="sbh-btn sbh-btn-primary sbh-th-cta">
+                View hotel
+              </Link>
+              {/* ?intent=negotiate is a real deep-link the hotel page honours —
+                  it auto-opens the picker on the cheapest room and resumes
+                  into the Negotiate modal. /bid takes no hotel param, so
+                  linking there would silently drop the hotel. */}
+              <Link href={`/hotels/${hotelId}?intent=negotiate`} className="sbh-th-bid">
+                or name your own price →
+              </Link>
+            </div>
+          ) : null}
+
+          <Link href="/discover" className="sbh-th-all">See all reels →</Link>
+        </aside>
+      </div>
+    </div>
   );
 }
 
@@ -453,6 +635,7 @@ export default function DesktopHome() {
   const [reels, setReels] = useState<Reel[]>([]);
   const [scores, setScores] = useState<Record<string, Scorecard>>({});
   const countdown = useNightlyCountdown();
+  const [theater, setTheater] = useState<number | null>(null);
 
   // Client-mount gate only. WHICH viewports get this home is decided in
   // app/page.tsx (desktop always; mobile behind MOBILE_HOME_ON), so this
@@ -491,6 +674,41 @@ export default function DesktopHome() {
     })();
     return () => { dead = true; };
   }, [on]);
+
+  // The theater navigates the SAME slice the rail renders, so "next" never
+  // walks off into reels the user never saw on the rail.
+  const theaterReels = useMemo(() => reels.slice(0, 16), [reels]);
+
+  // /api/social/feed returns the tagged hotel's identity columns but no price
+  // (HOTEL_CARD_COLS carries no rooms). The rails' own hotels cover part of it,
+  // but launch curation caps /api/hotels to one property per city, so most
+  // tagged hotels are NOT in that payload — which is the exact case
+  // /api/hotels/starting-prices was built for. One batched call fills the rest.
+  const [taggedPrices, setTaggedPrices] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(theaterReels.map((r) => r.hotel?.id).filter(Boolean) as string[]),
+    );
+    if (!ids.length) return;
+    let dead = false;
+    fetch(`/api/hotels/starting-prices?ids=${ids.map(encodeURIComponent).join(",")}`)
+      .then((r) => (r.ok ? r.json() : null), () => null)
+      .then((j) => { if (!dead && j?.prices) setTaggedPrices(j.prices); });
+    return () => { dead = true; };
+  }, [theaterReels]);
+
+  const priceByHotel = useMemo(() => {
+    const m: Record<string, number> = { ...taggedPrices };
+    hotels.forEach((h) => {
+      const p = minPriceOf(h);
+      if (h.id && p) m[String(h.id)] = p;
+    });
+    return m;
+  }, [hotels, taggedPrices]);
+  const priceForHotel = useCallback(
+    (id?: string | null) => (id ? priceByHotel[String(id)] ?? null : null),
+    [priceByHotel],
+  );
 
   // ── SEASON-DRIVEN HERO POOL ──────────────────────────────────────────
   // The hero is not one hard-coded property: it showcases EVERY property in
@@ -665,7 +883,9 @@ export default function DesktopHome() {
 
         {reels.length ? (
           <Rail title="🎬 Reels" sub="Real stays, filmed by real guests" href="/discover" variant="tall">
-            {reels.slice(0, 16).map((r) => <ReelCard key={r.id} r={r} preview={wide} />)}
+            {reels.slice(0, 16).map((r, i) => (
+              <ReelCard key={r.id} r={r} preview={wide} onOpen={() => setTheater(i)} />
+            ))}
           </Rail>
         ) : null}
 
@@ -685,6 +905,16 @@ export default function DesktopHome() {
           <div className="sbh-loading">Loading your stage…</div>
         ) : null}
       </div>
+
+      {theater != null ? (
+        <ReelTheater
+          reels={theaterReels}
+          idx={theater}
+          onIdx={setTheater}
+          onClose={() => setTheater(null)}
+          priceFor={priceForHotel}
+        />
+      ) : null}
     </div>
   );
 }

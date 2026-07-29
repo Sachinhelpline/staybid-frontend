@@ -11432,3 +11432,160 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 @media (prefers-reduced-motion: reduce) {
   .sbh-bid-cta { transition: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v563 — REEL THEATER (both viewports, unlayered — see the v561 note above)
+   The player is one design at every width: a 9:16 stage plus an info panel
+   that sits BESIDE it on a wide screen and BELOW it on a phone.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-th {
+  position: fixed; inset: 0; z-index: 2000;
+  display: grid; place-items: center;
+  /* the top band belongs to the close button — without it the fixed X lands
+     on the frame corner, on top of the mute toggle */
+  padding: 62px 16px 16px;
+  background: rgba(8, 6, 4, 0.9);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  animation: sbhThIn 0.18s ease-out;
+}
+@keyframes sbhThIn { from { opacity: 0; } to { opacity: 1; } }
+
+.sbh-th-stage {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; width: 100%; max-width: 460px;
+  /* the panel below the video must stay reachable on a short phone, so the
+     stage scrolls rather than pushing the hotel CTA off the bottom */
+  max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.sbh-th-stage::-webkit-scrollbar { display: none; }
+.sbh-th-frame {
+  position: relative;
+  width: 100%; aspect-ratio: 9 / 16;
+  max-height: 54svh;                       /* leaves room for the hotel panel */
+  border-radius: 18px; overflow: hidden;
+  background: #0d0a07;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
+}
+.sbh-th-media { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbh-th-paused {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 3rem; color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6); pointer-events: none;
+}
+.sbh-th-mute, .sbh-th-count {
+  position: absolute; z-index: 2;
+  padding: 6px 11px; border-radius: 999px;
+  font-size: 0.74rem; line-height: 1;
+  color: #f7f0e2;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.sbh-th-mute { top: 12px; right: 12px; cursor: pointer; }
+.sbh-th-count {
+  bottom: 12px; right: 12px;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+  color: rgba(247, 240, 226, 0.75);
+}
+
+.sbh-th-side { width: 100%; color: #f7f0e2; }
+.sbh-th-who { margin: 0; font-size: 0.94rem; font-weight: 700; }
+.sbh-th-loc { margin: 3px 0 0; font-size: 0.78rem; color: rgba(247, 240, 226, 0.6); }
+.sbh-th-cap {
+  margin: 9px 0 0; font-size: 0.84rem; line-height: 1.5;
+  color: rgba(247, 240, 226, 0.78);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* the ground reality: every post tags a real, bookable hotel */
+.sbh-th-hotel {
+  margin-top: 14px; padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(226, 196, 137, 0.2);
+}
+.sbh-th-hlabel {
+  margin: 0; font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.62rem; font-weight: 600;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: #f0b429;
+}
+.sbh-th-hname {
+  margin: 5px 0 0;
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.24rem; font-weight: 600; line-height: 1.2;
+}
+.sbh-th-hprice {
+  margin: 4px 0 0; font-size: 0.82rem; color: rgba(247, 240, 226, 0.66);
+}
+.sbh-th-hprice b {
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem; color: var(--sbh-gold-lt, #e2c489);
+}
+.sbh-th-hprice em { font-style: normal; }
+.sbh-th-cta {
+  display: flex; width: 100%; margin-top: 12px;
+  padding: 12px 18px; text-decoration: none;
+}
+.sbh-th-bid {
+  display: block; margin-top: 9px; text-align: center;
+  font-size: 0.78rem; color: var(--sbh-gold-lt, #e2c489);
+}
+.sbh-th-all {
+  display: block; margin-top: 14px; text-align: center;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.7rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(247, 240, 226, 0.5);
+}
+
+/* controls */
+.sbh-th-x, .sbh-th-nav {
+  position: fixed; z-index: 3;
+  display: grid; place-items: center;
+  color: #f7f0e2; cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+.sbh-th-x { top: 16px; right: 16px; width: 42px; height: 42px; font-size: 1.05rem; }
+.sbh-th-nav {
+  display: none;                           /* touch: swipe left/right instead */
+  top: 50%; transform: translateY(-50%); width: 46px; height: 46px; font-size: 1.7rem;
+}
+.sbh-th-prev { left: 14px; }
+.sbh-th-next { right: 14px; }
+
+@media (min-width: 1024px) {
+  .sbh-th { padding: 40px; }
+  .sbh-th-nav { display: grid; }           /* pointer: real prev/next buttons */
+  .sbh-th-stage { overflow: visible; }
+  /* beside, not below — a wide screen has the room, and the caption + hotel
+     CTA stay readable without pushing the video off the top of the viewport */
+  .sbh-th-stage {
+    flex-direction: row; align-items: stretch; justify-content: center;
+    gap: 28px;
+    /* size to CONTENT, not to the cap — a fixed 1000px left ~185px of dead
+       space at the right end and pushed the whole player off-centre. */
+    width: auto; max-width: min(1000px, 100%);
+  }
+  .sbh-th-frame { width: auto; height: min(80vh, 740px); max-height: none; flex: 0 0 auto; }
+  .sbh-th-side {
+    flex: 1 1 auto; min-width: 0; max-width: 360px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .sbh-th-cap { -webkit-line-clamp: 6; }
+  .sbh-th-x, .sbh-th-nav { transition: background 0.15s ease, transform 0.15s ease; }
+  .sbh-th-x:hover, .sbh-th-nav:hover { background: rgba(255, 255, 255, 0.2); }
+  .sbh-th-nav:hover { transform: translateY(-50%) scale(1.06); }
+  .sbh-th-prev { left: 26px; }
+  .sbh-th-next { right: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sbh-th { animation: none !important; }
+  .sbh-th-x, .sbh-th-nav { transition: none !important; }
+}
