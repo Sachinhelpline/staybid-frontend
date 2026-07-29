@@ -42,14 +42,17 @@ import BidCardStack, { useIsMobileTablet, type BidCard } from "@/components/BidC
 import BidGameZone from "@/components/BidGameZone";
 import BidConsole from "@/components/bid/BidConsole";
 import BidTerminal from "@/components/bid/BidTerminal";
+import BidCockpit from "@/components/bid/BidCockpit";
 
-/* v573/v574 — /bid Step 1 host. v574 replaces the console with the
-   BidTerminal (draggable price dial, one-screen zero-scroll trading
-   terminal). Revert ladder: NEXT_PUBLIC_BID_CONSOLE="console" → v573
-   console; ="0" → the boot+climber; anything else (default) → v574
-   terminal. */
+/* v573/v574/v575 — /bid Step 1 host. Default = v574 BidTerminal
+   (draggable price dial, one-screen zero-scroll trading terminal).
+   Env ladder NEXT_PUBLIC_BID_CONSOLE: "cockpit" → v575 mission-control
+   cockpit; "console" → v573 console; "0" → the boot+climber; anything
+   else (default) → v574 terminal. A per-request `?ui=` query overrides
+   the env for the same deploy (?ui=cockpit|terminal|console|climber) so
+   the owner can compare designs side by side — read from
+   window.location.search (NOT useSearchParams → no Suspense bailout). */
 const BID_HOST = process.env.NEXT_PUBLIC_BID_CONSOLE || "terminal";
-const BID_CONSOLE_ON = BID_HOST !== "0";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
 // hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
 // conflict and let the customer update the existing bid budget instead.
@@ -608,6 +611,24 @@ function clearBidSession() {
 export default function BidPage() {
   const router = useRouter();
   const { user } = useAuth();
+  /* v575 — Step-1 host resolution. Starts at the env default (stable for
+     SSR / hydration), then a `?ui=` query can override it on the client so
+     the owner compares designs on the same deploy. `climber` maps to "0"
+     (env sentinel for the boot+climber). */
+  const [bidHost, setBidHost] = useState<string>(BID_HOST);
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("ui");
+      if (!q) return;
+      const v = q.toLowerCase();
+      const next = v === "climber" ? "0"
+        : ["cockpit", "terminal", "console"].includes(v) ? v
+        : null;
+      if (next && next !== bidHost) setBidHost(next);
+    } catch { /* no-op */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const BID_CONSOLE_ON = bidHost !== "0";
   // v241.14 — Hydrate step + success from sessionStorage on FIRST render
   // (not via useEffect) so the customer doesn't see a Step 1 flash before
   // the restoration kicks in. Lazy initializer reads sessionStorage once.
@@ -2395,7 +2416,32 @@ export default function BidPage() {
                hatch — but the default for every viewport is the
                climber. Sachin's spec: "ek hi flow main chalne chahiye
                na ki different different pages par". */
-            (BID_HOST === "terminal" ? (
+            (bidHost === "cockpit" ? (
+              <BidCockpit
+                cards={step1Cards}
+                onAllComplete={() => {}}
+                finalCtaLabel={loading ? "LAUNCHING…" : "◈ ARM & LAUNCH"}
+                signals={{
+                  city: form.city,
+                  nights,
+                  rooms: form.rooms,
+                  marketAdr: presetExpected,   // per-room per-night market (Spine)
+                  bidPerNight: budget,          // per-room per-night bid
+                  totalBudget,
+                  strength: bidStr,
+                  oddsFor: (bpn: number) =>
+                    city && bpn > 0
+                      ? calcBidStrength(bpn, city.avg, form.city, form.checkIn, form.roomTypes || [])
+                      : null,
+                  setBidPerNight: (bpn: number) =>
+                    upd("maxBudget", String(Math.round(bpn * Math.max(1, nights) * form.rooms))),
+                  launched: success !== null || loading,
+                  launching: loading,
+                  canLaunch: !!form.city && nights > 0 && budget > 0,
+                  onLaunch: () => step1Cards[4]?.onDoneClick?.(),
+                }}
+              />
+            ) : bidHost === "terminal" ? (
               <BidTerminal
                 cards={step1Cards}
                 onAllComplete={() => {}}
