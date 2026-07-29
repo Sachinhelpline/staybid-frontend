@@ -41,12 +41,15 @@ import PremiumGuestPicker, { type GuestKind } from "@/components/PremiumGuestPic
 import BidCardStack, { useIsMobileTablet, type BidCard } from "@/components/BidCardStack";
 import BidGameZone from "@/components/BidGameZone";
 import BidConsole from "@/components/bid/BidConsole";
+import BidTerminal from "@/components/bid/BidTerminal";
 
-/* v573 — /bid Step 1 host. The Mission-Control console replaces the boot
-   screen + Candy-Crush climber. Revert switch: NEXT_PUBLIC_BID_CONSOLE="0"
-   restores the climber with no code change (same fail-safe pattern as
-   NEXT_PUBLIC_MOBILE_HOME). */
-const BID_CONSOLE_ON = process.env.NEXT_PUBLIC_BID_CONSOLE !== "0";
+/* v573/v574 — /bid Step 1 host. v574 replaces the console with the
+   BidTerminal (draggable price dial, one-screen zero-scroll trading
+   terminal). Revert ladder: NEXT_PUBLIC_BID_CONSOLE="console" → v573
+   console; ="0" → the boot+climber; anything else (default) → v574
+   terminal. */
+const BID_HOST = process.env.NEXT_PUBLIC_BID_CONSOLE || "terminal";
+const BID_CONSOLE_ON = BID_HOST !== "0";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
 // hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
 // conflict and let the customer update the existing bid budget instead.
@@ -2392,8 +2395,8 @@ export default function BidPage() {
                hatch — but the default for every viewport is the
                climber. Sachin's spec: "ek hi flow main chalne chahiye
                na ki different different pages par". */
-            (BID_CONSOLE_ON ? (
-              <BidConsole
+            (BID_HOST === "terminal" ? (
+              <BidTerminal
                 cards={step1Cards}
                 onAllComplete={() => {}}
                 finalCtaLabel={loading ? "Launching…" : "🚀 Launch Auction"}
@@ -2404,13 +2407,37 @@ export default function BidPage() {
                   marketAdr: presetExpected,   // per-room per-night market (Spine)
                   bidPerNight: budget,          // per-room per-night bid
                   totalBudget,
-                  strength: bidStr,             // calcBidStrength result (or null)
+                  strength: bidStr,
+                  // pure: odds for any per-night bid the dial is dragged to
+                  oddsFor: (bpn: number) =>
+                    city && bpn > 0
+                      ? calcBidStrength(bpn, city.avg, form.city, form.checkIn, form.roomTypes || [])
+                      : null,
+                  // commit a per-night bid → total budget (parent owns the math)
+                  setBidPerNight: (bpn: number) =>
+                    upd("maxBudget", String(Math.round(bpn * Math.max(1, nights) * form.rooms))),
                   launched: success !== null || loading,
                   launching: loading,
                   canLaunch: !!form.city && nights > 0 && budget > 0,
-                  // Reuse the price card's launcher (fires submit()). The
-                  // stray sb:cmm-open-sheet event it dispatches is ignored
-                  // by the console (no CMM listener), so it's a harmless no-op.
+                  onLaunch: () => step1Cards[4]?.onDoneClick?.(),
+                }}
+              />
+            ) : BID_CONSOLE_ON ? (
+              <BidConsole
+                cards={step1Cards}
+                onAllComplete={() => {}}
+                finalCtaLabel={loading ? "Launching…" : "🚀 Launch Auction"}
+                signals={{
+                  city: form.city,
+                  nights,
+                  rooms: form.rooms,
+                  marketAdr: presetExpected,
+                  bidPerNight: budget,
+                  totalBudget,
+                  strength: bidStr,
+                  launched: success !== null || loading,
+                  launching: loading,
+                  canLaunch: !!form.city && nights > 0 && budget > 0,
                   onLaunch: () => step1Cards[4]?.onDoneClick?.(),
                 }}
               />
