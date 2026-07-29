@@ -176,6 +176,19 @@
     transform: scale(1.14);
     pointer-events: none;
     transition: background-image 0.6s ease;
+    /* v554 — a very slow, subtle "breathing" drift makes the ambient world feel
+       alive (Apple-TV / Spotify now-playing) without re-introducing the busy
+       motion the v472.1 calm-pass removed. Reduced-motion guard below. */
+    animation: reelAmbientDrift 38s ease-in-out infinite;
+    will-change: transform;
+  }
+  @keyframes reelAmbientDrift {
+    0%   { transform: scale(1.14) translate3d(0, 0, 0); }
+    50%  { transform: scale(1.19) translate3d(-1.4%, -1%, 0); }
+    100% { transform: scale(1.14) translate3d(0, 0, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body:has(.reel-page-root)::before { animation: none !important; transform: scale(1.14) !important; }
   }
   /* Layer 2 — a WARM cozy vignette (z -1) over the calmed image. A warm-brown
      falloff (not cold black) evens the whole canvas into one cozy dark surface
@@ -186,7 +199,13 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    /* v554 — two soft champagne blooms (top-left / bottom-right) add warmth +
+       depth to the wide desktop gutters so the empty edges read as intentional
+       cinematic atmosphere, not dead space. Kept low-opacity + no saturation
+       bump so the v472.1 "calm backdrop" intent is preserved. */
     background:
+      radial-gradient(closest-side 46vw at 16% 20%, rgba(201, 166, 107, 0.11), transparent 68%),
+      radial-gradient(closest-side 42vw at 86% 84%, rgba(201, 166, 107, 0.08), transparent 70%),
       radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.78) 100%),
       linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
   }
@@ -200,9 +219,15 @@
     opacity: 0.4;
   }
   body.reel-with-rail:has(.reel-page-root)::after {
+    /* v554 — the flat cream home canvas gets a warm champagne bloom (top-left)
+       and a soft rose bloom (bottom-right) plus a deeper edge vignette, so the
+       wide gutters gain figure/ground depth and brand warmth instead of reading
+       as empty dead space. */
     background:
-      radial-gradient(ellipse 76% 86% at 50% 40%, rgba(241, 232, 214, 0) 28%, rgba(236, 226, 205, 0.9) 100%),
-      linear-gradient(180deg, rgba(248, 242, 229, 0.42) 0%, rgba(234, 224, 203, 0.62) 100%);
+      radial-gradient(closest-side 48vw at 15% 18%, rgba(201, 166, 107, 0.20), transparent 66%),
+      radial-gradient(closest-side 44vw at 87% 86%, rgba(212, 149, 131, 0.13), transparent 68%),
+      radial-gradient(ellipse 74% 84% at 50% 40%, rgba(241, 232, 214, 0) 26%, rgba(228, 216, 193, 0.95) 100%),
+      linear-gradient(180deg, rgba(248, 242, 229, 0.40) 0%, rgba(228, 215, 191, 0.68) 100%);
   }
 
   /* v498 — DARK MODE for the HOME reel canvas. The light cozy-cream canvas
@@ -220,6 +245,8 @@
   }
   [data-theme="dark"] body.reel-with-rail:has(.reel-page-root)::after {
     background:
+      radial-gradient(closest-side 46vw at 16% 20%, rgba(201, 166, 107, 0.11), transparent 68%),
+      radial-gradient(closest-side 42vw at 86% 84%, rgba(201, 166, 107, 0.08), transparent 70%),
       radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.78) 100%),
       linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
   }
