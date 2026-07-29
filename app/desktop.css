@@ -204,9 +204,9 @@
        cinematic atmosphere, not dead space. Kept low-opacity + no saturation
        bump so the v472.1 "calm backdrop" intent is preserved. */
     background:
-      radial-gradient(closest-side 46vw at 16% 20%, rgba(201, 166, 107, 0.11), transparent 68%),
-      radial-gradient(closest-side 42vw at 86% 84%, rgba(201, 166, 107, 0.08), transparent 70%),
-      radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.78) 100%),
+      radial-gradient(circle 44vw at 15% 18%, rgba(214, 176, 112, 0.20), transparent 66%),
+      radial-gradient(circle 40vw at 87% 86%, rgba(201, 166, 107, 0.15), transparent 68%),
+      radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.80) 100%),
       linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
   }
 
@@ -224,10 +224,10 @@
        wide gutters gain figure/ground depth and brand warmth instead of reading
        as empty dead space. */
     background:
-      radial-gradient(closest-side 48vw at 15% 18%, rgba(201, 166, 107, 0.20), transparent 66%),
-      radial-gradient(closest-side 44vw at 87% 86%, rgba(212, 149, 131, 0.13), transparent 68%),
-      radial-gradient(ellipse 74% 84% at 50% 40%, rgba(241, 232, 214, 0) 26%, rgba(228, 216, 193, 0.95) 100%),
-      linear-gradient(180deg, rgba(248, 242, 229, 0.40) 0%, rgba(228, 215, 191, 0.68) 100%);
+      radial-gradient(circle 46vw at 14% 16%, rgba(201, 166, 107, 0.38), transparent 62%),
+      radial-gradient(circle 42vw at 88% 88%, rgba(210, 146, 128, 0.26), transparent 64%),
+      radial-gradient(ellipse 72% 82% at 50% 40%, rgba(241, 232, 214, 0) 22%, rgba(222, 207, 180, 0.97) 100%),
+      linear-gradient(180deg, rgba(249, 243, 230, 0.36) 0%, rgba(221, 205, 178, 0.74) 100%);
   }
 
   /* v498 — DARK MODE for the HOME reel canvas. The light cozy-cream canvas
@@ -245,9 +245,9 @@
   }
   [data-theme="dark"] body.reel-with-rail:has(.reel-page-root)::after {
     background:
-      radial-gradient(closest-side 46vw at 16% 20%, rgba(201, 166, 107, 0.11), transparent 68%),
-      radial-gradient(closest-side 42vw at 86% 84%, rgba(201, 166, 107, 0.08), transparent 70%),
-      radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.78) 100%),
+      radial-gradient(circle 44vw at 15% 18%, rgba(214, 176, 112, 0.20), transparent 66%),
+      radial-gradient(circle 40vw at 87% 86%, rgba(201, 166, 107, 0.15), transparent 68%),
+      radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.80) 100%),
       linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
   }
 
