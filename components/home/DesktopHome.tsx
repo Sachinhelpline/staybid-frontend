@@ -24,6 +24,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
 import { currentMonthDemand, demandTier } from "@/lib/circle/demand-cycle";
+import { CountUp } from "@/components/CountUp";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -318,6 +319,118 @@ function ReelCard({ r, preview }: { r: Reel; preview: boolean }) {
   );
 }
 
+/* ── LIVE BIDDING band — StayBid's actual differentiator ───────────────── */
+type Insights = {
+  tonightAuctions?: number;
+  acceptedToday?: number;
+  hotelsListening?: number;
+  avgAcceptMins?: number;
+  recentWins?: { id: string; initial?: string; amount?: number; hotelName?: string; city?: string; when?: string }[];
+};
+
+function LiveBidding() {
+  const [d, setD] = useState<Insights | null>(null);
+  useEffect(() => {
+    let dead = false;
+    fetch("/api/bids/insights")
+      .then((r) => (r.ok ? r.json() : null), () => null)
+      .then((j) => { if (!dead && j) setD(j); });
+    return () => { dead = true; };
+  }, []);
+
+  // Every figure comes from /api/bids/insights — real open bid_requests, real
+  // accepted bids, real median accept time, real active hotels. Nothing here is
+  // invented, which means the band has to survive a QUIET platform honestly: on
+  // a day with no auctions those counters are all 0, and a wall of zeros under
+  // a "live right now" claim would be both ugly and untrue. So the right-hand
+  // panel switches — activity ⇒ the live numbers + recent wins; silence ⇒ the
+  // mechanic itself, plus the one number that is always true (hotels listening).
+  const wins = (d?.recentWins || []).filter((w) => w.hotelName);
+  const live = (d?.tonightAuctions ?? 0) > 0 || (d?.acceptedToday ?? 0) > 0 || wins.length > 0;
+
+  const stats = [
+    { k: "Live auctions", v: d?.tonightAuctions ?? 0, suffix: "" },
+    { k: "Accepted today", v: d?.acceptedToday ?? 0, suffix: "" },
+    { k: "Avg. reply", v: d?.avgAcceptMins ?? 0, suffix: " min" },
+    { k: "Hotels listening", v: d?.hotelsListening ?? 0, suffix: "" },
+  ].filter((s) => s.v > 0);
+
+  // The actual mechanic, in the order the user meets it on /bid.
+  const steps = [
+    { n: "1", t: "Name your price", s: "Pick a stay, set what you want to pay." },
+    { n: "2", t: "Hotels reply", s: "They accept, counter or decline — live." },
+    { n: "3", t: "Pay only if you like it", s: "No answer you like, no booking." },
+  ];
+
+  return (
+    <section className="sbh-bid">
+      <div className="sbh-bid-inner">
+        <div className="sbh-bid-lead">
+          <p className="sbh-bid-kicker">
+            {live ? <><span className="sbh-dot" aria-hidden /> Live right now</> : <>How StayBid works</>}
+          </p>
+          <h2 className="sbh-bid-title">Name your price.<br />Let hotels compete.</h2>
+          <p className="sbh-bid-sub">
+            You don&apos;t take the listed rate — you make an offer. Hotels accept, counter or decline,
+            usually within minutes.
+          </p>
+          <Link href="/bid" className="sbh-btn sbh-btn-primary sbh-bid-cta">Start bidding</Link>
+        </div>
+
+        <div className="sbh-bid-right">
+          {live && stats.length ? (
+            <div className="sbh-bid-stats">
+              {stats.map((s) => (
+                <div className="sbh-bid-stat" key={s.k}>
+                  <b><CountUp value={s.v} />{s.suffix ? <i>{s.suffix}</i> : null}</b>
+                  <span>{s.k}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ol className="sbh-bid-steps">
+              {steps.map((s) => (
+                <li key={s.n}>
+                  <span className="sbh-bid-step-n">{s.n}</span>
+                  <span className="sbh-bid-step-b">
+                    <strong>{s.t}</strong>
+                    <em>{s.s}</em>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {live && wins.length ? (
+            <ul className="sbh-bid-wins">
+              {wins.slice(0, 3).map((w) => (
+                <li key={w.id}>
+                  <span className="sbh-bid-who">{w.initial || "G"}</span>
+                  {/* the ₹ figure is the point of the row, so it must never be
+                      the thing that gets ellipsised — hence text + timestamp
+                      live in one block that stacks on a phone. */}
+                  <span className="sbh-bid-body">
+                    <span className="sbh-bid-what">
+                      won <strong>{w.hotelName}</strong>
+                      {w.amount ? <> for <b>{inr(w.amount)}</b></> : null}
+                    </span>
+                    {w.when ? <span className="sbh-bid-when">{w.when}</span> : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (d?.hotelsListening ?? 0) > 0 ? (
+            <p className="sbh-bid-listening">
+              <span className="sbh-dot" aria-hidden />
+              <b><CountUp value={d?.hotelsListening ?? 0} /></b> hotels taking offers right now
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── the page ──────────────────────────────────────────────────────────── */
 /** Desktop-only affordances (hover video preview) — never on touch. */
 function useWide(): boolean {
@@ -549,6 +662,11 @@ export default function DesktopHome() {
             {deals.slice(0, 14).map((d) => <FlashCard key={d.id} d={d} left={countdown} />)}
           </Rail>
         ) : null}
+
+        {/* The band sits high — right under Flash Deals — because bidding IS
+            the product. It is full-bleed (the rails column has no max-width;
+            padding lives inside each rail via --sbh-gut). */}
+        <LiveBidding />
 
         {reels.length ? (
           <Rail title="🎬 Reels" sub="Real stays, filmed by real guests" href="/discover" variant="tall">
