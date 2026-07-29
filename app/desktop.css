@@ -2705,6 +2705,7 @@ body main textarea.input-luxury {
   /* every chip is a link, so the motion MUST be stoppable to be clickable —
      hover for the mouse, focus-within for the keyboard (WCAG 2.2.2). */
   .sbh-ticker:hover .sbh-ticker-track,
+  .sbh-ticker:active .sbh-ticker-track,
   .sbh-ticker:focus-within .sbh-ticker-track { animation-play-state: paused; }
   .sbh-ticker-group { display: flex; gap: 10px; padding: 10px 5px; }
   .sbh-ticker-item {
@@ -2725,11 +2726,12 @@ body main textarea.input-luxury {
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 20px -10px rgba(74, 56, 32, 0.7);
   }
   .sbh-tk-ico { font-size: 0.92rem; line-height: 1; }
+  /* same red as .sbh-chip-off on the flash card — one deal, one colour */
   .sbh-tk-accent {
-    padding: 3px 9px; border-radius: 999px;
-    font-size: 0.7rem; font-weight: 700; color: #4a2c00;
-    background: linear-gradient(135deg, #f4d894, var(--sbh-gold));
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; color: #fff;
+    background: linear-gradient(135deg, #d9534f, #b3312d);
+    box-shadow: 0 6px 14px -8px rgba(179, 49, 45, 0.85);
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 

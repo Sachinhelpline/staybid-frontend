@@ -88,6 +88,26 @@ type Scorecard = {
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 
+/**
+ * The "% OFF" a flash deal is ACTUALLY showing, derived from the two prices the
+ * card prints beside it.
+ *
+ * Do NOT use the API's `discount` field here. /api/flash/near recomputes
+ * `aiPrice` through the v527 flash ladder but passes `discount` straight
+ * through from the raw deal row, so the two disagree — live today it returns
+ * 48% over a marketRate 3000 -> aiPrice 2400 move, which is 20%. A badge that
+ * contradicts the prices next to it is a claim we can't support, and it was
+ * visible on both the card and the ticker.
+ * (The API keeps its own `discount` because it is also the feed's sort/bucket
+ * key — changing it there would reorder the feed.)
+ */
+function offPct(was?: number | null, now?: number | null): number {
+  const w = Number(was) || 0;
+  const n = Number(now) || 0;
+  if (w <= 0 || n <= 0 || n >= w) return 0;
+  return Math.round(((w - n) / w) * 100);
+}
+
 /** cheapest real room price for a hotel, or null */
 function minPriceOf(h?: Hotel | null): number | null {
   const list = (h?.rooms || [])
@@ -246,13 +266,14 @@ function FlashCard({ d, left }: { d: Deal; left: string }) {
   const img = imgOf(h);
   const now = Number(d.aiPrice) || 0;
   const was = Number(d.marketRate) || 0;
+  const off = offPct(was, now);   // always agrees with the prices below
   return (
     <Link href={`/hotels/${d.hotelId || h?.id || ""}`} className="sbh-card sbh-card-wide sbh-card-flash">
       <div className="sbh-card-media">
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
-        {d.discount ? <span className="sbh-chip sbh-chip-off">{Math.round(d.discount)}% OFF</span> : null}
+        {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
         {left ? <span className="sbh-chip sbh-chip-live">⏳ {left}</span> : null}
       </div>
       <div className="sbh-card-body">
@@ -983,7 +1004,9 @@ export default function DesktopHome() {
         k: `deal-${d.id || i}`,
         icon: "⚡",
         text: d.hotel.name,
-        accent: d.discount ? `${Math.round(d.discount)}% off tonight` : undefined,
+        accent: offPct(d.marketRate, d.aiPrice) > 0
+          ? `${offPct(d.marketRate, d.aiPrice)}% OFF`
+          : undefined,
         // the deal's own hotel when we know it, else the deals surface
         href: d.hotelId || d.hotel?.id ? `/hotels/${d.hotelId || d.hotel?.id}` : "/flash-deals",
       });

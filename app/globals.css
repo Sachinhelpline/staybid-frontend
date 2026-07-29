@@ -11148,20 +11148,22 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-hero-count { display: none; }
 
   /* ── ticker ───────────────────────────────────────────────────────── */
-  /* TOUCH: no auto-motion. Every chip is a link, and a moving tap target is
-     not a real target — so this is a swipeable row instead of a marquee. */
+  /* TOUCH: the marquee runs here too (owner call). It stays tappable because
+     it PAUSES on :active — the pause fires at touchstart, so the chip under
+     the finger is frozen by the time the tap resolves at touchend. */
   .sbh-ticker {
-    overflow-x: auto; overflow-y: hidden;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    overflow: hidden;
     border-block: 1px solid var(--border-soft, #e8dcc8);
     background: linear-gradient(180deg,
       var(--bg-card, #fffcf6), color-mix(in srgb, var(--bg-card, #fffcf6) 88%, #d9c9a8));
   }
-  .sbh-ticker::-webkit-scrollbar { display: none; }
-  .sbh-ticker-track { display: flex; width: max-content; animation: none; }
-  /* the seamless-loop duplicate has no job without a marquee */
-  .sbh-ticker-group:nth-child(2) { display: none; }
-  .sbh-ticker-group { display: flex; gap: 8px; padding: 9px var(--sbh-gut); }
+  .sbh-ticker-track {
+    display: flex; width: max-content;
+    animation: sbhTickerM 42s linear infinite;
+  }
+  .sbh-ticker:active .sbh-ticker-track,
+  .sbh-ticker:focus-within .sbh-ticker-track { animation-play-state: paused; }
+  .sbh-ticker-group { display: flex; gap: 8px; padding: 9px 4px; }
   .sbh-ticker-item {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 8px 13px; border-radius: 999px;
@@ -11174,10 +11176,12 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 5px -3px rgba(74, 56, 32, 0.5);
   }
   .sbh-tk-ico { font-size: 0.86rem; line-height: 1; }
+  /* same red as .sbh-chip-off on the flash card — one deal, one colour */
   .sbh-tk-accent {
-    padding: 2px 8px; border-radius: 999px;
-    font-size: 0.68rem; font-weight: 700; color: #4a2c00;
-    background: linear-gradient(135deg, #f4d894, var(--sbh-gold));
+    padding: 3px 8px; border-radius: 999px;
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em; color: #fff;
+    background: linear-gradient(135deg, #d9534f, #b3312d);
+    box-shadow: 0 4px 10px -6px rgba(179, 49, 45, 0.9);
   }
   @keyframes sbhTickerM { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
