@@ -11267,3 +11267,168 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     .sbh-card, .sbh-hero-dot { transition: none !important; }
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v561 — LIVE BIDDING band (the Stage's signature module, BOTH viewports)
+   ---------------------------------------------------------------------------
+   Deliberately UNLAYERED and outside the two viewport blocks: the reverse
+   auction is the one thing on this page that reads identically on a phone and
+   a 27" monitor, so it gets ONE design with a single desktop layout switch
+   rather than two forks. It sits full-bleed inside .sbh-rails (that column has
+   no max-width — the gutter lives inside each child via --sbh-gut).
+   Nothing in app/desktop.css targets .sbh-bid-*, so the @layer precedence
+   asymmetry (unlayered wins) can't bite here.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-bid {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle 60vw at 78% 8%, rgba(240, 180, 41, 0.16), transparent 70%),
+    linear-gradient(168deg, #1b140c 0%, #241a10 55%, #14100a 100%);
+  border-top: 1px solid rgba(226, 196, 137, 0.22);
+  border-bottom: 1px solid rgba(226, 196, 137, 0.22);
+}
+.sbh-bid-inner {
+  padding: 30px var(--sbh-gut, 16px) 32px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+.sbh-bid-kicker {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin: 0 0 10px;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.66rem; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: #f0b429;
+}
+.sbh-bid-title {
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-weight: 600; letter-spacing: -0.01em; line-height: 1.06;
+  font-size: clamp(1.85rem, 7.4vw, 2.35rem);
+  margin: 0; color: #f7f0e2; text-wrap: balance;
+}
+.sbh-bid-sub {
+  margin: 10px 0 0; max-width: 46ch;
+  font-size: 0.86rem; line-height: 1.55;
+  color: rgba(247, 240, 226, 0.72);
+}
+.sbh-bid-cta {
+  flex: 0 0 auto; align-self: flex-start;
+  margin-top: 16px; padding: 13px 26px;
+  text-decoration: none;
+}
+
+/* stats — real platform numbers, so they get the tabular treatment */
+.sbh-bid-stats {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+}
+.sbh-bid-stat {
+  padding: 13px 14px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(226, 196, 137, 0.16);
+}
+.sbh-bid-stat b {
+  display: block; white-space: nowrap;      /* "9 min" must never wrap mid-value */
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.5rem; font-weight: 700; line-height: 1;
+  color: var(--sbh-gold-lt, #e2c489);
+}
+.sbh-bid-stat b i { font-style: normal; font-size: 0.62em; font-weight: 600; opacity: 0.8; }
+/* direct child ONLY — <b> contains a <span> from <CountUp>, and an unscoped
+   `.sbh-bid-stat span` swallowed the number into the label style. */
+.sbh-bid-stat > span {
+  display: block; margin-top: 6px;
+  font-size: 0.66rem; letter-spacing: 0.09em; text-transform: uppercase;
+  color: rgba(247, 240, 226, 0.55);
+}
+
+/* recent wins — masked to a first initial upstream (anti-PII, see the route) */
+.sbh-bid-wins { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.sbh-bid-wins li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 12px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 0.78rem; color: rgba(247, 240, 226, 0.8);
+}
+.sbh-bid-who {
+  flex: 0 0 auto;
+  width: 25px; height: 25px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.72rem; font-weight: 700; color: #1a1208;
+  background: linear-gradient(135deg, var(--sbh-gold-lt, #e2c489), var(--sbh-gold, #c9a66b));
+}
+.sbh-bid-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sbh-bid-what { min-width: 0; line-height: 1.4; }
+.sbh-bid-what strong { font-weight: 600; color: #f7f0e2; }
+.sbh-bid-what b { font-weight: 700; color: var(--sbh-gold-lt, #e2c489); font-variant-numeric: tabular-nums; }
+.sbh-bid-when {
+  flex: 0 0 auto;
+  font-size: 0.66rem; letter-spacing: 0.05em;
+  color: rgba(247, 240, 226, 0.42);
+}
+.sbh-bid-who { margin-top: 1px; }
+
+/* the quiet-day variant: the mechanic, not a wall of zeros */
+.sbh-bid-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: none; }
+.sbh-bid-steps li {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 13px 14px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(226, 196, 137, 0.16);
+}
+.sbh-bid-step-n {
+  flex: 0 0 auto;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.74rem; font-weight: 700; color: #1a1208;
+  background: linear-gradient(135deg, var(--sbh-gold-lt, #e2c489), var(--sbh-gold, #c9a66b));
+}
+.sbh-bid-step-b { display: block; min-width: 0; }
+.sbh-bid-step-b strong {
+  display: block; font-size: 0.9rem; font-weight: 600; color: #f7f0e2;
+}
+.sbh-bid-step-b em {
+  display: block; margin-top: 2px; font-style: normal;
+  font-size: 0.78rem; line-height: 1.45; color: rgba(247, 240, 226, 0.6);
+}
+.sbh-bid-listening {
+  display: flex; align-items: center; gap: 8px;
+  margin: 14px 0 0;
+  font-size: 0.8rem; color: rgba(247, 240, 226, 0.66);
+}
+.sbh-bid-listening b {
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem; font-weight: 700; color: var(--sbh-gold-lt, #e2c489);
+}
+
+@media (min-width: 1024px) {
+  .sbh-bid-inner {
+    flex-direction: row; align-items: center;
+    gap: clamp(36px, 5vw, 84px);
+    padding: clamp(44px, 5vw, 66px) var(--sbh-gut, 40px);
+  }
+  .sbh-bid-lead { flex: 1 1 42%; min-width: 0; }
+  .sbh-bid-right { flex: 1 1 58%; min-width: 0; }
+  .sbh-bid-title { font-size: clamp(2.1rem, 2.9vw, 3rem); }
+  .sbh-bid-sub { font-size: 0.94rem; }
+  .sbh-bid-stats { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .sbh-bid-stat b { font-size: clamp(1.55rem, 2vw, 2rem); }
+  .sbh-bid-wins li { font-size: 0.82rem; align-items: center; }
+  .sbh-bid-body { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+  .sbh-bid-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sbh-bid-who { margin-top: 0; }
+  .sbh-bid-steps { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .sbh-bid-steps li { flex-direction: column; gap: 9px; padding: 16px; }
+  .sbh-bid-step-b strong { font-size: 0.94rem; }
+  .sbh-bid-cta { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+  .sbh-bid-cta:hover { transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sbh-bid-cta { transition: none !important; }
+}
