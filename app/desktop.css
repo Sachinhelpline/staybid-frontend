@@ -2689,21 +2689,47 @@ body main textarea.input-luxury {
   .sbh-ticker {
     position: relative; overflow: hidden;
     border-block: 1px solid var(--border-soft, #e8dcc8);
-    background: color-mix(in srgb, var(--bg-card, #fffcf6) 70%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #fffcf6) 92%, transparent),
+                              color-mix(in srgb, var(--bg-card, #fffcf6) 74%, #e3d4b4));
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   }
-  .sbh-ticker-track { display: flex; width: max-content; animation: sbhTicker 46s linear infinite; }
-  .sbh-ticker:hover .sbh-ticker-track { animation-play-state: paused; }
-  .sbh-ticker-group { display: flex; }
-  .sbh-ticker-item {
-    display: inline-flex; align-items: center;
-    padding: 11px 26px;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.76rem; font-weight: 500; letter-spacing: 0.04em;
-    color: var(--text-soft, #4a3820); opacity: 0.86; white-space: nowrap;
+  /* the ends fade so chips enter and leave instead of being guillotined */
+  .sbh-ticker::before, .sbh-ticker::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 64px; z-index: 2;
+    pointer-events: none;
   }
-  .sbh-ticker-item::after {
-    content: "•"; margin-left: 26px; opacity: 0.4; color: var(--sbh-gold);
+  .sbh-ticker::before { left: 0;  background: linear-gradient(90deg, var(--bg-page, #faf5eb), transparent); }
+  .sbh-ticker::after  { right: 0; background: linear-gradient(270deg, var(--bg-page, #faf5eb), transparent); }
+  .sbh-ticker-track { display: flex; width: max-content; animation: sbhTicker 46s linear infinite; }
+  /* every chip is a link, so the motion MUST be stoppable to be clickable —
+     hover for the mouse, focus-within for the keyboard (WCAG 2.2.2). */
+  .sbh-ticker:hover .sbh-ticker-track,
+  .sbh-ticker:focus-within .sbh-ticker-track { animation-play-state: paused; }
+  .sbh-ticker-group { display: flex; gap: 10px; padding: 10px 5px; }
+  .sbh-ticker-item {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 9px 16px; border-radius: 999px;
+    text-decoration: none; white-space: nowrap;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
+    color: var(--text-base, #1f1a0f);
+    background: var(--bg-page, #faf5eb);
+    border: 1px solid rgba(139, 106, 40, 0.22);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 3px 8px -5px rgba(74, 56, 32, 0.55);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  }
+  .sbh-ticker-item:hover {
+    transform: translateY(-2px);
+    border-color: rgba(139, 106, 40, 0.45);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 20px -10px rgba(74, 56, 32, 0.7);
+  }
+  .sbh-tk-ico { font-size: 0.92rem; line-height: 1; }
+  .sbh-tk-accent {
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; color: #4a2c00;
+    background: linear-gradient(135deg, #f4d894, var(--sbh-gold));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
@@ -2719,6 +2745,7 @@ body main textarea.input-luxury {
   @media (prefers-reduced-motion: reduce) {
     .sbh-hero-bg { animation: none !important; opacity: 1 !important; }
     .sbh-ticker-track { animation: none !important; }
+    .sbh-ticker-item { transition: none !important; }
     .sbh-reel-vid { transition: none !important; }
     .sbh-hero-dot { transition: none !important; }
   }

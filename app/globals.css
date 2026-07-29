@@ -11148,21 +11148,37 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-hero-count { display: none; }
 
   /* ── ticker ───────────────────────────────────────────────────────── */
+  /* TOUCH: no auto-motion. Every chip is a link, and a moving tap target is
+     not a real target — so this is a swipeable row instead of a marquee. */
   .sbh-ticker {
-    overflow: hidden;
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
     border-block: 1px solid var(--border-soft, #e8dcc8);
-    background: var(--bg-card, #fffcf6);
+    background: linear-gradient(180deg,
+      var(--bg-card, #fffcf6), color-mix(in srgb, var(--bg-card, #fffcf6) 88%, #d9c9a8));
   }
-  .sbh-ticker-track { display: flex; width: max-content; animation: sbhTickerM 38s linear infinite; }
-  .sbh-ticker-group { display: flex; }
+  .sbh-ticker::-webkit-scrollbar { display: none; }
+  .sbh-ticker-track { display: flex; width: max-content; animation: none; }
+  /* the seamless-loop duplicate has no job without a marquee */
+  .sbh-ticker-group:nth-child(2) { display: none; }
+  .sbh-ticker-group { display: flex; gap: 8px; padding: 9px var(--sbh-gut); }
   .sbh-ticker-item {
-    display: inline-flex; align-items: center;
-    padding: 9px 16px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 13px; border-radius: 999px;
+    text-decoration: none; white-space: nowrap;
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.7rem; color: var(--text-soft, #4a3820); opacity: 0.85;
-    white-space: nowrap;
+    font-size: 0.74rem; font-weight: 600;
+    color: var(--text-base, #1f1a0f);
+    background: var(--bg-page, #faf5eb);
+    border: 1px solid rgba(139, 106, 40, 0.22);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 5px -3px rgba(74, 56, 32, 0.5);
   }
-  .sbh-ticker-item::after { content: "•"; margin-left: 16px; opacity: 0.4; color: var(--sbh-gold); }
+  .sbh-tk-ico { font-size: 0.86rem; line-height: 1; }
+  .sbh-tk-accent {
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; color: #4a2c00;
+    background: linear-gradient(135deg, #f4d894, var(--sbh-gold));
+  }
   @keyframes sbhTickerM { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
   /* ── rails (swipe, no arrows) ─────────────────────────────────────── */
@@ -11188,7 +11204,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-rail-nav { display: none; }          /* swipe on touch, not arrows */
   .sbh-rail {
     display: flex; gap: 12px;
-    padding: 4px var(--sbh-gut) 14px;
+    padding: 4px var(--sbh-gut) 20px;    /* room for the tile's cast shadow */
     overflow-x: auto; overflow-y: hidden;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
@@ -11198,10 +11214,14 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-rail > * { scroll-snap-align: start; }
 
   /* ── cards ────────────────────────────────────────────────────────── */
-  /* CONTAINER-LESS on mobile (the Airbnb pattern): no card background, border,
-     shadow or padding — just a rounded image with the text sitting directly on
-     the page. The boxed card reads heavy and "stretched" on a phone; removing
-     the chrome is what produces the airy, premium-cozy feel. */
+  /* v568. The card stays CONTAINER-LESS (text on the page, not in a box) but
+     the artwork is now a RAISED TILE — the native pattern, and the thing that
+     was missing: v560 stripped every surface cue, so the cards read flat.
+     Two geometry fixes go with it, because "stretched" was really SIZE:
+       · 56vw → 46vw, so ~2.1 cards + a peek are in view instead of ~1.7
+       · a 1/1 crop → 4/3, so the card is no longer a tower on a phone
+     Depth lives on .sbh-card-media (the tile), never on .sbh-card — a box
+     shadow around the text block is what made it look heavy before. */
   .sbh-card {
     position: relative; flex-shrink: 0;
     display: flex; flex-direction: column;
@@ -11210,18 +11230,29 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     border-radius: 0;
     box-shadow: none;
     overflow: visible;
-    transition: transform 0.16s ease;
+    transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .sbh-card:active { transform: scale(0.985); }
-  .sbh-card-wide { width: 56vw; max-width: 232px; }
-  .sbh-card-tall { width: 32vw; max-width: 140px; }
+  .sbh-card:active { transform: scale(0.965); }
+  .sbh-card:active .sbh-card-media {
+    box-shadow:
+      0 0 0 1px rgba(139, 106, 40, 0.14),
+      0 2px 5px -3px rgba(31, 26, 15, 0.5);
+  }
+  .sbh-card-wide { width: 46vw; max-width: 196px; }
+  .sbh-card-tall { width: 30vw; max-width: 132px; }
   .sbh-card-media {
     position: relative; overflow: hidden;
-    border-radius: 14px;                 /* the image IS the card */
+    border-radius: 16px;
     background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    /* the tile: a hairline ring, a close contact shadow, and a soft cast */
+    box-shadow:
+      0 0 0 1px rgba(139, 106, 40, 0.14),
+      0 2px 6px -3px rgba(31, 26, 15, 0.45),
+      0 12px 22px -14px rgba(31, 26, 15, 0.65);
+    transition: box-shadow 0.18s ease;
   }
-  /* square, like Airbnb — a landscape crop makes the card tall and billboardy */
-  .sbh-card-wide .sbh-card-media { aspect-ratio: 1 / 1; }
+  /* 4:3 — hotel photography is landscape, and it keeps the card compact */
+  .sbh-card-wide .sbh-card-media { aspect-ratio: 4 / 3; }
   .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
   .sbh-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
@@ -11272,14 +11303,25 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-loading { padding: 40px var(--sbh-gut); color: var(--text-soft, #4a3820); opacity: 0.7; }
 
   /* container-less on mobile in dark mode too — only the media plate changes */
-  [data-theme="dark"] .sbh-card-media { background: linear-gradient(135deg, #2a2119, #1a1510); }
+  [data-theme="dark"] .sbh-card-media {
+    background: linear-gradient(135deg, #2a2119, #1a1510);
+    /* the light-mode ring/shadow disappears on a dark ground — swap for a
+       gold hairline and a deeper cast so the tile still reads as raised */
+    box-shadow:
+      0 0 0 1px rgba(226, 196, 137, 0.16),
+      0 2px 6px -3px rgba(0, 0, 0, 0.8),
+      0 14px 24px -14px rgba(0, 0, 0, 0.95);
+  }
+  [data-theme="dark"] .sbh-card:active .sbh-card-media {
+    box-shadow: 0 0 0 1px rgba(226, 196, 137, 0.16), 0 2px 5px -3px rgba(0, 0, 0, 0.9);
+  }
   [data-theme="dark"] .sbh-chip-price { background: rgba(28, 22, 14, 0.92); color: #f4ead6; }
   [data-theme="dark"] .sbh-ticker { background: var(--bg-card, #1a1610); }
 
   @media (prefers-reduced-motion: reduce) {
     .sbh-hero-bg { animation: none !important; }
     .sbh-ticker-track { animation: none !important; }
-    .sbh-card, .sbh-hero-dot { transition: none !important; }
+    .sbh-card, .sbh-card-media, .sbh-hero-dot { transition: none !important; }
   }
 }
 
@@ -11338,9 +11380,15 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
 }
 .sbh-bid-stat {
-  padding: 13px 14px; border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(226, 196, 137, 0.16);
+  padding: 14px 15px; border-radius: 16px;
+  background:
+    radial-gradient(130% 130% at 0% 0%, rgba(255, 255, 255, 0.11), transparent 60%),
+    linear-gradient(158deg, rgba(255, 255, 255, 0.075), rgba(0, 0, 0, 0.22));
+  border: 1px solid rgba(226, 196, 137, 0.22);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.35) inset,
+    0 14px 26px -18px rgba(0, 0, 0, 0.95);
 }
 .sbh-bid-stat b {
   display: block; white-space: nowrap;      /* "9 min" must never wrap mid-value */
@@ -11389,22 +11437,36 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 /* the quiet-day variant: the mechanic, not a wall of zeros */
 .sbh-bid-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: none; }
 .sbh-bid-steps li {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 13px 14px; border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(226, 196, 137, 0.16);
+  position: relative; overflow: hidden;
+  display: flex; align-items: flex-start; gap: 13px;
+  padding: 15px 16px; border-radius: 16px;
+  background:
+    radial-gradient(130% 130% at 0% 0%, rgba(255, 255, 255, 0.11), transparent 60%),
+    linear-gradient(158deg, rgba(255, 255, 255, 0.075), rgba(0, 0, 0, 0.22));
+  border: 1px solid rgba(226, 196, 137, 0.22);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.35) inset,
+    0 14px 26px -18px rgba(0, 0, 0, 0.95);
 }
 .sbh-bid-step-n {
   flex: 0 0 auto;
-  width: 26px; height: 26px; border-radius: 50%;
+  width: 30px; height: 30px; border-radius: 50%;
   display: grid; place-items: center;
   font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.74rem; font-weight: 700; color: #1a1208;
-  background: linear-gradient(135deg, var(--sbh-gold-lt, #e2c489), var(--sbh-gold, #c9a66b));
+  font-size: 0.8rem; font-weight: 700; color: #2a1c08;
+  background: linear-gradient(160deg, #f7e5bb, var(--sbh-gold, #c9a66b));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 -2px 4px rgba(96, 68, 16, 0.5) inset,
+    0 4px 10px -4px rgba(0, 0, 0, 0.9);
 }
 .sbh-bid-step-b { display: block; min-width: 0; }
 .sbh-bid-step-b strong {
-  display: block; font-size: 0.9rem; font-weight: 600; color: #f7f0e2;
+  display: block;
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.16rem; font-weight: 600; line-height: 1.2;
+  color: #fdf7ea;
 }
 .sbh-bid-step-b em {
   display: block; margin-top: 2px; font-style: normal;
@@ -11437,15 +11499,27 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-bid-body { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
   .sbh-bid-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sbh-bid-who { margin-top: 0; }
-  .sbh-bid-steps { grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .sbh-bid-steps li { flex-direction: column; gap: 9px; padding: 16px; }
-  .sbh-bid-step-b strong { font-size: 0.94rem; }
+  .sbh-bid-steps { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .sbh-bid-steps li {
+    flex-direction: column; gap: 11px; padding: 19px;
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+                box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+  .sbh-bid-steps li:hover {
+    transform: translateY(-4px);
+    border-color: rgba(226, 196, 137, 0.42);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.16) inset,
+      0 26px 44px -24px rgba(0, 0, 0, 1);
+  }
+  .sbh-bid-step-b strong { font-size: 1.24rem; }
+  .sbh-bid-step-n { width: 34px; height: 34px; font-size: 0.88rem; }
   .sbh-bid-cta { transition: transform 0.18s ease, box-shadow 0.18s ease; }
   .sbh-bid-cta:hover { transform: translateY(-2px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sbh-bid-cta { transition: none !important; }
+  .sbh-bid-cta, .sbh-bid-steps li { transition: none !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -11606,9 +11680,11 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   v564 — CIRCLE row: the three-models strip + its legal note (both viewports)
+   v567 — CIRCLE row: the three model cards (both viewports)
    The property cards reuse .sbh-card-wide wholesale — a Circle property IS a
-   property, and giving it a bespoke card would only make the page noisier.
+   property. The three MODEL cards were flat outlined boxes; they are now real
+   objects: a raised surface, an embossed numeral, and a type hierarchy that
+   separates the model, the promise and the live count.
    ═════════════════════════════════════════════════════════════════════════ */
 .sbh-chip-circle {
   left: 12px; top: 12px; right: auto;
@@ -11617,159 +11693,268 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   border: 1px solid rgba(226, 196, 137, 0.34);
 }
 .sbh-circ-ways {
-  display: grid; gap: 10px;
+  display: grid; gap: 12px;
   padding: 0 var(--sbh-gut, 16px);
-  margin-top: -8px;
+  margin-top: -4px;
 }
 .sbh-circ-way {
-  display: block;
-  padding: 13px 15px; border-radius: 14px;
-  background: rgba(139, 106, 40, 0.06);
-  border: 1px solid rgba(139, 106, 40, 0.18);
+  position: relative; isolation: isolate; overflow: hidden;
+  display: flex; align-items: center; gap: 14px;
+  padding: 15px 16px; border-radius: 18px;
   text-decoration: none;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 255, 255, 0.9), transparent 62%),
+    linear-gradient(158deg, #fffdf8, #f3e9d6);
+  border: 1px solid rgba(139, 106, 40, 0.24);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -1px 0 rgba(139, 106, 40, 0.10) inset,
+    0 10px 20px -14px rgba(74, 56, 32, 0.7);
 }
+/* the numeral is struck into the card, not printed on it */
+.sbh-circ-badge {
+  flex: 0 0 auto;
+  width: 42px; height: 42px; border-radius: 13px;
+  display: grid; place-items: center;
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.44rem; font-weight: 700; line-height: 1;
+  color: #4a2c00;
+  background: linear-gradient(160deg, #f6e2b4, var(--sbh-gold, #c9a66b));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 -2px 4px rgba(122, 88, 24, 0.35) inset,
+    0 4px 10px -5px rgba(122, 88, 24, 0.8);
+}
+.sbh-circ-body { flex: 1 1 auto; min-width: 0; }
 .sbh-circ-n {
   display: block;
   font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.6rem; font-weight: 600;
-  letter-spacing: 0.15em; text-transform: uppercase;
+  font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
   color: #8a6a24;
 }
 .sbh-circ-way strong {
-  display: block; margin-top: 4px;
-  font-size: 0.94rem; font-weight: 600;
+  display: block; margin-top: 3px;
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.3rem; font-weight: 600; line-height: 1.15;
   color: var(--text-base, #1f1a0f);
 }
 .sbh-circ-way em {
-  display: block; margin-top: 2px; font-style: normal;
-  font-size: 0.78rem; color: var(--text-soft, #4a3820); opacity: 0.75;
+  display: block; margin-top: 3px; font-style: normal;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem; font-weight: 600;
+  color: var(--text-soft, #4a3820); opacity: 0.82;
+}
+.sbh-circ-arrow {
+  flex: 0 0 auto;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 0.9rem; color: #8a6a24;
+  background: rgba(139, 106, 40, 0.10);
+  border: 1px solid rgba(139, 106, 40, 0.20);
 }
 .sbh-circ-note {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-size: 0.68rem; line-height: 1.5;
   color: var(--text-soft, #4a3820); opacity: 0.6;
 }
 
 @media (min-width: 1024px) {
-  .sbh-circ-ways { grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: -4px; }
-  .sbh-circ-way { padding: 16px 18px; transition: border-color 0.15s ease, transform 0.15s ease; }
-  .sbh-circ-way:hover { border-color: rgba(139, 106, 40, 0.4); transform: translateY(-2px); }
-  .sbh-circ-note { grid-column: 1 / -1; margin-top: 4px; max-width: 92ch; }
+  .sbh-circ-ways { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .sbh-circ-way {
+    padding: 20px; gap: 16px;
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+                box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+  .sbh-circ-way::after {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(158deg, rgba(226, 196, 137, 0.35), transparent 55%);
+    opacity: 0; transition: opacity 0.22s ease;
+  }
+  .sbh-circ-way:hover {
+    transform: translateY(-5px);
+    border-color: rgba(139, 106, 40, 0.5);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.95) inset,
+      0 26px 44px -24px rgba(74, 56, 32, 0.85);
+  }
+  .sbh-circ-way:hover::after { opacity: 1; }
+  .sbh-circ-way:hover .sbh-circ-arrow { background: rgba(139, 106, 40, 0.2); transform: translateX(3px); }
+  .sbh-circ-arrow { transition: transform 0.22s ease, background 0.22s ease; }
+  .sbh-circ-badge { width: 48px; height: 48px; font-size: 1.6rem; }
+  .sbh-circ-way strong { font-size: 1.42rem; }
+  .sbh-circ-note { grid-column: 1 / -1; margin-top: 6px; max-width: 92ch; }
 }
 
 @media (prefers-color-scheme: dark) {
-  .sbh-circ-way { background: rgba(226, 196, 137, 0.07); border-color: rgba(226, 196, 137, 0.16); }
+  .sbh-circ-way {
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(226, 196, 137, 0.14), transparent 62%),
+      linear-gradient(158deg, #241c12, #1a140c);
+    border-color: rgba(226, 196, 137, 0.20);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.07) inset, 0 12px 24px -16px #000;
+  }
   .sbh-circ-n { color: var(--sbh-gold-lt, #e2c489); }
+  .sbh-circ-arrow { color: var(--sbh-gold-lt, #e2c489); background: rgba(226, 196, 137, 0.12); }
 }
 :root[data-theme="dark"] .sbh-circ-way {
-  background: rgba(226, 196, 137, 0.07); border-color: rgba(226, 196, 137, 0.16);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(226, 196, 137, 0.14), transparent 62%),
+    linear-gradient(158deg, #241c12, #1a140c);
+  border-color: rgba(226, 196, 137, 0.20);
 }
-:root[data-theme="dark"] .sbh-circ-n { color: var(--sbh-gold-lt, #e2c489); }
+:root[data-theme="dark"] .sbh-circ-n,
+:root[data-theme="dark"] .sbh-circ-arrow { color: var(--sbh-gold-lt, #e2c489); }
 :root[data-theme="light"] .sbh-circ-way {
-  background: rgba(139, 106, 40, 0.06); border-color: rgba(139, 106, 40, 0.18);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 255, 255, 0.9), transparent 62%),
+    linear-gradient(158deg, #fffdf8, #f3e9d6);
+  border-color: rgba(139, 106, 40, 0.24);
 }
-:root[data-theme="light"] .sbh-circ-n { color: #8a6a24; }
+:root[data-theme="light"] .sbh-circ-n,
+:root[data-theme="light"] .sbh-circ-arrow { color: #8a6a24; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sbh-circ-way { transition: none !important; }
+  .sbh-circ-way, .sbh-circ-way::after, .sbh-circ-arrow { transition: none !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   v565 — PASSPORT strip (both viewports, unlayered)
-   One row, not a rail: the passport is a single object, and this slot sits
-   above the merchandising, so it has to stay slim at every width.
+   v567 — PASSPORT card (both viewports, unlayered)
+   Was a full-bleed hairline strip, which read as stretched at every desktop
+   width. It is now a bounded OBJECT — a passport booklet on the page: walnut
+   ground, gold foil edge, an embossed rank medal, and a light sweep across
+   the cover. It sits at the BOTTOM of the rails, just above the closing band.
    ═════════════════════════════════════════════════════════════════════════ */
+.sbh-pp-wrap { display: flex; justify-content: center; padding: 0 var(--sbh-gut, 16px); }
 .sbh-pp {
-  display: flex; align-items: center; gap: 12px;
-  margin: 0 var(--sbh-gut, 16px);
-  padding: 12px 14px; border-radius: 16px;
+  position: relative; isolation: isolate; overflow: hidden;
+  display: block; width: 100%; max-width: 440px;
+  padding: 18px 20px 20px;
+  border-radius: 20px;
   text-decoration: none;
-  background: rgba(139, 106, 40, 0.07);
-  border: 1px solid rgba(139, 106, 40, 0.18);
+  color: #f7f0e2;
+  background:
+    radial-gradient(120% 90% at 12% 0%, rgba(226, 196, 137, 0.20), transparent 60%),
+    linear-gradient(158deg, #241a11 0%, #2f2317 52%, #1a1309 100%);
+  border: 1px solid rgba(226, 196, 137, 0.30);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.10) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.45) inset,
+    0 18px 34px -20px rgba(26, 19, 9, 0.95);
 }
+/* the foil edge — a real gold rule inside the cover, like a passport */
+.sbh-pp::before {
+  content: ""; position: absolute; inset: 7px; border-radius: 14px;
+  border: 1px solid rgba(226, 196, 137, 0.22);
+  pointer-events: none;
+}
+/* one slow light sweep across the cover on hover (pointer only, see below) */
+.sbh-pp-sheen {
+  position: absolute; top: -60%; left: -35%; width: 45%; height: 220%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.13), transparent);
+  transform: rotate(16deg) translateX(-140%);
+  pointer-events: none; z-index: 1;
+}
+.sbh-pp-kicker {
+  display: block;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.19em; text-transform: uppercase;
+  color: rgba(226, 196, 137, 0.75);
+}
+.sbh-pp-head { display: flex; align-items: center; gap: 13px; margin-top: 12px; }
+
+/* the medal is an OBJECT: a recessed bezel with a domed face inside it */
 .sbh-pp-medal {
   flex: 0 0 auto;
-  width: 42px; height: 42px; border-radius: 50%;
+  width: 54px; height: 54px; border-radius: 50%;
   display: grid; place-items: center;
-  font-size: 1.2rem; line-height: 1;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.5));
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.55) inset,
+    0 1px 0 rgba(255, 255, 255, 0.16);
 }
-.sbh-pp-main { flex: 1 1 auto; min-width: 0; display: block; }
-.sbh-pp-top {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+.sbh-pp-medal-face {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 1.32rem; line-height: 1;
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.45) inset,
+    0 -3px 6px rgba(0, 0, 0, 0.4) inset,
+    0 4px 10px -4px rgba(0, 0, 0, 0.8);
 }
-.sbh-pp-top b {
-  font-size: 0.92rem; font-weight: 700;
-  color: var(--text-base, #1f1a0f);
+.sbh-pp-id { min-width: 0; }
+.sbh-pp-id b {
+  display: block;
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  font-size: 1.5rem; font-weight: 600; line-height: 1.1;
+  color: #fdf7ea;
 }
-.sbh-pp-top i {
-  flex: 0 0 auto; font-style: normal;
+.sbh-pp-id i {
+  display: block; margin-top: 2px; font-style: normal;
   font-family: "Space Grotesk", var(--font-sans), sans-serif;
   font-variant-numeric: tabular-nums;
-  font-size: 0.74rem; font-weight: 600;
-  color: #8a6a24;
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--sbh-gold-lt, #e2c489);
 }
+
 .sbh-pp-bar {
-  display: block; margin-top: 6px;
-  height: 5px; border-radius: 999px; overflow: hidden;
-  background: rgba(139, 106, 40, 0.16);
+  display: block; margin-top: 16px;
+  height: 7px; border-radius: 999px; overflow: hidden;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) inset, 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 .sbh-pp-bar > span {
   display: block; height: 100%; border-radius: 999px;
-  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .sbh-pp-sub {
-  display: block; margin-top: 5px;
-  font-size: 0.72rem; color: var(--text-soft, #4a3820); opacity: 0.75;
+  display: block; margin-top: 9px;
+  font-size: 0.78rem; line-height: 1.45;
+  color: rgba(247, 240, 226, 0.72);
 }
-.sbh-pp-stats {
-  display: none;                            /* phone: the bar carries the story */
-  flex: 0 0 auto; gap: 16px; text-align: right;
-}
+.sbh-pp-stats { display: flex; gap: 22px; margin-top: 14px; }
 .sbh-pp-stats > span {
-  display: block;
-  font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase;
-  color: var(--text-soft, #4a3820); opacity: 0.6;
+  font-size: 0.64rem; letter-spacing: 0.11em; text-transform: uppercase;
+  color: rgba(247, 240, 226, 0.5);
 }
 .sbh-pp-stats b {
   display: block;
   font-family: "Space Grotesk", var(--font-sans), sans-serif;
   font-variant-numeric: tabular-nums;
-  font-size: 1.15rem; font-weight: 700;
-  color: var(--text-base, #1f1a0f); opacity: 1;
+  font-size: 1.4rem; font-weight: 700; line-height: 1;
+  color: #fdf7ea;
 }
-.sbh-pp-go { flex: 0 0 auto; color: #8a6a24; font-size: 1.1rem; }
+.sbh-pp-go {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 16px; padding: 9px 15px; border-radius: 999px;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+  color: #2a1c08;
+  background: linear-gradient(135deg, #f0dcae, var(--sbh-gold, #c9a66b));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 6px 14px -8px rgba(0, 0, 0, 0.9);
+}
+.sbh-pp-go em { font-style: normal; }
 
 @media (min-width: 1024px) {
-  .sbh-pp {
-    gap: 20px; padding: 15px 22px;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+  .sbh-pp { max-width: 470px; padding: 22px 24px 24px; }
+  .sbh-pp,
+  .sbh-pp-sheen { transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease; }
+  .sbh-pp:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.12) inset,
+      0 -1px 0 rgba(0, 0, 0, 0.45) inset,
+      0 34px 60px -28px rgba(26, 19, 9, 1);
   }
-  .sbh-pp:hover { border-color: rgba(139, 106, 40, 0.4); transform: translateY(-1px); }
-  .sbh-pp-medal { width: 50px; height: 50px; font-size: 1.4rem; }
-  .sbh-pp-main { max-width: 560px; }
-  .sbh-pp-stats { display: flex; }
+  .sbh-pp:hover .sbh-pp-sheen { transition: transform 0.85s ease; transform: rotate(16deg) translateX(420%); }
+  .sbh-pp-id b { font-size: 1.62rem; }
 }
-
-@media (prefers-color-scheme: dark) {
-  .sbh-pp { background: rgba(226, 196, 137, 0.08); border-color: rgba(226, 196, 137, 0.18); }
-  .sbh-pp-bar { background: rgba(226, 196, 137, 0.16); }
-  .sbh-pp-top i, .sbh-pp-go { color: var(--sbh-gold-lt, #e2c489); }
-}
-:root[data-theme="dark"] .sbh-pp {
-  background: rgba(226, 196, 137, 0.08); border-color: rgba(226, 196, 137, 0.18);
-}
-:root[data-theme="dark"] .sbh-pp-bar { background: rgba(226, 196, 137, 0.16); }
-:root[data-theme="dark"] .sbh-pp-top i,
-:root[data-theme="dark"] .sbh-pp-go { color: var(--sbh-gold-lt, #e2c489); }
-:root[data-theme="light"] .sbh-pp {
-  background: rgba(139, 106, 40, 0.07); border-color: rgba(139, 106, 40, 0.18);
-}
-:root[data-theme="light"] .sbh-pp-bar { background: rgba(139, 106, 40, 0.16); }
-:root[data-theme="light"] .sbh-pp-top i,
-:root[data-theme="light"] .sbh-pp-go { color: #8a6a24; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sbh-pp { transition: none !important; }
+  .sbh-pp, .sbh-pp-sheen { transition: none !important; }
   .sbh-pp-bar > span { transition: none !important; }
+  .sbh-pp:hover .sbh-pp-sheen { transform: rotate(16deg) translateX(-140%) !important; }
 }

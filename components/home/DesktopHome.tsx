@@ -379,16 +379,23 @@ function PassportStrip() {
   const toGo = r.next?.xpMin ? Math.max(0, r.next.xpMin - xp) : 0;
 
   return (
-    <Link href="/passport" className="sbh-pp">
-      <span className="sbh-pp-medal" style={{ background: rank.gradient || undefined }} aria-hidden>
-        {rank.emoji}
-      </span>
+    <div className="sbh-pp-wrap">
+      <Link href="/passport" className="sbh-pp">
+        <span className="sbh-pp-sheen" aria-hidden />
+        <span className="sbh-pp-kicker">Explorer Passport</span>
 
-      <span className="sbh-pp-main">
-        <span className="sbh-pp-top">
-          <b>{rank.label}</b>
-          <i>{xp.toLocaleString("en-IN")} XP</i>
+        <span className="sbh-pp-head">
+          <span className="sbh-pp-medal" aria-hidden>
+            <span className="sbh-pp-medal-face" style={{ background: rank.gradient || undefined }}>
+              {rank.emoji}
+            </span>
+          </span>
+          <span className="sbh-pp-id">
+            <b>{rank.label}</b>
+            <i>{xp.toLocaleString("en-IN")} XP</i>
+          </span>
         </span>
+
         <span className="sbh-pp-bar" aria-hidden>
           <span style={{ width: `${pct}%`, background: rank.gradient || rank.color || undefined }} />
         </span>
@@ -401,17 +408,17 @@ function PassportStrip() {
               ? <>{toGo.toLocaleString("en-IN")} XP to {r.next.emoji} {r.next.label}</>
               : "Top rank reached"}
         </span>
-      </span>
 
-      {stamps > 0 ? (
-        <span className="sbh-pp-stats">
-          <span><b>{stamps}</b> stamp{stamps === 1 ? "" : "s"}</span>
-          <span><b>{cities}</b> cit{cities === 1 ? "y" : "ies"}</span>
-        </span>
-      ) : null}
+        {stamps > 0 ? (
+          <span className="sbh-pp-stats">
+            <span><b>{stamps}</b> stamp{stamps === 1 ? "" : "s"}</span>
+            <span><b>{cities}</b> cit{cities === 1 ? "y" : "ies"}</span>
+          </span>
+        ) : null}
 
-      <span className="sbh-pp-go" aria-hidden>→</span>
-    </Link>
+        <span className="sbh-pp-go">Open passport <em aria-hidden>→</em></span>
+      </Link>
+    </div>
   );
 }
 
@@ -481,9 +488,13 @@ function CircleRow({ props: items, counts }: { props: CircleProp[]; counts: Circ
         <div className="sbh-circ-ways">
           {models.map((m) => (
             <Link key={m.k} href={m.href} className="sbh-circ-way">
-              <span className="sbh-circ-n">Model {m.k}</span>
-              <strong>{m.t}</strong>
-              <em>{m.s}</em>
+              <span className="sbh-circ-badge" aria-hidden>{m.k}</span>
+              <span className="sbh-circ-body">
+                <span className="sbh-circ-n">Model {m.k}</span>
+                <strong>{m.t}</strong>
+                <em>{m.s}</em>
+              </span>
+              <span className="sbh-circ-arrow" aria-hidden>→</span>
             </Link>
           ))}
           <p className="sbh-circ-note">{CIRCLE_INCOME_DISCLOSURE}</p>
@@ -952,15 +963,39 @@ export default function DesktopHome() {
   const featured = heroPool[heroIdx] || heroPool[0] || null;
 
   // ── LIVE TICKER — real facts only (deals + the season wheel) ─────────
+  // Every item is a real destination. A deal that names a hotel goes to that
+  // hotel; the season + inventory facts go to the browse surfaces they
+  // describe. Nothing here is decorative text any more.
   const ticker = useMemo(() => {
-    const out: string[] = [];
+    const out: { k: string; icon: string; text: string; accent?: string; href: string }[] = [];
     const seasonCities = demand.primary.join(" · ");
-    if (seasonCities) out.push(`${SEASON_ICON[demand.season] || "✦"} ${demand.season} — ${seasonCities} in season now`);
-    for (const d of deals.slice(0, 8)) {
-      if (!d.hotel?.name) continue;
-      out.push(`⚡ ${d.hotel.name}${d.discount ? ` — ${Math.round(d.discount)}% off tonight` : ""}`);
+    if (seasonCities) {
+      out.push({
+        k: "season",
+        icon: SEASON_ICON[demand.season] || "✦",
+        text: `${demand.season} — ${seasonCities} in season now`,
+        href: "/hotels",
+      });
     }
-    if (hotels.length) out.push(`🏔️ ${hotels.length} properties live across ${LAUNCH_ZONES.length} zones`);
+    deals.slice(0, 8).forEach((d, i) => {
+      if (!d.hotel?.name) return;
+      out.push({
+        k: `deal-${d.id || i}`,
+        icon: "⚡",
+        text: d.hotel.name,
+        accent: d.discount ? `${Math.round(d.discount)}% off tonight` : undefined,
+        // the deal's own hotel when we know it, else the deals surface
+        href: d.hotelId || d.hotel?.id ? `/hotels/${d.hotelId || d.hotel?.id}` : "/flash-deals",
+      });
+    });
+    if (hotels.length) {
+      out.push({
+        k: "count",
+        icon: "🏔️",
+        text: `${hotels.length} properties live across ${LAUNCH_ZONES.length} zones`,
+        href: "/hotels",
+      });
+    }
     return out;
   }, [deals, hotels.length, demand]);
 
@@ -1054,28 +1089,44 @@ export default function DesktopHome() {
         ) : null}
       </section>
 
-      {/* ── LIVE TICKER — the one place auto-motion belongs: ambient, not a
-          list of choices the user is trying to click. ─────────────────── */}
+      {/* ── LIVE TICKER ───────────────────────────────────────────────────
+          Every item is a link now, which changes what the motion is allowed
+          to do. On a POINTER the marquee runs and pauses on hover/focus, so
+          you can always stop a chip and click it (also WCAG 2.2.2's pause
+          requirement). On TOUCH it does not auto-move at all — it is a
+          swipeable row — because chasing a moving chip with a thumb is not a
+          real interaction. Only the FIRST group is in the a11y tree; the
+          second is the seamless-loop duplicate and is hidden + unfocusable,
+          otherwise every offer would be announced twice. */}
       {ticker.length ? (
-        <div className="sbh-ticker" aria-hidden>
+        <nav className="sbh-ticker" aria-label="Live offers and season">
           <div className="sbh-ticker-track">
             {[0, 1].map((dup) => (
-              <div className="sbh-ticker-group" key={dup}>
-                {ticker.map((t, i) => (
-                  <span className="sbh-ticker-item" key={`${dup}-${i}`}>{t}</span>
+              <div
+                className="sbh-ticker-group"
+                key={dup}
+                aria-hidden={dup === 1 ? true : undefined}
+              >
+                {ticker.map((t) => (
+                  <Link
+                    href={t.href}
+                    className="sbh-ticker-item"
+                    key={`${dup}-${t.k}`}
+                    tabIndex={dup === 1 ? -1 : undefined}
+                  >
+                    <span className="sbh-tk-ico" aria-hidden>{t.icon}</span>
+                    <span className="sbh-tk-text">{t.text}</span>
+                    {t.accent ? <span className="sbh-tk-accent">{t.accent}</span> : null}
+                  </Link>
                 ))}
               </div>
             ))}
           </div>
-        </div>
+        </nav>
       ) : null}
 
       {/* ── RAILS ────────────────────────────────────────────────────── */}
       <div className="sbh-rails">
-        {/* Personal state before merchandising — the "Continue watching" slot.
-            Self-gates on sign-in, so a signed-out visitor sees no gap here. */}
-        <PassportStrip />
-
         {deals.length ? (
           <Rail
             title="⚡ Flash Deals"
@@ -1103,6 +1154,11 @@ export default function DesktopHome() {
         {/* Ownership sits after the browse rails and before the closing band:
             you have seen what StayBid sells, now here is how you can own it. */}
         {circleProps.length ? <CircleRow props={circleProps} counts={circleCounts} /> : null}
+
+        {/* Your own progress, last — after everything StayBid sells and just
+            above the closing band, which stays the page's final word.
+            Self-gates on sign-in, so a signed-out visitor sees no gap here. */}
+        <PassportStrip />
 
         {/* Closing band. It sits AFTER every rail — the browse surfaces sell the
             stays, and this is the "so what do I do now" answer you land on once
