@@ -42,12 +42,15 @@ import BidCardStack, { useIsMobileTablet, type BidCard } from "@/components/BidC
 import BidGameZone from "@/components/BidGameZone";
 import BidConsole from "@/components/bid/BidConsole";
 import BidTerminal from "@/components/bid/BidTerminal";
+import BidArcade from "@/components/bid/BidArcade";
 
-/* v573/v574 — /bid Step 1 host. v574 replaces the console with the
-   BidTerminal (draggable price dial, one-screen zero-scroll trading
-   terminal). Revert ladder: NEXT_PUBLIC_BID_CONSOLE="console" → v573
-   console; ="0" → the boot+climber; anything else (default) → v574
-   terminal. */
+/* v573/v574/v575 — /bid Step 1 host. Env default:
+     NEXT_PUBLIC_BID_CONSOLE = "terminal" (default) → v574 dial terminal
+                             = "arcade"            → v575 bidding arcade
+                             = "console"           → v573 console
+                             = "0"                 → the boot+climber
+   A `?ui=arcade|terminal|console|climber` query overrides the default so
+   both designs are viewable on the same deploy (see BidHost below). */
 const BID_HOST = process.env.NEXT_PUBLIC_BID_CONSOLE || "terminal";
 const BID_CONSOLE_ON = BID_HOST !== "0";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
@@ -808,6 +811,23 @@ export default function BidPage() {
   // returns false on first render so the server-rendered markup
   // matches the desktop path.
   const isMobile = useIsMobileTablet();
+
+  // v575 — `?ui=` override so both /bid designs are viewable on one deploy.
+  // Read from window.location (not useSearchParams) to avoid the Suspense
+  // static-prerender bailout. Falls back to the env default (BID_HOST).
+  const [uiParam, setUiParam] = useState<string>("");
+  useEffect(() => {
+    try {
+      const u = new URLSearchParams(window.location.search).get("ui");
+      if (u) setUiParam(u);
+    } catch {}
+  }, []);
+  const bidHost =
+    uiParam === "arcade" ? "arcade"
+    : uiParam === "terminal" ? "terminal"
+    : uiParam === "console" ? "console"
+    : uiParam === "climber" ? "0"
+    : BID_HOST;
 
   // Luxury calendar
   const [calCfg, setCalCfg] = useState<{
@@ -2395,7 +2415,32 @@ export default function BidPage() {
                hatch — but the default for every viewport is the
                climber. Sachin's spec: "ek hi flow main chalne chahiye
                na ki different different pages par". */
-            (BID_HOST === "terminal" ? (
+            (bidHost === "arcade" ? (
+              <BidArcade
+                cards={step1Cards}
+                onAllComplete={() => {}}
+                finalCtaLabel={loading ? "Sending…" : "🚀 Send my bid!"}
+                signals={{
+                  city: form.city,
+                  nights,
+                  rooms: form.rooms,
+                  marketAdr: presetExpected,
+                  bidPerNight: budget,
+                  totalBudget,
+                  strength: bidStr,
+                  oddsFor: (bpn: number) =>
+                    city && bpn > 0
+                      ? calcBidStrength(bpn, city.avg, form.city, form.checkIn, form.roomTypes || [])
+                      : null,
+                  setBidPerNight: (bpn: number) =>
+                    upd("maxBudget", String(Math.round(bpn * Math.max(1, nights) * form.rooms))),
+                  launched: success !== null || loading,
+                  launching: loading,
+                  canLaunch: !!form.city && nights > 0 && budget > 0,
+                  onLaunch: () => step1Cards[4]?.onDoneClick?.(),
+                }}
+              />
+            ) : bidHost === "terminal" ? (
               <BidTerminal
                 cards={step1Cards}
                 onAllComplete={() => {}}
@@ -2422,7 +2467,7 @@ export default function BidPage() {
                   onLaunch: () => step1Cards[4]?.onDoneClick?.(),
                 }}
               />
-            ) : BID_CONSOLE_ON ? (
+            ) : bidHost === "console" ? (
               <BidConsole
                 cards={step1Cards}
                 onAllComplete={() => {}}
@@ -2943,7 +2988,7 @@ export default function BidPage() {
             in screenshot 3 of Sachin's v202 feedback. Desktop sees
             the row as before; mobile Step 2/3 also see it (only the
             card-stack screen suppresses it). */}
-        {!((isMobile || BID_CONSOLE_ON) && step === 1) && (
+        {!((isMobile || bidHost !== "0") && step === 1) && (
         <div className="bx-nav-row">
           {step > 1 && (
             <button onClick={() => goStep(step - 1)} className="bx-nav-back">
@@ -2972,7 +3017,7 @@ export default function BidPage() {
             keeps it visible only on ≥1024px (desktop / laptop). Pure
             CSS — no JS state, no SSR flicker. Inner pages (Step 2) keep
             it hidden on mobile too, matching the original intent. */}
-        {!(BID_CONSOLE_ON && step === 1) && (
+        {!(bidHost !== "0" && step === 1) && (
           <p className="hidden lg:block" style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 14, letterSpacing: "0.02em" }}>
             Step {step} of {STEPS.length} · {STEPS[step - 1]}
           </p>
