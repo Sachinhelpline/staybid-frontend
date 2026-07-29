@@ -88,6 +88,26 @@ type Scorecard = {
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 
+/**
+ * The "% OFF" a flash deal is ACTUALLY showing, derived from the two prices the
+ * card prints beside it.
+ *
+ * Do NOT use the API's `discount` field here. /api/flash/near recomputes
+ * `aiPrice` through the v527 flash ladder but passes `discount` straight
+ * through from the raw deal row, so the two disagree — live today it returns
+ * 48% over a marketRate 3000 -> aiPrice 2400 move, which is 20%. A badge that
+ * contradicts the prices next to it is a claim we can't support, and it was
+ * visible on both the card and the ticker.
+ * (The API keeps its own `discount` because it is also the feed's sort/bucket
+ * key — changing it there would reorder the feed.)
+ */
+function offPct(was?: number | null, now?: number | null): number {
+  const w = Number(was) || 0;
+  const n = Number(now) || 0;
+  if (w <= 0 || n <= 0 || n >= w) return 0;
+  return Math.round(((w - n) / w) * 100);
+}
+
 /** cheapest real room price for a hotel, or null */
 function minPriceOf(h?: Hotel | null): number | null {
   const list = (h?.rooms || [])
@@ -246,13 +266,14 @@ function FlashCard({ d, left }: { d: Deal; left: string }) {
   const img = imgOf(h);
   const now = Number(d.aiPrice) || 0;
   const was = Number(d.marketRate) || 0;
+  const off = offPct(was, now);   // always agrees with the prices below
   return (
     <Link href={`/hotels/${d.hotelId || h?.id || ""}`} className="sbh-card sbh-card-wide sbh-card-flash">
       <div className="sbh-card-media">
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
-        {d.discount ? <span className="sbh-chip sbh-chip-off">{Math.round(d.discount)}% OFF</span> : null}
+        {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
         {left ? <span className="sbh-chip sbh-chip-live">⏳ {left}</span> : null}
       </div>
       <div className="sbh-card-body">
@@ -338,6 +359,118 @@ function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: (
   );
 }
 
+/* ── SCROLL RAIL — a scrollbar you can always see and grab ─────────────
+   The native one is not dependable. Chrome on Windows draws a classic bar;
+   macOS (and Safari especially) uses an OVERLAY bar that fades when idle, and
+   Safari ignores ::-webkit-scrollbar for the document scrollbar entirely — so
+   CSS alone cannot guarantee the affordance. On a 6,000px page that leaves a
+   mouse user with nothing visible to grab.
+
+   So: detect it. `innerWidth - documentElement.clientWidth` is 0 exactly when
+   the native bar takes no layout space, i.e. it is an overlay/hidden one. Only
+   then do we render our own rail, so a Windows user who already has a real
+   scrollbar never gets two. Pointer-only (no touch), and wheel/keyboard
+   scrolling is untouched either way. */
+function ScrollRail() {
+  const [on, setOn] = useState(false);
+  const [geo, setGeo] = useState({ top: 0, height: 0 });
+  const drag = useRef<{ startY: number; startScroll: number } | null>(null);
+
+  // Only mount where the native scrollbar is invisible AND we have a pointer.
+  useEffect(() => {
+    const decide = () => {
+      const overlay = window.innerWidth - document.documentElement.clientWidth === 0;
+      const pointer = window.matchMedia("(pointer: fine)").matches;
+      const wide = window.matchMedia("(min-width: 1024px)").matches;
+      setOn(overlay && pointer && wide);
+    };
+    decide();
+    window.addEventListener("resize", decide);
+    return () => window.removeEventListener("resize", decide);
+  }, []);
+
+  const sync = useCallback(() => {
+    const de = document.documentElement;
+    const track = de.clientHeight;
+    const total = de.scrollHeight;
+    if (total <= track) { setGeo({ top: 0, height: 0 }); return; }
+    // thumb length is proportional, with a floor so it stays grabbable
+    const h = Math.max(48, Math.round((track / total) * track));
+    const maxTop = track - h;
+    const top = Math.round((window.scrollY / (total - track)) * maxTop);
+    setGeo({ top, height: h });
+  }, []);
+
+  useEffect(() => {
+    if (!on) return;
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    // the page grows as rails hydrate — keep the thumb honest
+    const ro = new ResizeObserver(sync);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      ro.disconnect();
+    };
+  }, [on, sync]);
+
+  // drag the thumb
+  useEffect(() => {
+    if (!on) return;
+    const move = (e: PointerEvent) => {
+      const d = drag.current;
+      if (!d) return;
+      const de = document.documentElement;
+      const track = de.clientHeight;
+      const total = de.scrollHeight;
+      const h = Math.max(48, Math.round((track / total) * track));
+      const maxTop = track - h;
+      if (maxTop <= 0) return;
+      const delta = e.clientY - d.startY;
+      window.scrollTo({ top: d.startScroll + (delta / maxTop) * (total - track) });
+    };
+    const up = () => {
+      drag.current = null;
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [on]);
+
+  if (!on || geo.height === 0) return null;
+
+  return (
+    <div
+      className="sbh-srail"
+      onPointerDown={(e) => {
+        // clicking the track jumps a page; grabbing the thumb starts a drag
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        if (y < geo.top || y > geo.top + geo.height) {
+          window.scrollBy({ top: y < geo.top ? -window.innerHeight : window.innerHeight, behavior: "smooth" });
+        }
+      }}
+      aria-hidden
+    >
+      <div
+        className="sbh-srail-thumb"
+        style={{ transform: `translateY(${geo.top}px)`, height: geo.height }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          drag.current = { startY: e.clientY, startScroll: window.scrollY };
+          document.body.style.userSelect = "none";
+        }}
+      />
+    </div>
+  );
+}
+
 /* ── PASSPORT — the returning-visitor strip ────────────────────────────
    The streaming analogue of "Continue watching": your own state, first, above
    the merchandising. Signed-out renders NOTHING — there is no honest way to
@@ -379,16 +512,23 @@ function PassportStrip() {
   const toGo = r.next?.xpMin ? Math.max(0, r.next.xpMin - xp) : 0;
 
   return (
-    <Link href="/passport" className="sbh-pp">
-      <span className="sbh-pp-medal" style={{ background: rank.gradient || undefined }} aria-hidden>
-        {rank.emoji}
-      </span>
+    <div className="sbh-pp-wrap">
+      <Link href="/passport" className="sbh-pp">
+        <span className="sbh-pp-sheen" aria-hidden />
+        <span className="sbh-pp-kicker">Explorer Passport</span>
 
-      <span className="sbh-pp-main">
-        <span className="sbh-pp-top">
-          <b>{rank.label}</b>
-          <i>{xp.toLocaleString("en-IN")} XP</i>
+        <span className="sbh-pp-head">
+          <span className="sbh-pp-medal" aria-hidden>
+            <span className="sbh-pp-medal-face" style={{ background: rank.gradient || undefined }}>
+              {rank.emoji}
+            </span>
+          </span>
+          <span className="sbh-pp-id">
+            <b>{rank.label}</b>
+            <i>{xp.toLocaleString("en-IN")} XP</i>
+          </span>
         </span>
+
         <span className="sbh-pp-bar" aria-hidden>
           <span style={{ width: `${pct}%`, background: rank.gradient || rank.color || undefined }} />
         </span>
@@ -401,17 +541,17 @@ function PassportStrip() {
               ? <>{toGo.toLocaleString("en-IN")} XP to {r.next.emoji} {r.next.label}</>
               : "Top rank reached"}
         </span>
-      </span>
 
-      {stamps > 0 ? (
-        <span className="sbh-pp-stats">
-          <span><b>{stamps}</b> stamp{stamps === 1 ? "" : "s"}</span>
-          <span><b>{cities}</b> cit{cities === 1 ? "y" : "ies"}</span>
-        </span>
-      ) : null}
+        {stamps > 0 ? (
+          <span className="sbh-pp-stats">
+            <span><b>{stamps}</b> stamp{stamps === 1 ? "" : "s"}</span>
+            <span><b>{cities}</b> cit{cities === 1 ? "y" : "ies"}</span>
+          </span>
+        ) : null}
 
-      <span className="sbh-pp-go" aria-hidden>→</span>
-    </Link>
+        <span className="sbh-pp-go">Open passport <em aria-hidden>→</em></span>
+      </Link>
+    </div>
   );
 }
 
@@ -481,9 +621,13 @@ function CircleRow({ props: items, counts }: { props: CircleProp[]; counts: Circ
         <div className="sbh-circ-ways">
           {models.map((m) => (
             <Link key={m.k} href={m.href} className="sbh-circ-way">
-              <span className="sbh-circ-n">Model {m.k}</span>
-              <strong>{m.t}</strong>
-              <em>{m.s}</em>
+              <span className="sbh-circ-badge" aria-hidden>{m.k}</span>
+              <span className="sbh-circ-body">
+                <span className="sbh-circ-n">Model {m.k}</span>
+                <strong>{m.t}</strong>
+                <em>{m.s}</em>
+              </span>
+              <span className="sbh-circ-arrow" aria-hidden>→</span>
             </Link>
           ))}
           <p className="sbh-circ-note">{CIRCLE_INCOME_DISCLOSURE}</p>
@@ -952,15 +1096,41 @@ export default function DesktopHome() {
   const featured = heroPool[heroIdx] || heroPool[0] || null;
 
   // ── LIVE TICKER — real facts only (deals + the season wheel) ─────────
+  // Every item is a real destination. A deal that names a hotel goes to that
+  // hotel; the season + inventory facts go to the browse surfaces they
+  // describe. Nothing here is decorative text any more.
   const ticker = useMemo(() => {
-    const out: string[] = [];
+    const out: { k: string; icon: string; text: string; accent?: string; href: string }[] = [];
     const seasonCities = demand.primary.join(" · ");
-    if (seasonCities) out.push(`${SEASON_ICON[demand.season] || "✦"} ${demand.season} — ${seasonCities} in season now`);
-    for (const d of deals.slice(0, 8)) {
-      if (!d.hotel?.name) continue;
-      out.push(`⚡ ${d.hotel.name}${d.discount ? ` — ${Math.round(d.discount)}% off tonight` : ""}`);
+    if (seasonCities) {
+      out.push({
+        k: "season",
+        icon: SEASON_ICON[demand.season] || "✦",
+        text: `${demand.season} — ${seasonCities} in season now`,
+        href: "/hotels",
+      });
     }
-    if (hotels.length) out.push(`🏔️ ${hotels.length} properties live across ${LAUNCH_ZONES.length} zones`);
+    deals.slice(0, 8).forEach((d, i) => {
+      if (!d.hotel?.name) return;
+      out.push({
+        k: `deal-${d.id || i}`,
+        icon: "⚡",
+        text: d.hotel.name,
+        accent: offPct(d.marketRate, d.aiPrice) > 0
+          ? `${offPct(d.marketRate, d.aiPrice)}% OFF`
+          : undefined,
+        // the deal's own hotel when we know it, else the deals surface
+        href: d.hotelId || d.hotel?.id ? `/hotels/${d.hotelId || d.hotel?.id}` : "/flash-deals",
+      });
+    });
+    if (hotels.length) {
+      out.push({
+        k: "count",
+        icon: "🏔️",
+        text: `${hotels.length} properties live across ${LAUNCH_ZONES.length} zones`,
+        href: "/hotels",
+      });
+    }
     return out;
   }, [deals, hotels.length, demand]);
 
@@ -1054,28 +1224,44 @@ export default function DesktopHome() {
         ) : null}
       </section>
 
-      {/* ── LIVE TICKER — the one place auto-motion belongs: ambient, not a
-          list of choices the user is trying to click. ─────────────────── */}
+      {/* ── LIVE TICKER ───────────────────────────────────────────────────
+          Every item is a link now, which changes what the motion is allowed
+          to do. On a POINTER the marquee runs and pauses on hover/focus, so
+          you can always stop a chip and click it (also WCAG 2.2.2's pause
+          requirement). On TOUCH it does not auto-move at all — it is a
+          swipeable row — because chasing a moving chip with a thumb is not a
+          real interaction. Only the FIRST group is in the a11y tree; the
+          second is the seamless-loop duplicate and is hidden + unfocusable,
+          otherwise every offer would be announced twice. */}
       {ticker.length ? (
-        <div className="sbh-ticker" aria-hidden>
+        <nav className="sbh-ticker" aria-label="Live offers and season">
           <div className="sbh-ticker-track">
             {[0, 1].map((dup) => (
-              <div className="sbh-ticker-group" key={dup}>
-                {ticker.map((t, i) => (
-                  <span className="sbh-ticker-item" key={`${dup}-${i}`}>{t}</span>
+              <div
+                className="sbh-ticker-group"
+                key={dup}
+                aria-hidden={dup === 1 ? true : undefined}
+              >
+                {ticker.map((t) => (
+                  <Link
+                    href={t.href}
+                    className="sbh-ticker-item"
+                    key={`${dup}-${t.k}`}
+                    tabIndex={dup === 1 ? -1 : undefined}
+                  >
+                    <span className="sbh-tk-ico" aria-hidden>{t.icon}</span>
+                    <span className="sbh-tk-text">{t.text}</span>
+                    {t.accent ? <span className="sbh-tk-accent">{t.accent}</span> : null}
+                  </Link>
                 ))}
               </div>
             ))}
           </div>
-        </div>
+        </nav>
       ) : null}
 
       {/* ── RAILS ────────────────────────────────────────────────────── */}
       <div className="sbh-rails">
-        {/* Personal state before merchandising — the "Continue watching" slot.
-            Self-gates on sign-in, so a signed-out visitor sees no gap here. */}
-        <PassportStrip />
-
         {deals.length ? (
           <Rail
             title="⚡ Flash Deals"
@@ -1104,6 +1290,11 @@ export default function DesktopHome() {
             you have seen what StayBid sells, now here is how you can own it. */}
         {circleProps.length ? <CircleRow props={circleProps} counts={circleCounts} /> : null}
 
+        {/* Your own progress, last — after everything StayBid sells and just
+            above the closing band, which stays the page's final word.
+            Self-gates on sign-in, so a signed-out visitor sees no gap here. */}
+        <PassportStrip />
+
         {/* Closing band. It sits AFTER every rail — the browse surfaces sell the
             stays, and this is the "so what do I do now" answer you land on once
             you've scrolled the lot. Full-bleed: the rails column has no
@@ -1114,6 +1305,8 @@ export default function DesktopHome() {
           <div className="sbh-loading">Loading your stage…</div>
         ) : null}
       </div>
+
+      <ScrollRail />
 
       {theater != null ? (
         <ReelTheater

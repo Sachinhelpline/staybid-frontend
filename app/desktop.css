@@ -2514,32 +2514,40 @@ body main textarea.input-luxury {
   .sbh-rail-nav:disabled { opacity: 0; pointer-events: none; }
 
   /* ── CARDS (premium 3D: layered depth + lift + specular sheen) ────── */
+  /* v571 — CONTAINER-LESS, same as mobile (the Airbnb pattern the owner asked
+     for). The name and price sit ON THE PAGE under the artwork, not inside a
+     box. Boxing them is what made these read heavy and "stretched": the panel
+     had to be tall enough for image + two lines of text + padding.
+     Depth now lives on .sbh-card-media (the tile), never on .sbh-card. */
   .sbh-card {
     position: relative; flex-shrink: 0;
     display: flex; flex-direction: column;
-    border-radius: 20px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #fffcf6) 96%, #fff), var(--bg-card, #fffcf6) 48%);
-    border: 1px solid var(--border-soft, #e8dcc8);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      0 2px 6px -4px rgba(31, 26, 15, 0.3),
-      0 16px 32px -22px rgba(31, 26, 15, 0.55);
-    overflow: hidden;
-    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease, border-color 0.2s ease;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .sbh-card:hover {
-    transform: translateY(-8px) scale(1.018);
-    border-color: color-mix(in srgb, var(--sbh-gold) 42%, transparent);
+  .sbh-card:hover { transform: translateY(-6px); }
+  .sbh-card:hover .sbh-card-media {
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.7),
-      0 3px 9px -5px rgba(31, 26, 15, 0.34),
-      0 30px 58px -26px rgba(31, 26, 15, 0.6),
-      0 0 0 1px color-mix(in srgb, var(--sbh-gold) 32%, transparent),
-      0 22px 60px -30px rgba(201, 166, 107, 0.75);
+      0 0 0 1px color-mix(in srgb, var(--sbh-gold) 46%, transparent),
+      0 6px 14px -8px rgba(31, 26, 15, 0.5),
+      0 30px 52px -24px rgba(31, 26, 15, 0.72);
   }
   .sbh-card-wide { width: clamp(258px, 20.5vw, 336px); }
   .sbh-card-tall { width: clamp(186px, 13.6vw, 236px); }
-  .sbh-card-media { position: relative; overflow: hidden; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
+  .sbh-card-media {
+    position: relative; overflow: hidden;
+    border-radius: 18px;                  /* the image IS the card */
+    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    box-shadow:
+      0 0 0 1px rgba(139, 106, 40, 0.14),
+      0 3px 8px -4px rgba(31, 26, 15, 0.42),
+      0 18px 32px -20px rgba(31, 26, 15, 0.6);
+    transition: box-shadow 0.28s ease;
+  }
   .sbh-card-wide .sbh-card-media { aspect-ratio: 16 / 10; }
   .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
   .sbh-card-media img {
@@ -2559,7 +2567,8 @@ body main textarea.input-luxury {
     transform: translateX(-130%);
   }
   .sbh-card:hover .sbh-card-sheen { transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1); transform: translateX(130%); }
-  .sbh-card-body { padding: 13px 15px 16px; display: flex; flex-direction: column; gap: 4px; }
+  /* text sits directly on the page under the tile — no inner padding box */
+  .sbh-card-body { padding: 11px 3px 0; display: flex; flex-direction: column; gap: 3px; }
   .sbh-card-name {
     font-family: var(--font-display, "Cormorant Garamond", serif);
     font-size: 1.16rem; font-weight: 600; line-height: 1.16;
@@ -2592,10 +2601,12 @@ body main textarea.input-luxury {
     background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
     box-shadow: 0 6px 16px -8px rgba(201, 166, 107, 0.9);
   }
+  /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour */
   .sbh-chip-off {
-    top: 11px; left: 11px; color: #fff;
-    background: linear-gradient(135deg, #d9534f, #b3312d);
-    box-shadow: 0 6px 16px -8px rgba(179, 49, 45, 0.8);
+    top: 11px; left: 11px; color: #3a2606;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 16px -8px rgba(160, 116, 20, 0.75);
   }
   .sbh-chip-live { top: 11px; right: 11px; color: #fff; background: rgba(20, 15, 9, 0.62); border: 1px solid rgba(255, 255, 255, 0.2); }
   .sbh-chip-price { bottom: 11px; right: 11px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
@@ -2626,15 +2637,12 @@ body main textarea.input-luxury {
     color: #f2e8d4; background: rgba(30, 24, 16, 0.9); border-color: rgba(201, 166, 107, 0.28);
   }
   [data-theme="dark"] .sbh-rail-nav:hover:not(:disabled) { background: rgba(42, 34, 22, 0.96); }
-  [data-theme="dark"] .sbh-card {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #1a1610) 92%, #fff), var(--bg-card, #1a1610) 52%);
-    border-color: rgba(201, 166, 107, 0.16);
+  [data-theme="dark"] .sbh-card-media {
     box-shadow:
-      inset 0 1px 0 rgba(201, 166, 107, 0.14),
-      0 2px 6px -4px rgba(0, 0, 0, 0.6),
-      0 16px 32px -22px rgba(0, 0, 0, 0.8);
+      0 0 0 1px rgba(226, 196, 137, 0.16),
+      0 3px 8px -4px rgba(0, 0, 0, 0.8),
+      0 20px 34px -20px rgba(0, 0, 0, 0.95);
   }
-  [data-theme="dark"] .sbh-chip-price { background: rgba(28, 22, 14, 0.92); color: #f4ead6; }
 
   /* ── reduced motion ───────────────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
@@ -2689,21 +2697,49 @@ body main textarea.input-luxury {
   .sbh-ticker {
     position: relative; overflow: hidden;
     border-block: 1px solid var(--border-soft, #e8dcc8);
-    background: color-mix(in srgb, var(--bg-card, #fffcf6) 70%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #fffcf6) 92%, transparent),
+                              color-mix(in srgb, var(--bg-card, #fffcf6) 74%, #e3d4b4));
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   }
-  .sbh-ticker-track { display: flex; width: max-content; animation: sbhTicker 46s linear infinite; }
-  .sbh-ticker:hover .sbh-ticker-track { animation-play-state: paused; }
-  .sbh-ticker-group { display: flex; }
-  .sbh-ticker-item {
-    display: inline-flex; align-items: center;
-    padding: 11px 26px;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.76rem; font-weight: 500; letter-spacing: 0.04em;
-    color: var(--text-soft, #4a3820); opacity: 0.86; white-space: nowrap;
+  /* the ends fade so chips enter and leave instead of being guillotined */
+  .sbh-ticker::before, .sbh-ticker::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 64px; z-index: 2;
+    pointer-events: none;
   }
-  .sbh-ticker-item::after {
-    content: "•"; margin-left: 26px; opacity: 0.4; color: var(--sbh-gold);
+  .sbh-ticker::before { left: 0;  background: linear-gradient(90deg, var(--bg-page, #faf5eb), transparent); }
+  .sbh-ticker::after  { right: 0; background: linear-gradient(270deg, var(--bg-page, #faf5eb), transparent); }
+  .sbh-ticker-track { display: flex; width: max-content; animation: sbhTicker 46s linear infinite; }
+  /* every chip is a link, so the motion MUST be stoppable to be clickable —
+     hover for the mouse, focus-within for the keyboard (WCAG 2.2.2). */
+  .sbh-ticker:hover .sbh-ticker-track,
+  .sbh-ticker:active .sbh-ticker-track,
+  .sbh-ticker:focus-within .sbh-ticker-track { animation-play-state: paused; }
+  .sbh-ticker-group { display: flex; gap: 10px; padding: 10px 5px; }
+  .sbh-ticker-item {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 9px 16px; border-radius: 999px;
+    text-decoration: none; white-space: nowrap;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
+    color: var(--text-base, #1f1a0f);
+    background: var(--bg-page, #faf5eb);
+    border: 1px solid rgba(139, 106, 40, 0.22);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 3px 8px -5px rgba(74, 56, 32, 0.55);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  }
+  .sbh-ticker-item:hover {
+    transform: translateY(-2px);
+    border-color: rgba(139, 106, 40, 0.45);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 20px -10px rgba(74, 56, 32, 0.7);
+  }
+  .sbh-tk-ico { font-size: 0.92rem; line-height: 1; }
+  /* same gold as the flash-deal stamp — one deal, one colour */
+  .sbh-tk-accent {
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #3a2606;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    box-shadow: 0 6px 14px -8px rgba(160, 116, 20, 0.8);
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
@@ -2719,7 +2755,53 @@ body main textarea.input-luxury {
   @media (prefers-reduced-motion: reduce) {
     .sbh-hero-bg { animation: none !important; opacity: 1 !important; }
     .sbh-ticker-track { animation: none !important; }
+    .sbh-ticker-item { transition: none !important; }
     .sbh-reel-vid { transition: none !important; }
     .sbh-hero-dot { transition: none !important; }
+  }
+}
+
+@media (min-width: 1024px) {
+  /* ═══════════════════════════════════════════════════════════════════════
+     v570 — a scrollbar you can actually SEE and grab (pointer only)
+     Nothing in this repo was hiding it: html/body are `scrollbar-width: auto`
+     and `overflow-y: visible`, and the wheel scrolls fine. The disappearing
+     bar is the BROWSER's overlay-scrollbar behaviour (Chrome/Windows 11 and
+     macOS default) — it fades out when idle, so a long page offers no visible
+     "you can scroll" affordance and nothing to drag with a mouse.
+     Styling ::-webkit-scrollbar opts this document out of overlay mode and
+     gives a persistent, brand-coloured classic bar. Touch keeps the native
+     behaviour — this whole block is inside the >=1024px media query.
+     ═══════════════════════════════════════════════════════════════════════ */
+  html {
+    scrollbar-width: thin;                                   /* Firefox */
+    scrollbar-color: rgba(139, 106, 40, 0.55) rgba(31, 26, 15, 0.07);
+  }
+  html::-webkit-scrollbar { width: 12px; height: 12px; }
+  html::-webkit-scrollbar-track {
+    background: rgba(31, 26, 15, 0.06);
+    border-left: 1px solid rgba(139, 106, 40, 0.14);
+  }
+  html::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: linear-gradient(180deg, #c9a66b, #8a6a24);
+    border: 3px solid transparent;                           /* inset the thumb */
+    background-clip: padding-box;
+  }
+  html::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #d9b87d, #7a5c1c);
+    background-clip: padding-box;
+  }
+  [data-theme="dark"] html,
+  html[data-theme="dark"] {
+    scrollbar-color: rgba(226, 196, 137, 0.5) rgba(255, 255, 255, 0.06);
+  }
+  html[data-theme="dark"]::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-left-color: rgba(226, 196, 137, 0.14);
+  }
+  html[data-theme="dark"]::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #e2c489, #a3854a);
+    background-clip: padding-box;
   }
 }
