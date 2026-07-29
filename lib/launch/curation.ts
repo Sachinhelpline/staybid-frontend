@@ -26,10 +26,11 @@ export interface LaunchZone {
 // (they are different regions/seasons). Kufri/Narkanda/Manikaran deferred — no
 // inventory yet.
 export const LAUNCH_ZONES: LaunchZone[] = [
-  { id: "garhwal",   label: "Garhwal Getaways",   cities: ["dehradun", "mussoorie", "dhanaulti", "kanatal", "rishikesh"] },
-  { id: "himachal",  label: "Himachal Highlands", cities: ["shimla", "manali", "kasol"] },
-  { id: "rajasthan", label: "Royal Rajasthan",    cities: ["jaipur", "pushkar", "jaisalmer", "udaipur"] },
-  { id: "kumaon",    label: "Kumaon Wilds",       cities: ["nainital", "corbett", "lansdowne"] },
+  { id: "garhwal",   label: "Garhwal Getaways",   cities: ["dehradun", "mussoorie", "dhanaulti", "kanatal", "rishikesh", "haridwar"] },
+  { id: "himachal",  label: "Himachal Highlands", cities: ["shimla", "manali", "kasol", "kasauli", "chail", "dharamshala", "bir billing"] },
+  { id: "rajasthan", label: "Royal Rajasthan",    cities: ["jaipur", "pushkar", "jaisalmer", "udaipur", "neemrana"] },
+  { id: "kumaon",    label: "Kumaon Wilds",       cities: ["nainital", "corbett", "lansdowne", "bhimtal", "mukteshwar"] },
+  { id: "spiritual", label: "Spiritual Heartland", cities: ["mathura", "vrindavan", "ayodhya", "varanasi"] },
   { id: "south",     label: "South & Coastal",    cities: ["goa", "coorg", "kerala"] },
   { id: "leh",       label: "Leh–Ladakh",         cities: ["leh"] },
 ];
@@ -57,6 +58,19 @@ export const LAUNCH_HOTEL_BY_CITY: Record<string, string> = {
   coorg:     "hco-seed-crg",
   kerala:    "hco-seed-ker",
   leh:       "hco-seed-leh",
+  // ── v551 launch batch 2 (12 new cities) ──
+  haridwar:     "hco-seed-hdw",
+  bhimtal:      "hco-seed-bhi",
+  mukteshwar:   "hco-seed-muk",
+  kasauli:      "hco-seed-ksl",
+  chail:        "hco-seed-chl",
+  dharamshala:  "hco-seed-dhr",
+  "bir billing":"hco-seed-bir",
+  neemrana:     "hco-seed-nmr",
+  mathura:      "hco-seed-mth",
+  vrindavan:    "hco-seed-vrn",
+  ayodhya:      "hco-seed-ayo",
+  varanasi:     "hco-seed-vns",
 };
 
 /** The set of curated launch hotel ids (1 per city). */
@@ -95,6 +109,19 @@ export const LAUNCH_CIRCLE_PROPERTY_BY_CITY: Record<string, string> = {
   coorg:     "d11d4120-ced2-682f-43ee-4f73bc3def1b", // Coorg Coffee Estate
   kerala:    "abc179f0-eed4-b51d-667c-934687a654fb", // Munnar Hills Retreat
   leh:       "a05b46a1-ce3f-96cf-a9a4-6a3dd35e9ad4", // Leh Himalayan Lodge
+  // ── v551 launch batch 2 (md5('cp-hco-seed-<slug>')::uuid — matches the migration) ──
+  haridwar:     "711b8ef4-7489-421e-3e64-8294697b4aaa", // Har Ki Pauri Riverside
+  bhimtal:      "76c81ed3-0dc5-0fe0-ae45-d897b16b9348", // Bhimtal Lakeside Resort
+  mukteshwar:   "7c45a083-f297-8ab9-824b-ec9cd0711366", // Mukteshwar Orchard Retreat
+  kasauli:      "3bcdb2d5-2fa8-248b-9cbb-7cfb2aad6fd2", // Kasauli Pinewood Manor
+  chail:        "ad5e6bab-b874-9380-24fb-b7497e4998d4", // Chail Palace Woods
+  dharamshala:  "6b3757d3-28ce-1e18-55ba-f6f5bf785b3d", // Dhauladhar Dharamshala Retreat
+  "bir billing":"6c1d9457-8579-8e31-0122-eaf7d647282e", // Bir Billing Meadows Resort
+  neemrana:     "076d61b7-678a-d65f-e6eb-7d60b75fcd1c", // Neemrana Fort Haveli
+  mathura:      "6f84c12a-822a-4a24-7329-a185dc2dfe8d", // Braj Heritage Mathura
+  vrindavan:    "6f5e70c8-1d60-503e-6ea2-89a9c9af536a", // Vrindavan Temple Residency
+  ayodhya:      "af9a40e5-3593-736c-7312-fee2a38ee8f1", // Ayodhya Ram Nagari Stay
+  varanasi:     "eb9e9177-30d2-15d8-6210-4081166a2492", // Kashi Ghatside Varanasi
 };
 
 /** The set of curated Model-1 investment-property ids (1 per launch city). */
