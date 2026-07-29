@@ -25,6 +25,10 @@ import { useEffect, useState } from "react";
 import DiscoverPage from "./discover/page";
 import DesktopHome from "@/components/home/DesktopHome";
 
+/** Mobile `/` = the Stage home. Set NEXT_PUBLIC_MOBILE_HOME="0" to revert to
+ *  the reel feed instantly (same fail-safe pattern as isLaunchCurationOn). */
+const MOBILE_HOME_ON = process.env.NEXT_PUBLIC_MOBILE_HOME !== "0";
+
 export default function RootPage() {
   // null = not measured yet. We hold ONE frame on a plain themed backdrop
   // rather than mounting the reel first, so a desktop visitor never sees the
@@ -42,5 +46,10 @@ export default function RootPage() {
 
   if (desktop === null) return <div style={{ minHeight: "100vh" }} />;
   if (desktop) return <DesktopHome />;
-  return <DiscoverPage />;
+  // MOBILE: the Stage home is on by default, but one env flag reverts the whole
+  // surface to the reel feed with no code change —
+  //   NEXT_PUBLIC_MOBILE_HOME="0"  →  mobile `/` is the reel feed again.
+  // /discover and /reels are untouched either way; they remain the dedicated
+  // reel surfaces, so nothing is lost — only the ENTRY point changes.
+  return MOBILE_HOME_ON ? <DesktopHome /> : <DiscoverPage />;
 }

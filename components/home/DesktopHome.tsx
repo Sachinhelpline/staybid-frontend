@@ -249,13 +249,15 @@ function FlashCard({ d, left }: { d: Deal; left: string }) {
   );
 }
 
-function ReelCard({ r }: { r: Reel }) {
+function ReelCard({ r, preview }: { r: Reel; preview: boolean }) {
   const poster = reelPoster(r);
   const who = r.author?.display_name || r.display_name || "StayBid";
   const price = r.hotel?.minPrice;
   // Netflix-style hover preview: the reel's own clip plays muted on hover.
   // Motion happens exactly where the pointer already is — never on its own.
-  const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
+  // Hover preview is a pointer affordance — never mounted on touch, so phones
+  // don't fetch a dozen video headers they can never trigger.
+  const isVideo = preview && String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
   const [hot, setHot] = useState(false);
   const [playing, setPlaying] = useState(false);
   const vid = useRef<HTMLVideoElement>(null);
@@ -317,22 +319,32 @@ function ReelCard({ r }: { r: Reel }) {
 }
 
 /* ── the page ──────────────────────────────────────────────────────────── */
+/** Desktop-only affordances (hover video preview) — never on touch. */
+function useWide(): boolean {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const a = () => setWide(mq.matches);
+    a();
+    mq.addEventListener("change", a);
+    return () => mq.removeEventListener("change", a);
+  }, []);
+  return wide;
+}
+
 export default function DesktopHome() {
   const [on, setOn] = useState(false);
+  const wide = useWide();
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [reels, setReels] = useState<Reel[]>([]);
   const [scores, setScores] = useState<Record<string, Scorecard>>({});
   const countdown = useNightlyCountdown();
 
-  // desktop gate — mobile never mounts any of this
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const apply = () => setOn(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
+  // Client-mount gate only. WHICH viewports get this home is decided in
+  // app/page.tsx (desktop always; mobile behind MOBILE_HOME_ON), so this
+  // component stays a pure renderer.
+  useEffect(() => { setOn(true); }, []);
 
   // body marker so desktop.css can retire the reel-player chrome on this surface
   useEffect(() => {
@@ -399,7 +411,10 @@ export default function DesktopHome() {
   useEffect(() => {
     if (held || heroPool.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroPool.length), 8000);
+    // 5s — fast enough to feel alive, slow enough to still read the name, the
+    // price and reach a CTA. Below ~5s a slide gets cut off mid-read, which is
+    // why this is the floor rather than 3-4s.
+    const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroPool.length), 5000);
     return () => clearInterval(t);
   }, [held, heroPool.length]);
   const featured = heroPool[heroIdx] || heroPool[0] || null;
@@ -537,7 +552,7 @@ export default function DesktopHome() {
 
         {reels.length ? (
           <Rail title="🎬 Reels" sub="Real stays, filmed by real guests" href="/discover" variant="tall">
-            {reels.slice(0, 16).map((r) => <ReelCard key={r.id} r={r} />)}
+            {reels.slice(0, 16).map((r) => <ReelCard key={r.id} r={r} preview={wide} />)}
           </Rail>
         ) : null}
 
