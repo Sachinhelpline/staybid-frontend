@@ -411,7 +411,10 @@ export default function DesktopHome() {
   useEffect(() => {
     if (held || heroPool.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroPool.length), 8000);
+    // 5s — fast enough to feel alive, slow enough to still read the name, the
+    // price and reach a CTA. Below ~5s a slide gets cut off mid-read, which is
+    // why this is the floor rather than 3-4s.
+    const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroPool.length), 5000);
     return () => clearInterval(t);
   }, [held, heroPool.length]);
   const featured = heroPool[heroIdx] || heroPool[0] || null;

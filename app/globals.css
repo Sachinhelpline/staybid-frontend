@@ -11020,10 +11020,13 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   }
 
   /* ── hero ─────────────────────────────────────────────────────────── */
+  /* 62svh, not 78 — the hero must END above the fold so the ticker and the
+     first rail peek, telling the user there is more below (Netflix/Hotstar
+     mobile). A full-bleed hero reads as a splash screen, not a home. */
   .sbh-hero {
     position: relative;
     width: 100%;
-    min-height: 78svh;
+    min-height: 62svh;
     display: flex; align-items: flex-end;
     overflow: hidden;
     isolation: isolate;
@@ -11058,10 +11061,10 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-dot { width: 6px; height: 6px; border-radius: 50%; background: #f0b429; }
   .sbh-hero-title {
     font-family: var(--font-display, "Cormorant Garamond", serif);
-    font-size: clamp(2rem, 9vw, 2.9rem);
-    line-height: 1.04; font-weight: 600; letter-spacing: -0.01em;
+    font-size: clamp(1.75rem, 7.4vw, 2.4rem);
+    line-height: 1.06; font-weight: 600; letter-spacing: -0.01em;
     text-wrap: balance;
-    margin: 0 0 9px; color: #fffaf0;
+    margin: 0 0 8px; color: #fffaf0;
     text-shadow: 0 2px 22px rgba(0, 0, 0, 0.55);
   }
   .sbh-hero-meta {
@@ -11085,7 +11088,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-hero-price b {
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-variant-numeric: tabular-nums;
-    font-size: 1.6rem; font-weight: 700; color: #fffaf0;
+    font-size: 1.4rem; font-weight: 700; color: #fffaf0;
   }
   .sbh-hero-price em { font-style: normal; font-size: 0.78rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.78rem; width: 100%; }
@@ -11190,8 +11193,10 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     transition: transform 0.16s ease;
   }
   .sbh-card:active { transform: scale(0.985); }
-  .sbh-card-wide { width: 74vw; max-width: 300px; }
-  .sbh-card-tall { width: 42vw; max-width: 190px; }
+  /* ~1.7 cards in view instead of ~1.2 — the peek is what makes a rail feel
+     browsable and premium rather than a stack of billboards. */
+  .sbh-card-wide { width: 60vw; max-width: 252px; }
+  .sbh-card-tall { width: 34vw; max-width: 150px; }
   .sbh-card-media { position: relative; overflow: hidden; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
   .sbh-card-wide .sbh-card-media { aspect-ratio: 16 / 10; }
   .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
@@ -11202,10 +11207,10 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0) 36%, rgba(14, 11, 8, 0.58) 100%);
   }
   .sbh-card-sheen, .sbh-reel-vid, .sbh-play { display: none; }   /* pointer-only affordances */
-  .sbh-card-body { padding: 10px 12px 13px; display: flex; flex-direction: column; gap: 3px; }
+  .sbh-card-body { padding: 9px 11px 12px; display: flex; flex-direction: column; gap: 2px; }
   .sbh-card-name {
     font-family: var(--font-display, "Cormorant Garamond", serif);
-    font-size: 1.02rem; font-weight: 600; line-height: 1.16; margin: 0;
+    font-size: 0.94rem; font-weight: 600; line-height: 1.18; margin: 0;
     color: var(--text-base, #1f1a0f);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
