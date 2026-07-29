@@ -663,11 +663,6 @@ export default function DesktopHome() {
           </Rail>
         ) : null}
 
-        {/* The band sits high — right under Flash Deals — because bidding IS
-            the product. It is full-bleed (the rails column has no max-width;
-            padding lives inside each rail via --sbh-gut). */}
-        <LiveBidding />
-
         {reels.length ? (
           <Rail title="🎬 Reels" sub="Real stays, filmed by real guests" href="/discover" variant="tall">
             {reels.slice(0, 16).map((r) => <ReelCard key={r.id} r={r} preview={wide} />)}
@@ -679,6 +674,12 @@ export default function DesktopHome() {
             {z.items.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} />)}
           </Rail>
         ))}
+
+        {/* Closing band. It sits AFTER every rail — the browse surfaces sell the
+            stays, and this is the "so what do I do now" answer you land on once
+            you've scrolled the lot. Full-bleed: the rails column has no
+            max-width, and the gutter lives inside each child via --sbh-gut. */}
+        <LiveBidding />
 
         {!hotels.length && !deals.length ? (
           <div className="sbh-loading">Loading your stage…</div>
