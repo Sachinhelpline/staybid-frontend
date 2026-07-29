@@ -2644,3 +2644,71 @@ body main textarea.input-luxury {
     .sbh-card:hover .sbh-card-sheen { transform: translateX(-130%) !important; }
   }
 }
+
+/* ── v556 — season hero rotation · live ticker · reel hover-preview ────── */
+@media (min-width: 1024px) {
+  /* hero cross-fade on rotation (keyed remount) */
+  .sbh-hero-bg { animation: sbhHeroDrift 26s ease-in-out infinite alternate, sbhHeroIn 0.9s ease both; }
+  @keyframes sbhHeroIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .sbh-hero-dots {
+    position: absolute; z-index: 3; right: var(--sbh-gut); bottom: clamp(44px, 6vh, 76px);
+    display: flex; align-items: center; gap: 9px;
+  }
+  .sbh-hero-dot {
+    width: 9px; height: 9px; border-radius: 999px; cursor: pointer;
+    background: rgba(255, 255, 255, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    transition: width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s ease;
+  }
+  .sbh-hero-dot:hover { background: rgba(255, 255, 255, 0.6); }
+  .sbh-hero-dot.is-on {
+    width: 30px;
+    background: linear-gradient(90deg, var(--sbh-gold-lt), var(--sbh-gold));
+    border-color: transparent;
+  }
+  .sbh-hero-count {
+    margin-left: 6px;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.66rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(247, 240, 226, 0.72);
+  }
+
+  /* live ticker — ambient auto-motion (decorative, never a click target) */
+  .sbh-ticker {
+    position: relative; overflow: hidden;
+    border-block: 1px solid var(--border-soft, #e8dcc8);
+    background: color-mix(in srgb, var(--bg-card, #fffcf6) 70%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .sbh-ticker-track { display: flex; width: max-content; animation: sbhTicker 46s linear infinite; }
+  .sbh-ticker:hover .sbh-ticker-track { animation-play-state: paused; }
+  .sbh-ticker-group { display: flex; }
+  .sbh-ticker-item {
+    display: inline-flex; align-items: center;
+    padding: 11px 26px;
+    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: 0.76rem; font-weight: 500; letter-spacing: 0.04em;
+    color: var(--text-soft, #4a3820); opacity: 0.86; white-space: nowrap;
+  }
+  .sbh-ticker-item::after {
+    content: "•"; margin-left: 26px; opacity: 0.4; color: var(--sbh-gold);
+  }
+  @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* reel hover preview video */
+  .sbh-reel-vid {
+    position: absolute; inset: 0; z-index: 2;
+    width: 100%; height: 100%; object-fit: cover;
+    opacity: 0; transition: opacity 0.32s ease;
+    pointer-events: none;
+  }
+  .sbh-reel-vid.is-on { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sbh-hero-bg { animation: none !important; opacity: 1 !important; }
+    .sbh-ticker-track { animation: none !important; }
+    .sbh-reel-vid { transition: none !important; }
+    .sbh-hero-dot { transition: none !important; }
+  }
+}

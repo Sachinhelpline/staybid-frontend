@@ -23,6 +23,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
+import { currentMonthDemand, demandTier } from "@/lib/circle/demand-cycle";
+
+const SEASON_ICON: Record<string, string> = {
+  Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
+};
 
 /* ── types (loose — the APIs are untyped JSON) ─────────────────────────── */
 type Hotel = {
@@ -197,7 +202,29 @@ function HotelCard({ h, score }: { h: Hotel; score?: Scorecard }) {
   );
 }
 
-function FlashCard({ d }: { d: Deal }) {
+/** ms until the next 00:00 IST — flash inventory resets nightly (see
+ *  app/api/flash/near: "every unsold room at 12am IST"). Real deadline, not a fake timer. */
+function msToMidnightIST(): number {
+  const now = Date.now();
+  const IST = 5.5 * 3600_000;
+  const ist = now + IST;
+  const next = Math.floor(ist / 86400_000) * 86400_000 + 86400_000;
+  return Math.max(0, next - ist);
+}
+function useNightlyCountdown(): string {
+  const [ms, setMs] = useState<number | null>(null);
+  useEffect(() => {
+    setMs(msToMidnightIST());
+    const t = setInterval(() => setMs(msToMidnightIST()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  if (ms == null) return "";
+  const s = Math.floor(ms / 1000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
+
+function FlashCard({ d, left }: { d: Deal; left: string }) {
   const h = d.hotel;
   const img = imgOf(h);
   const now = Number(d.aiPrice) || 0;
@@ -209,7 +236,7 @@ function FlashCard({ d }: { d: Deal }) {
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
         {d.discount ? <span className="sbh-chip sbh-chip-off">{Math.round(d.discount)}% OFF</span> : null}
-        <span className="sbh-chip sbh-chip-live">⚡ Tonight</span>
+        {left ? <span className="sbh-chip sbh-chip-live">⏳ {left}</span> : null}
       </div>
       <div className="sbh-card-body">
         <h3 className="sbh-card-name" title={h?.name || ""}>{h?.name}</h3>
@@ -226,10 +253,39 @@ function ReelCard({ r }: { r: Reel }) {
   const poster = reelPoster(r);
   const who = r.author?.display_name || r.display_name || "StayBid";
   const price = r.hotel?.minPrice;
+  // Netflix-style hover preview: the reel's own clip plays muted on hover.
+  // Motion happens exactly where the pointer already is — never on its own.
+  const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
+  const [hot, setHot] = useState(false);
+  const vid = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = vid.current;
+    if (!v) return;
+    if (hot) { v.currentTime = 0; v.play().catch(() => {}); }
+    else v.pause();
+  }, [hot]);
   return (
-    <Link href="/discover" className="sbh-card sbh-card-tall">
+    <Link
+      href="/discover"
+      className="sbh-card sbh-card-tall"
+      onMouseEnter={() => setHot(true)}
+      onMouseLeave={() => setHot(false)}
+    >
       <div className="sbh-card-media">
         {poster ? <img src={poster} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
+        {isVideo ? (
+          <video
+            ref={vid}
+            className={`sbh-reel-vid${hot ? " is-on" : ""}`}
+            src={r.media_url || undefined}
+            muted
+            loop
+            playsInline
+            preload="none"
+            tabIndex={-1}
+            aria-hidden
+          />
+        ) : null}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
         <span className="sbh-play" aria-hidden>▶</span>
@@ -250,6 +306,7 @@ export default function DesktopHome() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [reels, setReels] = useState<Reel[]>([]);
   const [scores, setScores] = useState<Record<string, Scorecard>>({});
+  const countdown = useNightlyCountdown();
 
   // desktop gate — mobile never mounts any of this
   useEffect(() => {
@@ -293,14 +350,55 @@ export default function DesktopHome() {
     return () => { dead = true; };
   }, [on]);
 
-  // featured = highest-scoring hotel that actually has a photo
-  const featured = useMemo(() => {
-    const withImg = hotels.filter((h) => imgOf(h));
-    if (!withImg.length) return null;
-    return withImg
-      .slice()
-      .sort((a, b) => (scores[b.id]?.overall ?? 0) - (scores[a.id]?.overall ?? 0))[0];
-  }, [hotels, scores]);
+  // ── SEASON-DRIVEN HERO POOL ──────────────────────────────────────────
+  // The hero is not one hard-coded property: it showcases EVERY property in
+  // the locations that are actually in season this month, read from the real
+  // 12-month demand cycle (lib/circle/demand-cycle.ts — the same wheel the
+  // Circle portfolio uses). July → Monsoon → Leh; December → Winter → Goa /
+  // Udaipur / Jaisalmer, and so on. Falls back primary → secondary → best
+  // scored, so the hero can never be empty.
+  const demand = useMemo(() => currentMonthDemand(), []);
+  const heroPool = useMemo(() => {
+    const byScore = (a: Hotel, b: Hotel) => (scores[b.id]?.overall ?? 0) - (scores[a.id]?.overall ?? 0);
+    const shot = hotels.filter((h) => imgOf(h));
+    const tier = (t: "primary" | "secondary") =>
+      shot.filter((h) => demandTier(h.city || "", demand.month) === t).sort(byScore);
+    // Primaries lead. If this month's primaries are thin (e.g. July → Leh,
+    // which has one curated property), widen to the SECONDARY performers —
+    // they are genuinely in season too, so the hero rotates without ever
+    // claiming a season a city does not have.
+    const p = tier("primary");
+    const s = tier("secondary");
+    const seasonal = p.length >= 3 ? p : [...p, ...s];
+    if (seasonal.length) return seasonal;
+    return shot.slice().sort(byScore).slice(0, 6);
+  }, [hotels, scores, demand]);
+
+  // rotation — auto-advance, but pauses on hover and never runs under
+  // prefers-reduced-motion or when the user has taken manual control.
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [held, setHeld] = useState(false);
+  useEffect(() => { setHeroIdx(0); }, [heroPool.length]);
+  useEffect(() => {
+    if (held || heroPool.length < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroPool.length), 8000);
+    return () => clearInterval(t);
+  }, [held, heroPool.length]);
+  const featured = heroPool[heroIdx] || heroPool[0] || null;
+
+  // ── LIVE TICKER — real facts only (deals + the season wheel) ─────────
+  const ticker = useMemo(() => {
+    const out: string[] = [];
+    const seasonCities = demand.primary.join(" · ");
+    if (seasonCities) out.push(`${SEASON_ICON[demand.season] || "✦"} ${demand.season} — ${seasonCities} in season now`);
+    for (const d of deals.slice(0, 8)) {
+      if (!d.hotel?.name) continue;
+      out.push(`⚡ ${d.hotel.name}${d.discount ? ` — ${Math.round(d.discount)}% off tonight` : ""}`);
+    }
+    if (hotels.length) out.push(`🏔️ ${hotels.length} properties live across ${LAUNCH_ZONES.length} zones`);
+    return out;
+  }, [deals, hotels.length, demand]);
 
   // zone rails — reuse the launch curation grouping (same as /hotels)
   const zoneRails = useMemo(() => {
@@ -322,8 +420,13 @@ export default function DesktopHome() {
   return (
     <div className="sbh-root">
       {/* ── HERO ─────────────────────────────────────────────────────── */}
-      <section className="sbh-hero">
+      <section
+        className="sbh-hero"
+        onMouseEnter={() => setHeld(true)}
+        onMouseLeave={() => setHeld(false)}
+      >
         <div
+          key={featured?.id || "hero"}
           className="sbh-hero-bg"
           style={fImg ? { backgroundImage: `url("${fImg}")` } : undefined}
           aria-hidden
@@ -331,7 +434,8 @@ export default function DesktopHome() {
         <div className="sbh-hero-scrim" aria-hidden />
         <div className="sbh-hero-inner">
           <p className="sbh-eyebrow">
-            <span className="sbh-dot" aria-hidden /> Featured stay
+            <span className="sbh-dot" aria-hidden />
+            {SEASON_ICON[demand.season] || "✦"} {demand.season} · In season now
             {fRank?.rank && fRank?.scopeLabel ? ` · #${fRank.rank} in ${fRank.scopeLabel}` : ""}
           </p>
           <h1 className="sbh-hero-title">{featured?.name || "Bid your stay. Save big."}</h1>
@@ -364,13 +468,53 @@ export default function DesktopHome() {
             </div>
           ) : null}
         </div>
+
+        {/* rotation control — the user can always take over */}
+        {heroPool.length > 1 ? (
+          <div className="sbh-hero-dots" role="tablist" aria-label="Featured properties in season">
+            {heroPool.slice(0, 8).map((h, i) => (
+              <button
+                key={h.id}
+                type="button"
+                role="tab"
+                aria-selected={i === heroIdx}
+                aria-label={h.name || `Property ${i + 1}`}
+                className={`sbh-hero-dot${i === heroIdx ? " is-on" : ""}`}
+                onClick={() => { setHeroIdx(i); setHeld(true); }}
+              />
+            ))}
+            <span className="sbh-hero-count">
+              {heroIdx + 1}/{Math.min(8, heroPool.length)} in season
+            </span>
+          </div>
+        ) : null}
       </section>
+
+      {/* ── LIVE TICKER — the one place auto-motion belongs: ambient, not a
+          list of choices the user is trying to click. ─────────────────── */}
+      {ticker.length ? (
+        <div className="sbh-ticker" aria-hidden>
+          <div className="sbh-ticker-track">
+            {[0, 1].map((dup) => (
+              <div className="sbh-ticker-group" key={dup}>
+                {ticker.map((t, i) => (
+                  <span className="sbh-ticker-item" key={`${dup}-${i}`}>{t}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* ── RAILS ────────────────────────────────────────────────────── */}
       <div className="sbh-rails">
         {deals.length ? (
-          <Rail title="⚡ Flash Deals" sub="Tonight only — live prices, limited rooms" href="/flash-deals">
-            {deals.slice(0, 14).map((d) => <FlashCard key={d.id} d={d} />)}
+          <Rail
+            title="⚡ Flash Deals"
+            sub={countdown ? `Resets in ${countdown} — live prices, limited rooms` : "Tonight only — live prices, limited rooms"}
+            href="/flash-deals"
+          >
+            {deals.slice(0, 14).map((d) => <FlashCard key={d.id} d={d} left={countdown} />)}
           </Rail>
         ) : null}
 
