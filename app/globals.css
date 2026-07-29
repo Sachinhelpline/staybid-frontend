@@ -1223,8 +1223,12 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   /* v203.3 — z-index bumped 100 → 1200 so the calendar opens ABOVE the
      BidGameZone .bgz-shell viewport overlay (z:1000) on /bid Step 1.
      Combined with createPortal-to-body in LuxuryCalendar.tsx, the calendar
-     is guaranteed to escape any ancestor stacking context. */
-  position: fixed; inset: 0; z-index: 1200;
+     is guaranteed to escape any ancestor stacking context.
+     v573 — bumped 1200 → 1600 so it also clears the BidConsole picker sheet
+     (.bgc-sheet-scrim z:1400): the Dates slot opens its sheet, whose date
+     buttons open THIS calendar, which must land on top of that sheet. It's
+     `open`-gated, so raising it only affects the moment it's actually shown. */
+  position: fixed; inset: 0; z-index: 1600;
   display: flex; align-items: flex-end; justify-content: center;
   background: radial-gradient(900px 600px at 50% 30%, rgba(40,28,5,0.55), rgba(8,5,2,0.78));
   backdrop-filter: blur(8px) saturate(140%);
@@ -12069,3 +12073,364 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .ig-swipe-hint, .ig-swipe-hint-chev { animation: none !important; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v573 — BidConsole ("Mission Control") — /bid Step 1
+   Replaces the boot screen + Candy-Crush climber. ONE in-flow surface: a dark
+   walnut CONSOLE BEZEL with bright parchment "display" insets for every
+   existing picker body (so City/Property/Dates/Guests/Price/Review render
+   byte-identical, zero restyle). Unlayered (beats app/desktop.css utilities);
+   desktop refinements live in the inner @media at the end of this block.
+   ═════════════════════════════════════════════════════════════════════════ */
+.bgc {
+  --bgc-gold: #C9A66B;
+  --bgc-gold-lt: #E7CFA0;
+  --bgc-gold-dp: #8B6914;
+  --bgc-cream: #F7F0E2;
+  --bgc-ink: #100b06;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin: 4px auto 0;
+  padding: 16px 14px 0;
+  border-radius: 22px;
+  color: var(--bgc-cream);
+  background:
+    radial-gradient(120% 80% at 12% 0%, rgba(201,166,107,0.16) 0%, transparent 46%),
+    linear-gradient(180deg, #17100a 0%, #120c07 58%, #0d0905 100%);
+  border: 1px solid rgba(201,166,107,0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255,246,226,0.10),
+    0 24px 60px -30px rgba(0,0,0,0.85);
+  isolation: isolate;
+}
+
+/* ── HUD ── */
+.bgc-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 15px;
+  background: linear-gradient(180deg, rgba(255,246,226,0.07), rgba(255,246,226,0.02));
+  border: 1px solid rgba(201,166,107,0.20);
+}
+.bgc-hud-lead { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+.bgc-hud-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
+  background: #7ED9A0;
+  box-shadow: 0 0 0 0 rgba(126,217,160,0.55);
+  animation: bgcPulse 2.1s ease-out infinite;
+}
+@keyframes bgcPulse {
+  0% { box-shadow: 0 0 0 0 rgba(126,217,160,0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(126,217,160,0); }
+  100% { box-shadow: 0 0 0 0 rgba(126,217,160,0); }
+}
+.bgc-hud-headline {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.06rem;
+  line-height: 1.2;
+  color: #FFF9EC;
+}
+.bgc-hud-stats { display: inline-flex; gap: 8px; flex: 0 0 auto; }
+.bgc-hud-stat {
+  display: inline-flex; flex-direction: column; align-items: center;
+  padding: 5px 12px; border-radius: 11px;
+  background: rgba(201,166,107,0.12);
+  border: 1px solid rgba(201,166,107,0.24);
+  line-height: 1.15;
+}
+.bgc-hud-stat b {
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.94rem; font-weight: 700; color: var(--bgc-gold-lt);
+}
+.bgc-hud-stat span {
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: rgba(247,240,226,0.6);
+}
+
+/* ── section labels ── */
+.bgc-section-label { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bgc-section-kicker {
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--bgc-gold-lt); flex: 0 0 auto;
+}
+.bgc-section-rule { flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(201,166,107,0.4), transparent); }
+
+/* ── LOADOUT slots ── */
+.bgc-slots { display: grid; grid-template-columns: 1fr; gap: 9px; }
+.bgc-slot {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 12px 14px; border-radius: 14px; text-align: left;
+  background: linear-gradient(180deg, rgba(255,246,226,0.06), rgba(255,246,226,0.02));
+  border: 1px solid rgba(201,166,107,0.20);
+  color: var(--bgc-cream); cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bgc-slot:active { transform: scale(0.98); }
+.bgc-slot.is-done {
+  border-color: rgba(201,166,107,0.55);
+  background: linear-gradient(180deg, rgba(201,166,107,0.16), rgba(201,166,107,0.05));
+  box-shadow: inset 0 1px 0 rgba(255,246,226,0.14), 0 6px 16px -10px rgba(201,166,107,0.5);
+}
+.bgc-slot-icon {
+  width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center;
+  font-size: 1.25rem; border-radius: 12px;
+  background: radial-gradient(circle at 32% 28%, rgba(231,207,160,0.22), rgba(139,105,20,0.12));
+  border: 1px solid rgba(201,166,107,0.30);
+}
+.bgc-slot-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.bgc-slot-title { font-size: 0.72rem; font-weight: 600; color: rgba(247,240,226,0.7); }
+.bgc-slot-value {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-size: 1.02rem; font-weight: 600; color: #FFF9EC;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bgc-slot-state {
+  flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center;
+  border-radius: 50%; font-size: 0.9rem; font-weight: 800;
+  color: rgba(247,240,226,0.5);
+}
+.bgc-slot-state.is-done {
+  color: #17100a;
+  background: radial-gradient(circle at 32% 28%, var(--bgc-gold-lt), var(--bgc-gold) 60%, var(--bgc-gold-dp));
+}
+
+/* ── PRICE gauge + odds ── */
+.bgc-gauge {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px; border-radius: 15px; margin-bottom: 12px;
+  background: linear-gradient(180deg, rgba(255,246,226,0.06), rgba(255,246,226,0.02));
+  border: 1px solid rgba(201,166,107,0.22);
+}
+.bgc-gauge-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bgc-gauge-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bgc-gauge-k {
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: rgba(247,240,226,0.55);
+}
+.bgc-gauge-v {
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums; font-size: 1.12rem; font-weight: 700; color: #FFF9EC;
+}
+.bgc-gauge-v-hot { color: var(--bgc-gold-lt); }
+.bgc-gauge-v-under { color: #9DD1A6; }
+.bgc-gauge-v-over { color: #E7B564; }
+.bgc-odds { display: flex; flex-direction: column; gap: 6px; }
+.bgc-odds-head { display: flex; align-items: baseline; justify-content: space-between; }
+.bgc-odds-k {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(247,240,226,0.55);
+}
+.bgc-odds-label { font-size: 0.86rem; font-weight: 800; font-family: "Space Grotesk", sans-serif; }
+.bgc-odds-track {
+  height: 9px; border-radius: 999px; overflow: hidden;
+  background: rgba(255,246,226,0.10);
+  border: 1px solid rgba(201,166,107,0.18);
+}
+.bgc-odds-fill {
+  height: 100%; border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.2,0.8,0.2,1);
+  box-shadow: 0 0 10px -2px currentColor;
+}
+.bgc-odds-note { margin: 0; font-size: 0.68rem; color: rgba(247,240,226,0.6); }
+.bgc-price-hint {
+  margin: 0 0 12px; font-size: 0.8rem; line-height: 1.5; color: rgba(247,240,226,0.66);
+}
+
+/* ── parchment INSETS: the existing render() bodies (light-themed) sit on a
+   bright display panel set into the dark bezel. Local light-theme tokens so
+   the child controls (bx-preset, bgz-city-grid, LiveBidCard) render exactly
+   as they did in the old cream climber sheet, regardless of page theme. ── */
+.bgc-price-body,
+.bgc-sheet-body,
+.bgc-arena-body {
+  --bg-card: #FFFCF6;
+  --border-soft: rgba(201,166,107,0.34);
+  --text-base: #2B2415;
+  --text-soft: #4A3820;
+  --text-muted: rgba(74,56,32,0.7);
+  color: var(--text-base);
+}
+.bgc-price-body {
+  padding: 14px; border-radius: 15px;
+  background: linear-gradient(180deg, #FFFCF6 0%, #F6EEDD 100%);
+  border: 1px solid rgba(201,166,107,0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+/* ── LAUNCH bar (sticky) ── */
+.bgc-launch-bar {
+  position: sticky; bottom: 0; z-index: 4;
+  display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  margin: 4px -14px 0;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(13,9,5,0) 0%, rgba(13,9,5,0.9) 34%, #0d0905 100%);
+  border-radius: 0 0 22px 22px;
+}
+.bgc-launch {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 16px 20px; border-radius: 15px;
+  font-size: 1.05rem; font-weight: 800; letter-spacing: 0.03em;
+  border: 1px solid rgba(201,166,107,0.3);
+  background: rgba(255,246,226,0.08);
+  color: rgba(247,240,226,0.5);
+  cursor: not-allowed; transition: transform 0.16s ease, box-shadow 0.22s ease, background 0.22s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bgc-launch.is-ready {
+  cursor: pointer; color: #241803;
+  background: linear-gradient(135deg, #FFE9AD 0%, #F2C650 44%, #D69A1E 100%);
+  border-color: rgba(255,246,226,0.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 12px 30px -12px rgba(214,154,30,0.7);
+  animation: bgcLaunchBreathe 2.6s ease-in-out infinite;
+}
+@keyframes bgcLaunchBreathe {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 12px 30px -14px rgba(214,154,30,0.6); }
+  50% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 16px 38px -12px rgba(214,154,30,0.85); }
+}
+.bgc-launch.is-ready:active { transform: scale(0.98); }
+.bgc-launch-spin {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid rgba(36,24,3,0.3); border-top-color: #241803;
+  animation: sbBidSpin 0.8s linear infinite;
+}
+.bgc-launch-reason {
+  margin: 0; text-align: center; font-size: 0.72rem; font-weight: 600;
+  color: rgba(247,240,226,0.55);
+}
+
+/* ── SHEET (picker body) ── */
+.bgc-sheet-scrim {
+  position: fixed; inset: 0; z-index: 1400;
+  background: rgba(13,9,5,0.62); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: bgcFade 0.2s ease both;
+}
+@keyframes bgcFade { from { opacity: 0; } to { opacity: 1; } }
+.bgc-sheet {
+  width: 100%; max-width: 560px; max-height: 84vh;
+  display: flex; flex-direction: column;
+  background: linear-gradient(180deg, #FFFCF6 0%, #F7EFDF 100%);
+  border-radius: 22px 22px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 -20px 50px -12px rgba(0,0,0,0.6);
+  padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  animation: bgcSheetUp 0.28s cubic-bezier(0.2,0.8,0.2,1) both;
+}
+@keyframes bgcSheetUp { from { transform: translateY(12%); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
+.bgc-sheet-grip { width: 40px; height: 4px; border-radius: 999px; background: rgba(74,56,32,0.28); margin: 0 auto 10px; }
+.bgc-sheet-head { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.bgc-sheet-icon {
+  width: 40px; height: 40px; flex: 0 0 auto; display: grid; place-items: center; font-size: 1.2rem;
+  border-radius: 12px; background: radial-gradient(circle at 32% 28%, #F3E4C4, #E1C892);
+  border: 1px solid rgba(201,166,107,0.4);
+}
+.bgc-sheet-h-text { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; }
+.bgc-sheet-title {
+  font-family: var(--font-display, "Cormorant Garamond"), serif; font-style: italic;
+  font-weight: 700; font-size: 1.06rem; color: #2B2415; line-height: 1.15;
+}
+.bgc-sheet-hint { font-size: 0.72rem; color: rgba(74,56,32,0.72); }
+.bgc-sheet-x {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; font-size: 0.95rem;
+  background: rgba(74,56,32,0.08); border: 1px solid rgba(74,56,32,0.16); color: #4A3820; cursor: pointer;
+}
+.bgc-sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1 1 auto; }
+.bgc-sheet-cta { padding-top: 12px; }
+.bgc-sheet-done {
+  width: 100%; padding: 14px; border-radius: 14px; font-size: 1rem; font-weight: 800; cursor: pointer;
+  color: #241803; border: 1px solid rgba(201,166,107,0.5);
+  background: linear-gradient(135deg, #FFE9AD, #F2C650 46%, #D69A1E);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 8px 20px -10px rgba(214,154,30,0.6);
+}
+.bgc-sheet-done:active { transform: scale(0.98); }
+
+/* ── ARENA (post-launch) ── */
+.bgc-arena { gap: 14px; }
+.bgc-arena-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: 15px;
+  background: linear-gradient(180deg, rgba(255,246,226,0.07), rgba(255,246,226,0.02));
+  border: 1px solid rgba(201,166,107,0.24);
+}
+.bgc-arena-live {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #9DD1A6;
+}
+.bgc-arena-dot { width: 9px; height: 9px; border-radius: 50%; background: #7ED9A0; animation: bgcPulse 2s ease-out infinite; }
+.bgc-arena-bid {
+  font-family: "Space Grotesk", var(--font-sans), sans-serif; font-size: 0.86rem; color: rgba(247,240,226,0.7);
+}
+.bgc-arena-bid b { color: var(--bgc-gold-lt); font-size: 1.06rem; }
+.bgc-arena-bid em { font-style: normal; opacity: 0.7; font-size: 0.76rem; }
+.bgc-arena-city { color: rgba(247,240,226,0.7); }
+.bgc-arena-body {
+  padding: 14px; border-radius: 15px;
+  background: linear-gradient(180deg, #FFFCF6 0%, #F6EEDD 100%);
+  border: 1px solid rgba(201,166,107,0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+.bgc-arena-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin: 0 -14px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-radius: 0 0 22px 22px;
+  background: linear-gradient(180deg, rgba(13,9,5,0) 0%, #0d0905 60%);
+}
+.bgc-arena-foot-txt { font-size: 0.82rem; color: rgba(247,240,226,0.75); }
+.bgc-arena-foot-btn {
+  padding: 11px 20px; border-radius: 13px; font-weight: 800; font-size: 0.92rem; cursor: pointer;
+  color: #241803; border: 1px solid rgba(255,246,226,0.55);
+  background: linear-gradient(135deg, #FFE9AD, #F2C650 46%, #D69A1E);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+}
+
+/* ── DESKTOP ── */
+@media (min-width: 1024px) {
+  .bgc {
+    max-width: 1080px;
+    gap: 20px;
+    padding: 22px 22px 0;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-areas:
+      "hud    hud"
+      "load   price"
+      "launch launch";
+    align-items: start;
+  }
+  .bgc-hud { grid-area: hud; }
+  .bgc-loadout { grid-area: load; position: sticky; top: 76px; }
+  .bgc-price { grid-area: price; }
+  .bgc-launch-bar { grid-area: launch; margin: 0 -22px; border-radius: 0 0 22px 22px; }
+  .bgc-hud-headline { font-size: 1.2rem; }
+  .bgc-slot { padding: 14px 16px; }
+  .bgc-slot-icon { width: 46px; height: 46px; font-size: 1.35rem; }
+  .bgc-slot-value { font-size: 1.1rem; }
+  .bgc-slot { transition: transform 0.16s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+  .bgc-slot:hover { transform: translateY(-2px); border-color: rgba(201,166,107,0.5); }
+  .bgc-gauge-v { font-size: 1.3rem; }
+  .bgc-launch { max-width: 520px; margin: 0 auto; }
+  /* Sheet becomes a centered modal on desktop */
+  .bgc-sheet-scrim { align-items: center; }
+  .bgc-sheet { border-radius: 22px; max-height: 82vh; max-width: 620px; animation: bgcModalIn 0.24s cubic-bezier(0.2,0.8,0.2,1) both; }
+  @keyframes bgcModalIn { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .bgc-arena { max-width: 1080px; margin: 0 auto; }
+}
+
+/* ── reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .bgc-hud-dot, .bgc-arena-dot, .bgc-launch.is-ready, .bgc-launch-spin,
+  .bgc-sheet, .bgc-sheet-scrim, .bgc-odds-fill { animation: none !important; transition: none !important; }
+  .bgc-slot:hover { transform: none !important; }
+}
