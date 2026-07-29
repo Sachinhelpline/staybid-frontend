@@ -2592,10 +2592,12 @@ body main textarea.input-luxury {
     background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
     box-shadow: 0 6px 16px -8px rgba(201, 166, 107, 0.9);
   }
+  /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour */
   .sbh-chip-off {
-    top: 11px; left: 11px; color: #fff;
-    background: linear-gradient(135deg, #d9534f, #b3312d);
-    box-shadow: 0 6px 16px -8px rgba(179, 49, 45, 0.8);
+    top: 11px; left: 11px; color: #3a2606;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 16px -8px rgba(160, 116, 20, 0.75);
   }
   .sbh-chip-live { top: 11px; right: 11px; color: #fff; background: rgba(20, 15, 9, 0.62); border: 1px solid rgba(255, 255, 255, 0.2); }
   .sbh-chip-price { bottom: 11px; right: 11px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
@@ -2726,12 +2728,12 @@ body main textarea.input-luxury {
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 20px -10px rgba(74, 56, 32, 0.7);
   }
   .sbh-tk-ico { font-size: 0.92rem; line-height: 1; }
-  /* same red as .sbh-chip-off on the flash card — one deal, one colour */
+  /* same gold as the flash-deal stamp — one deal, one colour */
   .sbh-tk-accent {
     padding: 3px 10px; border-radius: 999px;
-    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; color: #fff;
-    background: linear-gradient(135deg, #d9534f, #b3312d);
-    box-shadow: 0 6px 14px -8px rgba(179, 49, 45, 0.85);
+    font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #3a2606;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    box-shadow: 0 6px 14px -8px rgba(160, 116, 20, 0.8);
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
@@ -2750,5 +2752,50 @@ body main textarea.input-luxury {
     .sbh-ticker-item { transition: none !important; }
     .sbh-reel-vid { transition: none !important; }
     .sbh-hero-dot { transition: none !important; }
+  }
+}
+
+@media (min-width: 1024px) {
+  /* ═══════════════════════════════════════════════════════════════════════
+     v570 — a scrollbar you can actually SEE and grab (pointer only)
+     Nothing in this repo was hiding it: html/body are `scrollbar-width: auto`
+     and `overflow-y: visible`, and the wheel scrolls fine. The disappearing
+     bar is the BROWSER's overlay-scrollbar behaviour (Chrome/Windows 11 and
+     macOS default) — it fades out when idle, so a long page offers no visible
+     "you can scroll" affordance and nothing to drag with a mouse.
+     Styling ::-webkit-scrollbar opts this document out of overlay mode and
+     gives a persistent, brand-coloured classic bar. Touch keeps the native
+     behaviour — this whole block is inside the >=1024px media query.
+     ═══════════════════════════════════════════════════════════════════════ */
+  html {
+    scrollbar-width: thin;                                   /* Firefox */
+    scrollbar-color: rgba(139, 106, 40, 0.55) rgba(31, 26, 15, 0.07);
+  }
+  html::-webkit-scrollbar { width: 12px; height: 12px; }
+  html::-webkit-scrollbar-track {
+    background: rgba(31, 26, 15, 0.06);
+    border-left: 1px solid rgba(139, 106, 40, 0.14);
+  }
+  html::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: linear-gradient(180deg, #c9a66b, #8a6a24);
+    border: 3px solid transparent;                           /* inset the thumb */
+    background-clip: padding-box;
+  }
+  html::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #d9b87d, #7a5c1c);
+    background-clip: padding-box;
+  }
+  [data-theme="dark"] html,
+  html[data-theme="dark"] {
+    scrollbar-color: rgba(226, 196, 137, 0.5) rgba(255, 255, 255, 0.06);
+  }
+  html[data-theme="dark"]::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-left-color: rgba(226, 196, 137, 0.14);
+  }
+  html[data-theme="dark"]::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #e2c489, #a3854a);
+    background-clip: padding-box;
   }
 }

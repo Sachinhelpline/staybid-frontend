@@ -11176,12 +11176,12 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 5px -3px rgba(74, 56, 32, 0.5);
   }
   .sbh-tk-ico { font-size: 0.86rem; line-height: 1; }
-  /* same red as .sbh-chip-off on the flash card — one deal, one colour */
+  /* same gold as the flash-deal stamp — one deal, one colour */
   .sbh-tk-accent {
     padding: 3px 8px; border-radius: 999px;
-    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em; color: #fff;
-    background: linear-gradient(135deg, #d9534f, #b3312d);
-    box-shadow: 0 4px 10px -6px rgba(179, 49, 45, 0.9);
+    font-size: 0.66rem; font-weight: 800; letter-spacing: 0.03em; color: #3a2606;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    box-shadow: 0 4px 10px -6px rgba(160, 116, 20, 0.8);
   }
   @keyframes sbhTickerM { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
@@ -11294,7 +11294,13 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   }
   .sbh-chip em { font-style: normal; opacity: 0.7; }
   .sbh-chip-score { top: 9px; right: 9px; color: #1d1608; background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold)); }
-  .sbh-chip-off { top: 9px; left: 9px; color: #fff; background: linear-gradient(135deg, #d9534f, #b3312d); }
+  /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour.
+     (This was red; red is not the flash-deal language anywhere else.) */
+  .sbh-chip-off {
+    top: 9px; left: 9px; color: #3a2606;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
   .sbh-chip-live { top: 9px; right: 9px; color: #fff; background: rgba(20, 15, 9, 0.66); }
   .sbh-chip-price { bottom: 9px; right: 9px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
   .sbh-reel-foot {

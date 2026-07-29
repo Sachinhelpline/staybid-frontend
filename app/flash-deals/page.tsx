@@ -286,8 +286,19 @@ function FlashDealsContent() {
   /* Live stats strip ------------------------------------------------------- */
   const stats = useMemo(() => {
     const dealsLive = deals.length;
-    const avgDisc = deals.length
-      ? Math.round(deals.reduce((s, d) => s + d.discount, 0) / deals.length)
+    // Derive from the SAME two prices each card prints (marketRate -> aiPrice).
+    // `d.discount` is stale: /api/flash/near recomputes aiPrice through the v527
+    // ladder but passes the raw row's discount straight through, so averaging it
+    // printed "46% off" in this header while every card below read 20%.
+    const perDeal = deals.map((d) => {
+      const was = Number(d.marketRate) || 0;
+      const now = Number(d.aiPrice) || 0;
+      return was > now && now > 0
+        ? Math.round((1 - now / was) * 100)
+        : Math.max(0, Math.round(d.discount || 0));
+    });
+    const avgDisc = perDeal.length
+      ? Math.round(perDeal.reduce((s, n) => s + n, 0) / perDeal.length)
       : 0;
     const totalSaving = deals.reduce(
       (s, d) => s + Math.max(0, (d.floorPrice || 0) - d.aiPrice),
