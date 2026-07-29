@@ -233,6 +233,12 @@ export function filterCssFor(filterId?: string | null): string {
 }
 
 // ─── Plus FAB (entry button) ─────────────────────────────────────────────
+// v572 — it was a bare 36px gold circle sitting directly under the reel's
+// right-hand action rail (Like / Comment / Share / Save / More), which are
+// also 44px gold-ish glyphs. Read as a sixth rail icon, so people stopped
+// finding it once `/` was no longer the reel feed and the composer had to be
+// discovered here. Now: bigger, and captioned — the only labelled round
+// control on the surface, which is what makes it read as its own thing.
 export function CreateFAB({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -240,8 +246,11 @@ export function CreateFAB({ onClick }: { onClick: () => void }) {
       aria-label="Create new post"
       className="ig-create-fab"
     >
-      <span className="ig-create-fab-plus">＋</span>
-      <span className="ig-create-fab-glow" aria-hidden />
+      <span className="ig-create-fab-disc">
+        <span className="ig-create-fab-plus">＋</span>
+        <span className="ig-create-fab-glow" aria-hidden />
+      </span>
+      <span className="ig-create-fab-label" aria-hidden>Create</span>
     </button>
   );
 }

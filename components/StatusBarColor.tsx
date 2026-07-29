@@ -24,9 +24,24 @@ import { usePathname } from "next/navigation";
 const REEL_ROUTES = new Set(["/", "/discover", "/reels"]);
 const WALNUT_PREFIXES = ["/bid"];
 const RAIL_CREAM = "#fff9ec"; // matches .fdeal-rail-wrap top gradient stop
+// The tone the Stage home's hero fades INTO at its top edge (.sbh-hero::before).
+// The bar and that first sliver of hero have to be the same colour or the seam
+// between them reads as a cut-off screen.
+const STAGE_INK = "#0F0C08";
 
 function statusColorFor(pathname: string): string {
   if (typeof document === "undefined") return "#FAF5EB";
+  // v572 — `/` is the Stage home now, not the reel player, so the old
+  // "reel is at the top ⇒ pure black" branch was painting a #000 bar above a
+  // photographic hero: a hard black band with a bright sky under it, which is
+  // exactly the "screen cut in half" the owner reported. The Stage opens on a
+  // full-bleed image at every theme, so no flat page colour can ever match it;
+  // instead the hero's top edge is darkened to STAGE_INK and the bar is set to
+  // the same value, so the two are continuous. Checked before the reel branch
+  // because `/` is in BOTH sets — and `.sbh-root` is only in the DOM when the
+  // Stage actually rendered, so NEXT_PUBLIC_MOBILE_HOME="0" (reel home) still
+  // falls through to the reel logic below with no code change.
+  if (document.querySelector(".sbh-root")) return STAGE_INK;
   if (REEL_ROUTES.has(pathname)) {
     // The flash-deals rail (cream) sits at the very top when present; otherwise
     // the dark reel is at the top.

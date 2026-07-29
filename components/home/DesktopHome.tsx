@@ -10,7 +10,7 @@
 // Video / Hotstar): a cinematic HERO for the featured property, then rows of
 // cards for everything StayBid actually sells — Flash Deals, Reels, and one
 // rail per launch ZONE. The reel feed is not removed; it becomes a browsable
-// rail (and, in a later phase, a full-screen theater player).
+// rail that links into the real reel feed at the reel you tapped.
 //
 // Contracts honoured:
 //   • DESKTOP-ONLY — returns null below 1024px, so the mobile reel experience
@@ -131,12 +131,16 @@ function Rail({
   href,
   children,
   variant = "wide",
+  action,
 }: {
   title: string;
   sub?: string;
   href?: string;
   children: React.ReactNode;
   variant?: "wide" | "tall";
+  /** optional primary action beside "See all" — used by the Reels rail to
+      carry the create entry that lived on the reel home before the Stage. */
+  action?: { href: string; label: string };
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
@@ -172,11 +176,16 @@ function Rail({
           <h2 className="sbh-rail-title">{title}</h2>
           {sub ? <p className="sbh-rail-sub">{sub}</p> : null}
         </div>
-        {href ? (
-          <Link href={href} className="sbh-rail-all">
-            See all <span aria-hidden>→</span>
-          </Link>
-        ) : null}
+        <div className="sbh-rail-acts">
+          {action ? (
+            <Link href={action.href} className="sbh-rail-act">{action.label}</Link>
+          ) : null}
+          {href ? (
+            <Link href={href} className="sbh-rail-all">
+              See all <span aria-hidden>→</span>
+            </Link>
+          ) : null}
+        </div>
       </div>
       <div className="sbh-rail-shell">
         <button
@@ -287,10 +296,18 @@ function FlashCard({ d, left }: { d: Deal; left: string }) {
   );
 }
 
-function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: () => void }) {
+/* A reel card is a LINK into the real reel feed, positioned at this reel.
+   v572 — the Stage used to open its own small player here. That meant StayBid
+   shipped two reel players: this one, and the real feed at /discover. The
+   small one had no like, no comment, no share, no save, no follow, no create —
+   so tapping a reel from home quietly took features away, and there was no
+   reason for a second player to exist. Now the card navigates to the ONE
+   player, landed on the exact reel you tapped. Everything works there, the
+   swipe is the feed's own, and Back returns you to this page because it is a
+   real navigation rather than an overlay. */
+function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: number | null }) {
   const poster = reelPoster(r);
   const who = r.author?.display_name || r.display_name || "StayBid";
-  const price = r.hotel?.minPrice;
   // Netflix-style hover preview: the reel's own clip plays muted on hover.
   // Motion happens exactly where the pointer already is — never on its own.
   // Hover preview is a pointer affordance — never mounted on touch, so phones
@@ -319,12 +336,9 @@ function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: (
     return () => { cancelled = true; clearTimeout(t); };
   }, [hot]);
   return (
-    /* A button, not a link: it opens the player for THIS reel in place.
-       /discover is still one tap away from inside the theater. */
-    <button
-      type="button"
+    <Link
+      href={`/discover?start=${encodeURIComponent(r.id)}`}
       className="sbh-card sbh-card-tall"
-      onClick={onOpen}
       onMouseEnter={() => setHot(true)}
       onMouseLeave={() => setHot(false)}
     >
@@ -355,7 +369,7 @@ function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: (
         </div>
         {price ? <span className="sbh-chip sbh-chip-price">{inr(price)}<em>/n</em></span> : null}
       </div>
-    </button>
+    </Link>
   );
 }
 
@@ -637,185 +651,6 @@ function CircleRow({ props: items, counts }: { props: CircleProp[]; counts: Circ
   );
 }
 
-/* ── REEL THEATER — tapping a reel plays THAT reel ──────────────────────
-   Before this, a reel card linked to /discover, which drops you at the top of
-   a generic feed — the one place on the Stage where the card promised
-   something the click did not deliver. The theater plays the reel you picked,
-   lets you move through the rail with keys/swipe/arrows, and keeps StayBid's
-   ground reality attached: every post tags a real hotel, so the panel carries
-   that hotel and its real cheapest nightly price straight to /hotels/[id].
-   No fullscreen API call here — that is the /reels page's deliberate back-
-   gesture behaviour and does not belong on an overlay you can Esc out of. */
-function ReelTheater({
-  reels, idx, onIdx, onClose, priceFor,
-}: {
-  reels: Reel[];
-  idx: number;
-  onIdx: (n: number) => void;
-  onClose: () => void;
-  priceFor: (hotelId?: string | null) => number | null;
-}) {
-  const r = reels[idx];
-  const vid = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const touch = useRef<{ x: number; y: number } | null>(null);
-
-  const go = (d: number) => {
-    if (!reels.length) return;
-    onIdx((idx + d + reels.length) % reels.length);
-  };
-
-  // Keyboard: the overlay owns the page while it is open.
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { onClose(); return; }
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); go(1); }
-      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); go(-1); }
-      else if (e.key === " ") { e.preventDefault(); setPaused((p) => !p); }
-      else if (e.key.toLowerCase() === "m") setMuted((m) => !m);
-    };
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  });
-
-  // Scroll lock. Restores the exact previous value rather than clearing it, so
-  // we never stomp on another surface that legitimately set overflow.
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  // Autoplay the current clip. Opening is a user gesture, so sound is allowed;
-  // if the browser still refuses we fall back to muted rather than showing a
-  // frozen frame.
-  useEffect(() => {
-    const v = vid.current;
-    if (!v) return;
-    v.currentTime = 0;
-    setPaused(false);
-    v.play().catch(() => {
-      v.muted = true;
-      setMuted(true);
-      v.play().catch(() => {});
-    });
-  }, [idx]);
-
-  useEffect(() => { if (vid.current) vid.current.muted = muted; }, [muted]);
-  useEffect(() => {
-    const v = vid.current;
-    if (!v) return;
-    if (paused) v.pause(); else v.play().catch(() => {});
-  }, [paused]);
-
-  if (!r) return null;
-  const poster = reelPoster(r);
-  const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
-  const who = r.author?.display_name || r.display_name || "StayBid";
-  const hotelId = r.hotel?.id || null;
-  const price = priceFor(hotelId);
-
-  return (
-    <div
-      className="sbh-th"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Reel player"
-      onClick={onClose}
-      onTouchStart={(e) => { const t = e.touches[0]; touch.current = { x: t.clientX, y: t.clientY }; }}
-      onTouchEnd={(e) => {
-        const s = touch.current;
-        touch.current = null;
-        if (!s) return;
-        const t = e.changedTouches[0];
-        const dx = t.clientX - s.x;
-        const dy = t.clientY - s.y;
-        // A downward flick closes (the phone gesture people already expect);
-        // a horizontal flick moves through the rail.
-        if (Math.abs(dy) > Math.abs(dx) && dy > 70) onClose();
-        else if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
-      }}
-    >
-      <button className="sbh-th-x" onClick={onClose} aria-label="Close">✕</button>
-      {reels.length > 1 ? (
-        <>
-          <button
-            className="sbh-th-nav sbh-th-prev"
-            onClick={(e) => { e.stopPropagation(); go(-1); }}
-            aria-label="Previous reel"
-          >‹</button>
-          <button
-            className="sbh-th-nav sbh-th-next"
-            onClick={(e) => { e.stopPropagation(); go(1); }}
-            aria-label="Next reel"
-          >›</button>
-        </>
-      ) : null}
-
-      <div className="sbh-th-stage" onClick={(e) => e.stopPropagation()}>
-        <div className="sbh-th-frame">
-          {isVideo ? (
-            <video
-              ref={vid}
-              key={r.id}
-              className="sbh-th-media"
-              src={r.media_url || undefined}
-              poster={poster || undefined}
-              loop
-              playsInline
-              onClick={() => setPaused((p) => !p)}
-              onPlaying={() => setPaused(false)}
-            />
-          ) : poster ? (
-            <img className="sbh-th-media" src={poster} alt={r.caption || ""} />
-          ) : (
-            <div className="sbh-card-ph" />
-          )}
-
-          {isVideo ? (
-            <>
-              {paused ? <span className="sbh-th-paused" aria-hidden>▶</span> : null}
-              <button
-                className="sbh-th-mute"
-                onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
-                aria-label={muted ? "Unmute" : "Mute"}
-              >{muted ? "🔇" : "🔊"}</button>
-            </>
-          ) : null}
-          <span className="sbh-th-count">{idx + 1} / {reels.length}</span>
-        </div>
-
-        <aside className="sbh-th-side">
-          <p className="sbh-th-who">{who}</p>
-          {r.location_name ? <p className="sbh-th-loc">📍 {r.location_name}</p> : null}
-          {r.caption ? <p className="sbh-th-cap">{r.caption}</p> : null}
-
-          {hotelId ? (
-            <div className="sbh-th-hotel">
-              <p className="sbh-th-hlabel">Stay in this reel</p>
-              <p className="sbh-th-hname">{r.hotel?.name}</p>
-              {price ? <p className="sbh-th-hprice">from <b>{inr(price)}</b> <em>/night</em></p> : null}
-              <Link href={`/hotels/${hotelId}`} className="sbh-btn sbh-btn-primary sbh-th-cta">
-                View hotel
-              </Link>
-              {/* ?intent=negotiate is a real deep-link the hotel page honours —
-                  it auto-opens the picker on the cheapest room and resumes
-                  into the Negotiate modal. /bid takes no hotel param, so
-                  linking there would silently drop the hotel. */}
-              <Link href={`/hotels/${hotelId}?intent=negotiate`} className="sbh-th-bid">
-                or name your own price →
-              </Link>
-            </div>
-          ) : null}
-
-          <Link href="/discover" className="sbh-th-all">See all reels →</Link>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
 /* ── LIVE BIDDING band — StayBid's actual differentiator ───────────────── */
 type Insights = {
   tonightAuctions?: number;
@@ -854,7 +689,7 @@ function LiveBidding() {
 
   // The actual mechanic, in the order the user meets it on /bid.
   const steps = [
-    { n: "1", t: "Name your price", s: "Pick a stay, set what you want to pay." },
+    { n: "1", t: "Place your bid", s: "Pick a stay and offer the price you want to pay." },
     { n: "2", t: "Hotels reply", s: "They accept, counter or decline — live." },
     { n: "3", t: "Pay only if you like it", s: "No answer you like, no booking." },
   ];
@@ -866,7 +701,7 @@ function LiveBidding() {
           <p className="sbh-bid-kicker">
             {live ? <><span className="sbh-dot" aria-hidden /> Live right now</> : <>How StayBid works</>}
           </p>
-          <h2 className="sbh-bid-title">Name your price.<br />Let hotels compete.</h2>
+          <h2 className="sbh-bid-title">Bid your own price.<br />Hotels accept or counter.</h2>
           <p className="sbh-bid-sub">
             You don&apos;t take the listed rate — you make an offer. Hotels accept, counter or decline,
             usually within minutes.
@@ -950,7 +785,6 @@ export default function DesktopHome() {
   const [reels, setReels] = useState<Reel[]>([]);
   const [scores, setScores] = useState<Record<string, Scorecard>>({});
   const countdown = useNightlyCountdown();
-  const [theater, setTheater] = useState<number | null>(null);
 
   // Client-mount gate only. WHICH viewports get this home is decided in
   // app/page.tsx (desktop always; mobile behind MOBILE_HOME_ON), so this
@@ -1020,9 +854,7 @@ export default function DesktopHome() {
     return () => { dead = true; };
   }, [on]);
 
-  // The theater navigates the SAME slice the rail renders, so "next" never
-  // walks off into reels the user never saw on the rail.
-  const theaterReels = useMemo(() => reels.slice(0, 16), [reels]);
+  const railReels = useMemo(() => reels.slice(0, 16), [reels]);
 
   // /api/social/feed returns the tagged hotel's identity columns but no price
   // (HOTEL_CARD_COLS carries no rooms). The rails' own hotels cover part of it,
@@ -1032,7 +864,7 @@ export default function DesktopHome() {
   const [taggedPrices, setTaggedPrices] = useState<Record<string, number>>({});
   useEffect(() => {
     const ids = Array.from(
-      new Set(theaterReels.map((r) => r.hotel?.id).filter(Boolean) as string[]),
+      new Set(railReels.map((r) => r.hotel?.id).filter(Boolean) as string[]),
     );
     if (!ids.length) return;
     let dead = false;
@@ -1040,7 +872,7 @@ export default function DesktopHome() {
       .then((r) => (r.ok ? r.json() : null), () => null)
       .then((j) => { if (!dead && j?.prices) setTaggedPrices(j.prices); });
     return () => { dead = true; };
-  }, [theaterReels]);
+  }, [railReels]);
 
   const priceByHotel = useMemo(() => {
     const m: Record<string, number> = { ...taggedPrices };
@@ -1183,7 +1015,12 @@ export default function DesktopHome() {
           {fPrice != null ? (
             <p className="sbh-hero-price">
               <span>from</span> <b>{inr(fPrice)}</b> <em>/night</em>
-              <span className="sbh-hero-nudge">— or name your own price</span>
+              {/* v572 — was "— or name your own price", which reads as a slogan
+                  rather than something you can actually do here. Name the
+                  mechanic instead: you bid, and the hotel answers. */}
+              <span className="sbh-hero-nudge">
+                or <b>bid your own price</b> — the hotel accepts or counters
+              </span>
             </p>
           ) : null}
           <div className="sbh-hero-cta">
@@ -1273,9 +1110,15 @@ export default function DesktopHome() {
         ) : null}
 
         {reels.length ? (
-          <Rail title="🎬 Reels" sub="Real stays, filmed by real guests" href="/discover" variant="tall">
-            {reels.slice(0, 16).map((r, i) => (
-              <ReelCard key={r.id} r={r} preview={wide} onOpen={() => setTheater(i)} />
+          <Rail
+            title="🎬 Reels"
+            sub="Real stays, filmed by real guests"
+            href="/discover"
+            variant="tall"
+            action={{ href: "/discover?create=1", label: "＋ Post a reel" }}
+          >
+            {railReels.map((r) => (
+              <ReelCard key={r.id} r={r} preview={wide} price={priceForHotel(r.hotel?.id)} />
             ))}
           </Rail>
         ) : null}
@@ -1307,16 +1150,6 @@ export default function DesktopHome() {
       </div>
 
       <ScrollRail />
-
-      {theater != null ? (
-        <ReelTheater
-          reels={theaterReels}
-          idx={theater}
-          onIdx={setTheater}
-          onClose={() => setTheater(null)}
-          priceFor={priceForHotel}
-        />
-      ) : null}
     </div>
   );
 }

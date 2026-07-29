@@ -848,7 +848,7 @@ function MyBidsPageInner() {
   const unpaidAccepted = useMemo(() => sectionBids.filter((b) => b.status === "ACCEPTED" && !isPaid(b)).length, [sectionBids]);
 
   const sectionEmpty = section === "PLACE"
-    ? { icon: "🎯", title: "No place-bid offers yet", sub: "Name your price on /bid and hotels compete — your bids land here.", cta: "Place a Bid", href: "/bid" }
+    ? { icon: "🎯", title: "No place-bid offers yet", sub: "Bid your own price on /bid — hotels accept or counter, and your bids land here.", cta: "Place a Bid", href: "/bid" }
     : { icon: "🏨", title: "No negotiate bids yet", sub: "Negotiate with a hotel directly — your single-hotel bids land here.", cta: "Browse Hotels", href: "/hotels" };
 
   // v194 — auto-open BookingReview when the user lands here from the /bid

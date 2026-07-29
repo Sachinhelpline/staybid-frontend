@@ -333,7 +333,7 @@ function BidScenes({ step }: { step: number }) {
       {/* Scene 0: Bid form intro */}
       <div className={sceneCls} style={{ opacity: s === 0 ? 1 : 0 }}>
         <p className="text-gold-400 text-[8px] font-bold tracking-widest uppercase mb-2">🎯 Place Your Bid</p>
-        <p className="text-white text-[10px] font-bold leading-tight mb-2">Name Your Price.<br/><span className="text-gold-400">Hotels Compete.</span></p>
+        <p className="text-white text-[10px] font-bold leading-tight mb-2">Bid Your Own Price.<br/><span className="text-gold-400">Hotels Accept Or Counter.</span></p>
         <div className="space-y-1.5">
           <div className="bg-white/5 rounded-sm p-1.5"><p className="text-[6px] text-white/50">DESTINATION</p><p className="text-white text-[8px] font-semibold">Mussoorie</p></div>
           <div className="grid grid-cols-2 gap-1">

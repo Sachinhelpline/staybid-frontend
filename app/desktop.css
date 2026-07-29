@@ -2422,13 +2422,15 @@ body main textarea.input-luxury {
     font-size: 0.98rem; color: rgba(247, 240, 226, 0.76);
     margin: 0 0 26px;
   }
-  .sbh-hero-price b {
+  /* `>` — see the note in globals.css: the nudge has its own <b>. */
+  .sbh-hero-price > b {
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-variant-numeric: tabular-nums;
     font-size: 2rem; font-weight: 700; color: #fffaf0; letter-spacing: -0.01em;
   }
-  .sbh-hero-price em { font-style: normal; font-size: 0.86rem; }
+  .sbh-hero-price > em { font-style: normal; font-size: 0.86rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.88rem; }
+  .sbh-hero-nudge b { font-size: inherit; font-weight: 700; color: var(--sbh-gold-lt); }
   .sbh-hero-cta { display: flex; gap: 13px; flex-wrap: wrap; }
   .sbh-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -2491,6 +2493,7 @@ body main textarea.input-luxury {
     padding: 6px var(--sbh-gut) 22px;
     overflow-x: auto; overflow-y: hidden;
     scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--sbh-gut);   /* see the note in globals.css */
     scrollbar-width: none;
   }
   .sbh-rail::-webkit-scrollbar { display: none; }
@@ -2536,7 +2539,13 @@ body main textarea.input-luxury {
       0 6px 14px -8px rgba(31, 26, 15, 0.5),
       0 30px 52px -24px rgba(31, 26, 15, 0.72);
   }
-  .sbh-card-wide { width: clamp(258px, 20.5vw, 336px); }
+  /* v572 — was clamp(258px, 20.5vw, 336px) at 16/10. Once the name and price
+     moved out onto the page (v571), that left a 336x210 landscape plate: wide,
+     shallow, and the widest thing in the rail — which is what kept reading as
+     "stretched". A browse card whose caption sits below it wants a square-ish
+     crop (the Airbnb proportion), so the tile is narrower AND taller now, and
+     matches the phone's 1/1 exactly instead of being a different shape. */
+  .sbh-card-wide { width: clamp(212px, 16vw, 268px); }
   .sbh-card-tall { width: clamp(186px, 13.6vw, 236px); }
   .sbh-card-media {
     position: relative; overflow: hidden;
@@ -2548,7 +2557,7 @@ body main textarea.input-luxury {
       0 18px 32px -20px rgba(31, 26, 15, 0.6);
     transition: box-shadow 0.28s ease;
   }
-  .sbh-card-wide .sbh-card-media { aspect-ratio: 16 / 10; }
+  .sbh-card-wide .sbh-card-media { aspect-ratio: 1 / 1; }
   .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
   .sbh-card-media img {
     width: 100%; height: 100%; object-fit: cover; display: block;
@@ -2574,6 +2583,9 @@ body main textarea.input-luxury {
     font-size: 1.16rem; font-weight: 600; line-height: 1.16;
     margin: 0; color: var(--text-base, #1f1a0f);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    /* reserve both lines: a two-line name (e.g. "Dhanaulti Village Resort By
+       Woodora") used to push its own price a row lower than its neighbours' */
+    min-height: 2.32em;
   }
   .sbh-card-meta { margin: 0; font-size: 0.79rem; color: var(--text-soft, #4a3820); opacity: 0.76; }
   .sbh-card-rank { color: #8a6a24; font-weight: 600; opacity: 0.95; }
@@ -2609,7 +2621,7 @@ body main textarea.input-luxury {
     box-shadow: 0 6px 16px -8px rgba(160, 116, 20, 0.75);
   }
   .sbh-chip-live { top: 11px; right: 11px; color: #fff; background: rgba(20, 15, 9, 0.62); border: 1px solid rgba(255, 255, 255, 0.2); }
-  .sbh-chip-price { bottom: 11px; right: 11px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }
+  .sbh-chip-price { top: 11px; right: 11px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }   /* see globals.css */
   .sbh-play {
     position: absolute; z-index: 4; top: 50%; left: 50%;
     transform: translate(-50%, -50%);

@@ -367,7 +367,7 @@ export default function DesktopReelPanels({
           {hotelId && (
             <div className="reel-side-cta">
               <Link href={`/hotels/${hotelId}`} className="reel-side-btn primary">View &amp; Book</Link>
-              <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Make an offer</Link>
+              <Link href={`/hotels/${hotelId}#negotiate`} className="reel-side-btn ghost">Bid your price</Link>
             </div>
           )}
         </div>

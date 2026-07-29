@@ -43,6 +43,27 @@ export default function DiscoverPage() {
   const pathname = usePathname() || "/";
   const dwellStart = useRef<number>(Date.now());
 
+  // v572 — deep links into this feed:
+  //   ?start=<postId>  land on that reel  (the Stage home's reel rail)
+  //   ?create=1        open the composer  (the Stage home's "Post a reel")
+  // Read from window.location rather than useSearchParams: this component is
+  // ALSO rendered by app/page.tsx, and useSearchParams there would bail the
+  // root route out of static prerender unless every caller wrapped it in
+  // <Suspense> — a build-only failure `tsc` does not catch (see CLAUDE.md).
+  const [startId, setStartId] = useState<string | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const s = q.get("start");
+    if (s) setStartId(s);
+    // The composer's own tier gate lives inside CreateFlow; this is the same
+    // window event its desktop dead-space button already fires, so the gate
+    // still runs. Deferred a tick so CreateFlow has mounted its listener.
+    if (q.get("create") === "1") {
+      const t = setTimeout(() => window.dispatchEvent(new Event("sb:open-create")), 900);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   // Decode the current user's id once — used to flag posts as `_isSelf`
   // when the social_posts row was authored by them.
   const myUserId = (() => {
@@ -427,6 +448,7 @@ export default function DiscoverPage() {
             onLoadMore={loadFeed}
             onTrackEvent={(name, payload) => track(name as any, payload)}
             showFlashDealRail={pathname === "/"}
+            startId={startId}
           />
         </div>
       )}
