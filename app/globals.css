@@ -11121,16 +11121,28 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   }
   .sbh-hero-dots {
     position: absolute; z-index: 3; left: var(--sbh-gut); top: 16px;
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center;
+    /* 16px gap so neighbouring hit areas (below) touch but never overlap —
+       a tap can't land on the wrong slide. */
+    gap: 16px;
   }
   .sbh-hero-dot {
-    width: 7px; height: 7px; border-radius: 999px;
+    position: relative;
+    width: 8px; height: 8px; border-radius: 999px;
     background: rgba(255, 255, 255, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.4);
     transition: width 0.26s ease, background 0.2s ease;
   }
+  /* The dot stays 8px visually — the TAP target is a transparent 24x44 box.
+     Measured at 7x7 before this, far under the 24x24 WCAG 2.5.8 minimum and
+     nowhere near a thumb. */
+  .sbh-hero-dot::after {
+    content: ""; position: absolute;
+    top: -18px; bottom: -18px; left: -8px; right: -8px;
+  }
   .sbh-hero-dot.is-on {
     width: 22px; border-color: transparent;
+    /* the active pill is wider, so its hit box needs no extra horizontal reach */
     background: linear-gradient(90deg, var(--sbh-gold-lt), var(--sbh-gold));
   }
   .sbh-hero-count { display: none; }
@@ -11169,6 +11181,9 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
     color: #8a6a24; white-space: nowrap;
+    /* padding grows the hit box to ~36px tall; the negative margin cancels it
+       so the text does not move. Measured at 71x16 before this. */
+    padding: 10px 4px; margin: -10px -4px;
   }
   .sbh-rail-nav { display: none; }          /* swipe on touch, not arrows */
   .sbh-rail {
@@ -11657,4 +11672,104 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 
 @media (prefers-reduced-motion: reduce) {
   .sbh-circ-way { transition: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v565 — PASSPORT strip (both viewports, unlayered)
+   One row, not a rail: the passport is a single object, and this slot sits
+   above the merchandising, so it has to stay slim at every width.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-pp {
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 var(--sbh-gut, 16px);
+  padding: 12px 14px; border-radius: 16px;
+  text-decoration: none;
+  background: rgba(139, 106, 40, 0.07);
+  border: 1px solid rgba(139, 106, 40, 0.18);
+}
+.sbh-pp-medal {
+  flex: 0 0 auto;
+  width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 1.2rem; line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.sbh-pp-main { flex: 1 1 auto; min-width: 0; display: block; }
+.sbh-pp-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+.sbh-pp-top b {
+  font-size: 0.92rem; font-weight: 700;
+  color: var(--text-base, #1f1a0f);
+}
+.sbh-pp-top i {
+  flex: 0 0 auto; font-style: normal;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem; font-weight: 600;
+  color: #8a6a24;
+}
+.sbh-pp-bar {
+  display: block; margin-top: 6px;
+  height: 5px; border-radius: 999px; overflow: hidden;
+  background: rgba(139, 106, 40, 0.16);
+}
+.sbh-pp-bar > span {
+  display: block; height: 100%; border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sbh-pp-sub {
+  display: block; margin-top: 5px;
+  font-size: 0.72rem; color: var(--text-soft, #4a3820); opacity: 0.75;
+}
+.sbh-pp-stats {
+  display: none;                            /* phone: the bar carries the story */
+  flex: 0 0 auto; gap: 16px; text-align: right;
+}
+.sbh-pp-stats > span {
+  display: block;
+  font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-soft, #4a3820); opacity: 0.6;
+}
+.sbh-pp-stats b {
+  display: block;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem; font-weight: 700;
+  color: var(--text-base, #1f1a0f); opacity: 1;
+}
+.sbh-pp-go { flex: 0 0 auto; color: #8a6a24; font-size: 1.1rem; }
+
+@media (min-width: 1024px) {
+  .sbh-pp {
+    gap: 20px; padding: 15px 22px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .sbh-pp:hover { border-color: rgba(139, 106, 40, 0.4); transform: translateY(-1px); }
+  .sbh-pp-medal { width: 50px; height: 50px; font-size: 1.4rem; }
+  .sbh-pp-main { max-width: 560px; }
+  .sbh-pp-stats { display: flex; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sbh-pp { background: rgba(226, 196, 137, 0.08); border-color: rgba(226, 196, 137, 0.18); }
+  .sbh-pp-bar { background: rgba(226, 196, 137, 0.16); }
+  .sbh-pp-top i, .sbh-pp-go { color: var(--sbh-gold-lt, #e2c489); }
+}
+:root[data-theme="dark"] .sbh-pp {
+  background: rgba(226, 196, 137, 0.08); border-color: rgba(226, 196, 137, 0.18);
+}
+:root[data-theme="dark"] .sbh-pp-bar { background: rgba(226, 196, 137, 0.16); }
+:root[data-theme="dark"] .sbh-pp-top i,
+:root[data-theme="dark"] .sbh-pp-go { color: var(--sbh-gold-lt, #e2c489); }
+:root[data-theme="light"] .sbh-pp {
+  background: rgba(139, 106, 40, 0.07); border-color: rgba(139, 106, 40, 0.18);
+}
+:root[data-theme="light"] .sbh-pp-bar { background: rgba(139, 106, 40, 0.16); }
+:root[data-theme="light"] .sbh-pp-top i,
+:root[data-theme="light"] .sbh-pp-go { color: #8a6a24; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sbh-pp { transition: none !important; }
+  .sbh-pp-bar > span { transition: none !important; }
 }
