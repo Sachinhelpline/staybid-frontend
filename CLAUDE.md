@@ -34,7 +34,8 @@ service layer, and a unified OTA Channel Manager.
 ## Directory Structure (high-level)
 ```
 app/
-  page.tsx / discover/ / reels/       # IG-style reel feed (page.tsx renders DiscoverPage directly)
+  page.tsx                            # "The Stage" home (components/home/DesktopHome.tsx), BOTH viewports
+  discover/ / reels/                  # IG-style reel feed — unchanged, still the dedicated reel surfaces
   me/ me/posts/ saved/ saved/posts/   # IG-style self profile + posts scroll feeds
   hotels/ hotels/[id]/                # listing + detail (MOST COMPLEX page)
   bid/                                # reverse-auction (BidGameZone climber)
@@ -49,12 +50,13 @@ app/
   circle/**                           # StayBid Circle (model1 /discover→/build, model3, model4)
   worker/**                           # workforce panel (separate sb_worker session)
   api/**                              # all Next.js API routes
-components/  discover/ partner/ admin/ circle/ hotel/ tier/ verify/ passport/ upgrade/ host/ ...
+components/  home/ discover/ partner/ admin/ circle/ hotel/ tier/ verify/ passport/ upgrade/ host/ ...
 lib/        api.ts auth.tsx sb.ts sb-server.ts sb-cache.ts razorpay.ts firebase.ts
             bid-expiry.ts price-snap.ts catalog.ts hotel-score.ts commission.ts attribution.ts
             pricing/{spine,read-spine} inventory/{engine,quote,assign,prebuy-window}
             b2b/engine.ts channels/{sync,adapters/} partner/{hotel-scope,operator-access,owner-ids}
-            circle/{provision,disclosure} host/{wizard-rules,modules,journey-data,provision}
+            circle/{provision,disclosure,demand-cycle} host/{wizard-rules,modules,journey-data,provision}
+            launch/curation.ts (launch-phase city/hotel allow-list — fail-open)
             passport/engine.ts tier/{eligibility,haversine,promote} sound-store follow-store posts-store
 public/     sw.js  manifest.json  .well-known/assetlinks.json
 migrations/*.sql   docs/*.md (incl. CLAUDE-HISTORY.md + phase plans/runbooks)
@@ -101,6 +103,42 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   `logout()`) so SSR never calls `getAuth` without env vars.
 
 ---
+
+## Current production state (v566 — "The Stage": the home surface, desktop AND mobile)
+- **`/` is no longer the reel player.** It is a streaming-service home (Netflix/Prime/Hotstar idiom) rendered by
+  **`components/home/DesktopHome.tsx`** for BOTH viewports. Order:
+  **Passport strip → Hero (season-driven) → ⚡ Flash Deals → 🎬 Reels → 7 zone rails → 💎 Circle + 3 models →
+  Live Bidding band.** `/discover` + `/reels` are UNCHANGED and remain the dedicated reel surfaces —
+  only the ENTRY point moved. Revert switch: `NEXT_PUBLIC_MOBILE_HOME="0"` puts mobile `/` back on the reel feed
+  with no code change (desktop always gets the Stage).
+- **Hero is SEASON-driven, not one property** — `currentMonthDemand()` / `demandTier()` from the pre-existing
+  `lib/circle/demand-cycle.ts` (the real 12-month wheel; NOT a new engine). The pool = every shot property whose
+  city is `primary` this month, `secondary` as fill, best-scorecard-first; rotates every 5s, pauses on hover,
+  stops on dot tap, off under reduced-motion. 5s is the FLOOR — below that slides get cut mid-read.
+- **Reel theater (v563)** — a reel card opens a player for THAT reel (it used to link to `/discover`, i.e. the
+  top of a generic feed). Arrows/keys/swipe navigate the same 16 the rail renders; Esc closes; scroll lock
+  restores the PREVIOUS overflow value. Panel carries the tagged hotel + its real cheapest rate →
+  `/hotels/<id>`, and "name your own price" → `/hotels/<id>?intent=negotiate` (a real deep link; **`/bid` takes
+  no hotel param** and would silently drop the hotel). Price comes from `/api/hotels/starting-prices` — launch
+  curation caps `/api/hotels` to one property per city, so most tagged hotels are NOT in that payload.
+- **Live Bidding band (v561/562)** — reads the EXISTING public `/api/bids/insights`. **Switches on real
+  activity:** counters + recent wins when the platform is live; "How StayBid works" 3-step + "N hotels taking
+  offers" when it is quiet. Zero-valued counters are filtered out — never print a wall of zeros under a
+  "live right now" claim.
+- **Circle row (v564)** — real Model-1 catalog + one line per model with live counts (`/api/circle/properties`,
+  `/api/circle/marketplace-summary`, `/api/trade/lots`). ⚠ **`/api/circle/properties` returns `roiMin`/`roiMax`
+  AND a ready-made `"18% ROI"` badge — NONE of it is rendered.** The home page is the most public surface on the
+  site (seen by people who never open the Circle journey and so never see the in-journey disclosures), so the
+  card shows `monthlyRate` — what the investor PAYS — plus `CIRCLE_INCOME_DISCLOSURE`. See the locked Circle
+  legal rule below. `marketplace-summary` still uses the PRE-RENAME `model3`/`model4` keys (both are today's
+  Model 2 — v346 rebrand); map them explicitly, never trust the key names.
+- **Passport strip (v565)** — signed-in only; signed-out renders nothing **and never fires the request**. Every
+  figure from `GET /api/passport` (the same `lib/passport/engine.ts` the `/passport` page uses) — never recompute
+  locally or the strip can disagree with the passport.
+- Circle + Passport data load in their OWN effects, never the hero's `Promise.all`, so below-the-fold requests
+  can't delay first paint.
+- `tsc` + `next build` clean; verified headless at 1280/1440/1728/1920/2560 + 360/390/430. Badge **v566**,
+  sw HTML_CACHE **v367**.
 
 ## Current production state (v391 — Circle settlement S3: RazorpayX payout execution (admin-triggered))
 - **The real money-out — admin-triggered RazorpayX payout for a Circle owner's owed guest-booking rows. INERT
@@ -783,10 +821,10 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v172` (v360 sell-to-public).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v374. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at **`v367`** (v566 Stage QA).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at **v566**. Bump both on
   every UI ship.
-- **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
+- **NOT to be touched casually:** the Stage home order + its `.sbh-*` layer contract (below), scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
   money engines, channel sync engine, availability engine.
 
@@ -829,6 +867,32 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   advisories clear only via major bumps.
 - **Never bump `public/sw.js` cache names on a routine UI release** — cache-nuke/SW-unregister/
   force-reload kill-switches are permanently banned (v93). Keep the stable `/sw.js` URL and SWR HTML.
+
+## Stage home / `.sbh-*` (v555–v566)
+- **`app/desktop.css` is imported into `layer(utilities)`; `app/globals.css` is UNLAYERED.** Unlayered rules
+  therefore BEAT layered ones regardless of source order. Modules that must look identical on both viewports
+  (`.sbh-bid-*`, `.sbh-th-*`, `.sbh-circ-*`, `.sbh-pp-*`) are written ONCE, unlayered, at the end of globals.css
+  with an inner `@media (min-width:1024px)` — never split across the two files, or the desktop half silently
+  loses. `app/desktop.css` stays entirely `@media (min-width:1024px)`; the mobile Stage block in globals.css is
+  `@media (max-width:1023px)`.
+- **Scope any selector that can reach inside `<CountUp>`.** It renders a `<span>`, so a bare
+  `.card span { font-size: .66rem }` swallowed every number into the LABEL style (24px → 10.56px, shipped
+  invisibly). Use `>` (`.sbh-bid-stat > span`). `next build` does not catch this — only measuring in a browser does.
+- **Tap targets: 24×24 minimum (WCAG 2.5.8), and it applies to POINTER input too** — the exception is only for
+  links inline in a sentence, which a standalone "See all" is not. Grow the HIT AREA, never the visual: a
+  transparent `::after { inset: -Npx }` for dots (and size the row `gap` so neighbouring hit boxes touch but
+  never overlap, else a tap lands on the wrong slide), or `padding` + a cancelling negative `margin` for text
+  links so nothing moves.
+- **Never invent a data source the page already has.** The reel price problem was solved by
+  `/api/hotels/starting-prices` (which exists for exactly that case), the hero season by `demand-cycle.ts`, the
+  bid numbers by `/api/bids/insights` — all pre-existing. Grep before adding an endpoint.
+- **Verify by MEASURING in a headless browser, not by screenshotting.** This sandbox's proxy blocks the image/
+  video CDNs, so media never renders in a local screenshot even when the page is perfect (`curl` proves 200).
+  Assert computed geometry instead. Two gotchas: `.sb-welcome-overlay` covers the viewport (set
+  `sessionStorage.sb_welcome_shown="1"` in an init script — do NOT remove the node, React then throws
+  `removeChild`), and `waitUntil:"networkidle"` never settles (use `domcontentloaded` + an explicit wait).
+- Auto-scrolling rails were considered and REJECTED: Netflix/Prime/Hotstar don't do it, it fails WCAG 2.2.2,
+  and it steals control on the one surface where the user is browsing.
 
 ## Supabase / API
 - **No FK constraints exist** → never use PostgREST embed joins (`users:user_id(...)`). Manual
@@ -952,10 +1016,12 @@ Every hop has `⚠️ v131.8 LOAD-BEARING` markers; audit all 5 before touching 
   15 min). Unique guards: `uniq_b2b_listing_active_block`, `uniq_b2b_trade_listing_completed`,
   `uniq_inv_sales_block_paid`, `uniq_settlement_kind_ref`. Admin payout actions only flip
   `owed→paid` (never invent amounts). B2B-only, never retail (SEBI/CIS distance).
-- **Legal framing (v335, LOCKED):** NEVER "guaranteed/assured/fixed/risk-free" for Circle income.
-  ALWAYS "expected / based on actual bookings / not guaranteed". Use `lib/circle/disclosure.ts`
+- **Legal framing (v335, LOCKED; reaffirmed v564):** NEVER "guaranteed/assured/fixed/risk-free" for Circle
+  income. ALWAYS "expected / based on actual bookings / not guaranteed". Use `lib/circle/disclosure.ts`
   constants (`CIRCLE_INCOME_DISCLOSURE`, `CIRCLE_RESALE_RISK_NOTE`, `CIRCLE_PAYOUTS_LABEL="Monthly
-  Payouts"`). Never relabel the payout ledger "Returns".
+  Payouts"`). Never relabel the payout ledger "Returns". **And never render `roiMin`/`roiMax` or the API's
+  ready-made `"18% ROI"` badge on a PUBLIC surface** — the home page shows `monthlyRate` (what the investor
+  PAYS) instead, because a visitor there may never see the in-journey disclosures at all.
 - All 3 investor journeys (Model 1/3/4) render the SAME `components/circle/CircleStepShell.tsx` —
   never fork it. The shared pure engines back UI + server so preview == charge.
 
