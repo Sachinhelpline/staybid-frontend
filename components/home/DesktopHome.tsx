@@ -25,6 +25,7 @@ import Link from "next/link";
 import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
 import { currentMonthDemand, demandTier } from "@/lib/circle/demand-cycle";
 import { CountUp } from "@/components/CountUp";
+import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -64,6 +65,19 @@ type Reel = {
   display_name?: string | null;
   hotel?: { id?: string; name?: string; minPrice?: number | null } | null;
 };
+type CircleProp = {
+  id: string;
+  title?: string;
+  city?: string;
+  state?: string;
+  images?: string[];
+  roomsLabel?: string;
+  monthlyRate?: number | null;
+  operationModel?: string | null;
+  // NOTE: the API also returns roiMin/roiMax and a literal "18% ROI" badge.
+  // They are deliberately NOT typed or rendered here — see CircleRow.
+};
+type CircleCounts = { properties: number; listings: number; cities: number; lots: number };
 type Scorecard = {
   overall?: number | null;
   badge?: string | null;
@@ -319,6 +333,84 @@ function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: (
         {price ? <span className="sbh-chip sbh-chip-price">{inr(price)}<em>/n</em></span> : null}
       </div>
     </button>
+  );
+}
+
+/* ── CIRCLE — the ownership side of StayBid ────────────────────────────
+   The homepage sold stays and never once said you can OWN one. This rail
+   surfaces the real Model-1 catalog plus one honest line per model.
+
+   ⚠ LEGAL (locked, lib/circle/disclosure.ts): /api/circle/properties returns
+   roiMin/roiMax and a ready-made "18% ROI" badge. Neither is rendered. The
+   homepage is the most public surface on the site — seen by every visitor,
+   including people who never open the Circle journey and never see the
+   in-journey disclosures — so a bare return number has no business here. The
+   card shows monthlyRate, which is what you PAY (a price, like every other
+   card on this page), not what you might earn. CIRCLE_INCOME_DISCLOSURE still
+   rides along, because the product itself is income-producing property. */
+function CircleCard({ p }: { p: CircleProp }) {
+  const img = (Array.isArray(p.images) ? p.images.filter(Boolean) : [])[0] || "";
+  return (
+    <Link href={`/circle/${p.id}`} className="sbh-card sbh-card-wide">
+      <div className="sbh-card-media">
+        {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
+        <div className="sbh-card-sheen" aria-hidden />
+        <div className="sbh-card-scrim" aria-hidden />
+        {p.operationModel === "managed" ? (
+          <span className="sbh-chip sbh-chip-circle">Fully managed</span>
+        ) : null}
+      </div>
+      <div className="sbh-card-body">
+        <h3 className="sbh-card-name" title={p.title || ""}>{p.title}</h3>
+        <p className="sbh-card-meta">{p.city}{p.roomsLabel ? ` · ${p.roomsLabel}` : ""}</p>
+        {p.monthlyRate ? (
+          <p className="sbh-card-price">
+            <span>from</span> <b>{inr(p.monthlyRate)}</b> <em>/month</em>
+          </p>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
+function CircleRow({ props: items, counts }: { props: CircleProp[]; counts: CircleCounts }) {
+  // One line per model, each carrying a REAL count. A model with nothing live
+  // is dropped rather than shown as a hopeful zero.
+  const models = [
+    counts.properties
+      ? { k: "1", t: "Own a share", s: `${counts.properties} operated propert${counts.properties === 1 ? "y" : "ies"}`, href: "/circle/discover" }
+      : null,
+    counts.listings
+      ? { k: "2", t: "Buy room-nights", s: `${counts.listings} live across ${counts.cities} cities`, href: "/circle/model2/browse" }
+      : null,
+    counts.lots
+      ? { k: "3", t: "Sell to travel agents", s: `${counts.lots} open lot${counts.lots === 1 ? "" : "s"}`, href: "/trade" }
+      : null,
+  ].filter(Boolean) as { k: string; t: string; s: string; href: string }[];
+
+  return (
+    <>
+      <Rail
+        title="💎 StayBid Circle"
+        sub="Own a share of an operated property — or trade its room-nights"
+        href="/circle"
+      >
+        {items.slice(0, 14).map((p) => <CircleCard key={p.id} p={p} />)}
+      </Rail>
+
+      {models.length ? (
+        <div className="sbh-circ-ways">
+          {models.map((m) => (
+            <Link key={m.k} href={m.href} className="sbh-circ-way">
+              <span className="sbh-circ-n">Model {m.k}</span>
+              <strong>{m.t}</strong>
+              <em>{m.s}</em>
+            </Link>
+          ))}
+          <p className="sbh-circ-note">{CIRCLE_INCOME_DISCLOSURE}</p>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -675,6 +767,36 @@ export default function DesktopHome() {
     return () => { dead = true; };
   }, [on]);
 
+  // Circle loads in its OWN effect, not the hero's Promise.all — the row sits
+  // far below the fold, so its three requests must never delay first paint.
+  // All three endpoints are public and unauthenticated; each failure is
+  // independent (a dead count just drops that model's line).
+  const [circleProps, setCircleProps] = useState<CircleProp[]>([]);
+  const [circleCounts, setCircleCounts] = useState<CircleCounts>({ properties: 0, listings: 0, cities: 0, lots: 0 });
+  useEffect(() => {
+    if (!on) return;
+    let dead = false;
+    const j = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null), () => null);
+    Promise.all([
+      j("/api/circle/properties"),
+      j("/api/circle/marketplace-summary"),
+      j("/api/trade/lots"),
+    ]).then(([pj, sj, lj]) => {
+      if (dead) return;
+      const ps: CircleProp[] = Array.isArray(pj?.properties) ? pj.properties : [];
+      setCircleProps(ps);
+      setCircleCounts({
+        properties: ps.length,
+        // the summary's model3/model4 keys are the PRE-RENAME names — both are
+        // today's "Model 2" (see the v346 rebrand note in CLAUDE.md)
+        listings: Number(sj?.model4?.liveListings) || 0,
+        cities: Array.isArray(sj?.model3?.cities) ? sj.model3.cities.length : 0,
+        lots: Array.isArray(lj?.lots) ? lj.lots.length : 0,
+      });
+    });
+    return () => { dead = true; };
+  }, [on]);
+
   // The theater navigates the SAME slice the rail renders, so "next" never
   // walks off into reels the user never saw on the rail.
   const theaterReels = useMemo(() => reels.slice(0, 16), [reels]);
@@ -894,6 +1016,10 @@ export default function DesktopHome() {
             {z.items.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} />)}
           </Rail>
         ))}
+
+        {/* Ownership sits after the browse rails and before the closing band:
+            you have seen what StayBid sells, now here is how you can own it. */}
+        {circleProps.length ? <CircleRow props={circleProps} counts={circleCounts} /> : null}
 
         {/* Closing band. It sits AFTER every rail — the browse surfaces sell the
             stays, and this is the "so what do I do now" answer you land on once
