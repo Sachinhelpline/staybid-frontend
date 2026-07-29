@@ -359,6 +359,118 @@ function ReelCard({ r, preview, onOpen }: { r: Reel; preview: boolean; onOpen: (
   );
 }
 
+/* ── SCROLL RAIL — a scrollbar you can always see and grab ─────────────
+   The native one is not dependable. Chrome on Windows draws a classic bar;
+   macOS (and Safari especially) uses an OVERLAY bar that fades when idle, and
+   Safari ignores ::-webkit-scrollbar for the document scrollbar entirely — so
+   CSS alone cannot guarantee the affordance. On a 6,000px page that leaves a
+   mouse user with nothing visible to grab.
+
+   So: detect it. `innerWidth - documentElement.clientWidth` is 0 exactly when
+   the native bar takes no layout space, i.e. it is an overlay/hidden one. Only
+   then do we render our own rail, so a Windows user who already has a real
+   scrollbar never gets two. Pointer-only (no touch), and wheel/keyboard
+   scrolling is untouched either way. */
+function ScrollRail() {
+  const [on, setOn] = useState(false);
+  const [geo, setGeo] = useState({ top: 0, height: 0 });
+  const drag = useRef<{ startY: number; startScroll: number } | null>(null);
+
+  // Only mount where the native scrollbar is invisible AND we have a pointer.
+  useEffect(() => {
+    const decide = () => {
+      const overlay = window.innerWidth - document.documentElement.clientWidth === 0;
+      const pointer = window.matchMedia("(pointer: fine)").matches;
+      const wide = window.matchMedia("(min-width: 1024px)").matches;
+      setOn(overlay && pointer && wide);
+    };
+    decide();
+    window.addEventListener("resize", decide);
+    return () => window.removeEventListener("resize", decide);
+  }, []);
+
+  const sync = useCallback(() => {
+    const de = document.documentElement;
+    const track = de.clientHeight;
+    const total = de.scrollHeight;
+    if (total <= track) { setGeo({ top: 0, height: 0 }); return; }
+    // thumb length is proportional, with a floor so it stays grabbable
+    const h = Math.max(48, Math.round((track / total) * track));
+    const maxTop = track - h;
+    const top = Math.round((window.scrollY / (total - track)) * maxTop);
+    setGeo({ top, height: h });
+  }, []);
+
+  useEffect(() => {
+    if (!on) return;
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    // the page grows as rails hydrate — keep the thumb honest
+    const ro = new ResizeObserver(sync);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      ro.disconnect();
+    };
+  }, [on, sync]);
+
+  // drag the thumb
+  useEffect(() => {
+    if (!on) return;
+    const move = (e: PointerEvent) => {
+      const d = drag.current;
+      if (!d) return;
+      const de = document.documentElement;
+      const track = de.clientHeight;
+      const total = de.scrollHeight;
+      const h = Math.max(48, Math.round((track / total) * track));
+      const maxTop = track - h;
+      if (maxTop <= 0) return;
+      const delta = e.clientY - d.startY;
+      window.scrollTo({ top: d.startScroll + (delta / maxTop) * (total - track) });
+    };
+    const up = () => {
+      drag.current = null;
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [on]);
+
+  if (!on || geo.height === 0) return null;
+
+  return (
+    <div
+      className="sbh-srail"
+      onPointerDown={(e) => {
+        // clicking the track jumps a page; grabbing the thumb starts a drag
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        if (y < geo.top || y > geo.top + geo.height) {
+          window.scrollBy({ top: y < geo.top ? -window.innerHeight : window.innerHeight, behavior: "smooth" });
+        }
+      }}
+      aria-hidden
+    >
+      <div
+        className="sbh-srail-thumb"
+        style={{ transform: `translateY(${geo.top}px)`, height: geo.height }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          drag.current = { startY: e.clientY, startScroll: window.scrollY };
+          document.body.style.userSelect = "none";
+        }}
+      />
+    </div>
+  );
+}
+
 /* ── PASSPORT — the returning-visitor strip ────────────────────────────
    The streaming analogue of "Continue watching": your own state, first, above
    the merchandising. Signed-out renders NOTHING — there is no honest way to
@@ -1193,6 +1305,8 @@ export default function DesktopHome() {
           <div className="sbh-loading">Loading your stage…</div>
         ) : null}
       </div>
+
+      <ScrollRail />
 
       {theater != null ? (
         <ReelTheater

@@ -11970,3 +11970,43 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-pp-bar > span { transition: none !important; }
   .sbh-pp:hover .sbh-pp-sheen { transform: rotate(16deg) translateX(-140%) !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v571 — SCROLL RAIL (our own, because the native one is not dependable)
+   Rendered by <ScrollRail/> ONLY when the native scrollbar takes zero layout
+   width — i.e. it is an overlay bar that fades out (macOS, and Safari, where
+   ::-webkit-scrollbar is ignored for the document scrollbar entirely). A
+   Windows user with a real classic bar never sees this.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-srail {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 900;
+  width: 14px; cursor: pointer;
+  background: rgba(31, 26, 15, 0.05);
+  border-left: 1px solid rgba(139, 106, 40, 0.13);
+}
+.sbh-srail-thumb {
+  position: absolute; top: 0; left: 3px; right: 3px;
+  border-radius: 999px; cursor: grab;
+  background: linear-gradient(180deg, #d3b078, #8a6a24);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 2px 6px -3px rgba(31, 26, 15, 0.7);
+  transition: background 0.15s ease;
+}
+.sbh-srail:hover .sbh-srail-thumb { background: linear-gradient(180deg, #e0c08c, #7a5c1c); }
+.sbh-srail-thumb:active { cursor: grabbing; }
+
+@media (prefers-color-scheme: dark) {
+  .sbh-srail { background: rgba(255, 255, 255, 0.05); border-left-color: rgba(226, 196, 137, 0.14); }
+  .sbh-srail-thumb { background: linear-gradient(180deg, #e2c489, #a3854a); }
+}
+:root[data-theme="dark"] .sbh-srail {
+  background: rgba(255, 255, 255, 0.05); border-left-color: rgba(226, 196, 137, 0.14);
+}
+:root[data-theme="dark"] .sbh-srail-thumb { background: linear-gradient(180deg, #e2c489, #a3854a); }
+:root[data-theme="light"] .sbh-srail {
+  background: rgba(31, 26, 15, 0.05); border-left-color: rgba(139, 106, 40, 0.13);
+}
+:root[data-theme="light"] .sbh-srail-thumb { background: linear-gradient(180deg, #d3b078, #8a6a24); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sbh-srail-thumb { transition: none !important; }
+}
