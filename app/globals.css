@@ -11589,3 +11589,72 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-th { animation: none !important; }
   .sbh-th-x, .sbh-th-nav { transition: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v564 — CIRCLE row: the three-models strip + its legal note (both viewports)
+   The property cards reuse .sbh-card-wide wholesale — a Circle property IS a
+   property, and giving it a bespoke card would only make the page noisier.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-chip-circle {
+  left: 12px; top: 12px; right: auto;
+  background: rgba(31, 23, 16, 0.72);
+  color: var(--sbh-gold-lt, #e2c489);
+  border: 1px solid rgba(226, 196, 137, 0.34);
+}
+.sbh-circ-ways {
+  display: grid; gap: 10px;
+  padding: 0 var(--sbh-gut, 16px);
+  margin-top: -8px;
+}
+.sbh-circ-way {
+  display: block;
+  padding: 13px 15px; border-radius: 14px;
+  background: rgba(139, 106, 40, 0.06);
+  border: 1px solid rgba(139, 106, 40, 0.18);
+  text-decoration: none;
+}
+.sbh-circ-n {
+  display: block;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: #8a6a24;
+}
+.sbh-circ-way strong {
+  display: block; margin-top: 4px;
+  font-size: 0.94rem; font-weight: 600;
+  color: var(--text-base, #1f1a0f);
+}
+.sbh-circ-way em {
+  display: block; margin-top: 2px; font-style: normal;
+  font-size: 0.78rem; color: var(--text-soft, #4a3820); opacity: 0.75;
+}
+.sbh-circ-note {
+  margin: 2px 0 0;
+  font-size: 0.68rem; line-height: 1.5;
+  color: var(--text-soft, #4a3820); opacity: 0.6;
+}
+
+@media (min-width: 1024px) {
+  .sbh-circ-ways { grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: -4px; }
+  .sbh-circ-way { padding: 16px 18px; transition: border-color 0.15s ease, transform 0.15s ease; }
+  .sbh-circ-way:hover { border-color: rgba(139, 106, 40, 0.4); transform: translateY(-2px); }
+  .sbh-circ-note { grid-column: 1 / -1; margin-top: 4px; max-width: 92ch; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sbh-circ-way { background: rgba(226, 196, 137, 0.07); border-color: rgba(226, 196, 137, 0.16); }
+  .sbh-circ-n { color: var(--sbh-gold-lt, #e2c489); }
+}
+:root[data-theme="dark"] .sbh-circ-way {
+  background: rgba(226, 196, 137, 0.07); border-color: rgba(226, 196, 137, 0.16);
+}
+:root[data-theme="dark"] .sbh-circ-n { color: var(--sbh-gold-lt, #e2c489); }
+:root[data-theme="light"] .sbh-circ-way {
+  background: rgba(139, 106, 40, 0.06); border-color: rgba(139, 106, 40, 0.18);
+}
+:root[data-theme="light"] .sbh-circ-n { color: #8a6a24; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sbh-circ-way { transition: none !important; }
+}
