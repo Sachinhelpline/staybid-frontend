@@ -86,11 +86,12 @@ function LocationChip({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="relative">
-      {/* v584.1 — same uniform gold chip as every other bar control (was a
-          bespoke inline-styled pill — one of the "many colors many sizes"). */}
+      {/* v585 — the same premium tonal-glass chip as every other bar control
+          (was a dull washed-gold pill the owner flagged). Identity kept via
+          the live green dot + 📍, not a different colour. */}
       <button
         onClick={() => setPicker(true)}
-        className="nav3d-chip nav3d-eq nav3d-gold group relative"
+        className="nav3d-chip nav3d-eq group relative"
       >
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         {city ? (<><span>📍</span><span className="truncate max-w-[90px]">{city}</span></>) : (<><span>🎯</span>{!compact && <span>Anywhere</span>}</>)}
@@ -242,15 +243,20 @@ export function Navbar() {
           animation: navPulse 2.6s ease-in-out infinite;
         }
 
-        /* ═══ v584.1 — ONE uniform desktop chip system ═══
-           Owner: "bahut sare color bahut sare size — ugly". Every control on
-           the desktop bar is now the SAME 36px chip with exactly TWO looks:
-           neutral glass (.nav3d-eq) and gold (.nav3d-gold outline /
-           .nav3d-solidgold filled, reserved for the two real CTAs). And every
-           clickable POPS on hover — the zoom the owner asked for. */
+        /* ═══ v585 — premium tonal-glass desktop chip system ═══
+           Owner review of v584.1 (screenshot): the nav chips read as flat
+           WHITE boxes and Location/Explore looked dull — "premium nahi lag
+           raha". Root cause: .nav3d-chip pulls var(--bg-pill), which is
+           near-white (#fffcf6) in light mode → flat. Every desktop-bar chip
+           is now ONE raised tonal-glass pill with a champagne-gold hairline
+           and real depth, tuned SEPARATELY for light + dark so both read
+           premium with strong text contrast. Exactly two accents on top of
+           it: the ACTIVE route (vivid gold fill) and the two real CTAs
+           (.nav3d-solidgold — Create / Sign In). Every clickable POPS on
+           hover (the zoom the owner asked for). One height, one font. */
         .nav3d-eq {
           height: 36px;
-          padding: 0 12px;
+          padding: 0 13px;
           border-radius: 12px;
           display: inline-flex;
           align-items: center;
@@ -261,31 +267,76 @@ export function Navbar() {
           line-height: 1;
           white-space: nowrap;
           cursor: pointer;
+          /* LIGHT: warm ivory → champagne, gold rim, raised — reads as
+             embossed cream cardstock with a foil edge, not a white box. */
+          background: linear-gradient(180deg, #fdf6e9 0%, #f0e0c2 100%) !important;
+          border: 1px solid rgba(201,145,26,0.42) !important;
+          color: #241a0b !important;
+          box-shadow:
+            0 2px 6px rgba(120,84,40,0.16),
+            0 1px 2px rgba(120,84,40,0.10),
+            inset 0 1px 0 rgba(255,255,255,0.85) !important;
         }
         .nav3d-eq:hover {
           transform: translateY(-2px) scale(1.07);
+          background: linear-gradient(180deg, #fff7e3 0%, #f2ddac 100%) !important;
+          border-color: rgba(201,145,26,0.75) !important;
+          color: #241a0b !important;
+          box-shadow:
+            0 9px 22px rgba(201,145,26,0.30),
+            inset 0 1px 0 rgba(255,255,255,0.95) !important;
         }
         .nav3d-eq:active { transform: translateY(0) scale(0.96); }
-        .nav3d-gold {
-          background: linear-gradient(160deg, rgba(240,180,41,0.26), rgba(240,180,41,0.07) 55%, rgba(240,180,41,0.16));
-          border: 1px solid rgba(240,180,41,0.5);
-          color: var(--accent, #f0b429);
-          box-shadow: 0 2px 10px rgba(201,145,26,0.22), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(120,80,0,0.15);
+        /* ACTIVE route — vivid brand-gold fill, dark text, unmistakable. */
+        .nav3d-eq.nav3d-chip-active {
+          background: linear-gradient(135deg, #f6d888 0%, #f0b429 55%, #c9911a 100%) !important;
+          border-color: rgba(255,255,255,0.4) !important;
+          color: #1f1a0f !important;
+          box-shadow:
+            0 4px 14px rgba(240,180,41,0.42),
+            inset 0 1px 0 rgba(255,255,255,0.55),
+            inset 0 -2px 0 rgba(120,80,0,0.22) !important;
         }
-        .nav3d-gold:hover {
-          border-color: #f0b429;
-          color: var(--accent, #f0b429);
-          box-shadow: 0 8px 22px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.4);
+        /* DARK: warm espresso → walnut, gold hairline, cream text. */
+        [data-theme="dark"] .nav3d-eq {
+          background: linear-gradient(180deg, #322817 0%, #221a0f 100%) !important;
+          border-color: rgba(224,196,132,0.34) !important;
+          color: #f7efdd !important;
+          box-shadow:
+            0 3px 9px rgba(0,0,0,0.45),
+            inset 0 1px 0 rgba(255,233,173,0.10) !important;
         }
-        .nav3d-solidgold {
-          background: linear-gradient(135deg, #f4d77f 0%, #f0b429 55%, #c9911a 100%);
-          border: 1px solid rgba(255,255,255,0.35);
-          color: #1F1A0F;
-          box-shadow: 0 3px 12px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(120,80,0,0.25);
+        [data-theme="dark"] .nav3d-eq:hover {
+          background: linear-gradient(180deg, #40331b 0%, #2a2011 100%) !important;
+          border-color: rgba(240,180,41,0.62) !important;
+          color: #fff6e2 !important;
+          box-shadow:
+            0 10px 24px rgba(240,180,41,0.24),
+            inset 0 1px 0 rgba(255,233,173,0.16) !important;
         }
-        .nav3d-solidgold:hover {
-          color: #1F1A0F;
-          box-shadow: 0 9px 24px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(120,80,0,0.25);
+        [data-theme="dark"] .nav3d-eq.nav3d-chip-active {
+          background: linear-gradient(135deg, #f6d888 0%, #f0b429 55%, #c9911a 100%) !important;
+          color: #1f1a0f !important;
+        }
+        /* the two real CTAs (Create / Sign In) — solid gold, one look in
+           both themes, the brightest thing on the bar. */
+        .nav3d-solidgold,
+        [data-theme="dark"] .nav3d-solidgold {
+          background: linear-gradient(135deg, #f8dd8a 0%, #f0b429 52%, #c9911a 100%) !important;
+          border: 1px solid rgba(255,255,255,0.45) !important;
+          color: #1f1a0f !important;
+          box-shadow:
+            0 3px 13px rgba(240,180,41,0.42),
+            inset 0 1px 0 rgba(255,255,255,0.6),
+            inset 0 -2px 0 rgba(120,80,0,0.28) !important;
+        }
+        .nav3d-solidgold:hover,
+        [data-theme="dark"] .nav3d-solidgold:hover {
+          color: #1f1a0f !important;
+          box-shadow:
+            0 10px 26px rgba(240,180,41,0.55),
+            inset 0 1px 0 rgba(255,255,255,0.65),
+            inset 0 -2px 0 rgba(120,80,0,0.28) !important;
         }
         /* the logo (and anything not a chip) pops the same way */
         .nav3d-pop {
