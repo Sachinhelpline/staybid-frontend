@@ -154,6 +154,33 @@ export default function SavedPage() {
               { label: "Browse Hotels", href: "/hotels", ghost: true },
             ]}
           />
+        ) : tab === "all" ? (
+          // v587 — the "All" tab GROUPS by type so same-shape cards sit
+          // together. Mixing a 9:16 reel next to a 4:3 hotel in one grid made
+          // the row as tall as the reel, leaving big dead space under every
+          // hotel/deal. One titled section per type (only non-empty), each its
+          // own uniform grid → no dead space.
+          <div className="space-y-8">
+            {TABS.filter(t => t.id !== "all").map(sec => {
+              const items = saves.filter(s => s.target_type === sec.id);
+              if (!items.length) return null;
+              return (
+                <section key={sec.id}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">{sec.icon}</span>
+                    <h2 className="font-display text-xl font-bold text-luxury-900">{sec.label}</h2>
+                    <span className="text-luxury-400 text-sm font-semibold tabular-nums">{items.length}</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sb-stagger">
+                    {items.map(s => (
+                      <SaveCard key={s.id} s={s} onUnsave={unsave}
+                        onOpenReel={(videoId) => router.push(`/saved/posts?start=${encodeURIComponent(videoId)}`)} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sb-stagger">
             {saves.map(s => (
