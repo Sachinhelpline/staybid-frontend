@@ -1235,6 +1235,18 @@ export default function DesktopHome() {
   // prefers-reduced-motion or when the user has taken manual control.
   const [heroIdx, setHeroIdx] = useState(0);
   const [held, setHeld] = useState(false);
+  // v584.1 — manual navigation is an OPTION alongside auto-rotate, not a
+  // mode: arrows (desktop) / finger swipe (mobile) jump the slide and reset
+  // the 5s clock (navTick), but the wheel keeps turning afterwards.
+  const [navTick, setNavTick] = useState(0);
+  const heroNav = useCallback((dir: 1 | -1) => {
+    setHeroIdx((i) => {
+      const n = heroPool.length;
+      return n ? (i + dir + n) % n : 0;
+    });
+    setNavTick((t) => t + 1);
+  }, [heroPool.length]);
+  const heroTouch = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => { setHeroIdx(0); }, [heroPool.length]);
   useEffect(() => {
     if (held || heroPool.length < 2) return;
@@ -1244,7 +1256,7 @@ export default function DesktopHome() {
     // why this is the floor rather than 3-4s.
     const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroPool.length), 5000);
     return () => clearInterval(t);
-  }, [held, heroPool.length]);
+  }, [held, heroPool.length, navTick]);
   const featured = heroPool[heroIdx] || heroPool[0] || null;
 
   // ── LIVE TICKER — real facts only (deals + the season wheel) ─────────
@@ -1409,6 +1421,25 @@ export default function DesktopHome() {
         className="sbh-hero"
         onMouseEnter={() => setHeld(true)}
         onMouseLeave={() => setHeld(false)}
+        // v584.1 — mobile finger swipe: a clear horizontal swipe (≥45px,
+        // dominantly sideways) flips the slide; taps and vertical scrolls
+        // pass through untouched. Auto-rotate continues after.
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          if (t) heroTouch.current = { x: t.clientX, y: t.clientY };
+        }}
+        onTouchEnd={(e) => {
+          const s = heroTouch.current;
+          heroTouch.current = null;
+          if (!s || heroPool.length < 2) return;
+          const t = e.changedTouches[0];
+          if (!t) return;
+          const dx = t.clientX - s.x;
+          const dy = t.clientY - s.y;
+          if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            heroNav(dx < 0 ? 1 : -1);
+          }
+        }}
       >
         <div
           key={featured?.id || "hero"}
@@ -1458,6 +1489,26 @@ export default function DesktopHome() {
             </div>
           ) : null}
         </div>
+
+        {/* v584.1 — desktop paddle arrows (both sides). They jump the slide;
+            the 5s auto-rotate keeps running (hover already pauses it while
+            the cursor is on the hero, so a click never fights the timer). */}
+        {heroPool.length > 1 ? (
+          <>
+            <button
+              type="button"
+              className="sbh-hero-arr sbh-hero-arr-l"
+              aria-label="Previous property"
+              onClick={() => heroNav(-1)}
+            ><span aria-hidden>‹</span></button>
+            <button
+              type="button"
+              className="sbh-hero-arr sbh-hero-arr-r"
+              aria-label="Next property"
+              onClick={() => heroNav(1)}
+            ><span aria-hidden>›</span></button>
+          </>
+        ) : null}
 
         {/* rotation control — the user can always take over */}
         {heroPool.length > 1 ? (

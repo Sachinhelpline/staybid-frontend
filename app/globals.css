@@ -12760,3 +12760,96 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 @media (min-width: 1024px) {
   .sbh-card-why { font-size: 0.6rem; padding: 2px 8px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v584.1 — Finder guidance + hero manual controls (both viewports, unlayered)
+   ─ .sbh-tf-guide: the Who → Trip → Budget → Matches journey map that fills
+     the Finder header's dead space; the active step glows gold and floats,
+     done steps flip to a green ✓, future steps stay quiet dashes. Desktop
+     only — phones have no dead space there (the per-step sub copy guides).
+   ─ .sbh-tf-ribbon-go: "change ▾" is now a real mini pill (the bare ▾ read
+     as decoration; the season picker was invisible as a control).
+   ─ .sbh-hero-arr: desktop paddle arrows; phones swipe (JS in DesktopHome).
+     Auto-rotate continues alongside both — manual is an option, not a mode.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-tf-guide { display: none; }
+@media (min-width: 1024px) {
+  .sbh-tf-guide {
+    display: flex; align-items: center; gap: 6px;
+    flex: 1 1 auto; justify-content: center;
+    min-width: 0; flex-wrap: wrap;
+    padding: 2px 8px;
+  }
+}
+.sbh-tf-gstep {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 999px;
+  font-size: 0.6rem; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: rgba(250, 245, 235, 0.5);
+  background: rgba(217, 190, 130, 0.07);
+  border: 1px dashed rgba(217, 190, 130, 0.3);
+  white-space: nowrap;
+  transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.4, 1), background 0.25s, color 0.25s, border-color 0.25s;
+}
+.sbh-tf-gstep-ico { font-size: 0.72rem; line-height: 1; }
+.sbh-tf-gstep.is-now {
+  border-style: solid; border-color: rgba(214, 154, 30, 0.7);
+  color: #3a2606;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  box-shadow: 0 3px 10px rgba(214, 154, 30, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  animation: sbhTfGnow 2s ease-in-out infinite;
+}
+.sbh-tf-gstep.is-done {
+  border-style: solid; border-color: rgba(126, 200, 120, 0.4);
+  color: #9fdf9a; background: rgba(126, 200, 120, 0.1);
+}
+.sbh-tf-garrow { font-size: 0.66rem; color: rgba(217, 190, 130, 0.45); }
+@keyframes sbhTfGnow {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+.sbh-tf-ribbon-go {
+  flex: 0 0 auto;
+  font-size: 0.52rem; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: #3a2606;
+  background: linear-gradient(140deg, #ffe9ad, #f2c650 60%, #e8b83a);
+  border: 1px solid rgba(214, 154, 30, 0.5);
+  border-radius: 999px; padding: 3px 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+}
+
+/* ── hero paddle arrows (desktop) — phones use finger swipe instead ── */
+.sbh-hero-arr {
+  position: absolute; top: 50%;
+  z-index: 5; display: none;
+  width: 44px; height: 44px; border-radius: 999px;
+  border: 1px solid rgba(240, 180, 41, 0.45);
+  background: rgba(15, 12, 8, 0.42);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #ffe9ad; font-size: 1.6rem; line-height: 1; font-weight: 700;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.4, 1), box-shadow 0.25s, background 0.25s;
+  transform: translateY(-50%);
+}
+.sbh-hero-arr-l { left: 16px; }
+.sbh-hero-arr-r { right: 16px; }
+.sbh-hero-arr:hover {
+  transform: translateY(-50%) scale(1.14);
+  background: rgba(35, 26, 12, 0.68);
+  border-color: rgba(240, 180, 41, 0.75);
+  box-shadow: 0 10px 26px rgba(240, 180, 41, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.sbh-hero-arr:active { transform: translateY(-50%) scale(0.94); }
+.sbh-hero-arr > span { transform: translateY(-2px); }
+@media (min-width: 1024px) {
+  .sbh-hero-arr { display: inline-flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sbh-tf-gstep.is-now { animation: none !important; }
+  .sbh-hero-arr, .sbh-tf-gstep { transition: none !important; }
+}

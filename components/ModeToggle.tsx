@@ -24,17 +24,13 @@ export function ModeToggle() {
   if (pathname.startsWith("/discover") || pathname.startsWith("/partner")) return null;
 
   return (
+    // v584.1 — same uniform gold chip as the rest of the desktop bar (the
+    // nav3d-* system defined in components/Navbar.tsx, where this mounts).
     <Link
       href="/discover"
       prefetch
       aria-label="Switch to Discovery reels mode"
-      className="relative flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[0.72rem] font-semibold overflow-hidden transition-transform active:scale-95"
-      style={{
-        background: "linear-gradient(135deg, rgba(240,180,41,0.22), rgba(240,180,41,0.05))",
-        border: "1px solid rgba(240,180,41,0.45)",
-        color: "#f0b429",
-        boxShadow: "0 2px 8px rgba(201,145,26,0.2), inset 0 1px 0 rgba(255,255,255,0.22)",
-      }}
+      className="nav3d-chip nav3d-eq nav3d-gold relative"
     >
       <span>✨</span>
       <span>Explore</span>
