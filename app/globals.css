@@ -12625,3 +12625,15 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-tf-opt, .sbh-tf-go, .sbh-tf-bid, .sbh-tf-change, .sbh-tf-ribbon, .sbh-tf-ans { transition: none !important; }
   .sbh-tf-opt:hover, .sbh-tf-ans:hover, .sbh-tf-go:hover, .sbh-tf-ribbon:hover { transform: none !important; }
 }
+
+/* v582.2 — owner: the dead space above the Finder (ticker → card) and below
+   it (card → Flash Deals) must be ~zero. Scoped to the Finder only — the
+   rhythm BETWEEN the other rails is untouched. Unlayered, so it beats the
+   layered desktop.css clamp() spacings on both viewports. */
+.sbh-rails { margin-top: 6px; }
+.sbh-tf { margin: 0 0 -16px; } /* rails gap 26px − 16 ⇒ ~10px to Flash Deals (phone) */
+@media (min-width: 1024px) {
+  .sbh-rails { margin-top: 8px; }
+  /* rails gap is clamp(30px,4vh,50px) on desktop — cancel all but ~12px */
+  .sbh-tf { margin: 0 0 calc(12px - clamp(30px, 4vh, 50px)); }
+}
