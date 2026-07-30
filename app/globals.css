@@ -13000,3 +13000,84 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .sbh-tf-card::before { animation: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v591 — (A) the remaining bright-gold buttons → SATIN matte; (B) the Trip
+   Finder ("Not sure where to go?") card flips from dark WALNUT to a LIGHT
+   premium cream panel so it matches the bright theme (owner: "background abhi
+   bhi walnut hai"). Reversible. Answer cards stay photo-dark (they are media
+   tiles); everything else recolours to dark-on-cream.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── (A) satin-matte gold on the last loud buttons ── */
+.sbh-reelx-book {
+  background: linear-gradient(150deg, #dcba68, #c69a34) !important;
+  border: 1px solid rgba(255, 248, 230, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(160, 115, 25, 0.32), inset 0 1px 0 rgba(255, 248, 230, 0.3) !important;
+}
+.sbh-rail-act {
+  background: linear-gradient(150deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 230, 0.32), 0 2px 6px -3px rgba(31, 26, 15, 0.4) !important;
+}
+
+/* ── (B) LIGHT Trip Finder card ── */
+.sbh-tf-card {
+  background:
+    radial-gradient(130% 170% at 100% 0%, rgba(201, 166, 107, 0.14), transparent 55%),
+    radial-gradient(120% 150% at 0% 112%, rgba(157, 173, 143, 0.14), transparent 60%),
+    linear-gradient(150deg, #fdfaf3 0%, #f4ead7 60%, #fdfaf3 100%) !important;
+  border: 1px solid rgba(201, 166, 107, 0.42) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 16px 34px -22px rgba(120, 90, 45, 0.4),
+    0 3px 9px -6px rgba(120, 90, 45, 0.22) !important;
+}
+.sbh-tf-card::before {
+  background: linear-gradient(90deg, transparent, rgba(201, 145, 26, 0.5), transparent) !important;
+  opacity: 0.6 !important;
+}
+.sbh-tf-title { color: #3a2a12 !important; text-shadow: none !important; }
+.sbh-tf-sub { color: rgba(74, 56, 32, 0.74) !important; }
+.sbh-tf-ribbon {
+  background: linear-gradient(140deg, rgba(242, 198, 80, 0.2), rgba(201, 145, 26, 0.08)) !important;
+  border: 1px solid rgba(201, 145, 26, 0.4) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 8px -5px rgba(120, 90, 45, 0.35) !important;
+}
+.sbh-tf-ribbon-txt b { color: #5a4420 !important; }
+.sbh-tf-ribbon-txt i { color: rgba(74, 56, 32, 0.62) !important; }
+.sbh-tf-dot { background: rgba(120, 90, 45, 0.2) !important; }
+.sbh-tf-change {
+  color: #5a4420 !important;
+  background: rgba(201, 166, 107, 0.16) !important;
+  border: 1px solid rgba(201, 145, 26, 0.32) !important;
+}
+.sbh-tf-opt {
+  color: #3a2a12 !important;
+  background: linear-gradient(180deg, #fffdf9, #f3e8d4) !important;
+  border: 1px solid rgba(201, 166, 107, 0.4) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 3px 8px -5px rgba(120, 90, 45, 0.28) !important;
+}
+.sbh-tf-opt.is-hint {
+  border-color: rgba(201, 145, 26, 0.7) !important;
+  background: linear-gradient(180deg, #fff4d6, #f2ddac) !important;
+}
+/* answer-card container → light (its media tile stays photo-dark) */
+.sbh-tf-ans {
+  background: #fffdf9 !important;
+  border: 1px solid rgba(201, 166, 107, 0.32) !important;
+  box-shadow: 0 8px 18px -12px rgba(120, 90, 45, 0.45) !important;
+}
+.sbh-tf-why {
+  color: #5a4420 !important;
+  background: rgba(201, 166, 107, 0.14) !important;
+  border: 1px solid rgba(201, 166, 107, 0.3) !important;
+}
+.sbh-tf-ans-price { color: #2b1d05 !important; }
+.sbh-tf-ans-price i { color: rgba(74, 56, 32, 0.6) !important; }
+.sbh-tf-empty { color: rgba(74, 56, 32, 0.72) !important; }
+/* guide strip (v584.1) → dark-on-cream */
+.sbh-tf-gstep { color: rgba(74, 56, 32, 0.55) !important; background: rgba(201, 166, 107, 0.1) !important; border-color: rgba(201, 166, 107, 0.34) !important; }
+.sbh-tf-garrow { color: rgba(201, 145, 26, 0.5) !important; }
+/* season-preference chips (v583.1) base → dark-on-cream (is-on stays gold) */
+.sbh-tf-season:not(.is-on) { color: #5a4420 !important; background: rgba(201, 166, 107, 0.12) !important; border-color: rgba(201, 166, 107, 0.3) !important; }
+.sbh-tf-season.is-auto { color: rgba(74, 56, 32, 0.7) !important; }
