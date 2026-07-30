@@ -142,6 +142,44 @@ function FlashGuestFav({ hotelId }: { hotelId?: string }) {
   );
 }
 
+// v611 — wishlist heart for the /flash-deals page cards. Writes the SAME rich
+// `sb_local_saves` shape the home cards write and /saved reads
+// ({id,target_type,target_id,saved_at,target:{…}}), so a liked flash deal now
+// shows in the Wishlist and can be removed there. Fixes "liking a flash deal
+// doesn't save to wishlist" — this page had no save control at all.
+function FlashSaveHeart({ hotelId, target }: { hotelId: string; target: Record<string, any> }) {
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sb_local_saves");
+      const list: any[] = raw ? JSON.parse(raw) : [];
+      setSaved(list.some((s) => s?.target_type === "hotel" && String(s?.target_id) === String(hotelId)));
+    } catch {}
+  }, [hotelId]);
+  const toggle = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    try {
+      const raw = localStorage.getItem("sb_local_saves");
+      const list: any[] = raw ? JSON.parse(raw) : [];
+      const has = list.some((s) => s?.target_type === "hotel" && String(s?.target_id) === String(hotelId));
+      const next = has
+        ? list.filter((s) => !(s?.target_type === "hotel" && String(s?.target_id) === String(hotelId)))
+        : [{ id: `local-${Date.now()}`, target_type: "hotel", target_id: hotelId, saved_at: new Date().toISOString(), target: { id: hotelId, ...target } }, ...list];
+      localStorage.setItem("sb_local_saves", JSON.stringify(next.slice(0, 200)));
+      try { window.dispatchEvent(new Event("sb:saves-change")); } catch {}
+      setSaved(!has);
+    } catch {}
+  };
+  return (
+    <button type="button" onClick={toggle} className={`fd-save-heart${saved ? " is-on" : ""}`}
+      aria-label={saved ? "Remove from wishlist" : "Add to wishlist"} aria-pressed={saved}>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
+        <path d="M12 20.3s-6.8-4.4-6.8-9.5A4.1 4.1 0 0 1 12 7.2a4.1 4.1 0 0 1 6.8 3.6c0 5.1-6.8 9.5-6.8 9.5Z" />
+      </svg>
+    </button>
+  );
+}
+
 /* Animated number that counts up smoothly ----------------------------------- */
 function CountUp({ value, duration = 900 }: { value: number; duration?: number }) {
   const [v, setV] = useState(0);
@@ -750,6 +788,11 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           <span className="fd-disc-num">{headlineDisc}%</span>
           <span className="fd-disc-off">OFF</span>
         </div>
+
+        {/* v611 — wishlist heart (top-right) */}
+        {deal.hotelId ? (
+          <FlashSaveHeart hotelId={deal.hotelId} target={{ name: deal.hotel?.name, city: deal.city, star_rating: deal.hotel?.starRating, images: img ? [img] : [] }} />
+        ) : null}
 
         {/* Bottom-left location */}
         <div className="fd-img-bottom">
@@ -1431,6 +1474,20 @@ function FdStyles() {
 
       /* v521 — premium cozy LIVE chip: warm dark glass + champagne edge +
          cream text + a gold gloss (was pink-on-glass, low contrast). */
+      /* v611 — wishlist heart, top-right of the flash card media */
+      .fd-save-heart {
+        position: absolute; top: 52px; left: 12px; z-index: 3;
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 34px; height: 34px; border-radius: 999px;
+        background: rgba(18,13,7,0.55); backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.5); color: #ffffff;
+        box-shadow: 0 4px 12px -6px rgba(0,0,0,0.6);
+        transition: transform 0.14s ease, background 0.18s ease, color 0.18s ease;
+        cursor: pointer;
+      }
+      .fd-save-heart:active { transform: scale(0.9); }
+      .fd-save-heart.is-on { color: #ff5a7a; background: rgba(255,255,255,0.94); border-color: rgba(255,90,122,0.5); }
       .fd-live-pill {
         position: absolute; top: 12px; left: 12px; z-index: 2;
         display: inline-flex; align-items: center; gap: 6px;

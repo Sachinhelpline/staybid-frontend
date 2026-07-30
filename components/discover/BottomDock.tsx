@@ -144,10 +144,10 @@ export function BottomDock() {
            body.sb-composer-open on mount + clears on unmount. */
         body.sb-composer-open .ig-bottom-dock,
         body.sb-modal-open    .ig-bottom-dock { display: none !important; }
-        /* v407 — the /bid reverse-auction flow is an immersive game zone;
-           hide the dock there so no app nav bar peeks under the climber /
-           PRESS START. The /bid page sets body.sb-bid-immersive on mount. */
-        body.sb-bid-immersive .ig-bottom-dock { display: none !important; }
+        /* v610 — owner: the /bid page USED to hide the dock (v407 immersive
+           game zone). On gesture-nav phones with no OS nav bar that trapped the
+           user — no way to leave /bid. The dock now STAYS visible on /bid so
+           there is always an escape route. (Composer/modal still hide it.) */
         .ig-dock-item {
           flex: 1 1 0;
           min-width: 0;
@@ -222,13 +222,9 @@ export function BottomDock() {
         body:has([data-route-onboard]), body.no-bottom-dock {
           padding-bottom: env(safe-area-inset-bottom, 0px) !important;
         }
-        /* v413 — the immersive /bid flow hides the dock (rule above), so it must
-           ALSO drop the reserved 60px dock-height buffer — otherwise the hidden
-           dock leaves a dead gap under PRESS START. Collapse to just the OS
-           nav-bar safe-area inset (matches the admin/partner reset). */
-        body.sb-bid-immersive {
-          padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-        }
+        /* v610 — the /bid dock is visible again, so /bid keeps the normal
+           dock-height reserve (from the body rule above) so PRESS START sits
+           above the dock instead of under it. (Old v413 buffer-drop removed.) */
 
       `}</style>
     </>

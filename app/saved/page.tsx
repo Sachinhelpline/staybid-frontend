@@ -294,8 +294,8 @@ function ClickWrap({ onClick, onUnsave, children }: { onClick: () => void; onUns
       <button onClick={onClick} className="block w-full text-left">{children}</button>
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUnsave(); }}
-        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/55 text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-        title="Remove from saved">
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center shadow-md active:scale-90 transition-transform"
+        title="Remove from wishlist" aria-label="Remove from wishlist">
         ✕
       </button>
     </div>
@@ -308,8 +308,8 @@ function Wrap({ href, onUnsave, children }: { href: string; onUnsave: () => void
       <Link href={href} className="block">{children}</Link>
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUnsave(); }}
-        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/55 text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-        title="Remove from saved">
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center shadow-md active:scale-90 transition-transform"
+        title="Remove from wishlist" aria-label="Remove from wishlist">
         ✕
       </button>
     </div>
