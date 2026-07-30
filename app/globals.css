@@ -12094,3 +12094,90 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .ig-swipe-hint, .ig-swipe-hint-chev { animation: none !important; }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════
+   v578 — home (Stage) card enrichment: rating + rank + below-market, so
+   the Flash Deal + Property cards match the /hotels cards. Written once,
+   unlayered (beats app/desktop.css), applies to BOTH viewports.
+═══════════════════════════════════════════════════════════════════ */
+.sbh-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sbh-card-loc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbh-card-rating {
+  display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; opacity: 1;
+  color: #b8860b; font-weight: 700;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif; font-variant-numeric: tabular-nums;
+}
+.sbh-card-rating em { font-style: normal; font-weight: 600; opacity: 0.6; }
+.sbh-card-below {
+  margin-top: 2px; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em;
+  color: #3f9b6a; font-family: "Space Grotesk", var(--font-sans), sans-serif;
+}
+.sbh-chip-rank {
+  font-weight: 800; margin-right: 5px; padding-right: 5px;
+  border-right: 1px solid rgba(29, 22, 8, 0.30);
+}
+/* flash card already carries OFF (top-left) + countdown (top-right); its
+   score/rank chip drops to the free bottom-left corner. */
+.sbh-chip-score-bl { top: auto !important; right: auto !important; bottom: 9px; left: 9px; }
+[data-theme="dark"] .sbh-card-rating { color: #e7c77a; }
+[data-theme="dark"] .sbh-card-below { color: #6fd79a; }
+
+/* v578.1 — home card wishlist heart + real score-badge slot (trophy/medal) */
+.sbh-heart {
+  position: absolute; z-index: 5; top: 8px; right: 8px;
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; background: rgba(20, 15, 9, 0.42); border: 1px solid rgba(255, 255, 255, 0.28);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); cursor: pointer; padding: 0;
+  transition: transform 0.14s ease, color 0.2s ease, background 0.2s ease;
+}
+.sbh-heart.is-on { color: #ff5a7a; background: rgba(20, 15, 9, 0.58); border-color: rgba(255, 120, 150, 0.5); }
+.sbh-heart:active { transform: scale(0.86); }
+.sbh-heart:hover { background: rgba(20, 15, 9, 0.6); }
+/* the shared HotelScoreBadge (trophy + Rank + score) sits bottom-left of the tile */
+.sbh-badge-slot { position: absolute; z-index: 4; left: 8px; bottom: 8px; display: inline-flex; }
+/* flash countdown moves to bottom-right so the heart owns the top-right */
+.sbh-chip.sbh-chip-live-br { top: auto; bottom: 9px; right: 9px; }
+
+/* v578.2 — home reel cards get the reel-page experience: like · comment · view ·
+   save · more rail + Book Now / Bid your price CTAs (same actions as /discover). */
+.sbh-reelx { cursor: pointer; }
+/* top-anchored so a rail taller than the (small) card clips INSIDE the tile
+   via .sbh-card-media overflow:hidden — never overflowing onto the row above. */
+.sbh-reelx-rail {
+  position: absolute; z-index: 5; right: 5px; top: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.sbh-rx-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0; cursor: pointer;
+  background: none; border: 0; padding: 0; color: #fff; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.sbh-rx-btn:active { transform: scale(0.88); }
+.sbh-rx-ic { font-size: 1.05rem; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.65)); }
+.sbh-rx-n { font-size: 0.5rem; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
+.sbh-rx-btn.is-on .sbh-rx-n { color: #ffd76b; }
+.sbh-reelx-foot {
+  position: absolute; z-index: 5; left: 6px; right: 6px; bottom: 6px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sbh-reelx-who {
+  position: absolute; z-index: 5; left: 8px; top: 8px; right: 36px;
+  display: flex; flex-direction: column; color: #fff; min-width: 0;
+}
+.sbh-reelx-who strong { font-size: 0.68rem; font-weight: 800; text-shadow: 0 1px 6px rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbh-reelx-who span { font-size: 0.56rem; opacity: 0.9; text-shadow: 0 1px 6px rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbh-reelx-from { display: flex; align-items: baseline; gap: 3px; color: #fff; font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.92; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
+.sbh-reelx-from b { font-size: 0.78rem; font-weight: 800; letter-spacing: 0; }
+.sbh-reelx-from em { font-style: normal; font-size: 0.5rem; opacity: 0.75; }
+.sbh-reelx-book, .sbh-reelx-bid {
+  width: 100%; padding: 6px 6px; border-radius: 9px; font-size: 0.64rem; font-weight: 800;
+  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform 0.12s ease;
+}
+.sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #ffd76b, #f0b429); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 3px 10px rgba(240,180,41,0.4); }
+.sbh-reelx-bid { color: #fff; background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.32); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.sbh-reelx-book:active, .sbh-reelx-bid:active { transform: scale(0.96); }
+
+/* v578.2 — the hover preview video is a visual layer only; it must never
+   swallow clicks meant for the reel card's action rail / CTAs. (Unlayered,
+   so it beats the desktop.css layer rule.) */
+.sbh-reel-vid { pointer-events: none; }

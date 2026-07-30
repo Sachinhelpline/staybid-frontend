@@ -22,12 +22,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
 import { currentMonthDemand, demandTier } from "@/lib/circle/demand-cycle";
 import { CountUp } from "@/components/CountUp";
 import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelScoreBadge";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -65,7 +67,10 @@ type Reel = {
   location_name?: string | null;
   author?: { display_name?: string | null; avatar_url?: string | null } | null;
   display_name?: string | null;
-  hotel?: { id?: string; name?: string; minPrice?: number | null } | null;
+  like_count?: number | null;
+  comment_count?: number | null;
+  view_count?: number | null;
+  hotel?: { id?: string; name?: string; minPrice?: number | null; avgRating?: number | null; totalReviews?: number | null } | null;
 };
 type CircleProp = {
   id: string;
@@ -87,6 +92,8 @@ type Scorecard = {
 };
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
+const fmtCount = (n: number) => n >= 1_000_000 ? (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M"
+  : n >= 1_000 ? (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K" : String(n);
 
 /**
  * The "% OFF" a flash deal is ACTUALLY showing, derived from the two prices the
@@ -115,9 +122,65 @@ function minPriceOf(h?: Hotel | null): number | null {
     .filter((n) => Number.isFinite(n) && n > 0);
   return list.length ? Math.min(...list) : null;
 }
+/** the room "rack"/MRP market rate for a hotel (max mrp across rooms), or null */
+function marketOf(h?: Hotel | null): number | null {
+  const list = (h?.rooms || [])
+    .map((r) => Number(r?.mrp))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return list.length ? Math.max(...list) : null;
+}
+/** whole-percent a price sits below a market rate (0 when not below) */
+function belowPct(market?: number | null, price?: number | null): number {
+  const m = Number(market) || 0;
+  const p = Number(price) || 0;
+  if (m <= 0 || p <= 0 || p >= m) return 0;
+  return Math.round(((m - p) / m) * 100);
+}
 function imgOf(h?: Hotel | null): string {
   const arr = Array.isArray(h?.images) ? h!.images!.filter(Boolean) : [];
   return arr[0] || "";
+}
+
+/* ── wishlist (heart) — writes sb_local_saves, the exact schema /saved reads ── */
+function readSavedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem("sb_local_saves");
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set((Array.isArray(arr) ? arr : []).map((s: any) => `${s.target_type}:${s.target_id}`));
+  } catch { return new Set(); }
+}
+function toggleSaved(kind: "hotel" | "video", id: string, snap: Record<string, any>): boolean {
+  try {
+    const raw = localStorage.getItem("sb_local_saves");
+    const arr = raw ? JSON.parse(raw) : [];
+    const list = Array.isArray(arr) ? arr : [];
+    const key = `${kind}:${id}`;
+    const exists = list.some((s: any) => `${s.target_type}:${s.target_id}` === key);
+    const next = exists
+      ? list.filter((s: any) => `${s.target_type}:${s.target_id}` !== key)
+      : [{ target_type: kind, target_id: id, ...snap }, ...list];
+    localStorage.setItem("sb_local_saves", JSON.stringify(next));
+    try { window.dispatchEvent(new Event("sb:saves-change")); } catch {}
+    return !exists;
+  } catch { return false; }
+}
+/** Wishlist heart button — top-right of any card's media. */
+function SaveHeart({ kind, id, snap }: { kind: "hotel" | "video"; id: string; snap: Record<string, any> }) {
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { setSaved(readSavedIds().has(`${kind}:${id}`)); }, [kind, id]);
+  return (
+    <button
+      type="button"
+      className={`sbh-heart${saved ? " is-on" : ""}`}
+      aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+      aria-pressed={saved}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSaved(toggleSaved(kind, id, snap)); }}
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12.001 4.529c2.349-2.532 6.151-2.595 8.6-.184 2.45 2.41 2.605 6.37.4 8.978l-7.21 7.21a1.06 1.06 0 0 1-1.5 0l-7.21-7.21c-2.205-2.609-2.05-6.568.4-8.978 2.45-2.41 6.252-2.348 8.601.184Z" />
+      </svg>
+    </button>
+  );
 }
 function reelPoster(r: Reel): string {
   const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE";
@@ -218,31 +281,36 @@ function Rail({
 function HotelCard({ h, score }: { h: Hotel; score?: Scorecard }) {
   const price = minPriceOf(h);
   const img = imgOf(h);
-  const rank = score?.rank?.rank;
-  const scope = score?.rank?.scopeLabel;
+  const rate = Number(h.avgRating) || 0;
+  const reviews = Number(h.totalReviews) || 0;
+  const below = belowPct(marketOf(h), price);
   return (
     <Link href={`/hotels/${h.id}`} className="sbh-card sbh-card-wide">
       <div className="sbh-card-media">
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
+        <SaveHeart kind="hotel" id={h.id} snap={{ hotel_name: h.name, hotel_image: img, starRating: h.starRating, avgRating: h.avgRating }} />
         {score?.overall != null ? (
-          <span className="sbh-chip sbh-chip-score">
-            {Math.round(score.overall)}<em>/100</em>
+          <span className="sbh-badge-slot" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <HotelScoreBadge hotelId={h.id} hotelName={h.name || ""} variant="compact" />
           </span>
         ) : null}
       </div>
       <div className="sbh-card-body">
         <h3 className="sbh-card-name" title={h.name || ""}>{h.name}</h3>
         <p className="sbh-card-meta">
-          {h.city}
-          {rank && scope ? <span className="sbh-card-rank"> · #{rank} in {scope}</span> : null}
+          <span className="sbh-card-loc">{h.city}</span>
+          {rate > 0 ? (
+            <span className="sbh-card-rating">★ {rate.toFixed(1)}{reviews > 0 ? <em> ({reviews})</em> : null}</span>
+          ) : null}
         </p>
         {price != null ? (
           <p className="sbh-card-price">
             <span>from</span> <b>{inr(price)}</b> <em>/night</em>
           </p>
         ) : null}
+        {below >= 5 ? <span className="sbh-card-below">▼ {below}% below market</span> : null}
       </div>
     </Link>
   );
@@ -270,27 +338,42 @@ function useNightlyCountdown(): string {
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 }
 
-function FlashCard({ d, left }: { d: Deal; left: string }) {
+function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecard }) {
   const h = d.hotel;
   const img = imgOf(h);
   const now = Number(d.aiPrice) || 0;
   const was = Number(d.marketRate) || 0;
   const off = offPct(was, now);   // always agrees with the prices below
+  const rate = Number(h?.avgRating) || 0;
+  const reviews = Number(h?.totalReviews) || 0;
+  const hid = d.hotelId || h?.id || "";
   return (
-    <Link href={`/hotels/${d.hotelId || h?.id || ""}`} className="sbh-card sbh-card-wide sbh-card-flash">
+    <Link href={`/hotels/${hid}`} className="sbh-card sbh-card-wide sbh-card-flash">
       <div className="sbh-card-media">
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
         {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
-        {left ? <span className="sbh-chip sbh-chip-live">⏳ {left}</span> : null}
+        {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">⏳ {left}</span> : null}
+        {hid ? <SaveHeart kind="hotel" id={hid} snap={{ hotel_name: h?.name, hotel_image: img, avgRating: h?.avgRating }} /> : null}
+        {score?.overall != null ? (
+          <span className="sbh-badge-slot" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <HotelScoreBadge hotelId={hid} hotelName={h?.name || ""} variant="compact" />
+          </span>
+        ) : null}
       </div>
       <div className="sbh-card-body">
         <h3 className="sbh-card-name" title={h?.name || ""}>{h?.name}</h3>
-        <p className="sbh-card-meta">{d.city || h?.city}</p>
+        <p className="sbh-card-meta">
+          <span className="sbh-card-loc">{d.city || h?.city}</span>
+          {rate > 0 ? (
+            <span className="sbh-card-rating">★ {rate.toFixed(1)}{reviews > 0 ? <em> ({reviews})</em> : null}</span>
+          ) : null}
+        </p>
         <p className="sbh-card-price">
           {was > now ? <s>{inr(was)}</s> : null} <b>{inr(now)}</b> <em>/night</em>
         </p>
+        {off >= 5 ? <span className="sbh-card-below">▼ {off}% below market</span> : null}
       </div>
     </Link>
   );
@@ -316,6 +399,16 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   const [hot, setHot] = useState(false);
   const [playing, setPlaying] = useState(false);
   const vid = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
+  const hotelId = r.hotel?.id || "";
+  const openReel = useCallback(() => { router.push(`/discover?start=${encodeURIComponent(r.id)}`); }, [router, r.id]);
+  const go = (href: string) => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); router.push(href); };
+  const [liked, setLiked] = useState(false);
+  const [savedR, setSavedR] = useState(false);
+  useEffect(() => { setSavedR(readSavedIds().has(`video:${r.id}`)); }, [r.id]);
+  const likeN = (Number(r.like_count) || 0) + (liked ? 1 : 0);
+  const cmtN = Number(r.comment_count) || 0;
+  const viewN = Number(r.view_count) || 0;
   useEffect(() => {
     const v = vid.current;
     if (!v) return;
@@ -336,9 +429,11 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
     return () => { cancelled = true; clearTimeout(t); };
   }, [hot]);
   return (
-    <Link
-      href={`/discover?start=${encodeURIComponent(r.id)}`}
-      className="sbh-card sbh-card-tall"
+    <div
+      className="sbh-card sbh-card-tall sbh-reelx"
+      role="link" tabIndex={0}
+      onClick={openReel}
+      onKeyDown={(e) => { if (e.key === "Enter") openReel(); }}
       onMouseEnter={() => setHot(true)}
       onMouseLeave={() => setHot(false)}
     >
@@ -347,29 +442,51 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
         {isVideo ? (
           <video
             ref={vid}
-            /* only fade in once frames are actually flowing — never a black box */
             className={`sbh-reel-vid${hot && playing ? " is-on" : ""}`}
             src={r.media_url || undefined}
-            muted
-            loop
-            playsInline
-            preload="metadata"
+            muted loop playsInline preload="metadata"
             onPlaying={() => setPlaying(true)}
             onEnded={() => setPlaying(false)}
-            tabIndex={-1}
-            aria-hidden
+            tabIndex={-1} aria-hidden
           />
         ) : null}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
-        <span className="sbh-play" aria-hidden>▶</span>
-        <div className="sbh-reel-foot">
-          <strong>{who}</strong>
-          {r.location_name ? <span>{r.location_name}</span> : null}
+
+        {/* the SAME action rail as the reel page: like · comment · share · save · more */}
+        <div className="sbh-reelx-rail">
+          <button type="button" className={`sbh-rx-btn${liked ? " is-on" : ""}`} aria-label="Like"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked((v) => !v); }}>
+            <span className="sbh-rx-ic">{liked ? "❤️" : "🤍"}</span><span className="sbh-rx-n">{fmtCount(likeN)}</span>
+          </button>
+          <button type="button" className="sbh-rx-btn" aria-label="Comments" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
+            <span className="sbh-rx-ic">💬</span><span className="sbh-rx-n">{fmtCount(cmtN)}</span>
+          </button>
+          <button type="button" className="sbh-rx-btn" aria-label="Views" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
+            <span className="sbh-rx-ic">👁</span><span className="sbh-rx-n">{fmtCount(viewN)}</span>
+          </button>
+          <button type="button" className={`sbh-rx-btn${savedR ? " is-on" : ""}`} aria-label={savedR ? "Remove from wishlist" : "Add to wishlist"}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSavedR(toggleSaved("video", r.id, { hotel_name: r.hotel?.name, hotel_image: poster, thumbnail_url: poster, title: r.caption })); }}>
+            <span className="sbh-rx-ic">{savedR ? "🔖" : "📑"}</span><span className="sbh-rx-n">{savedR ? "Saved" : "Save"}</span>
+          </button>
+          <button type="button" className="sbh-rx-btn" aria-label="More" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
+            <span className="sbh-rx-ic">⋮</span>
+          </button>
         </div>
-        {price ? <span className="sbh-chip sbh-chip-price">{inr(price)}<em>/n</em></span> : null}
+
+        {/* creator, top-left (leaves the bottom for the CTA row) */}
+        <div className="sbh-reelx-who"><strong>{who}</strong>{r.location_name ? <span>{r.location_name}</span> : null}</div>
+
+        {/* bottom: Book Now / Bid your price (real deep links) */}
+        {hotelId ? (
+          <div className="sbh-reelx-foot">
+            {price ? <span className="sbh-reelx-from">From <b>{inr(price)}</b><em>/n</em></span> : null}
+            <button type="button" className="sbh-reelx-book" onClick={go(`/hotels/${hotelId}`)}>🏷 Book</button>
+            <button type="button" className="sbh-reelx-bid" onClick={go(`/hotels/${hotelId}?intent=negotiate#availability-picker`)}>Bid your price</button>
+          </div>
+        ) : null}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -813,12 +930,23 @@ export default function DesktopHome() {
       setDeals(Array.isArray(fj?.deals) ? fj.deals : []);
       setReels(Array.isArray(sj?.posts) ? sj.posts : []);
 
-      // scorecards for the hotels we will actually render
-      const ids = hs.map((h) => h.id).filter(Boolean).slice(0, 60);
+      // scorecards for the hotels we will actually render (zone rails + flash
+      // deals) so rank + score show on every card, not just the zone rails.
+      const dealIds = (Array.isArray(fj?.deals) ? fj.deals : [])
+        .map((d: Deal) => d.hotelId || d.hotel?.id)
+        .filter(Boolean) as string[];
+      const ids = Array.from(new Set([...hs.map((h) => h.id), ...dealIds]))
+        .filter(Boolean)
+        .slice(0, 80);
       if (ids.length) {
         const sc = await fetch(`/api/hotels/scorecards?ids=${ids.join(",")}`)
           .then((r) => (r.ok ? r.json() : null), () => null);
-        if (!dead && sc?.scorecards) setScores(sc.scorecards);
+        if (!dead && sc?.scorecards) {
+          setScores(sc.scorecards);
+          // let the shared HotelScoreBadge read these from cache instead of
+          // each badge firing its own request — same trophy/medal as /hotels.
+          seedScorecardCache(sc.scorecards);
+        }
       }
     })();
     return () => { dead = true; };
@@ -1105,7 +1233,7 @@ export default function DesktopHome() {
             sub={countdown ? `Resets in ${countdown} — live prices, limited rooms` : "Tonight only — live prices, limited rooms"}
             href="/flash-deals"
           >
-            {deals.slice(0, 14).map((d) => <FlashCard key={d.id} d={d} left={countdown} />)}
+            {deals.slice(0, 14).map((d) => <FlashCard key={d.id} d={d} left={countdown} score={scores[d.hotelId || d.hotel?.id || ""]} />)}
           </Rail>
         ) : null}
 
