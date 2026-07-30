@@ -4,7 +4,14 @@
 //   - tonightAuctions:  open bid_requests created in last 24h (city-scoped if ?city=)
 //   - acceptedToday:    bids accepted today (city-scoped if ?city=)
 //   - avgAcceptMins:    median minutes between accepted bid createdAt and updatedAt
-//   - hotelsListening:  count of active hotels in the city (or platform if no city)
+//   - hotelsListening:  count of CUSTOMER-BOOKABLE hotels in the city (or platform
+//                       if no city). Gated exactly like /api/hotels —
+//                       approval_status='approved' + launch curation — because a
+//                       bid placed on /bid can only ever reach that catalog
+//                       (submit() calls api.getHotels → the curated /api/hotels).
+//                       Counting the raw hotels table here printed "88 hotels
+//                       taking offers" on the home band next to the ticker's
+//                       "31 properties live" (v579 consistency fix).
 //   - cityHotStreak:    accepted bids in last 60 min (city-scoped if ?city=)
 //   - recentWins[]:     last 5 accepted bids — first-letter only initials, sanitized
 //
@@ -20,6 +27,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
+import { curateHotels } from "@/lib/launch/curation";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
 const TTL = 30_000;
@@ -56,27 +64,30 @@ export async function GET(req: NextRequest) {
     const since1h  = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const sinceToday = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
-    // Build city filter for hotels (used to scope bids to a city via hotelId IN(..))
+    // Build city filter for hotels (used to scope bids to a city via hotelId IN(..)).
+    // BOTH branches apply the SAME customer-catalog gate as /api/hotels
+    // (approval_status='approved' + curateHotels — fail-open with the curation
+    // flag), so every surface reading this route prints the same universe the
+    // ticker, /hotels and /bid submit() actually operate on.
     let hotelIdsInCity: string[] = [];
     let hotelsListening = 0;
     if (city) {
       const hotelsRes = await fetch(
-        `${SB_URL}/rest/v1/hotels?city=ilike.${encodeURIComponent(city)}*&select=id`,
+        `${SB_URL}/rest/v1/hotels?city=ilike.${encodeURIComponent(city)}*&approval_status=eq.approved&select=id`,
         { headers: SB_H }
       );
       const hotelRows = await hotelsRes.json().catch(() => []);
       if (Array.isArray(hotelRows)) {
-        hotelIdsInCity = hotelRows.map((h: any) => h.id).filter(Boolean);
+        hotelIdsInCity = curateHotels(hotelRows).map((h: any) => h.id).filter(Boolean);
         hotelsListening = hotelIdsInCity.length;
       }
     } else {
-      const countRes = await fetch(
-        `${SB_URL}/rest/v1/hotels?select=id`,
-        { headers: { ...SB_H, Prefer: "count=exact" } }
+      const allRes = await fetch(
+        `${SB_URL}/rest/v1/hotels?approval_status=eq.approved&select=id&limit=1000`,
+        { headers: SB_H }
       );
-      const xRange = countRes.headers.get("content-range") || "";
-      const total = Number(xRange.split("/")[1]) || 0;
-      hotelsListening = total;
+      const allRows = await allRes.json().catch(() => []);
+      hotelsListening = Array.isArray(allRows) ? curateHotels(allRows).length : 0;
     }
 
     const hotelFilter = hotelIdsInCity.length ? `&hotelId=in.(${hotelIdsInCity.join(",")})` : "";

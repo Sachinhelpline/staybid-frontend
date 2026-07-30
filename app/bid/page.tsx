@@ -1769,7 +1769,7 @@ export default function BidPage() {
                 <div className="bx-insight-title">AI Insight</div>
                 <div className="bx-insight-body">{city.tip}</div>
                 <div className="bx-insight-meta">
-                  Avg. ₹{city.avg.toLocaleString("en-IN")}/night · {insights?.hotelsListening ?? "—"} hotels listening
+                  Avg. ₹{city.avg.toLocaleString("en-IN")}/night · {insights?.hotelsListening ?? "—"} hotel{insights?.hotelsListening === 1 ? "" : "s"} listening
                 </div>
               </div>
             </div>
@@ -2510,7 +2510,7 @@ export default function BidPage() {
                       <div className="bx-insight-title">AI Insight</div>
                       <div className="bx-insight-body">{city.tip}</div>
                       <div className="bx-insight-meta">
-                        Avg. ₹{city.avg.toLocaleString("en-IN")}/night · {insights?.hotelsListening ?? "—"} hotels listening
+                        Avg. ₹{city.avg.toLocaleString("en-IN")}/night · {insights?.hotelsListening ?? "—"} hotel{insights?.hotelsListening === 1 ? "" : "s"} listening
                       </div>
                     </div>
                   </div>
