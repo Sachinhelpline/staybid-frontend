@@ -33,7 +33,7 @@ export default function HostHome() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#budget" className="sb-card-lift px-6 py-3 rounded-full text-white font-semibold shadow"
-                style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>
+                style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
                 Start your journey →
               </a>
               <button onClick={() => setLead({ interest: "general" })}
@@ -129,7 +129,7 @@ export default function HostHome() {
             <div key={s.n} className="sb-card-lift rounded-2xl p-5"
               style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold mb-3"
-                style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>{s.n}</div>
+                style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>{s.n}</div>
               <div className="font-semibold" style={{ color: "var(--text-base)" }}>{s.title}</div>
               <p className="text-sm mt-1.5" style={{ color: "var(--text-muted)" }}>{s.desc}</p>
               <div className="text-xs mt-3 font-medium px-2.5 py-1 rounded-full inline-block"
@@ -286,24 +286,24 @@ export default function HostHome() {
       {/* ───────── Stats band + Final CTA ───────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
         <div className="rounded-3xl p-8 sm:p-12 text-center"
-          style={{ background: "linear-gradient(135deg,#1f1a0f,#2b2415)", color: "#faf5eb" }}>
+          style={{ background: "linear-gradient(135deg,#1f1a0f,#2b2415)", color: "#f4f6f8" }}>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-8">
             {HOST_STATS.map((s) => (
               <div key={s.label}>
-                <div className="font-display text-2xl sm:text-3xl" style={{ color: "#f0d060" }}>{s.value}</div>
-                <div className="text-[11px] mt-0.5" style={{ color: "#d9be82" }}>{s.label}</div>
+                <div className="font-display text-2xl sm:text-3xl" style={{ color: "#c6d0da" }}>{s.value}</div>
+                <div className="text-[11px] mt-0.5" style={{ color: "#b4c1cf" }}>{s.label}</div>
               </div>
             ))}
           </div>
-          <div className="text-xs uppercase tracking-[0.2em]" style={{ color: "#d9be82" }}>Your money, fully managed</div>
+          <div className="text-xs uppercase tracking-[0.2em]" style={{ color: "#b4c1cf" }}>Your money, fully managed</div>
           <h2 className="font-display mt-2" style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>
             Build a hospitality portfolio without the headache
           </h2>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a href="#budget" className="sb-card-lift px-7 py-3 rounded-full font-semibold text-[#1f1a0f]"
-              style={{ background: "linear-gradient(135deg,#f0d060,#c9a66b)" }}>Choose your budget</a>
+              style={{ background: "linear-gradient(135deg,#c6d0da,#c9a66b)" }}>Choose your budget</a>
             <button onClick={() => setLead({ interest: "general" })} className="sb-card-lift px-7 py-3 rounded-full font-semibold"
-              style={{ border: "1px solid rgba(255,255,255,0.25)", color: "#faf5eb" }}>Request a callback</button>
+              style={{ border: "1px solid rgba(255,255,255,0.25)", color: "#f4f6f8" }}>Request a callback</button>
           </div>
         </div>
       </section>
@@ -360,7 +360,7 @@ function LeadModal({ interest, tier, onClose }: { interest: string; tier?: strin
               Our hospitality team will reach out shortly to set up your portfolio.
             </p>
             <button onClick={onClose} className="mt-5 px-6 py-2.5 rounded-full text-white font-semibold"
-              style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>Done</button>
+              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>Done</button>
           </div>
         ) : (
           <>
@@ -384,7 +384,7 @@ function LeadModal({ interest, tier, onClose }: { interest: string; tier?: strin
             {state === "error" && <div className="text-sm mt-2" style={{ color: "#c0392b" }}>Please enter a valid name & phone.</div>}
             <button onClick={submit} disabled={state === "sending"}
               className="w-full mt-4 px-6 py-3 rounded-full text-white font-semibold disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>
+              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
               {state === "sending" ? "Sending…" : "Request callback"}
             </button>
           </>

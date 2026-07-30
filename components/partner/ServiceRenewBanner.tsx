@@ -56,8 +56,8 @@ export default function ServiceRenewBanner({
     <div
       className="rounded-xl mb-4 px-3.5 py-3"
       style={{
-        background: anyExpired ? "#fdeceb" : "#fff8e6",
-        border: `1.5px solid ${anyExpired ? "#e9b3ad" : "#e3c98f"}`,
+        background: anyExpired ? "#fdeceb" : "#f7f8fa",
+        border: `1.5px solid ${anyExpired ? "#e9b3ad" : "#c1ccd7"}`,
       }}
     >
       <p className="text-[0.78rem] font-bold text-luxury-900 flex items-center gap-1.5">
@@ -81,7 +81,7 @@ export default function ServiceRenewBanner({
               <button
                 onClick={() => onRenew(it.key)}
                 className="shrink-0 rounded-lg px-2.5 py-1 text-[0.66rem] font-bold text-white transition-all"
-                style={{ background: it.expired ? "#c0392b" : "#c9911a" }}
+                style={{ background: it.expired ? "#c0392b" : "#8198ae" }}
               >
                 {it.expired ? "Renew" : "Renew now"}
               </button>

@@ -104,7 +104,7 @@ export default function MenuBuilderTab({ hotelId }: { hotelId: string }) {
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fffbeb" }}>
+        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
           <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Menu storage abhi setup nahi hua</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
             <span className="font-mono">migrations/2026-05-21-fnb-menu.sql</span> Supabase me apply karni hai.
@@ -354,7 +354,7 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
                   return (
                     <button key={t} type="button" onClick={() => set("foodType", t)}
                       className="flex-1 rounded-lg py-1.5 text-[0.62rem] font-bold transition-all"
-                      style={{ border: `1.5px solid ${on ? FOOD[t].c : "#e6ddc8"}`, color: on ? FOOD[t].c : "#9a8a6a", background: on ? FOOD[t].c + "14" : "#fff" }}>
+                      style={{ border: `1.5px solid ${on ? FOOD[t].c : "#d7dee6"}`, color: on ? FOOD[t].c : "#768fa7", background: on ? FOOD[t].c + "14" : "#fff" }}>
                       {FOOD[t].label}
                     </button>
                   );

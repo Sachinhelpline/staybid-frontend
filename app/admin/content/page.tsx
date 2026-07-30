@@ -54,8 +54,8 @@ const COLORS = {
   text: "#E8EAF0",
   textSoft: "#8A8FA8",
   textMuted: "#5A6175",
-  gold: "#D4AF37",
-  goldSoft: "#F0D060",
+  gold: "#9fb1c2",
+  goldSoft: "#c6d0da",
   green: "#2ECC71",
   red: "#FF4757",
   amber: "#F0A030",
@@ -383,9 +383,9 @@ export default function AdminContentPage() {
                           fontWeight: 700,
                           padding: "2px 8px",
                           borderRadius: 999,
-                          background: "rgba(212,175,55,0.16)",
+                          background: "rgba(140, 160, 182,0.16)",
                           color: COLORS.goldSoft,
-                          border: `1px solid rgba(212,175,55,0.30)`,
+                          border: `1px solid rgba(140, 160, 182,0.30)`,
                           letterSpacing: "0.04em",
                         }}
                       >

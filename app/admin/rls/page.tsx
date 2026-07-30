@@ -273,7 +273,7 @@ export default function AdminRLS() {
       </div>
 
       {/* Info banner */}
-      <div style={{ background: "rgba(212,175,55,0.06)", border: `1px solid ${C.gold}33`, borderRadius: 12, padding: 14, marginBottom: 18, color: C.text, fontSize: 13, lineHeight: 1.55 }}>
+      <div style={{ background: "rgba(140, 160, 182,0.06)", border: `1px solid ${C.gold}33`, borderRadius: 12, padding: 14, marginBottom: 18, color: C.text, fontSize: 13, lineHeight: 1.55 }}>
         <strong style={{ color: C.gold }}>How RLS works here:</strong> Every table has a permissive
         <code style={{ color: C.amber, margin: "0 4px" }}>all_anon_all</code> policy that lets the app's
         anon key read + write. RLS being <em>enabled</em> means the policy is consulted; disabling RLS
@@ -463,7 +463,7 @@ export default function AdminRLS() {
                     onClick={() => applyTemplate(selected.table, "service_role_only")}
                     disabled={busy || !serviceRole}
                     title={serviceRole ? "Drops all permissive policies → only service_role can access" : "Set SUPABASE_SERVICE_ROLE_KEY env var first"}
-                    style={{ background: serviceRole ? "rgba(212,175,55,0.15)" : "rgba(212,175,55,0.05)", color: C.gold, border: `1px solid ${C.gold}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: (busy || !serviceRole) ? "not-allowed" : "pointer", opacity: (busy || !serviceRole) ? 0.5 : 1 }}
+                    style={{ background: serviceRole ? "rgba(140, 160, 182,0.15)" : "rgba(140, 160, 182,0.05)", color: C.gold, border: `1px solid ${C.gold}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: (busy || !serviceRole) ? "not-allowed" : "pointer", opacity: (busy || !serviceRole) ? 0.5 : 1 }}
                   >
                     🛡️ Service-role only
                   </button>

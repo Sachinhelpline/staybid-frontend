@@ -141,8 +141,8 @@ export default function AdminFinance() {
           active codes. */}
       {redemption && (
         <div className="admin-card" style={{
-          background: "linear-gradient(135deg, rgba(212,175,55,0.05), rgba(168,85,247,0.05))",
-          border: "1px solid rgba(212,175,55,0.2)",
+          background: "linear-gradient(135deg, rgba(140, 160, 182,0.05), rgba(168,85,247,0.05))",
+          border: "1px solid rgba(140, 160, 182,0.2)",
           borderRadius: 12, padding: 16, marginBottom: 24,
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
@@ -224,9 +224,9 @@ function KpiMini({ label, value, color }: { label: string; value: string; color:
 }
 
 const smallBtn = {
-  background: "rgba(212,175,55,0.1)",
+  background: "rgba(140, 160, 182,0.1)",
   color: C.gold,
-  border: `1px solid rgba(212,175,55,0.3)`,
+  border: `1px solid rgba(140, 160, 182,0.3)`,
   padding: "5px 12px",
   borderRadius: 8,
   cursor: "pointer",

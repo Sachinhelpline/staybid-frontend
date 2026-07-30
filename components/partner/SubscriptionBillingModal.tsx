@@ -38,8 +38,8 @@ function openReceipt(p: any) {
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',Roboto,sans-serif;color:#2b2415;padding:32px;background:#fff}
-  .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #e3c98f;padding-bottom:14px}
-  .brand{font-size:22px;font-weight:800;color:#c9911a;letter-spacing:.5px}
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #c1ccd7;padding-bottom:14px}
+  .brand{font-size:22px;font-weight:800;color:#8198ae;letter-spacing:.5px}
   .tag{font-size:11px;color:#8a805f;margin-top:2px}
   .rno{font-size:11px;color:#8a805f;text-align:right}
   h2{font-size:13px;margin:20px 0 8px;color:#6e5430;text-transform:uppercase;letter-spacing:.6px}
@@ -47,10 +47,10 @@ function openReceipt(p: any) {
   td{padding:7px 0;vertical-align:top}
   td.l{color:#8a805f;width:42%}
   td.r{font-weight:600;text-align:right}
-  .total{margin-top:16px;border-top:2px solid #e3c98f;padding-top:12px;display:flex;justify-content:space-between;align-items:center}
-  .total .amt{font-size:24px;font-weight:800;color:#c9911a}
+  .total{margin-top:16px;border-top:2px solid #c1ccd7;padding-top:12px;display:flex;justify-content:space-between;align-items:center}
+  .total .amt{font-size:24px;font-weight:800;color:#8198ae}
   .paid{display:inline-block;margin-top:6px;background:#e7f6ec;color:#1c7a3e;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px}
-  .ft{margin-top:28px;font-size:10.5px;color:#a89a72;text-align:center;line-height:1.6}
+  .ft{margin-top:28px;font-size:10.5px;color:#889db3;text-align:center;line-height:1.6}
   @media print{body{padding:18px}}
 </style></head><body>
   <div class="hd">
@@ -138,7 +138,7 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
           ) : (
             <>
               <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between"
-                style={{ background: "#fff8e6", border: "1.5px solid #e3c98f" }}>
+                style={{ background: "#f7f8fa", border: "1.5px solid #c1ccd7" }}>
                 <span className="text-[0.7rem] text-luxury-600">Total paid</span>
                 <span className="text-[0.95rem] font-bold text-gold-700">{fmtCur(totalPaid)}</span>
               </div>
@@ -147,7 +147,7 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
                   const paid = p.status === "paid";
                   return (
                     <div key={p.id} className="rounded-xl p-3"
-                      style={{ background: "#faf7ef", border: "1px solid #e6ddc8" }}>
+                      style={{ background: "#f6f7f9", border: "1px solid #d7dee6" }}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[0.8rem] font-bold text-luxury-900 truncate">
@@ -160,7 +160,7 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
                           <p className="text-[0.86rem] font-bold text-gold-700">{fmtCur(p.amount)}</p>
                           <span className="text-[0.55rem] font-bold px-1.5 py-0.5 rounded-full"
                             style={{
-                              background: paid ? "#e7f6ec" : p.status === "failed" ? "#fdeceb" : "#f3eede",
+                              background: paid ? "#e7f6ec" : p.status === "failed" ? "#fdeceb" : "#ebeef2",
                               color: paid ? "#1c7a3e" : p.status === "failed" ? "#c0392b" : "#8a7a3a",
                             }}>
                             {paid ? "PAID" : String(p.status || "").toUpperCase()}
@@ -170,7 +170,7 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
                       {paid && (
                         <button onClick={() => openReceipt(p)}
                           className="mt-2 w-full rounded-lg py-1.5 text-[0.68rem] font-bold text-white transition-all"
-                          style={{ background: "#c9911a" }}>
+                          style={{ background: "#8198ae" }}>
                           🧾 Receipt dekho / print karo
                         </button>
                       )}

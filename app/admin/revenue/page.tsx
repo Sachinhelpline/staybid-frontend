@@ -35,7 +35,7 @@ export default function AdminRevenuePage() {
             <KpiCard
               title="Gross All-time"
               value={k.grossAllTime || 0}
-              format={inr} icon="💰" color="#D4AF37" live
+              format={inr} icon="💰" color="#9fb1c2" live
               sparkline={(data?.series || []).map((s: any) => s.gross)}
             />
             <KpiCard
@@ -65,7 +65,7 @@ export default function AdminRevenuePage() {
             <KpiCard
               title="Commission Pending"
               value={k.commissionPending || 0}
-              format={inr} icon="⏳" color="#F0D060" live
+              format={inr} icon="⏳" color="#c6d0da" live
             />
             <KpiCard
               title="Points Outstanding"
@@ -76,12 +76,12 @@ export default function AdminRevenuePage() {
           </div>
 
           <div style={{ background: "#151820", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: 18 }}>
-            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 16, fontWeight: 700, color: "#D4AF37", margin: 0, marginBottom: 12 }}>
+            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 16, fontWeight: 700, color: "#9fb1c2", margin: 0, marginBottom: 12 }}>
               Gross — Last 30 Days
             </h2>
             <AdminLineChart
               data={(data?.series || []).map((s: any) => ({ label: s.date.slice(5), value: s.gross }))}
-              color="#D4AF37"
+              color="#9fb1c2"
             />
           </div>
         </>

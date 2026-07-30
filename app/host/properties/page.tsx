@@ -175,7 +175,7 @@ function PropertyCard({ p, shortlisted, onShortlist, onEnquire }: {
           style={{ background: "var(--bg-input)", color: "var(--text-base)", border: "1px solid var(--border-soft)" }}>🎬 Reels & photos →</Link>
         <button onClick={onEnquire}
           className="mt-2 w-full px-4 py-2.5 rounded-full text-white font-semibold text-sm"
-          style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>Enquire / Schedule visit</button>
+          style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>Enquire / Schedule visit</button>
       </div>
     </div>
   );
@@ -222,7 +222,7 @@ function InquirySheet({ prop, onClose }: { prop: Prop; onClose: () => void }) {
               Our team will reach out to schedule a visit for <b>{prop.title}</b>.
             </p>
             <button onClick={onClose} className="mt-5 px-6 py-2.5 rounded-full text-white font-semibold"
-              style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>Done</button>
+              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>Done</button>
           </div>
         ) : (
           <>
@@ -241,7 +241,7 @@ function InquirySheet({ prop, onClose }: { prop: Prop; onClose: () => void }) {
             {state === "error" && <div className="text-sm mt-2" style={{ color: "#c0392b" }}>{err}</div>}
             <button onClick={submit} disabled={state === "sending"}
               className="w-full mt-4 px-6 py-3 rounded-full text-white font-semibold disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>
+              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
               {state === "sending" ? "Sending…" : "Send inquiry"}
             </button>
           </>

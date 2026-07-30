@@ -111,7 +111,7 @@ function addDays(d: Date, n: number): Date {
 }
 
 const SOURCE_STYLE: Record<string, { bg: string; border: string; pip: string; label: string }> = {
-  bid:      { bg: "linear-gradient(135deg,#fef3c7,#fde68a)", border: "#d4a015", pip: "#a17000", label: "Bid booked"      },
+  bid:      { bg: "linear-gradient(135deg,#f0f3f5,#dfe5eb)", border: "#90a4b8", pip: "#5c7690", label: "Bid booked"      },
   ota_ical: { bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)", border: "#3b82f6", pip: "#1d4ed8", label: "OTA channel"     },
   walk_in:  { bg: "linear-gradient(135deg,#fce7f3,#fbcfe8)", border: "#db2777", pip: "#9d174d", label: "Walk-in"         },
   manual:   { bg: "repeating-linear-gradient(135deg,#e5e7eb 0 4px,#d1d5db 4px 8px)", border: "#9ca3af", pip: "#374151", label: "Blocked"  },
@@ -332,7 +332,7 @@ export default function AvailabilityCalendar({
            previous build. All cell surfaces + text are now fixed
            light/dark regardless of the surrounding theme.            */
         .ac-root {
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(232,228,217,0.8);
           border-radius: 18px;
           padding: 16px;
@@ -354,7 +354,7 @@ export default function AvailabilityCalendar({
         }
         .ac-icon-btn {
           width: 34px; height: 34px; border-radius: 10px;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(232,228,217,0.8);
           color: #4A3820;
           font-size: 1.2rem; font-weight: bold;
@@ -382,7 +382,7 @@ export default function AvailabilityCalendar({
           transition: transform 0.12s ease, box-shadow 0.15s ease;
         }
         .ac-block-btn {
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
           box-shadow: 0 2px 8px rgba(201,166,107,0.30);
@@ -391,7 +391,7 @@ export default function AvailabilityCalendar({
         .ac-block-btn:active { transform: scale(0.97); }
         .ac-refresh-btn {
           background: #4A3820;
-          color: #FFFCF6;
+          color: #fcfcfd;
           border: 1px solid #4A3820;
         }
         .ac-refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -400,7 +400,7 @@ export default function AvailabilityCalendar({
           margin-top: 14px;
           display: flex;
           gap: 8px;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(232,228,217,0.8);
           border-radius: 14px;
           padding: 6px;
@@ -424,7 +424,7 @@ export default function AvailabilityCalendar({
         }
         .ac-view-btn:hover { background: rgba(201,166,107,0.10); }
         .ac-view-on {
-          background: linear-gradient(135deg, #FFFCF6, #F2EAD8);
+          background: linear-gradient(135deg, #fcfcfd, #e7ebef);
           border-color: rgba(201,166,107,0.45);
           box-shadow: 0 2px 8px rgba(201,166,107,0.18);
         }
@@ -460,7 +460,7 @@ export default function AvailabilityCalendar({
           text-align: center;
           padding: 36px 16px;
           color: #6E5430;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border-radius: 14px;
           border: 1px dashed rgba(110,84,48,0.30);
         }
@@ -617,7 +617,7 @@ function MonthView({
             const pct = rooms.length ? sum.free / rooms.length : 0;
             const fillColor =
               pct >= 0.66 ? "#9DAD8F" :
-              pct >= 0.33 ? "#D9BE82" :
+              pct >= 0.33 ? "#b4c1cf" :
               pct > 0     ? "#D49583" :
                             "#9ca3af";
             const minP = d.inMonth ? dayMinPrice(d.iso) : null;
@@ -881,8 +881,8 @@ function MonthView({
         }
         .mv-tip b { color: #1F1A0F; }
         .mv-tip-multi {
-          background: rgba(212,160,21,0.16);
-          border-color: rgba(212,160,21,0.35);
+          background: rgba(140, 160, 182,0.16);
+          border-color: rgba(140, 160, 182,0.35);
         }
 
         .mv-mini-btn {
@@ -898,7 +898,7 @@ function MonthView({
         }
         .mv-mini-btn:active { transform: scale(0.96); }
         .mv-mini-multi {
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           border-color: rgba(110,84,48,0.30);
           box-shadow: 0 2px 8px rgba(201,166,107,0.30);
@@ -910,7 +910,7 @@ function MonthView({
         }
         .mv-mini-cancel {
           background: #4A3820;
-          color: #FFFCF6;
+          color: #fcfcfd;
           border-color: #4A3820;
         }
         .mv-multi-actions { display: inline-flex; gap: 6px; }
@@ -920,7 +920,7 @@ function MonthView({
           position: fixed;
           left: 0; right: 0; bottom: 0;
           z-index: 100;
-          background: linear-gradient(180deg, rgba(255,252,246,0.95), #ffffff);
+          background: linear-gradient(180deg, rgba(176, 192, 209,0.95), #ffffff);
           backdrop-filter: blur(8px);
           border-top: 1px solid rgba(232,228,217,0.8);
           box-shadow: 0 -8px 24px rgba(31,26,15,0.18);
@@ -942,7 +942,7 @@ function MonthView({
           padding: 10px 16px;
           font-size: 0.84rem; font-weight: 800;
           border-radius: 12px;
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
           box-shadow: 0 2px 8px rgba(201,166,107,0.30);
@@ -952,7 +952,7 @@ function MonthView({
         .mv-bulk-btn:active { transform: scale(0.96); }
 
         .mv-grid-wrap {
-          background: #FFFCF6;
+          background: #fcfcfd;
           border-radius: 14px;
           border: 1px solid rgba(232,228,217,0.8);
           overflow: hidden;
@@ -983,7 +983,7 @@ function MonthView({
           background: rgba(232,228,217,0.5);
         }
         .mv-cell {
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: none;
           padding: 6px 4px 8px;
           min-height: 84px;
@@ -1000,7 +1000,7 @@ function MonthView({
         }
         .mv-cell:hover { background: rgba(201,166,107,0.10); }
         .mv-cell:active { transform: scale(0.98); }
-        .mv-cell-we { background: #FAF5EB; }
+        .mv-cell-we { background: #f4f6f8; }
         .mv-cell-out {
           background: rgba(232,228,217,0.35);
           opacity: 0.55;
@@ -1022,7 +1022,7 @@ function MonthView({
           flex-shrink: 0;
         }
         .mv-cell-today .mv-day-num {
-          background: linear-gradient(135deg,#D9BE82,#C9A66B);
+          background: linear-gradient(135deg,#b4c1cf,#C9A66B);
           color: #1F1A0F;
           border-radius: 999px;
           width: 22px; height: 22px;
@@ -1075,7 +1075,7 @@ function MonthView({
         }
         /* v132.2 — multi-select highlight + check badge */
         .mv-cell-multi-on {
-          background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+          background: linear-gradient(135deg, #f0f3f5, #dfe5eb) !important;
           box-shadow: inset 0 0 0 2px #C9A66B !important;
         }
         .mv-cell-check {
@@ -1084,7 +1084,7 @@ function MonthView({
           width: 18px; height: 18px;
           border-radius: 999px;
           background: #4A3820;
-          color: #FFFCF6;
+          color: #fcfcfd;
           font-size: 0.62rem;
           font-weight: 800;
           display: inline-flex; align-items: center; justify-content: center;
@@ -1162,7 +1162,7 @@ function MonthView({
         .mv-row {
           display: flex; align-items: center; gap: 12px;
           padding: 12px 12px;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(232,228,217,0.8);
           border-radius: 12px;
         }
@@ -1208,14 +1208,14 @@ function MonthView({
           margin-left: 2px;
         }
         .mv-row-pchip-ovr, .mv-row-qchip-ovr {
-          background: linear-gradient(135deg, #fef3c7, #fde68a);
-          border-color: #d4a015;
+          background: linear-gradient(135deg, #f0f3f5, #dfe5eb);
+          border-color: #90a4b8;
           color: #7a4f00;
         }
         .mv-row-edit {
           padding: 4px 8px;
           font-size: 0.84rem;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(232,228,217,0.8);
           border-radius: 8px;
           cursor: pointer;
@@ -1229,7 +1229,7 @@ function MonthView({
         .mv-row-btn {
           flex-shrink: 0;
           padding: 8px 14px;
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
@@ -1508,7 +1508,7 @@ function RoomTimelineView({
           display: inline-flex; flex-direction: column; align-items: flex-start;
           gap: 2px;
           padding: 10px 14px;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(232,228,217,0.8);
           border-radius: 14px;
           font-family: inherit; cursor: pointer;
@@ -1520,7 +1520,7 @@ function RoomTimelineView({
           background: rgba(201,166,107,0.14);
         }
         .rv-room-card-on {
-          background: linear-gradient(135deg, #FFFCF6, #F2EAD8);
+          background: linear-gradient(135deg, #fcfcfd, #e7ebef);
           border-color: #C9A66B;
           box-shadow: 0 4px 14px rgba(201,166,107,0.25);
         }
@@ -1545,7 +1545,7 @@ function RoomTimelineView({
           font-size: 0.78rem;
           color: #4A3820;
           padding: 6px 12px;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border-radius: 999px;
           border: 1px solid rgba(232,228,217,0.8);
         }
@@ -1556,7 +1556,7 @@ function RoomTimelineView({
         }
         .rv-stat-free { border-color: rgba(167,208,70,0.55); background: linear-gradient(135deg,#f7fee7,#ecfccb); color: #3f5710; }
         .rv-stat-free b { color: #1f3404; }
-        .rv-stat-booked { border-color: rgba(212,160,21,0.45); background: linear-gradient(135deg,#fffbeb,#fef3c7); color: #7c4f0c; }
+        .rv-stat-booked { border-color: rgba(140, 160, 182,0.45); background: linear-gradient(135deg,#fafbfc,#f0f3f5); color: #7c4f0c; }
         .rv-stat-booked b { color: #4a2f00; }
         .rv-stat-total { color: #6E5430; }
 
@@ -1570,7 +1570,7 @@ function RoomTimelineView({
         }
 
         .rv-grid-wrap {
-          background: #FFFCF6;
+          background: #fcfcfd;
           border-radius: 14px;
           border: 1px solid rgba(232,228,217,0.8);
           overflow: hidden;
@@ -1699,7 +1699,7 @@ function RoomTimelineView({
         .rv-pop-hd {
           display: flex; align-items: center; gap: 10px;
           padding: 14px 16px;
-          background: linear-gradient(135deg, #FFFCF6, #F2EAD8);
+          background: linear-gradient(135deg, #fcfcfd, #e7ebef);
           border-bottom: 1px solid rgba(232,228,217,0.8);
         }
         .rv-pop-pip { width: 12px; height: 12px; border-radius: 999px; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
@@ -1850,7 +1850,7 @@ function GridView({
                   const isToday = d.iso === todayISO;
                   const isWE = d.dow === 0 || d.dow === 6;
                   const src = cell?.source ? SOURCE_STYLE[cell.source] : null;
-                  const bg = inDrag ? "linear-gradient(135deg,#fde68a,#fbbf24)" : (src ? src.bg : FREE_BG);
+                  const bg = inDrag ? "linear-gradient(135deg,#dfe5eb,#b5c2d0)" : (src ? src.bg : FREE_BG);
                   const border = inDrag ? "#d97706" : (src ? src.border : FREE_BORDER);
                   return (
                     <td key={d.iso} className={`gv-cell-td ${isWE ? "gv-cell-td-we" : ""} ${isToday ? "gv-cell-td-today" : ""}`}>
@@ -1965,7 +1965,7 @@ function GridView({
         .gv-grid-scroll {
           margin-top: 12px;
           overflow-x: auto;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border-radius: 14px;
           border: 1px solid rgba(232,228,217,0.8);
         }
@@ -2022,7 +2022,7 @@ function GridView({
           color: #1F1A0F;
         }
         .gv-day-th-today .gv-day-num {
-          background: linear-gradient(135deg,#D9BE82,#C9A66B);
+          background: linear-gradient(135deg,#b4c1cf,#C9A66B);
           color: #1F1A0F;
           border-radius: 999px;
           width: 24px; height: 24px;
@@ -2042,9 +2042,9 @@ function GridView({
         .gv-cell-td {
           padding: 2px;
           border-top: 1px solid rgba(232,228,217,0.5);
-          background: #FFFCF6;
+          background: #fcfcfd;
         }
-        .gv-cell-td-we { background: #FAF5EB; }
+        .gv-cell-td-we { background: #f4f6f8; }
         .gv-cell-td-today { background: rgba(201,166,107,0.10); }
 
         .gv-cell {
@@ -2091,7 +2091,7 @@ function GridView({
         .gv-pop-hd {
           display: flex; align-items: center; gap: 10px;
           padding: 12px 14px;
-          background: linear-gradient(135deg, #FFFCF6, #F2EAD8);
+          background: linear-gradient(135deg, #fcfcfd, #e7ebef);
           border-bottom: 1px solid rgba(232,228,217,0.8);
         }
         .gv-pop-pip { width: 10px; height: 10px; border-radius: 999px; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
@@ -2149,7 +2149,7 @@ function LegendChip({ bg, border, label, count, pip }: { bg: string; border: str
       style={{
         display: "inline-flex", alignItems: "center", gap: 6,
         padding: "4px 10px",
-        background: "var(--bg-pill, #FFFCF6)",
+        background: "var(--bg-pill, #fcfcfd)",
         border: "1px solid var(--border-soft, rgba(232,228,217,0.8))",
         borderRadius: 999,
         fontSize: "0.7rem",
@@ -2442,7 +2442,7 @@ export function BlockDatesSheet({
         .bds-chip {
           display: inline-flex; align-items: center; gap: 6px;
           padding: 8px 12px;
-          background: var(--bg-pill, #FFFCF6);
+          background: var(--bg-pill, #fcfcfd);
           border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
           border-radius: 999px;
           font-size: 0.82rem; font-weight: 600;
@@ -2452,7 +2452,7 @@ export function BlockDatesSheet({
         }
         .bds-chip:hover { background: var(--accent-soft, rgba(201,166,107,0.14)); }
         .bds-chip-on {
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           border-color: rgba(110,84,48,0.30);
           box-shadow: 0 2px 8px rgba(201,166,107,0.30);
@@ -2461,7 +2461,7 @@ export function BlockDatesSheet({
         .bds-room {
           display: inline-flex; align-items: center; gap: 6px;
           padding: 8px 14px;
-          background: var(--bg-pill, #FFFCF6);
+          background: var(--bg-pill, #fcfcfd);
           border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
           border-radius: 12px;
           font-size: 0.84rem; font-weight: 600;
@@ -2471,7 +2471,7 @@ export function BlockDatesSheet({
         }
         .bds-room:hover { background: var(--accent-soft, rgba(201,166,107,0.14)); }
         .bds-room-on {
-          background: linear-gradient(135deg, rgba(217,190,130,0.45), rgba(201,166,107,0.55));
+          background: linear-gradient(135deg, rgba(176, 192, 209,0.45), rgba(201,166,107,0.55));
           border-color: var(--accent, #C9A66B);
         }
         .bds-room-tick {
@@ -2483,7 +2483,7 @@ export function BlockDatesSheet({
         }
         .bds-room-on .bds-room-tick {
           background: var(--text-base, #1F1A0F);
-          color: var(--cozy-cream-50, #FFFCF6);
+          color: var(--cozy-cream-50, #fcfcfd);
         }
 
         .bds-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -2498,7 +2498,7 @@ export function BlockDatesSheet({
         .bds-input,
         .bds-textarea {
           padding: 10px 12px;
-          background: var(--bg-pill, #FFFCF6);
+          background: var(--bg-pill, #fcfcfd);
           border: 1px solid var(--border-strong, rgba(110,84,48,0.30));
           border-radius: 10px;
           font-size: 0.92rem;
@@ -2534,7 +2534,7 @@ export function BlockDatesSheet({
         .bds-submit {
           flex: 1 1 auto;
           padding: 12px 22px; border-radius: 12px;
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           font-size: 0.92rem; font-weight: 800;
           letter-spacing: 0.02em;
@@ -3046,7 +3046,7 @@ function PricingEditorModal({
 
         .ped-tabs {
           display: flex; flex-wrap: wrap; gap: 4px;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(232,228,217,0.8);
           border-radius: 12px;
           padding: 4px;
@@ -3072,7 +3072,7 @@ function PricingEditorModal({
         }
         .ped-tab:hover { background: rgba(201,166,107,0.10); }
         .ped-tab-on {
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           border-color: rgba(110,84,48,0.30);
           box-shadow: 0 2px 6px rgba(201,166,107,0.30);
@@ -3080,7 +3080,7 @@ function PricingEditorModal({
 
         .ped-input-wrap {
           display: flex; align-items: center;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
           overflow: hidden;
@@ -3109,7 +3109,7 @@ function PricingEditorModal({
         :global(.mv-ed-roompick) {
           width: 100%;
           padding: 10px 12px;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
           color: #1F1A0F;
@@ -3156,8 +3156,8 @@ function PricingEditorModal({
         .ped-warn-info .ped-warn-msg { color: #1e3a8a; }
         .ped-warn-info .ped-warn-scope { color: #1d4ed8; }
         .ped-warn-danger {
-          background: rgba(212,160,21,0.16);
-          border: 1px solid rgba(212,160,21,0.45);
+          background: rgba(140, 160, 182,0.16);
+          border: 1px solid rgba(140, 160, 182,0.45);
         }
         .ped-warns-confirm {
           margin-top: 10px;
@@ -3165,8 +3165,8 @@ function PricingEditorModal({
           font-size: 0.78rem;
           font-weight: 700;
           color: #7c4f0c;
-          background: rgba(212,160,21,0.10);
-          border: 1px dashed rgba(212,160,21,0.5);
+          background: rgba(140, 160, 182,0.10);
+          border: 1px dashed rgba(140, 160, 182,0.5);
           border-radius: 8px;
         }
 
@@ -3179,9 +3179,9 @@ function PricingEditorModal({
         .ped-clear {
           flex: 0 0 auto;
           padding: 10px 12px;
-          background: #fef3c7;
+          background: #f0f3f5;
           color: #7c4f0c;
-          border: 1px solid rgba(212,160,21,0.35);
+          border: 1px solid rgba(140, 160, 182,0.35);
           border-radius: 10px;
           font-size: 0.78rem; font-weight: 700;
           cursor: pointer;
@@ -3201,7 +3201,7 @@ function PricingEditorModal({
         .ped-save {
           flex: 1 1 auto;
           padding: 12px 18px;
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
@@ -3252,7 +3252,7 @@ function PriceField({
         }
         .pf-input-wrap {
           display: flex; align-items: stretch;
-          background: #FFFCF6;
+          background: #fcfcfd;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
           overflow: hidden;

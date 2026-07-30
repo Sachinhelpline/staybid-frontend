@@ -72,7 +72,7 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fffbeb" }}>
+        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
           <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Staff storage abhi setup nahi hua</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
             <span className="font-mono">migrations/2026-05-21-hotel-staff.sql</span> apply karni hai.
@@ -80,7 +80,7 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
         </div>
       )}
 
-      <div className="card-p card-tight mb-3" style={{ background: "#f6f1e6" }}>
+      <div className="card-p card-tight mb-3" style={{ background: "#eff2f5" }}>
         <p className="text-[0.7rem] text-luxury-600">
           📲 Staff <span className="font-mono font-bold">staybids.in/partner/staff</span> par login code + PIN se sign-in karte hain.
         </p>
@@ -206,7 +206,7 @@ function StaffEditor({
             <p className="text-[0.78rem] text-luxury-600 mb-3">
               <b>{created.name}</b> ko ye details do — inse wo <span className="font-mono">/partner/staff</span> par login karega:
             </p>
-            <div className="rounded-xl p-3 mb-3" style={{ background: "linear-gradient(135deg,#fff8e6,#fdf1cf)", border: "1px solid #f0e0b0" }}>
+            <div className="rounded-xl p-3 mb-3" style={{ background: "linear-gradient(135deg,#f7f8fa,#eff2f4)", border: "1px solid #dae1e7" }}>
               <div className="flex justify-between py-1">
                 <span className="text-[0.7rem] text-luxury-500">Login code</span>
                 <span className="font-mono font-extrabold text-luxury-900 tracking-wider">{created.login_code}</span>
@@ -235,7 +235,7 @@ function StaffEditor({
                     return (
                       <button key={k} type="button" onClick={() => setRole(k)}
                         className="w-full text-left rounded-xl p-2.5 transition-all"
-                        style={{ background: on ? m.bg : "#fff", border: `1.5px solid ${on ? m.c : "#e6ddc8"}` }}>
+                        style={{ background: on ? m.bg : "#fff", border: `1.5px solid ${on ? m.c : "#d7dee6"}` }}>
                         <p className="text-[0.78rem] font-bold" style={{ color: on ? m.c : "#3d2c14" }}>{on ? "● " : "○ "}{m.label}</p>
                         <p className="text-[0.62rem] text-luxury-500 mt-0.5">{m.desc}</p>
                       </button>

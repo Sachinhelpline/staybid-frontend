@@ -21,7 +21,7 @@ export default function HostLayout({ children }: { children: ReactNode }) {
           <Link href="/host" className="flex items-center gap-2.5">
             <span
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow"
-              style={{ background: "linear-gradient(135deg,#c9911a,#8a6a14)" }}
+              style={{ background: "linear-gradient(135deg,#8198ae,#8a6a14)" }}
             >S</span>
             <span className="leading-tight">
               <span className="block font-display text-lg sm:text-xl" style={{ color: "var(--text-base)" }}>
@@ -55,7 +55,7 @@ export default function HostLayout({ children }: { children: ReactNode }) {
             <Link
               href="/onboard"
               className="px-4 py-2 rounded-full text-white font-medium shadow"
-              style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}
+              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}
             >List your property</Link>
           </nav>
         </div>

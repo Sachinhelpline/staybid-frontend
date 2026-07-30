@@ -140,7 +140,7 @@ export default function AdminHolds() {
       {stats && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
           <Kpi label="Active holds"   value={stats.active.toLocaleString("en-IN")} color="#2ECC71" />
-          <Kpi label="₹ locked now"    value={`₹${stats.locked_value.toLocaleString("en-IN")}`} color="#D4AF37" />
+          <Kpi label="₹ locked now"    value={`₹${stats.locked_value.toLocaleString("en-IN")}`} color="#9fb1c2" />
           <Kpi label="₹ booking total" value={`₹${stats.total_value.toLocaleString("en-IN")}`} color="#3D9CF5" />
           <Kpi label="Expiring 24h"    value={String(stats.expiring_24h)} color="#F59E0B" />
           <Kpi label="Completed"        value={String(stats.completed)} color="#A855F7" subtle />
@@ -174,7 +174,7 @@ export default function AdminHolds() {
 
       {/* Phase 6: bids scheduled for auto-accept */}
       {pendingAutoAccepts.length > 0 && (
-        <div style={{ background: "#151820", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+        <div style={{ background: "#151820", border: "1px solid rgba(140, 160, 182,0.18)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <p style={{ color: "#E8EAF0", fontSize: 14, fontWeight: 700, margin: 0 }}>
               ⚡ Pending auto-accepts ({pendingAutoAccepts.length})
@@ -191,7 +191,7 @@ export default function AdminHolds() {
               return (
                 <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 8, fontSize: 12, gap: 12 }}>
                   <span style={{ fontFamily: "monospace", color: "#8A8FA8", flexShrink: 0 }}>{b.id.slice(0, 10)}</span>
-                  <span style={{ color: "#D4AF37", flex: 1 }}>₹{Number(b.amount).toLocaleString("en-IN")}</span>
+                  <span style={{ color: "#9fb1c2", flex: 1 }}>₹{Number(b.amount).toLocaleString("en-IN")}</span>
                   {b.bidder_tier && (
                     <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 999, background: "rgba(255,255,255,0.05)", color: "#8A8FA8" }}>{b.bidder_tier}</span>
                   )}
@@ -214,7 +214,7 @@ export default function AdminHolds() {
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               border: "1px solid",
               ...(statusFilter === s
-                ? { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", borderColor: "transparent" }
+                ? { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", borderColor: "transparent" }
                 : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
             }}>
             {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -264,7 +264,7 @@ export default function AdminHolds() {
                       <div style={{ color: "#8A8FA8", fontSize: 11 }}>{h.customer?.phone || h.customer_id.slice(0, 8)}</div>
                     </Td>
                     <Td align="right">
-                      <div style={{ color: "#D4AF37", fontWeight: 700 }}>₹{Number(h.hold_amount).toLocaleString("en-IN")}</div>
+                      <div style={{ color: "#9fb1c2", fontWeight: 700 }}>₹{Number(h.hold_amount).toLocaleString("en-IN")}</div>
                       {h.pay_at_hotel && <div style={{ color: "#8A8FA8", fontSize: 10 }}>+ at hotel</div>}
                     </Td>
                     <Td align="right" style={{ color: "#E8EAF0" }}>₹{Number(h.balance_due).toLocaleString("en-IN")}</Td>
@@ -331,7 +331,7 @@ function Td({ children, align, style }: { children: React.ReactNode; align?: "ri
 }
 
 const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117",
+  background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117",
   border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: "pointer",
   fontFamily: "inherit", fontSize: 13,
 };

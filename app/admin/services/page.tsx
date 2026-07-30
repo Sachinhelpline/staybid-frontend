@@ -13,7 +13,7 @@ import { SERVICE_LABEL, SUBSCRIPTION_SERVICES } from "@/lib/partner/services";
 const C = {
   bg: "#07080C", surface: "#0F1117", card: "#151820",
   border: "rgba(255,255,255,0.07)", text: "#E8EAF0", textSoft: "#8A8FA8",
-  textMuted: "#5A6175", gold: "#D4AF37", green: "#2ECC71", red: "#FF4757", amber: "#F0B429",
+  textMuted: "#5A6175", gold: "#9fb1c2", green: "#2ECC71", red: "#FF4757", amber: "#a9b9c8",
 };
 
 function adminHeaders(): Record<string, string> {
@@ -101,7 +101,7 @@ function PaymentsView() {
   return (
     <>
       {!provisioned && (
-        <div style={{ ...card, marginBottom: 14, borderColor: "rgba(240,180,41,0.4)", background: "rgba(240,180,41,0.08)" }}>
+        <div style={{ ...card, marginBottom: 14, borderColor: "rgba(140, 160, 182,0.4)", background: "rgba(140, 160, 182,0.08)" }}>
           <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700 }}>⚠ migrations/2026-05-21-service-payments.sql apply karein.</p>
         </div>
       )}
@@ -220,7 +220,7 @@ function RequestsView() {
   return (
     <>
       {!provisioned && (
-        <div style={{ ...card, marginBottom: 14, borderColor: "rgba(240,180,41,0.4)", background: "rgba(240,180,41,0.08)" }}>
+        <div style={{ ...card, marginBottom: 14, borderColor: "rgba(140, 160, 182,0.4)", background: "rgba(140, 160, 182,0.08)" }}>
           <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700 }}>⚠ migrations/2026-05-21-hotel-services.sql apply karein.</p>
         </div>
       )}
@@ -347,7 +347,7 @@ function PricingView() {
   return (
     <>
       {!provisioned && (
-        <div style={{ ...card, marginBottom: 14, borderColor: "rgba(240,180,41,0.4)", background: "rgba(240,180,41,0.08)" }}>
+        <div style={{ ...card, marginBottom: 14, borderColor: "rgba(140, 160, 182,0.4)", background: "rgba(140, 160, 182,0.08)" }}>
           <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700 }}>⚠ migrations/2026-05-21-service-pricing.sql apply karein.</p>
         </div>
       )}

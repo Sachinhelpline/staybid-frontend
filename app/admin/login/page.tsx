@@ -72,7 +72,7 @@ export default function AdminLogin() {
       >
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div>
-          <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 24, color: "#D4AF37" }}>
+          <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 24, color: "#9fb1c2" }}>
             StayBid Admin
           </div>
           <div style={{ color: "#8A8FA8", fontSize: 14, marginTop: 6 }}>God-mode control panel</div>
@@ -151,10 +151,10 @@ export default function AdminLogin() {
           style={{
             marginTop: 18,
             padding: 14,
-            background: "rgba(212,175,55,0.05)",
-            border: "1px solid rgba(212,175,55,0.15)",
+            background: "rgba(140, 160, 182,0.05)",
+            border: "1px solid rgba(140, 160, 182,0.15)",
             borderRadius: 10,
-            color: "#D4AF37",
+            color: "#9fb1c2",
             fontSize: 12,
             lineHeight: 1.6,
           }}
@@ -206,7 +206,7 @@ function primaryBtn(loading: boolean): React.CSSProperties {
   return {
     marginTop: 16,
     width: "100%",
-    background: "linear-gradient(135deg, #D4AF37, #F0D060)",
+    background: "linear-gradient(135deg, #9fb1c2, #c6d0da)",
     border: "none",
     borderRadius: 12,
     padding: "14px",

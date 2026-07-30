@@ -192,9 +192,9 @@ export default function Model2SellingPage() {
         .sbc2s-back { display: inline-block; margin-bottom: 12px; font-weight: 700; color: var(--sbc-gold-deep); font-size: .9rem; }
         .sbc2s-kpis { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin: 16px 0 18px; }
         @media (min-width: 560px) { .sbc2s-kpis { grid-template-columns: repeat(4,1fr); } }
-        .sbc2s-kpi { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(212,162,74,.25); border-radius: 13px; padding: 13px 14px; }
-        .sbc2s-kpi b { display: block; color: #ffd98a; font-size: 1.1rem; font-weight: 800; }
-        .sbc2s-kpi span { font-size: .54rem; letter-spacing: .06em; color: rgba(243,231,208,.55); font-weight: 700; }
+        .sbc2s-kpi { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(140, 160, 182,.25); border-radius: 13px; padding: 13px 14px; }
+        .sbc2s-kpi b { display: block; color: #d5dce4; font-size: 1.1rem; font-weight: 800; }
+        .sbc2s-kpi span { font-size: .54rem; letter-spacing: .06em; color: rgba(176, 192, 209,.55); font-weight: 700; }
         .sbc2s-h2 { font-size: 1.15rem; font-weight: 800; color: var(--sbc-coffee); margin: 6px 0 10px; }
         .sbc2s-block { background: #fff; border: 1px solid rgba(139,105,20,.18); border-radius: 16px; padding: 13px 15px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
         .sbc2s-block-top { display: flex; align-items: center; gap: 10px; }
@@ -204,7 +204,7 @@ export default function Model2SellingPage() {
         .sbc2s-status.live { color: #4e7a2e; background: rgba(107,143,78,.14); }
         .sbc2s-status.held { color: #8a6914; background: rgba(139,105,20,.1); }
         .sbc2s-flash { font-size: .82rem; font-weight: 600; color: #4e7a2e; background: rgba(107,143,78,.12); border: 1px solid rgba(107,143,78,.3); border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; }
-        .sbc2s-nudge { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: linear-gradient(135deg,#fff7e6,#fdeecb); border: 1px solid rgba(201,145,26,.35); border-radius: 14px; padding: 13px 15px; margin-bottom: 14px; }
+        .sbc2s-nudge { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: linear-gradient(135deg,#f6f8f9,#eceff3); border: 1px solid rgba(106, 133, 160,.35); border-radius: 14px; padding: 13px 15px; margin-bottom: 14px; }
         .sbc2s-nudge b { display: block; color: var(--sbc-coffee); font-size: .92rem; }
         .sbc2s-nudge span { display: block; font-size: .72rem; color: rgba(74,56,32,.7); margin-top: 2px; max-width: 520px; line-height: 1.45; }
         .sbc2s-nudge .sbc-btn-gold { white-space: nowrap; }

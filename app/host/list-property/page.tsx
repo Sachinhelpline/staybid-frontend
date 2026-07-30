@@ -47,7 +47,7 @@ interface RoomDraft {
 const STAR_OPTIONS = ["", "1", "2", "3", "4", "5"];
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  pending_review: { label: "Under review", color: "#8a6d1a", bg: "rgba(201,145,26,0.14)" },
+  pending_review: { label: "Under review", color: "#8a6d1a", bg: "rgba(106, 133, 160,0.14)" },
   available: { label: "Live · listed", color: "#2f7a3f", bg: "rgba(47,122,63,0.14)" },
   shortlisted: { label: "Shortlisted", color: "#2563eb", bg: "rgba(37,99,235,0.12)" },
   rented: { label: "Rented", color: "#6b7280", bg: "rgba(107,114,128,0.14)" },

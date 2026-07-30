@@ -15,7 +15,7 @@ const monthLabel = (mk: string) => {
 };
 const ST: Record<string, { bg: string; c: string; label: string }> = {
   active:    { bg: "#eff6ff", c: "#1d4ed8", label: "Live" },
-  accepted:  { bg: "#fffbeb", c: "#b45309", label: "Accepted · pay above" },
+  accepted:  { bg: "#fafbfc", c: "#b45309", label: "Accepted · pay above" },
   countered: { bg: "#f5f3ff", c: "#6d28d9", label: "Counter offer" },
   won:       { bg: "#ecfdf5", c: "#047857", label: "Won" },
   partial:   { bg: "#f0fdf4", c: "#15803d", label: "Won (partial)" },
@@ -139,7 +139,7 @@ export default function TradeMyBidsPage() {
       <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => router.push("/trade")} className="text-lg">‹</button>
-          <div className="font-extrabold" style={{ color: "#ffd98a" }}>My Bids & Vouchers</div>
+          <div className="font-extrabold" style={{ color: "#d5dce4" }}>My Bids & Vouchers</div>
         </div>
       </div>
 
@@ -171,7 +171,7 @@ export default function TradeMyBidsPage() {
                           ) : a.status === "awarded" ? (
                             <div className="flex flex-col items-end gap-1.5">
                               <button onClick={() => payAward(a)} disabled={payingId === a.id}
-                                className="px-3 py-2 rounded-lg font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+                                className="px-3 py-2 rounded-lg font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
                                 {payingId === a.id ? "…" : `Pay ${inr(a.amount_due)}`}
                               </button>
                               {(a.metadata?.sale_mode === "live") && a.bid_id && (
@@ -193,7 +193,7 @@ export default function TradeMyBidsPage() {
                               {sellBusy === a.id ? "…" : "🏠 Sell on StayBid + OTA"}
                             </button>
                             <button onClick={() => copyLink(a)}
-                              className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold" style={{ background: "#fef3c7", color: "#92400e" }}>
+                              className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold" style={{ background: "#f0f3f5", color: "#92400e" }}>
                               {copied === a.id ? "✓ Link copied" : "🔗 Your channel link"}
                             </button>
                           </div>

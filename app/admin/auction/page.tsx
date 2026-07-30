@@ -16,7 +16,7 @@ const monthLabel = (mk: string) => {
   catch { return mk; }
 };
 
-const AGENT_STYLE: Record<string, string> = { pending: "#F0B429", approved: "#2ECC71", rejected: "#FF4757", suspended: "#8A8FA8" };
+const AGENT_STYLE: Record<string, string> = { pending: "#a9b9c8", approved: "#2ECC71", rejected: "#FF4757", suspended: "#8A8FA8" };
 const LOT_STYLE: Record<string, string> = { draft: "#8A8FA8", open: "#2ECC71", closed: "#A855F7", awarded: "#3D9CF5", cancelled: "#FF4757" };
 
 export default function AdminAuctionPage() {
@@ -71,7 +71,7 @@ export default function AdminAuctionPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0E1120", color: "#E6E8F0", padding: "20px 16px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#F0B429" }}>🏷️ Model 3 — Travel-Agent Auction</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#a9b9c8" }}>🏷️ Model 3 — Travel-Agent Auction</h1>
         <p style={{ color: "#8A8FA8", fontSize: 13, marginTop: 2 }}>Agent approvals · auction config · lots · awards · EMD refunds</p>
         {flash && <div style={{ marginTop: 10, background: "#12351f", color: "#5EE29B", padding: "8px 12px", borderRadius: 8, fontSize: 13 }}>{flash}</div>}
 
@@ -105,7 +105,7 @@ export default function AdminAuctionPage() {
                   </label>
                 </div>
                 <div style={{ fontSize: 11, color: "#6b7280", marginTop: 8 }}>⚡ Live = the always-open no-EMD auction. Hybrid × = a bid ≥ floor × this ratio auto-confirms (at-floor waits). Sealed knobs (EMD / window / pay window) apply only to the month-end sealed auction.</div>
-                <button onClick={saveCfg} disabled={busy === "cfg"} style={{ ...btn("#F0B429"), color: "#161A2B", marginTop: 10 }}>Save config</button>
+                <button onClick={saveCfg} disabled={busy === "cfg"} style={{ ...btn("#a9b9c8"), color: "#161A2B", marginTop: 10 }}>Save config</button>
               </div>
             )}
 

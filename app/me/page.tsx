@@ -1004,10 +1004,11 @@ export default function MePage() {
         .me-action-btn:active { transform: scale(0.97); }
         .me-action-btn:hover { background: rgba(255, 255, 255, 0.85); }
         .me-action-primary {
-          background: linear-gradient(135deg, #d6dde5 0%, #d0d9e1 55%, #aebccb 100%);
-          border-color: rgba(106,133,160, 0.45);
-          color: #2c1d04;
-          box-shadow: 0 4px 14px rgba(106,133,160, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+          background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%);
+          border-color: rgba(255,255,255,0.35);
+          color: #ffffff;
+          text-shadow: 0 1px 1px rgba(20,30,44,0.35);
+          box-shadow: 0 8px 18px -9px rgba(45,62,82,0.5), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(28,38,52,0.28);
         }
         .me-action-icon { flex: 0 0 auto; padding: 8px 14px; }
 

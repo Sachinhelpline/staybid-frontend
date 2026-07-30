@@ -55,9 +55,9 @@ export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }
           onClick={onMobileMenu}
           aria-label="Open menu"
           style={{
-            background: "rgba(212,175,55,0.1)",
-            border: "1px solid rgba(212,175,55,0.3)",
-            color: "#D4AF37",
+            background: "rgba(140, 160, 182,0.1)",
+            border: "1px solid rgba(140, 160, 182,0.3)",
+            color: "#9fb1c2",
             borderRadius: 10,
             width: 40,
             height: 40,
@@ -74,7 +74,7 @@ export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }
       )}
 
       {isMobile && (
-        <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#D4AF37", fontSize: 16 }}>
+        <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#9fb1c2", fontSize: 16 }}>
           ⚡ Admin
         </span>
       )}

@@ -269,8 +269,8 @@ function PropStyles() {
       .sbc2p-hero-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 34px 17px 15px; background: linear-gradient(0deg, rgba(18,12,6,.9), transparent); color: #fff; }
       .sbc2p-hero-title { font-size: 1.55rem; font-weight: 800; line-height: 1.08; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
       .sbc2p-hero-loc { font-size: .84rem; opacity: .92; margin-top: 3px; }
-      .sbc2p-hero-star { color: #ffcf6e; }
-      .sbc2p-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(20,14,7,.55); color: #ffe9b8; font-size: 1.3rem; cursor: pointer; z-index: 2; }
+      .sbc2p-hero-star { color: #cad4dd; }
+      .sbc2p-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(20,14,7,.55); color: #e6ebef; font-size: 1.3rem; cursor: pointer; z-index: 2; }
       .sbc2p-nav.left { left: 9px; } .sbc2p-nav.right { right: 9px; }
       .sbc2p-nav.sm { width: 28px; height: 28px; font-size: 1.05rem; color: #fff; }
       .sbc2p-thumbs { display: flex; gap: 7px; overflow-x: auto; margin: 10px 0 0; padding-bottom: 4px; }
@@ -279,9 +279,9 @@ function PropStyles() {
       .sbc2p-thumb img { width: 100%; height: 100%; object-fit: cover; }
       .sbc2p-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0 14px; }
       @media (min-width: 560px) { .sbc2p-metrics { grid-template-columns: repeat(4, 1fr); } }
-      .sbc2p-metric { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(212,162,74,.25); border-radius: 13px; padding: 12px 13px; }
-      .sbc2p-metric b { display: block; color: #ffd98a; font-size: 1.05rem; font-weight: 800; }
-      .sbc2p-metric span { font-size: .56rem; letter-spacing: .06em; color: rgba(243,231,208,.55); font-weight: 700; }
+      .sbc2p-metric { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(140, 160, 182,.25); border-radius: 13px; padding: 12px 13px; }
+      .sbc2p-metric b { display: block; color: #d5dce4; font-size: 1.05rem; font-weight: 800; }
+      .sbc2p-metric span { font-size: .56rem; letter-spacing: .06em; color: rgba(176, 192, 209,.55); font-weight: 700; }
       .sbc2p-desc { font-size: .84rem; line-height: 1.55; color: rgba(74,56,32,.75); margin: 0 0 16px; }
       .sbc2p-h2 { font-size: 1.4rem; font-weight: 800; color: var(--sbc-coffee); font-family: var(--font-syne, inherit); }
       .sbc2p-h2sub { font-size: .82rem; color: rgba(74,56,32,.65); margin: 4px 0 14px; line-height: 1.5; }
@@ -294,43 +294,43 @@ function PropStyles() {
       .sbc2p-room-in { font-size: .66rem; color: var(--sbc-gold-deep); font-weight: 800; margin-top: 1px; }
       .sbc2p-room-caret { color: var(--sbc-gold-deep); font-weight: 800; font-size: .8rem; white-space: nowrap; }
       .sbc2p-room-body { padding: 4px 13px 14px; border-top: 1px solid rgba(139,105,20,.12); }
-      .sbc2p-roomgal { position: relative; height: 165px; border-radius: 12px; overflow: hidden; margin: 11px 0; background: #e2d4bb; }
+      .sbc2p-roomgal { position: relative; height: 165px; border-radius: 12px; overflow: hidden; margin: 11px 0; background: #cdd6df; }
       .sbc2p-roomgal img { width: 100%; height: 100%; object-fit: cover; }
       .sbc2p-amen { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0; }
       .sbc2p-amen-chip { font-size: .68rem; font-weight: 600; color: rgba(74,56,32,.8); background: rgba(139,105,20,.09); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
-      .sbc2p-mkt { background: linear-gradient(135deg, #1c140c, #2c2116); color: #f3e7d0; border-radius: 14px; padding: 13px 15px; margin: 12px 0; border: 1px solid rgba(212,162,74,.2); }
+      .sbc2p-mkt { background: linear-gradient(135deg, #1c140c, #2c2116); color: #e4e9ee; border-radius: 14px; padding: 13px 15px; margin: 12px 0; border: 1px solid rgba(140, 160, 182,.2); }
       .sbc2p-mkt-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; padding: 2px 0; opacity: .95; }
-      .sbc2p-mkt-row b { color: #ffd98a; font-size: .98rem; } .sbc2p-mkt-row small { opacity: .6; font-size: .62rem; font-weight: 500; }
+      .sbc2p-mkt-row b { color: #d5dce4; font-size: .98rem; } .sbc2p-mkt-row small { opacity: .6; font-size: .62rem; font-weight: 500; }
       .sbc2p-mkt-bar { display: flex; align-items: center; gap: 8px; margin: 10px 0 3px; font-size: .58rem; opacity: .8; }
-      .sbc2p-mkt-track { position: relative; flex: 1; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #6b8f4e, #d4a24a, #c96f4a); }
-      .sbc2p-mkt-dot { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #1f1710; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #ffd98a; }
+      .sbc2p-mkt-track { position: relative; flex: 1; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #6b8f4e, #96a9bc, #c96f4a); }
+      .sbc2p-mkt-dot { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #1f1710; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #d5dce4; }
       .sbc2p-mkt-note { font-size: .7rem; color: #cde7b0; margin-top: 7px; }
-      .sbc2p-mkt-note.dim { color: rgba(243,231,208,.55); }
+      .sbc2p-mkt-note.dim { color: rgba(176, 192, 209,.55); }
       /* premium dark-walnut calendar (deck look) */
-      .sbc2p-cal { background: linear-gradient(150deg, #1f1710, #2e2115); border: 1px solid rgba(212,162,74,.22); border-radius: 15px; padding: 13px; margin: 12px 0; color: #f3e7d0; }
+      .sbc2p-cal { background: linear-gradient(150deg, #1f1710, #2e2115); border: 1px solid rgba(140, 160, 182,.22); border-radius: 15px; padding: 13px; margin: 12px 0; color: #e4e9ee; }
       .sbc2p-cal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-      .sbc2p-cal-tip { font-size: .66rem; color: rgba(243,231,208,.6); }
-      .sbc2p-cal-clear { border: 1px solid rgba(212,162,74,.4); background: none; color: #ffcf6e; font-size: .66rem; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 3px 10px; }
-      .sbc2p-cal-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: #ffe9b8; font-size: .9rem; margin-bottom: 9px; }
+      .sbc2p-cal-tip { font-size: .66rem; color: rgba(176, 192, 209,.6); }
+      .sbc2p-cal-clear { border: 1px solid rgba(140, 160, 182,.4); background: none; color: #cad4dd; font-size: .66rem; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 3px 10px; }
+      .sbc2p-cal-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: #e6ebef; font-size: .9rem; margin-bottom: 9px; }
       .sbc2p-cal-head em { font-style: normal; font-size: .68rem; color: #9fc47a; font-weight: 700; }
-      .sbc2p-cal-head button { width: 30px; height: 30px; border-radius: 9px; border: 1px solid rgba(212,162,74,.3); background: rgba(255,255,255,.04); color: #ffcf6e; font-size: 1.05rem; cursor: pointer; }
+      .sbc2p-cal-head button { width: 30px; height: 30px; border-radius: 9px; border: 1px solid rgba(140, 160, 182,.3); background: rgba(255,255,255,.04); color: #cad4dd; font-size: 1.05rem; cursor: pointer; }
       .sbc2p-cal-head button:disabled { opacity: .25; cursor: default; }
-      .sbc2p-cal-dow { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; font-size: .58rem; color: rgba(243,231,208,.45); text-align: center; margin-bottom: 4px; font-weight: 700; }
+      .sbc2p-cal-dow { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; font-size: .58rem; color: rgba(176, 192, 209,.45); text-align: center; margin-bottom: 4px; font-weight: 700; }
       .sbc2p-cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
       .sbc2p-cal-empty { aspect-ratio: 1; }
-      .sbc2p-cal-day { aspect-ratio: 1; border: 1px solid rgba(212,162,74,.16); border-radius: 9px; background: rgba(255,255,255,.03); color: #f3e7d0; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform .08s; }
-      .sbc2p-cal-day:hover:not(.off):not(.on) { border-color: rgba(212,162,74,.55); }
-      .sbc2p-cal-day.off { background: repeating-linear-gradient(45deg, rgba(255,255,255,.02), rgba(255,255,255,.02) 3px, rgba(255,255,255,.05) 3px, rgba(255,255,255,.05) 6px); color: rgba(243,231,208,.22); cursor: default; border-color: transparent; }
-      .sbc2p-cal-day.on { background: linear-gradient(145deg, #e6b34d, #c98f2e); color: #241a0d; border-color: #ffcf6e; font-weight: 800; box-shadow: 0 3px 10px rgba(201,143,46,.4); }
-      .sbc2p-cal-legend { display: flex; align-items: center; gap: 6px; font-size: .58rem; color: rgba(243,231,208,.5); margin-top: 10px; flex-wrap: wrap; }
+      .sbc2p-cal-day { aspect-ratio: 1; border: 1px solid rgba(140, 160, 182,.16); border-radius: 9px; background: rgba(255,255,255,.03); color: #e4e9ee; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform .08s; }
+      .sbc2p-cal-day:hover:not(.off):not(.on) { border-color: rgba(140, 160, 182,.55); }
+      .sbc2p-cal-day.off { background: repeating-linear-gradient(45deg, rgba(255,255,255,.02), rgba(255,255,255,.02) 3px, rgba(255,255,255,.05) 3px, rgba(255,255,255,.05) 6px); color: rgba(176, 192, 209,.22); cursor: default; border-color: transparent; }
+      .sbc2p-cal-day.on { background: linear-gradient(145deg, #a9b9c8, #c98f2e); color: #241a0d; border-color: #cad4dd; font-weight: 800; box-shadow: 0 3px 10px rgba(201,143,46,.4); }
+      .sbc2p-cal-legend { display: flex; align-items: center; gap: 6px; font-size: .58rem; color: rgba(176, 192, 209,.5); margin-top: 10px; flex-wrap: wrap; }
       .sbc2p-cal-legend .lg { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-      .sbc2p-cal-legend .lg.on { background: #e6b34d; } .sbc2p-cal-legend .lg.free { background: rgba(255,255,255,.08); margin-left: 8px; } .sbc2p-cal-legend .lg.off { background: rgba(255,255,255,.03); margin-left: 8px; }
+      .sbc2p-cal-legend .lg.on { background: #a9b9c8; } .sbc2p-cal-legend .lg.free { background: rgba(255,255,255,.08); margin-left: 8px; } .sbc2p-cal-legend .lg.off { background: rgba(255,255,255,.03); margin-left: 8px; }
       .sbc2p-selbox { background: #fff; border: 1px solid rgba(139,105,20,.2); border-radius: 13px; padding: 12px 14px; margin-top: 9px; }
       .sbc2p-sel-row { display: flex; justify-content: space-between; font-size: .84rem; font-weight: 800; color: var(--sbc-coffee); }
       .sbc2p-sel-sub { font-size: .68rem; color: rgba(74,56,32,.6); margin-top: 2px; }
       .sbc2p-upside { color: #6b8f4e; font-weight: 700; }
       .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.94) 70%, rgba(255,255,255,0)); }
-      .sbc2b-basket-in { max-width: 940px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #fbf3e2; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+      .sbc2b-basket-in { max-width: 940px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #f1f4f6; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
       /* ── Tablet / laptop / desktop: cap the content, size media natively, and
          stop the calendar from stretching into giant squares on wide screens ── */
       @media (min-width: 640px) {

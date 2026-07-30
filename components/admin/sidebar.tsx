@@ -122,7 +122,7 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
         >
           <span style={{ fontSize: 22, flexShrink: 0 }}>⚡</span>
           {!effectiveCollapsed && (
-            <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#D4AF37", fontSize: 18, whiteSpace: "nowrap" }}>
+            <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#9fb1c2", fontSize: 18, whiteSpace: "nowrap" }}>
               StayBid Admin
             </span>
           )}
@@ -172,9 +172,9 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
                   alignItems: "center",
                   gap: 11,
                   padding: effectiveCollapsed ? "8px 18px" : "8px 20px",
-                  color: active ? "#D4AF37" : "#8A8FA8",
-                  background: active ? "rgba(212,175,55,0.1)" : "transparent",
-                  borderLeft: active ? "2px solid #D4AF37" : "2px solid transparent",
+                  color: active ? "#9fb1c2" : "#8A8FA8",
+                  background: active ? "rgba(140, 160, 182,0.1)" : "transparent",
+                  borderLeft: active ? "2px solid #9fb1c2" : "2px solid transparent",
                   textDecoration: "none",
                   fontSize: 13,
                   lineHeight: 1.25,
@@ -256,15 +256,15 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
         )}
 
         <style jsx>{`
-          .admin-sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(212,175,55,0.45) transparent; }
+          .admin-sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(140, 160, 182,0.45) transparent; }
           .admin-sidebar-nav::-webkit-scrollbar { width: 6px; }
           .admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
           .admin-sidebar-nav::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, rgba(212,175,55,0.55), rgba(212,175,55,0.25));
+            background: linear-gradient(180deg, rgba(140, 160, 182,0.55), rgba(140, 160, 182,0.25));
             border-radius: 999px;
           }
           .admin-sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, rgba(212,175,55,0.85), rgba(212,175,55,0.45));
+            background: linear-gradient(180deg, rgba(140, 160, 182,0.85), rgba(140, 160, 182,0.45));
           }
         `}</style>
       </aside>

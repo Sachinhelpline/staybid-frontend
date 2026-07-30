@@ -29,7 +29,7 @@ function QRImg({ url, size }: { url: string; size: number }) {
   const [failed, setFailed] = useState(false);
   if (failed || !url) {
     return (
-      <div style={{ width: size, height: size, borderRadius: 10, border: "1.5px solid #e6ddc8", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#9a8a6a" }}>
+      <div style={{ width: size, height: size, borderRadius: 10, border: "1.5px solid #d7dee6", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#768fa7" }}>
         QR
       </div>
     );
@@ -119,7 +119,7 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>QR — ${o.name}</title>
       <style>body{font-family:Inter,Arial,sans-serif;text-align:center;padding:48px 24px;color:#241a0c}
       h1{font-family:'Cormorant Garamond',serif;font-size:30px;margin:0}
-      .t{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#c9911a;font-weight:700}
+      .t{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#8198ae;font-weight:700}
       img{width:340px;height:340px;margin:22px 0;border:1px solid #eee;border-radius:14px}
       .s{font-size:18px;font-weight:700}.m{color:#8a795a;font-size:13px}</style></head><body>
       <p class="t">${OUTLET_TYPE[o.type]?.label || "Menu"}</p>
@@ -144,7 +144,7 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fffbeb" }}>
+        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
           <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Ordering storage abhi setup nahi hua</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
             <span className="font-mono">migrations/2026-05-21-fnb-ordering.sql</span> apply karni hai.
@@ -201,7 +201,7 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
         </div>
       )}
 
-      <div className="card-p card-tight mt-3" style={{ background: "#f6f1e6" }}>
+      <div className="card-p card-tight mt-3" style={{ background: "#eff2f5" }}>
         <p className="text-[0.7rem] text-luxury-600 leading-relaxed">
           💡 <b>Print QR</b> → har room / table par chipka do. Guest scan karega → aapke hotel ke naam se digital menu khulega → order karega. Order yahan verify ke liye aayega (Phase 3) aur billing folio me add ho jayega.
         </p>
@@ -276,7 +276,7 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
                 return (
                   <button key={k} type="button" onClick={() => setType(k)}
                     className="w-full text-left rounded-xl p-2.5 transition-all"
-                    style={{ background: on ? "#fff8e6" : "#fff", border: `1.5px solid ${on ? "#c9911a" : "#e6ddc8"}` }}>
+                    style={{ background: on ? "#f7f8fa" : "#fff", border: `1.5px solid ${on ? "#8198ae" : "#d7dee6"}` }}>
                     <p className="text-[0.78rem] font-bold text-luxury-900">{on ? "● " : "○ "}{m.icon} {m.label}</p>
                     <p className="text-[0.62rem] text-luxury-500 mt-0.5">{m.desc}</p>
                   </button>
@@ -340,9 +340,9 @@ function OrderCard({ o, pending, onVerify, onReject }: any) {
   const items: any[] = Array.isArray(o.items) ? o.items : [];
   const st = o.status === "added_to_folio" ? { label: "Billed", bg: "#dcfce7", c: "#15803d" }
     : o.status === "rejected" ? { label: "Rejected", bg: "#fee2e2", c: "#b91c1c" }
-    : { label: "Pending", bg: "#fef3c7", c: "#b45309" };
+    : { label: "Pending", bg: "#f0f3f5", c: "#b45309" };
   return (
-    <div className="rounded-xl border border-luxury-100 p-2.5" style={{ background: pending ? "#fffdf6" : "#fff" }}>
+    <div className="rounded-xl border border-luxury-100 p-2.5" style={{ background: pending ? "#fdfdfd" : "#fff" }}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -428,7 +428,7 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
             {/* new folio option */}
             <button type="button" onClick={() => setTarget("")}
               className="w-full text-left rounded-xl p-2.5 transition-all"
-              style={{ background: target === "" ? "#fff8e6" : "#fff", border: `1.5px solid ${target === "" ? "#c9911a" : "#e6ddc8"}` }}>
+              style={{ background: target === "" ? "#f7f8fa" : "#fff", border: `1.5px solid ${target === "" ? "#8198ae" : "#d7dee6"}` }}>
               <p className="text-[0.78rem] font-bold text-luxury-900">{target === "" ? "● " : "○ "}🆕 New folio</p>
               <p className="text-[0.62rem] text-luxury-500 mt-0.5">
                 {order.guest_name || `Room ${order.location || "—"}`} ke naam se naya bill khulega
@@ -440,7 +440,7 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
               return (
                 <button key={f.id} type="button" onClick={() => setTarget(f.id)}
                   className="w-full text-left rounded-xl p-2.5 transition-all"
-                  style={{ background: on ? "#fff8e6" : "#fff", border: `1.5px solid ${on ? "#c9911a" : "#e6ddc8"}` }}>
+                  style={{ background: on ? "#f7f8fa" : "#fff", border: `1.5px solid ${on ? "#8198ae" : "#d7dee6"}` }}>
                   <div className="flex items-center gap-1.5">
                     <p className="text-[0.78rem] font-bold text-luxury-900">{on ? "● " : "○ "}{f.guest_name || "Guest"}</p>
                     {suggested && <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">MATCH</span>}

@@ -135,7 +135,7 @@ export default function AdminHotelCommissionRulesPage() {
         </h1>
         {globalDefault && (
           <span style={{ fontSize: 11, color: "#8A8FA8" }}>
-            Platform default: <strong style={{ color: "#D4AF37" }}>{globalDefault.platform_pct}%</strong>
+            Platform default: <strong style={{ color: "#9fb1c2" }}>{globalDefault.platform_pct}%</strong>
           </span>
         )}
       </div>
@@ -173,8 +173,8 @@ export default function AdminHotelCommissionRulesPage() {
                   <td style={td}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
-                      background: r.source === "hotel-override" ? "rgba(212,175,55,0.15)" : "rgba(138,143,168,0.15)",
-                      color:      r.source === "hotel-override" ? "#D4AF37" : "#8A8FA8",
+                      background: r.source === "hotel-override" ? "rgba(140, 160, 182,0.15)" : "rgba(138,143,168,0.15)",
+                      color:      r.source === "hotel-override" ? "#9fb1c2" : "#8A8FA8",
                       letterSpacing: "0.08em",
                     }}>{r.source === "hotel-override" ? "OVERRIDE" : "DEFAULT"}</span>
                   </td>
@@ -212,14 +212,14 @@ export default function AdminHotelCommissionRulesPage() {
       {editing && (
         <div onClick={() => !busy && setEditing(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#0F1117", borderRadius: 16, width: "100%", maxWidth: 560, padding: 18, border: "1px solid rgba(255,255,255,0.1)", maxHeight: "92vh", overflowY: "auto" }}>
-            <h2 style={{ fontFamily: "Syne, sans-serif", color: "#D4AF37", marginTop: 0, fontSize: 16, marginBottom: 4 }}>
+            <h2 style={{ fontFamily: "Syne, sans-serif", color: "#9fb1c2", marginTop: 0, fontSize: 16, marginBottom: 4 }}>
               {editing.hotel.name}
             </h2>
             <p style={{ color: "#8A8FA8", fontSize: 11, marginTop: 0, marginBottom: 14 }}>{editing.hotel.city || "—"}</p>
 
             <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              <button onClick={() => setMode("flat")} style={{ ...btnGhost, background: mode === "flat" ? "rgba(212,175,55,0.15)" : "transparent" }}>Flat %</button>
-              <button onClick={() => setMode("slabs")} style={{ ...btnGhost, background: mode === "slabs" ? "rgba(212,175,55,0.15)" : "transparent" }}>Volume slabs</button>
+              <button onClick={() => setMode("flat")} style={{ ...btnGhost, background: mode === "flat" ? "rgba(140, 160, 182,0.15)" : "transparent" }}>Flat %</button>
+              <button onClick={() => setMode("slabs")} style={{ ...btnGhost, background: mode === "slabs" ? "rgba(140, 160, 182,0.15)" : "transparent" }}>Volume slabs</button>
             </div>
 
             {mode === "flat" ? (
@@ -258,7 +258,7 @@ export default function AdminHotelCommissionRulesPage() {
       )}
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#0F1117", color: "#D4AF37", padding: "10px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600, border: "1px solid rgba(212,175,55,0.3)", zIndex: 60 }}>{toast}</div>
+        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#0F1117", color: "#9fb1c2", padding: "10px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600, border: "1px solid rgba(140, 160, 182,0.3)", zIndex: 60 }}>{toast}</div>
       )}
     </div>
   );
@@ -267,6 +267,6 @@ export default function AdminHotelCommissionRulesPage() {
 const inp: React.CSSProperties = { width: "100%", background: "#07080C", color: "#E8EAF0", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: "inherit" };
 const th: React.CSSProperties = { padding: "10px 12px", fontSize: 11, color: "#8A8FA8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 12 };
-const btnGhost: React.CSSProperties = { background: "transparent", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)", padding: "5px 12px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" };
-const btnGold: React.CSSProperties = { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" };
+const btnGhost: React.CSSProperties = { background: "transparent", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)", padding: "5px 12px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" };
+const btnGold: React.CSSProperties = { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" };
 const lbl: React.CSSProperties = { display: "block", color: "#8A8FA8", fontSize: 11, marginBottom: 4, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" };

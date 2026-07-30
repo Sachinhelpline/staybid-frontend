@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
 
 const STATUS_COLOR: Record<string, string> = {
-  draft: "#8A8FA8", quoted: "#8A8FA8", pending_payment: "#F0B429",
+  draft: "#8A8FA8", quoted: "#8A8FA8", pending_payment: "#a9b9c8",
   owned: "#3D9CF5", listed: "#2ECC71", sold: "#2ECC71",
   expired: "#8A8FA8", cancelled: "#FF4757", refunded: "#A855F7",
 };
@@ -191,13 +191,13 @@ export default function AdminCircleInventory() {
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
         {[
-          { v: inr(k.investorOwed), label: "Investor payout owed", color: "#F0B429" },
+          { v: inr(k.investorOwed), label: "Investor payout owed", color: "#a9b9c8" },
           { v: inr(k.investorPaid), label: "Investor payout paid", color: "#2ECC71" },
-          { v: inr(k.platformFees), label: "Platform fees", color: "#D4AF37" },
+          { v: inr(k.platformFees), label: "Platform fees", color: "#9fb1c2" },
           { v: inr(k.gmv), label: "Resale GMV", color: "#3D9CF5" },
           { v: String(k.totalBlocks || 0), label: "Total blocks", color: "#E8EAF0" },
           { v: String(k.buybackOwed || 0), label: "Buyback owed", color: "#A855F7" },
-          { v: inr(k.b2bOwed), label: "Exchange seller owed", color: "#F0B429" },
+          { v: inr(k.b2bOwed), label: "Exchange seller owed", color: "#a9b9c8" },
           { v: inr(k.b2bPaid), label: "Exchange settled", color: "#2ECC71" },
           { v: String(k.b2bListingsActive || 0), label: "Exchange live listings", color: "#A855F7" },
           { v: inr(k.b2bListedGmv), label: "Exchange listed GMV", color: "#3D9CF5" },
@@ -229,7 +229,7 @@ export default function AdminCircleInventory() {
                       <td style={{ ...td, color: "#8A8FA8" }}>{s.date_from} → {s.date_to}</td>
                       <td style={td}>{inr(s.resale_total)}</td>
                       <td style={{ ...td, color: "#8A8FA8" }}>{inr(s.platform_fee)}</td>
-                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(s.investor_net)}</td>
+                      <td style={{ ...td, color: "#a9b9c8", fontWeight: 700 }}>{inr(s.investor_net)}</td>
                       <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.paid_at)} ago</td>
                       <td style={td}>
                         <button disabled={busy === s.id} onClick={() => act({ action: "mark_payout_paid", saleId: s.id }, s.id, `Mark ${inr(s.investor_net)} paid to investor?`)} style={btn("#2ECC71")}>
@@ -268,7 +268,7 @@ export default function AdminCircleInventory() {
                       <td style={{ ...td, color: "#8A8FA8" }}>{s.date_from ? `${s.date_from} → ${s.date_to}` : "—"}</td>
                       <td style={td}>{inr(s.gross_amount)}</td>
                       <td style={{ ...td, color: "#8A8FA8" }}>{inr(s.platform_fee)}</td>
-                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(s.net_amount)}</td>
+                      <td style={{ ...td, color: "#a9b9c8", fontWeight: 700 }}>{inr(s.net_amount)}</td>
                       <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.created_at)} ago</td>
                       <td style={td}>
                         <button disabled={busy === s.id} onClick={() => act({ action: "mark_settlement_paid", settlementId: s.id }, s.id, `Mark ${inr(s.net_amount)} paid to seller?`)} style={btn("#2ECC71")}>
@@ -301,15 +301,15 @@ export default function AdminCircleInventory() {
                     <tr key={b.payeeId}>
                       <td style={td}>{String(b.payeeId).slice(-8)}</td>
                       <td style={{ ...td, color: "#8A8FA8" }}>{b.rowCount}</td>
-                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(b.totalOwed)}</td>
+                      <td style={{ ...td, color: "#a9b9c8", fontWeight: 700 }}>{inr(b.totalOwed)}</td>
                       <td style={td}>
                         {b.hasAccount
-                          ? <span style={{ color: b.accountStatus === "verified" ? "#2ECC71" : "#F0B429", fontSize: 12 }}>{b.accountMethod === "upi" ? "UPI" : "Bank"} · {b.accountStatus}</span>
+                          ? <span style={{ color: b.accountStatus === "verified" ? "#2ECC71" : "#a9b9c8", fontSize: 12 }}>{b.accountMethod === "upi" ? "UPI" : "Bank"} · {b.accountStatus}</span>
                           : <span style={{ color: "#E0684E", fontSize: 12 }}>⚠ not added</span>}
                       </td>
                       <td style={{ ...td, display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {rxConfigured && b.hasAccount && (
-                          <button disabled={busy === b.payeeId} onClick={() => act({ action: "payout_owner_batch", payeeUserId: b.payeeId }, b.payeeId, `Send ${inr(b.totalOwed)} to this owner via RazorpayX now? This moves real money.`)} style={btn("#F0B429")}>
+                          <button disabled={busy === b.payeeId} onClick={() => act({ action: "payout_owner_batch", payeeUserId: b.payeeId }, b.payeeId, `Send ${inr(b.totalOwed)} to this owner via RazorpayX now? This moves real money.`)} style={btn("#a9b9c8")}>
                             {busy === b.payeeId ? "…" : "Pay via RazorpayX"}
                           </button>
                         )}
@@ -346,7 +346,7 @@ export default function AdminCircleInventory() {
                       <td style={{ ...td, color: "#8A8FA8" }}>{s.metadata?.nights ?? "—"}{s.metadata?.totalNights ? ` / ${s.metadata.totalNights}` : ""}</td>
                       <td style={td}>{inr(s.gross_amount)}</td>
                       <td style={{ ...td, color: "#8A8FA8" }}>{inr(s.platform_fee)}</td>
-                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(s.net_amount)}</td>
+                      <td style={{ ...td, color: "#a9b9c8", fontWeight: 700 }}>{inr(s.net_amount)}</td>
                       <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.created_at)} ago</td>
                       <td style={td}>
                         <button disabled={busy === s.id} onClick={() => act({ action: "mark_guest_booking_paid", settlementId: s.id }, s.id, `Mark ${inr(s.net_amount)} paid to this owner?`)} style={btn("#2ECC71")}>
@@ -451,7 +451,7 @@ export default function AdminCircleInventory() {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
             {FILTERS.map((f) => (
               <button key={f} onClick={() => setFilter(f)}
-                style={{ background: filter === f ? "rgba(212,175,55,0.16)" : "rgba(255,255,255,0.04)", border: `1px solid ${filter === f ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`, color: filter === f ? "#D4AF37" : "#8A8FA8", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
+                style={{ background: filter === f ? "rgba(140, 160, 182,0.16)" : "rgba(255,255,255,0.04)", border: `1px solid ${filter === f ? "rgba(140, 160, 182,0.4)" : "rgba(255,255,255,0.1)"}`, color: filter === f ? "#9fb1c2" : "#8A8FA8", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
                 {f}{f !== "all" && k.byStatus?.[f] != null ? ` ${k.byStatus[f]}` : ""}
               </button>
             ))}
@@ -490,7 +490,7 @@ export default function AdminCircleInventory() {
                         </td>
                         <td style={td}>
                           {b.buyback_enabled
-                            ? <span style={{ color: bbStatus === "owed" ? "#F0B429" : bbStatus === "paid" ? "#2ECC71" : "#A855F7", fontSize: 11.5, fontWeight: 700 }}>{bbStatus === "owed" ? "owed" : bbStatus === "paid" ? "paid" : "🛡 on"}</span>
+                            ? <span style={{ color: bbStatus === "owed" ? "#a9b9c8" : bbStatus === "paid" ? "#2ECC71" : "#A855F7", fontSize: 11.5, fontWeight: 700 }}>{bbStatus === "owed" ? "owed" : bbStatus === "paid" ? "paid" : "🛡 on"}</span>
                             : <span style={{ color: "#8A8FA8" }}>—</span>}
                         </td>
                         <td style={td}>

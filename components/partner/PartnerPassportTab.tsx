@@ -82,7 +82,7 @@ export default function PartnerPassportTab() {
             { label: "Stamps here", value: summary.stamps, icon: "🛂" },
             { label: "Properties", value: summary.hotels, icon: "🏨" },
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl p-3 text-center border border-gold-100" style={{ background: "linear-gradient(160deg,#fffdf8,#fbf3e2)" }}>
+            <div key={s.label} className="rounded-2xl p-3 text-center border border-gold-100" style={{ background: "linear-gradient(160deg,#fdfdfe,#f1f4f6)" }}>
               <p className="text-lg">{s.icon}</p>
               <p className="font-display text-xl font-bold text-luxury-900">{s.value}</p>
               <p className="text-[0.58rem] uppercase tracking-widest font-bold text-gold-700">{s.label}</p>

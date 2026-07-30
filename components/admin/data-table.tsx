@@ -93,7 +93,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                     transition: "background 0.1s",
                   }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = "rgba(212,175,55,0.05)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(140, 160, 182,0.05)";
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? "#151820" : "#0F1117";
@@ -158,7 +158,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                   key={p}
                   onClick={() => setPage(p)}
                   style={{
-                    background: p === page ? "#D4AF37" : "#151820",
+                    background: p === page ? "#9fb1c2" : "#151820",
                     border: "1px solid rgba(255,255,255,0.07)",
                     borderRadius: 8,
                     color: p === page ? "#000" : "#E8EAF0",

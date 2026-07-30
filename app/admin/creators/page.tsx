@@ -8,7 +8,7 @@ import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "#F0D060",
+  pending: "#c6d0da",
   active: "#2ECC71",
   blocked: "#FF4757",
 };
@@ -199,8 +199,8 @@ export default function AdminCreators() {
       </p>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="In View"      value={stats.total}    icon="✨" color="#D4AF37" live sub="current filter" onClick={() => setStatusFilter("all")} />
-        <KpiCard title="Pending"      value={stats.pending}  icon="⏳" color="#F0D060" live onClick={() => setStatusFilter("pending")} />
+        <KpiCard title="In View"      value={stats.total}    icon="✨" color="#9fb1c2" live sub="current filter" onClick={() => setStatusFilter("all")} />
+        <KpiCard title="Pending"      value={stats.pending}  icon="⏳" color="#c6d0da" live onClick={() => setStatusFilter("pending")} />
         <KpiCard title="Active"       value={stats.active}   icon="✅" color="#2ECC71" live onClick={() => setStatusFilter("active")} />
         <KpiCard title="Blocked"      value={stats.blocked}  icon="🚫" color="#FF4757" live onClick={() => setStatusFilter("blocked")} />
         <KpiCard title="KYC Verified" value={stats.verified} icon="🛡️" color="#A855F7" live sub="Aadhaar + PAN" onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/commission-rules"))} />
@@ -457,17 +457,17 @@ const inputStyle: React.CSSProperties = {
 };
 const selectStyle: React.CSSProperties = { ...inputStyle, minWidth: 140 };
 const btnPrimary: React.CSSProperties = {
-  background: "rgba(212,175,55,0.1)",
-  color: "#D4AF37",
-  border: "1px solid rgba(212,175,55,0.3)",
+  background: "rgba(140, 160, 182,0.1)",
+  color: "#9fb1c2",
+  border: "1px solid rgba(140, 160, 182,0.3)",
   padding: "5px 12px",
   borderRadius: 8, cursor: "pointer",
   fontSize: 12, fontWeight: 600,
 };
 const btnSecondary: React.CSSProperties = {
-  background: "rgba(212,175,55,0.18)",
-  color: "#D4AF37",
-  border: "1px solid rgba(212,175,55,0.4)",
+  background: "rgba(140, 160, 182,0.18)",
+  color: "#9fb1c2",
+  border: "1px solid rgba(140, 160, 182,0.4)",
   padding: "8px 16px",
   borderRadius: 10, cursor: "pointer",
   fontSize: 13, fontWeight: 600, fontFamily: "DM Sans, sans-serif",
@@ -480,9 +480,9 @@ const btnGreen: React.CSSProperties = {
   cursor: "pointer", fontSize: 13, fontWeight: 600,
 };
 const btnAmber: React.CSSProperties = {
-  background: "rgba(240,208,96,0.12)",
-  color: "#F0D060",
-  border: "1px solid rgba(240,208,96,0.35)",
+  background: "rgba(176, 192, 209,0.12)",
+  color: "#c6d0da",
+  border: "1px solid rgba(176, 192, 209,0.35)",
   padding: "8px 14px", borderRadius: 10,
   cursor: "pointer", fontSize: 13, fontWeight: 600,
 };

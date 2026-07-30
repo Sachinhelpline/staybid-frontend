@@ -106,9 +106,9 @@ export default function AdminUsers() {
         <button
           onClick={() => setSelected(u)}
           style={{
-            background: "rgba(212,175,55,0.1)",
-            color: "#D4AF37",
-            border: "1px solid rgba(212,175,55,0.3)",
+            background: "rgba(140, 160, 182,0.1)",
+            color: "#9fb1c2",
+            border: "1px solid rgba(140, 160, 182,0.3)",
             padding: "5px 12px",
             borderRadius: 8,
             cursor: "pointer",
@@ -144,9 +144,9 @@ export default function AdminUsers() {
 
       {/* v103 — premium KPI strip */}
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Users"    value={stats.total}     icon="👤" color="#D4AF37" live sub={`${stats.newWeek} new in 7d`} onClick={() => { setTier("all"); setStatus("all"); }} />
+        <KpiCard title="Total Users"    value={stats.total}     icon="👤" color="#9fb1c2" live sub={`${stats.newWeek} new in 7d`} onClick={() => { setTier("all"); setStatus("all"); }} />
         <KpiCard title="Platinum"       value={stats.platinum}  icon="💎" color="#A855F7" live onClick={() => setTier("platinum")} />
-        <KpiCard title="Gold"           value={stats.gold}      icon="🥇" color="#F0D060" live onClick={() => setTier("gold")} />
+        <KpiCard title="Gold"           value={stats.gold}      icon="🥇" color="#c6d0da" live onClick={() => setTier("gold")} />
         <KpiCard title="Active"         value={stats.active}    icon="✅" color="#2ECC71" live sub={`${stats.banned} banned`} onClick={() => setStatus("active")} />
         <KpiCard title="Lifetime Spend" value={stats.totalSpend} format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
       </div>
@@ -207,7 +207,7 @@ export default function AdminUsers() {
             <div style={{ color: "#8A8FA8", fontSize: 12, margin: "16px 0 10px" }}>STATUS ACTIONS</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => updateStatus(selected.id, "active")} style={{ ...btnStyle, background: "rgba(46,204,113,0.1)", color: "#2ECC71", border: "1px solid rgba(46,204,113,0.3)" }}>Activate</button>
-              <button onClick={() => updateStatus(selected.id, "suspended")} style={{ ...btnStyle, background: "rgba(240,208,96,0.1)", color: "#F0D060", border: "1px solid rgba(240,208,96,0.3)" }}>Suspend</button>
+              <button onClick={() => updateStatus(selected.id, "suspended")} style={{ ...btnStyle, background: "rgba(176, 192, 209,0.1)", color: "#c6d0da", border: "1px solid rgba(176, 192, 209,0.3)" }}>Suspend</button>
               <button onClick={() => updateStatus(selected.id, "banned")} style={{ ...btnStyle, background: "rgba(255,71,87,0.1)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.3)" }}>Ban</button>
             </div>
           </div>
@@ -265,12 +265,12 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 
 function tierColor(t: string) {
   if (t === "platinum") return "#A855F7";
-  if (t === "gold") return "#D4AF37";
+  if (t === "gold") return "#9fb1c2";
   return "#8A8FA8";
 }
 function statusColor(s: string) {
   if (s === "banned") return "#FF4757";
-  if (s === "suspended") return "#F0D060";
+  if (s === "suspended") return "#c6d0da";
   return "#2ECC71";
 }
 const inputStyle: React.CSSProperties = {
@@ -286,7 +286,7 @@ const inputStyle: React.CSSProperties = {
 };
 const selectStyle: React.CSSProperties = { ...inputStyle, minWidth: 140, cursor: "pointer" };
 const btnStyle: React.CSSProperties = {
-  background: "#D4AF37",
+  background: "#9fb1c2",
   color: "#000",
   border: "none",
   borderRadius: 10,

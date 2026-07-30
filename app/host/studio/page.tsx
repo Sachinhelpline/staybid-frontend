@@ -157,7 +157,7 @@ export default function StudioPage() {
             </div>
             <div className="mt-5 text-center">
               <button onClick={() => setQuote("all")} className="px-6 py-3 rounded-full text-white font-semibold sb-card-lift"
-                style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>
+                style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
                 💬 Get StayBid to set this up for me
               </button>
             </div>
@@ -249,7 +249,7 @@ function QuoteModal({ option, roomType, onClose }: { option: Option | "all"; roo
             <div className="font-display text-2xl">We'll set it up!</div>
             <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>Our team will call you with the full plan & quote.</p>
             <button onClick={onClose} className="mt-5 px-6 py-2.5 rounded-full text-white font-semibold"
-              style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>Done</button>
+              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>Done</button>
           </div>
         ) : (
           <>

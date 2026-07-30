@@ -222,7 +222,7 @@ export default function AdminNotifications() {
       </div>
 
       {/* Worker status hint */}
-      <div style={{ background: "rgba(212,175,55,0.06)", border: `1px solid ${C.gold}33`, borderRadius: 12, padding: 14, marginBottom: 16, color: C.text, fontSize: 13 }}>
+      <div style={{ background: "rgba(140, 160, 182,0.06)", border: `1px solid ${C.gold}33`, borderRadius: 12, padding: 14, marginBottom: 16, color: C.text, fontSize: 13 }}>
         <strong style={{ color: C.gold }}>Worker status:</strong> push/SMS/email dispatch worker is not yet wired
         (depends on MSG91 + SendGrid/FCM keys). Until then, items stay <code style={{ color: C.amber }}>pending</code> here
         — use the "Mark sent" action after handling out-of-band, or "Mark failed" if the underlying event is no longer relevant.
@@ -297,9 +297,9 @@ function Row({ label, value }: { label: string; value: any }) {
 }
 
 const smallBtn = {
-  background: "rgba(212,175,55,0.1)",
+  background: "rgba(140, 160, 182,0.1)",
   color: C.gold,
-  border: `1px solid rgba(212,175,55,0.3)`,
+  border: `1px solid rgba(140, 160, 182,0.3)`,
   padding: "5px 12px",
   borderRadius: 8,
   cursor: "pointer",

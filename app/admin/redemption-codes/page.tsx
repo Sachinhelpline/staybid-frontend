@@ -35,7 +35,7 @@ const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
   active:  { bg: "rgba(46,204,113,0.15)", text: "#2ECC71" },
   used:    { bg: "rgba(138,143,168,0.15)", text: "#8A8FA8" },
   expired: { bg: "rgba(255,71,87,0.15)", text: "#FF4757" },
-  revoked: { bg: "rgba(240,180,41,0.15)", text: "#F0D060" },
+  revoked: { bg: "rgba(140, 160, 182,0.15)", text: "#c6d0da" },
 };
 
 const fmtDate = (s?: string | null) =>
@@ -124,12 +124,12 @@ export default function AdminRedemptionCodesPage() {
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
         {[
-          ["Total", kpis.totalIssued || 0, "#D4AF37"],
+          ["Total", kpis.totalIssued || 0, "#9fb1c2"],
           ["Active", kpis.activeCount || 0, "#2ECC71"],
           ["Used", kpis.usedCount || 0, "#3D9CF5"],
           ["Expired", kpis.expiredCount || 0, "#8A8FA8"],
           ["Revoked", kpis.revokedCount || 0, "#FF4757"],
-          ["Points Spent", fmt(kpis.totalPointsSpent || 0), "#F0D060"],
+          ["Points Spent", fmt(kpis.totalPointsSpent || 0), "#c6d0da"],
           ["₹ Cost (used)", `₹${fmt(kpis.usedRupeeCost || 0)}`, "#A855F7"],
         ].map(([label, val, color]) => (
           <div key={String(label)} className="admin-card" style={{ background: "#151820", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -186,10 +186,10 @@ export default function AdminRedemptionCodesPage() {
                   </td>
                   <td style={{ padding: "10px 12px", fontSize: 12, color: "#E8EAF0" }}>{KIND_LABEL[c.kind] || c.kind}</td>
                   <td style={{ padding: "10px 12px", fontSize: 12, color: "#E8EAF0" }}>{c.title || c.rule_slug || "—"}</td>
-                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#D4AF37", fontWeight: 600 }}>
+                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#9fb1c2", fontWeight: 600 }}>
                     {Number(c.value_inr) > 0 ? `₹${fmt(Number(c.value_inr))}` : "—"}
                   </td>
-                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#F0D060", fontWeight: 600 }}>{fmt(c.points_spent)}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#c6d0da", fontWeight: 600 }}>{fmt(c.points_spent)}</td>
                   <td style={{ padding: "10px 12px", fontSize: 11, color: "#8A8FA8" }}>{fmtDate(c.issued_at)}</td>
                   <td style={{ padding: "10px 12px", fontSize: 11, color: "#8A8FA8" }}>{fmtDate(c.expires_at)}</td>
                   <td style={{ padding: "10px 12px" }}>
@@ -202,7 +202,7 @@ export default function AdminRedemptionCodesPage() {
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     <button onClick={() => setDetail(c)}
-                      style={{ background: "transparent", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                      style={{ background: "transparent", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                       View
                     </button>
                   </td>
@@ -223,8 +223,8 @@ export default function AdminRedemptionCodesPage() {
             background: "#0F1117", borderRadius: 16, width: "100%", maxWidth: 500, padding: 22,
             border: "1px solid rgba(255,255,255,0.1)",
           }}>
-            <h2 style={{ fontFamily: "Syne, sans-serif", color: "#D4AF37", marginTop: 0, fontSize: 18 }}>Code Details</h2>
-            <div style={{ background: "#07080C", padding: 16, borderRadius: 12, border: "1px dashed rgba(212,175,55,0.4)", textAlign: "center", marginBottom: 14 }}>
+            <h2 style={{ fontFamily: "Syne, sans-serif", color: "#9fb1c2", marginTop: 0, fontSize: 18 }}>Code Details</h2>
+            <div style={{ background: "#07080C", padding: 16, borderRadius: 12, border: "1px dashed rgba(140, 160, 182,0.4)", textAlign: "center", marginBottom: 14 }}>
               <p style={{ fontFamily: "monospace", color: "#E8EAF0", fontSize: 22, letterSpacing: "0.15em", fontWeight: 700, margin: 0 }}>{detail.code}</p>
               <p style={{ fontFamily: "monospace", color: "#8A8FA8", fontSize: 12, marginTop: 6, marginBottom: 0 }}>{detail.barcode_value}</p>
             </div>
@@ -257,7 +257,7 @@ export default function AdminRedemptionCodesPage() {
               )}
               {(detail.status === "active" || detail.status === "expired") && (
                 <button onClick={() => extend(detail)} disabled={busy}
-                  style={{ flex: 1, minWidth: 120, background: "rgba(212,175,55,0.1)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)", padding: "9px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  style={{ flex: 1, minWidth: 120, background: "rgba(140, 160, 182,0.1)", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)", padding: "9px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   ⏰ Extend
                 </button>
               )}
@@ -273,8 +273,8 @@ export default function AdminRedemptionCodesPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)",
-          background: "#0F1117", color: "#D4AF37", padding: "10px 18px", borderRadius: 999,
-          fontSize: 13, fontWeight: 600, border: "1px solid rgba(212,175,55,0.3)",
+          background: "#0F1117", color: "#9fb1c2", padding: "10px 18px", borderRadius: 999,
+          fontSize: 13, fontWeight: 600, border: "1px solid rgba(140, 160, 182,0.3)",
           zIndex: 60, boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
         }}>{toast}</div>
       )}

@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const TIER: Record<number, { label: string; color: string }> = {
   1: { label: "Starter",  color: "#94a3b8" },
-  2: { label: "Verified", color: "#c9911a" },
+  2: { label: "Verified", color: "#8198ae" },
   3: { label: "Elite",    color: "#7c3aed" },
 };
 
@@ -99,7 +99,7 @@ export default function PublicInfluencerPage() {
               <img src={inf.avatarUrl} alt={inf.name || "creator"} className="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-md shrink-0" />
             ) : (
               <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0 ring-4 ring-white shadow-md"
-                style={{ background: `linear-gradient(135deg, ${tier.color}, #f0b429)` }}>
+                style={{ background: `linear-gradient(135deg, ${tier.color}, #a9b9c8)` }}>
                 {(inf.name || "C").slice(0, 1).toUpperCase()}
               </div>
             )}
@@ -123,7 +123,7 @@ export default function PublicInfluencerPage() {
                 ? "bg-white border-2 border-luxury-200 text-luxury-700 hover:border-luxury-300"
                 : "text-white shadow-gold hover:shadow-lg"
             } disabled:opacity-50`}
-            style={following ? {} : { background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+            style={following ? {} : { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
             {following ? "✓ Following" : "+ Follow"}
           </button>
         </div>

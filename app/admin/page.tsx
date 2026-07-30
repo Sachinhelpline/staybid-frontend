@@ -124,8 +124,8 @@ export default function AdminDashboard() {
       // surface. Show the more familiar word + split the active/total
       // visually so admins don't read "3/3" as "33".
       { title: "Creators",           value: `${w.influencersActive} · ${w.influencersTotal}`, icon: "✨", color: "#A855F7", sub: `${w.influencersActive} active of ${w.influencersTotal}`, href: "/admin/creators" },
-      { title: "Videos Pending",     value: w.videosPending,                                  icon: "🎬", color: "#D4AF37", sub: `${w.videosApproved} approved`, href: "/admin/videos" },
-      { title: "Points Wallets",     value: w.pointWallets,                                   icon: "⭐", color: "#F0D060", sub: "earning users",                href: "/admin/revenue" },
+      { title: "Videos Pending",     value: w.videosPending,                                  icon: "🎬", color: "#9fb1c2", sub: `${w.videosApproved} approved`, href: "/admin/videos" },
+      { title: "Points Wallets",     value: w.pointWallets,                                   icon: "⭐", color: "#c6d0da", sub: "earning users",                href: "/admin/revenue" },
       { title: "Saves",              value: w.savesTotal,                                     icon: "🔖", color: "#3D9CF5", sub: "across all targets",           href: "/admin" },
       { title: "Notifications Queue",value: w.notifPending,                                   icon: "📨", color: "#2ECC71", sub: "pending dispatch",             href: "/admin" },
     ];
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
                 style={{
                   padding: "5px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: "pointer",
                   border: "none",
-                  background: todayOnly === t.k ? "linear-gradient(135deg,#D4AF37,#F0D060)" : "transparent",
+                  background: todayOnly === t.k ? "linear-gradient(135deg,#9fb1c2,#c6d0da)" : "transparent",
                   color: todayOnly === t.k ? "#1a1205" : "#8A8FA8",
                   letterSpacing: "0.06em",
                 }}>
@@ -198,9 +198,9 @@ export default function AdminDashboard() {
               borderRadius: 999,
               fontSize: 12,
               fontWeight: 600,
-              background: liveStatus === "live" ? "rgba(46,204,113,0.1)" : liveStatus === "polling" ? "rgba(212,175,55,0.12)" : "rgba(212,175,55,0.1)",
-              color: liveStatus === "live" ? "#2ECC71" : liveStatus === "polling" ? "#D4AF37" : "#D4AF37",
-              border: `1px solid ${liveStatus === "live" ? "rgba(46,204,113,0.3)" : liveStatus === "polling" ? "rgba(212,175,55,0.45)" : "rgba(212,175,55,0.3)"}`,
+              background: liveStatus === "live" ? "rgba(46,204,113,0.1)" : liveStatus === "polling" ? "rgba(140, 160, 182,0.12)" : "rgba(140, 160, 182,0.1)",
+              color: liveStatus === "live" ? "#2ECC71" : liveStatus === "polling" ? "#9fb1c2" : "#9fb1c2",
+              border: `1px solid ${liveStatus === "live" ? "rgba(46,204,113,0.3)" : liveStatus === "polling" ? "rgba(140, 160, 182,0.45)" : "rgba(140, 160, 182,0.3)"}`,
               cursor: "help",
             }}
           >
@@ -209,7 +209,7 @@ export default function AdminDashboard() {
                 width: 8,
                 height: 8,
                 borderRadius: "50%",
-                background: liveStatus === "live" ? "#2ECC71" : "#D4AF37",
+                background: liveStatus === "live" ? "#2ECC71" : "#9fb1c2",
                 boxShadow: liveStatus === "live" ? "0 0 8px #2ECC71" : "none",
                 animation: "pulse 2s infinite",
               }}
@@ -224,9 +224,9 @@ export default function AdminDashboard() {
             onClick={load}
             title="Refresh dashboard now"
             style={{
-              background: "rgba(212,175,55,0.1)",
-              color: "#D4AF37",
-              border: "1px solid rgba(212,175,55,0.3)",
+              background: "rgba(140, 160, 182,0.1)",
+              color: "#9fb1c2",
+              border: "1px solid rgba(140, 160, 182,0.3)",
               borderRadius: 999,
               padding: "8px 12px",
               fontSize: 12,
@@ -265,7 +265,7 @@ export default function AdminDashboard() {
           title="Total GMV"
           value={(todayOnly ? data?.today?.gmv : k.gmv) || 0}
           format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
-          icon="💰" color="#D4AF37" sub={todayOnly ? "today" : "all time"} live
+          icon="💰" color="#9fb1c2" sub={todayOnly ? "today" : "all time"} live
           sparkline={(data?.revenueTrend || []).map((p: any) => p.value)}
           onClick={() => router.push("/admin/finance")}
         />
@@ -300,7 +300,7 @@ export default function AdminDashboard() {
         <KpiCard
           title={todayOnly ? "New Users Today" : "New Users (7d)"}
           value={(todayOnly ? data?.today?.newUsers : k.newUsers) || 0}
-          icon="👤" color="#F0D060" sub={`of ${k.totalUsers || 0} total`} live
+          icon="👤" color="#c6d0da" sub={`of ${k.totalUsers || 0} total`} live
           onClick={() => router.push("/admin/users")}
         />
       </div>
@@ -311,7 +311,7 @@ export default function AdminDashboard() {
       {/* Charts row */}
       <div className="admin-chart-row" style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: 16, marginBottom: 24 }}>
         <Card title="Bookings Trend (7 days)">
-          {loading ? <Skel /> : <AdminLineChart data={data?.bookingTrend || []} color="#D4AF37" />}
+          {loading ? <Skel /> : <AdminLineChart data={data?.bookingTrend || []} color="#9fb1c2" />}
         </Card>
         <Card title="Revenue Trend (7 days)">
           {loading ? <Skel /> : <AdminBarChart data={data?.revenueTrend || []} color="#3D9CF5" />}
@@ -342,7 +342,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ color: "#D4AF37", fontWeight: 600, fontSize: 14 }}>₹{Number(b.amount || 0).toLocaleString()}</div>
+                <div style={{ color: "#9fb1c2", fontWeight: 600, fontSize: 14 }}>₹{Number(b.amount || 0).toLocaleString()}</div>
                 <span style={statusPill(b.status)}>{b.status}</span>
               </div>
             </div>
@@ -369,9 +369,9 @@ export default function AdminDashboard() {
               <a
                 href="/admin/verification"
                 style={{
-                  background: "rgba(212,175,55,0.1)",
-                  color: "#D4AF37",
-                  border: "1px solid rgba(212,175,55,0.3)",
+                  background: "rgba(140, 160, 182,0.1)",
+                  color: "#9fb1c2",
+                  border: "1px solid rgba(140, 160, 182,0.3)",
                   padding: "4px 10px",
                   borderRadius: 8,
                   fontSize: 12,
@@ -443,7 +443,7 @@ function statusPill(status: string): React.CSSProperties {
   let color = "#8A8FA8";
   if (["accepted", "confirmed", "resolved", "verified"].includes(s)) color = "#2ECC71";
   else if (["rejected", "ban", "high"].includes(s)) color = "#FF4757";
-  else if (["pending", "open", "counter", "in-review"].includes(s)) color = "#D4AF37";
+  else if (["pending", "open", "counter", "in-review"].includes(s)) color = "#9fb1c2";
   return {
     background: color + "22",
     color,

@@ -10,7 +10,7 @@ const inr = (n: number) => "₹" + (Number(n) || 0).toLocaleString("en-IN", { ma
 
 const TIER_META: Record<number, { label: string; color: string; perks: string }> = {
   1: { label: "Starter",   color: "#94a3b8", perks: "12% commission · basic listing" },
-  2: { label: "Verified",  color: "#c9911a", perks: "12% + featured slots · faster payouts" },
+  2: { label: "Verified",  color: "#8198ae", perks: "12% + featured slots · faster payouts" },
   3: { label: "Elite",     color: "#7c3aed", perks: "15% commission · priority campaigns" },
 };
 

@@ -8,7 +8,7 @@ const HEALTH: Record<string, { color: string; label: string }> = {
   ok: { color: "#2ECC71", label: "Healthy" },
   error: { color: "#FF4757", label: "Sync error" },
   paused: { color: "#8A8FA8", label: "Paused" },
-  stale: { color: "#F0B429", label: "Stale" },
+  stale: { color: "#a9b9c8", label: "Stale" },
   idle: { color: "#3D9CF5", label: "Awaiting first sync" },
 };
 

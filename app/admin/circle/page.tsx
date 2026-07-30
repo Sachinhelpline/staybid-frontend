@@ -17,7 +17,7 @@ import { ROOM_CATEGORIES } from "@/lib/catalog";
 
 const C = {
   bg: "#07080C", card: "#151820", border: "rgba(255,255,255,0.07)",
-  text: "#E8EAF0", sub: "#8A8FA8", gold: "#D4AF37", green: "#2ECC71",
+  text: "#E8EAF0", sub: "#8A8FA8", gold: "#9fb1c2", green: "#2ECC71",
   red: "#FF4757", blue: "#3D9CF5", purple: "#A855F7",
 };
 
@@ -219,7 +219,7 @@ export default function AdminCirclePage() {
                   <div style={{ fontWeight: 700 }}>
                     <span style={{
                       fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 999, marginRight: 8,
-                      background: b.status === "active" ? "rgba(46,204,113,.15)" : b.status === "pending_payment" ? "rgba(212,175,55,.15)" : "rgba(255,71,87,.12)",
+                      background: b.status === "active" ? "rgba(46,204,113,.15)" : b.status === "pending_payment" ? "rgba(140, 160, 182,.15)" : "rgba(255,71,87,.12)",
                       color: b.status === "active" ? C.green : b.status === "pending_payment" ? C.gold : C.red,
                     }}>{String(b.status).toUpperCase()}</span>
                     {b.user?.name || b.contact?.name || "Partner"} <span style={{ color: C.sub, fontWeight: 400 }}>· {b.user?.phone || b.contact?.phone || ""}</span>

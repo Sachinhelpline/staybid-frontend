@@ -242,7 +242,7 @@ export default function AdminHostCatalog() {
             style={{
               padding: "7px 15px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: "1px solid",
               ...(section === s
-                ? { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", borderColor: "transparent" }
+                ? { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", borderColor: "transparent" }
                 : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
             }}>
             {s === "products" ? "🛋️ Products" : s === "categories" ? "🏷️ Categories" : s === "workers" ? "🧑‍🔧 Workers" : "🏡 Listings"} · {s === "products" ? products.length : s === "categories" ? categories.length : s === "workers" ? workers.length : listings.length}
@@ -508,7 +508,7 @@ function RoomBuilder({ value, onChange }: { value: RoomRow[]; onChange: (v: Room
       {rows.map((r, i) => (
         <div key={i} style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column", gap: 9 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "#D4AF37", fontSize: 12, fontWeight: 700 }}>Room {i + 1}</span>
+            <span style={{ color: "#9fb1c2", fontSize: 12, fontWeight: 700 }}>Room {i + 1}</span>
             <button type="button" onClick={() => remove(i)} style={{ ...miniBtn, borderColor: "rgba(255,71,87,0.4)", color: "#FF9AA8" }}>🗑 Remove</button>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -572,19 +572,19 @@ function Flags({ row, keys }: { row: any; keys: string[] }) {
   </div>;
 }
 
-const btnPrimary: React.CSSProperties = { padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117" };
+const btnPrimary: React.CSSProperties = { padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117" };
 const btnGhost: React.CSSProperties = { padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#E8EAF0" };
 const miniBtn: React.CSSProperties = { padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.04)", color: "#C7CBD8" };
 const chip: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: "rgba(34,197,94,0.14)", color: "#7DE3A0", border: "1px solid rgba(34,197,94,0.3)" };
 const chipToggle: React.CSSProperties = { fontSize: 11, fontWeight: 600, padding: "5px 10px", borderRadius: 999, cursor: "pointer", background: "rgba(255,255,255,0.04)", color: "#8A8FA8", border: "1px solid rgba(255,255,255,0.12)" };
-const chipToggleOn: React.CSSProperties = { background: "rgba(212,175,55,0.16)", color: "#F0D060", borderColor: "rgba(212,175,55,0.5)" };
+const chipToggleOn: React.CSSProperties = { background: "rgba(140, 160, 182,0.16)", color: "#c6d0da", borderColor: "rgba(140, 160, 182,0.5)" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 11px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.03)", color: "#E8EAF0", fontSize: 13, outline: "none", boxSizing: "border-box" };
 function statusPill(status: string): React.CSSProperties {
   const map: Record<string, [string, string]> = {
-    available: ["rgba(34,197,94,0.14)", "#7DE3A0"], pending_review: ["rgba(245,158,11,0.14)", "#F5C161"],
+    available: ["rgba(34,197,94,0.14)", "#7DE3A0"], pending_review: ["rgba(245,158,11,0.14)", "#bbc7d3"],
     shortlisted: ["rgba(61,156,245,0.14)", "#93C5FD"], rented: ["rgba(168,85,247,0.14)", "#D0A8F7"],
     rejected: ["rgba(255,71,87,0.14)", "#FF9AA8"], inactive: ["rgba(255,255,255,0.06)", "#8A8FA8"],
-    approved: ["rgba(34,197,94,0.14)", "#7DE3A0"], pending: ["rgba(245,158,11,0.14)", "#F5C161"],
+    approved: ["rgba(34,197,94,0.14)", "#7DE3A0"], pending: ["rgba(245,158,11,0.14)", "#bbc7d3"],
     suspended: ["rgba(255,255,255,0.06)", "#8A8FA8"],
   };
   const [bg, color] = map[status] || map.inactive;

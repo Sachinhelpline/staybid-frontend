@@ -55,8 +55,8 @@ const SCENES: Record<string, string> = {
   river: "linear-gradient(160deg,#1f6f6b,#4aa8a0 55%,#c8ece7)",
   forest: "linear-gradient(160deg,#2e5b3f,#5f9469 55%,#cfe8d4)",
   lake: "linear-gradient(160deg,#28618c,#5b9bc4 55%,#d3ecf7)",
-  spiritual: "linear-gradient(160deg,#8a5a17,#d99a3d 55%,#f7e6c4)",
-  beach: "linear-gradient(160deg,#0f7fa8,#43b8d8 55%,#ffe9b8)",
+  spiritual: "linear-gradient(160deg,#8a5a17,#d99a3d 55%,#e3e8ed)",
+  beach: "linear-gradient(160deg,#0f7fa8,#43b8d8 55%,#e6ebef)",
   heritage: "linear-gradient(160deg,#8f3f2a,#c9704e 55%,#f3d9b8)",
   plantation: "linear-gradient(160deg,#3a5c2e,#6e9450 55%,#dcecc8)",
   coast: "linear-gradient(160deg,#146a8f,#4ba3c4 55%,#e8f4dc)",
@@ -398,7 +398,7 @@ function Journey() {
                 <div className="mt-1.5 flex items-center gap-1.5 justify-center sm:justify-start">
                   <span className="ho-step-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-all"
                     style={{
-                      background: p.n <= phase ? "linear-gradient(135deg,#c9911a,#a9790f)" : "var(--border-soft)",
+                      background: p.n <= phase ? "linear-gradient(135deg,#8198ae,#637f9c)" : "var(--border-soft)",
                       color: p.n <= phase ? "#fff" : "var(--text-muted)",
                     }}>
                     {p.n < phase ? "✓" : p.n}
@@ -659,13 +659,13 @@ function Journey() {
                   ))}
                 </div>
               </details>
-              <details className="ho-details rounded-2xl px-4 py-3.5" style={{ background: "linear-gradient(135deg,#1f1a0f,#2b2415)", color: "#faf5eb" }}>
+              <details className="ho-details rounded-2xl px-4 py-3.5" style={{ background: "linear-gradient(135deg,#1f1a0f,#2b2415)", color: "#f4f6f8" }}>
                 <summary className="font-semibold text-sm flex items-center gap-2">
                   <span className="ho-caret">▸</span> ⚠️ Important note — read before you invest
                 </summary>
                 <ul className="space-y-1.5 mt-3">
                   {IMPORTANT_NOTES.map((n) => (
-                    <li key={n} className="text-[11px] flex items-start gap-1.5" style={{ color: "#d9be82" }}>
+                    <li key={n} className="text-[11px] flex items-start gap-1.5" style={{ color: "#b4c1cf" }}>
                       <span style={{ color: "#2ecc71" }}>✓</span>{n}
                     </li>
                   ))}
@@ -688,7 +688,7 @@ function Journey() {
                   <button key={k} onClick={() => setPrefs((p) => ({ ...p, cityMode: k }))}
                     className="px-4 py-2 rounded-full text-xs font-bold transition-all"
                     style={prefs.cityMode === k
-                      ? { background: "linear-gradient(135deg,#c9911a,#a9790f)", color: "#fff" }
+                      ? { background: "linear-gradient(135deg,#8198ae,#637f9c)", color: "#fff" }
                       : { border: "1px solid var(--border-strong)", color: "var(--text-soft)" }}>
                     {label}
                   </button>
@@ -739,7 +739,7 @@ function Journey() {
                     value={Math.min(distBand, KM_MAX)}
                     onChange={(e) => { const v = Number(e.target.value); setDistBand(v >= KM_MAX ? KM_ANYWHERE : v); }}
                     className="ho-slider"
-                    style={{ "--ho-fill": `${((Math.min(distBand, KM_MAX) - KM_MIN) / (KM_MAX - KM_MIN)) * 100}%`, "--ho-tone": "#c9911a" } as React.CSSProperties}
+                    style={{ "--ho-fill": `${((Math.min(distBand, KM_MAX) - KM_MIN) / (KM_MAX - KM_MIN)) * 100}%`, "--ho-tone": "#8198ae" } as React.CSSProperties}
                     aria-label="Distance range in kilometres" />
                   <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
                     <span>{KM_MIN} km</span><span>{nearbyCount} {nearbyCount === 1 ? "city" : "cities"} in range</span><span>Anywhere</span>
@@ -837,7 +837,7 @@ function Journey() {
                         <div key={i} className="ho-bar" style={{
                           height: `${Math.max(8, v)}%`,
                           animationDelay: `${i * 0.05}s`,
-                          background: v >= 85 ? "linear-gradient(180deg,#f0d060,#c9911a)" : v >= 60 ? "linear-gradient(180deg,#d9be82,#b89a5a)" : "var(--border-strong)",
+                          background: v >= 85 ? "linear-gradient(180deg,#c6d0da,#8198ae)" : v >= 60 ? "linear-gradient(180deg,#b4c1cf,#8a9fb4)" : "var(--border-strong)",
                         }} title={`${v}/100`} />
                       ))}
                     </div>
@@ -1025,7 +1025,7 @@ function Journey() {
                         <span className="ho-city-lm" style={{ fontSize: 24, left: 8, bottom: 3 }}>{c.icon}</span>
                         {on && (
                           <span className="absolute top-1.5 right-1.5 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(255,255,255,0.92)", color: "#a9790f" }}>✓ Picked</span>
+                            style={{ background: "rgba(255,255,255,0.92)", color: "#637f9c" }}>✓ Picked</span>
                         )}
                       </div>
                       <div className="p-2.5">
@@ -1058,7 +1058,7 @@ function Journey() {
                       <button onClick={() => setPrefs((p) => ({ ...p, sourcing: s.key }))} aria-pressed={on}
                         className="ho-tile w-full text-left p-3.5 flex items-start gap-3">
                         <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                          style={{ background: on ? "linear-gradient(135deg,#c9911a,#a9790f)" : "var(--accent-soft)" }}>{s.icon}</span>
+                          style={{ background: on ? "linear-gradient(135deg,#8198ae,#637f9c)" : "var(--accent-soft)" }}>{s.icon}</span>
                         <span className="flex-1 min-w-0">
                           <span className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--text-base)" }}>
                             {s.name}{on && <span style={{ color: tier.accent }}>✓</span>}
@@ -1115,7 +1115,7 @@ function Journey() {
                 <div className="flex flex-col items-center gap-1.5 mx-auto">
                   <div className="ho-scorewrap">
                     <div className="ho-scorehalo" aria-hidden />
-                    <div className="ho-ring" style={{ ["--ho-ring-pct" as any]: aiScore, ["--ho-ring-tone" as any]: aiScore >= 80 ? "#c9911a" : "#2563eb" }}>
+                    <div className="ho-ring" style={{ ["--ho-ring-pct" as any]: aiScore, ["--ho-ring-tone" as any]: aiScore >= 80 ? "#8198ae" : "#2563eb" }}>
                       <div className="text-center">
                         <div className="font-display text-3xl ho-num" style={{ color: "var(--text-base)" }}><CountUp key={aiScore} value={aiScore} duration={700} /></div>
                         <div className="text-[9px] -mt-0.5" style={{ color: "var(--text-muted)" }}>/100</div>
@@ -1177,10 +1177,10 @@ function Journey() {
                           <div className="w-full h-28 flex items-center justify-center text-3xl" style={{ background: "var(--accent-soft)" }}>🏡</div>
                         )}
                         {p.featured ? (
-                          <span className="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(201,145,26,0.95)", color: "#fff" }}>⭐ Featured</span>
+                          <span className="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(106, 133, 160,0.95)", color: "#fff" }}>⭐ Featured</span>
                         ) : null}
                         {Number(p.score) > 0 && (
-                          <span className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#a9790f" }}>⚡ {p.score}/100</span>
+                          <span className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#637f9c" }}>⚡ {p.score}/100</span>
                         )}
                         {Array.isArray(p.images) && p.images.length > 1 && (
                           <span className="absolute bottom-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(20,16,8,0.6)", color: "#fff" }}>📷 {p.images.length}</span>
@@ -1332,7 +1332,7 @@ function Journey() {
                   {DESIGN_PROCESS.map((s) => (
                     <div key={s.n} className="flex items-center gap-2 text-[11px]" style={{ color: "var(--text-soft)" }}>
                       <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                        style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>{s.n}</span>
+                        style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>{s.n}</span>
                       {s.title}
                     </div>
                   ))}
@@ -1412,7 +1412,7 @@ function Journey() {
                   <div className="ho-bars" style={{ height: 96 }}>
                     {PRICING_PREVIEW.map((d, i) => (
                       <div key={d.day} className="flex-1 flex items-end gap-[3px] min-w-0">
-                        <div className="ho-bar flex-1" style={{ height: `${(d.smart / 7000) * 100}%`, animationDelay: `${i * 0.06}s`, background: "linear-gradient(180deg,#f0d060,#c9911a)" }} title={`Smart ${inr(d.smart)}`} />
+                        <div className="ho-bar flex-1" style={{ height: `${(d.smart / 7000) * 100}%`, animationDelay: `${i * 0.06}s`, background: "linear-gradient(180deg,#c6d0da,#8198ae)" }} title={`Smart ${inr(d.smart)}`} />
                         <div className="ho-bar flex-1" style={{ height: `${(d.market / 7000) * 100}%`, animationDelay: `${i * 0.06 + 0.03}s`, background: "var(--border-strong)" }} title={`Market ${inr(d.market)}`} />
                       </div>
                     ))}
@@ -1421,7 +1421,7 @@ function Journey() {
                     {PRICING_PREVIEW.map((d) => <span key={d.day}>{d.day}</span>)}
                   </div>
                   <div className="flex gap-3 mt-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
-                    <span><span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style={{ background: "#c9911a" }} />Our smart price</span>
+                    <span><span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style={{ background: "#8198ae" }} />Our smart price</span>
                     <span><span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style={{ background: "var(--border-strong)" }} />Market average</span>
                   </div>
                 </div>
@@ -1775,7 +1775,7 @@ function PropertyTourSheet({ prop, onClose, defaultName, defaultPhone }: {
             </>
           )}
           {Number(prop.score) > 0 && (
-            <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#a9790f" }}>
+            <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#637f9c" }}>
               ⚡ AI score {prop.score}/100
             </span>
           )}
@@ -1851,7 +1851,7 @@ function PropertyTourSheet({ prop, onClose, defaultName, defaultPhone }: {
                 )}
                 <button onClick={submitInquiry} disabled={state === "working"}
                   className="ho-shine w-full mt-3 py-3 rounded-full font-semibold text-white text-sm disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>
+                  style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
                   {state === "working" ? "Sending…" : "Request this property →"}
                 </button>
               </>
@@ -1950,13 +1950,13 @@ function SuccessScreen({ tier, payNow, cities, rooms, balance = 0 }: { tier: str
           ].map((s, i) => (
             <div key={s} className="flex items-start gap-2 text-xs py-1" style={{ color: "var(--text-soft)" }}>
               <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>{i + 1}</span>
+                style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>{i + 1}</span>
               {s}
             </div>
           ))}
         </div>
         <div className="mt-6 flex flex-col gap-2">
-          <Link href="/host/me" className="ho-shine px-6 py-3 rounded-full text-white font-semibold" style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>
+          <Link href="/host/me" className="ho-shine px-6 py-3 rounded-full text-white font-semibold" style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
             Open my investor dashboard →
           </Link>
           <Link href="/host" className="px-6 py-3 rounded-full font-semibold" style={{ border: "1px solid var(--border-strong)", color: "var(--text-base)" }}>

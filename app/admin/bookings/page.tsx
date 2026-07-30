@@ -12,7 +12,7 @@ import { filterActiveBids } from "@/lib/bid-expiry";
 const SOURCE_STYLE: Record<string, { icon: string; label: string; color: string }> = {
   direct:        { icon: "🔗", label: "Direct",      color: "#3D9CF5" },
   creator:       { icon: "✨", label: "Creator",     color: "#A855F7" },
-  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#D4AF37" },
+  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#9fb1c2" },
   flash:         { icon: "⚡", label: "Flash deal",  color: "#FF4757" },
   unknown:       { icon: "•",  label: "Unknown",     color: "#8A8FA8" },
 };
@@ -104,10 +104,10 @@ export default function AdminBookings() {
             title={mismatch ? "Capacity mismatch — guests > capacity × rooms" : `${n} room${n > 1 ? "s" : ""}`}
             style={{
               display: "inline-flex", alignItems: "center", gap: 4,
-              background: mismatch ? "rgba(240,208,96,0.18)" : "rgba(212,175,55,0.10)",
-              color: mismatch ? "#F0D060" : "#D4AF37",
+              background: mismatch ? "rgba(176, 192, 209,0.18)" : "rgba(140, 160, 182,0.10)",
+              color: mismatch ? "#c6d0da" : "#9fb1c2",
               padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-              border: mismatch ? "1px solid rgba(240,208,96,0.35)" : "1px solid transparent",
+              border: mismatch ? "1px solid rgba(176, 192, 209,0.35)" : "1px solid transparent",
             }}
           >
             🛏️ {n}{mismatch ? " ⚠" : ""}
@@ -203,9 +203,9 @@ export default function AdminBookings() {
         <button
           onClick={() => setSelected(b)}
           style={{
-            background: "rgba(212,175,55,0.1)",
-            color: "#D4AF37",
-            border: "1px solid rgba(212,175,55,0.3)",
+            background: "rgba(140, 160, 182,0.1)",
+            color: "#9fb1c2",
+            border: "1px solid rgba(140, 160, 182,0.3)",
             padding: "5px 12px",
             borderRadius: 8,
             cursor: "pointer",
@@ -241,9 +241,9 @@ export default function AdminBookings() {
       </div>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Bids"   value={stats.total}     icon="📋" color="#D4AF37" live onClick={() => setStatus("all")} />
+        <KpiCard title="Total Bids"   value={stats.total}     icon="📋" color="#9fb1c2" live onClick={() => setStatus("all")} />
         <KpiCard title="Accepted+"    value={stats.accepted}  icon="✅" color="#2ECC71" live sub="confirmed → checked-out" onClick={() => setStatus("ACCEPTED")} />
-        <KpiCard title="Pending"      value={stats.pending}   icon="⏳" color="#F0D060" live onClick={() => setStatus("PENDING")} />
+        <KpiCard title="Pending"      value={stats.pending}   icon="⏳" color="#c6d0da" live onClick={() => setStatus("PENDING")} />
         <KpiCard title="Countered"    value={stats.countered} icon="💬" color="#FF8C42" live onClick={() => setStatus("COUNTER")} />
         <KpiCard title="Gross Paid"   value={stats.gross}     format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
       </div>
@@ -278,7 +278,7 @@ export default function AdminBookings() {
           Source:
         </span>
         {(["all", "direct", "creator", "hotel-feed", "flash"] as const).map((s) => {
-          const meta = s === "all" ? { icon: "🌐", label: "All", color: "#D4AF37" } : SOURCE_STYLE[s];
+          const meta = s === "all" ? { icon: "🌐", label: "All", color: "#9fb1c2" } : SOURCE_STYLE[s];
           const isActive = source === s;
           const count = s === "all" ? activeBookings.length : (sourceCounts[s] || 0);
           return (
@@ -395,7 +395,7 @@ function BidTimelineModal({ bid, onClose }: { bid: any; onClose: () => void }) {
         </div>
 
         {bid.message && (
-          <div style={{ marginTop: 16, padding: 14, background: "#0F1117", borderRadius: 10, borderLeft: "3px solid #D4AF37" }}>
+          <div style={{ marginTop: 16, padding: 14, background: "#0F1117", borderRadius: 10, borderLeft: "3px solid #9fb1c2" }}>
             <div style={{ color: "#8A8FA8", fontSize: 11, marginBottom: 4 }}>MESSAGE</div>
             <div style={{ color: "#E8EAF0", fontSize: 13 }}>{bid.message}</div>
           </div>
@@ -410,7 +410,7 @@ function BidTimelineModal({ bid, onClose }: { bid: any; onClose: () => void }) {
           </button>
           <button
             onClick={() => alert("Booking flagged for manual review")}
-            style={{ ...btnStyle, background: "rgba(240,208,96,0.1)", color: "#F0D060", border: "1px solid rgba(240,208,96,0.3)" }}
+            style={{ ...btnStyle, background: "rgba(176, 192, 209,0.1)", color: "#c6d0da", border: "1px solid rgba(176, 192, 209,0.3)" }}
           >
             Escalate
           </button>
@@ -435,9 +435,9 @@ function bidStatusColor(s: string) {
   const x = (s || "").toLowerCase();
   if (["accepted", "confirmed", "checked_in", "checked_out"].includes(x)) return "#2ECC71";
   if (["rejected", "cancelled"].includes(x)) return "#FF4757";
-  if (["counter", "open", "pending"].includes(x)) return "#D4AF37";
+  if (["counter", "open", "pending"].includes(x)) return "#9fb1c2";
   return "#8A8FA8";
 }
 const inputStyle: React.CSSProperties = { background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", color: "#E8EAF0", fontSize: 14, outline: "none", fontFamily: "DM Sans, sans-serif", minWidth: 220 };
 const selectStyle: React.CSSProperties = { ...inputStyle, minWidth: 160, cursor: "pointer" };
-const btnStyle: React.CSSProperties = { background: "#D4AF37", color: "#000", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
+const btnStyle: React.CSSProperties = { background: "#9fb1c2", color: "#000", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };

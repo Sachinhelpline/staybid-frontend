@@ -155,7 +155,7 @@ export default function ServiceLockModal({
                     return (
                       <button key={pl} onClick={() => pay(pl)} disabled={!!busy}
                         className="w-full flex items-center justify-between rounded-xl p-3 transition-all disabled:opacity-50"
-                        style={{ background: "#fff8e6", border: "1.5px solid #e3c98f" }}>
+                        style={{ background: "#f7f8fa", border: "1.5px solid #c1ccd7" }}>
                         <span className="text-left">
                           <span className="block text-[0.8rem] font-bold text-luxury-900">{PLAN_LABEL[pl]}</span>
                           <span className="block text-[0.6rem] text-luxury-500">{PLAN_TERM[pl]} access</span>
@@ -173,7 +173,7 @@ export default function ServiceLockModal({
                 <div className="space-y-2">
                   <p className="text-[0.66rem] font-bold text-luxury-700">Bundle plans (extra services included)</p>
                   {myBundles.map((b: any) => (
-                    <div key={b.id} className="rounded-xl p-2.5" style={{ background: "#f6f1e6" }}>
+                    <div key={b.id} className="rounded-xl p-2.5" style={{ background: "#eff2f5" }}>
                       <p className="text-[0.74rem] font-bold text-luxury-900">{b.name}</p>
                       <p className="text-[0.58rem] text-luxury-500 mb-1.5">
                         {(b.service_keys || []).map((k: string) => SERVICE_LABEL[k] || k).join(" · ")}
@@ -186,7 +186,7 @@ export default function ServiceLockModal({
                           return (
                             <button key={pl} onClick={() => pay(pl, b.id)} disabled={!!busy}
                               className="bg-white rounded-lg px-1.5 py-1.5 text-center transition-all disabled:opacity-50"
-                              style={{ border: "1px solid #e3c98f" }}>
+                              style={{ border: "1px solid #c1ccd7" }}>
                               <span className="block text-[0.5rem] text-luxury-400 uppercase tracking-wide">{PLAN_LABEL[pl]}</span>
                               <span className="block text-[0.72rem] font-bold text-gold-700">
                                 {busy === tag ? "…" : fmtCur(price)}
@@ -211,7 +211,7 @@ export default function ServiceLockModal({
               <div className="space-y-2">
                 <button onClick={onActivate} disabled={!!busy}
                   className="w-full text-left rounded-xl p-3 transition-all disabled:opacity-50"
-                  style={{ background: "#fff8e6", border: "1.5px solid #e3c98f" }}>
+                  style={{ background: "#f7f8fa", border: "1.5px solid #c1ccd7" }}>
                   <p className="text-[0.82rem] font-bold text-luxury-900">⚡ Activate</p>
                   <p className="text-[0.64rem] text-luxury-500">
                     {canBuy ? "Plan choose karke abhi unlock karo" : "Subscribe karne ke liye admin ko request bhejo"}
@@ -219,21 +219,21 @@ export default function ServiceLockModal({
                 </button>
                 <button onClick={() => setShowCharges((s) => !s)}
                   className="w-full text-left rounded-xl p-3 transition-all bg-white"
-                  style={{ border: "1.5px solid #e6ddc8" }}>
+                  style={{ border: "1.5px solid #d7dee6" }}>
                   <p className="text-[0.82rem] font-bold text-luxury-900">💰 Show charges</p>
                   <p className="text-[0.64rem] text-luxury-500">Is service ka plan price dekho</p>
                 </button>
                 {showCharges && (() => {
                   if (!hasPrice && !myBundles.length) {
                     return (
-                      <div className="rounded-xl p-2.5 text-[0.68rem] text-luxury-600" style={{ background: "#f6f1e6" }}>
+                      <div className="rounded-xl p-2.5 text-[0.68rem] text-luxury-600" style={{ background: "#eff2f5" }}>
                         Iss service ki pricing admin abhi set kar raha hai. Activate ya free-trial request bhejo —
                         admin aapko exact price ya free access bata dega.
                       </div>
                     );
                   }
                   return (
-                    <div className="rounded-xl p-2.5" style={{ background: "#f6f1e6" }}>
+                    <div className="rounded-xl p-2.5" style={{ background: "#eff2f5" }}>
                       {hasPrice && (
                         <>
                           <p className="text-[0.66rem] font-bold text-luxury-700 mb-1">{label} — plan price</p>
@@ -264,7 +264,7 @@ export default function ServiceLockModal({
                 })()}
                 <button onClick={() => raise("free_trial")} disabled={!!busy}
                   className="w-full text-left rounded-xl p-3 transition-all bg-white disabled:opacity-50"
-                  style={{ border: "1.5px solid #e6ddc8" }}>
+                  style={{ border: "1.5px solid #d7dee6" }}>
                   <p className="text-[0.82rem] font-bold text-luxury-900">🎁 Request free trial</p>
                   <p className="text-[0.64rem] text-luxury-500">Admin se kuch din ka free access maango</p>
                 </button>

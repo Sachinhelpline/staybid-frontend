@@ -69,7 +69,7 @@ export default function AdminHotels() {
     {
       key: "starRating",
       label: "Rating",
-      render: (h: any) => <span style={{ color: "#D4AF37" }}>{"★".repeat(h.starRating || 0)}</span>,
+      render: (h: any) => <span style={{ color: "#9fb1c2" }}>{"★".repeat(h.starRating || 0)}</span>,
     },
     { key: "roomsCount", label: "Rooms" },
     { key: "bookingsThisMonth", label: "Bookings (MTD)" },
@@ -129,9 +129,9 @@ export default function AdminHotels() {
         <button
           onClick={() => setSelected(h)}
           style={{
-            background: "rgba(212,175,55,0.1)",
-            color: "#D4AF37",
-            border: "1px solid rgba(212,175,55,0.3)",
+            background: "rgba(140, 160, 182,0.1)",
+            color: "#9fb1c2",
+            border: "1px solid rgba(140, 160, 182,0.3)",
             padding: "5px 12px",
             borderRadius: 8,
             cursor: "pointer",
@@ -164,12 +164,12 @@ export default function AdminHotels() {
       </h1>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Hotels"  value={stats.total}     icon="🏨" color="#D4AF37" live sub={`${stats.suspended} suspended`} onClick={() => { setStatus("all"); setApproval("all"); }} />
-        <KpiCard title="Pending Review" value={stats.pendingReview} icon="🕓" color="#F0D060" live sub="awaiting verify" onClick={() => setApproval("pending")} />
+        <KpiCard title="Total Hotels"  value={stats.total}     icon="🏨" color="#9fb1c2" live sub={`${stats.suspended} suspended`} onClick={() => { setStatus("all"); setApproval("all"); }} />
+        <KpiCard title="Pending Review" value={stats.pendingReview} icon="🕓" color="#c6d0da" live sub="awaiting verify" onClick={() => setApproval("pending")} />
         <KpiCard title="Active"        value={stats.active}    icon="✅" color="#2ECC71" live onClick={() => setStatus("active")} />
         <KpiCard title="Total Rooms"   value={stats.totalRooms} icon="🛏️" color="#A855F7" live onClick={() => router.push("/admin/pricing")} />
         <KpiCard title="MTD Bookings"  value={stats.mtdBookings} icon="📅" color="#3D9CF5" live onClick={() => router.push("/admin/bookings")} />
-        <KpiCard title="Total GMV"     value={stats.totalGmv}  format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#F0D060" live onClick={() => router.push("/admin/finance")} />
+        <KpiCard title="Total GMV"     value={stats.totalGmv}  format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#c6d0da" live onClick={() => router.push("/admin/finance")} />
       </div>
 
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
@@ -259,7 +259,7 @@ export default function AdminHotels() {
             <div style={{ color: "#8A8FA8", fontSize: 12, margin: "16px 0 10px" }}>OVERRIDE COMMISSION</div>
             <div style={{ display: "flex", gap: 8 }}>
               {[3, 5, 7, 10, 15].map((c) => (
-                <button key={c} onClick={() => patch("commission", c)} style={{ ...btnStyle, background: "#0F1117", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)" }}>
+                <button key={c} onClick={() => patch("commission", c)} style={{ ...btnStyle, background: "#0F1117", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)" }}>
                   {c}%
                 </button>
               ))}
@@ -298,12 +298,12 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 }
 function hotelStatusColor(s: string) {
   if (s === "suspended") return "#FF4757";
-  if (s === "pending" || s === "pending_review") return "#F0D060";
+  if (s === "pending" || s === "pending_review") return "#c6d0da";
   if (s === "draft") return "#8A8FA8";
   return "#2ECC71";
 }
 function approvalColor(a: string) {
-  if (a === "pending") return "#F0D060";
+  if (a === "pending") return "#c6d0da";
   if (a === "rejected") return "#FF4757";
   return "#2ECC71";
 }
@@ -321,4 +321,4 @@ function hotelTypeInfo(h: any): { label: string; color: string; hint: string } {
 }
 const inputStyle: React.CSSProperties = { background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", color: "#E8EAF0", fontSize: 14, outline: "none", fontFamily: "DM Sans, sans-serif", minWidth: 220 };
 const selectStyle: React.CSSProperties = { ...inputStyle, minWidth: 140, cursor: "pointer" };
-const btnStyle: React.CSSProperties = { background: "#D4AF37", color: "#000", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
+const btnStyle: React.CSSProperties = { background: "#9fb1c2", color: "#000", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };

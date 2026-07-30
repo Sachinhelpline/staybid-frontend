@@ -158,47 +158,47 @@ export default function CircleDemandCyclePage() {
       <p className="dcp-disc">{CIRCLE_INCOME_DISCLOSURE}</p>
 
       <style jsx>{`
-        .dcp { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; color: #f1e2c6; }
+        .dcp { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; color: #dee4ea; }
         .dcp-hero { text-align: center; padding: 24px 12px 8px; }
-        .dcp-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #ffcf6e; border: 1px solid rgba(255,207,110,0.4); border-radius: 999px; padding: 4px 12px; }
-        .dcp-title { font-size: clamp(1.6rem, 5vw, 2.4rem); font-weight: 800; margin: 12px 0 6px; color: #ffe9bf; }
-        .dcp-sub { max-width: 640px; margin: 0 auto; font-size: 0.92rem; color: rgba(241,226,198,0.82); }
+        .dcp-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #cad4dd; border: 1px solid rgba(176, 192, 209,0.4); border-radius: 999px; padding: 4px 12px; }
+        .dcp-title { font-size: clamp(1.6rem, 5vw, 2.4rem); font-weight: 800; margin: 12px 0 6px; color: #e7ebf0; }
+        .dcp-sub { max-width: 640px; margin: 0 auto; font-size: 0.92rem; color: rgba(176, 192, 209,0.82); }
         .dcp-highlights { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 18px; }
-        .dcp-hl { display: flex; flex-direction: column; align-items: center; min-width: 84px; padding: 10px 14px; border-radius: 14px; background: rgba(51,37,26,0.7); border: 1px solid rgba(255,207,110,0.22); }
-        .dcp-hl-v { font-size: 1.3rem; font-weight: 800; color: #ffcf6e; }
-        .dcp-hl-l { font-size: 0.66rem; text-transform: uppercase; letter-spacing: .04em; color: rgba(241,226,198,0.7); }
+        .dcp-hl { display: flex; flex-direction: column; align-items: center; min-width: 84px; padding: 10px 14px; border-radius: 14px; background: rgba(51,37,26,0.7); border: 1px solid rgba(176, 192, 209,0.22); }
+        .dcp-hl-v { font-size: 1.3rem; font-weight: 800; color: #cad4dd; }
+        .dcp-hl-l { font-size: 0.66rem; text-transform: uppercase; letter-spacing: .04em; color: rgba(176, 192, 209,0.7); }
         .dcp-months { display: flex; gap: 6px; overflow-x: auto; padding: 18px 2px 8px; scrollbar-width: none; }
         .dcp-months::-webkit-scrollbar { display: none; }
-        .dcp-month { flex: 0 0 auto; padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 0.82rem; background: rgba(51,37,26,0.7); color: rgba(241,226,198,0.8); border: 1px solid rgba(255,207,110,0.2); cursor: pointer; }
-        .dcp-month-on { background: linear-gradient(135deg, #ffd98a, #ffcf6e); color: #2a1c0c; border-color: #ffcf6e; }
+        .dcp-month { flex: 0 0 auto; padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 0.82rem; background: rgba(51,37,26,0.7); color: rgba(176, 192, 209,0.8); border: 1px solid rgba(176, 192, 209,0.2); cursor: pointer; }
+        .dcp-month-on { background: linear-gradient(135deg, #d5dce4, #cad4dd); color: #2a1c0c; border-color: #cad4dd; }
         .dcp-panel { margin-top: 8px; }
         .dcp-panel-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
-        .dcp-panel-title { font-size: 1.2rem; font-weight: 800; color: #ffe9bf; }
-        .dcp-panel-sub { font-size: 0.78rem; color: rgba(241,226,198,0.66); }
+        .dcp-panel-title { font-size: 1.2rem; font-weight: 800; color: #e7ebf0; }
+        .dcp-panel-sub { font-size: 0.78rem; color: rgba(176, 192, 209,0.66); }
         .dcp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-        .dcp-card { text-align: left; padding: 14px; border-radius: 16px; background: linear-gradient(160deg, #1f1710, #33251a); border: 1px solid rgba(255,207,110,0.22); cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
+        .dcp-card { text-align: left; padding: 14px; border-radius: 16px; background: linear-gradient(160deg, #1f1710, #33251a); border: 1px solid rgba(176, 192, 209,0.22); cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
         .dcp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
-        .dcp-card-p { border-color: rgba(255,207,110,0.55); }
+        .dcp-card-p { border-color: rgba(176, 192, 209,0.55); }
         .dcp-card-top { display: flex; justify-content: space-between; align-items: center; }
         .dcp-card-ic { font-size: 1.4rem; }
         .dcp-tier { font-size: 0.64rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
-        .dcp-tier-p { background: rgba(255,207,110,0.22); color: #ffcf6e; }
-        .dcp-tier-s { background: rgba(241,226,198,0.12); color: rgba(241,226,198,0.75); }
-        .dcp-card-name { font-size: 1.02rem; font-weight: 800; margin-top: 10px; color: #ffe9bf; }
-        .dcp-card-region { font-size: 0.72rem; color: rgba(241,226,198,0.62); margin-top: 2px; }
-        .dcp-card-roi { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; font-size: 0.78rem; font-weight: 700; color: #ffd98a; }
-        .dcp-card-cta { color: #ffcf6e; }
-        .dcp-card-soon { color: rgba(241,226,198,0.7); font-weight: 600; }
-        .dcp-more { margin-top: 12px; font-size: 0.76rem; color: rgba(241,226,198,0.62); }
-        .dcp-why { margin-top: 28px; padding: 18px; border-radius: 16px; background: rgba(51,37,26,0.6); border: 1px solid rgba(255,207,110,0.18); }
-        .dcp-why-h { font-size: 1rem; font-weight: 800; color: #ffe9bf; margin-bottom: 8px; }
+        .dcp-tier-p { background: rgba(176, 192, 209,0.22); color: #cad4dd; }
+        .dcp-tier-s { background: rgba(176, 192, 209,0.12); color: rgba(176, 192, 209,0.75); }
+        .dcp-card-name { font-size: 1.02rem; font-weight: 800; margin-top: 10px; color: #e7ebf0; }
+        .dcp-card-region { font-size: 0.72rem; color: rgba(176, 192, 209,0.62); margin-top: 2px; }
+        .dcp-card-roi { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; font-size: 0.78rem; font-weight: 700; color: #d5dce4; }
+        .dcp-card-cta { color: #cad4dd; }
+        .dcp-card-soon { color: rgba(176, 192, 209,0.7); font-weight: 600; }
+        .dcp-more { margin-top: 12px; font-size: 0.76rem; color: rgba(176, 192, 209,0.62); }
+        .dcp-why { margin-top: 28px; padding: 18px; border-radius: 16px; background: rgba(51,37,26,0.6); border: 1px solid rgba(176, 192, 209,0.18); }
+        .dcp-why-h { font-size: 1rem; font-weight: 800; color: #e7ebf0; margin-bottom: 8px; }
         .dcp-why-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
-        .dcp-why-list li { position: relative; padding-left: 20px; font-size: 0.84rem; color: rgba(241,226,198,0.85); }
-        .dcp-why-list li::before { content: "✓"; position: absolute; left: 0; color: #ffcf6e; font-weight: 800; }
+        .dcp-why-list li { position: relative; padding-left: 20px; font-size: 0.84rem; color: rgba(176, 192, 209,0.85); }
+        .dcp-why-list li::before { content: "✓"; position: absolute; left: 0; color: #cad4dd; font-weight: 800; }
         .dcp-cta-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 24px; }
-        .dcp-cta { padding: 12px 22px; border-radius: 999px; font-weight: 800; text-decoration: none; background: linear-gradient(135deg, #ffd98a, #ffcf6e); color: #2a1c0c; }
-        .dcp-cta-ghost { background: transparent; color: #ffcf6e; border: 1px solid rgba(255,207,110,0.5); }
-        .dcp-disc { max-width: 720px; margin: 18px auto 0; text-align: center; font-size: 0.68rem; line-height: 1.5; color: rgba(241,226,198,0.55); }
+        .dcp-cta { padding: 12px 22px; border-radius: 999px; font-weight: 800; text-decoration: none; background: linear-gradient(135deg, #d5dce4, #cad4dd); color: #2a1c0c; }
+        .dcp-cta-ghost { background: transparent; color: #cad4dd; border: 1px solid rgba(176, 192, 209,0.5); }
+        .dcp-disc { max-width: 720px; margin: 18px auto 0; text-align: center; font-size: 0.68rem; line-height: 1.5; color: rgba(176, 192, 209,0.55); }
       `}</style>
     </div>
   );

@@ -191,7 +191,7 @@ export default function GuestsTab({ bids, hotelId }: { bids: any[]; hotelId: str
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fffbeb" }}>
+        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
           <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Guest CRM storage abhi setup nahi hua</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
             <span className="font-mono">migrations/2026-05-21-guest-profiles.sql</span> apply karni hai — tab tak tags/notes save nahi honge.
@@ -205,7 +205,7 @@ export default function GuestsTab({ bids, hotelId }: { bids: any[]; hotelId: str
             className={`text-[0.72rem] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
               sort === id ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200 hover:border-luxury-400"
             }`}
-            style={sort === id ? { background: "linear-gradient(135deg,#c9911a,#f0b429)" } : undefined}>
+            style={sort === id ? { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" } : undefined}>
             {lbl}
           </button>
         ))}
