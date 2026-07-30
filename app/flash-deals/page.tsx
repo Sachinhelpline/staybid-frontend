@@ -1102,9 +1102,12 @@ function FdStyles() {
       .fd-root {
         position: relative;
         min-height: 100vh;
-        background: radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.10), transparent 60%),
-                    radial-gradient(900px 500px at 90% 30%, rgba(217, 190, 130, 0.08), transparent 55%),
-                    linear-gradient(180deg, #FAF5EB 0%, #F5EFE0 50%, #FAF5EB 100%);
+        /* v589 — brighter matte cream (was hardcoded dull #FAF5EB, missed the
+           v588 lift) + a dusty-sage whisper low-left for the earthy accent. */
+        background: radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.09), transparent 60%),
+                    radial-gradient(900px 500px at 90% 30%, rgba(217, 190, 130, 0.07), transparent 55%),
+                    radial-gradient(1100px 700px at -5% 108%, rgba(157, 173, 143, 0.11), transparent 62%),
+                    linear-gradient(180deg, #FDFAF3 0%, #FBF7EE 50%, #FDFAF3 100%);
         color: var(--cozy-warm-dark, #1F1A0F);
         overflow-x: hidden;
       }

@@ -311,7 +311,8 @@
     --cozy-champagne: #c9a66b; /* warm gold accent — desaturated */
     --cozy-champagne-light: #d9be82; /* highlight gold */
     --cozy-rose: #d49583; /* warm rose — hearts / likes */
-    --cozy-sage: #9dad8f; /* rare success state */
+    --cozy-sage: #9dad8f; /* rare success state + v589 earthy accent */
+    --sage-soft: rgba(157, 173, 143, 0.11); /* v589 — dusty-sage ambient wash */
     --cozy-shadow: rgba(31, 26, 15, 0.08);
 
     /* ─── v90 Theme tokens — light (default) ─────────────────────
@@ -345,6 +346,7 @@
    accent stays identical so brand color is consistent across modes. */
   [data-theme='dark'] {
     --bg-page: #0f0c08;
+    --sage-soft: rgba(157, 173, 143, 0.08); /* v589 — subtler in the dark */
     --bg-card: #1a1610;
     --bg-elevated: rgba(20, 16, 10, 0.92);
     --bg-input: #211c13;
@@ -437,8 +439,14 @@
     font-family: 'Inter', system-ui, sans-serif;
     /* v90 — base body reads theme tokens. Pages with their own
      wrapper bg (reel surfaces) still override; this only matters
-     for pages that haven't explicitly set a background. */
-    background: var(--bg-page);
+     for pages that haven't explicitly set a background.
+     v589 — earthy matte atmosphere (champagne halo + dusty-sage whisper) so
+     the Stage home + any transparent-root page get the same calm two-tone. */
+    background:
+      radial-gradient(1100px 560px at 18% -6%, var(--accent-soft), transparent 60%),
+      radial-gradient(1100px 720px at -5% 106%, var(--sage-soft, rgba(157,173,143,0.10)), transparent 62%),
+      var(--bg-page);
+    background-attachment: fixed;
     color: var(--text-base);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -501,9 +509,13 @@
    the active theme's page surface. Light = cream parchment with champagne
    tints, dark = warm cocoa with champagne tints. */
 .lux-bg {
+  /* v589 — warm-cream base + a champagne halo up top + a WHISPER of dusty
+     sage low-left: an earthy, matte two-tone atmosphere (not a flat single
+     cream). Very low alpha so it reads as calm depth, never a colour wash. */
   background:
     radial-gradient(1200px 600px at 20% -10%, var(--accent-soft), transparent 60%),
     radial-gradient(900px 500px at 100% 10%, var(--accent-soft), transparent 60%),
+    radial-gradient(1100px 700px at -5% 108%, var(--sage-soft, rgba(157,173,143,0.10)), transparent 62%),
     var(--bg-page);
   color: var(--text-base);
 }
@@ -581,9 +593,11 @@
 .sb-logo-mark img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .sb-logo-mark::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(115deg, transparent 34%, rgba(255,255,255,0.50) 48%, transparent 60%);
+  /* v589 — matte: the glossy white sweep is now a very faint satin glint (was
+     0.50 → 0.14) so the mark reads as brushed metal, not high-gloss. */
+  background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.14) 50%, transparent 62%);
   transform: translateX(-135%);
-  animation: sbLogoShine 5s ease-in-out infinite;
+  animation: sbLogoShine 9s ease-in-out infinite;
 }
 @keyframes sbLogoShine {
   0%, 58% { transform: translateX(-135%); }
@@ -593,7 +607,10 @@
   display: inline-block;
   font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-weight: 700; letter-spacing: 0.005em; line-height: 1;
-  background: linear-gradient(96deg, #a9741a 0%, #e6b552 44%, #fce6ab 52%, #cf9a24 66%, #a9741a 100%);
+  /* v589 — SATIN (matte) gold: the old gradient had a bright #fce6ab specular
+     streak that read glossy/reflective. This is an even, soft matte-metallic
+     gold — richer + more premium, no harsh shine. */
+  background: linear-gradient(100deg, #b0813a 0%, #cfa758 46%, #dcb96e 55%, #bd9440 100%);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
@@ -5365,7 +5382,12 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
    padding-top:0 so no wrapper-collapse offsets. */
 .hxr-page {
   min-height: 100vh;
-  background: var(--bg-page);
+  /* v589 — earthy matte atmosphere (champagne halo + dusty-sage whisper) over
+     the brighter cream, matching .lux-bg + .fd-root. */
+  background:
+    radial-gradient(1100px 560px at 18% -8%, var(--accent-soft), transparent 60%),
+    radial-gradient(1100px 700px at -5% 108%, var(--sage-soft, rgba(157,173,143,0.10)), transparent 62%),
+    var(--bg-page);
   padding-top: 0;
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
@@ -12858,4 +12880,61 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .sbh-tf-gstep.is-now { animation: none !important; }
   .sbh-hero-arr, .sbh-tf-gstep { transition: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v589 — MATTE PREMIUM PASS (owner direction: matte finish, not reflective/
+   glossy; earthy dusty-sage accent; gold stays a RESTRAINED matte-metallic).
+   Depth now comes from soft ambient shadow + fine borders, not moving glossy
+   sheens. Reversible: this whole block + the v589 token/gradient edits.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* 1. Kill the moving reflective sheen on nav chips (was a white gloss sweep on
+      hover). Hover now = a soft matte lift only (the chip's own transform). */
+.nav3d-chip::before { display: none !important; }
+
+/* 2. Soften the Stage card sheen (the diagonal gloss streak on card media) to
+      a barely-there satin, so tiles read matte, not wet/glossy. */
+.sbh-card-sheen { opacity: 0.28 !important; mix-blend-mode: normal !important; }
+
+/* 3. Matte-satin gold on the filled CTA + active chips: trim the bright white
+      inset "gloss" highlight to a soft one so gold buttons read brushed, not
+      lacquered. Keeps the gold colour + soft depth shadow. */
+.nav3d-solidgold,
+[data-theme="dark"] .nav3d-solidgold {
+  box-shadow:
+    0 3px 12px rgba(201, 145, 26, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+.nav3d-solidgold:hover,
+[data-theme="dark"] .nav3d-solidgold:hover {
+  box-shadow:
+    0 7px 18px rgba(201, 145, 26, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+}
+
+/* 4. Matte the everyday glass chip: replace the glossy top highlight with a
+      soft, even matte surface + gentle contact shadow. */
+.nav3d-eq {
+  box-shadow:
+    0 2px 7px rgba(120, 84, 40, 0.12),
+    0 1px 2px rgba(120, 84, 40, 0.08) !important;
+}
+[data-theme="dark"] .nav3d-eq {
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.38) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-logo-mark::after { animation: none !important; opacity: 0 !important; }
+}
+
+/* v589 — the Stage home root is transparent (relies on body); give it the
+   same earthy matte atmosphere directly so the sage/champagne two-tone shows
+   on the home too (body's radials can be masked there). Unlayered → wins over
+   the desktop.css .sbh-root. */
+.sbh-root {
+  background:
+    radial-gradient(1100px 560px at 18% -6%, var(--accent-soft), transparent 60%),
+    radial-gradient(1100px 720px at -5% 106%, var(--sage-soft, rgba(157, 173, 143, 0.10)), transparent 62%),
+    var(--bg-page);
 }
