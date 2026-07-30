@@ -50,7 +50,7 @@ export function ProfileHeader({ profile, postCount, isFollowing, isOwnProfile, o
           <div
             className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-2xl font-bold text-black shrink-0"
             style={{
-              background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
+              background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
               border: "3px solid #0a0a0a",
               boxShadow: "0 4px 18px rgba(0,0,0,0.6)",
             }}
@@ -98,7 +98,7 @@ export function ProfileHeader({ profile, postCount, isFollowing, isOwnProfile, o
               style={isFollowing ? {
                 background: "rgba(255,255,255,0.10)", color: "#fff", border: "1px solid rgba(255,255,255,0.30)",
               } : {
-                background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", color: "#1a1208",
+                background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", color: "#1a1208",
                 border: "1px solid rgba(255,255,255,0.45)",
                 boxShadow: "0 4px 12px rgba(140, 160, 182,0.4)",
               }}

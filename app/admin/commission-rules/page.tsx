@@ -401,7 +401,7 @@ function Modal({ title, onClose, maxWidth, children }: { title: string; onClose:
 }
 
 const inputStyle: React.CSSProperties = { background: "#0F1117", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "10px 12px", color: "#E8EAF0", fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
-const primaryBtn: React.CSSProperties = { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
+const primaryBtn: React.CSSProperties = { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const ghostBtn: React.CSSProperties = { background: "rgba(255,255,255,0.06)", color: "#E8EAF0", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const dangerBtn: React.CSSProperties = { background: "rgba(255,71,87,0.12)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const removeBtn: React.CSSProperties = { background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "none", borderRadius: 8, padding: "0 10px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif", height: 36 };

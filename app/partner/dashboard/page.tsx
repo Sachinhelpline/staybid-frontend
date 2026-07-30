@@ -3613,7 +3613,7 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
         <div className="rounded-xl p-3.5 mb-3 flex items-center gap-3"
           style={{ background:"linear-gradient(135deg,#f7f8fa,#eff2f4)", border:"1px solid #dae1e7" }}>
           <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
-            style={{ background:"linear-gradient(135deg,#a9b9c8,#8198ae)" }}>📷</div>
+            style={{ background:"linear-gradient(160deg,#c7d3df 0%,#9fb1c4 52%,#7a92aa 100%)" }}>📷</div>
           <div className="flex-1 min-w-0">
             <p className="text-[0.82rem] font-bold text-luxury-900 leading-tight">Camera scan</p>
             <p className="text-[0.66rem] text-luxury-500 leading-tight mt-0.5">Point the camera at the guest's QR or barcode</p>
@@ -3651,7 +3651,7 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
         <div className="card-p mb-3.5 fade-up" style={{ border:"1.5px solid #c1ccd7", background:"#fdfdfd" }}>
           <div className="flex items-start gap-3 mb-3">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
-              style={{ background: "linear-gradient(135deg,#a9b9c8,#8198ae)" }}>
+              style={{ background: "linear-gradient(160deg,#c7d3df 0%,#9fb1c4 52%,#7a92aa 100%)" }}>
               {validated.code.kind === "amenity" ? "🏨" : validated.code.kind === "coupon" ? "🎟️" : "🎁"}
             </div>
             <div className="flex-1 min-w-0">

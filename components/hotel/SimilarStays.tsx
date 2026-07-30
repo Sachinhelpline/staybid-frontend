@@ -233,7 +233,7 @@ export default function SimilarStays({ hotelId, city, state, starRating, propert
         }
         .sim-card-img {
           position: relative; width: 100%; aspect-ratio: 4 / 3;
-          background: linear-gradient(135deg, #e0e6eb, #c3ced9);
+          background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
           display: flex; align-items: center; justify-content: center;
           overflow: hidden;
           /* explicit top rounding so the photo's corners always read as curved */

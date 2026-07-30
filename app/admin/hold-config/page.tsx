@@ -167,7 +167,7 @@ function ConfigCard({ config, onEdit, onChanged }: { config: Config; onEdit: () 
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {isGlobal ? (
-              <span style={{ background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, letterSpacing: 1, textTransform: "uppercase" }}>
+              <span style={{ background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, letterSpacing: 1, textTransform: "uppercase" }}>
                 Platform Defaults
               </span>
             ) : null}
@@ -415,7 +415,7 @@ const hint: React.CSSProperties = {
   color: "#8A8FA8", fontSize: 11, margin: "0 0 8px",
 };
 const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117",
+  background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117",
   border: "none", borderRadius: 10, padding: "10px 18px", fontWeight: 700, cursor: "pointer",
   fontFamily: "inherit", fontSize: 13, letterSpacing: 0.3,
 };

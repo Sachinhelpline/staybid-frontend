@@ -724,10 +724,10 @@
      never reads as a black box. */
   body.reel-with-rail .reel-queue-thumb {
     width: 92px; height: 120px; border-radius: 15px;
-    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
+    background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
   }
   body.reel-with-rail .reel-queue-thumb-fallback {
-    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
+    background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
     color: rgba(122, 88, 30, 0.6);
     font-size: 1.7rem;
   }
@@ -827,7 +827,7 @@
      placeholder read as a black box on the light canvas). */
   body.reel-with-rail .reel-np-cover { background-color: #d5dde4; }
   body.reel-with-rail .reel-np-cover-fallback {
-    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
+    background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
     color: rgba(122, 88, 30, 0.55);
   }
   /* v491 — cover is now a real <img> (onError → cream fallback, never a black
@@ -2440,7 +2440,7 @@ body main textarea.input-luxury {
   }
   .sbh-btn-primary {
     color: #1a1208;
-    background: linear-gradient(135deg, #708aa4, #899eb3 52%, #526980);
+    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     box-shadow: 0 14px 34px -12px rgba(106,133,160, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
   .sbh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 44px -12px rgba(106,133,160, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
@@ -2550,7 +2550,7 @@ body main textarea.input-luxury {
   .sbh-card-media {
     position: relative; overflow: hidden;
     border-radius: 18px;                  /* the image IS the card */
-    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
+    background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
     box-shadow:
       0 0 0 1px rgba(139, 106, 40, 0.14),
       0 3px 8px -4px rgba(31, 26, 15, 0.42),
@@ -2564,7 +2564,7 @@ body main textarea.input-luxury {
     transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .sbh-card:hover .sbh-card-media img { transform: scale(1.06); }
-  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #e0e6eb, #c3ced9); }
+  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%); }
   .sbh-card-scrim {
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.14) 0%, rgba(0, 0, 0, 0) 34%, rgba(14, 11, 8, 0.55) 100%);
@@ -2801,7 +2801,7 @@ body main textarea.input-luxury {
     background-clip: padding-box;
   }
   html::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #96a9bc, #4b6075);
+    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     background-clip: padding-box;
   }
   [data-theme="dark"] html,

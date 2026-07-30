@@ -214,7 +214,7 @@ export default function AdminHolds() {
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               border: "1px solid",
               ...(statusFilter === s
-                ? { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", borderColor: "transparent" }
+                ? { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", borderColor: "transparent" }
                 : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
             }}>
             {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -331,7 +331,7 @@ function Td({ children, align, style }: { children: React.ReactNode; align?: "ri
 }
 
 const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117",
+  background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117",
   border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: "pointer",
   fontFamily: "inherit", fontSize: 13,
 };

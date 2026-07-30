@@ -997,7 +997,7 @@ export function ProfilePhotoEditor({
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 className="px-4 py-2 rounded-full text-[0.78rem] font-bold text-black"
-                style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 📷 {preview ? "Change photo" : "Upload photo"}
               </button>
@@ -1146,7 +1146,7 @@ export function ProfilePhotoEditor({
                 onClick={addHighlight}
                 disabled={!hlLabel.trim()}
                 className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 + Add
               </button>
@@ -1305,7 +1305,7 @@ export function HighlightPicker({
             <button
               onClick={() => setCreating(true)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
-              style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
+              style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
             >
               + New highlight
             </button>
@@ -1340,7 +1340,7 @@ export function HighlightPicker({
                 onClick={create}
                 disabled={!hlLabel.trim()}
                 className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 Create
               </button>
@@ -1497,7 +1497,7 @@ export function AudioPicker({
                 onClick={() => setCategory(c.id as any)}
                 className="px-3 py-1 rounded-full text-[0.7rem] font-bold whitespace-nowrap shrink-0"
                 style={{
-                  background: active ? "linear-gradient(135deg,#d0d9e1,#a9b9c8)" : "rgba(255,255,255,0.06)",
+                  background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.06)",
                   color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                   border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                 }}
@@ -1535,7 +1535,7 @@ export function AudioPicker({
                 onClick={() => fileRef.current?.click()}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
                 style={{
-                  background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
+                  background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
                   boxShadow: "0 6px 18px rgba(140, 160, 182,0.45), inset 0 1px 0 rgba(255,255,255,0.5)",
                   border: "1px solid rgba(255,255,255,0.45)",
                 }}
@@ -1575,7 +1575,7 @@ export function AudioPicker({
                 <button
                   onClick={() => { handleStopPreview(); onPick(t); onClose(); }}
                   className="px-3 py-1.5 rounded-full text-[0.72rem] font-bold text-black"
-                  style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)", boxShadow: "0 2px 6px rgba(140, 160, 182,0.45)" }}
+                  style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)", boxShadow: "0 2px 6px rgba(140, 160, 182,0.45)" }}
                 >
                   Use
                 </button>
@@ -3397,7 +3397,7 @@ export function Composer({
                               onClick={() => updateOverlay(selectedTextOverlay.id, { styleId: s.id })}
                               className="shrink-0 px-2.5 py-1 rounded-full text-[0.66rem] font-bold transition-all"
                               style={{
-                                background: active ? "linear-gradient(135deg,#d0d9e1,#a9b9c8)" : "rgba(255,255,255,0.08)",
+                                background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.08)",
                                 color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                                 border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.16)",
                                 fontFamily: s.fontFamily,
@@ -3932,7 +3932,7 @@ export function Composer({
                         onClick={() => toggleTag(t)}
                         className="px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all"
                         style={{
-                          background: active ? "linear-gradient(135deg,#d0d9e1,#a9b9c8)" : "rgba(255,255,255,0.05)",
+                          background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.05)",
                           color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                           border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                           boxShadow: active ? "0 2px 6px rgba(140, 160, 182,0.45), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",

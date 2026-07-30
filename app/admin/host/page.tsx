@@ -273,7 +273,7 @@ export default function AdminHost() {
                 padding: "7px 15px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
                 border: "1px solid",
                 ...(tab === t.id
-                  ? { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", borderColor: "transparent" }
+                  ? { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", borderColor: "transparent" }
                   : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
               }}>
               {t.icon} {t.label}{count !== undefined ? ` · ${count}` : ""}
@@ -710,7 +710,7 @@ const trBody: React.CSSProperties = { borderTop: "1px solid rgba(255,255,255,0.0
 const pill: React.CSSProperties = { padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.05)", color: "#C9CEDB", border: "1px solid rgba(255,255,255,0.1)" };
 const miniBtn: React.CSSProperties = { padding: "4px 9px", borderRadius: 8, fontSize: 11.5, fontWeight: 700, cursor: "pointer", border: "1px solid", fontFamily: "inherit", whiteSpace: "nowrap" };
 const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117",
+  background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117",
   border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: "pointer",
   fontFamily: "inherit", fontSize: 13,
 };

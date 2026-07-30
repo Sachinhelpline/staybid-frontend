@@ -110,7 +110,7 @@ export default function AdminAnalytics() {
                 fontSize: 12, fontWeight: 600, cursor: "pointer",
                 border: "1px solid",
                 ...(days === opt.d
-                  ? { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", borderColor: "transparent" }
+                  ? { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", borderColor: "transparent" }
                   : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
               }}>
               {opt.label}

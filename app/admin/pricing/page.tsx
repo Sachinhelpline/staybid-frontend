@@ -164,7 +164,7 @@ export default function AdminPricing() {
           <button onClick={runPricingCronNow} disabled={cronBusy}
             style={{
               marginLeft: "auto",
-              background: "linear-gradient(135deg,#9fb1c2,#c6d0da)",
+              background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)",
               color: "#1a1205", border: "none",
               padding: "7px 14px", borderRadius: 8,
               fontSize: 12, fontWeight: 700, cursor: cronBusy ? "wait" : "pointer",

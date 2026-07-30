@@ -174,7 +174,7 @@ export default function AdminDashboard() {
                 style={{
                   padding: "5px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: "pointer",
                   border: "none",
-                  background: todayOnly === t.k ? "linear-gradient(135deg,#9fb1c2,#c6d0da)" : "transparent",
+                  background: todayOnly === t.k ? "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)" : "transparent",
                   color: todayOnly === t.k ? "#1a1205" : "#8A8FA8",
                   letterSpacing: "0.06em",
                 }}>

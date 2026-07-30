@@ -1545,7 +1545,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 /* Selected (check-in / check-out) */
 .lux-cal-day.is-checkin,
 .lux-cal-day.is-checkout {
-  background: linear-gradient(180deg, #6a85a0 0%, #4b6075 100%);
+  background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   border-color: #8197ae;
   color: #fff;
   box-shadow:
@@ -1597,7 +1597,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .lux-cal-btn-ghost:hover { background: rgba(176, 192, 209,0.7); color: #2b1d05; }
 .lux-cal-btn-primary {
-  background: linear-gradient(180deg, #6a85a0 0%, #4b6075 100%);
+  background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   color: #fff; font-weight: 800; font-size: 0.82rem;
   padding: 0.65rem 1.2rem; border-radius: 999px; border: none; cursor: pointer;
   box-shadow:
@@ -11166,7 +11166,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   .sbh-btn-primary {
     color: #1a1208;
-    background: linear-gradient(135deg, #708aa4, #899eb3 52%, #526980);
+    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     box-shadow: 0 10px 26px -10px rgba(106,133,160, 0.7);
   }
   .sbh-btn-ghost {
@@ -11316,7 +11316,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-card-media {
     position: relative; overflow: hidden;
     border-radius: 16px;
-    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
+    background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
     /* the tile: a hairline ring, a close contact shadow, and a soft cast */
     box-shadow:
       0 0 0 1px rgba(139, 106, 40, 0.14),
@@ -11330,7 +11330,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-card-wide .sbh-card-media { aspect-ratio: 1 / 1; }
   .sbh-card-tall .sbh-card-media { aspect-ratio: 9 / 16; }
   .sbh-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #e0e6eb, #c3ced9); }
+  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%); }
   .sbh-card-scrim {
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0) 36%, rgba(14, 11, 8, 0.58) 100%);
@@ -11904,11 +11904,11 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 .sbh-srail-thumb {
   position: absolute; top: 0; left: 3px; right: 3px;
   border-radius: 999px; cursor: grab;
-  background: linear-gradient(180deg, #96a9bc, #536b82);
+  background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 2px 6px -3px rgba(31, 26, 15, 0.7);
   transition: background 0.15s ease;
 }
-.sbh-srail:hover .sbh-srail-thumb { background: linear-gradient(180deg, #96a9bc, #4b6075); }
+.sbh-srail:hover .sbh-srail-thumb { background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); }
 .sbh-srail-thumb:active { cursor: grabbing; }
 
 @media (prefers-color-scheme: dark) {
@@ -11922,7 +11922,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 :root[data-theme="light"] .sbh-srail {
   background: rgba(31, 26, 15, 0.05); border-left-color: rgba(139, 106, 40, 0.13);
 }
-:root[data-theme="light"] .sbh-srail-thumb { background: linear-gradient(180deg, #96a9bc, #536b82); }
+:root[data-theme="light"] .sbh-srail-thumb { background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); }
 
 @media (prefers-reduced-motion: reduce) {
   .sbh-srail-thumb { transition: none !important; }

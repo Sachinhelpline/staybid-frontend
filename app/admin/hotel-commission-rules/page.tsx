@@ -268,5 +268,5 @@ const inp: React.CSSProperties = { width: "100%", background: "#07080C", color: 
 const th: React.CSSProperties = { padding: "10px 12px", fontSize: 11, color: "#8A8FA8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 12 };
 const btnGhost: React.CSSProperties = { background: "transparent", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)", padding: "5px 12px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" };
-const btnGold: React.CSSProperties = { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" };
+const btnGold: React.CSSProperties = { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" };
 const lbl: React.CSSProperties = { display: "block", color: "#8A8FA8", fontSize: 11, marginBottom: 4, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" };

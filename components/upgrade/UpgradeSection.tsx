@@ -495,5 +495,5 @@ const HOTEL_COPY = {
   ],
   cta: "Apply as a Hotel",
   kyc: "KYC: GST + property ownership proof. Reviewed within 24 hours.",
-  gradient: "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
+  gradient: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
 };

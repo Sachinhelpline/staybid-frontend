@@ -242,7 +242,7 @@ export default function AdminHostCatalog() {
             style={{
               padding: "7px 15px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: "1px solid",
               ...(section === s
-                ? { background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117", borderColor: "transparent" }
+                ? { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", borderColor: "transparent" }
                 : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
             }}>
             {s === "products" ? "🛋️ Products" : s === "categories" ? "🏷️ Categories" : s === "workers" ? "🧑‍🔧 Workers" : "🏡 Listings"} · {s === "products" ? products.length : s === "categories" ? categories.length : s === "workers" ? workers.length : listings.length}
@@ -572,7 +572,7 @@ function Flags({ row, keys }: { row: any; keys: string[] }) {
   </div>;
 }
 
-const btnPrimary: React.CSSProperties = { padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#0F1117" };
+const btnPrimary: React.CSSProperties = { padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117" };
 const btnGhost: React.CSSProperties = { padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#E8EAF0" };
 const miniBtn: React.CSSProperties = { padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.04)", color: "#C7CBD8" };
 const chip: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: "rgba(34,197,94,0.14)", color: "#7DE3A0", border: "1px solid rgba(34,197,94,0.3)" };

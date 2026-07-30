@@ -290,7 +290,7 @@ function SelfTierBanner({
           onClick={() => onClose()}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.72rem] font-bold text-black"
           style={{
-            background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
+            background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
             boxShadow: "0 3px 10px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
             border: "1px solid rgba(255,255,255,0.45)",
           }}
@@ -574,7 +574,7 @@ function CommentDrawer({
               <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[0.7rem] font-bold text-black"
                 style={{ background: `conic-gradient(from ${(i*47)%360}deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)` }}>
                 <span className="w-[26px] h-[26px] rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)" }}>
+                  style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>
                   {cm.user.slice(0, 1).toUpperCase()}
                 </span>
               </div>
@@ -629,7 +629,7 @@ function CommentDrawer({
           style={{ borderTop: `1px solid ${c.headBorder}`, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold text-black"
-            style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)" }}>You</div>
+            style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>You</div>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -1356,7 +1356,7 @@ function CreatorProfileSheet({
                           onClick={() => toggleFollow(cleanHandle)}
                           className={`px-3 py-1 rounded-full text-[0.66rem] font-bold transition-colors ${youFollow ? "text-white" : "text-black"}`}
                           style={{
-                            background: youFollow ? "rgba(255,255,255,0.10)" : "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
+                            background: youFollow ? "rgba(255,255,255,0.10)" : "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
                             border: youFollow ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.45)",
                             boxShadow: youFollow ? "none" : "0 2px 6px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
                           }}
@@ -1675,7 +1675,7 @@ function EditPostSheet({
                   <button key={t} type="button" onClick={() => toggleTag(t)}
                     className="px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all"
                     style={{
-                      background: active ? "linear-gradient(135deg,#d0d9e1,#a9b9c8)" : "rgba(255,255,255,0.05)",
+                      background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.05)",
                       color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                       border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                     }}>#{t}</button>

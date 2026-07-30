@@ -38,7 +38,7 @@ export function BookingCTABar({ fromPrice, onSave, onBookNow, onBid, saved }: Pr
         className="flex-1 py-2 px-2 rounded-xl text-[0.78rem] font-bold flex items-center justify-center gap-1"
         style={{
           color: "#1a1208",
-          background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
+          background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
           border: "1px solid rgba(255,255,255,0.45)",
           boxShadow: "0 4px 12px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
         }}

@@ -617,7 +617,7 @@ export default function AdminReportsPage() {
                   rep.fetch({}).then(({ rows, columns }) => exportRows(rep.id, rows, columns));
                   setPreview(null);
                 }
-              }} style={{ background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              }} style={{ background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                 Export full CSV
               </button>
             </div>

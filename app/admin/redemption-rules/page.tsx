@@ -125,7 +125,7 @@ export default function AdminRedemptionRulesPage() {
         <button
           onClick={() => setEditing({ ...blankRule })}
           style={{
-            background: "linear-gradient(135deg,#9fb1c2,#c6d0da)",
+            background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)",
             color: "#1a1205",
             border: "none",
             padding: "9px 16px",
@@ -177,7 +177,7 @@ export default function AdminRedemptionRulesPage() {
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map((r) => (
             <div key={r.id} className="admin-card" style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, background: "#151820", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
                 {r.icon || "🎁"}
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
@@ -306,7 +306,7 @@ export default function AdminRedemptionRulesPage() {
                 Cancel
               </button>
               <button onClick={save} disabled={busy}
-                style={{ background: "linear-gradient(135deg,#9fb1c2,#c6d0da)", color: "#1a1205", border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                style={{ background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#1a1205", border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                 {busy ? "Saving…" : "Save Rule"}
               </button>
             </div>
