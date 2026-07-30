@@ -24,13 +24,14 @@ export function ModeToggle() {
   if (pathname.startsWith("/discover") || pathname.startsWith("/partner")) return null;
 
   return (
-    // v584.1 — same uniform gold chip as the rest of the desktop bar (the
-    // nav3d-* system defined in components/Navbar.tsx, where this mounts).
+    // v585 — the same premium tonal-glass chip as the rest of the desktop
+    // bar (nav3d-* system in components/Navbar.tsx, where this mounts). Was a
+    // dull washed-gold pill the owner flagged; ✨ keeps its identity.
     <Link
       href="/discover"
       prefetch
       aria-label="Switch to Discovery reels mode"
-      className="nav3d-chip nav3d-eq nav3d-gold relative"
+      className="nav3d-chip nav3d-eq relative"
     >
       <span>✨</span>
       <span>Explore</span>
