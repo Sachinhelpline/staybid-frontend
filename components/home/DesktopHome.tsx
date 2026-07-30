@@ -30,6 +30,7 @@ import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelScoreBadge";
+import { useFollow } from "@/lib/follow-store";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -65,7 +66,7 @@ type Reel = {
   media_type?: string | null;
   caption?: string | null;
   location_name?: string | null;
-  author?: { display_name?: string | null; avatar_url?: string | null } | null;
+  author?: { username?: string | null; display_name?: string | null; avatar_url?: string | null } | null;
   display_name?: string | null;
   like_count?: number | null;
   comment_count?: number | null;
@@ -408,7 +409,17 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   useEffect(() => { setSavedR(readSavedIds().has(`video:${r.id}`)); }, [r.id]);
   const likeN = (Number(r.like_count) || 0) + (liked ? 1 : 0);
   const cmtN = Number(r.comment_count) || 0;
-  const viewN = Number(r.view_count) || 0;
+  // real follow state — the SAME store the reel player uses, keyed by handle
+  const { isFollowing, toggleFollow } = useFollow();
+  const handle = r.author?.username || who;
+  const followed = isFollowing(handle);
+  const avatar = r.author?.avatar_url || "";
+  const shareReel = useCallback((e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const url = `${window.location.origin}/discover?start=${encodeURIComponent(r.id)}`;
+    if (navigator.share) navigator.share({ title: "StayBid reel", url }).catch(() => {});
+    else navigator.clipboard?.writeText(url).catch(() => {});
+  }, [r.id]);
   useEffect(() => {
     const v = vid.current;
     if (!v) return;
@@ -453,7 +464,25 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
 
-        {/* the SAME action rail as the reel page: like · comment · share · save · more */}
+        {/* TOP strip — exactly like the reel page: DP avatar · @username · 📍 · Follow */}
+        <div className="sbh-reelx-who">
+          <span className="sbh-reelx-dp" aria-hidden>
+            {avatar ? <img src={avatar} alt="" loading="lazy" /> : <b>{(who || "?")[0]}</b>}
+          </span>
+          <span className="sbh-reelx-id">
+            <strong>@{handle}</strong>
+            {r.location_name ? <span>📍 {r.location_name}</span> : null}
+          </span>
+          <button
+            type="button"
+            className={`sbh-reelx-follow${followed ? " is-on" : ""}`}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFollow(handle); }}
+          >
+            {followed ? "Following" : "Follow"}
+          </button>
+        </div>
+
+        {/* RIGHT RAIL — same order + design as the reel page: like · comment · share · save · more */}
         <div className="sbh-reelx-rail">
           <button type="button" className={`sbh-rx-btn${liked ? " is-on" : ""}`} aria-label="Like"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked((v) => !v); }}>
@@ -462,8 +491,8 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
           <button type="button" className="sbh-rx-btn" aria-label="Comments" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
             <span className="sbh-rx-ic">💬</span><span className="sbh-rx-n">{fmtCount(cmtN)}</span>
           </button>
-          <button type="button" className="sbh-rx-btn" aria-label="Views" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
-            <span className="sbh-rx-ic">👁</span><span className="sbh-rx-n">{fmtCount(viewN)}</span>
+          <button type="button" className="sbh-rx-btn" aria-label="Share" onClick={shareReel}>
+            <span className="sbh-rx-ic">📤</span><span className="sbh-rx-n">Share</span>
           </button>
           <button type="button" className={`sbh-rx-btn${savedR ? " is-on" : ""}`} aria-label={savedR ? "Remove from wishlist" : "Add to wishlist"}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSavedR(toggleSaved("video", r.id, { hotel_name: r.hotel?.name, hotel_image: poster, thumbnail_url: poster, title: r.caption })); }}>
@@ -474,15 +503,12 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
           </button>
         </div>
 
-        {/* creator, top-left (leaves the bottom for the CTA row) */}
-        <div className="sbh-reelx-who"><strong>{who}</strong>{r.location_name ? <span>{r.location_name}</span> : null}</div>
-
-        {/* bottom: Book Now / Bid your price (real deep links) */}
+        {/* BOTTOM — one compact row, like the reel page's CTA bar: From · 🏷 Book Now · ⚡ Bid */}
         {hotelId ? (
           <div className="sbh-reelx-foot">
-            {price ? <span className="sbh-reelx-from">From <b>{inr(price)}</b><em>/n</em></span> : null}
-            <button type="button" className="sbh-reelx-book" onClick={go(`/hotels/${hotelId}`)}>🏷 Book</button>
-            <button type="button" className="sbh-reelx-bid" onClick={go(`/hotels/${hotelId}?intent=negotiate#availability-picker`)}>Bid your price</button>
+            {price ? <span className="sbh-reelx-from"><i>From</i><b>{inr(price)}</b><em>/n</em></span> : null}
+            <button type="button" className="sbh-reelx-book" onClick={go(`/hotels/${hotelId}`)}>🏷 Book Now</button>
+            <button type="button" className="sbh-reelx-bid" onClick={go(`/hotels/${hotelId}?intent=negotiate#availability-picker`)}>⚡ Bid</button>
           </div>
         ) : null}
       </div>

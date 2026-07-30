@@ -12138,44 +12138,79 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 /* flash countdown moves to bottom-right so the heart owns the top-right */
 .sbh-chip.sbh-chip-live-br { top: auto; bottom: 9px; right: 9px; }
 
-/* v578.2 — home reel cards get the reel-page experience: like · comment · view ·
-   save · more rail + Book Now / Bid your price CTAs (same actions as /discover). */
+/* v579 — home reel cards mirror the reel page EXACTLY, scaled to the tile:
+   top DP + @username + 📍 + Follow · right rail (like/comment/share/save/more)
+   anchored like the player (bottom ≈40%) · one-row CTA bar (From · Book Now · Bid). */
 .sbh-reelx { cursor: pointer; }
-/* top-anchored so a rail taller than the (small) card clips INSIDE the tile
-   via .sbh-card-media overflow:hidden — never overflowing onto the row above. */
+/* reel-page top/bottom legibility gradients (scaled) */
+.sbh-reelx .sbh-card-scrim {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0) 26%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.34) 26%, rgba(0, 0, 0, 0) 52%);
+}
+/* top strip — avatar DP · @username · 📍 location · Follow (player design) */
+.sbh-reelx-who {
+  position: absolute; z-index: 5; left: 7px; top: 7px; right: 7px;
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+}
+.sbh-reelx-dp {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; font-size: 0.6rem; font-weight: 800; color: #1a1208;
+  background: linear-gradient(135deg, #ffd76b, #f0b429); border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+.sbh-reelx-dp img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbh-reelx-dp b { line-height: 1; }
+.sbh-reelx-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; color: #fff; }
+.sbh-reelx-id strong { font-size: 0.62rem; font-weight: 700; line-height: 1.05; text-shadow: 0 1px 3px rgba(0,0,0,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbh-reelx-id span { font-size: 0.5rem; color: rgba(255,255,255,0.78); line-height: 1.05; text-shadow: 0 1px 3px rgba(0,0,0,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbh-reelx-follow {
+  flex: 0 0 auto; padding: 4px 9px; border-radius: 999px; font-size: 0.56rem; font-weight: 800; cursor: pointer;
+  color: #1a1208; background: linear-gradient(135deg, #ffd76b, #f0b429);
+  border: 1px solid rgba(255, 255, 255, 0.45); box-shadow: 0 2px 6px rgba(240, 180, 41, 0.4);
+  transition: transform 0.12s ease;
+}
+.sbh-reelx-follow.is-on { color: #fff; background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.32); box-shadow: none; }
+.sbh-reelx-follow:active { transform: scale(0.94); }
+/* right rail — anchored like the player (bottom ≈ 40%), player icon order */
 .sbh-reelx-rail {
-  position: absolute; z-index: 5; right: 5px; top: 8px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  position: absolute; z-index: 5; right: 6px; bottom: calc(38% + 8px);
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
 }
 .sbh-rx-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 0; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer;
   background: none; border: 0; padding: 0; color: #fff; -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s ease;
 }
 .sbh-rx-btn:active { transform: scale(0.88); }
-.sbh-rx-ic { font-size: 1.05rem; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.65)); }
+.sbh-rx-ic { font-size: 1.14rem; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.65)); }
 .sbh-rx-n { font-size: 0.5rem; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
 .sbh-rx-btn.is-on .sbh-rx-n { color: #ffd76b; }
+/* bottom CTA — ONE compact row, the player's BookingCTABar scaled down */
 .sbh-reelx-foot {
   position: absolute; z-index: 5; left: 6px; right: 6px; bottom: 6px;
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; align-items: stretch; gap: 4px;
 }
-.sbh-reelx-who {
-  position: absolute; z-index: 5; left: 8px; top: 8px; right: 36px;
-  display: flex; flex-direction: column; color: #fff; min-width: 0;
+.sbh-reelx-from {
+  flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; line-height: 1.05;
+  color: #fff; padding: 0 3px; text-shadow: 0 1px 5px rgba(0,0,0,0.8);
 }
-.sbh-reelx-who strong { font-size: 0.68rem; font-weight: 800; text-shadow: 0 1px 6px rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sbh-reelx-who span { font-size: 0.56rem; opacity: 0.9; text-shadow: 0 1px 6px rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sbh-reelx-from { display: flex; align-items: baseline; gap: 3px; color: #fff; font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.92; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
-.sbh-reelx-from b { font-size: 0.78rem; font-weight: 800; letter-spacing: 0; }
-.sbh-reelx-from em { font-style: normal; font-size: 0.5rem; opacity: 0.75; }
+.sbh-reelx-from i { font-style: normal; font-size: 0.42rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; }
+.sbh-reelx-from b { font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+.sbh-reelx-from em { display: none; }
 .sbh-reelx-book, .sbh-reelx-bid {
-  width: 100%; padding: 6px 6px; border-radius: 9px; font-size: 0.64rem; font-weight: 800;
+  flex: 1 1 0; min-width: 0; padding: 6px 4px; border-radius: 9px; font-size: 0.6rem; font-weight: 800;
   cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform 0.12s ease;
+  display: flex; align-items: center; justify-content: center; gap: 2px;
 }
-.sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #ffd76b, #f0b429); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 3px 10px rgba(240,180,41,0.4); }
-.sbh-reelx-bid { color: #fff; background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.32); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #ffd76b, #f0b429); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5); }
+.sbh-reelx-bid { color: #fff; background: linear-gradient(135deg, rgba(155,109,255,0.45), rgba(94,52,184,0.40)); border: 1px solid rgba(199,140,255,0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .sbh-reelx-book:active, .sbh-reelx-bid:active { transform: scale(0.96); }
+
+/* v579 — flash/property score badge: premium compact scale so it never
+   crowds the tile, and the flash countdown moves under the heart (top-right)
+   so the badge can never hide it. */
+.sbh-badge-slot { transform: scale(0.78); transform-origin: left bottom; max-width: calc(100% - 14px); }
+.sbh-chip.sbh-chip-live-br { top: 46px; bottom: auto; right: 9px; }
 
 /* v578.2 — the hover preview video is a visual layer only; it must never
    swallow clicks meant for the reel card's action rail / CTAs. (Unlayered,
