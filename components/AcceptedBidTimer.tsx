@@ -181,14 +181,14 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
   }
 
   const countdown = formatCountdown(w);
-  const ringColor = warning ? "#f97316" : "#10b981";
+  const ringColor = warning ? "#f97316" : "#52708c";
 
   return (
     <div className="mt-3 p-3 rounded-2xl border" style={{
       background: warning
         ? "linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08))"
-        : "linear-gradient(135deg,rgba(16,185,129,0.12),rgba(52,211,153,0.06))",
-      borderColor: warning ? "rgba(245,158,11,0.45)" : "rgba(16,185,129,0.4)",
+        : "linear-gradient(135deg,rgba(106,133,160,0.14),rgba(140,160,182,0.07))",
+      borderColor: warning ? "rgba(245,158,11,0.45)" : "rgba(106,133,160,0.42)",
     }}>
       <div className="flex items-center gap-3">
         {/* Mini progress ring */}
@@ -204,7 +204,7 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
             style={{ color: ringColor }}>{countdown}</div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold" style={{ color: warning ? "#b5c2d0" : "#10b981" }}>
+          <p className="text-xs font-bold" style={{ color: warning ? "#b5c2d0" : "#4f6d8a" }}>
             {warning ? "⏱ Only 5 minutes left!" : "🎉 Hotel accepted · Pay to confirm"}
           </p>
           <p className="text-[0.62rem] text-white/60 mt-0.5 leading-snug">
@@ -218,9 +218,10 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
           style={{
             background: warning
               ? "linear-gradient(135deg,#a9b9c8,#f97316)"
-              : "linear-gradient(135deg,#10b981,#34d399)",
-            color: warning ? "#1c1208" : "#022c22",
-            boxShadow: warning ? "0 6px 18px rgba(249,115,22,0.4)" : "0 6px 18px rgba(16,185,129,0.35)",
+              : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+            color: warning ? "#1c1208" : "#ffffff",
+            textShadow: warning ? "none" : "0 1px 1px rgba(20,30,44,0.35)",
+            boxShadow: warning ? "0 6px 18px rgba(249,115,22,0.4)" : "0 6px 16px -6px rgba(45,62,82,0.5), inset 0 1px 0 rgba(255,255,255,0.4)",
           }}>
           Pay Now
         </button>

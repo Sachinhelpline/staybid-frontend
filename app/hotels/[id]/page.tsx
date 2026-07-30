@@ -127,7 +127,7 @@ function bidProb(amount: number, floor: number) {
   // scheduler is purely operational; the customer only sees a Hotel-first
   // story. (Pricing chrome elsewhere on the page can still say "AI Smart
   // Pricing" since live demand-based rates are industry standard.)
-  if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981", tip: "Highest priority — the hotel will confirm right away.", responseTime: "Confirms right away" };
+  if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-[#4f6d8a]", bg: "bg-[#eef2f7]", track: "#4f6d8a", tip: "Highest priority — the hotel will confirm right away.", responseTime: "Confirms right away" };
   if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "⭐ Strong Offer",    badge: "Bonus Points Eligible", color: "text-yellow-600", bg: "bg-yellow-50",  track: "#7991a9", tip: "Very strong offer — hotel will likely respond within the hour.", responseTime: "~1 hr" };
   if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "✨ Good Standing",   badge: "Standard Points",       color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706", tip: "Good offer — hotel typically responds in 2–3 hours.", responseTime: "2–3 hrs" };
   if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",           badge: "",                      color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316", tip: "Hotel may counter with a higher price. Try raising slightly.", responseTime: "3–6 hrs" };
@@ -3926,7 +3926,7 @@ export default function HotelDetail() {
                               <div className="mb-4 rounded-2xl border border-luxury-100 bg-linear-to-br from-white to-luxury-50 p-3.5">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#6f8aa6] animate-pulse" />
                                     <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest">
                                       Live · {ua.unitsFree} of {ua.unitsTotal} rooms vacant
                                     </p>
@@ -3934,7 +3934,7 @@ export default function HotelDetail() {
                                   <span className={`text-[0.55rem] font-bold px-2 py-0.5 rounded-full ${
                                     ua.unitsFree === 0 ? "bg-red-50 text-red-600 border border-red-200" :
                                     ua.unitsFree <= 2 ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                                    "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    "bg-[#eef2f7] text-[#4f6d8a] border border-[#c9d6e3]"
                                   }`}>
                                     {ua.unitsFree === 0 ? "SOLD OUT" : ua.unitsFree <= 2 ? "Filling fast" : "Available"}
                                   </span>
@@ -3947,7 +3947,7 @@ export default function HotelDetail() {
                                         : "Vacant for your dates"}
                                       className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[0.65rem] font-bold border transition-all ${
                                         u.status === "vacant"
-                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          ? "bg-[#eef2f7] text-[#4f6d8a] border-[#c9d6e3]"
                                           : "bg-red-50 text-red-600 border-red-200 line-through opacity-80"
                                       }`}>
                                       {u.status === "vacant" ? "✓" : "✗"} #{u.unitNumber}
@@ -4957,7 +4957,7 @@ export default function HotelDetail() {
                 .neg-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
                 .neg-particles span{position:absolute;bottom:-6px;width:3px;height:3px;border-radius:50%;background:rgba(120,150,182,.55);animation:negParticle linear infinite}
                 /* Glowing rainbow slider */
-                .neg-slider2{appearance:none;-webkit-appearance:none;width:100%;height:10px;border-radius:999px;outline:none;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#a4b5c5 52%,#22c55e 80%,#10b981 100%);box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 24px -4px rgba(120,150,182,.25)}
+                .neg-slider2{appearance:none;-webkit-appearance:none;width:100%;height:10px;border-radius:999px;outline:none;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#a4b5c5 52%,#6f8aa6 80%,#42566d 100%);box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 24px -4px rgba(120,150,182,.25)}
                 .neg-slider2::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(120,150,182,.18), 0 6px 22px rgba(120,150,182,.55);transition:transform .1s}
                 .neg-slider2::-webkit-slider-thumb:hover{transform:scale(1.1)}
                 .neg-slider2::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(120,150,182,.18), 0 6px 22px rgba(120,150,182,.55)}
@@ -5176,12 +5176,13 @@ export default function HotelDetail() {
                   className="neg-cta-shimmer w-full py-4 rounded-2xl font-extrabold text-base tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
                   style={{
                     background: isInstant
-                      ? "linear-gradient(135deg,#10b981 0%,#a9b9c8 50%,#10b981 100%)"
+                      ? "linear-gradient(160deg,#d3dde7 0%,#aebdcf 50%,#8ba0b6 100%)"
                       : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
-                    color: "#ffffff",
+                    color: isInstant ? "#16222e" : "#ffffff",
+                    textShadow: isInstant ? "0 1px 0 rgba(255,255,255,0.35)" : "0 1px 1px rgba(20,30,44,0.35)",
                     boxShadow: isInstant
-                      ? "0 12px 32px rgba(16,185,129,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset"
-                      : "0 12px 32px rgba(120,150,182,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
+                      ? "0 10px 26px -8px rgba(45,62,82,0.45), inset 0 1px 0 rgba(255,255,255,0.6)"
+                      : "0 12px 32px -8px rgba(45,62,82,0.5), inset 0 1px 0 rgba(255,255,255,0.4)",
                   }}>
                   {negLoading
                     ? "⏳ Submitting your bid…"

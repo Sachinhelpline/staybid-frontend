@@ -2329,7 +2329,7 @@ body main textarea.input-luxury {
 
   .sbh-root {
     --sbh-gut: clamp(26px, 4.2vw, 76px);
-    --sbh-gold: #c9a66b;
+    --sbh-gold: #5f7c98;
     --sbh-gold-lt: #96a9bc;
     position: relative;
     width: 100%;
@@ -2366,7 +2366,7 @@ body main textarea.input-luxury {
     background:
       linear-gradient(90deg, rgba(12, 9, 6, 0.82) 0%, rgba(12, 9, 6, 0.52) 34%, rgba(12, 9, 6, 0.06) 62%, rgba(12, 9, 6, 0.30) 100%),
       linear-gradient(0deg, rgba(10, 8, 5, 0.80) 0%, rgba(10, 8, 5, 0.10) 44%, rgba(10, 8, 5, 0.30) 100%),
-      radial-gradient(circle 40vw at 14% 22%, rgba(201, 166, 107, 0.16), transparent 64%);
+      radial-gradient(circle 40vw at 14% 22%, rgba(106, 133, 160, 0.16), transparent 64%);
   }
   .sbh-hero-inner {
     position: relative; z-index: 2;
@@ -2796,7 +2796,7 @@ body main textarea.input-luxury {
   }
   html::-webkit-scrollbar-thumb {
     border-radius: 999px;
-    background: linear-gradient(180deg, #c9a66b, #536b82);
+    background: linear-gradient(180deg, #8ba0b6, #536b82);
     border: 3px solid transparent;                           /* inset the thumb */
     background-clip: padding-box;
   }

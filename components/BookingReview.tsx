@@ -429,13 +429,13 @@ export default function BookingReview(p: BookingReviewProps) {
           {/* Hold info card */}
           {(p.holdEnabled !== false && p.onHold && finalAmount > 0) && (
             <div className="br-section rounded-2xl p-4 border"
-              style={{ background: "linear-gradient(135deg,rgba(16,185,129,0.06),rgba(140, 160, 182,0.04))", borderColor: "rgba(16,185,129,0.25)" }}>
+              style={{ background: "linear-gradient(135deg,var(--accent-soft),transparent)", borderColor: "color-mix(in srgb, var(--accent) 28%, transparent)" }}>
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-lg shrink-0"
-                  style={{ animation: "brPulse 2.5s ease-in-out infinite" }}>🔒</div>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0"
+                  style={{ animation: "brPulse 2.5s ease-in-out infinite", background: "var(--accent-soft)", border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)" }}>🔒</div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-emerald-700">Not ready? Hold this rate for 24 hours</p>
-                  <p className="text-[0.7rem] text-emerald-600 mt-0.5 leading-relaxed">
+                  <p className="text-sm font-bold" style={{ color: "var(--accent)" }}>Not ready? Hold this rate for 24 hours</p>
+                  <p className="text-[0.7rem] mt-0.5 leading-relaxed" style={{ color: "var(--text-soft)" }}>
                     Pay just <span className="font-extrabold">{fmt(holdAmount)}</span> now to lock {fmt(finalAmount)} —
                     pay the balance <span className="font-extrabold">{fmt(balanceDue)}</span> within 24h
                     {p.payAtHotelEnabled ? " (or settle at the hotel desk)" : ""}.
@@ -474,9 +474,9 @@ export default function BookingReview(p: BookingReviewProps) {
               disabled={!!busy}
               className="w-full py-3 rounded-2xl font-bold text-sm tracking-wide border-2 disabled:opacity-40 transition-all active:scale-[0.99]"
               style={{
-                background: "linear-gradient(135deg,#ecfdf5,#fff)",
-                borderColor: "rgba(16,185,129,0.45)",
-                color: "#065f46",
+                background: "var(--accent-soft)",
+                borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
+                color: "var(--accent)",
               }}>
               {busy === "hold" ? "⏳ Opening Razorpay…" : `🔒 Hold for 24h · Pay just ${fmt(holdAmount)}`}
             </button>

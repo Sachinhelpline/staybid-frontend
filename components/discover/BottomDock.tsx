@@ -116,12 +116,14 @@ export function BottomDock() {
           align-items: center;
           justify-content: space-around;
           gap: 2px;
-          padding: 5px 4px calc(env(safe-area-inset-bottom, 0px) + 5px);
-          background: rgba(31, 26, 15, 0.94);
+          /* v607 — owner: shrink the dock height. Trimmed the top/bottom
+             padding (5→3) so the bar hugs the icons. */
+          padding: 3px 4px calc(env(safe-area-inset-bottom, 0px) + 3px);
+          background: rgba(19, 23, 28, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
           border-top: 1px solid rgba(176, 192, 209, 0.12);
-          box-shadow: 0 -6px 22px rgba(31, 26, 15, 0.45);
+          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
           /* The dock is exactly viewport-width (left:0;right:0). On the
              280px Galaxy Fold cover screen the 6 emoji glyphs' intrinsic
              width is the shrink floor, so the rightmost item can spill a
@@ -153,8 +155,8 @@ export function BottomDock() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 2px;
-          padding: 6px 2px;
+          gap: 1px;
+          padding: 4px 2px;
           overflow: hidden;
           /* v88 — cream-tinted instead of harsh white */
           color: rgba(176, 192, 209, 0.62);
@@ -210,7 +212,7 @@ export function BottomDock() {
            so the LAST in-page CTA (Book Now, Submit Bid, etc.) is always
            clear of the dock on mobile + tablet. Real-device feedback —
            several pages had the last CTA row half-covered. */
-        body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+        body { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
         body.is-reel-page { padding-bottom: 0; }
         /* Operator panels (admin, partner, onboard, auth) hide the dock —
            don't reserve the dock-height there. */

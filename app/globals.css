@@ -345,26 +345,31 @@
    Same cozy palette family, only lightness inverted. Champagne
    accent stays identical so brand color is consistent across modes. */
   [data-theme='dark'] {
-    --bg-page: #0f0c08;
+    /* v607 — SOFT SLATE NIGHT (owner: dark mode was too black + too high
+       contrast → eye strain). Lifted the page off near-pure-black to a dark
+       slate charcoal and softened the text off pure-white, so the whole app
+       is easier on the eyes AND matches the dusty slate-blue theme (the old
+       warm-cocoa dark clashed with the slate accent). */
+    --bg-page: #13171c;
     --sage-soft: rgba(154,172,196, 0.08); /* v589 — subtler in the dark */
-    --bg-card: #1a1610;
-    --bg-elevated: rgba(20, 16, 10, 0.92);
-    --bg-input: #211c13;
-    --bg-pill: #211c13;
-    --bg-pill-active: linear-gradient(135deg, #c9a66b, #69849f);
-    --text-base: #ecf0f3;
-    --text-soft: #c0cbd7;
+    --bg-card: #1b212a;
+    --bg-elevated: rgba(27, 33, 42, 0.92);
+    --bg-input: #212934;
+    --bg-pill: #212934;
+    --bg-pill-active: linear-gradient(135deg, #6f8aa6, #42566d);
+    --text-base: #dbe3ea;
+    --text-soft: #aab6c4;
     /* v515 — app-wide legibility (dark): raise the faintest tier's opacity so
-       muted labels don't disappear against the cocoa-night background. */
-    --text-muted: rgba(176, 192, 209, 0.76);
-    --text-inverse: #0f0c08;
-    --border-soft: rgba(176, 192, 209, 0.1);
-    --border-strong: rgba(176, 192, 209, 0.28);
+       muted labels don't disappear against the slate-night background. */
+    --text-muted: rgba(172, 187, 204, 0.72);
+    --text-inverse: #13171c;
+    --border-soft: rgba(170, 190, 214, 0.12);
+    --border-strong: rgba(170, 190, 214, 0.30);
     --accent: #9db8d2;
     --accent-soft: rgba(157, 184, 210, 0.18);
-    --link: var(--cozy-champagne-light);
-    --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
-    --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);
+    --link: #9db8d2;
+    --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.40);
+    --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.50);
   }
 
   /* v545 — REAL native dark mode via @media (prefers-color-scheme: dark).
@@ -387,23 +392,24 @@
      ⚠ Keep these values byte-identical to the [data-theme='dark'] block. */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
-      --bg-page: #0f0c08;
-      --bg-card: #1a1610;
-      --bg-elevated: rgba(20, 16, 10, 0.92);
-      --bg-input: #211c13;
-      --bg-pill: #211c13;
-      --bg-pill-active: linear-gradient(135deg, #c9a66b, #69849f);
-      --text-base: #ecf0f3;
-      --text-soft: #c0cbd7;
-      --text-muted: rgba(176, 192, 209, 0.76);
-      --text-inverse: #0f0c08;
-      --border-soft: rgba(176, 192, 209, 0.1);
-      --border-strong: rgba(176, 192, 209, 0.28);
+      /* v607 — keep byte-identical to the [data-theme='dark'] block above. */
+      --bg-page: #13171c;
+      --bg-card: #1b212a;
+      --bg-elevated: rgba(27, 33, 42, 0.92);
+      --bg-input: #212934;
+      --bg-pill: #212934;
+      --bg-pill-active: linear-gradient(135deg, #6f8aa6, #42566d);
+      --text-base: #dbe3ea;
+      --text-soft: #aab6c4;
+      --text-muted: rgba(172, 187, 204, 0.72);
+      --text-inverse: #13171c;
+      --border-soft: rgba(170, 190, 214, 0.12);
+      --border-strong: rgba(170, 190, 214, 0.30);
       --accent: #9db8d2;
       --accent-soft: rgba(157, 184, 210, 0.18);
-      --link: var(--cozy-champagne-light);
-      --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
-      --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);
+      --link: #9db8d2;
+      --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.40);
+      --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.50);
     }
   }
 
@@ -11072,7 +11078,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 @media (max-width: 1023px) {
   .sbh-root {
     --sbh-gut: 16px;
-    --sbh-gold: #c9a66b;
+    --sbh-gold: #5f7c98;
     --sbh-gold-lt: #b4c1cf;
     width: 100%;
     padding-bottom: 96px;               /* clears the bottom dock */
@@ -11103,11 +11109,13 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     position: absolute; inset: 0;
     background:
       linear-gradient(0deg, rgba(10, 8, 5, 0.94) 4%, rgba(10, 8, 5, 0.45) 44%, rgba(10, 8, 5, 0.30) 100%),
-      radial-gradient(circle 70vw at 22% 16%, rgba(201, 166, 107, 0.20), transparent 66%);
+      radial-gradient(circle 70vw at 22% 16%, rgba(106, 133, 160, 0.20), transparent 66%);
   }
   .sbh-hero-inner {
     position: relative; z-index: 2;
-    padding: 0 var(--sbh-gut) 26px;
+    /* v607 — trimmed bottom padding so the content block sits lower and the
+       dead space under the amenity chips shrinks. */
+    padding: 0 var(--sbh-gut) 18px;
     width: 100%;
     color: #eef1f4;
   }
@@ -11156,13 +11164,16 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-hero-price > em { font-style: normal; font-size: 0.78rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.78rem; width: 100%; }
   .sbh-hero-nudge b { font-size: inherit; font-weight: 700; color: var(--sbh-gold-lt); }
-  .sbh-hero-cta { display: flex; gap: 10px; }
+  .sbh-hero-cta { display: flex; gap: 9px; margin-top: 2px; }
+  /* v607 — owner: the CTAs were too tall and hid the hero photo/content
+     behind them. Trimmed padding + height + type so they sit lighter on the
+     image while staying a comfortable ≥40px thumb target. */
   .sbh-btn {
     flex: 1;
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    padding: 14px 16px; border-radius: 14px;
-    font-size: 0.92rem; font-weight: 700;
-    min-height: 48px;                  /* thumb target */
+    padding: 10px 14px; border-radius: 12px;
+    font-size: 0.84rem; font-weight: 700;
+    min-height: 40px;                  /* thumb target */
   }
   .sbh-btn-primary {
     color: #1a1208;
@@ -11175,7 +11186,9 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     border: 1px solid rgba(255, 255, 255, 0.26);
     -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   }
-  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  /* v607 — owner: shift the amenity chips down to fill the dead space that
+     sat below them at the hero's bottom edge. */
+  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
   .sbh-amen {
     font-size: 0.68rem; font-weight: 600;
     color: rgba(176, 192, 209, 0.86);
@@ -12379,7 +12392,9 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   font-size: 0.66rem; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap;
   padding: 8px 12px; min-height: 32px;
   border-radius: 999px;
-  color: var(--cozy-cocoa, #4a3820);
+  /* v607 — theme-aware slate (was fixed old-brown --cozy-cocoa → dull in dark,
+     old gold-ish in light). Now reads as a slate chip in both modes. */
+  color: var(--accent);
   background: rgba(106, 133, 160, 0.1);
   border: 1px solid rgba(106, 133, 160, 0.34);
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
@@ -12723,7 +12738,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 /* hero: short enough that the Finder fits below it on one screen */
 .sbh-hero { min-height: 0; }
 @media (max-width: 1023px) {
-  .sbh-hero { min-height: 46svh; }
+  /* v607 — owner: nudge the mobile hero slightly taller (46 → 52svh). */
+  .sbh-hero { min-height: 52svh; }
 }
 @media (min-width: 1024px) {
   .sbh-hero { height: clamp(380px, 54vh, 560px); }
@@ -12773,23 +12789,24 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-card-why {
   display: inline-flex; align-items: center;
   font-size: 0.54rem; font-weight: 700; letter-spacing: 0.01em;
-  color: var(--cozy-cocoa, #4a3820);
-  background: rgba(201, 166, 107, 0.12);
-  border: 1px solid rgba(201, 166, 107, 0.28);
+  /* v607 — slate theme (was old gold/brown). Emoji carries the meaning. */
+  color: var(--accent);
+  background: rgba(106, 133, 160, 0.12);
+  border: 1px solid rgba(106, 133, 160, 0.30);
   border-radius: 999px; padding: 1.5px 7px; white-space: nowrap;
 }
 .sbh-card-why.is-darshan {
-  color: #8a4d12;
-  background: rgba(255, 158, 68, 0.12);
-  border-color: rgba(214, 122, 30, 0.35);
+  color: #3f5369;
+  background: rgba(106, 133, 160, 0.2);
+  border-color: rgba(106, 133, 160, 0.44);
 }
 [data-theme="dark"] .sbh-card-why {
   color: rgba(176, 192, 209, 0.9);
-  background: rgba(176, 192, 209, 0.1);
-  border-color: rgba(176, 192, 209, 0.26);
+  background: rgba(157, 184, 210, 0.1);
+  border-color: rgba(157, 184, 210, 0.26);
 }
 [data-theme="dark"] .sbh-card-why.is-darshan {
-  color: #ffc793; background: rgba(255, 158, 68, 0.1); border-color: rgba(255, 158, 68, 0.3);
+  color: #bcd0e4; background: rgba(157, 184, 210, 0.16); border-color: rgba(157, 184, 210, 0.34);
 }
 @media (min-width: 1024px) {
   .sbh-card-why { font-size: 0.6rem; padding: 2px 8px; }
