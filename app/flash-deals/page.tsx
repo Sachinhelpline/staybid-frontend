@@ -2283,7 +2283,7 @@ function FdStyles() {
       .fd-drawer-cta {
         flex: 1;
         padding: clamp(11px, 3vw, 14px) clamp(14px, 4vw, 20px);
-        background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
+        background: linear-gradient(135deg, #dcba68, #c69a34 60%, #b3831e);
         color: #0a0814; font-size: clamp(0.82rem, 2.9vw, 0.92rem); font-weight: 800;
         border: none; border-radius: 13px;
         cursor: pointer;
