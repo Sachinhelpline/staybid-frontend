@@ -48,6 +48,10 @@ import { readSegment, recordFormatChoice } from "@/lib/browse/segment";
 import TripFinder from "@/components/home/TripFinder";
 // v583 — P3: drive-time labels share the Finder's distance engine.
 import { driveLabelFor } from "@/lib/browse/trip-finder";
+// v583.1 — the season PREFERENCE: every season-aware ranking reads
+// effectiveMonth() (pref ?? wall clock) so a "plan for Winter" choice in the
+// Finder re-ranks the hero, the rails and the reels in the same breath.
+import { effectiveMonth } from "@/lib/browse/season-pref";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -1121,6 +1125,17 @@ export default function DesktopHome() {
   }, [on]);
   const originCluster = useMemo(() => nearestOriginCluster(viewer), [viewer]);
 
+  // v583.1 — season preference: default = the real current month; the
+  // Finder's season picker overrides it live (sb:season-pref).
+  const [effMonth, setEffMonth] = useState<number>(() => new Date().getUTCMonth());
+  useEffect(() => {
+    if (!on) return;
+    setEffMonth(effectiveMonth());
+    const onPref = () => setEffMonth(effectiveMonth());
+    window.addEventListener("sb:season-pref", onPref);
+    return () => window.removeEventListener("sb:season-pref", onPref);
+  }, [on]);
+
   // v580 — the reel rail is ordered by the SAME affinity engine as /discover:
   // a new visitor sees in-season reels from places they can actually reach
   // first; a returning visitor's watch/save/like history (sb_disco_signals)
@@ -1131,9 +1146,9 @@ export default function DesktopHome() {
         reels,
         (r) => r.hotel?.city || r.location_name || "",
         (r) => r.hotel?.id || r.id,
-        { viewer, signals: getSignals() },
+        { viewer, signals: getSignals(), month: effMonth },
       ).slice(0, 16),
-    [reels, viewer],
+    [reels, viewer, effMonth],
   );
 
   // /api/social/feed returns the tagged hotel's identity columns but no price
@@ -1180,7 +1195,7 @@ export default function DesktopHome() {
     const shot = hotels.filter((h) => imgOf(h));
     if (!shot.length) return shot;
     const tier = (t: "primary" | "secondary") =>
-      shot.filter((h) => demandTier(h.city || "", demand.month) === t).sort(byScore);
+      shot.filter((h) => demandTier(h.city || "", effMonth) === t).sort(byScore);
     const p = tier("primary");
     const s = tier("secondary");
     const seasonal = p.length >= 3 ? p : [...p, ...s];
@@ -1199,9 +1214,9 @@ export default function DesktopHome() {
     const base = pool.length ? pool : shot.slice().sort(byScore).slice(0, 6);
     // One shared formula orders the pool (season + reach; taste via signals).
     return rankForBrowse(base, (h) => h.city, (h) => h.id, {
-      viewer, month: demand.month, signals: getSignals(),
+      viewer, month: effMonth, signals: getSignals(),
     });
-  }, [hotels, scores, demand, viewer]);
+  }, [hotels, scores, effMonth, viewer]);
 
   // rotation — auto-advance, but pauses on hover and never runs under
   // prefers-reduced-motion or when the user has taken manual control.
@@ -1268,7 +1283,7 @@ export default function DesktopHome() {
     for (const z of LAUNCH_ZONES) {
       const items = hotels.filter((h) => zoneForCity(h.city) === z.id);
       if (!items.length) continue;
-      const ranked = rankForBrowse(items, (h) => h.city, (h) => h.id, { viewer, signals: getSignals() });
+      const ranked = rankForBrowse(items, (h) => h.city, (h) => h.id, { viewer, signals: getSignals(), month: effMonth });
       // v583 — answer-first ordering: the inferred audience segment's natural
       // trip format pulls its zones up (a family sees family corridors first).
       const segFmt = tripFormat(formatForSegment(readSegment()));
@@ -1280,7 +1295,7 @@ export default function DesktopHome() {
     }
     out.sort((a, b) => b.reach - a.reach);
     return out;
-  }, [hotels, viewer]);
+  }, [hotels, viewer, effMonth]);
 
   // v580 — "🚗 Easy getaways near you": the top reachable properties for this
   // viewer in one row (the owner's fit-matrix strategy as a browse surface —

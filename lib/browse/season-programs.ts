@@ -70,3 +70,14 @@ export function programForMonth(month: number): SeasonProgram {
   const m = ((Math.trunc(month) % 12) + 12) % 12;
   return SEASON_PROGRAMS.find((p) => p.months.includes(m)) || SEASON_PROGRAMS[0];
 }
+
+/** Program by id (v583.1 — the season-preference picker). */
+export function programById(id: string | null | undefined): SeasonProgram | null {
+  return SEASON_PROGRAMS.find((p) => p.id === id) || null;
+}
+
+/** The month that best REPRESENTS a program (its middle month) — used to
+ *  re-rank every browse surface when the user picks a season preference. */
+export function representativeMonth(p: SeasonProgram): number {
+  return p.months[1] ?? p.months[0];
+}
