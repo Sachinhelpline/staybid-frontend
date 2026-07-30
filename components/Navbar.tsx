@@ -206,13 +206,19 @@ export function Navbar() {
         /* v90 — Navbar reads theme tokens. Light mode: cream-tinted
            translucent bar with cocoa text + champagne accent. Dark mode:
            warm cocoa bar with cream text. Same champagne underline. */
+        /* v586 — genuinely TRANSLUCENT in both themes (was --bg-elevated at
+           0.92/0.94 = nearly opaque). The heavy blur + saturate does the
+           premium frosted-glass work; content scrolls softly under it. */
         .nav3d-bar {
-          background: var(--bg-elevated);
-          backdrop-filter: blur(22px) saturate(180%);
-          -webkit-backdrop-filter: blur(22px) saturate(180%);
+          background: rgba(255,251,244,0.68);
+          backdrop-filter: blur(26px) saturate(185%);
+          -webkit-backdrop-filter: blur(26px) saturate(185%);
           border-bottom: 1px solid var(--border-soft);
           box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.04);
           color: var(--text-base);
+        }
+        [data-theme="dark"] .nav3d-bar {
+          background: rgba(17,13,8,0.60);
         }
         .nav3d-bar::after {
           content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
@@ -560,7 +566,11 @@ export function Navbar() {
           z-1100 makes the Navbar STAY VISIBLE above every page
           chrome including /bid's climber. */}
       <nav className="sticky top-0 z-1100 nav3d-bar relative" data-reel-route={isReelRoute ? "true" : undefined}>
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3" style={{ height: "64px" }}>
+        {/* v586 — full-width strip: the content was capped at max-w-7xl
+            (1280px) + centred, leaving dead space left of the logo and right
+            of Sign Out on wide screens. Span the whole bar with comfortable
+            side padding (capped very wide so ultrawide doesn't over-stretch). */}
+        <div className="mx-auto px-6 flex items-center justify-between gap-3" style={{ height: "64px", maxWidth: "1920px" }}>
 
           {/* Logo + Location (tight gap) */}
           <div className="flex items-center gap-2">
@@ -737,9 +747,11 @@ export function Navbar() {
                     style={{ width: 26, height: 26, background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>
-                  {/* v494 — was text-white/80 → invisible on the light bar (only
-                      "SA" showed). text-luxury-900 is theme/route-aware. */}
-                  <span className="text-luxury-900 leading-none">
+                  {/* v586 — inherit the chip's themed colour (cream in dark,
+                      cocoa in light). text-luxury-900 was a fixed DARK colour →
+                      invisible on the dark espresso chip in dark mode, so the
+                      name never showed next to Menu. */}
+                  <span className="leading-none font-semibold" style={{ color: "inherit" }}>
                     {user.name ? user.name.split(" ")[0] : "Profile"}
                   </span>
                 </Link>
