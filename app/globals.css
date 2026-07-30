@@ -12938,3 +12938,65 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
     radial-gradient(1100px 720px at -5% 106%, var(--sage-soft, rgba(157, 173, 143, 0.10)), transparent 62%),
     var(--bg-page);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v590 — COMPLETE matte-premium theme upgrade. Every remaining shiny/glossy
+   gold surface → SATIN matte gold (gold stays gold, just brushed: no moving
+   shine sweeps, no harsh white specular, softer contact shadows). The dark
+   WALNUT cards → a warmer, richer matte finish with a fine satin-gold hairline
+   + a whisper of the earthy sage edge. Reversible (this block + the v590
+   flash-deals edits). Offer badges stay gold — "one deal, one colour".
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── satin-matte gold buttons (was bright glossy gradients + shine sweeps) ── */
+.lux-btn {
+  background: linear-gradient(150deg, #c8992f 0%, #ddb658 46%, #e2bd6b 58%, #c1902d 100%) !important;
+}
+.lux-btn::after { display: none !important; }              /* kill the gold sweep */
+
+.sbh-btn-primary {
+  background: linear-gradient(150deg, #d0a446, #dcb356 52%, #bf8f2f) !important;
+  box-shadow: 0 8px 20px -12px rgba(170, 122, 38, 0.6) !important;
+}
+
+.sbh-tf-go {
+  background: linear-gradient(150deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 230, 0.28), 0 3px 8px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* offer badges (home + reel) — satin gold, keep the one-deal-one-colour rule */
+.sbh-chip-off {
+  background: linear-gradient(145deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+}
+.sbh-tk-accent {
+  background: linear-gradient(145deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+}
+
+/* ── refined matte WALNUT cards (warmer, richer, satin-gold hairline + sage) ── */
+.sbh-tf-card {
+  background:
+    radial-gradient(130% 170% at 100% 0%, rgba(224, 196, 132, 0.12), transparent 55%),
+    radial-gradient(120% 150% at 0% 112%, rgba(157, 173, 143, 0.10), transparent 60%),
+    linear-gradient(150deg, #251b12 0%, #392a1c 58%, #251b12 100%) !important;
+  border: 1px solid rgba(224, 196, 132, 0.30) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 233, 173, 0.09),
+    0 18px 36px -22px rgba(18, 12, 7, 0.9),
+    0 3px 9px -6px rgba(18, 12, 7, 0.55) !important;
+}
+.sbh-tf-card::before { opacity: 0.45 !important; }         /* soften the sheen sweep */
+
+.sbh-season-card {
+  background:
+    radial-gradient(120% 160% at 0% 0%, rgba(224, 196, 132, 0.13), transparent 52%),
+    radial-gradient(120% 150% at 100% 115%, rgba(157, 173, 143, 0.09), transparent 58%),
+    linear-gradient(135deg, #251b11 0%, #372819 58%, #251b11 100%) !important;
+  border: 1px solid rgba(217, 190, 130, 0.30) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 233, 173, 0.10),
+    0 14px 30px -18px rgba(18, 12, 7, 0.72) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sbh-tf-card::before { animation: none !important; }
+}

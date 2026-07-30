@@ -1452,36 +1452,30 @@ function FdStyles() {
          sweep. Big discounts (.fire) get a richer, deeper gold — still cozy. */
       .fd-disc-stamp {
         position: absolute; top: 12px; right: 12px; z-index: 2;
-        background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+        /* v590 — satin matte gold coin (was glossy + a moving shine sweep). */
+        background: linear-gradient(145deg, #e0c274 0%, #cca346 46%, #b98a2c 100%);
         border-radius: 15px;
         padding: 8px 12px;
         display: flex; flex-direction: column; align-items: center;
         line-height: 1;
         overflow: hidden;
         box-shadow:
-          0 10px 24px -6px rgba(170,120,25,0.5),
-          inset 0 1.5px 0 rgba(255,255,255,0.7),
-          inset 0 -3px 6px rgba(150,95,10,0.4);
+          0 9px 20px -8px rgba(150,105,20,0.45),
+          inset 0 1px 0 rgba(255,248,230,0.30);
         animation: fdStamp 2.6s ease-in-out infinite;
       }
-      /* moving gloss sweep across the coin */
-      .fd-disc-stamp::after {
-        content: ""; position: absolute; inset: 0;
-        background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.5) 50%, transparent 62%);
-        background-size: 250% 100%;
-        animation: fdCoinShine 3.6s linear infinite;
-        pointer-events: none;
-      }
+      /* v590 — matte: the moving gloss sweep is gone. */
+      .fd-disc-stamp::after { display: none; }
       @keyframes fdCoinShine {
         0%   { background-position: 230% 0; }
         100% { background-position: -230% 0; }
       }
       .fd-disc-stamp.fire {
-        background: linear-gradient(140deg, #ffdd90 0%, #eab52f 46%, #c5850f 100%);
+        /* v590 — satin, slightly deeper for the higher-discount "fire" tier. */
+        background: linear-gradient(145deg, #dcb85f 0%, #c99a33 46%, #ab7c18 100%);
         box-shadow:
-          0 11px 26px -6px rgba(150,100,15,0.55),
-          inset 0 1.5px 0 rgba(255,255,255,0.62),
-          inset 0 -3px 7px rgba(120,75,8,0.45);
+          0 10px 22px -8px rgba(130,90,12,0.5),
+          inset 0 1px 0 rgba(255,248,230,0.26);
       }
       @keyframes fdStamp {
         0%, 100% { transform: rotate(-3deg) scale(1); }
@@ -1952,28 +1946,23 @@ function FdStyles() {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         /* a11y: 12px vertical padding → ~44px tap target. */
         padding: 12px 18px;
-        background: linear-gradient(160deg, #ffe9a6 0%, #f4c748 42%, #e0a521 70%, #c88914 100%);
+        /* v590 — SATIN matte gold (was bright glossy #ffe9a6→#c88914). Even,
+           brushed metal, no harsh white specular. */
+        background: linear-gradient(150deg, #dcba68 0%, #cca346 44%, #b98a2c 100%);
         color: #2a1d05; font-size: 0.78rem; font-weight: 900;
         border: none; border-radius: 14px;
         cursor: pointer;
         box-shadow:
-          0 10px 22px -6px rgba(200,140,20,0.55),
-          0 2px 5px -1px rgba(120,80,10,0.4),
-          inset 0 1.5px 0 rgba(255,255,255,0.75),
-          inset 0 -3px 6px rgba(150,95,10,0.4);
+          0 9px 20px -8px rgba(160,110,25,0.5),
+          0 2px 5px -1px rgba(120,80,10,0.3),
+          inset 0 1px 0 rgba(255,248,230,0.28);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         letter-spacing: 0.02em;
         white-space: nowrap;
-        text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+        text-shadow: 0 1px 0 rgba(255,248,230,0.22);
       }
-      /* reflective gloss sweep */
-      .fd-cta::after {
-        content: ""; position: absolute; inset: 0;
-        background: linear-gradient(115deg, transparent 36%, rgba(255,255,255,0.55) 50%, transparent 64%);
-        background-size: 250% 100%;
-        animation: fdCtaShine 3.4s linear infinite;
-        pointer-events: none;
-      }
+      /* v590 — matte: the reflective gloss sweep is gone. */
+      .fd-cta::after { display: none; }
       @keyframes fdCtaShine { 0% { background-position: 230% 0; } 100% { background-position: -230% 0; } }
       .fd-cta-bolt { width: 14px; height: 14px; flex-shrink: 0; filter: drop-shadow(0 1px 0 rgba(255,255,255,0.4)); }
       @media (min-width: 1024px) { .fd-cta { padding: 11px 18px; font-size: 0.8rem; } }
