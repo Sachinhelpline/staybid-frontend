@@ -180,7 +180,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               // to the current theme background so there's no white flash.
               var meta=document.querySelector('meta[name="theme-color"]');
               if(!meta){meta=document.createElement('meta');meta.setAttribute('name','theme-color');document.head.appendChild(meta);}
-              meta.setAttribute('content',t==='dark'?'#0F0C08':'#f4f6f8');
+              meta.setAttribute('content',t==='dark'?'#13171C':'#f4f6f8');
 
               // Mark PWA mode so the reel pages can skip the body-lock dance
               if(window.matchMedia && (window.matchMedia('(display-mode:fullscreen)').matches || window.matchMedia('(display-mode:standalone)').matches)){
@@ -275,7 +275,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v606</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v607</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -296,7 +296,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v606-arena-greens-to-slate";
+var SB_BUILD="v607-soft-dark-hero-nav-oldgold";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
