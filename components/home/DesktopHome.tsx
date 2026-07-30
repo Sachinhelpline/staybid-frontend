@@ -38,6 +38,12 @@ import { useFollow } from "@/lib/follow-store";
 import { rankForBrowse, cityAccess, nearestOriginCluster, type ViewerPoint } from "@/lib/browse/affinity";
 import { readViewerGeo, primeViewerGeo, requestViewerGeo } from "@/lib/browse/viewer-geo";
 import { getSignals, markLiked } from "@/lib/track";
+// v581 — Decision Engine P1: the deck's 6 trip formats + 4 seasonal selling
+// programs + inferred audience segment. The Stage now answers "what kind of
+// trip?" and rewrites its seasonal campaign as the calendar turns.
+import { TRIP_FORMATS, tripFormat, formatFit, formatForSegment, type TripFormatId } from "@/lib/browse/trip-formats";
+import { programForMonth } from "@/lib/browse/season-programs";
+import { readSegment, recordFormatChoice } from "@/lib/browse/segment";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -1284,6 +1290,48 @@ export default function DesktopHome() {
     else setGeoDenied(true);
   }, [geoBusy]);
 
+  // ── DECISION ENGINE P1 (v581): seasonal program + trip-type browse ───
+  // The active seasonal selling program (deck: Winter Leisure / Summer Hills /
+  // Monsoon Value + Workation / Festive) — rewrites itself by calendar month.
+  const program = useMemo(() => programForMonth(new Date().getUTCMonth()), []);
+  const tripRef = useRef<HTMLElement>(null);
+
+  // Trip-type chip selection: last explicit choice wins, else the inferred
+  // audience segment's default (children on a bid ⇒ Family Escape, …).
+  const [tripSel, setTripSel] = useState<TripFormatId>("weekend");
+  useEffect(() => {
+    if (!on) return;
+    try {
+      const stored = localStorage.getItem("sb_trip_format");
+      if (stored && tripFormat(stored)) { setTripSel(stored as TripFormatId); return; }
+    } catch {}
+    setTripSel(formatForSegment(readSegment()));
+  }, [on]);
+  const pickTrip = useCallback((id: TripFormatId) => {
+    setTripSel(id);
+    try { localStorage.setItem("sb_trip_format", id); } catch {}
+    recordFormatChoice(id);
+  }, []);
+  const seasonCta = useCallback(() => {
+    pickTrip(program.featuredFormat);
+    tripRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [pickTrip, program.featuredFormat]);
+
+  // Properties matched to the selected format: corridor-gated (formatFit ≥
+  // 0.5 requires the right region), then ordered by format fit + reach.
+  const selFormat = tripFormat(tripSel) || TRIP_FORMATS[0];
+  const tripRail = useMemo(() => {
+    const shot = hotels.filter((h) => imgOf(h));
+    return shot
+      .map((h) => {
+        const fit = formatFit(selFormat, h.city, minPriceOf(h));
+        return { h, fit, k: fit * 2.5 + cityAccess(h.city, viewer).score };
+      })
+      .filter((x) => x.fit >= 0.5) // corridor gate — wrong-region cities never sneak in on reach alone
+      .sort((a, b) => b.k - a.k)
+      .map((x) => x.h);
+  }, [hotels, selFormat, viewer]);
+
   if (!on) return null;
 
   const fScore = featured ? scores[featured.id] : undefined;
@@ -1409,6 +1457,29 @@ export default function DesktopHome() {
 
       {/* ── RAILS ────────────────────────────────────────────────────── */}
       <div className="sbh-rails">
+        {/* v581 — SEASONAL SELLING PROGRAM (deck: "How StayBid should sell
+            it"). Month-driven: Dec–Feb Winter Leisure, Mar–May Summer Hills,
+            Jun–Aug Monsoon Value + Workation, Sep–Dec Festive. The CTA
+            activates the matching trip chip below — campaign → catalog in
+            one tap. */}
+        <section className="sbh-season" aria-label="This season on StayBid">
+          <div className="sbh-season-card">
+            <span className="sbh-season-ico" aria-hidden>{program.icon}</span>
+            <div className="sbh-season-txt">
+              <h2 className="sbh-season-title">{program.title}</h2>
+              <p className="sbh-season-tag">{program.tagline}</p>
+              <div className="sbh-season-pills">
+                {program.points.map((p) => (
+                  <span key={p} className="sbh-season-pill">{p}</span>
+                ))}
+              </div>
+            </div>
+            <button type="button" className="sbh-season-cta" onClick={seasonCta}>
+              {program.ctaLabel} <span aria-hidden>→</span>
+            </button>
+          </div>
+        </section>
+
         {deals.length ? (
           <Rail
             title="⚡ Flash Deals"
@@ -1430,6 +1501,41 @@ export default function DesktopHome() {
             {railReels.map((r) => (
               <ReelCard key={r.id} r={r} preview={wide} price={priceForHotel(r.hotel?.id)} />
             ))}
+          </Rail>
+        ) : null}
+
+        {/* v581 — "WHAT KIND OF TRIP?" — the deck's 6 trip formats as chips.
+            The traveller who doesn't know WHERE they want to go usually does
+            know WHAT KIND of trip they want — pick the trip, we match the
+            places (corridor + budget-band gated, reach-ordered). Selection
+            persists and feeds the audience-segment inference. */}
+        <section className="sbh-trip" ref={tripRef} aria-label="Plan by trip type">
+          <div className="sbh-trip-head">
+            <h2 className="sbh-rail-title">🧭 What kind of trip?</h2>
+            <p className="sbh-rail-sub">Not sure where to go? Pick the trip — we&apos;ll match the places.</p>
+          </div>
+          <div className="sbh-trip-chips" role="tablist" aria-label="Trip types">
+            {TRIP_FORMATS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                role="tab"
+                aria-selected={tripSel === f.id}
+                className={`sbh-trip-chip${tripSel === f.id ? " is-on" : ""}`}
+                onClick={() => pickTrip(f.id)}
+              >
+                <span aria-hidden>{f.emoji}</span> {f.label}
+              </button>
+            ))}
+          </div>
+        </section>
+        {tripRail.length ? (
+          <Rail
+            title={`${selFormat.emoji} ${selFormat.label} picks`}
+            sub={`${selFormat.blurb} · ${selFormat.nights}`}
+            href="/hotels"
+          >
+            {tripRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} />)}
           </Rail>
         ) : null}
 

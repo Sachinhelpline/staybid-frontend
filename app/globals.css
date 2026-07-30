@@ -12282,3 +12282,103 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
    swallow clicks meant for the reel card's action rail / CTAs. (Unlayered,
    so it beats the desktop.css layer rule.) */
 .sbh-reel-vid { pointer-events: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v581 — DECISION ENGINE P1 (both viewports, unlayered — see the v561 note)
+   ① .sbh-season-* — the month-driven seasonal selling program band (deck:
+     Winter Leisure / Summer Hills / Monsoon Value + Workation / Festive).
+   ② .sbh-trip-*  — "What kind of trip?" chips (the deck's 6 trip formats).
+   Cozy walnut + gold, the same material system as the Circle cards.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-season { padding: 0 var(--sbh-gut, 16px); margin: 14px 0 4px; }
+.sbh-season-card {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 14px;
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 160% at 0% 0%, rgba(217, 190, 130, 0.16), transparent 52%),
+    linear-gradient(135deg, #241a0f 0%, #33251a 58%, #241a0f 100%);
+  border: 1px solid rgba(217, 190, 130, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 233, 173, 0.12),
+    0 10px 26px -14px rgba(31, 26, 15, 0.65);
+  overflow: hidden;
+}
+.sbh-season-ico { font-size: 1.7rem; line-height: 1; flex: 0 0 auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
+.sbh-season-txt { flex: 1 1 auto; min-width: 0; }
+.sbh-season-title {
+  font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 700;
+  font-size: 1.06rem; line-height: 1.15; color: #ffe9ad; margin: 0;
+}
+.sbh-season-tag { font-size: 0.66rem; color: rgba(250, 245, 235, 0.72); margin: 2px 0 0; }
+.sbh-season-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.sbh-season-pill {
+  font-size: 0.56rem; font-weight: 600; letter-spacing: 0.02em;
+  color: rgba(255, 233, 173, 0.88);
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(217, 190, 130, 0.10);
+  border: 1px solid rgba(217, 190, 130, 0.22);
+  white-space: nowrap;
+}
+.sbh-season-cta {
+  flex: 0 0 auto; border: 0; cursor: pointer;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; white-space: nowrap;
+  color: #3a2606; padding: 9px 13px; border-radius: 999px;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 9px -4px rgba(0, 0, 0, 0.55);
+}
+.sbh-season-cta:active { transform: scale(0.96); }
+
+.sbh-trip { padding: 0 var(--sbh-gut, 16px); margin: 18px 0 2px; scroll-margin-top: 64px; }
+.sbh-trip-head { margin-bottom: 8px; }
+.sbh-trip-chips {
+  display: flex; gap: 7px; overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: none;
+}
+.sbh-trip-chips::-webkit-scrollbar { display: none; }
+.sbh-trip-chip {
+  flex: 0 0 auto; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.66rem; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap;
+  padding: 8px 12px; min-height: 32px;
+  border-radius: 999px;
+  color: var(--cozy-cocoa, #4a3820);
+  background: rgba(201, 166, 107, 0.10);
+  border: 1px solid rgba(201, 166, 107, 0.32);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.sbh-trip-chip:active { transform: scale(0.96); }
+.sbh-trip-chip.is-on {
+  color: #3a2606;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  border-color: rgba(214, 154, 30, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 3px 9px -5px rgba(139, 106, 40, 0.7);
+}
+
+@media (min-width: 1024px) {
+  .sbh-season { margin: 20px 0 6px; }
+  .sbh-season-card { padding: 18px 20px; gap: 18px; border-radius: 20px; }
+  .sbh-season-ico { font-size: 2.1rem; }
+  .sbh-season-title { font-size: 1.35rem; }
+  .sbh-season-tag { font-size: 0.78rem; }
+  .sbh-season-pill { font-size: 0.64rem; padding: 4px 10px; }
+  .sbh-season-cta { font-size: 0.74rem; padding: 11px 18px; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .sbh-season-cta:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 6px 16px -7px rgba(139, 106, 40, 0.8); }
+  .sbh-trip { margin: 26px 0 4px; }
+  .sbh-trip-chip { font-size: 0.74rem; padding: 9px 15px; min-height: 36px; }
+  .sbh-trip-chip:hover { background: rgba(201, 166, 107, 0.18); }
+  .sbh-trip-chip.is-on:hover { background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%); }
+}
+@media (max-width: 1023px) {
+  /* phone: CTA drops under the text so the card never squeezes the title */
+  .sbh-season-card { flex-wrap: wrap; }
+  .sbh-season-cta { margin-left: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sbh-season-cta, .sbh-trip-chip { transition: none !important; }
+  .sbh-season-cta:hover { transform: none !important; }
+}

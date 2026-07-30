@@ -52,6 +52,7 @@ import { scrollToAutoNext } from "@/lib/auto-next-scroll";
 // helpers power the Negotiate modal slider + partner counter slider so a
 // preset / drag / type-in input all land on the same indivisible billing unit.
 import { snap100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+import { recordParty } from "@/lib/browse/segment";
 // v164 — the same demand engine the hotel page / partner panel use.
 // Drives the auction "live price" reference so the bid result is
 // always BELOW StayBid's own dynamic rate (and therefore below every
@@ -783,6 +784,15 @@ export default function BidPage() {
     const snap = readBidSession();
     return snap?.form ? { ...defaults, ...snap.form } : defaults;
   });
+
+  /* v581 — PASSIVE audience-segment inference (children ⇒ family, 4+ adults
+     ⇒ group, …). A pure localStorage write for the home personalization —
+     fires only after the user actually touches the guest counters and never
+     participates in the submit flow (which stays byte-identical). */
+  useEffect(() => {
+    if (!guestsTouched) return;
+    recordParty(form.adults, form.children, form.rooms);
+  }, [guestsTouched, form.adults, form.children, form.rooms]);
 
   // v241.14 — Persist {step, success, form} on every change so the
   // customer's in-flight wizard state survives the /hotels/[id]
