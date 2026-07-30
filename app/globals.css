@@ -12382,3 +12382,258 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-season-cta, .sbh-trip-chip { transition: none !important; }
   .sbh-season-cta:hover { transform: none !important; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v582.1 — TRIP FINDER, ALIVE (.sbh-tf-*, both viewports, unlayered)
+   Owner review: the first cut was two tall FLAT cards. Now ONE compact card
+   with real depth: layered elevation + gold sheen edge, raised emoji-coin
+   pills in a single snap row, the seasonal program as a slim glass ribbon,
+   and photo-backed medal answer cards (depth on the MEDIA tile, per the
+   Stage card contract). Steps slide in. All motion module-scoped +
+   reduced-motion safe (no new .sb-* utilities — that layer is capped).
+   ═════════════════════════════════════════════════════════════════════════ */
+@keyframes sbhTfStepIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sbhTfSheen {
+  0%, 55%  { transform: translateX(-130%) skewX(-18deg); }
+  85%, 100% { transform: translateX(230%) skewX(-18deg); }
+}
+.sbh-tf { padding: 0 var(--sbh-gut, 16px); margin: 14px 0 2px; }
+.sbh-tf-card {
+  position: relative; overflow: hidden;
+  border-radius: 20px;
+  padding: 13px 13px 12px;
+  background:
+    radial-gradient(130% 170% at 100% 0%, rgba(217, 190, 130, 0.16), transparent 55%),
+    linear-gradient(150deg, #26190e 0%, #382a1c 60%, #26190e 100%);
+  border: 1px solid rgba(217, 190, 130, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 233, 173, 0.16),
+    inset 0 -14px 26px -22px rgba(0, 0, 0, 0.7),
+    0 14px 30px -18px rgba(31, 26, 15, 0.8),
+    0 3px 8px -4px rgba(31, 26, 15, 0.5);
+}
+/* slow gold sheen sweeping the top edge — the card breathes */
+.sbh-tf-card::before {
+  content: ""; position: absolute; top: 0; left: 0; height: 1.5px; width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(255, 233, 173, 0.85), transparent);
+  animation: sbhTfSheen 7s ease-in-out infinite;
+  pointer-events: none;
+}
+.sbh-tf-anim { animation: sbhTfStepIn 0.28s cubic-bezier(0.32, 1.2, 0.36, 1) both; }
+.sbh-tf-top { margin-bottom: 10px; }
+.sbh-tf-toprow { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.sbh-tf-heading { flex: 1 1 200px; min-width: 0; }
+.sbh-tf-title {
+  font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 700;
+  font-size: 1.18rem; line-height: 1.08; color: #ffe9ad; margin: 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+.sbh-tf-sub { font-size: 0.62rem; color: rgba(250, 245, 235, 0.7); margin: 3px 0 0; }
+/* ── the seasonal program, folded into a slim glass ribbon ── */
+.sbh-tf-ribbon {
+  flex: 0 1 auto; min-width: 0; max-width: 100%;
+  display: inline-flex; align-items: center; gap: 7px;
+  cursor: pointer; text-align: left;
+  padding: 6px 9px; border-radius: 12px;
+  background: linear-gradient(140deg, rgba(255, 233, 173, 0.13), rgba(214, 154, 30, 0.08));
+  border: 1px solid rgba(242, 198, 80, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 233, 173, 0.2), 0 3px 8px -5px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sbh-tf-ribbon:active { transform: scale(0.97); }
+.sbh-tf-ribbon-ico { font-size: 1.05rem; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+.sbh-tf-ribbon-txt { display: flex; flex-direction: column; min-width: 0; }
+.sbh-tf-ribbon-txt b {
+  font-family: "Cormorant Garamond", serif; font-style: italic;
+  font-size: 0.78rem; font-weight: 700; color: #ffe9ad; line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sbh-tf-ribbon-txt i {
+  font-style: normal; font-size: 0.52rem; color: rgba(250, 245, 235, 0.62);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sbh-tf-ribbon-go { font-size: 0.72rem; color: rgba(255, 233, 173, 0.8); }
+.sbh-tf-dots { display: flex; gap: 6px; margin-top: 8px; }
+.sbh-tf-dot { width: 20px; height: 3.5px; border-radius: 999px; background: rgba(217, 190, 130, 0.18); }
+.sbh-tf-dot.is-on {
+  background: linear-gradient(90deg, #f2c650, #d69a1e);
+  box-shadow: 0 0 6px rgba(242, 198, 80, 0.45);
+}
+.sbh-tf-change {
+  margin-top: 7px; cursor: pointer;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em;
+  color: rgba(255, 233, 173, 0.85);
+  background: rgba(217, 190, 130, 0.12);
+  border: 1px solid rgba(217, 190, 130, 0.26);
+  padding: 5px 10px; border-radius: 999px;
+}
+/* ── options: ONE raised-pill snap row (was a tall 2×3 grid) ── */
+.sbh-tf-opts {
+  display: flex; gap: 8px; overflow-x: auto;
+  padding: 4px 2px 8px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.sbh-tf-opts::-webkit-scrollbar { display: none; }
+.sbh-tf-opt {
+  flex: 0 0 auto; scroll-snap-align: start;
+  display: inline-flex; align-items: center; gap: 7px;
+  cursor: pointer; min-height: 44px;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em; color: #f7ecd8;
+  padding: 6px 12px 6px 6px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 249, 238, 0.09), rgba(255, 249, 238, 0.03));
+  border: 1px solid rgba(217, 190, 130, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 233, 173, 0.18),
+    0 4px 10px -6px rgba(0, 0, 0, 0.65);
+  transition: transform 0.15s cubic-bezier(0.32, 1.2, 0.36, 1), box-shadow 0.15s ease, background 0.15s ease;
+}
+.sbh-tf-opt:active { transform: scale(0.94); }
+.sbh-tf-opt.is-hint {
+  border-color: rgba(242, 198, 80, 0.75);
+  background: linear-gradient(180deg, rgba(242, 198, 80, 0.22), rgba(214, 154, 30, 0.1));
+  box-shadow: inset 0 1px 0 rgba(255, 233, 173, 0.3), 0 0 12px -2px rgba(242, 198, 80, 0.35);
+}
+/* embossed emoji coin */
+.sbh-tf-coin {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 999px; font-size: 0.98rem;
+  background: radial-gradient(120% 120% at 30% 25%, rgba(255, 233, 173, 0.28), rgba(214, 154, 30, 0.12) 70%);
+  border: 1px solid rgba(242, 198, 80, 0.35);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), inset 0 -2px 3px rgba(0, 0, 0, 0.3);
+}
+.sbh-tf-opt-lb { white-space: nowrap; }
+/* ── answers: photo-backed medal cards in a snap rail ── */
+.sbh-tf-answers {
+  display: flex; gap: 10px; overflow-x: auto;
+  padding: 2px 2px 6px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.sbh-tf-answers::-webkit-scrollbar { display: none; }
+.sbh-tf-ans {
+  flex: 0 0 74%; max-width: 270px; min-width: 0;
+  scroll-snap-align: start;
+  border-radius: 16px; overflow: hidden;
+  background: rgba(255, 249, 238, 0.05);
+  border: 1px solid rgba(217, 190, 130, 0.26);
+  box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.7);
+}
+.sbh-tf-ans-media {
+  position: relative; display: block; width: 100%; height: 108px;
+  padding: 0; border: 0; cursor: pointer;
+  background-color: #1c1208;
+  background-size: cover; background-position: center;
+}
+.sbh-tf-ans-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.22), transparent 38%, rgba(16, 10, 4, 0.82));
+}
+.sbh-tf-ans-medal {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 999px; font-size: 0.92rem;
+  background: linear-gradient(140deg, rgba(255, 233, 173, 0.95), rgba(214, 154, 30, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 7px -2px rgba(0, 0, 0, 0.6);
+}
+.sbh-tf-ans-id {
+  position: absolute; left: 9px; right: 9px; bottom: 7px; z-index: 2;
+  display: flex; flex-direction: column; text-align: left;
+}
+.sbh-tf-ans-city {
+  font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 700;
+  font-size: 1.05rem; line-height: 1.05; color: #fff3d6; text-transform: capitalize;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+.sbh-tf-ans-name {
+  font-style: normal; font-size: 0.54rem; color: rgba(250, 245, 235, 0.8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+.sbh-tf-ans-body { padding: 8px 9px 9px; }
+.sbh-tf-ans-why { display: flex; flex-wrap: wrap; gap: 4px; }
+.sbh-tf-why {
+  font-size: 0.5rem; font-weight: 650; letter-spacing: 0.02em;
+  color: rgba(255, 233, 173, 0.9);
+  padding: 2.5px 7px; border-radius: 999px;
+  background: rgba(217, 190, 130, 0.1);
+  border: 1px solid rgba(217, 190, 130, 0.24);
+  white-space: nowrap;
+}
+.sbh-tf-ans-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  margin-top: 8px;
+}
+.sbh-tf-ans-price { font-size: 0.7rem; font-weight: 800; color: #fff3d6; white-space: nowrap; }
+.sbh-tf-ans-price i { font-style: normal; font-weight: 600; font-size: 0.52rem; color: rgba(250, 245, 235, 0.6); }
+.sbh-tf-ans-ctas { display: flex; gap: 5px; flex: 0 0 auto; }
+.sbh-tf-go, .sbh-tf-bid {
+  cursor: pointer; white-space: nowrap;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.56rem; font-weight: 750; letter-spacing: 0.04em;
+  padding: 6px 9px; border-radius: 999px; min-height: 26px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sbh-tf-go {
+  border: 0; color: #3a2606;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 3px 8px -4px rgba(0, 0, 0, 0.55);
+}
+.sbh-tf-bid {
+  color: #ffe9ad; background: rgba(242, 198, 80, 0.06);
+  border: 1px solid rgba(242, 198, 80, 0.55);
+}
+.sbh-tf-go:active, .sbh-tf-bid:active, .sbh-tf-change:active { transform: scale(0.95); }
+.sbh-tf-empty { font-size: 0.68rem; color: rgba(250, 245, 235, 0.7); margin: 2px 0 0; }
+
+@media (min-width: 1024px) {
+  .sbh-tf { margin: 20px 0 4px; }
+  .sbh-tf-card { padding: 18px 20px 16px; border-radius: 22px; }
+  .sbh-tf-title { font-size: 1.5rem; }
+  .sbh-tf-sub { font-size: 0.74rem; }
+  .sbh-tf-ribbon { padding: 7px 12px; }
+  .sbh-tf-ribbon-txt b { font-size: 0.9rem; }
+  .sbh-tf-ribbon-txt i { font-size: 0.6rem; }
+  .sbh-tf-ribbon:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,233,173,0.25), 0 6px 14px -7px rgba(0,0,0,0.7); }
+  .sbh-tf-opt { font-size: 0.74rem; min-height: 48px; padding: 6px 15px 6px 7px; }
+  .sbh-tf-opt:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(180deg, rgba(255, 249, 238, 0.14), rgba(255, 249, 238, 0.05));
+    box-shadow: inset 0 1px 0 rgba(255, 233, 173, 0.22), 0 8px 16px -8px rgba(0, 0, 0, 0.7);
+  }
+  .sbh-tf-coin { width: 34px; height: 34px; font-size: 1.05rem; }
+  .sbh-tf-answers { overflow: visible; }
+  .sbh-tf-ans { flex: 1 1 0; max-width: none; transition: transform 0.18s cubic-bezier(0.32, 1.2, 0.36, 1), box-shadow 0.18s ease; }
+  .sbh-tf-ans:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.75); }
+  .sbh-tf-ans-media { height: 128px; }
+  .sbh-tf-ans-city { font-size: 1.2rem; }
+  .sbh-tf-ans-name { font-size: 0.62rem; }
+  .sbh-tf-why { font-size: 0.58rem; }
+  .sbh-tf-ans-price { font-size: 0.78rem; }
+  .sbh-tf-go, .sbh-tf-bid { font-size: 0.62rem; padding: 7px 12px; }
+  .sbh-tf-go:hover { transform: translateY(-1px); }
+  .sbh-tf-bid:hover { background: rgba(242, 198, 80, 0.14); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sbh-tf-card::before { animation: none !important; display: none; }
+  .sbh-tf-anim { animation: none !important; }
+  .sbh-tf-opt, .sbh-tf-go, .sbh-tf-bid, .sbh-tf-change, .sbh-tf-ribbon, .sbh-tf-ans { transition: none !important; }
+  .sbh-tf-opt:hover, .sbh-tf-ans:hover, .sbh-tf-go:hover, .sbh-tf-ribbon:hover { transform: none !important; }
+}
+
+/* v582.2 — owner: the dead space above the Finder (ticker → card) and below
+   it (card → Flash Deals) must be ~zero. Scoped to the Finder only — the
+   rhythm BETWEEN the other rails is untouched. Unlayered, so it beats the
+   layered desktop.css clamp() spacings on both viewports. */
+.sbh-rails { margin-top: 6px; }
+.sbh-tf { margin: 0 0 -16px; } /* rails gap 26px − 16 ⇒ ~10px to Flash Deals (phone) */
+@media (min-width: 1024px) {
+  .sbh-rails { margin-top: 8px; }
+  /* rails gap is clamp(30px,4vh,50px) on desktop — cancel all but ~12px */
+  .sbh-tf { margin: 0 0 calc(12px - clamp(30px, 4vh, 50px)); }
+}

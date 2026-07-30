@@ -42,8 +42,10 @@ import { getSignals, markLiked } from "@/lib/track";
 // programs + inferred audience segment. The Stage now answers "what kind of
 // trip?" and rewrites its seasonal campaign as the calendar turns.
 import { TRIP_FORMATS, tripFormat, formatFit, formatForSegment, type TripFormatId } from "@/lib/browse/trip-formats";
-import { programForMonth } from "@/lib/browse/season-programs";
 import { readSegment, recordFormatChoice } from "@/lib/browse/segment";
+// v582 — Decision Engine P2: the 3-tap Trip Finder for the traveller who
+// cannot name a destination (engine: lib/browse/trip-finder.ts).
+import TripFinder from "@/components/home/TripFinder";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -1290,32 +1292,32 @@ export default function DesktopHome() {
     else setGeoDenied(true);
   }, [geoBusy]);
 
-  // ── DECISION ENGINE P1 (v581): seasonal program + trip-type browse ───
-  // The active seasonal selling program (deck: Winter Leisure / Summer Hills /
-  // Monsoon Value + Workation / Festive) — rewrites itself by calendar month.
-  const program = useMemo(() => programForMonth(new Date().getUTCMonth()), []);
+  // ── DECISION ENGINE P1 (v581): trip-type browse chips ────────────────
   const tripRef = useRef<HTMLElement>(null);
 
   // Trip-type chip selection: last explicit choice wins, else the inferred
   // audience segment's default (children on a bid ⇒ Family Escape, …).
+  // v582.1 — also follows the Trip Finder live (sb:trip-format event), so
+  // picking a trip in the Finder flips this rail in the same breath.
   const [tripSel, setTripSel] = useState<TripFormatId>("weekend");
   useEffect(() => {
     if (!on) return;
-    try {
-      const stored = localStorage.getItem("sb_trip_format");
-      if (stored && tripFormat(stored)) { setTripSel(stored as TripFormatId); return; }
-    } catch {}
-    setTripSel(formatForSegment(readSegment()));
+    const sync = () => {
+      try {
+        const stored = localStorage.getItem("sb_trip_format");
+        if (stored && tripFormat(stored)) { setTripSel(stored as TripFormatId); return; }
+      } catch {}
+      setTripSel(formatForSegment(readSegment()));
+    };
+    sync();
+    window.addEventListener("sb:trip-format", sync);
+    return () => window.removeEventListener("sb:trip-format", sync);
   }, [on]);
   const pickTrip = useCallback((id: TripFormatId) => {
     setTripSel(id);
     try { localStorage.setItem("sb_trip_format", id); } catch {}
     recordFormatChoice(id);
   }, []);
-  const seasonCta = useCallback(() => {
-    pickTrip(program.featuredFormat);
-    tripRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [pickTrip, program.featuredFormat]);
 
   // Properties matched to the selected format: corridor-gated (formatFit ≥
   // 0.5 requires the right region), then ordered by format fit + reach.
@@ -1457,29 +1459,25 @@ export default function DesktopHome() {
 
       {/* ── RAILS ────────────────────────────────────────────────────── */}
       <div className="sbh-rails">
-        {/* v581 — SEASONAL SELLING PROGRAM (deck: "How StayBid should sell
-            it"). Month-driven: Dec–Feb Winter Leisure, Mar–May Summer Hills,
-            Jun–Aug Monsoon Value + Workation, Sep–Dec Festive. The CTA
-            activates the matching trip chip below — campaign → catalog in
-            one tap. */}
-        <section className="sbh-season" aria-label="This season on StayBid">
-          <div className="sbh-season-card">
-            <span className="sbh-season-ico" aria-hidden>{program.icon}</span>
-            <div className="sbh-season-txt">
-              <h2 className="sbh-season-title">{program.title}</h2>
-              <p className="sbh-season-tag">{program.tagline}</p>
-              <div className="sbh-season-pills">
-                {program.points.map((p) => (
-                  <span key={p} className="sbh-season-pill">{p}</span>
-                ))}
-              </div>
-            </div>
-            <button type="button" className="sbh-season-cta" onClick={seasonCta}>
-              {program.ctaLabel} <span aria-hidden>→</span>
-            </button>
-          </div>
-        </section>
+        {/* v582 — TRIP FINDER: the first thing under the hero, because the
+            most common visitor state is "I don't know where to go". Three
+            taps → three destinations with reasons. Every number is real
+            (min nightly rate × typical nights). */}
+        <TripFinder
+          viewer={viewer}
+          hotels={hotels.map((h) => ({
+            id: h.id,
+            name: h.name,
+            city: h.city,
+            minPrice: minPriceOf(h),
+            overall: scores[h.id]?.overall ?? null,
+            image: imgOf(h) || null,
+          }))}
+        />
 
+        {/* v582.1 — the seasonal selling program now lives INSIDE the Trip
+            Finder as a slim ribbon (owner: the standalone band + finder were
+            two tall flat cards eating the first screen). */}
         {deals.length ? (
           <Rail
             title="⚡ Flash Deals"

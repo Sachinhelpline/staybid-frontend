@@ -159,8 +159,12 @@ export interface CityAccess {
 
 export function cityAccess(city: string | null | undefined, viewer?: ViewerPoint | null): CityAccess {
   const pt = cityPoint(city);
-  const v = viewer && Number.isFinite(viewer.lat) && Number.isFinite(viewer.lng) ? viewer : null;
-  if (!pt || !v) return { score: 0.5, km: null, fit: null, cluster: null }; // neutral — never reorders on missing data
+  // v582 fix — no viewer point falls back to DEFAULT_ORIGIN (Delhi Core),
+  // matching browseScore(). Previously a null viewer returned the neutral
+  // score here, so direct callers (reach rail, trip rail, Trip Finder)
+  // silently lost the Delhi-default ordering + drive-time labels.
+  const v = viewer && Number.isFinite(viewer.lat) && Number.isFinite(viewer.lng) ? viewer : DEFAULT_ORIGIN;
+  if (!pt) return { score: 0.5, km: null, fit: null, cluster: null }; // unknown city stays neutral
   const km = haversineMeters(v.lat, v.lng, pt.lat, pt.lng) / 1000;
   const dScore = distanceDecay(km);
   const cluster = nearestOriginCluster(v);
