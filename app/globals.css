@@ -22,15 +22,15 @@
   --color-luxury-900: #0e0b07;
   --color-luxury-950: #070503;
 
-  --color-gold-100: #fef8e8;
-  --color-gold-200: #fcecbe;
+  --color-gold-100: #eff4f9;
+  --color-gold-200: #d9e2ec;
   --color-gold-300: #d2dae2;
   --color-gold-400: #a9b9c8;
   --color-gold-500: #8197ae;
   --color-gold-600: #607b96;
-  --color-gold-700: #7d5410;
-  --color-gold-800: #523808;
-  --color-gold-900: #2e1f04;
+  --color-gold-700: #3f5468;
+  --color-gold-800: #2c3c4c;
+  --color-gold-900: #1a2532;
 
   --color-navy-700: #0f0c1a;
   --color-navy-800: #090614;
@@ -334,8 +334,8 @@
     --text-inverse: var(--cozy-warm-dark);
     --border-soft: var(--cozy-taupe);
     --border-strong: rgba(110, 84, 48, 0.3);
-    --accent: var(--cozy-champagne);
-    --accent-soft: rgba(201, 166, 107, 0.14);
+    --accent: #4f6d8a;
+    --accent-soft: rgba(79, 109, 138, 0.14);
     --link: var(--cozy-cocoa);
     --shadow-soft: 0 2px 10px rgba(31, 26, 15, 0.08);
     --shadow-card: 0 6px 22px rgba(31, 26, 15, 0.1);
@@ -360,8 +360,8 @@
     --text-inverse: #0f0c08;
     --border-soft: rgba(217, 190, 130, 0.1);
     --border-strong: rgba(217, 190, 130, 0.28);
-    --accent: var(--cozy-champagne);
-    --accent-soft: rgba(201, 166, 107, 0.18);
+    --accent: #9db8d2;
+    --accent-soft: rgba(157, 184, 210, 0.18);
     --link: var(--cozy-champagne-light);
     --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
     --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);
@@ -399,8 +399,8 @@
       --text-inverse: #0f0c08;
       --border-soft: rgba(217, 190, 130, 0.1);
       --border-strong: rgba(217, 190, 130, 0.28);
-      --accent: var(--cozy-champagne);
-      --accent-soft: rgba(201, 166, 107, 0.18);
+      --accent: #9db8d2;
+      --accent-soft: rgba(157, 184, 210, 0.18);
       --link: var(--cozy-champagne-light);
       --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
       --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);

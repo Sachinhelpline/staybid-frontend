@@ -4936,7 +4936,7 @@ export default function HotelDetail() {
               onClick={e => e.stopPropagation()}
               style={{
                 background:"linear-gradient(180deg,#07060d 0%,#0d0a18 50%,#07060d 100%)",
-                boxShadow:"0 30px 80px -10px rgba(240,180,41,0.18), 0 0 0 1px rgba(240,180,41,0.12)",
+                boxShadow:"0 30px 80px -10px rgba(120,150,182,0.24), 0 0 0 1px rgba(120,150,182,0.16)",
                 maxHeight:"92vh",
               }}>
 
@@ -4950,15 +4950,15 @@ export default function HotelDetail() {
                 @keyframes negSparkRise{ 0%{transform:scaleY(.15);opacity:.3} 100%{transform:scaleY(1);opacity:1} }
                 @keyframes negSweep    { 0%{transform:translateX(-120%)} 100%{transform:translateX(220%)} }
                 @keyframes negRingPulse{ 0%,100%{filter:drop-shadow(0 0 4px var(--ring))} 50%{filter:drop-shadow(0 0 14px var(--ring))} }
-                @keyframes negThumbGlow{ 0%,100%{box-shadow:0 0 0 0 var(--sc-glow,rgba(240,180,41,.6))} 50%{box-shadow:0 0 0 10px transparent} }
-                .neg-gold-text{color:#3a5069;-webkit-text-fill-color:#3a5069;}
+                @keyframes negThumbGlow{ 0%,100%{box-shadow:0 0 0 0 var(--sc-glow,rgba(120,150,182,.6))} 50%{box-shadow:0 0 0 10px transparent} }
+                .neg-gold-text{color:#bcd0e4;-webkit-text-fill-color:#bcd0e4;}
                 .neg-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-                .neg-particles span{position:absolute;bottom:-6px;width:3px;height:3px;border-radius:50%;background:rgba(240,180,41,.55);animation:negParticle linear infinite}
+                .neg-particles span{position:absolute;bottom:-6px;width:3px;height:3px;border-radius:50%;background:rgba(120,150,182,.55);animation:negParticle linear infinite}
                 /* Glowing rainbow slider */
-                .neg-slider2{appearance:none;-webkit-appearance:none;width:100%;height:10px;border-radius:999px;outline:none;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#eab308 52%,#22c55e 80%,#10b981 100%);box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 24px -4px rgba(240,180,41,.25)}
-                .neg-slider2::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(240,180,41,.18), 0 6px 22px rgba(240,180,41,.55);transition:transform .1s}
+                .neg-slider2{appearance:none;-webkit-appearance:none;width:100%;height:10px;border-radius:999px;outline:none;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#eab308 52%,#22c55e 80%,#10b981 100%);box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 24px -4px rgba(120,150,182,.25)}
+                .neg-slider2::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(120,150,182,.18), 0 6px 22px rgba(120,150,182,.55);transition:transform .1s}
                 .neg-slider2::-webkit-slider-thumb:hover{transform:scale(1.1)}
-                .neg-slider2::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(240,180,41,.18), 0 6px 22px rgba(240,180,41,.55)}
+                .neg-slider2::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(120,150,182,.18), 0 6px 22px rgba(120,150,182,.55)}
                 .neg-chip{position:relative;overflow:hidden;transition:transform .15s ease, box-shadow .2s ease}
                 .neg-chip::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.4) 50%,transparent 65%);transform:translateX(-120%)}
                 .neg-chip.active::after{animation:negSweep 2.4s ease-in-out infinite}
@@ -4972,7 +4972,7 @@ export default function HotelDetail() {
 
               {/* HEADER — dark gold with live pulse */}
               <div className="relative px-6 py-4 flex items-center justify-between"
-                style={{ background:"linear-gradient(135deg,#0c0a14 0%,#1a1424 50%,#0c0a14 100%)", borderBottom:"1px solid rgba(240,180,41,0.18)" }}>
+                style={{ background:"linear-gradient(135deg,#0c0a14 0%,#1a1424 50%,#0c0a14 100%)", borderBottom:"1px solid rgba(120,150,182,0.24)" }}>
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.55rem] font-bold tracking-[0.18em] uppercase"
                     style={{ background:"rgba(239,68,68,0.15)", color:"#fca5a5", border:"1px solid rgba(239,68,68,0.35)" }}>
@@ -5000,16 +5000,16 @@ export default function HotelDetail() {
 
                 {/* Dates + Guests */}
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="rounded-2xl p-3 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(240,180,41,0.12)" }}>
+                  <div className="rounded-2xl p-3 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(120,150,182,0.16)" }}>
                     <p className="text-[0.55rem] font-bold uppercase tracking-[0.2em] mb-1" style={{ color:"rgba(255,255,255,0.4)" }}>Check-in</p>
                     <p className="font-semibold text-white text-sm">{new Date(negIn).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</p>
                   </div>
-                  <div className="rounded-2xl p-3 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(240,180,41,0.12)" }}>
+                  <div className="rounded-2xl p-3 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(120,150,182,0.16)" }}>
                     <p className="text-[0.55rem] font-bold uppercase tracking-[0.2em] mb-1" style={{ color:"rgba(255,255,255,0.4)" }}>Check-out</p>
                     <p className="font-semibold text-white text-sm">{new Date(negOut).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between rounded-2xl px-3 py-2 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(240,180,41,0.12)" }}>
+                <div className="flex items-center justify-between rounded-2xl px-3 py-2 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(120,150,182,0.16)" }}>
                   <p className="text-xs text-white/70">
                     👥 {globalAdults} adult{globalAdults>1?"s":""}
                     {globalChildren>0?` · ${globalChildren} child`:""}
@@ -5031,8 +5031,8 @@ export default function HotelDetail() {
                 {/* MAIN ARENA: Probability ring + Slot-machine number */}
                 <div className="relative rounded-3xl p-5 overflow-hidden"
                   style={{
-                    background:"radial-gradient(circle at 50% 0%, rgba(240,180,41,0.12), transparent 60%), linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))",
-                    border:"1px solid rgba(240,180,41,0.22)",
+                    background:"radial-gradient(circle at 50% 0%, rgba(120,150,182,0.16), transparent 60%), linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))",
+                    border:"1px solid rgba(120,150,182,0.30)",
                     boxShadow:`0 0 40px -10px ${prob.track}55`,
                   }}>
 
@@ -5097,7 +5097,7 @@ export default function HotelDetail() {
 
                   {/* AI Ticker (rotates 4 tips) */}
                   <div data-tour="neg-info" className="mt-4 px-3 py-2 rounded-xl border"
-                    style={{ background:"rgba(0,0,0,0.35)", borderColor:"rgba(240,180,41,0.18)" }}>
+                    style={{ background:"rgba(0,0,0,0.35)", borderColor:"rgba(120,150,182,0.24)" }}>
                     <div className="flex items-center gap-2">
                       <span className="text-[0.55rem] font-bold tracking-widest uppercase neg-gold-text shrink-0">🤖 Live AI</span>
                       <div className="neg-ticker-wrap flex-1 text-[0.7rem] text-white/80">
@@ -5128,8 +5128,8 @@ export default function HotelDetail() {
                         className={`neg-chip rounded-2xl p-2.5 text-center ${active?"active":""}`}
                         style={{
                           background: active ? "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" : "rgba(255,255,255,0.04)",
-                          border: `1px solid ${active?"rgba(240,180,41,.6)":"rgba(255,255,255,.08)"}`,
-                          boxShadow: active ? "0 6px 22px rgba(240,180,41,.35)" : "none",
+                          border: `1px solid ${active?"rgba(120,150,182,.6)":"rgba(255,255,255,.08)"}`,
+                          boxShadow: active ? "0 6px 22px rgba(120,150,182,.35)" : "none",
                         }}>
                         <p className={`text-[0.62rem] font-bold leading-tight ${active?"text-luxury-900":"text-white/90"}`}>{s.label}</p>
                         <p className={`text-sm font-extrabold mt-0.5 ${active?"text-luxury-900":"text-white"}`}>₹{amt.toLocaleString()}</p>
@@ -5149,7 +5149,7 @@ export default function HotelDetail() {
 
                 {/* StayPoints teaser */}
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-2.5"
-                  style={{ background:"linear-gradient(90deg,rgba(240,180,41,0.12),rgba(240,180,41,0.04))", border:"1px solid rgba(240,180,41,0.22)" }}>
+                  style={{ background:"linear-gradient(90deg,rgba(120,150,182,0.16),rgba(120,150,182,0.04))", border:"1px solid rgba(120,150,182,0.30)" }}>
                   <span className="text-lg">💎</span>
                   <div className="flex-1">
                     <p className="text-[0.7rem] font-semibold text-gold-300">Win this bid → earn <span className="font-extrabold">{stayPoints}</span> StayPoints</p>
@@ -5179,7 +5179,7 @@ export default function HotelDetail() {
                     color: "#0c0a14",
                     boxShadow: isInstant
                       ? "0 12px 32px rgba(16,185,129,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset"
-                      : "0 12px 32px rgba(240,180,41,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
+                      : "0 12px 32px rgba(120,150,182,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
                   }}>
                   {negLoading
                     ? "⏳ Submitting your bid…"
