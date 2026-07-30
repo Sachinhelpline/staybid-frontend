@@ -10,6 +10,12 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { track, getSignals, initTracking, markViewed } from "@/lib/track";
+// v580 — the shared browsing-affinity engine (season + reach-from-viewer +
+// taste). Cold-start users (no engagement signals yet) get season-first +
+// easily-reachable-first ordering instead of a pure random shuffle; warm
+// users keep the server-ranked order (which already reads their signals).
+import { rankForBrowse, isColdStart } from "@/lib/browse/affinity";
+import { readViewerGeo, primeViewerGeo } from "@/lib/browse/viewer-geo";
 import { useReelFullscreen } from "@/lib/useReelFullscreen";
 // v139 — auto-fires the per-page spotlight tour on first visit. Hook
 // handles all skip logic internally (disabled / seen / welcome-active).
@@ -235,18 +241,35 @@ export default function DiscoverPage() {
     let publicItems: Item[] = [];
     if (sd && Array.isArray(sd?.posts)) publicItems = sd.posts.map(socialPostToItem).map(hydratePrice);
 
+    // v580 — shared affinity ordering (lib/browse/affinity.ts).
+    //   COLD user (no engagement signals yet): the whole merged feed is ranked
+    //   season-first + easiest-to-reach-first (viewer geo when granted, Delhi
+    //   Core default), replacing the old pure-random rotation — a brand-new
+    //   visitor's first reels are in-season stays they can actually drive to.
+    //   WARM user: /api/discover/feed items already carry server-side
+    //   personalization from these same signals, so they keep their order;
+    //   only the public social posts (previously a raw shuffle) are ranked by
+    //   taste + season + reach. Shuffle still runs FIRST both ways, so ties
+    //   inside an affinity band stay fresh per session.
+    const itemCity = (it: Item) =>
+      (it.hotel as any)?._userPostTaggedHotel?.city || it.hotel?.city || "";
+    const itemId = (it: Item) => it.hotel?.id || "";
+    const affinityOpts = () => ({ viewer: readViewerGeo(), signals: getSignals() });
+
     // Primary: ranked discover feed
     try {
       if (d) {
         if (Array.isArray(d?.items) && d.items.length > 0) {
-          // Public posts shuffled per session (was always newest-first → same
-          // reel showed on every refresh). Ranked discover items keep their
-          // server-side scoring + jitter from /api/discover/feed.
-          // Then we interleave + pick a random START so the first card the
-          // user sees is different on every open — Instagram-style "fresh
-          // feed".
+          const cold = isColdStart(getSignals());
           const shuffledPublic = shuffle(publicItems);
-          const merged = [...shuffledPublic, ...d.items];
+          if (cold) {
+            const ranked = rankForBrowse([...shuffledPublic, ...d.items], itemCity, itemId, affinityOpts());
+            setItems(ranked);
+            setLoading(false);
+            return;
+          }
+          const rankedPublic = rankForBrowse(shuffledPublic, itemCity, itemId, affinityOpts());
+          const merged = [...rankedPublic, ...d.items];
           const startAt = merged.length > 5 ? Math.floor(Math.random() * Math.min(merged.length - 3, 8)) : 0;
           const rotated = startAt > 0 ? [...merged.slice(startAt), ...merged.slice(0, startAt)] : merged;
           setItems(rotated);
@@ -291,12 +314,14 @@ export default function DiscoverPage() {
           score: 0, reasons: [],
         };
       });
-      // Same per-session rotation as the primary path.
-      const shuffledPublic = shuffle(publicItems);
-      const shuffledMapped = shuffle(mapped);
-      const merged = [...shuffledPublic, ...shuffledMapped];
-      const startAt = merged.length > 5 ? Math.floor(Math.random() * Math.min(merged.length - 3, 8)) : 0;
-      const rotated = startAt > 0 ? [...merged.slice(startAt), ...merged.slice(0, startAt)] : merged;
+      // Same affinity treatment as the primary path — this fallback list has
+      // no server ranking at all, so BOTH cold and warm users get the shared
+      // season + reach + taste ordering here (shuffle first keeps ties fresh).
+      const merged = [...shuffle(publicItems), ...shuffle(mapped)];
+      const ranked = rankForBrowse(merged, itemCity, itemId, affinityOpts());
+      const cold = isColdStart(getSignals());
+      const startAt = !cold && ranked.length > 5 ? Math.floor(Math.random() * Math.min(ranked.length - 3, 8)) : 0;
+      const rotated = startAt > 0 ? [...ranked.slice(startAt), ...ranked.slice(0, startAt)] : ranked;
       setItems(rotated);
     } catch {
       setItems(shuffle(publicItems));  // even if hotels fetch failed, show public posts
@@ -339,16 +364,36 @@ export default function DiscoverPage() {
   // .ig-card, .ig-cta-book, .ig-cta-bid) — zero DOM changes needed.
   usePageTour("home", "home");
 
-  // Record hotel_view + markViewed when active card changes
+  // Record hotel_view + markViewed when active card changes.
+  // v580 — ALSO close out the PREVIOUS card's watch: how long the user stayed
+  // on a reel is the strongest preference signal we have. A ≥8s watch flows
+  // through track("dwell") → markLiked (lib/track.ts), which personalises the
+  // next feed both client-side (affinity taste) and server-side (the ranker).
+  const prevReel = useRef<{ id: string; city?: string } | null>(null);
   useEffect(() => {
     const it = items[hotelIdx];
     if (!it) return;
+    const dwellMs = Date.now() - dwellStart.current;
+    if (prevReel.current && prevReel.current.id !== it.hotel?.id && dwellMs > 400) {
+      track("dwell", { hotelId: prevReel.current.id, meta: { dwellMs, city: prevReel.current.city } });
+    }
     dwellStart.current = Date.now();
     const h = it.hotel;
+    prevReel.current = { id: h.id, city: h.city };
     const minPrice = h.minPrice ?? (h.rooms?.length ? Math.min(...h.rooms.map((r: any) => r.floorPrice || 99999)) : undefined);
     track("hotel_view", { hotelId: h.id, meta: { city: h.city, minPrice, amenities: h.amenities || [] } });
     markViewed(h.id, h.city, minPrice, h.amenities || []);
   }, [hotelIdx, items]);
+
+  // v580 — silent viewer-geo prime (cached point or an already-granted
+  // permission only — never prompts). A fresh fix re-pulls the feed so the
+  // reach-aware ordering applies without a reload.
+  useEffect(() => {
+    idle(() => { primeViewerGeo(); });
+    const onGeo = () => loadFeed();
+    window.addEventListener("sb:geo-change", onGeo);
+    return () => window.removeEventListener("sb:geo-change", onGeo);
+  }, [loadFeed]);
 
   // Prefetch the Compare destination (/hotels) so the cross-mode swap
   // feels instant — Link prefetches happen on hover/touch by default but

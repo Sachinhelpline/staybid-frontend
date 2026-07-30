@@ -31,6 +31,13 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelScoreBadge";
 import { useFollow } from "@/lib/follow-store";
+// v580 — the shared browsing-affinity engine: season (existing wheel) +
+// reach-from-viewer (owner's Origin-to-Destination Fit Matrix + distance) +
+// taste (the existing sb_disco_signals store). One engine orders the hero,
+// the "easy to reach" rail, the reel rail and the /discover feed identically.
+import { rankForBrowse, cityAccess, nearestOriginCluster, type ViewerPoint } from "@/lib/browse/affinity";
+import { readViewerGeo, primeViewerGeo, requestViewerGeo } from "@/lib/browse/viewer-geo";
+import { getSignals, markLiked } from "@/lib/track";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -71,7 +78,7 @@ type Reel = {
   like_count?: number | null;
   comment_count?: number | null;
   view_count?: number | null;
-  hotel?: { id?: string; name?: string; minPrice?: number | null; avgRating?: number | null; totalReviews?: number | null } | null;
+  hotel?: { id?: string; name?: string; city?: string; minPrice?: number | null; avgRating?: number | null; totalReviews?: number | null } | null;
 };
 type CircleProp = {
   id: string;
@@ -204,7 +211,14 @@ function SaveHeart({ kind, id, snap }: { kind: "hotel" | "video"; id: string; sn
       className={`sbh-heart${saved ? " is-on" : ""}`}
       aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
       aria-pressed={saved}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSaved(toggleSaved(kind, id, snap)); }}
+      onClick={(e) => {
+        e.preventDefault(); e.stopPropagation();
+        const now = toggleSaved(kind, id, snap);
+        setSaved(now);
+        // v580 — a save is a strong preference signal; it personalises the
+        // reel feed + rails via the same store the /discover ranker reads.
+        if (now) markLiked(id);
+      }}
     >
       <svg viewBox="0 0 24 24" width="18" height="18" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12.001 4.529c2.349-2.532 6.151-2.595 8.6-.184 2.45 2.41 2.605 6.37.4 8.978l-7.21 7.21a1.06 1.06 0 0 1-1.5 0l-7.21-7.21c-2.205-2.609-2.05-6.568.4-8.978 2.45-2.41 6.252-2.348 8.601.184Z" />
@@ -225,6 +239,7 @@ function Rail({
   children,
   variant = "wide",
   action,
+  actionBtn,
 }: {
   title: string;
   sub?: string;
@@ -234,6 +249,9 @@ function Rail({
   /** optional primary action beside "See all" — used by the Reels rail to
       carry the create entry that lived on the reel home before the Stage. */
   action?: { href: string; label: string };
+  /** v580 — same slot as `action` but a BUTTON (the reach rail's 📍 chip
+      must be a real user gesture, not a navigation). */
+  actionBtn?: { label: string; onClick: () => void; disabled?: boolean };
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
@@ -270,6 +288,11 @@ function Rail({
           {sub ? <p className="sbh-rail-sub">{sub}</p> : null}
         </div>
         <div className="sbh-rail-acts">
+          {actionBtn ? (
+            <button type="button" className="sbh-rail-act" onClick={actionBtn.onClick} disabled={actionBtn.disabled}>
+              {actionBtn.label}
+            </button>
+          ) : null}
           {action ? (
             <Link href={action.href} className="sbh-rail-act">{action.label}</Link>
           ) : null}
@@ -527,7 +550,15 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
             like (count) · comment · share · save · more */}
         <div className="sbh-reelx-rail">
           <button type="button" className={`sbh-rx-btn${liked ? " is-on" : ""}`} aria-label="Like"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked((v) => !v); }}>
+            onClick={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              setLiked((v) => {
+                // v580 — mirror the player: a like feeds the preference store
+                // (same id the player's ig_like would record for this reel).
+                if (!v) markLiked(hotelId || r.id);
+                return !v;
+              });
+            }}>
             <span className="sbh-rx-ic"><RailGlyph name="heart" filled={liked} /></span>
             <span className="sbh-rx-n">{fmtCount(likeN)}</span>
           </button>
@@ -539,7 +570,12 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
             <span className="sbh-rx-n">Share</span>
           </button>
           <button type="button" className={`sbh-rx-btn${savedR ? " is-saved" : ""}`} aria-label={savedR ? "Remove from wishlist" : "Add to wishlist"}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSavedR(toggleSaved("video", r.id, { hotel_name: r.hotel?.name, hotel_image: poster, thumbnail_url: poster, title: r.caption })); }}>
+            onClick={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              const now = toggleSaved("video", r.id, { hotel_name: r.hotel?.name, hotel_image: poster, thumbnail_url: poster, title: r.caption });
+              setSavedR(now);
+              if (now) markLiked(hotelId || r.id); // v580 — save = preference signal
+            }}>
             <span className="sbh-rx-ic"><RailGlyph name="bookmark" filled={savedR} /></span>
             <span className="sbh-rx-n">{savedR ? "Saved" : "Save"}</span>
           </button>
@@ -1054,7 +1090,36 @@ export default function DesktopHome() {
     return () => { dead = true; };
   }, [on]);
 
-  const railReels = useMemo(() => reels.slice(0, 16), [reels]);
+  // ── VIEWER GEO (v580) ────────────────────────────────────────────────
+  // Where is this person browsing from? Cached point (or an already-granted
+  // permission, refreshed silently) — the browser PROMPT only ever fires from
+  // the 📍 chip on the reach rail (explicit gesture). No point → the engine
+  // assumes the Delhi-Core origin, the strategy docs' core market.
+  const [viewer, setViewer] = useState<ViewerPoint | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    setViewer(readViewerGeo());
+    primeViewerGeo().then((pt) => { if (pt) setViewer(pt); });
+    const onGeo = () => setViewer(readViewerGeo());
+    window.addEventListener("sb:geo-change", onGeo);
+    return () => window.removeEventListener("sb:geo-change", onGeo);
+  }, [on]);
+  const originCluster = useMemo(() => nearestOriginCluster(viewer), [viewer]);
+
+  // v580 — the reel rail is ordered by the SAME affinity engine as /discover:
+  // a new visitor sees in-season reels from places they can actually reach
+  // first; a returning visitor's watch/save/like history (sb_disco_signals)
+  // pulls their taste forward. Feed order within a band is preserved.
+  const railReels = useMemo(
+    () =>
+      rankForBrowse(
+        reels,
+        (r) => r.hotel?.city || r.location_name || "",
+        (r) => r.hotel?.id || r.id,
+        { viewer, signals: getSignals() },
+      ).slice(0, 16),
+    [reels, viewer],
+  );
 
   // /api/social/feed returns the tagged hotel's identity columns but no price
   // (HOTEL_CARD_COLS carries no rooms). The rails' own hotels cover part of it,
@@ -1087,29 +1152,41 @@ export default function DesktopHome() {
     [priceByHotel],
   );
 
-  // ── SEASON-DRIVEN HERO POOL ──────────────────────────────────────────
-  // The hero is not one hard-coded property: it showcases EVERY property in
-  // the locations that are actually in season this month, read from the real
-  // 12-month demand cycle (lib/circle/demand-cycle.ts — the same wheel the
-  // Circle portfolio uses). July → Monsoon → Leh; December → Winter → Goa /
-  // Udaipur / Jaisalmer, and so on. Falls back primary → secondary → best
-  // scored, so the hero can never be empty.
+  // ── SEASON + REACH HERO POOL ─────────────────────────────────────────
+  // The hero showcases the locations that are in season this month (the real
+  // 12-month demand wheel, lib/circle/demand-cycle.ts) AND the properties the
+  // viewer can most easily reach (lib/browse/affinity.ts — fit matrix +
+  // distance from their location, Delhi-Core default). Ordered by the shared
+  // engine so an in-season stay a short drive away leads; a distant in-season
+  // icon still rotates in. Falls back to best-scored, so it can never be empty.
   const demand = useMemo(() => currentMonthDemand(), []);
   const heroPool = useMemo(() => {
     const byScore = (a: Hotel, b: Hotel) => (scores[b.id]?.overall ?? 0) - (scores[a.id]?.overall ?? 0);
     const shot = hotels.filter((h) => imgOf(h));
+    if (!shot.length) return shot;
     const tier = (t: "primary" | "secondary") =>
       shot.filter((h) => demandTier(h.city || "", demand.month) === t).sort(byScore);
-    // Primaries lead. If this month's primaries are thin (e.g. July → Leh,
-    // which has one curated property), widen to the SECONDARY performers —
-    // they are genuinely in season too, so the hero rotates without ever
-    // claiming a season a city does not have.
     const p = tier("primary");
     const s = tier("secondary");
     const seasonal = p.length >= 3 ? p : [...p, ...s];
-    if (seasonal.length) return seasonal;
-    return shot.slice().sort(byScore).slice(0, 6);
-  }, [hotels, scores, demand]);
+    // Reach candidates: the closest / best-fit properties for this viewer,
+    // even out of season — the owner's "easily accessible first" rule.
+    const reachTop = shot
+      .slice()
+      .sort((a, b) => cityAccess(b.city, viewer).score - cityAccess(a.city, viewer).score)
+      .slice(0, 6);
+    const seen = new Set<string>();
+    const pool = [...seasonal, ...reachTop].filter((h) => {
+      if (seen.has(h.id)) return false;
+      seen.add(h.id);
+      return true;
+    });
+    const base = pool.length ? pool : shot.slice().sort(byScore).slice(0, 6);
+    // One shared formula orders the pool (season + reach; taste via signals).
+    return rankForBrowse(base, (h) => h.city, (h) => h.id, {
+      viewer, month: demand.month, signals: getSignals(),
+    });
+  }, [hotels, scores, demand, viewer]);
 
   // rotation — auto-advance, but pauses on hover and never runs under
   // prefers-reduced-motion or when the user has taken manual control.
@@ -1166,15 +1243,46 @@ export default function DesktopHome() {
     return out;
   }, [deals, hotels.length, demand]);
 
-  // zone rails — reuse the launch curation grouping (same as /hotels)
+  // zone rails — reuse the launch curation grouping (same as /hotels).
+  // v580 — rails are ordered by how reachable their best city is for THIS
+  // viewer (Garhwal first for Delhi NCR, Braj first for Agra…), and the
+  // properties INSIDE each rail lead with the easiest drives. Same engine,
+  // no layout change.
   const zoneRails = useMemo(() => {
-    const out: { id: string; label: string; items: Hotel[] }[] = [];
+    const out: { id: string; label: string; items: Hotel[]; reach: number }[] = [];
     for (const z of LAUNCH_ZONES) {
       const items = hotels.filter((h) => zoneForCity(h.city) === z.id);
-      if (items.length) out.push({ id: z.id, label: z.label, items });
+      if (!items.length) continue;
+      const ranked = rankForBrowse(items, (h) => h.city, (h) => h.id, { viewer, signals: getSignals() });
+      const reach = Math.max(...items.map((h) => cityAccess(h.city, viewer).score));
+      out.push({ id: z.id, label: z.label, items: ranked, reach });
     }
+    out.sort((a, b) => b.reach - a.reach);
     return out;
-  }, [hotels]);
+  }, [hotels, viewer]);
+
+  // v580 — "🚗 Easy getaways near you": the top reachable properties for this
+  // viewer in one row (the owner's fit-matrix strategy as a browse surface —
+  // the FIRST thing under the deals/reels so choosing is effortless). When
+  // location isn't granted, ordering assumes Delhi NCR and a 📍 chip lets the
+  // user refine it — the ONLY place the permission prompt can fire.
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoDenied, setGeoDenied] = useState(false);
+  const reachRail = useMemo(() => {
+    const shot = hotels.filter((h) => imgOf(h));
+    return shot
+      .slice()
+      .sort((a, b) => cityAccess(b.city, viewer).score - cityAccess(a.city, viewer).score)
+      .slice(0, 20);
+  }, [hotels, viewer]);
+  const askGeo = useCallback(async () => {
+    if (geoBusy) return;
+    setGeoBusy(true);
+    const pt = await requestViewerGeo();
+    setGeoBusy(false);
+    if (pt) { setViewer(pt); setGeoDenied(false); }
+    else setGeoDenied(true);
+  }, [geoBusy]);
 
   if (!on) return null;
 
@@ -1242,7 +1350,7 @@ export default function DesktopHome() {
 
         {/* rotation control — the user can always take over */}
         {heroPool.length > 1 ? (
-          <div className="sbh-hero-dots" role="tablist" aria-label="Featured properties in season">
+          <div className="sbh-hero-dots" role="tablist" aria-label="Featured properties picked for you">
             {heroPool.slice(0, 8).map((h, i) => (
               <button
                 key={h.id}
@@ -1255,7 +1363,9 @@ export default function DesktopHome() {
               />
             ))}
             <span className="sbh-hero-count">
-              {heroIdx + 1}/{Math.min(8, heroPool.length)} in season
+              {/* v580 — the pool now mixes in-season with easy-reach picks,
+                  so the honest label is "picked for you", not "in season". */}
+              {heroIdx + 1}/{Math.min(8, heroPool.length)} picked for you
             </span>
           </div>
         ) : null}
@@ -1320,6 +1430,33 @@ export default function DesktopHome() {
             {railReels.map((r) => (
               <ReelCard key={r.id} r={r} preview={wide} price={priceForHotel(r.hotel?.id)} />
             ))}
+          </Rail>
+        ) : null}
+
+        {/* v580 — the owner's fit-matrix strategy as a browse surface: the
+            top properties this viewer can most easily reach, in one row, so
+            choosing is effortless. Ordering assumes Delhi NCR until the user
+            taps 📍 (the ONLY place the location prompt can fire). */}
+        {reachRail.length ? (
+          <Rail
+            title="🚗 Easy getaways near you"
+            sub={
+              geoDenied
+                ? "Location unavailable — showing Delhi NCR picks · short drives first"
+                : originCluster
+                  ? `Handpicked for ${originCluster.label} · shortest drives first`
+                  : viewer
+                    ? "Shortest drives from your location first"
+                    : "Showing Delhi NCR picks · tap 📍 to use your location"
+            }
+            href="/hotels"
+            actionBtn={
+              !viewer
+                ? { label: geoBusy ? "Locating…" : "📍 Use my location", onClick: askGeo, disabled: geoBusy }
+                : undefined
+            }
+          >
+            {reachRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} />)}
           </Rail>
         ) : null}
 
