@@ -12094,3 +12094,30 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .ig-swipe-hint, .ig-swipe-hint-chev { animation: none !important; }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════
+   v578 — home (Stage) card enrichment: rating + rank + below-market, so
+   the Flash Deal + Property cards match the /hotels cards. Written once,
+   unlayered (beats app/desktop.css), applies to BOTH viewports.
+═══════════════════════════════════════════════════════════════════ */
+.sbh-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sbh-card-loc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbh-card-rating {
+  display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; opacity: 1;
+  color: #b8860b; font-weight: 700;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif; font-variant-numeric: tabular-nums;
+}
+.sbh-card-rating em { font-style: normal; font-weight: 600; opacity: 0.6; }
+.sbh-card-below {
+  margin-top: 2px; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em;
+  color: #3f9b6a; font-family: "Space Grotesk", var(--font-sans), sans-serif;
+}
+.sbh-chip-rank {
+  font-weight: 800; margin-right: 5px; padding-right: 5px;
+  border-right: 1px solid rgba(29, 22, 8, 0.30);
+}
+/* flash card already carries OFF (top-left) + countdown (top-right); its
+   score/rank chip drops to the free bottom-left corner. */
+.sbh-chip-score-bl { top: auto !important; right: auto !important; bottom: 9px; left: 9px; }
+[data-theme="dark"] .sbh-card-rating { color: #e7c77a; }
+[data-theme="dark"] .sbh-card-below { color: #6fd79a; }
