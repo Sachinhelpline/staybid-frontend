@@ -47,6 +47,25 @@ export default function SavedPage() {
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem("sb_local_saves") : null;
       if (raw) localSaves = JSON.parse(raw) || [];
+      // v586 — heal legacy FLAT saves (pre-v586 home hearts wrote
+      // {target_type,target_id,hotel_name,hotel_image} with NO nested
+      // `target`, so SaveCard silently dropped them). Rebuild `target` from
+      // the flat fields so old wishlists render instead of reading empty.
+      localSaves = localSaves.map((s: any) => {
+        if (s && !s.target && s.target_type && s.target_id) {
+          const img = s.hotel_image || s.thumbnail_url;
+          return {
+            id: s.id || `local-${s.target_type}-${s.target_id}`,
+            target_type: s.target_type,
+            target_id: s.target_id,
+            saved_at: s.saved_at || new Date().toISOString(),
+            target: s.target_type === "video"
+              ? { id: s.target_id, title: s.title || s.hotel_name || "Reel", s3_url: s.s3_url || "", thumbnail_url: img || "", views_count: s.views_count || 0 }
+              : { id: s.target_id, name: s.hotel_name || "", city: s.city || "", star_rating: s.starRating || s.star_rating || 0, images: img ? [img] : [] },
+          };
+        }
+        return s;
+      });
     } catch {}
     if (tab !== "all") {
       localSaves = localSaves.filter((s) => s.target_type === tab);

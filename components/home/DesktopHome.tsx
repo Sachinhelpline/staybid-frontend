@@ -200,7 +200,14 @@ function readSavedIds(): Set<string> {
     return new Set((Array.isArray(arr) ? arr : []).map((s: any) => `${s.target_type}:${s.target_id}`));
   } catch { return new Set(); }
 }
-function toggleSaved(kind: "hotel" | "video", id: string, snap: Record<string, any>): boolean {
+// v586 — write the SAME rich shape the reel feed writes and /saved reads:
+// { id, target_type, target_id, saved_at, target:{…} }. The old flat shape
+// ({target_type,target_id,...snap}) had NO nested `target`, so /saved's
+// SaveCard (which gates on `s.target`) silently dropped every home save —
+// the Wishlist read empty even with hearts filled. `target` must match the
+// SaveCard field names: hotel → {id,name,city,star_rating,images[]},
+// video → {id,title,s3_url,thumbnail_url,views_count}.
+function toggleSaved(kind: "hotel" | "video", id: string, target: Record<string, any>): boolean {
   try {
     const raw = localStorage.getItem("sb_local_saves");
     const arr = raw ? JSON.parse(raw) : [];
@@ -209,14 +216,14 @@ function toggleSaved(kind: "hotel" | "video", id: string, snap: Record<string, a
     const exists = list.some((s: any) => `${s.target_type}:${s.target_id}` === key);
     const next = exists
       ? list.filter((s: any) => `${s.target_type}:${s.target_id}` !== key)
-      : [{ target_type: kind, target_id: id, ...snap }, ...list];
-    localStorage.setItem("sb_local_saves", JSON.stringify(next));
+      : [{ id: `local-${Date.now()}`, target_type: kind, target_id: id, saved_at: new Date().toISOString(), target: { id, ...target } }, ...list];
+    localStorage.setItem("sb_local_saves", JSON.stringify(next.slice(0, 200)));
     try { window.dispatchEvent(new Event("sb:saves-change")); } catch {}
     return !exists;
   } catch { return false; }
 }
 /** Wishlist heart button — top-right of any card's media. */
-function SaveHeart({ kind, id, snap }: { kind: "hotel" | "video"; id: string; snap: Record<string, any> }) {
+function SaveHeart({ kind, id, target }: { kind: "hotel" | "video"; id: string; target: Record<string, any> }) {
   const [saved, setSaved] = useState(false);
   useEffect(() => { setSaved(readSavedIds().has(`${kind}:${id}`)); }, [kind, id]);
   return (
@@ -227,7 +234,7 @@ function SaveHeart({ kind, id, snap }: { kind: "hotel" | "video"; id: string; sn
       aria-pressed={saved}
       onClick={(e) => {
         e.preventDefault(); e.stopPropagation();
-        const now = toggleSaved(kind, id, snap);
+        const now = toggleSaved(kind, id, target);
         setSaved(now);
         // v580 — a save is a strong preference signal; it personalises the
         // reel feed + rails via the same store the /discover ranker reads.
@@ -362,7 +369,7 @@ function HotelCard({ h, score, drive, why }: { h: Hotel; score?: Scorecard; driv
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
-        <SaveHeart kind="hotel" id={h.id} snap={{ hotel_name: h.name, hotel_image: img, starRating: h.starRating, avgRating: h.avgRating }} />
+        <SaveHeart kind="hotel" id={h.id} target={{ name: h.name, city: h.city, star_rating: h.starRating, images: img ? [img] : [] }} />
         {score?.overall != null ? (
           <span className="sbh-badge-slot" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
             <HotelScoreBadge hotelId={h.id} hotelName={h.name || ""} variant="compact" />
@@ -443,7 +450,7 @@ function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecar
         <div className="sbh-fd-toprow">
           {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
           {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">⏳ {left}</span> : null}
-          {hid ? <SaveHeart kind="hotel" id={hid} snap={{ hotel_name: h?.name, hotel_image: img, avgRating: h?.avgRating }} /> : null}
+          {hid ? <SaveHeart kind="hotel" id={hid} target={{ name: h?.name, city: h?.city, star_rating: h?.starRating, images: img ? [img] : [] }} /> : null}
         </div>
         {score?.overall != null ? (
           <span className="sbh-badge-slot" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
@@ -604,7 +611,7 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
           <button type="button" className={`sbh-rx-btn${savedR ? " is-saved" : ""}`} aria-label={savedR ? "Remove from wishlist" : "Add to wishlist"}
             onClick={(e) => {
               e.preventDefault(); e.stopPropagation();
-              const now = toggleSaved("video", r.id, { hotel_name: r.hotel?.name, hotel_image: poster, thumbnail_url: poster, title: r.caption });
+              const now = toggleSaved("video", r.id, { title: r.caption || r.hotel?.name || "Reel", s3_url: (r as any).media_url || "", thumbnail_url: poster, views_count: (r as any).views_count || 0 });
               setSavedR(now);
               if (now) markLiked(hotelId || r.id); // v580 — save = preference signal
             }}>
