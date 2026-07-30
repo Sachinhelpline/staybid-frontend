@@ -936,21 +936,23 @@ export function ProfilePhotoEditor({
     <div className="fixed inset-0 z-94 flex items-end sb-cmodal" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
-        className="relative w-full ig-drawer-up"
+        className="relative w-full ig-drawer-up sb-ppe"
         onClick={(e) => e.stopPropagation()}
         style={{
           height: "94vh",
-          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          /* v608 — theme-aware sheet (was always-dark purple #15101e → too dark
+             in light mode). Light = cozy cream, dark = soft slate night. */
+          background: "linear-gradient(180deg, var(--bg-card) 0%, var(--bg-page) 100%)",
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          borderTop: "1px solid rgba(255,255,255,0.12)",
-          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          borderTop: "1px solid var(--border-soft)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.4)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)",
           display: "flex", flexDirection: "column",
         }}
       >
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
         <div className="flex items-center justify-between px-5 pb-2">
-          <p className="text-white font-semibold text-[0.92rem]">✏️ Edit profile</p>
+          <p className="font-semibold text-[0.92rem]" style={{ color: "var(--text-base)" }}>✏️ Edit profile</p>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
@@ -972,14 +974,14 @@ export function ProfilePhotoEditor({
             <div
               className="w-[120px] h-[120px] rounded-full p-[3px] shrink-0"
               style={{
-                background: "conic-gradient(from 0deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)",
+                background: "conic-gradient(from 0deg, #a9b9c8, #6f8aa6, #42566d, #a9b9c8)",
               }}
             >
               <div
                 className="w-full h-full rounded-full flex items-center justify-center text-[2.4rem] font-bold overflow-hidden"
                 style={{
-                  background: "linear-gradient(135deg, #ff458d, #b964ff)",
-                  border: "2px solid #000",
+                  background: "linear-gradient(135deg, #6f8aa6, #42566d)",
+                  border: "2px solid var(--bg-card)",
                   color: "#fff",
                   textShadow: "0 2px 6px rgba(0,0,0,0.5)",
                 }}
@@ -1099,7 +1101,7 @@ export function ProfilePhotoEditor({
               {myCustomHighlights.map((h) => (
                 <span key={h.key}
                   className="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-full text-[0.74rem] font-semibold"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.92)" }}
+                  style={{ background: "var(--accent-soft)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }}
                 >
                   <span>{h.emoji}</span>
                   <span>{h.label}</span>
@@ -1107,7 +1109,7 @@ export function ProfilePhotoEditor({
                     type="button"
                     onClick={() => removeCustomHighlight(h.key)}
                     className="ml-1 w-5 h-5 rounded-full flex items-center justify-center text-[0.7rem]"
-                    style={{ background: "rgba(255,69,141,0.20)", color: "#ff8eb6" }}
+                    style={{ background: "rgba(106,133,160,0.22)", color: "var(--accent)" }}
                     aria-label={`Remove ${h.label}`}
                   >✕</button>
                 </span>
@@ -1157,11 +1159,16 @@ export function ProfilePhotoEditor({
         <div className="px-5 pt-1">
           <button
             onClick={save}
-            className="ig-cta-3d ig-cta-book w-full"
-            style={{ padding: "12px", fontSize: "0.86rem" }}
+            className="w-full rounded-2xl font-bold flex items-center justify-center gap-2"
+            style={{
+              padding: "12px", fontSize: "0.86rem", color: "#ffffff",
+              background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+              textShadow: "0 1px 1px rgba(20,30,44,0.35)",
+              boxShadow: "0 8px 22px -8px rgba(45,62,82,0.55), inset 0 1px 0 rgba(255,255,255,0.4)",
+            }}
           >
-            <span className="ig-cta-icon">✓</span>
-            <span className="ig-cta-text">Save profile</span>
+            <span>✓</span>
+            <span>Save profile</span>
           </button>
         </div>
 
@@ -1911,6 +1918,24 @@ export function CoverFramePicker({
       <style jsx global>{`
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { scrollbar-width: none; }
+        /* v608 — theme-aware Edit-profile sheet: inputs, labels + faint white
+           text now read from tokens so the sheet works in light AND dark. */
+        .sb-ppe input, .sb-ppe textarea {
+          color: var(--text-base) !important;
+          background: var(--bg-input) !important;
+          border-color: var(--border-soft) !important;
+          caret-color: var(--accent) !important;
+        }
+        .sb-ppe input::placeholder, .sb-ppe textarea::placeholder {
+          color: var(--text-muted) !important; opacity: 0.75;
+        }
+        .sb-ppe [class*="text-white"] { color: var(--text-muted) !important; }
+        .sb-ppe button[aria-label="Close"] {
+          background: var(--accent-soft) !important;
+          border-color: var(--border-soft) !important;
+          color: var(--text-soft) !important;
+        }
+        .sb-ppe [class*="bg-white"] { background: var(--border-strong) !important; }
       `}</style>
     </div>
   );

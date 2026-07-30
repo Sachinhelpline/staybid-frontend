@@ -167,7 +167,8 @@ export function BottomDock() {
             transform 0.14s cubic-bezier(.32,1.2,.36,1),
             background 0.18s ease;
         }
-        [data-theme="light"] .ig-dock-item { color: var(--text-muted); }
+        /* v608 — owner: nav labels/icons were old walnut in light mode. Slate. */
+        [data-theme="light"] .ig-dock-item { color: rgba(79, 109, 138, 0.72); }
         /* v408 — On the immersive reel (always dark, even in light theme) the
            cream dock read as a bright block stacked on the phone's system nav
            bar ("double layer"). Force the dark walnut dock + light glyphs there
@@ -191,8 +192,8 @@ export function BottomDock() {
           background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
         [data-theme="light"] .ig-dock-item.is-active {
-          color: var(--cozy-cocoa);
-          background: linear-gradient(180deg, rgba(201,166,107,0.18), rgba(201,166,107,0.04));
+          color: var(--accent);
+          background: linear-gradient(180deg, rgba(79,109,138,0.16), rgba(79,109,138,0.04));
         }
         .ig-dock-glyph {
           font-size: 1.25rem;
