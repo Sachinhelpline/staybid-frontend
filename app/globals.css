@@ -12637,3 +12637,99 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   /* rails gap is clamp(30px,4vh,50px) on desktop — cancel all but ~12px */
   .sbh-tf { margin: 0 0 calc(12px - clamp(30px, 4vh, 50px)); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v583 — DECISION ENGINE P3 (both viewports, unlayered)
+   ① .sbh-card-drive — the "how far is it?" chip on every property card
+   ② .sbh-tf-wa — the WhatsApp concierge hand-off under the Finder answers
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-card-drive {
+  display: inline-flex; align-items: center;
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.01em;
+  color: var(--cozy-cocoa, #4a3820);
+  background: rgba(201, 166, 107, 0.14);
+  border: 1px solid rgba(201, 166, 107, 0.3);
+  border-radius: 999px; padding: 1.5px 7px;
+  white-space: nowrap;
+}
+[data-theme="dark"] .sbh-card-drive {
+  color: rgba(255, 233, 173, 0.9);
+  background: rgba(217, 190, 130, 0.12);
+  border-color: rgba(217, 190, 130, 0.28);
+}
+.sbh-tf-wa {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  margin-top: 9px; padding: 8px 12px; min-height: 32px;
+  border-radius: 999px; text-decoration: none;
+  font-size: 0.62rem; font-weight: 600; color: rgba(250, 245, 235, 0.85);
+  background: rgba(37, 211, 102, 0.1);
+  border: 1px solid rgba(37, 211, 102, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.sbh-tf-wa b { color: #7fe0a7; font-weight: 800; }
+.sbh-tf-wa:active { transform: scale(0.97); }
+.sbh-tf-wa-inline { color: #7fe0a7; font-weight: 700; text-decoration: underline; }
+@media (min-width: 1024px) {
+  .sbh-card-drive { font-size: 0.62rem; padding: 2px 8px; }
+  .sbh-tf-wa { font-size: 0.68rem; }
+  .sbh-tf-wa:hover { background: rgba(37, 211, 102, 0.16); transform: translateY(-1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sbh-tf-wa { transition: none !important; }
+  .sbh-tf-wa:hover { transform: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v583.1 — ONE-SCREEN FIT + SEASON PICKER (both viewports, unlayered)
+   Owner: hero + Finder must share one screen without scrolling; the Finder's
+   option pills (all 3 steps) shrink; the season ribbon opens a real PICKER.
+   Unlayered overrides beat the layered desktop.css hero clamp.
+   ═════════════════════════════════════════════════════════════════════════ */
+/* hero: short enough that the Finder fits below it on one screen */
+.sbh-hero { min-height: 0; }
+@media (max-width: 1023px) {
+  .sbh-hero { min-height: 46svh; }
+}
+@media (min-width: 1024px) {
+  .sbh-hero { height: clamp(380px, 54vh, 560px); }
+}
+/* option pills — one notch smaller on every step, both viewports */
+.sbh-tf-opt { min-height: 38px; font-size: 0.6rem; padding: 4px 10px 4px 5px; gap: 6px; }
+.sbh-tf-coin { width: 26px; height: 26px; font-size: 0.82rem; }
+.sbh-tf-opts { padding: 3px 2px 6px; }
+.sbh-tf-title { font-size: 1.06rem; }
+.sbh-tf-card { padding: 11px 12px 10px; }
+@media (min-width: 1024px) {
+  .sbh-tf-opt { min-height: 40px; font-size: 0.68rem; padding: 4px 12px 4px 6px; }
+  .sbh-tf-coin { width: 28px; height: 28px; font-size: 0.9rem; }
+  .sbh-tf-title { font-size: 1.34rem; }
+  .sbh-tf-card { padding: 15px 18px 13px; }
+}
+/* season PICKER — slim glass chips under the ribbon */
+.sbh-tf-seasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sbh-tf-season {
+  display: inline-flex; align-items: center; gap: 5px;
+  cursor: pointer; min-height: 30px;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.02em; color: #f7ecd8;
+  padding: 5px 10px; border-radius: 999px;
+  background: rgba(217, 190, 130, 0.08);
+  border: 1px solid rgba(217, 190, 130, 0.28);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.sbh-tf-season:active { transform: scale(0.95); }
+.sbh-tf-season.is-on {
+  color: #3a2606;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  border-color: rgba(214, 154, 30, 0.55);
+}
+.sbh-tf-season.is-auto { color: rgba(250, 245, 235, 0.7); border-style: dashed; }
+@media (min-width: 1024px) {
+  .sbh-tf-season { font-size: 0.64rem; min-height: 32px; }
+  .sbh-tf-season:hover { background: rgba(217, 190, 130, 0.16); }
+  .sbh-tf-season.is-on:hover { background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sbh-tf-season { transition: none !important; }
+}

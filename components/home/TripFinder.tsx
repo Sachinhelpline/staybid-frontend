@@ -23,8 +23,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { answerTrip, BUDGET_BANDS, type BudgetBandId, type FinderHotel } from "@/lib/browse/trip-finder";
 import { TRIP_FORMATS, formatForSegment, type SegmentId, type TripFormatId } from "@/lib/browse/trip-formats";
-import { programForMonth } from "@/lib/browse/season-programs";
+import { SEASON_PROGRAMS } from "@/lib/browse/season-programs";
+import { effectiveProgram, effectiveMonth, readSeasonPrefId, setSeasonPref } from "@/lib/browse/season-pref";
 import { recordFormatChoice, recordSegmentChoice } from "@/lib/browse/segment";
+import { conciergeWaLink } from "@/lib/browse/whatsapp";
 import type { ViewerPoint } from "@/lib/browse/affinity";
 
 const WHO: { id: SegmentId; emoji: string; label: string }[] = [
@@ -59,7 +61,18 @@ export default function TripFinder({
   viewer: ViewerPoint | null;
 }) {
   const router = useRouter();
-  const program = useMemo(() => programForMonth(new Date().getUTCMonth()), []);
+  // v583.1 — the season is a PREFERENCE now: default = this month's program,
+  // but the ribbon opens a picker; a chosen season re-ranks EVERY surface
+  // (they all read effectiveMonth()). progTick re-renders on change.
+  const [progTick, setProgTick] = useState(0);
+  useEffect(() => {
+    const onPref = () => setProgTick((t) => t + 1);
+    window.addEventListener("sb:season-pref", onPref);
+    return () => window.removeEventListener("sb:season-pref", onPref);
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const program = useMemo(() => effectiveProgram(), [progTick]);
+  const [seasonOpen, setSeasonOpen] = useState(false);
   // step: 0 who · 1 trip type · 2 budget · 3 answers
   const [step, setStep] = useState(0);
   const [seg, setSeg] = useState<SegmentId | null>(null);
@@ -92,10 +105,11 @@ export default function TripFinder({
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const picks = useMemo(() => {
     if (step !== 3 || !seg || !format || !budget) return [];
-    return answerTrip({ segment: seg, format, budget, viewer, hotels });
-  }, [step, seg, format, budget, viewer, hotels]);
+    return answerTrip({ segment: seg, format, budget, viewer, hotels, month: effectiveMonth() });
+  }, [step, seg, format, budget, viewer, hotels, progTick]);
 
   const reset = () => {
     setStep(0); setSeg(null); setFormat(null); setBudget(null); setFormatLocked(false);
@@ -128,22 +142,48 @@ export default function TripFinder({
             <button
               type="button"
               className="sbh-tf-ribbon"
-              onClick={() => {
-                chooseFormat(program.featuredFormat);
-                setFormatLocked(true);
-                if (step === 1) setStep(2);
-              }}
-              aria-label={`${program.title} — ${program.ctaLabel}`}
+              onClick={() => setSeasonOpen((v) => !v)}
+              aria-expanded={seasonOpen}
+              aria-label={`Season: ${program.title} — tap to change`}
             >
               <span className="sbh-tf-ribbon-ico" aria-hidden>{program.icon}</span>
               <span className="sbh-tf-ribbon-txt">
                 <b>{program.title}</b>
                 <i>{program.tagline}</i>
               </span>
-              <span className="sbh-tf-ribbon-go" aria-hidden>→</span>
+              <span className="sbh-tf-ribbon-go" aria-hidden>{seasonOpen ? "▴" : "▾"}</span>
             </button>
             ) : null}
           </div>
+          {/* v583.1 — season PICKER: default is this month's program, but the
+              traveller can plan for any season; the whole Stage re-ranks. */}
+          {seasonOpen && step < 3 ? (
+            <div className="sbh-tf-seasons sbh-tf-anim" role="group" aria-label="Plan for a season">
+              {SEASON_PROGRAMS.map((sp) => (
+                <button
+                  key={sp.id} type="button"
+                  className={`sbh-tf-season${program.id === sp.id ? " is-on" : ""}`}
+                  onClick={() => {
+                    setSeasonPref(sp.id);
+                    chooseFormat(sp.featuredFormat);
+                    setFormatLocked(true);
+                    setSeasonOpen(false);
+                    if (step === 1) setStep(2);
+                  }}
+                >
+                  <span aria-hidden>{sp.icon}</span> {sp.title}
+                </button>
+              ))}
+              {readSeasonPrefId() ? (
+                <button
+                  type="button" className="sbh-tf-season is-auto"
+                  onClick={() => { setSeasonPref(null); setSeasonOpen(false); }}
+                >
+                  ↺ Auto (this month)
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {step < 3 ? (
             <div className="sbh-tf-dots" aria-hidden>
               {[0, 1, 2].map((i) => <span key={i} className={`sbh-tf-dot${i <= step ? " is-on" : ""}`} />)}
@@ -201,7 +241,8 @@ export default function TripFinder({
 
         {step === 3 ? (
           picks.length ? (
-            <div className="sbh-tf-answers sbh-tf-anim" key="s3">
+            <div className="sbh-tf-anim" key="s3">
+            <div className="sbh-tf-answers">
               {picks.map((p, i) => (
                 <article key={p.hotel.id} className="sbh-tf-ans">
                   <button
@@ -244,8 +285,26 @@ export default function TripFinder({
                 </article>
               ))}
             </div>
+            {/* v583 — WhatsApp-led trust (deck: 56% of the core market
+                prefers assisted booking). Same concierge line as the /bid
+                group concierge; message pre-filled from the answers. */}
+            <a
+              className="sbh-tf-wa"
+              href={conciergeWaLink(
+                `Hi! I'm planning a trip and StayBid suggested ${picks.map((p) => p.hotel.city).filter(Boolean).join(", ")}. Can you help me plan and book?`,
+              )}
+              target="_blank" rel="noopener noreferrer"
+            >
+              💬 Want a human to plan it? <b>Chat on WhatsApp</b>
+            </a>
+            </div>
           ) : (
-            <p className="sbh-tf-empty">No exact match this time — try a different trip type or budget.</p>
+            <p className="sbh-tf-empty">
+              No exact match this time — try a different trip type or budget, or{" "}
+              <a className="sbh-tf-wa-inline" href={conciergeWaLink("Hi! I need help planning a trip on StayBid.")} target="_blank" rel="noopener noreferrer">
+                ask us on WhatsApp
+              </a>.
+            </p>
           )
         ) : null}
       </div>

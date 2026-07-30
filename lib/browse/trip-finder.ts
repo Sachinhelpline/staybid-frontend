@@ -85,7 +85,8 @@ function budgetFit(minPrice: number | null | undefined, band: BudgetBand): numbe
   return Math.max(0, 1 - (p - hi) / hi);         // pricier — fades out
 }
 
-function driveLabelFor(km: number | null): string | null {
+/** Shared "how far is it really" label — also used by the Stage cards (v583). */
+export function driveLabelFor(km: number | null): string | null {
   if (km == null || !Number.isFinite(km)) return null;
   const hrs = km / 55; // hill-road average
   if (hrs <= 9) {

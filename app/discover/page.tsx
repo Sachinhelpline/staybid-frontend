@@ -16,6 +16,7 @@ import { track, getSignals, initTracking, markViewed } from "@/lib/track";
 // users keep the server-ranked order (which already reads their signals).
 import { rankForBrowse, isColdStart } from "@/lib/browse/affinity";
 import { readViewerGeo, primeViewerGeo } from "@/lib/browse/viewer-geo";
+import { effectiveMonth } from "@/lib/browse/season-pref";
 import { useReelFullscreen } from "@/lib/useReelFullscreen";
 // v139 — auto-fires the per-page spotlight tour on first visit. Hook
 // handles all skip logic internally (disabled / seen / welcome-active).
@@ -254,7 +255,7 @@ export default function DiscoverPage() {
     const itemCity = (it: Item) =>
       (it.hotel as any)?._userPostTaggedHotel?.city || it.hotel?.city || "";
     const itemId = (it: Item) => it.hotel?.id || "";
-    const affinityOpts = () => ({ viewer: readViewerGeo(), signals: getSignals() });
+    const affinityOpts = () => ({ viewer: readViewerGeo(), signals: getSignals(), month: effectiveMonth() });
 
     // Primary: ranked discover feed
     try {
