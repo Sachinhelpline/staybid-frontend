@@ -96,6 +96,35 @@ const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 const fmtCount = (n: number) => n >= 1_000_000 ? (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M"
   : n >= 1_000 ? (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K" : String(n);
 
+/* ── the reel PLAYER's iconography + engagement, mirrored exactly ──────────
+   These are 1:1 mini copies from components/discover/InstagramHotelFeed.tsx
+   (RailIcon glyph paths + hashStr/pseudoStat) so the home reel tiles show the
+   SAME icons and the SAME deterministic per-hotel engagement numbers the
+   player shows for the same reel — never emojis, never different counts. */
+function RailGlyph({ name, filled }: { name: "heart" | "comment" | "share" | "bookmark" | "more"; filled?: boolean }) {
+  const p: any = {
+    viewBox: "0 0 24 24", width: 14, height: 14,
+    fill: filled ? "currentColor" : "none", stroke: "currentColor",
+    strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true,
+  };
+  switch (name) {
+    case "heart":    return (<svg {...p}><path d="M12 20.3s-6.8-4.4-6.8-9.5A4.1 4.1 0 0 1 12 7.2a4.1 4.1 0 0 1 6.8 3.6c0 5.1-6.8 9.5-6.8 9.5Z" /></svg>);
+    case "comment":  return (<svg {...p} fill="none"><path d="M20 11.4a7.4 7.4 0 0 1-10.8 6.6L4.5 19.3l1.3-4.6A7.4 7.4 0 1 1 20 11.4Z" /></svg>);
+    case "share":    return (<svg {...p} fill="none"><path d="M21.5 3 10.6 13.9" /><path d="M21.5 3 14.6 22l-3.9-8.1L2.5 10 21.5 3Z" /></svg>);
+    case "bookmark": return (<svg {...p}><path d="M6.5 4h11v16l-5.5-3.6L6.5 20V4Z" /></svg>);
+    case "more":     return (<svg {...p} fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" /></svg>);
+    default:         return null;
+  }
+}
+function hashStrHome(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function pseudoStatHome(seed: string, salt: string, min: number, max: number) {
+  return min + (hashStrHome(`${seed}::${salt}`) % (max - min));
+}
+
 /**
  * The "% OFF" a flash deal is ACTUALLY showing, derived from the two prices the
  * card prints beside it.
@@ -354,9 +383,13 @@ function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecar
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
-        {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
-        {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">⏳ {left}</span> : null}
-        {hid ? <SaveHeart kind="hotel" id={hid} snap={{ hotel_name: h?.name, hotel_image: img, avgRating: h?.avgRating }} /> : null}
+        {/* one real flex row: OFF (left) · countdown (true centre) · heart (right) —
+            flex owns the spacing, so nothing can overlap at any card width */}
+        <div className="sbh-fd-toprow">
+          {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
+          {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">⏳ {left}</span> : null}
+          {hid ? <SaveHeart kind="hotel" id={hid} snap={{ hotel_name: h?.name, hotel_image: img, avgRating: h?.avgRating }} /> : null}
+        </div>
         {score?.overall != null ? (
           <span className="sbh-badge-slot" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
             <HotelScoreBadge hotelId={hid} hotelName={h?.name || ""} variant="compact" />
@@ -407,12 +440,14 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   const [liked, setLiked] = useState(false);
   const [savedR, setSavedR] = useState(false);
   useEffect(() => { setSavedR(readSavedIds().has(`video:${r.id}`)); }, [r.id]);
-  const likeN = (Number(r.like_count) || 0) + (liked ? 1 : 0);
-  const cmtN = Number(r.comment_count) || 0;
-  // real follow state — the SAME store the reel player uses, keyed by handle
-  const { isFollowing, toggleFollow } = useFollow();
+  // real follow state + follower count — the SAME store the player uses
+  const { isFollowing, toggleFollow, followerCount } = useFollow();
   const handle = r.author?.username || who;
   const followed = isFollowing(handle);
+  const followers = followerCount(handle);
+  // the SAME per-hotel engagement the player shows for this reel
+  // (InstagramHotelFeed: pseudoStat(h.id||"x","likes",1240,28400))
+  const likeN = pseudoStatHome(r.hotel?.id || "x", "likes", 1240, 28400) + (liked ? 1 : 0);
   const avatar = r.author?.avatar_url || "";
   const shareReel = useCallback((e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -470,8 +505,14 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
             {avatar ? <img src={avatar} alt="" loading="lazy" /> : <b>{(who || "?")[0]}</b>}
           </span>
           <span className="sbh-reelx-id">
-            <strong>@{handle}</strong>
-            {r.location_name ? <span>📍 {r.location_name}</span> : null}
+            <strong>
+              @{handle}
+              <svg className="sbh-reelx-tick" viewBox="0 0 24 24" width="9" height="9" aria-hidden>
+                <circle cx="12" cy="12" r="11" fill="#3897f0" />
+                <path d="M7 12.5l3 3 6.5-6.5" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+              </svg>
+            </strong>
+            <span>📍 {r.location_name ? `${r.location_name} · ` : ""}{fmtCount(followers)} followers</span>
           </span>
           <button
             type="button"
@@ -482,33 +523,38 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
           </button>
         </div>
 
-        {/* RIGHT RAIL — same order + design as the reel page: like · comment · share · save · more */}
+        {/* RIGHT RAIL — the player's glass-circle glyph rail, same order:
+            like (count) · comment · share · save · more */}
         <div className="sbh-reelx-rail">
           <button type="button" className={`sbh-rx-btn${liked ? " is-on" : ""}`} aria-label="Like"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked((v) => !v); }}>
-            <span className="sbh-rx-ic">{liked ? "❤️" : "🤍"}</span><span className="sbh-rx-n">{fmtCount(likeN)}</span>
+            <span className="sbh-rx-ic"><RailGlyph name="heart" filled={liked} /></span>
+            <span className="sbh-rx-n">{fmtCount(likeN)}</span>
           </button>
           <button type="button" className="sbh-rx-btn" aria-label="Comments" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
-            <span className="sbh-rx-ic">💬</span><span className="sbh-rx-n">{fmtCount(cmtN)}</span>
+            <span className="sbh-rx-ic"><RailGlyph name="comment" /></span>
           </button>
           <button type="button" className="sbh-rx-btn" aria-label="Share" onClick={shareReel}>
-            <span className="sbh-rx-ic">📤</span><span className="sbh-rx-n">Share</span>
+            <span className="sbh-rx-ic"><RailGlyph name="share" /></span>
+            <span className="sbh-rx-n">Share</span>
           </button>
-          <button type="button" className={`sbh-rx-btn${savedR ? " is-on" : ""}`} aria-label={savedR ? "Remove from wishlist" : "Add to wishlist"}
+          <button type="button" className={`sbh-rx-btn${savedR ? " is-saved" : ""}`} aria-label={savedR ? "Remove from wishlist" : "Add to wishlist"}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSavedR(toggleSaved("video", r.id, { hotel_name: r.hotel?.name, hotel_image: poster, thumbnail_url: poster, title: r.caption })); }}>
-            <span className="sbh-rx-ic">{savedR ? "🔖" : "📑"}</span><span className="sbh-rx-n">{savedR ? "Saved" : "Save"}</span>
+            <span className="sbh-rx-ic"><RailGlyph name="bookmark" filled={savedR} /></span>
+            <span className="sbh-rx-n">{savedR ? "Saved" : "Save"}</span>
           </button>
           <button type="button" className="sbh-rx-btn" aria-label="More" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
-            <span className="sbh-rx-ic">⋮</span>
+            <span className="sbh-rx-ic"><RailGlyph name="more" /></span>
+            <span className="sbh-rx-n">More</span>
           </button>
         </div>
 
-        {/* BOTTOM — one compact row, like the reel page's CTA bar: From · 🏷 Book Now · ⚡ Bid */}
+        {/* BOTTOM — the player's CTA bar, mini: From ₹ · ⚡ Book Now · 🏷 Bid Now */}
         {hotelId ? (
           <div className="sbh-reelx-foot">
             {price ? <span className="sbh-reelx-from"><i>From</i><b>{inr(price)}</b><em>/n</em></span> : null}
-            <button type="button" className="sbh-reelx-book" onClick={go(`/hotels/${hotelId}`)}>🏷 Book Now</button>
-            <button type="button" className="sbh-reelx-bid" onClick={go(`/hotels/${hotelId}?intent=negotiate#availability-picker`)}>⚡ Bid</button>
+            <button type="button" className="sbh-reelx-book" onClick={go(`/hotels/${hotelId}`)}>⚡ Book Now</button>
+            <button type="button" className="sbh-reelx-bid" onClick={go(`/hotels/${hotelId}?intent=negotiate#availability-picker`)}>🏷 Bid Now</button>
           </div>
         ) : null}
       </div>

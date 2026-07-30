@@ -12178,14 +12178,21 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
 .sbh-rx-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
   background: none; border: 0; padding: 0; color: #fff; -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s ease;
 }
 .sbh-rx-btn:active { transform: scale(0.88); }
-.sbh-rx-ic { font-size: 1.14rem; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.65)); }
+/* the player's dark glass circle around each outline glyph */
+.sbh-rx-ic {
+  width: 27px; height: 27px; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; background: rgba(12, 9, 5, 0.5); border: 1px solid rgba(255, 255, 255, 0.24);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
 .sbh-rx-n { font-size: 0.5rem; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
-.sbh-rx-btn.is-on .sbh-rx-n { color: #ffd76b; }
+.sbh-rx-btn.is-on .sbh-rx-ic { color: #ff3040; }        /* liked heart — player red */
+.sbh-rx-btn.is-saved .sbh-rx-ic { color: #ffd76b; }     /* saved bookmark — gold */
+.sbh-reelx-tick { margin-left: 3px; vertical-align: -1px; }
 /* bottom CTA — ONE compact row, the player's BookingCTABar scaled down */
 .sbh-reelx-foot {
   position: absolute; z-index: 5; left: 6px; right: 6px; bottom: 6px;
@@ -12203,10 +12210,11 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform 0.12s ease;
   display: flex; align-items: center; justify-content: center; gap: 2px;
 }
-/* "Book Now" is the longer label — give it the bigger flex share so it never truncates */
-.sbh-reelx-book { flex: 1.5 1 0; }
+/* "Book Now" vs "Bid Now" are near-equal labels — near-equal flex shares */
+.sbh-reelx-book { flex: 1.08 1 0; }
 .sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #ffd76b, #f0b429); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5); }
-.sbh-reelx-bid { color: #fff; background: linear-gradient(135deg, rgba(155,109,255,0.45), rgba(94,52,184,0.40)); border: 1px solid rgba(199,140,255,0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+/* "Bid Now" — the player's gold-outline glass style (not purple) */
+.sbh-reelx-bid { color: #ffd76b; background: rgba(20, 15, 9, 0.55); border: 1px solid rgba(240, 180, 41, 0.6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .sbh-reelx-book:active, .sbh-reelx-bid:active { transform: scale(0.96); }
 
 /* v579 — flash/property score badge: premium compact scale so it never
@@ -12214,7 +12222,18 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
    stack (both are deal-urgency info) — heart owns the top-right, the badge
    owns the bottom-left, so nothing can ever collide on any viewport. */
 .sbh-badge-slot { transform: scale(0.78); transform-origin: left bottom; max-width: calc(100% - 14px); }
-.sbh-chip.sbh-chip-live-br { top: 38px; left: 9px; right: auto; bottom: auto; }
+/* flash top row is a real FLEX row: OFF · countdown (auto-margins = true
+   centre of the remaining space) · heart. Flex owns the spacing, so the
+   three can never overlap at any card width. */
+.sbh-fd-toprow {
+  position: absolute; z-index: 5; top: 8px; left: 8px; right: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.sbh-fd-toprow .sbh-chip { position: static; }
+.sbh-fd-toprow .sbh-chip-live-br { margin: 0 auto; }
+.sbh-fd-toprow .sbh-heart { position: static; margin-left: auto; }
+/* keep the OFF chip pinned left even when the timer is absent */
+.sbh-fd-toprow .sbh-chip-off { flex: 0 0 auto; }
 
 /* v579.1 — MOBILE (≤1023px): every home-card overlay resized for the real
    mobile tiles (flash 46vw/196px 1:1 · reel 30vw/132px 9:16). Desktop sizes
@@ -12224,23 +12243,35 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-badge-slot { transform: scale(0.6); }
   .sbh-heart { width: 26px; height: 26px; top: 6px; right: 6px; }
   .sbh-heart svg { width: 14px; height: 14px; }
-  .sbh-chip.sbh-chip-live-br { top: 32px; left: 7px; font-size: 0.5rem; padding: 3px 6px; }
+  .sbh-fd-toprow { top: 6px; left: 6px; right: 6px; gap: 3px; }
+  .sbh-chip.sbh-chip-live-br { font-size: 0.5rem; padding: 3px 6px; }
   /* reel top strip */
   .sbh-reelx-who { left: 5px; top: 5px; right: 5px; gap: 4px; }
   .sbh-reelx-dp { width: 17px; height: 17px; border-width: 1px; font-size: 0.42rem; }
   .sbh-reelx-id strong { font-size: 0.46rem; }
   .sbh-reelx-id span { font-size: 0.38rem; }
   .sbh-reelx-follow { padding: 2px 6px; font-size: 0.4rem; border-width: 1px; }
-  /* rail — smaller icons, tucked low-right */
-  .sbh-reelx-rail { right: 4px; bottom: 40px; gap: 4px; }
-  .sbh-rx-ic { font-size: 0.82rem; }
-  .sbh-rx-n { font-size: 0.36rem; }
+  /* rail — smaller glass circles, tucked low-right (sized so 5 items never
+     reach the author strip on a 208px-tall tile) */
+  .sbh-reelx-rail { right: 3px; bottom: 34px; gap: 2px; }
+  .sbh-rx-ic { width: 18px; height: 18px; }
+  .sbh-rx-ic svg { width: 10px; height: 10px; }
+  .sbh-rx-n { font-size: 0.34rem; }
+  .sbh-reelx-tick { width: 7px; height: 7px; }
+  .sbh-reelx-book, .sbh-reelx-bid { font-size: 0.44rem; padding: 3px 2px; }
   /* CTA — two tiny lines: "From ₹" then Book Now · Bid (no truncation) */
   .sbh-reelx-foot { left: 4px; right: 4px; bottom: 4px; flex-wrap: wrap; gap: 2px 3px; }
   .sbh-reelx-from { flex-basis: 100%; flex-direction: row; align-items: baseline; gap: 3px; padding: 0 1px; }
   .sbh-reelx-from i { font-size: 0.36rem; }
   .sbh-reelx-from b { font-size: 0.56rem; }
-  .sbh-reelx-book, .sbh-reelx-bid { padding: 4px 2px; font-size: 0.46rem; border-radius: 7px; gap: 1px; }
+}
+/* smallest phones (≤374px): the reel tile is ~108px wide — one notch tighter */
+@media (max-width: 374px) {
+  .sbh-reelx-rail { bottom: 30px; gap: 1px; }
+  .sbh-rx-ic { width: 16px; height: 16px; }
+  .sbh-rx-ic svg { width: 9px; height: 9px; }
+  .sbh-rx-n { font-size: 0.32rem; }
+  .sbh-reelx-book, .sbh-reelx-bid { font-size: 0.42rem; padding: 3px 1px; }
 }
 
 /* v578.2 — the hover preview video is a visual layer only; it must never
