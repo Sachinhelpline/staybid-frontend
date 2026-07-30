@@ -41,7 +41,7 @@ import { getSignals, markLiked } from "@/lib/track";
 // v581 — Decision Engine P1: the deck's 6 trip formats + 4 seasonal selling
 // programs + inferred audience segment. The Stage now answers "what kind of
 // trip?" and rewrites its seasonal campaign as the calendar turns.
-import { TRIP_FORMATS, tripFormat, formatFit, formatForSegment, type TripFormatId } from "@/lib/browse/trip-formats";
+import { TRIP_FORMATS, tripFormat, formatFit, formatForSegment, cityCorridor, type TripFormatId } from "@/lib/browse/trip-formats";
 import { readSegment, recordFormatChoice } from "@/lib/browse/segment";
 // v582 — Decision Engine P2: the 3-tap Trip Finder for the traveller who
 // cannot name a destination (engine: lib/browse/trip-finder.ts).
@@ -345,7 +345,12 @@ function Rail({
 }
 
 /* ── cards ─────────────────────────────────────────────────────────────── */
-function HotelCard({ h, score, drive }: { h: Hotel; score?: Scorecard; drive?: string | null }) {
+function HotelCard({ h, score, drive, why }: { h: Hotel; score?: Scorecard; drive?: string | null; why?: string | null }) {
+  // v584 — pilgrimage-ready validation: Braj / Religious-UP / Haridwar
+  // corridor stays serve darshan travellers (deck: satvik meals, temple
+  // access, aarti timings). Corridor comes from the shared trip-format map.
+  const corridor = cityCorridor(h.city);
+  const darshan = corridor === "braj" || corridor === "religiousup" || corridor === "haridwar";
   const price = minPriceOf(h);
   const img = imgOf(h);
   const rate = Number(h.avgRating) || 0;
@@ -383,6 +388,14 @@ function HotelCard({ h, score, drive }: { h: Hotel; score?: Scorecard; drive?: s
           </p>
         ) : null}
         {below >= 5 ? <span className="sbh-card-below">▼ {below}% below market</span> : null}
+        {/* v584 — validation chips: WHY this card is in front of you. One
+            personal reason (in season / your taste) + the darshan marker. */}
+        {(why || darshan) ? (
+          <span className="sbh-card-whyrow">
+            {why ? <span className="sbh-card-why">{why}</span> : null}
+            {darshan ? <span className="sbh-card-why is-darshan">🛕 Darshan-friendly</span> : null}
+          </span>
+        ) : null}
       </div>
     </Link>
   );
@@ -1222,6 +1235,18 @@ export default function DesktopHome() {
   // prefers-reduced-motion or when the user has taken manual control.
   const [heroIdx, setHeroIdx] = useState(0);
   const [held, setHeld] = useState(false);
+  // v584.1 — manual navigation is an OPTION alongside auto-rotate, not a
+  // mode: arrows (desktop) / finger swipe (mobile) jump the slide and reset
+  // the 5s clock (navTick), but the wheel keeps turning afterwards.
+  const [navTick, setNavTick] = useState(0);
+  const heroNav = useCallback((dir: 1 | -1) => {
+    setHeroIdx((i) => {
+      const n = heroPool.length;
+      return n ? (i + dir + n) % n : 0;
+    });
+    setNavTick((t) => t + 1);
+  }, [heroPool.length]);
+  const heroTouch = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => { setHeroIdx(0); }, [heroPool.length]);
   useEffect(() => {
     if (held || heroPool.length < 2) return;
@@ -1231,7 +1256,7 @@ export default function DesktopHome() {
     // why this is the floor rather than 3-4s.
     const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroPool.length), 5000);
     return () => clearInterval(t);
-  }, [held, heroPool.length]);
+  }, [held, heroPool.length, navTick]);
   const featured = heroPool[heroIdx] || heroPool[0] || null;
 
   // ── LIVE TICKER — real facts only (deals + the season wheel) ─────────
@@ -1320,6 +1345,17 @@ export default function DesktopHome() {
     else setGeoDenied(true);
   }, [geoBusy]);
 
+  // v584 — ONE personal "why" per card (validation): in-season beats taste;
+  // silence beats noise (null when neither applies).
+  const whyFor = useCallback((city?: string | null) => {
+    if (!city) return null;
+    if (demandTier(city, effMonth) === "primary") return "🌟 In season now";
+    const cLc = String(city).toLowerCase();
+    const sig = getSignals();
+    if ((sig.cities || []).some((x) => String(x).toLowerCase() === cLc)) return "💚 Your kind of place";
+    return null;
+  }, [effMonth]);
+
   // v583 — the "how far is it?" chip every property card carries. Hours,
   // not km (hours are how people judge a road trip); long-haul reads as a
   // fly-away. Same engine (cityAccess + driveLabelFor) as the Trip Finder.
@@ -1385,6 +1421,25 @@ export default function DesktopHome() {
         className="sbh-hero"
         onMouseEnter={() => setHeld(true)}
         onMouseLeave={() => setHeld(false)}
+        // v584.1 — mobile finger swipe: a clear horizontal swipe (≥45px,
+        // dominantly sideways) flips the slide; taps and vertical scrolls
+        // pass through untouched. Auto-rotate continues after.
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          if (t) heroTouch.current = { x: t.clientX, y: t.clientY };
+        }}
+        onTouchEnd={(e) => {
+          const s = heroTouch.current;
+          heroTouch.current = null;
+          if (!s || heroPool.length < 2) return;
+          const t = e.changedTouches[0];
+          if (!t) return;
+          const dx = t.clientX - s.x;
+          const dy = t.clientY - s.y;
+          if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            heroNav(dx < 0 ? 1 : -1);
+          }
+        }}
       >
         <div
           key={featured?.id || "hero"}
@@ -1434,6 +1489,26 @@ export default function DesktopHome() {
             </div>
           ) : null}
         </div>
+
+        {/* v584.1 — desktop paddle arrows (both sides). They jump the slide;
+            the 5s auto-rotate keeps running (hover already pauses it while
+            the cursor is on the hero, so a click never fights the timer). */}
+        {heroPool.length > 1 ? (
+          <>
+            <button
+              type="button"
+              className="sbh-hero-arr sbh-hero-arr-l"
+              aria-label="Previous property"
+              onClick={() => heroNav(-1)}
+            ><span aria-hidden>‹</span></button>
+            <button
+              type="button"
+              className="sbh-hero-arr sbh-hero-arr-r"
+              aria-label="Next property"
+              onClick={() => heroNav(1)}
+            ><span aria-hidden>›</span></button>
+          </>
+        ) : null}
 
         {/* rotation control — the user can always take over */}
         {heroPool.length > 1 ? (
@@ -1570,7 +1645,7 @@ export default function DesktopHome() {
             sub={`${selFormat.blurb} · ${selFormat.nights}`}
             href="/hotels"
           >
-            {tripRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} />)}
+            {tripRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} why={whyFor(h.city)} />)}
           </Rail>
         ) : null}
 
@@ -1597,13 +1672,13 @@ export default function DesktopHome() {
                 : undefined
             }
           >
-            {reachRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} />)}
+            {reachRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} why={whyFor(h.city)} />)}
           </Rail>
         ) : null}
 
         {zoneRails.map((z) => (
           <Rail key={z.id} title={z.label} sub={`${z.items.length} propert${z.items.length === 1 ? "y" : "ies"}`} href="/hotels">
-            {z.items.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} />)}
+            {z.items.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} why={whyFor(h.city)} />)}
           </Rail>
         ))}
 

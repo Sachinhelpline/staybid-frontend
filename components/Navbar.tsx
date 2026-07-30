@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "@/components/ModeToggle";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
@@ -86,15 +86,11 @@ function LocationChip({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="relative">
+      {/* v584.1 — same uniform gold chip as every other bar control (was a
+          bespoke inline-styled pill — one of the "many colors many sizes"). */}
       <button
         onClick={() => setPicker(true)}
-        className="group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[0.72rem] font-semibold transition-all duration-300 overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, rgba(240,180,41,0.18), rgba(255,255,255,0.04))",
-          border: "1px solid rgba(240,180,41,0.35)",
-          color: "#f0b429",
-          boxShadow: "0 2px 8px rgba(201,145,26,0.15), inset 0 1px 0 rgba(255,255,255,0.2)",
-        }}
+        className="nav3d-chip nav3d-eq nav3d-gold group relative"
       >
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         {city ? (<><span>📍</span><span className="truncate max-w-[90px]">{city}</span></>) : (<><span>🎯</span>{!compact && <span>Anywhere</span>}</>)}
@@ -137,6 +133,29 @@ export function Navbar() {
   }, []);
 
   useEffect(() => { setMoreOpen(false); }, [pathname]);
+
+  // v584.1 — close the desktop Menu on ANY outside tap. The old "click-away
+  // backdrop" (`fixed inset-0` INSIDE the nav) could never work: the nav's
+  // backdrop-filter makes it the containing block for fixed descendants, so
+  // the backdrop only ever covered the 64px bar — taps on the page below it
+  // never hit it (Sachin: "screen par kahi bhi tap karde toh menu auto close
+  // ho jani chahiye"). A document-level pointerdown listener (capture) closes
+  // the menu whenever the tap lands outside the trigger + dropdown, no matter
+  // what stacking context swallows the event afterwards. The Appearance row
+  // still keeps the menu open (it's INSIDE menuRef) so you can compare themes.
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (e: PointerEvent) => {
+      // desktop dropdown only — the mobile More sheet (same moreOpen state,
+      // < md) has its own full-screen backdrop that already works.
+      if (!window.matchMedia("(min-width: 768px)").matches) return;
+      const t = e.target as Node | null;
+      if (t && menuRef.current && !menuRef.current.contains(t)) setMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [moreOpen]);
 
   // Operator panels keep their own headers — always hide.
   if (pathname?.startsWith("/partner")) return null;
@@ -221,6 +240,70 @@ export function Navbar() {
           border-color: var(--border-strong) !important;
           color: var(--text-inverse) !important;
           animation: navPulse 2.6s ease-in-out infinite;
+        }
+
+        /* ═══ v584.1 — ONE uniform desktop chip system ═══
+           Owner: "bahut sare color bahut sare size — ugly". Every control on
+           the desktop bar is now the SAME 36px chip with exactly TWO looks:
+           neutral glass (.nav3d-eq) and gold (.nav3d-gold outline /
+           .nav3d-solidgold filled, reserved for the two real CTAs). And every
+           clickable POPS on hover — the zoom the owner asked for. */
+        .nav3d-eq {
+          height: 36px;
+          padding: 0 12px;
+          border-radius: 12px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+          line-height: 1;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+        .nav3d-eq:hover {
+          transform: translateY(-2px) scale(1.07);
+        }
+        .nav3d-eq:active { transform: translateY(0) scale(0.96); }
+        .nav3d-gold {
+          background: linear-gradient(160deg, rgba(240,180,41,0.26), rgba(240,180,41,0.07) 55%, rgba(240,180,41,0.16));
+          border: 1px solid rgba(240,180,41,0.5);
+          color: var(--accent, #f0b429);
+          box-shadow: 0 2px 10px rgba(201,145,26,0.22), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(120,80,0,0.15);
+        }
+        .nav3d-gold:hover {
+          border-color: #f0b429;
+          color: var(--accent, #f0b429);
+          box-shadow: 0 8px 22px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+        .nav3d-solidgold {
+          background: linear-gradient(135deg, #f4d77f 0%, #f0b429 55%, #c9911a 100%);
+          border: 1px solid rgba(255,255,255,0.35);
+          color: #1F1A0F;
+          box-shadow: 0 3px 12px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(120,80,0,0.25);
+        }
+        .nav3d-solidgold:hover {
+          color: #1F1A0F;
+          box-shadow: 0 9px 24px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(120,80,0,0.25);
+        }
+        /* the logo (and anything not a chip) pops the same way */
+        .nav3d-pop {
+          transition: transform .28s cubic-bezier(.3,1.4,.4,1);
+        }
+        .nav3d-pop:hover { transform: scale(1.07); }
+        .nav3d-pop:active { transform: scale(0.96); }
+        /* dropdown rows: gold wash + icon pop on hover (a row that scales
+           would clip against the menu's rounded overflow-hidden shell) */
+        .nav3d-row { transition: background .2s, color .2s; }
+        .nav3d-row:hover { background: rgba(240,180,41,0.10) !important; }
+        .nav3d-row .nav3d-row-ico {
+          display: inline-flex;
+          transition: transform .28s cubic-bezier(.3,1.4,.4,1);
+        }
+        .nav3d-row:hover .nav3d-row-ico { transform: scale(1.3); }
+        @media (prefers-reduced-motion: reduce) {
+          .nav3d-eq, .nav3d-pop, .nav3d-chip, .nav3d-row .nav3d-row-ico { transition: none !important; }
         }
         .nav3d-chip::before {
           content:""; position:absolute; inset:0;
@@ -430,7 +513,7 @@ export function Navbar() {
 
           {/* Logo + Location (tight gap) */}
           <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-2 group select-none">
+            <Link href="/" className="nav3d-pop flex items-center gap-2 group select-none">
               <LogoMark size={36} />
               <BrandText className="text-[1.25rem] hidden sm:inline" dark />
             </Link>
@@ -447,7 +530,7 @@ export function Navbar() {
               const isReels = item.href === "/reels";
               return (
                 <Link key={item.href} href={item.href}
-                  className={`nav3d-chip relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8rem] font-semibold tracking-wide ${active ? "nav3d-chip-active" : ""}`}>
+                  className={`nav3d-chip nav3d-eq relative ${active ? "nav3d-chip-active" : ""}`}>
                   <span className="text-sm">{item.icon}</span>
                   {item.label}
                   {item.pulse && !active && (
@@ -473,8 +556,7 @@ export function Navbar() {
                 type="button"
                 aria-label="Create a post"
                 onClick={() => { try { window.dispatchEvent(new CustomEvent("sb:open-create")); } catch {} }}
-                className="nav3d-chip relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8rem] font-bold tracking-wide"
-                style={{ background: "linear-gradient(135deg,#E7CFA0,#D9BE82 45%,#C9A66B)", color: "#1F1A0F" }}
+                className="nav3d-chip nav3d-eq nav3d-solidgold relative"
               >
                 <span className="text-sm leading-none">＋</span>
                 Create
@@ -495,11 +577,11 @@ export function Navbar() {
                 {/* Always-collapsed "Menu ▼" — desktop only (md+). The
                     customer Navbar is hidden on mobile and on reel
                     routes anyway, so this is the desktop path. */}
-                <div className="relative">
+                <div className="relative" ref={menuRef}>
                   <button
                     type="button"
                     onClick={() => setMoreOpen((s) => !s)}
-                    className={`nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8rem] font-semibold tracking-wide ${moreOpen ? "nav3d-chip-active" : ""}`}
+                    className={`nav3d-chip nav3d-eq ${moreOpen ? "nav3d-chip-active" : ""}`}
                     aria-haspopup="menu"
                     aria-expanded={moreOpen}
                   >
@@ -509,12 +591,11 @@ export function Navbar() {
                   </button>
                   {moreOpen && (
                     <>
-                      {/* Click-away backdrop */}
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setMoreOpen(false)}
-                        aria-hidden
-                      />
+                      {/* v584.1 — the old `fixed inset-0` click-away backdrop
+                          here NEVER covered the page (the nav's backdrop-filter
+                          made it the containing block, so "inset-0" was just
+                          the 64px bar). Outside-tap close now lives in the
+                          document-level pointerdown listener above. */}
                       <div
                         className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl overflow-hidden"
                         style={{
@@ -531,11 +612,11 @@ export function Navbar() {
                         <button
                           type="button"
                           onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-switcher")); }}
-                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors"
+                          className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold"
                           style={{ color: "var(--accent, #f0b429)", background: "rgba(240,180,41,0.06)", borderBottom: "1px solid rgba(240,180,41,0.14)" }}
                           role="menuitem"
                         >
-                          <span className="text-base">⇅</span>
+                          <span className="nav3d-row-ico text-base">⇅</span>
                           Switch experience
                         </button>
                         {userLinks.map((item: any) => {
@@ -545,14 +626,14 @@ export function Navbar() {
                               key={item.href}
                               href={item.href}
                               onClick={() => setMoreOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2.5 text-[0.82rem] font-semibold transition-colors"
+                              className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 text-[0.82rem] font-semibold"
                               style={{
                                 color: active ? "var(--accent, #f0b429)" : "var(--text-soft, rgba(255,255,255,0.78))",
                                 background: active ? "rgba(240,180,41,0.10)" : "transparent",
                                 borderLeft: active ? "2px solid var(--accent, #f0b429)" : "2px solid transparent",
                               }}
                             >
-                              <span className="text-base">{item.icon}</span>
+                              <span className="nav3d-row-ico text-base">{item.icon}</span>
                               {item.label}
                             </Link>
                           );
@@ -563,11 +644,11 @@ export function Navbar() {
                         <button
                           type="button"
                           onClick={toggleTheme}
-                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold"
                           style={{ color: "var(--text-base, #1F1A0F)", borderTop: "1px solid rgba(240,180,41,0.14)" }}
                           role="menuitem"
                         >
-                          <span className="text-base">{theme === "dark" ? "🌙" : "☀️"}</span>
+                          <span className="nav3d-row-ico text-base">{theme === "dark" ? "🌙" : "☀️"}</span>
                           Appearance
                           <span className="ml-auto text-[0.7rem] font-medium" style={{ color: "var(--text-muted, rgba(120,110,90,0.8))" }}>
                             {theme === "dark" ? "Dark" : "Light"}
@@ -576,21 +657,21 @@ export function Navbar() {
                         <button
                           type="button"
                           onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-tour")); }}
-                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold"
                           style={{ color: "var(--text-base, #1F1A0F)" }}
                           role="menuitem"
                         >
-                          <span className="text-base">❓</span>
+                          <span className="nav3d-row-ico text-base">❓</span>
                           App Tour
                         </button>
                         <button
                           type="button"
                           onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-support")); }}
-                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold"
                           style={{ color: "var(--text-base, #1F1A0F)" }}
                           role="menuitem"
                         >
-                          <span className="text-base">🎧</span>
+                          <span className="nav3d-row-ico text-base">🎧</span>
                           Help &amp; Support
                         </button>
                       </div>
@@ -599,25 +680,26 @@ export function Navbar() {
                 </div>
 
                 <Link href="/profile"
-                  className={`nav3d-chip group relative flex items-center gap-2 pl-1 pr-3 py-1 rounded-full ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                  className={`nav3d-chip nav3d-eq group relative ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}
+                  style={{ paddingLeft: 5 }}>
+                  <div className="rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
+                    style={{ width: 26, height: 26, background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>
                   {/* v494 — was text-white/80 → invisible on the light bar (only
                       "SA" showed). text-luxury-900 is theme/route-aware. */}
-                  <span className="text-xs font-semibold text-luxury-900 leading-none">
+                  <span className="text-luxury-900 leading-none">
                     {user.name ? user.name.split(" ")[0] : "Profile"}
                   </span>
                 </Link>
 
                 <button onClick={logout}
-                  className="nav3d-chip ml-1 text-xs font-semibold px-3 py-2 rounded-xl hover:text-red-500">
+                  className="nav3d-chip nav3d-eq ml-1 hover:text-red-500">
                   Sign Out
                 </button>
               </>
             ) : (
-              <Link href="/auth" className="lux-btn px-5 py-2 rounded-full text-sm ml-1">
+              <Link href="/auth" className="nav3d-chip nav3d-eq nav3d-solidgold ml-1">
                 Sign In
               </Link>
             )}

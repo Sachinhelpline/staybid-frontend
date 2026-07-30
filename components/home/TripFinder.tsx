@@ -19,7 +19,7 @@
 // Scoring unchanged: lib/browse/trip-finder.ts (pure, deterministic).
 // Styles: .sbh-tf-* in app/globals.css (unlayered, both viewports).
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { answerTrip, BUDGET_BANDS, type BudgetBandId, type FinderHotel } from "@/lib/browse/trip-finder";
 import { TRIP_FORMATS, formatForSegment, type SegmentId, type TripFormatId } from "@/lib/browse/trip-formats";
@@ -52,6 +52,17 @@ function readSaved(): Saved | null {
 }
 
 const MEDAL = ["🥇", "🥈", "🥉"];
+
+// v584.1 — the "what happens here" journey map that fills the header's dead
+// space (owner: "yahan kuch aisha mention karo jish se samaj aa jaye ki ab
+// kya karna hai"). Rendered as a Who → Trip → Budget → Matches strip whose
+// active step glows, done steps tick, and future steps stay quiet.
+const GUIDE: { at: number; ico: string; lb: string }[] = [
+  { at: 0, ico: "👥", lb: "Who" },
+  { at: 1, ico: "🧭", lb: "Trip" },
+  { at: 2, ico: "💰", lb: "Budget" },
+  { at: 3, ico: "✨", lb: "Matches" },
+];
 
 export default function TripFinder({
   hotels,
@@ -128,11 +139,26 @@ export default function TripFinder({
                 {step === 3 ? "Your matches" : "Not sure where to go?"}
               </h2>
               <p className="sbh-tf-sub">
-                {step === 0 && "3 quick taps — we'll find your places."}
-                {step === 1 && "What kind of trip are you dreaming of?"}
-                {step === 2 && "Roughly what budget per person?"}
+                {/* v584.1 — every step now says what to DO and what comes
+                    NEXT, so the traveller is never guessing. */}
+                {step === 0 && "Tap 1 of 3 — who's travelling? Trip type comes next."}
+                {step === 1 && "Tap 2 of 3 — pick the trip type. Budget is next."}
+                {step === 2 && "Last tap — pick a budget & your matches appear."}
                 {step === 3 && "For your trip, budget & how far you are."}
               </p>
+            </div>
+            {/* v584.1 — the journey map fills the header's empty middle: this
+                card finds your destination in 3 taps, and here is exactly
+                where you are in that journey. */}
+            <div className="sbh-tf-guide" aria-hidden>
+              {GUIDE.map((g, idx) => (
+                <Fragment key={g.at}>
+                  {idx > 0 ? <span className="sbh-tf-garrow">→</span> : null}
+                  <span className={`sbh-tf-gstep${step === g.at ? " is-now" : step > g.at ? " is-done" : ""}`}>
+                    <span className="sbh-tf-gstep-ico">{step > g.at ? "✓" : g.ico}</span> {g.lb}
+                  </span>
+                </Fragment>
+              ))}
             </div>
             {/* the seasonal selling program, folded into the Finder as a
                 slim tappable ribbon (was a full-width card of its own).
@@ -151,7 +177,9 @@ export default function TripFinder({
                 <b>{program.title}</b>
                 <i>{program.tagline}</i>
               </span>
-              <span className="sbh-tf-ribbon-go" aria-hidden>{seasonOpen ? "▴" : "▾"}</span>
+              {/* v584.1 — a bare ▾ read as decoration; say the word so the
+                  traveller KNOWS the season is switchable. */}
+              <span className="sbh-tf-ribbon-go" aria-hidden>{seasonOpen ? "close ▴" : "change ▾"}</span>
             </button>
             ) : null}
           </div>
