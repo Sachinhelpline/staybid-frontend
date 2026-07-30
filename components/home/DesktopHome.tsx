@@ -28,6 +28,7 @@ import { CountUp } from "@/components/CountUp";
 import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelScoreBadge";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -133,6 +134,48 @@ function imgOf(h?: Hotel | null): string {
   const arr = Array.isArray(h?.images) ? h!.images!.filter(Boolean) : [];
   return arr[0] || "";
 }
+
+/* ── wishlist (heart) — writes sb_local_saves, the exact schema /saved reads ── */
+function readSavedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem("sb_local_saves");
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set((Array.isArray(arr) ? arr : []).map((s: any) => `${s.target_type}:${s.target_id}`));
+  } catch { return new Set(); }
+}
+function toggleSaved(kind: "hotel" | "video", id: string, snap: Record<string, any>): boolean {
+  try {
+    const raw = localStorage.getItem("sb_local_saves");
+    const arr = raw ? JSON.parse(raw) : [];
+    const list = Array.isArray(arr) ? arr : [];
+    const key = `${kind}:${id}`;
+    const exists = list.some((s: any) => `${s.target_type}:${s.target_id}` === key);
+    const next = exists
+      ? list.filter((s: any) => `${s.target_type}:${s.target_id}` !== key)
+      : [{ target_type: kind, target_id: id, ...snap }, ...list];
+    localStorage.setItem("sb_local_saves", JSON.stringify(next));
+    try { window.dispatchEvent(new Event("sb:saves-change")); } catch {}
+    return !exists;
+  } catch { return false; }
+}
+/** Wishlist heart button — top-right of any card's media. */
+function SaveHeart({ kind, id, snap }: { kind: "hotel" | "video"; id: string; snap: Record<string, any> }) {
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { setSaved(readSavedIds().has(`${kind}:${id}`)); }, [kind, id]);
+  return (
+    <button
+      type="button"
+      className={`sbh-heart${saved ? " is-on" : ""}`}
+      aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+      aria-pressed={saved}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSaved(toggleSaved(kind, id, snap)); }}
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12.001 4.529c2.349-2.532 6.151-2.595 8.6-.184 2.45 2.41 2.605 6.37.4 8.978l-7.21 7.21a1.06 1.06 0 0 1-1.5 0l-7.21-7.21c-2.205-2.609-2.05-6.568.4-8.978 2.45-2.41 6.252-2.348 8.601.184Z" />
+      </svg>
+    </button>
+  );
+}
 function reelPoster(r: Reel): string {
   const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE";
   return (isVideo ? r.thumbnail_url : r.media_url) || r.media_url || "";
@@ -232,7 +275,6 @@ function Rail({
 function HotelCard({ h, score }: { h: Hotel; score?: Scorecard }) {
   const price = minPriceOf(h);
   const img = imgOf(h);
-  const rank = score?.rank?.rank;
   const rate = Number(h.avgRating) || 0;
   const reviews = Number(h.totalReviews) || 0;
   const below = belowPct(marketOf(h), price);
@@ -242,10 +284,10 @@ function HotelCard({ h, score }: { h: Hotel; score?: Scorecard }) {
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
+        <SaveHeart kind="hotel" id={h.id} snap={{ hotel_name: h.name, hotel_image: img, starRating: h.starRating, avgRating: h.avgRating }} />
         {score?.overall != null ? (
-          <span className="sbh-chip sbh-chip-score">
-            {rank ? <b className="sbh-chip-rank">RANK {rank}</b> : null}
-            {Math.round(score.overall)}<em>/100</em>
+          <span className="sbh-badge-slot" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <HotelScoreBadge hotelId={h.id} hotelName={h.name || ""} variant="compact" />
           </span>
         ) : null}
       </div>
@@ -296,21 +338,21 @@ function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecar
   const now = Number(d.aiPrice) || 0;
   const was = Number(d.marketRate) || 0;
   const off = offPct(was, now);   // always agrees with the prices below
-  const rank = score?.rank?.rank;
   const rate = Number(h?.avgRating) || 0;
   const reviews = Number(h?.totalReviews) || 0;
+  const hid = d.hotelId || h?.id || "";
   return (
-    <Link href={`/hotels/${d.hotelId || h?.id || ""}`} className="sbh-card sbh-card-wide sbh-card-flash">
+    <Link href={`/hotels/${hid}`} className="sbh-card sbh-card-wide sbh-card-flash">
       <div className="sbh-card-media">
         {img ? <img src={img} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
         {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
-        {left ? <span className="sbh-chip sbh-chip-live">⏳ {left}</span> : null}
+        {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">⏳ {left}</span> : null}
+        {hid ? <SaveHeart kind="hotel" id={hid} snap={{ hotel_name: h?.name, hotel_image: img, avgRating: h?.avgRating }} /> : null}
         {score?.overall != null ? (
-          <span className="sbh-chip sbh-chip-score sbh-chip-score-bl">
-            {rank ? <b className="sbh-chip-rank">RANK {rank}</b> : null}
-            {Math.round(score.overall)}<em>/100</em>
+          <span className="sbh-badge-slot" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <HotelScoreBadge hotelId={hid} hotelName={h?.name || ""} variant="compact" />
           </span>
         ) : null}
       </div>
@@ -859,7 +901,12 @@ export default function DesktopHome() {
       if (ids.length) {
         const sc = await fetch(`/api/hotels/scorecards?ids=${ids.join(",")}`)
           .then((r) => (r.ok ? r.json() : null), () => null);
-        if (!dead && sc?.scorecards) setScores(sc.scorecards);
+        if (!dead && sc?.scorecards) {
+          setScores(sc.scorecards);
+          // let the shared HotelScoreBadge read these from cache instead of
+          // each badge firing its own request — same trophy/medal as /hotels.
+          seedScorecardCache(sc.scorecards);
+        }
       }
     })();
     return () => { dead = true; };

@@ -33,7 +33,7 @@ const NAV_LINKS = [
   { href: "/bid",         label: "Bid",         icon: "🎯" },
   // v578 — wishlist entry: the heart on cards saves to /saved, so surface a
   // Saved chip in the top nav (was reachable nowhere before).
-  { href: "/saved",       label: "Saved",       icon: "♡" },
+  { href: "/saved",       label: "Wishlist",    icon: "♡" },
 ];
 
 // v108 — Creator + Partner chips filtered per-tier inside the component.

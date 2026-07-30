@@ -12121,3 +12121,19 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 .sbh-chip-score-bl { top: auto !important; right: auto !important; bottom: 9px; left: 9px; }
 [data-theme="dark"] .sbh-card-rating { color: #e7c77a; }
 [data-theme="dark"] .sbh-card-below { color: #6fd79a; }
+
+/* v578.1 — home card wishlist heart + real score-badge slot (trophy/medal) */
+.sbh-heart {
+  position: absolute; z-index: 5; top: 8px; right: 8px;
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; background: rgba(20, 15, 9, 0.42); border: 1px solid rgba(255, 255, 255, 0.28);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); cursor: pointer; padding: 0;
+  transition: transform 0.14s ease, color 0.2s ease, background 0.2s ease;
+}
+.sbh-heart.is-on { color: #ff5a7a; background: rgba(20, 15, 9, 0.58); border-color: rgba(255, 120, 150, 0.5); }
+.sbh-heart:active { transform: scale(0.86); }
+.sbh-heart:hover { background: rgba(20, 15, 9, 0.6); }
+/* the shared HotelScoreBadge (trophy + Rank + score) sits bottom-left of the tile */
+.sbh-badge-slot { position: absolute; z-index: 4; left: 8px; bottom: 8px; display: inline-flex; }
+/* flash countdown moves to bottom-right so the heart owns the top-right */
+.sbh-chip.sbh-chip-live-br { top: auto; bottom: 9px; right: 9px; }

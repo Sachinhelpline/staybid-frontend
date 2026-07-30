@@ -40,7 +40,7 @@ const ITEMS: Item[] = [
   { href: "/discover",    label: "Reels",   icon: "▷",  iconActive: "▶" },
   // v578 — wishlist entry on the mobile nav (the heart on cards saves to /saved;
   // it was only reachable from the /me drawer before).
-  { href: "/saved",       label: "Saved",   icon: "♡",  iconActive: "♥" },
+  { href: "/saved",       label: "Wishlist", icon: "♡",  iconActive: "♥" },
   { href: "/me",          label: "You",     icon: "○",  iconActive: "●" },
 ];
 
