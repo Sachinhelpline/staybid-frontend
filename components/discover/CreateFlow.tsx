@@ -1029,9 +1029,9 @@ export function ProfilePhotoEditor({
               maxLength={32}
               className="w-full rounded-xl px-3 py-2 text-[0.86rem] outline-hidden"
               style={{
-                color: "#fff", caretColor: "#d0d9e1",
-                background: "rgba(255,255,255,0.10)",
-                border: "1px solid rgba(255,255,255,0.20)",
+                color: "var(--text-base)", caretColor: "var(--accent)",
+                background: "color-mix(in srgb, var(--accent) 8%, var(--bg-card))",
+                border: "1px solid var(--border-strong)",
               }}
             />
           </div>
@@ -1047,9 +1047,9 @@ export function ProfilePhotoEditor({
               maxLength={280}
               className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden resize-none"
               style={{
-                color: "#fff", caretColor: "#d0d9e1",
-                background: "rgba(255,255,255,0.10)",
-                border: "1px solid rgba(255,255,255,0.20)",
+                color: "var(--text-base)", caretColor: "var(--accent)",
+                background: "color-mix(in srgb, var(--accent) 8%, var(--bg-card))",
+                border: "1px solid var(--border-strong)",
                 minHeight: 70,
               }}
             />
@@ -1068,9 +1068,9 @@ export function ProfilePhotoEditor({
               maxLength={80}
               className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
               style={{
-                color: "#fff", caretColor: "#d0d9e1",
-                background: "rgba(255,255,255,0.10)",
-                border: "1px solid rgba(255,255,255,0.20)",
+                color: "var(--text-base)", caretColor: "var(--accent)",
+                background: "color-mix(in srgb, var(--accent) 8%, var(--bg-card))",
+                border: "1px solid var(--border-strong)",
               }}
             />
           </div>
@@ -1085,9 +1085,9 @@ export function ProfilePhotoEditor({
               maxLength={120}
               className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
               style={{
-                color: "#fff", caretColor: "#d0d9e1",
-                background: "rgba(255,255,255,0.10)",
-                border: "1px solid rgba(255,255,255,0.20)",
+                color: "var(--text-base)", caretColor: "var(--accent)",
+                background: "color-mix(in srgb, var(--accent) 8%, var(--bg-card))",
+                border: "1px solid var(--border-strong)",
               }}
             />
           </div>

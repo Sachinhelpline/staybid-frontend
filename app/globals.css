@@ -437,6 +437,29 @@
       color 0.22s ease;
   }
 
+  /* v610 — Edit-profile sheet (.sb-ppe, components/discover/CreateFlow.tsx).
+     Lives here (always-loaded, unlayered) NOT in a styled-jsx block: that
+     block belonged to a sibling component that isn't mounted while the sheet
+     is open, so the rules never applied → v608/v609 invisible white inputs.
+     .sb-ppe is only ever on the profile sheet, so this can't leak elsewhere. */
+  .sb-ppe input,
+  .sb-ppe textarea {
+    color: var(--text-base) !important;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-card)) !important;
+    border: 1px solid var(--border-strong) !important;
+    caret-color: var(--accent) !important;
+  }
+  .sb-ppe input::placeholder,
+  .sb-ppe textarea::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.85;
+  }
+  .sb-ppe .ppe-close {
+    background: var(--accent-soft) !important;
+    border-color: var(--border-soft) !important;
+    color: var(--text-base) !important;
+  }
+
   /* ─── Base ──────────────────────────────────────────────────────── */
   html {
     scroll-behavior: smooth;

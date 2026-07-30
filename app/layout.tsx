@@ -123,7 +123,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             own rules. */}
         <style dangerouslySetInnerHTML={{__html: `
           html,body{margin:0;padding:0;background:#f4f6f8;color:#1F1A0F;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
-          html[data-theme="dark"],html[data-theme="dark"] body{background:#0F0C08;color:#E8DCC8}
+          html[data-theme="dark"],html[data-theme="dark"] body{background:#13171C;color:#dbe3ea}
           html.is-reel-page,html.is-reel-page body{background:#000;color:#eaeef2}
           body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
           /* v412 — Paint the TOP safe-area (status-bar / notch region) with the
@@ -132,7 +132,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
              mode (standalone OR a stale fullscreen install) with no reinstall.
              On reel pages the rail/video own the top, so stay transparent there. */
           #sb-safe-top-fill{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#f4f6f8;z-index:5;pointer-events:none}
-          html[data-theme="dark"] #sb-safe-top-fill{background:#0F0C08}
+          html[data-theme="dark"] #sb-safe-top-fill{background:#13171C}
           html.is-reel-page #sb-safe-top-fill{background:#f8fafb}
           /* v413 — the /bid reverse-auction is a dark walnut game zone; paint the
              top safe-area walnut too (matching the #0d0a05 status bar) so no cream
@@ -275,7 +275,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v610</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v611</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -296,7 +296,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v610-bid-page-nav-visible";
+var SB_BUILD="v611-editprofile-globals-flash-wishlist";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
