@@ -69,17 +69,17 @@ function ordinal(n: number): string {
 
 function statusTone(status: string): string {
   if (status === "excellent") return "#7F9269";
-  if (status === "good") return "#C9A66B";
+  if (status === "good") return "#5f7c98";
   if (status === "fair") return "#b4c1cf";
   return "#D49583";
 }
 
 function checkpointTone(s: string): string {
   if (s === "excellent") return "#7F9269";
-  if (s === "good") return "#C9A66B";
+  if (s === "good") return "#5f7c98";
   if (s === "fair") return "#b4c1cf";
   if (s === "poor") return "#D49583";
-  return "#6E5430";
+  return "#4f6d8a";
 }
 
 export default function HotelScorecardModal({
@@ -149,7 +149,7 @@ export default function HotelScorecardModal({
     }${r.percentile != null ? ` · top ${Math.max(1, 100 - Math.round(r.percentile))}%` : ""}`;
   }, [card]);
 
-  const tone = card ? statusTone(card.status) : "#C9A66B";
+  const tone = card ? statusTone(card.status) : "#5f7c98";
 
   // v128.7 — Unrated state: hotel has no score yet. Show a friendly
   // "awaiting first score" hero instead of an empty 0/100 + 0/0/0
@@ -425,7 +425,7 @@ export default function HotelScorecardModal({
           box-shadow:
             0 1px 0 rgba(255,255,255,0.6) inset,
             0 30px 80px -22px rgba(31, 26, 15, 0.45),
-            0 0 0 1px rgba(201, 166, 107, 0.25);
+            0 0 0 1px rgba(106, 133, 160, 0.25);
           animation: hsm-rise .35s cubic-bezier(.22,1,.36,1);
           -webkit-overflow-scrolling: touch;
         }
@@ -453,9 +453,9 @@ export default function HotelScorecardModal({
           right: 12px;
           width: 34px; height: 34px;
           border-radius: 50%;
-          border: 1px solid rgba(201, 166, 107, 0.35);
+          border: 1px solid rgba(106, 133, 160, 0.35);
           background: rgba(176, 192, 209, 0.85);
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           font-size: 0.85rem;
           cursor: pointer;
           z-index: 4;
@@ -470,7 +470,7 @@ export default function HotelScorecardModal({
           font-size: 0.62rem;
           letter-spacing: 0.22em;
           text-transform: uppercase;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
           margin-bottom: 6px;
         }
         .hsm-hero-title {
@@ -489,7 +489,7 @@ export default function HotelScorecardModal({
           align-items: center;
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
           font-size: 0.78rem;
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
         }
         .hsm-rank-emoji { font-size: 1rem; }
 
@@ -510,7 +510,7 @@ export default function HotelScorecardModal({
         .hsm-hero-num { font-size: 3rem; font-weight: 600; line-height: 1; }
         .hsm-hero-denom {
           font-size: 0.95rem;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
           letter-spacing: 0.04em;
         }
         .hsm-hero-status {
@@ -533,7 +533,7 @@ export default function HotelScorecardModal({
           padding: 10px 14px;
           border-radius: 14px;
           background: rgba(176, 192, 209, 0.7);
-          border: 1px solid rgba(201, 166, 107, 0.22);
+          border: 1px solid rgba(106, 133, 160, 0.22);
         }
         .hsm-tally-cell { flex: 1; text-align: center; }
         .hsm-tally-num {
@@ -549,11 +549,11 @@ export default function HotelScorecardModal({
           font-size: 0.6rem;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
         }
         .hsm-tally-divider {
           width: 1px; align-self: stretch;
-          background: rgba(201, 166, 107, 0.3);
+          background: rgba(106, 133, 160, 0.3);
         }
 
         /* v128.7 — Awaiting (unrated) hero — friendly state replacing
@@ -562,9 +562,9 @@ export default function HotelScorecardModal({
           margin-top: 16px;
           padding: 16px 18px;
           background: linear-gradient(150deg,
-            color-mix(in oklab, #C9A66B 14%, var(--bg-elevated, #fcfcfd)) 0%,
+            color-mix(in oklab, #5f7c98 14%, var(--bg-elevated, #fcfcfd)) 0%,
             var(--bg-card, #f4f6f8) 90%);
-          border: 1.5px solid rgba(201, 166, 107, 0.35);
+          border: 1.5px solid rgba(106, 133, 160, 0.35);
           border-radius: 16px;
           display: flex;
           flex-direction: column;
@@ -610,10 +610,10 @@ export default function HotelScorecardModal({
           padding: 5px 11px;
           border-radius: 999px;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.30);
+          border: 1px solid rgba(106, 133, 160, 0.30);
           font-size: 0.72rem;
           font-weight: 700;
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           letter-spacing: 0.03em;
         }
         @media (prefers-reduced-motion: reduce) {
@@ -640,7 +640,7 @@ export default function HotelScorecardModal({
           font-size: 0.66rem;
           letter-spacing: 0.16em;
           text-transform: uppercase;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
         }
 
         .hsm-checkpoint-list {
@@ -655,7 +655,7 @@ export default function HotelScorecardModal({
           padding: 12px 14px 10px;
           border-radius: 14px;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.18);
+          border: 1px solid rgba(106, 133, 160, 0.18);
           border-left: 4px solid;
           transition: transform .2s, box-shadow .2s;
         }
@@ -687,7 +687,7 @@ export default function HotelScorecardModal({
           margin-top: 2px;
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
           font-size: 0.78rem;
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           line-height: 1.35;
         }
         .hsm-checkpoint-points {
@@ -701,14 +701,14 @@ export default function HotelScorecardModal({
         }
         .hsm-checkpoint-earned { font-weight: 600; font-size: 1.15rem; }
         .hsm-checkpoint-weight {
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
           font-size: 0.85rem;
         }
         .hsm-checkpoint-bar {
           margin-top: 8px;
           height: 6px;
           border-radius: 999px;
-          background: rgba(201, 166, 107, 0.16);
+          background: rgba(106, 133, 160, 0.16);
           overflow: hidden;
         }
         .hsm-checkpoint-bar-fill {
@@ -722,7 +722,7 @@ export default function HotelScorecardModal({
           font-size: 0.62rem;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
         }
         .hsm-checkpoint-sample-empty { opacity: 0.7; }
 
@@ -747,7 +747,7 @@ export default function HotelScorecardModal({
           text-decoration: none;
           font-size: 0.85rem;
           letter-spacing: 0.03em;
-          box-shadow: 0 10px 24px -12px rgba(201, 166, 107, 0.55);
+          box-shadow: 0 10px 24px -12px rgba(106, 133, 160, 0.55);
           transition: transform .2s;
         }
         .hsm-cta-compare:hover { transform: translateY(-1px); }
@@ -755,9 +755,9 @@ export default function HotelScorecardModal({
         .hsm-cta-refresh {
           padding: 11px 14px;
           border-radius: 12px;
-          border: 1px solid rgba(201, 166, 107, 0.4);
+          border: 1px solid rgba(106, 133, 160, 0.4);
           background: var(--bg-elevated, #fcfcfd);
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
           font-weight: 600;
           font-size: 0.78rem;
@@ -770,7 +770,7 @@ export default function HotelScorecardModal({
           text-align: center;
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
           font-size: 0.66rem;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
           letter-spacing: 0.04em;
         }
 
@@ -778,20 +778,20 @@ export default function HotelScorecardModal({
         .hsm-checkpoint-clickable {
           cursor: pointer;
           background: linear-gradient(180deg,
-            color-mix(in oklab, var(--hsm-cp-accent, #C9A66B) 10%, transparent) 0%,
+            color-mix(in oklab, var(--hsm-cp-accent, #5f7c98) 10%, transparent) 0%,
             var(--bg-card, #f4f6f8) 100%);
-          border: 1.5px solid color-mix(in oklab, var(--hsm-cp-accent, #C9A66B) 50%, transparent);
+          border: 1.5px solid color-mix(in oklab, var(--hsm-cp-accent, #5f7c98) 50%, transparent);
           box-shadow:
-            0 4px 12px -6px color-mix(in oklab, var(--hsm-cp-accent, #C9A66B) 60%, transparent),
+            0 4px 12px -6px color-mix(in oklab, var(--hsm-cp-accent, #5f7c98) 60%, transparent),
             inset 0 1px 0 rgba(255, 255, 255, 0.5);
           transition: transform 0.18s ease, box-shadow 0.22s ease, border-color 0.2s;
         }
         .hsm-checkpoint-clickable:hover,
         .hsm-checkpoint-clickable:focus-visible {
           transform: translateY(-2px);
-          border-color: color-mix(in oklab, var(--hsm-cp-accent, #C9A66B) 90%, transparent);
+          border-color: color-mix(in oklab, var(--hsm-cp-accent, #5f7c98) 90%, transparent);
           box-shadow:
-            0 8px 18px -6px color-mix(in oklab, var(--hsm-cp-accent, #C9A66B) 65%, transparent),
+            0 8px 18px -6px color-mix(in oklab, var(--hsm-cp-accent, #5f7c98) 65%, transparent),
             inset 0 1px 0 rgba(255, 255, 255, 0.6);
           outline: none;
         }
@@ -805,9 +805,9 @@ export default function HotelScorecardModal({
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.3));
-          border: 1px solid color-mix(in oklab, var(--hsm-cp-accent, #C9A66B) 55%, transparent);
+          border: 1px solid color-mix(in oklab, var(--hsm-cp-accent, #5f7c98) 55%, transparent);
           border-radius: 999px;
           vertical-align: middle;
         }
@@ -824,7 +824,7 @@ export default function HotelScorecardModal({
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: var(--hsm-cp-accent, #C9A66B);
+          color: var(--hsm-cp-accent, #5f7c98);
         }
 
         /* ── v128.2: drill-down view ───────────────────────────────── */
@@ -842,7 +842,7 @@ export default function HotelScorecardModal({
           gap: 10px;
           padding: 14px 18px;
           background: var(--bg-card, #f4f6f8);
-          border-bottom: 1px solid rgba(201, 166, 107, 0.20);
+          border-bottom: 1px solid rgba(106, 133, 160, 0.20);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
         }
@@ -853,9 +853,9 @@ export default function HotelScorecardModal({
           width: 34px;
           height: 34px;
           border-radius: 50%;
-          border: 1px solid rgba(201, 166, 107, 0.35);
+          border: 1px solid rgba(106, 133, 160, 0.35);
           background: rgba(176, 192, 209, 0.85);
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           font-size: 0.95rem;
           cursor: pointer;
           transition: transform 0.18s, background 0.2s;
@@ -877,7 +877,7 @@ export default function HotelScorecardModal({
           font-size: 0.66rem;
           letter-spacing: 0.07em;
           text-transform: uppercase;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
           font-weight: 700;
           margin-top: 2px;
         }
@@ -902,7 +902,7 @@ export default function HotelScorecardModal({
           padding: 14px 14px 16px;
           margin-bottom: 16px;
           background: linear-gradient(150deg, rgba(201,166,107,0.10) 0%, var(--bg-elevated, #fcfcfd) 100%);
-          border: 1px solid rgba(201, 166, 107, 0.22);
+          border: 1px solid rgba(106, 133, 160, 0.22);
           border-radius: 14px;
           align-items: center;
         }
@@ -933,16 +933,16 @@ export default function HotelScorecardModal({
           gap: 6px;
           align-items: center;
         }
-        .hsm-stat-bar-row .hsm-bar-count { text-align: right; color: var(--cozy-cocoa, #4a3820); }
+        .hsm-stat-bar-row .hsm-bar-count { text-align: right; color: var(--text-soft); }
         .hsm-stat-bar {
           height: 7px;
           border-radius: 4px;
-          background: rgba(201, 166, 107, 0.18);
+          background: rgba(106, 133, 160, 0.18);
           overflow: hidden;
         }
         .hsm-stat-bar-fill {
           height: 100%;
-          background: linear-gradient(90deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(90deg, #b4c1cf, #5f7c98);
           border-radius: 4px;
         }
 
@@ -951,7 +951,7 @@ export default function HotelScorecardModal({
         .hsm-rev {
           padding: 12px 14px;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.22);
+          border: 1px solid rgba(106, 133, 160, 0.22);
           border-radius: 12px;
           box-shadow: 0 2px 6px -3px rgba(31, 26, 15, 0.10);
         }
@@ -967,7 +967,7 @@ export default function HotelScorecardModal({
           gap: 5px;
           padding: 3px 9px;
           background: var(--accent-soft, rgba(201,166,107,0.15));
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
           font-size: 0.65rem;
           font-weight: 700;
@@ -977,14 +977,14 @@ export default function HotelScorecardModal({
         .hsm-rev-stars {
           font-size: 0.85rem;
           letter-spacing: 0.06em;
-          color: var(--cozy-champagne, #C9A66B);
+          color: var(--cozy-champagne, #5f7c98);
         }
         .hsm-rev-stars span { opacity: 0.25; }
         .hsm-rev-stars span.on { opacity: 1; }
         .hsm-rev-date {
           margin-left: auto;
           font-size: 0.65rem;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
           letter-spacing: 0.04em;
         }
         .hsm-rev-body {
@@ -996,7 +996,7 @@ export default function HotelScorecardModal({
         }
         .hsm-rev-empty-body {
           font-style: italic;
-          color: var(--cozy-cocoa-soft, #6e5430);
+          color: var(--text-muted);
           font-size: 0.78rem;
         }
 
@@ -1004,7 +1004,7 @@ export default function HotelScorecardModal({
         .hsm-sf {
           padding: 12px 14px;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.22);
+          border: 1px solid rgba(106, 133, 160, 0.22);
           border-radius: 12px;
           margin-bottom: 10px;
           box-shadow: 0 2px 6px -3px rgba(31, 26, 15, 0.10);
@@ -1028,8 +1028,8 @@ export default function HotelScorecardModal({
           gap: 3px;
           padding: 7px 4px;
           border-radius: 8px;
-          border: 1px solid color-mix(in oklab, var(--hsm-sf-tone, #C9A66B) 30%, transparent);
-          background: color-mix(in oklab, var(--hsm-sf-tone, #C9A66B) 10%, var(--bg-card, #f4f6f8));
+          border: 1px solid color-mix(in oklab, var(--hsm-sf-tone, #5f7c98) 30%, transparent);
+          background: color-mix(in oklab, var(--hsm-sf-tone, #5f7c98) 10%, var(--bg-card, #f4f6f8));
         }
         .hsm-sf-emoji { font-size: 1.05rem; line-height: 1; }
         .hsm-sf-cell-lbl {
@@ -1044,7 +1044,7 @@ export default function HotelScorecardModal({
           margin-left: auto;
           padding: 2px 7px;
           background: rgba(176, 192, 209, 0.25);
-          color: var(--cozy-cocoa, #4a3820);
+          color: var(--text-soft);
           font-size: 0.58rem;
           letter-spacing: 0.06em;
           text-transform: uppercase;
