@@ -174,7 +174,7 @@ function CountdownRing({ pctRemaining, urgent }: { pctRemaining: number; urgent:
       <circle cx="19" cy="19" r={r} fill="none" stroke="rgba(255,246,226,0.14)" strokeWidth="2.6" />
       <circle
         cx="19" cy="19" r={r} fill="none"
-        stroke={urgent ? "#f6a721" : "#f0c24a"}
+        stroke={urgent ? "#f6a721" : "#b8c5d2"}
         strokeWidth="2.6" strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
         transform="rotate(-90 19 19)"
@@ -1102,16 +1102,19 @@ function FdStyles() {
       .fd-root {
         position: relative;
         min-height: 100vh;
-        background: radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.10), transparent 60%),
-                    radial-gradient(900px 500px at 90% 30%, rgba(217, 190, 130, 0.08), transparent 55%),
-                    linear-gradient(180deg, #FAF5EB 0%, #F5EFE0 50%, #FAF5EB 100%);
+        /* v589 — brighter matte cream (was hardcoded dull #FAF5EB, missed the
+           v588 lift) + a dusty-sage whisper low-left for the earthy accent. */
+        background: radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.09), transparent 60%),
+                    radial-gradient(900px 500px at 90% 30%, rgba(217, 190, 130, 0.07), transparent 55%),
+                    radial-gradient(1100px 700px at -5% 108%, rgba(154,172,196, 0.11), transparent 62%),
+                    linear-gradient(180deg, #FDFAF3 0%, #FBF7EE 50%, #FDFAF3 100%);
         color: var(--cozy-warm-dark, #1F1A0F);
         overflow-x: hidden;
       }
       .fd-bg-mesh {
         position: fixed; inset: 0;
         background-image:
-          radial-gradient(circle at 25% 70%, rgba(240, 180, 41, 0.08) 0, transparent 35%),
+          radial-gradient(circle at 25% 70%, rgba(106,133,160, 0.08) 0, transparent 35%),
           radial-gradient(circle at 80% 20%, rgba(255, 56, 89, 0.05) 0, transparent 30%);
         pointer-events: none;
         animation: fdMesh 14s ease-in-out infinite alternate;
@@ -1133,7 +1136,7 @@ function FdStyles() {
         box-shadow: 0 6px 16px -12px rgba(31, 26, 15, 0.28);
       }
       .fd-sticky-inner {
-        max-width: 1480px; margin: 0 auto;
+        max-width: 1920px; margin: 0 auto;
         padding: 10px 18px 11px;
       }
       @media (min-width: 640px)  { .fd-sticky-inner { padding: 12px 24px 13px; } }
@@ -1142,7 +1145,7 @@ function FdStyles() {
       /* v521 — champagne-gold live dot (cozy theme; no red/pink). */
       .fd-dot-live {
         width: 7px; height: 7px; border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, #ffe6a8, #e6b84f 55%, #c9932f);
+        background: radial-gradient(circle at 35% 35%, #ffe6a8, #aebccb 55%, #859bb1);
         box-shadow: 0 0 0 0 rgba(224, 176, 74, 0.7), 0 0 6px rgba(224,176,74,0.55);
         animation: fdPulse 1.7s infinite;
       }
@@ -1157,7 +1160,7 @@ function FdStyles() {
          Tiny stat strip lives just under the title as a secondary row. */
       .fd-hero-slim {
         position: relative; z-index: 1;
-        max-width: 1480px; margin: 0 auto;
+        max-width: 1920px; margin: 0 auto;
         padding: 6px 16px 5px;
       }
       @media (min-width: 640px)  { .fd-hero-slim { padding: 8px 24px 6px; } }
@@ -1181,7 +1184,7 @@ function FdStyles() {
       .fd-hero-eyebrow {
         font-size: 0.5rem; font-weight: 700;
         letter-spacing: 0.22em; text-transform: uppercase;
-        background: linear-gradient(90deg, #D9BE82, #C9A66B);
+        background: linear-gradient(90deg, #6a85a0, #4b6075);
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -1202,7 +1205,7 @@ function FdStyles() {
       }
       .fd-hero-dot { color: var(--cozy-cocoa-soft, #6E5430); opacity: 0.5; }
       .fd-title-gold {
-        background: linear-gradient(90deg, #D9BE82, #C9A66B, #9C7E48, #C9A66B, #D9BE82);
+        background: linear-gradient(90deg, #D9BE82, #C9A66B, #69849f, #C9A66B, #D9BE82);
         background-size: 200% 100%;
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -1237,8 +1240,8 @@ function FdStyles() {
       .fd-stat-sep { color: var(--cozy-taupe, #C8B891); opacity: 0.7; }
       .fd-stat-dot {
         width: 6px; height: 6px; border-radius: 50%;
-        background: var(--cozy-sage, #9DAD8F);
-        box-shadow: 0 0 6px rgba(157, 173, 143, 0.6);
+        background: var(--cozy-sage, #97aabd);
+        box-shadow: 0 0 6px rgba(154,172,196, 0.6);
         animation: fdPulse 1.8s infinite;
       }
       @media (min-width: 1024px) { .fd-hero-stats { font-size: 0.74rem; } }
@@ -1329,7 +1332,7 @@ function FdStyles() {
          pill + room picker + meter) stays legible. */
       .fd-grid-wrap {
         position: relative; z-index: 1;
-        max-width: 1480px; margin: 0 auto;
+        max-width: 1920px; margin: 0 auto;
         padding: 0 16px 80px;
       }
       @media (min-width: 640px)  { .fd-grid-wrap { padding: 0 22px 88px; } }
@@ -1449,36 +1452,30 @@ function FdStyles() {
          sweep. Big discounts (.fire) get a richer, deeper gold — still cozy. */
       .fd-disc-stamp {
         position: absolute; top: 12px; right: 12px; z-index: 2;
-        background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+        /* v590 — satin matte gold coin (was glossy + a moving shine sweep). */
+        background: linear-gradient(145deg, #92a5b9 0%, #6a85a0 46%, #7890a9 100%);
         border-radius: 15px;
         padding: 8px 12px;
         display: flex; flex-direction: column; align-items: center;
         line-height: 1;
         overflow: hidden;
         box-shadow:
-          0 10px 24px -6px rgba(170,120,25,0.5),
-          inset 0 1.5px 0 rgba(255,255,255,0.7),
-          inset 0 -3px 6px rgba(150,95,10,0.4);
+          0 9px 20px -8px rgba(83,107,130,0.45),
+          inset 0 1px 0 rgba(255,248,230,0.30);
         animation: fdStamp 2.6s ease-in-out infinite;
       }
-      /* moving gloss sweep across the coin */
-      .fd-disc-stamp::after {
-        content: ""; position: absolute; inset: 0;
-        background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.5) 50%, transparent 62%);
-        background-size: 250% 100%;
-        animation: fdCoinShine 3.6s linear infinite;
-        pointer-events: none;
-      }
+      /* v590 — matte: the moving gloss sweep is gone. */
+      .fd-disc-stamp::after { display: none; }
       @keyframes fdCoinShine {
         0%   { background-position: 230% 0; }
         100% { background-position: -230% 0; }
       }
       .fd-disc-stamp.fire {
-        background: linear-gradient(140deg, #ffdd90 0%, #eab52f 46%, #c5850f 100%);
+        /* v590 — satin, slightly deeper for the higher-discount "fire" tier. */
+        background: linear-gradient(145deg, #adbbca 0%, #8a9fb4 46%, #67829e 100%);
         box-shadow:
-          0 11px 26px -6px rgba(150,100,15,0.55),
-          inset 0 1.5px 0 rgba(255,255,255,0.62),
-          inset 0 -3px 7px rgba(120,75,8,0.45);
+          0 10px 22px -8px rgba(130,90,12,0.5),
+          inset 0 1px 0 rgba(255,248,230,0.26);
       }
       @keyframes fdStamp {
         0%, 100% { transform: rotate(-3deg) scale(1); }
@@ -1622,7 +1619,7 @@ function FdStyles() {
       @media (min-width: 1280px) { .fd-score-slot { transform: scale(1); } }
       @media (max-width: 480px) { .fd-hotel-row { gap: 6px; } }
       /* v92 — Star + room type + slots use theme accent (champagne) so
-         they read on both cream + cocoa surfaces. The bright #f0b429
+         they read on both cream + cocoa surfaces. The bright #a9b9c8
          original gold disappeared on cream. */
       .fd-stars { color: var(--accent, #C9A66B); font-size: 0.65rem; letter-spacing: 0.05em; }
       .fd-rt-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
@@ -1644,7 +1641,7 @@ function FdStyles() {
       }
       .fd-slots-fill {
         height: 100%; border-radius: 999px;
-        background: linear-gradient(90deg, var(--cozy-champagne, #C9A66B), var(--cozy-champagne-light, #D9BE82));
+        background: linear-gradient(90deg, #6a85a0, #899eb3);
         transition: width 0.8s ease;
       }
       .fd-slots-fill.urgent {
@@ -1764,9 +1761,9 @@ function FdStyles() {
         display: inline-flex; align-items: center;
         padding: 2px 8px; border-radius: 999px;
         font-size: 0.66rem; font-weight: 600;
-        background: color-mix(in srgb, var(--cozy-sage, #9DAD8F) 22%, var(--bg-card));
+        background: color-mix(in srgb, var(--cozy-sage, #97aabd) 22%, var(--bg-card));
         color: var(--cozy-warm-dark, #1F1A0F);
-        border: 1px solid color-mix(in srgb, var(--cozy-sage, #9DAD8F) 40%, transparent);
+        border: 1px solid color-mix(in srgb, var(--cozy-sage, #97aabd) 40%, transparent);
       }
       .fd-slots-pill.urgent {
         background: color-mix(in srgb, #d49583 22%, var(--bg-card));
@@ -1837,22 +1834,17 @@ function FdStyles() {
       .fd-price-now {
         font-size: 1.7rem; font-weight: 900; line-height: 1;
         letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
-        background: linear-gradient(115deg, #6a4a12 0%, #b98a24 32%, #f7e6ac 50%, #b98a24 68%, #6a4a12 100%);
-        background-size: 240% 100%;
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent; color: transparent;
-        filter: drop-shadow(0 2px 3px rgba(74,56,32,0.34)) drop-shadow(0 1px 0 rgba(255,255,255,0.5));
-        animation: fdPriceShine 3.6s linear infinite;
+        color: #1c2836;
       }
       @keyframes fdPriceShine {
         0%   { background-position: 130% 0; }
         100% { background-position: -130% 0; }
       }
       [data-theme="dark"] .fd-price-now {
-        background: linear-gradient(115deg, #c9992f 0%, #eabf55 32%, #fff2c8 50%, #eabf55 68%, #c9992f 100%);
-        background-size: 240% 100%;
-        -webkit-background-clip: text; background-clip: text;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 6px rgba(235,191,85,0.3));
+        background: none;
+        -webkit-text-fill-color: #eaf1f7;
+        color: #eaf1f7;
+        filter: none;
       }
       @media (min-width: 1024px) { .fd-price-now { font-size: 1.62rem; } }
       /* Mobile wide-card price panel — big, breathable "ad" price. */
@@ -1873,7 +1865,7 @@ function FdStyles() {
         padding: 1px 7px; border-radius: 999px;
         font-size: 0.58rem; font-weight: 900; letter-spacing: 0.03em;
         color: #3a2606;
-        background: linear-gradient(135deg, #ffe6a3, #ecc04c 60%, #d69a1e);
+        background: linear-gradient(135deg, #ffe6a3, #b6c3d0 60%, #8ca1b6);
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px -2px rgba(180,130,25,0.5);
       }
 
@@ -1890,10 +1882,10 @@ function FdStyles() {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 3px 9px; border-radius: 999px;
         font-size: 0.62rem; font-weight: 800; letter-spacing: 0.01em;
-        color: #6a4a0e;
-        background: linear-gradient(135deg, #fff2cc, #f4d98a 60%, #e6bf5c);
-        border: 1px solid rgba(214,166,60,0.5);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 3px 8px -4px rgba(180,130,25,0.45);
+        color: #242e38;
+        background: linear-gradient(135deg, #d2dae2, #96a9bc 60%, #6a85a0);
+        border: 1px solid rgba(83,107,130,0.5);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 3px 8px -4px rgba(83,107,130,0.45);
       }
       .fd-amen-chip {
         display: inline-flex; align-items: center; gap: 4px;
@@ -1915,7 +1907,7 @@ function FdStyles() {
       }
       .fd-scarcity-fill {
         height: 100%; border-radius: 999px;
-        background: linear-gradient(90deg, #f0c24a, #e0a020);
+        background: linear-gradient(90deg, #b8c5d2, #94a7ba);
         box-shadow: 0 0 6px rgba(224,160,32,0.5);
         transition: width 0.6s cubic-bezier(.4,0,.2,1);
       }
@@ -1949,28 +1941,23 @@ function FdStyles() {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         /* a11y: 12px vertical padding → ~44px tap target. */
         padding: 12px 18px;
-        background: linear-gradient(160deg, #ffe9a6 0%, #f4c748 42%, #e0a521 70%, #c88914 100%);
+        /* v590 — SATIN matte gold (was bright glossy #ffe9a6→#7a92aa). Even,
+           brushed metal, no harsh white specular. */
+        background: linear-gradient(150deg, #899eb3 0%, #6a85a0 44%, #7890a9 100%);
         color: #2a1d05; font-size: 0.78rem; font-weight: 900;
         border: none; border-radius: 14px;
         cursor: pointer;
         box-shadow:
-          0 10px 22px -6px rgba(200,140,20,0.55),
-          0 2px 5px -1px rgba(120,80,10,0.4),
-          inset 0 1.5px 0 rgba(255,255,255,0.75),
-          inset 0 -3px 6px rgba(150,95,10,0.4);
+          0 9px 20px -8px rgba(83,107,130,0.5),
+          0 2px 5px -1px rgba(75,96,117,0.3),
+          inset 0 1px 0 rgba(255,248,230,0.28);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         letter-spacing: 0.02em;
         white-space: nowrap;
-        text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+        text-shadow: 0 1px 0 rgba(255,248,230,0.22);
       }
-      /* reflective gloss sweep */
-      .fd-cta::after {
-        content: ""; position: absolute; inset: 0;
-        background: linear-gradient(115deg, transparent 36%, rgba(255,255,255,0.55) 50%, transparent 64%);
-        background-size: 250% 100%;
-        animation: fdCtaShine 3.4s linear infinite;
-        pointer-events: none;
-      }
+      /* v590 — matte: the reflective gloss sweep is gone. */
+      .fd-cta::after { display: none; }
       @keyframes fdCtaShine { 0% { background-position: 230% 0; } 100% { background-position: -230% 0; } }
       .fd-cta-bolt { width: 14px; height: 14px; flex-shrink: 0; filter: drop-shadow(0 1px 0 rgba(255,255,255,0.4)); }
       @media (min-width: 1024px) { .fd-cta { padding: 11px 18px; font-size: 0.8rem; } }
@@ -1978,7 +1965,7 @@ function FdStyles() {
         transform: translateY(-2px);
         box-shadow:
           0 16px 32px -8px rgba(200,140,20,0.6),
-          0 3px 8px -1px rgba(120,80,10,0.4),
+          0 3px 8px -1px rgba(75,96,117,0.4),
           inset 0 1.5px 0 rgba(255,255,255,0.8),
           inset 0 -3px 6px rgba(150,95,10,0.4);
       }
@@ -2213,7 +2200,7 @@ function FdStyles() {
         letter-spacing: 0.06em;
       }
       .fd-pill.gold {
-        background: linear-gradient(135deg, var(--cozy-champagne-light, #D9BE82), var(--cozy-champagne, #C9A66B));
+        background: linear-gradient(135deg, #899eb3, #6a85a0);
         color: var(--text-inverse);
       }
       .fd-pill.red {
@@ -2291,16 +2278,16 @@ function FdStyles() {
       .fd-drawer-cta {
         flex: 1;
         padding: clamp(11px, 3vw, 14px) clamp(14px, 4vw, 20px);
-        background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
+        background: linear-gradient(135deg, #899eb3, #607b96 60%, #4b6075);
         color: #0a0814; font-size: clamp(0.82rem, 2.9vw, 0.92rem); font-weight: 800;
         border: none; border-radius: 13px;
         cursor: pointer;
-        box-shadow: 0 10px 26px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
+        box-shadow: 0 10px 26px rgba(106,133,160,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
         transition: all 0.2s ease;
         letter-spacing: 0.02em;
         white-space: nowrap;
       }
-      .fd-drawer-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(240,180,41,0.5); }
+      .fd-drawer-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(106,133,160,0.5); }
 
       /* ═══ Flash Deals — premium design-language uplift (v430) ═══
          Appended last so it wins by source order. Light-safe: the page is

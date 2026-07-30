@@ -206,7 +206,7 @@ export function Navbar() {
       <style>{`
         /* ═══ 3D reflective nav styles ═══ */
         @keyframes navShine { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        @keyframes navPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.3); } 50% { box-shadow: 0 0 18px 2px rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.3); } }
+        @keyframes navPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(106,133,160,0.5), inset 0 1px 0 rgba(255,255,255,0.3); } 50% { box-shadow: 0 0 18px 2px rgba(106,133,160,0.45), inset 0 1px 0 rgba(255,255,255,0.3); } }
         /* v90 — Navbar reads theme tokens. Light mode: cream-tinted
            translucent bar with cocoa text + champagne accent. Dark mode:
            warm cocoa bar with cream text. Same champagne underline. */
@@ -280,7 +280,7 @@ export function Navbar() {
           /* LIGHT: warm ivory → champagne, gold rim, raised — reads as
              embossed cream cardstock with a foil edge, not a white box. */
           background: linear-gradient(180deg, #fdf6e9 0%, #f0e0c2 100%) !important;
-          border: 1px solid rgba(201,145,26,0.42) !important;
+          border: 1px solid rgba(106,133,160,0.42) !important;
           color: #241a0b !important;
           box-shadow:
             0 2px 6px rgba(120,84,40,0.16),
@@ -290,22 +290,22 @@ export function Navbar() {
         .nav3d-eq:hover {
           transform: translateY(-2px) scale(1.07);
           background: linear-gradient(180deg, #fff7e3 0%, #f2ddac 100%) !important;
-          border-color: rgba(201,145,26,0.75) !important;
+          border-color: rgba(106,133,160,0.75) !important;
           color: #241a0b !important;
           box-shadow:
-            0 9px 22px rgba(201,145,26,0.30),
+            0 9px 22px rgba(106,133,160,0.30),
             inset 0 1px 0 rgba(255,255,255,0.95) !important;
         }
         .nav3d-eq:active { transform: translateY(0) scale(0.96); }
         /* ACTIVE route — vivid brand-gold fill, dark text, unmistakable. */
         .nav3d-eq.nav3d-chip-active {
-          background: linear-gradient(135deg, #f6d888 0%, #f0b429 55%, #c9911a 100%) !important;
+          background: linear-gradient(135deg, #92a5b9 0%, #6a85a0 55%, #4b6075 100%) !important;
           border-color: rgba(255,255,255,0.4) !important;
           color: #1f1a0f !important;
           box-shadow:
-            0 4px 14px rgba(240,180,41,0.42),
+            0 4px 14px rgba(106,133,160,0.42),
             inset 0 1px 0 rgba(255,255,255,0.55),
-            inset 0 -2px 0 rgba(120,80,0,0.22) !important;
+            inset 0 -2px 0 rgba(75,96,117,0.22) !important;
         }
         /* DARK: warm espresso → walnut, gold hairline, cream text. */
         [data-theme="dark"] .nav3d-eq {
@@ -318,35 +318,35 @@ export function Navbar() {
         }
         [data-theme="dark"] .nav3d-eq:hover {
           background: linear-gradient(180deg, #40331b 0%, #2a2011 100%) !important;
-          border-color: rgba(240,180,41,0.62) !important;
+          border-color: rgba(106,133,160,0.62) !important;
           color: #fff6e2 !important;
           box-shadow:
-            0 10px 24px rgba(240,180,41,0.24),
+            0 10px 24px rgba(106,133,160,0.24),
             inset 0 1px 0 rgba(255,233,173,0.16) !important;
         }
         [data-theme="dark"] .nav3d-eq.nav3d-chip-active {
-          background: linear-gradient(135deg, #f6d888 0%, #f0b429 55%, #c9911a 100%) !important;
+          background: linear-gradient(135deg, #92a5b9 0%, #6a85a0 55%, #4b6075 100%) !important;
           color: #1f1a0f !important;
         }
         /* the two real CTAs (Create / Sign In) — solid gold, one look in
            both themes, the brightest thing on the bar. */
         .nav3d-solidgold,
         [data-theme="dark"] .nav3d-solidgold {
-          background: linear-gradient(135deg, #f8dd8a 0%, #f0b429 52%, #c9911a 100%) !important;
+          background: linear-gradient(135deg, #92a5b9 0%, #6a85a0 52%, #4b6075 100%) !important;
           border: 1px solid rgba(255,255,255,0.45) !important;
           color: #1f1a0f !important;
           box-shadow:
-            0 3px 13px rgba(240,180,41,0.42),
+            0 3px 13px rgba(106,133,160,0.42),
             inset 0 1px 0 rgba(255,255,255,0.6),
-            inset 0 -2px 0 rgba(120,80,0,0.28) !important;
+            inset 0 -2px 0 rgba(75,96,117,0.28) !important;
         }
         .nav3d-solidgold:hover,
         [data-theme="dark"] .nav3d-solidgold:hover {
           color: #1f1a0f !important;
           box-shadow:
-            0 10px 26px rgba(240,180,41,0.55),
+            0 10px 26px rgba(106,133,160,0.55),
             inset 0 1px 0 rgba(255,255,255,0.65),
-            inset 0 -2px 0 rgba(120,80,0,0.28) !important;
+            inset 0 -2px 0 rgba(75,96,117,0.28) !important;
         }
         /* the logo (and anything not a chip) pops the same way */
         .nav3d-pop {
@@ -357,7 +357,7 @@ export function Navbar() {
         /* dropdown rows: gold wash + icon pop on hover (a row that scales
            would clip against the menu's rounded overflow-hidden shell) */
         .nav3d-row { transition: background .2s, color .2s; }
-        .nav3d-row:hover { background: rgba(240,180,41,0.10) !important; }
+        .nav3d-row:hover { background: rgba(106,133,160,0.10) !important; }
         .nav3d-row .nav3d-row-ico {
           display: inline-flex;
           transition: transform .28s cubic-bezier(.3,1.4,.4,1);
@@ -377,8 +377,8 @@ export function Navbar() {
 
         /* ─── Mobile floating dock (v58 — modern 3D, iOS-style magnification) ─── */
         @keyframes dockPulse {
-          0%, 100% { box-shadow: 0 6px 20px rgba(240,180,41,0.45), 0 0 0 0 rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.4); }
-          50%      { box-shadow: 0 8px 28px rgba(240,180,41,0.55), 0 0 0 6px rgba(240,180,41,0), inset 0 1px 0 rgba(255,255,255,0.4); }
+          0%, 100% { box-shadow: 0 6px 20px rgba(106,133,160,0.45), 0 0 0 0 rgba(106,133,160,0.45), inset 0 1px 0 rgba(255,255,255,0.4); }
+          50%      { box-shadow: 0 8px 28px rgba(106,133,160,0.55), 0 0 0 6px rgba(106,133,160,0), inset 0 1px 0 rgba(255,255,255,0.4); }
         }
         @keyframes dockRing {
           0%   { transform: scale(0.6); opacity: 1; }
@@ -421,7 +421,7 @@ export function Navbar() {
           /* Top-edge gold sheen */
           content: ""; position: absolute; inset: 0;
           border-radius: 999px;
-          background: linear-gradient(180deg, rgba(240,180,41,0.18) 0%, transparent 30%);
+          background: linear-gradient(180deg, rgba(106,133,160,0.18) 0%, transparent 30%);
           pointer-events: none;
           opacity: 0.55;
         }
@@ -470,15 +470,15 @@ export function Navbar() {
         .dock-btn.is-active {
           color: #fff;
           background:
-            radial-gradient(circle at 50% 50%, rgba(240,180,41,0.35) 0%, rgba(240,180,41,0.05) 70%);
+            radial-gradient(circle at 50% 50%, rgba(106,133,160,0.35) 0%, rgba(106,133,160,0.05) 70%);
         }
         .dock-btn.is-active .dock-btn-icon {
           transform: translateY(-3px) scale(1.18);
-          filter: drop-shadow(0 4px 8px rgba(240,180,41,0.55));
+          filter: drop-shadow(0 4px 8px rgba(106,133,160,0.55));
         }
         .dock-btn.is-active .dock-btn-label {
           opacity: 1;
-          color: #fbd26a;
+          color: #cbd5de;
           letter-spacing: 0.08em;
         }
 
@@ -491,8 +491,8 @@ export function Navbar() {
           transform: translateX(-50%);
           width: 4px; height: 4px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #f0d060, #f0b429);
-          box-shadow: 0 0 8px #f0b429, 0 0 14px rgba(240,180,41,0.55);
+          background: linear-gradient(135deg, #899eb3, #607b96);
+          box-shadow: 0 0 8px #a9b9c8, 0 0 14px rgba(106,133,160,0.55);
           animation: dockPulse 2.4s ease-in-out infinite;
         }
 
@@ -506,14 +506,14 @@ export function Navbar() {
         .dock-fab {
           width: 64px; height: 64px;
           margin: 0 -2px;
-          background: linear-gradient(135deg, #f0d060 0%, #f0b429 55%, #c9911a 100%);
+          background: linear-gradient(135deg, #899eb3 0%, #607b96 55%, #4b6075 100%);
           color: #1a1208;
           border-radius: 50%;
           box-shadow:
-            0 10px 26px rgba(240,180,41,0.45),
+            0 10px 26px rgba(106,133,160,0.45),
             0 4px 10px rgba(0,0,0,0.4),
             inset 0 2px 0 rgba(255,255,255,0.5),
-            inset 0 -2px 0 rgba(120,80,0,0.3);
+            inset 0 -2px 0 rgba(75,96,117,0.3);
           animation: dockPulse 3s ease-in-out infinite;
           position: relative;
           z-index: 2;
@@ -613,7 +613,7 @@ export function Navbar() {
                   )}
                   {isReels && !active && (
                     <span className="ml-0.5 text-[0.55rem] font-black px-1.5 py-0.5 rounded-full"
-                      style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#000" }}>
+                      style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", color: "#000" }}>
                       NEW
                     </span>
                   )}
@@ -677,7 +677,7 @@ export function Navbar() {
                           background: "var(--bg-elevated, rgba(15,12,8,0.94))",
                           backdropFilter: "blur(20px) saturate(180%)",
                           WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                          border: "1px solid var(--border-strong, rgba(240,180,41,0.28))",
+                          border: "1px solid var(--border-strong, rgba(106,133,160,0.28))",
                           boxShadow: "0 18px 50px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.30)",
                         }}
                         role="menu"
@@ -688,7 +688,7 @@ export function Navbar() {
                           type="button"
                           onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-switcher")); }}
                           className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold"
-                          style={{ color: "var(--accent, #f0b429)", background: "rgba(240,180,41,0.06)", borderBottom: "1px solid rgba(240,180,41,0.14)" }}
+                          style={{ color: "var(--accent, #a9b9c8)", background: "rgba(106,133,160,0.06)", borderBottom: "1px solid rgba(106,133,160,0.14)" }}
                           role="menuitem"
                         >
                           <span className="nav3d-row-ico text-base">⇅</span>
@@ -703,9 +703,9 @@ export function Navbar() {
                               onClick={() => setMoreOpen(false)}
                               className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 text-[0.82rem] font-semibold"
                               style={{
-                                color: active ? "var(--accent, #f0b429)" : "var(--text-soft, rgba(255,255,255,0.78))",
-                                background: active ? "rgba(240,180,41,0.10)" : "transparent",
-                                borderLeft: active ? "2px solid var(--accent, #f0b429)" : "2px solid transparent",
+                                color: active ? "var(--accent, #a9b9c8)" : "var(--text-soft, rgba(255,255,255,0.78))",
+                                background: active ? "rgba(106,133,160,0.10)" : "transparent",
+                                borderLeft: active ? "2px solid var(--accent, #a9b9c8)" : "2px solid transparent",
                               }}
                             >
                               <span className="nav3d-row-ico text-base">{item.icon}</span>
@@ -720,7 +720,7 @@ export function Navbar() {
                           type="button"
                           onClick={toggleTheme}
                           className="nav3d-row flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold"
-                          style={{ color: "var(--text-base, #1F1A0F)", borderTop: "1px solid rgba(240,180,41,0.14)" }}
+                          style={{ color: "var(--text-base, #1F1A0F)", borderTop: "1px solid rgba(106,133,160,0.14)" }}
                           role="menuitem"
                         >
                           <span className="nav3d-row-ico text-base">{theme === "dark" ? "🌙" : "☀️"}</span>
@@ -758,7 +758,7 @@ export function Navbar() {
                   className={`nav3d-chip nav3d-eq group relative ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}
                   style={{ paddingLeft: 5 }}>
                   <div className="rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
-                    style={{ width: 26, height: 26, background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                    style={{ width: 26, height: 26, background: "linear-gradient(135deg,#607b96,#6a85a0)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>
                   {/* v586 — inherit the chip's themed colour (cream in dark,
@@ -787,7 +787,7 @@ export function Navbar() {
             {user ? (
               <Link href="/profile"
                 className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 3px 12px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", boxShadow: "0 3px 12px rgba(106,133,160,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                 {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
               </Link>
             ) : (
@@ -807,7 +807,7 @@ export function Navbar() {
           <div className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs"
             onClick={() => setMoreOpen(false)} />
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 sheet-in"
-            style={{ background: "linear-gradient(180deg,#12101c,#0a0812)", borderRadius: "24px 24px 0 0", boxShadow: "0 -12px 50px rgba(0,0,0,0.7)", border: "1px solid rgba(240,180,41,0.25)" }}>
+            style={{ background: "linear-gradient(180deg,#12101c,#0a0812)", borderRadius: "24px 24px 0 0", boxShadow: "0 -12px 50px rgba(0,0,0,0.7)", border: "1px solid rgba(106,133,160,0.25)" }}>
 
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-white/20" />
@@ -849,9 +849,9 @@ export function Navbar() {
                 type="button"
                 onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-switcher")); }}
                 className="w-full mb-3 flex items-center gap-3 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-                style={{ background: "linear-gradient(135deg,rgba(201,166,107,0.16),rgba(240,180,41,0.10))", border: "1px solid rgba(240,180,41,0.3)" }}
+                style={{ background: "linear-gradient(135deg,rgba(201,166,107,0.16),rgba(106,133,160,0.10))", border: "1px solid rgba(106,133,160,0.3)" }}
               >
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#1F1A0F" }}>⇅</span>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", color: "#1F1A0F" }}>⇅</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white leading-none mb-0.5">Switch experience</p>
                   <p className="text-xs text-white/50 truncate">Partner · Circle · Hosts · Creator</p>
@@ -878,7 +878,7 @@ export function Navbar() {
                   <Link href="/profile" onClick={() => setMoreOpen(false)}
                     className="lux-glass lux-border flex items-center gap-3 p-3 rounded-2xl active:scale-[0.98] transition-transform">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
-                      style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                      style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                       {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

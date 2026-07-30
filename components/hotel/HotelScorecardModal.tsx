@@ -740,7 +740,7 @@ export default function HotelScorecardModal({
           justify-content: center;
           padding: 12px 16px;
           border-radius: 12px;
-          background: linear-gradient(135deg, var(--cozy-champagne, #c9a66b), var(--cozy-champagne-light, #d9be82));
+          background: linear-gradient(135deg, #6a85a0, #899eb3);
           color: var(--cozy-warm-dark, #1f1a0f);
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
           font-weight: 700;
