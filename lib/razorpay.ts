@@ -120,7 +120,7 @@ export async function openRazorpayForOrder(
         contact: opts.userPhone ? opts.userPhone.replace(/\D/g, "") : "",
         email: opts.userEmail || "",
       },
-      theme: { color: "#c9911a" },
+      theme: { color: "#4f6d8a" },
       ...(opts.method ? { method: opts.method } : {}),
       handler: (response: RazorpayPaymentResult) => resolve(response),
       modal: {
@@ -231,7 +231,7 @@ export async function openRazorpayCheckout(
         contact: opts.userPhone ? opts.userPhone.replace(/\D/g, "") : "",
         email: opts.userEmail || "",
       },
-      theme: { color: "#c9911a" },
+      theme: { color: "#4f6d8a" },
       handler: async (response: RazorpayPaymentResult) => {
         try {
           const verifyRes = await fetch("/api/razorpay/verify", {

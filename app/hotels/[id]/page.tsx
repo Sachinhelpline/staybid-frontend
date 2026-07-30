@@ -4982,7 +4982,7 @@ export default function HotelDetail() {
                     LIVE
                   </span>
                   <div>
-                    <p className="text-[0.62rem] font-bold text-gold-400/80 uppercase tracking-[0.22em]">⚡ AI Bidding Arena</p>
+                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(157,184,210,0.85)" }}>⚡ AI Bidding Arena</p>
                     <p className="text-white font-semibold text-base leading-tight">{negRoom.name||negRoom.type}</p>
                   </div>
                 </div>
@@ -5019,7 +5019,7 @@ export default function HotelDetail() {
                     {nrNeg>1?` · ${nrNeg} rooms`:""}
                     {` · ${nights} night${nights>1?"s":""}`}
                   </p>
-                  <span className="text-[0.55rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-gold-400/90 border border-gold-400/25">Locked</span>
+                  <span className="text-[0.55rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ color: "rgba(157,184,210,0.9)", border: "1px solid rgba(157,184,210,0.28)" }}>Locked</span>
                 </div>
 
                 {/* v159.14 — Bidder-tier banner removed from customer view.
@@ -5154,7 +5154,7 @@ export default function HotelDetail() {
                   style={{ background:"linear-gradient(90deg,rgba(120,150,182,0.16),rgba(120,150,182,0.04))", border:"1px solid rgba(120,150,182,0.30)" }}>
                   <span className="text-lg">💎</span>
                   <div className="flex-1">
-                    <p className="text-[0.7rem] font-semibold text-gold-300">Win this bid → earn <span className="font-extrabold">{stayPoints}</span> StayPoints</p>
+                    <p className="text-[0.7rem] font-semibold" style={{ color: "#bcd0e4" }}>Win this bid → earn <span className="font-extrabold">{stayPoints}</span> StayPoints</p>
                     <p className="text-[0.55rem] text-white/40">Redeemable as ₹{stayPoints} cashback on future stays</p>
                   </div>
                 </div>
@@ -5162,8 +5162,8 @@ export default function HotelDetail() {
                 {/* Below-floor notice */}
                 {isBelow && (
                   <div className="rounded-xl p-3 border"
-                    style={{ background:"rgba(245,158,11,0.08)", borderColor:"rgba(245,158,11,0.3)" }}>
-                    <p className="text-[0.7rem] text-amber-200 leading-relaxed">
+                    style={{ background:"rgba(120,150,182,0.10)", borderColor:"rgba(120,150,182,0.32)" }}>
+                    <p className="text-[0.7rem] leading-relaxed" style={{ color: "#bcd0e4" }}>
                       <SecIcon name="idea" className="inline-block align-[-0.15em] mr-1" /> Your ₹{negAmt.toLocaleString()} is below the hotel's minimum.
                       We'll forward your preferred price — hotel may counter or accept on your terms.
                       <span className="text-white/40"> No charge unless accepted.</span>
