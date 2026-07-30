@@ -106,7 +106,7 @@ export default function HostStore() {
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-[calc(100%-2rem)] max-w-md sb-fade-in">
           <button onClick={() => setCheckout(true)}
             className="w-full flex items-center justify-between px-5 py-3.5 rounded-full text-white font-semibold shadow-lg"
-            style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
+            style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
             <span>{cartCount} item{cartCount > 1 ? "s" : ""}</span>
             <span>View cart · {inr(cartTotal)} →</span>
           </button>
@@ -195,7 +195,7 @@ function ProductCard({ p, onAdd }: { p: Product; onAdd: (p: Product, m: Mode) =>
 
         <button onClick={() => onAdd(p, mode)}
           className="mt-2 w-full px-3 py-2 rounded-full text-white font-semibold text-sm"
-          style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>Add to cart</button>
+          style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>Add to cart</button>
       </div>
     </div>
   );
@@ -276,7 +276,7 @@ function CheckoutSheet({ cart, onQty, onClose, onClear }: {
               We'll arrange delivery & installation. You'll get a confirmation shortly.
             </p>
             <button onClick={onClear} className="mt-5 px-6 py-2.5 rounded-full text-white font-semibold"
-              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>Continue shopping</button>
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>Continue shopping</button>
           </div>
         ) : (
           <>
@@ -343,7 +343,7 @@ function CheckoutSheet({ cart, onQty, onClose, onClear }: {
 
             <button onClick={pay} disabled={status === "paying"}
               className="w-full mt-3 px-6 py-3.5 rounded-full text-white font-semibold disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#8198ae,#637f9c)" }}>
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
               {status === "paying" ? "Opening payment…" : `Pay ${inr(hasEmi ? Math.round(subtotal / emiMonths) : subtotal)}`}
             </button>
             <p className="text-[11px] text-center mt-2" style={{ color: "var(--text-muted)" }}>Secure payment via Razorpay · prices set server-side</p>

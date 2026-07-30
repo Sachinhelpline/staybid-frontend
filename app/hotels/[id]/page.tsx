@@ -5129,7 +5129,7 @@ export default function HotelDetail() {
                       <button key={s.label} onClick={() => setNegAmt(amt)}
                         className={`neg-chip rounded-2xl p-2.5 text-center ${active?"active":""}`}
                         style={{
-                          background: active ? "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" : "rgba(255,255,255,0.04)",
+                          background: active ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "rgba(255,255,255,0.04)",
                           border: `1px solid ${active?"rgba(120,150,182,.6)":"rgba(255,255,255,.08)"}`,
                           boxShadow: active ? "0 6px 22px rgba(120,150,182,.35)" : "none",
                         }}>
@@ -5177,8 +5177,8 @@ export default function HotelDetail() {
                   style={{
                     background: isInstant
                       ? "linear-gradient(135deg,#10b981 0%,#a9b9c8 50%,#10b981 100%)"
-                      : "linear-gradient(135deg,#748da6 0%,#a9b9c8 48%,#cbd5de 60%,#8198ae 100%)",
-                    color: "#0c0a14",
+                      : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+                    color: "#ffffff",
                     boxShadow: isInstant
                       ? "0 12px 32px rgba(16,185,129,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset"
                       : "0 12px 32px rgba(120,150,182,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",

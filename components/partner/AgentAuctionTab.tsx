@@ -368,7 +368,7 @@ export default function AgentAuctionTab({
 
         <button onClick={publish} disabled={!roomId || !monthKey || !effFloor || publishing}
           className="px-5 py-2.5 rounded-xl font-bold text-white disabled:opacity-50"
-          style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
+          style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
           {publishing ? "Publishing…" : "Publish auction lot"}
         </button>
       </div>

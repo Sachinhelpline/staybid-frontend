@@ -11243,8 +11243,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   /* same gold as the flash-deal stamp — one deal, one colour */
   .sbh-tk-accent {
     padding: 3px 8px; border-radius: 999px;
-    font-size: 0.66rem; font-weight: 800; letter-spacing: 0.03em; color: #3a2606;
-    background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%);
+    font-size: 0.66rem; font-weight: 800; letter-spacing: 0.03em; color: #ffffff;
+    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     box-shadow: 0 4px 10px -6px rgba(106, 133, 160, 0.8);
   }
   @keyframes sbhTickerM { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -11367,8 +11367,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour.
      (This was red; red is not the flash-deal language anywhere else.) */
   .sbh-chip-off {
-    top: 9px; left: 9px; color: #3a2606;
-    background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%);
+    top: 9px; left: 9px; color: #ffffff;
+    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
   }
   .sbh-chip-live { top: 9px; right: 9px; color: #fff; background: rgba(20, 15, 9, 0.66); }
@@ -12358,8 +12358,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   flex: 0 0 auto; border: 0; cursor: pointer;
   font-family: "Space Grotesk", var(--font-sans), sans-serif;
   font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; white-space: nowrap;
-  color: #3a2606; padding: 9px 13px; border-radius: 999px;
-  background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%);
+  color: #ffffff; padding: 9px 13px; border-radius: 999px;
+  background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 9px -4px rgba(0, 0, 0, 0.55);
 }
 .sbh-season-cta:active { transform: scale(0.96); }
@@ -12754,15 +12754,15 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .sbh-tf-season:active { transform: scale(0.95); }
 .sbh-tf-season.is-on {
-  color: #3a2606;
-  background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%);
+  color: #ffffff;
+  background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   border-color: rgba(75, 96, 117, 0.55);
 }
 .sbh-tf-season.is-auto { color: rgba(176, 192, 209, 0.7); border-style: dashed; }
 @media (min-width: 1024px) {
   .sbh-tf-season { font-size: 0.64rem; min-height: 32px; }
   .sbh-tf-season:hover { background: rgba(176, 192, 209, 0.16); }
-  .sbh-tf-season.is-on:hover { background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%); }
+  .sbh-tf-season.is-on:hover { background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .sbh-tf-season { transition: none !important; }
@@ -12829,8 +12829,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-tf-gstep-ico { font-size: 0.72rem; line-height: 1; }
 .sbh-tf-gstep.is-now {
   border-style: solid; border-color: rgba(75, 96, 117, 0.7);
-  color: #3a2606;
-  background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%);
+  color: #ffffff;
+  background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   box-shadow: 0 3px 10px rgba(75, 96, 117, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   animation: sbhTfGnow 2s ease-in-out infinite;
 }

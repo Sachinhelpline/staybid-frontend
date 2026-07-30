@@ -119,7 +119,7 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
               className={`text-[0.74rem] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
                 active ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200 hover:border-luxury-400"
               }`}
-              style={active ? { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" } : undefined}>
+              style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {f.label}{f.n != null && <span className="ml-1 opacity-70">({f.n})</span>}
             </button>
           );

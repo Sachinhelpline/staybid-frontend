@@ -171,7 +171,7 @@ export default function TradeMyBidsPage() {
                           ) : a.status === "awarded" ? (
                             <div className="flex flex-col items-end gap-1.5">
                               <button onClick={() => payAward(a)} disabled={payingId === a.id}
-                                className="px-3 py-2 rounded-lg font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
+                                className="px-3 py-2 rounded-lg font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                                 {payingId === a.id ? "…" : `Pay ${inr(a.amount_due)}`}
                               </button>
                               {(a.metadata?.sale_mode === "live") && a.bid_id && (

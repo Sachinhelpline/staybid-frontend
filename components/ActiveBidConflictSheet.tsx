@@ -235,7 +235,7 @@ export default function ActiveBidConflictSheet({
               <button
                 onClick={() => { onClose(); router.push("/my-bids"); }}
                 className="w-full py-3 rounded-xl font-bold text-sm"
-                style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8 55%,#8198ae)", color: "#1a1205" }}
+                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
               >
                 {winners.accepted > 0 ? "💰 Pay Now in My Bids →" : "View My Bids →"}
               </button>
@@ -338,7 +338,7 @@ export default function ActiveBidConflictSheet({
               onClick={handleUpdate}
               disabled={saving || amount <= 0}
               className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8 55%,#8198ae)", color: "#1a1205" }}
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
             >
               {saving ? "Updating…" : `💰 Update Budget to ₹${amount.toLocaleString("en-IN")}/night`}
             </button>

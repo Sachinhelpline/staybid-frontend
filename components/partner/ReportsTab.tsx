@@ -189,7 +189,7 @@ export default function ReportsTab({
               className={`text-[0.72rem] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
                 range === id ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200 hover:border-luxury-400"
               }`}
-              style={range === id ? { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" } : undefined}>
+              style={range === id ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {lbl}
             </button>
           ))}

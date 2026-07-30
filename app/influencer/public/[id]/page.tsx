@@ -123,7 +123,7 @@ export default function PublicInfluencerPage() {
                 ? "bg-white border-2 border-luxury-200 text-luxury-700 hover:border-luxury-300"
                 : "text-white shadow-gold hover:shadow-lg"
             } disabled:opacity-50`}
-            style={following ? {} : { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
+            style={following ? {} : { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
             {following ? "✓ Following" : "+ Follow"}
           </button>
         </div>

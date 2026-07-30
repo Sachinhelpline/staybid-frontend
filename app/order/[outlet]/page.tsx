@@ -102,7 +102,7 @@ export default function OrderPage() {
         body { font-family:'Inter',sans-serif; margin:0; }
         .od-disp { font-family:'Cormorant Garamond',serif; }
         .od-card { background:#fff; border:1px solid #e3e8ed; border-radius:14px; }
-        .od-btn { background:linear-gradient(135deg,#8198ae,#a9b9c8); color:#fff; border:none; border-radius:11px; font-weight:700; cursor:pointer; transition:all .15s; }
+        .od-btn { background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#fff; border:none; border-radius:11px; font-weight:700; cursor:pointer; transition:all .15s; }
         .od-btn:active { transform:scale(.98); }
         .od-btn:disabled { opacity:.5; }
         .od-step { width:26px; height:26px; border-radius:8px; border:1px solid #c1ccd7; background:#fff; color:#8198ae; font-weight:800; font-size:15px; line-height:1; cursor:pointer; }

@@ -205,7 +205,7 @@ export default function BillingTab({
               className={`text-[0.74rem] font-bold px-2.5 py-1.5 rounded-lg border transition-all capitalize ${
                 active ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200 hover:border-luxury-400"
               }`}
-              style={active ? { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" } : undefined}>
+              style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {f}<span className="ml-1 opacity-70">({n})</span>
             </button>
           );
@@ -373,7 +373,7 @@ function NewFolioModal({
               className={`flex-1 text-[0.74rem] font-bold py-1.5 rounded-lg border transition-all ${
                 mode === id ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200"
               }`}
-              style={mode === id ? { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" } : undefined}>
+              style={mode === id ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {label}
             </button>
           ))}
@@ -656,7 +656,7 @@ function FolioDetail({
                 className={`flex-1 text-[0.7rem] font-bold py-1.5 rounded-lg border transition-all ${
                   active ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200"
                 }`}
-                style={active ? { background: "linear-gradient(135deg,#8198ae,#a9b9c8)" } : undefined}>
+                style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
                 {label}
               </button>
             );

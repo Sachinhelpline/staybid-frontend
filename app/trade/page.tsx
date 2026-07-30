@@ -71,7 +71,7 @@ export default function TradeBrowsePage() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => router.push("/trade/my-bids")} className="text-[0.75rem] px-3 py-1.5 rounded-lg" style={{ background: "rgba(176, 192, 209,0.14)", color: "#d5dce4" }}>My Bids</button>
-            <button onClick={() => router.push("/trade/review")} className="text-[0.75rem] px-3 py-1.5 rounded-lg font-bold" style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)", color: "#1f1710" }}>
+            <button onClick={() => router.push("/trade/review")} className="text-[0.75rem] px-3 py-1.5 rounded-lg font-bold" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>
               Bundle {basketN > 0 ? `(${basketN})` : ""}
             </button>
           </div>
@@ -147,7 +147,7 @@ export default function TradeBrowsePage() {
                 <span className="text-luxury-400 text-[0.72rem]">Min bid</span>{" "}
                 <b className="text-luxury-900 tabular-nums">{inr(l.min_bid_per_room_night)}</b><span className="text-luxury-400 text-[0.72rem]">/room/night</span>
               </div>
-              <div className="mt-3 w-full py-2.5 rounded-2xl font-bold text-white text-center" style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
+              <div className="mt-3 w-full py-2.5 rounded-2xl font-bold text-white text-center" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                 View & bid
               </div>
             </div>
@@ -207,7 +207,7 @@ function Model2Entry({ auth }: { auth: ReturnType<typeof useTradeAuth> }) {
           <div className="font-bold" style={{ color: "#d5dce4" }}>🔑 Model 2 — curated Circle inventory (fixed price)</div>
           <p className="text-[0.75rem] opacity-85 mt-0.5">Beyond the auction: buy room-nights from StayBid Circle-operated properties at a <b>fixed, guaranteed price</b> — no bidding, no risk. You purchase as a B2B trade buyer.</p>
         </div>
-        <button onClick={goModel2} className="shrink-0 px-4 py-2 rounded-xl font-bold text-[0.8rem]" style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)", color: "#1f1710" }}>
+        <button onClick={goModel2} className="shrink-0 px-4 py-2 rounded-xl font-bold text-[0.8rem]" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>
           Open Model 2 →
         </button>
       </div>

@@ -83,7 +83,7 @@ export default function PartnerVerification() {
         <div className="max-w-5xl mx-auto px-4 sm:px-5 flex items-center justify-between" style={{ height: "56px" }}>
           <Link href="/partner/dashboard" className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
-              style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)", boxShadow: "0 2px 8px rgba(106, 133, 160,0.4)" }}>S</div>
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 2px 8px rgba(106, 133, 160,0.4)" }}>S</div>
             <div className="min-w-0">
               <span className="font-display text-base text-white tracking-wide">StayBid</span>
               <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
@@ -164,7 +164,7 @@ function TabBtn({ active, children, onClick }: any) {
             className={`shrink-0 px-3.5 py-1.5 rounded-full text-[0.78rem] font-semibold transition-all ${
               active ? "text-white" : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-100"
             }`}
-            style={active ? { background: "linear-gradient(135deg,#8198ae,#a9b9c8)", boxShadow: "0 4px 12px rgba(106, 133, 160,0.32)" } : undefined}>
+            style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 4px 12px rgba(106, 133, 160,0.32)" } : undefined}>
       {children}
     </button>
   );

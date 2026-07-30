@@ -67,7 +67,7 @@ export default function UpgradePage() {
               applying. */}
           <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-luxury-100 border border-luxury-200 sb-card-lift">
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[0.65rem] font-bold"
-              style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
               {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
             </div>
             <span className="text-luxury-700 text-xs font-semibold">

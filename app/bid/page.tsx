@@ -2196,7 +2196,7 @@ export default function BidPage() {
                       borderRadius: 999,
                       fontWeight: 700,
                       fontSize: "0.92rem",
-                      background: "linear-gradient(135deg,#748da6,#a9b9c8 55%,#8198ae)",
+                      background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
                       color: "var(--cozy-warm-dark)",
                       border: "1px solid rgba(110,84,48,0.35)",
                       boxShadow: "0 3px 10px rgba(110,84,48,0.18)",

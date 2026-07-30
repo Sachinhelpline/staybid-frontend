@@ -45,7 +45,7 @@ export default function StaffLogin() {
         .gold-input { background: rgba(255,255,255,0.06); border: 1px solid rgba(106, 133, 160,0.25); border-radius: 11px; padding: 12px 14px; color: #fff; width: 100%; font-size: 0.85rem; outline: none; transition: all 0.18s; }
         .gold-input::placeholder { color: rgba(255,255,255,0.3); }
         .gold-input:focus { border-color: rgba(106, 133, 160,0.7); background: rgba(255,255,255,0.09); box-shadow: 0 0 0 3px rgba(106, 133, 160,0.13); }
-        .gold-btn { background: linear-gradient(135deg,#8198ae,#a9b9c8); color: #fff; border: none; border-radius: 11px; padding: 12px; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.85rem; transition: all 0.18s; box-shadow: 0 2px 10px rgba(106, 133, 160,0.25); }
+        .gold-btn { background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color: #fff; border: none; border-radius: 11px; padding: 12px; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.85rem; transition: all 0.18s; box-shadow: 0 2px 10px rgba(106, 133, 160,0.25); }
         .gold-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(106, 133, 160,0.4); }
         .gold-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
@@ -56,7 +56,7 @@ export default function StaffLogin() {
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2.5 mb-3.5">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-              style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)", boxShadow: "0 3px 12px rgba(106, 133, 160,0.4)" }}>S</div>
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 3px 12px rgba(106, 133, 160,0.4)" }}>S</div>
             <div>
               <p className="font-display text-xl text-white tracking-wide leading-none">StayBid</p>
               <p className="text-[0.6rem] text-amber-400/80 tracking-[0.2em] uppercase font-medium">Staff Sign-in</p>

@@ -337,7 +337,7 @@ export default function BookingReview(p: BookingReviewProps) {
                     onClick={() => validateCoupon(couponInput)}
                     disabled={couponBusy || !couponInput.trim()}
                     className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
-                    style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" }}>
+                    style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                     {couponBusy ? "…" : "Apply"}
                   </button>
                 </div>
@@ -460,8 +460,8 @@ export default function BookingReview(p: BookingReviewProps) {
             disabled={!!busy}
             className="br-cta-pay w-full py-3.5 rounded-2xl font-extrabold text-base tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
             style={{
-              background: "linear-gradient(135deg,#748da6 0%,#a9b9c8 48%,#cbd5de 60%,#8198ae 100%)",
-              color: "#1a1205",
+              background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+              color: "#ffffff",
               boxShadow: "0 8px 24px rgba(140, 160, 182,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
             }}>
             {busy === "pay" ? "⏳ Opening Razorpay…" :

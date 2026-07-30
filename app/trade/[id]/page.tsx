@@ -491,7 +491,7 @@ function TourStyles() {
       .sbt-preview-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; padding: 2px 0; }
       .sbt-preview-row b { color: #d5dce4; }
       .sbt-preview-note { font-size: .68rem; color: rgba(176, 192, 209,.6); margin-top: 6px; }
-      .sbt-btn-gold { background: linear-gradient(135deg,#8198ae,#a9b9c8); color: #1f1710; border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 800; font-size: .9rem; cursor: pointer; }
+      .sbt-btn-gold { background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color: #ffffff; border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 800; font-size: .9rem; cursor: pointer; }
       .sbt-btn-gold.full { width: 100%; margin-top: 8px; }
       .sbt-btn-gold:disabled { opacity: .5; cursor: default; }
       .sbt-btn-ghost { background: none; border: 1px solid rgba(139,105,20,.3); color: #65819c; border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: .85rem; cursor: pointer; }

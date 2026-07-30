@@ -82,7 +82,7 @@ function buildEmailHtml(d: BookingDetails): string {
           <p style="margin:0;color:#92400e;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Total Paid</p>
           <p style="margin:4px 0 0;color:#78350f;font-size:28px;font-weight:700;">&#8377;${d.amount.toLocaleString("en-IN")}</p>
         </div>
-        <div style="width:56px;height:56px;background:linear-gradient(135deg,#8198ae,#a9b9c8);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;">✓</div>
+        <div style="width:56px;height:56px;background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;">✓</div>
       </div>
 
       <!-- Policy strip -->
