@@ -20,6 +20,10 @@ import { CITY_DISPLAY_ORDER } from "@/lib/cities";
 const CITIES = CITY_DISPLAY_ORDER;
 
 const NAV_LINKS = [
+  // v587 — an explicit Home chip on desktop. The logo goes home too, but a
+  // logo isn't an obvious "back to home" affordance for every visitor, so a
+  // labelled Home button removes the guesswork.
+  { href: "/",            label: "Home",        icon: "🏠" },
   { href: "/hotels",      label: "Hotels",      icon: "🏨" },
   { href: "/flash-deals", label: "Flash Deals", icon: "⚡", pulse: true },
   // "Reels" is just the content type — rename to "Discover" so the chip
@@ -523,6 +527,16 @@ export function Navbar() {
         .dock-fab:hover { color: #1a1208; }
         .dock-fab.is-active::after { display: none; }
 
+        /* v587 — the primary nav row may shrink + scroll internally on a
+           small laptop (adding the Home chip made 6 primary chips + Menu +
+           Profile + Sign Out overflow ~1024px). It never expands the page:
+           min-width:0 lets flex shrink it below content size, overflow-x
+           scrolls the excess, and the scrollbar is hidden. On wide screens it
+           is its natural width and justify-between spreads the three groups
+           exactly as before. */
+        .nav3d-primary { min-width: 0; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .nav3d-primary::-webkit-scrollbar { display: none; height: 0; }
+
         /* Pulse-red dot for new content (Flash Deals) */
         .dock-btn-pulse {
           position: absolute;
@@ -585,7 +599,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop primary nav — visible to ALL users (logged in or not) */}
-          <div className="hidden md:flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-1.5 nav3d-primary">
             {NAV_LINKS.map((item) => {
               const active = isActive(item.href);
               const isReels = item.href === "/reels";
