@@ -12171,10 +12171,11 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 }
 .sbh-reelx-follow.is-on { color: #fff; background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.32); box-shadow: none; }
 .sbh-reelx-follow:active { transform: scale(0.94); }
-/* right rail — anchored like the player (bottom ≈ 40%), player icon order */
+/* right rail — player icon order, anchored LOW on the right (its bottom just
+   above the CTA row) so it never climbs into the author strip on any card */
 .sbh-reelx-rail {
-  position: absolute; z-index: 5; right: 6px; bottom: calc(38% + 8px);
-  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  position: absolute; z-index: 5; right: 6px; bottom: 44px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
 .sbh-rx-btn {
   display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer;
@@ -12198,19 +12199,49 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 .sbh-reelx-from b { font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
 .sbh-reelx-from em { display: none; }
 .sbh-reelx-book, .sbh-reelx-bid {
-  flex: 1 1 0; min-width: 0; padding: 6px 4px; border-radius: 9px; font-size: 0.6rem; font-weight: 800;
+  flex: 1 1 0; min-width: 0; padding: 6px 3px; border-radius: 9px; font-size: 0.56rem; font-weight: 800;
   cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform 0.12s ease;
   display: flex; align-items: center; justify-content: center; gap: 2px;
 }
+/* "Book Now" is the longer label — give it the bigger flex share so it never truncates */
+.sbh-reelx-book { flex: 1.5 1 0; }
 .sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #ffd76b, #f0b429); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5); }
 .sbh-reelx-bid { color: #fff; background: linear-gradient(135deg, rgba(155,109,255,0.45), rgba(94,52,184,0.40)); border: 1px solid rgba(199,140,255,0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .sbh-reelx-book:active, .sbh-reelx-bid:active { transform: scale(0.96); }
 
 /* v579 — flash/property score badge: premium compact scale so it never
-   crowds the tile, and the flash countdown moves under the heart (top-right)
-   so the badge can never hide it. */
+   crowds the tile. The flash countdown JOINS the OFF chip in a top-left
+   stack (both are deal-urgency info) — heart owns the top-right, the badge
+   owns the bottom-left, so nothing can ever collide on any viewport. */
 .sbh-badge-slot { transform: scale(0.78); transform-origin: left bottom; max-width: calc(100% - 14px); }
-.sbh-chip.sbh-chip-live-br { top: 46px; bottom: auto; right: 9px; }
+.sbh-chip.sbh-chip-live-br { top: 38px; left: 9px; right: auto; bottom: auto; }
+
+/* v579.1 — MOBILE (≤1023px): every home-card overlay resized for the real
+   mobile tiles (flash 46vw/196px 1:1 · reel 30vw/132px 9:16). Desktop sizes
+   on a 132px tile collided (rail into the author strip, truncated Book Now,
+   half-card badge) — this block scales each element to the tile. */
+@media (max-width: 1023px) {
+  .sbh-badge-slot { transform: scale(0.6); }
+  .sbh-heart { width: 26px; height: 26px; top: 6px; right: 6px; }
+  .sbh-heart svg { width: 14px; height: 14px; }
+  .sbh-chip.sbh-chip-live-br { top: 32px; left: 7px; font-size: 0.5rem; padding: 3px 6px; }
+  /* reel top strip */
+  .sbh-reelx-who { left: 5px; top: 5px; right: 5px; gap: 4px; }
+  .sbh-reelx-dp { width: 17px; height: 17px; border-width: 1px; font-size: 0.42rem; }
+  .sbh-reelx-id strong { font-size: 0.46rem; }
+  .sbh-reelx-id span { font-size: 0.38rem; }
+  .sbh-reelx-follow { padding: 2px 6px; font-size: 0.4rem; border-width: 1px; }
+  /* rail — smaller icons, tucked low-right */
+  .sbh-reelx-rail { right: 4px; bottom: 40px; gap: 4px; }
+  .sbh-rx-ic { font-size: 0.82rem; }
+  .sbh-rx-n { font-size: 0.36rem; }
+  /* CTA — two tiny lines: "From ₹" then Book Now · Bid (no truncation) */
+  .sbh-reelx-foot { left: 4px; right: 4px; bottom: 4px; flex-wrap: wrap; gap: 2px 3px; }
+  .sbh-reelx-from { flex-basis: 100%; flex-direction: row; align-items: baseline; gap: 3px; padding: 0 1px; }
+  .sbh-reelx-from i { font-size: 0.36rem; }
+  .sbh-reelx-from b { font-size: 0.56rem; }
+  .sbh-reelx-book, .sbh-reelx-bid { padding: 4px 2px; font-size: 0.46rem; border-radius: 7px; gap: 1px; }
+}
 
 /* v578.2 — the hover preview video is a visual layer only; it must never
    swallow clicks meant for the reel card's action rail / CTAs. (Unlayered,
