@@ -12137,3 +12137,47 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 .sbh-badge-slot { position: absolute; z-index: 4; left: 8px; bottom: 8px; display: inline-flex; }
 /* flash countdown moves to bottom-right so the heart owns the top-right */
 .sbh-chip.sbh-chip-live-br { top: auto; bottom: 9px; right: 9px; }
+
+/* v578.2 — home reel cards get the reel-page experience: like · comment · view ·
+   save · more rail + Book Now / Bid your price CTAs (same actions as /discover). */
+.sbh-reelx { cursor: pointer; }
+/* top-anchored so a rail taller than the (small) card clips INSIDE the tile
+   via .sbh-card-media overflow:hidden — never overflowing onto the row above. */
+.sbh-reelx-rail {
+  position: absolute; z-index: 5; right: 5px; top: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.sbh-rx-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0; cursor: pointer;
+  background: none; border: 0; padding: 0; color: #fff; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.sbh-rx-btn:active { transform: scale(0.88); }
+.sbh-rx-ic { font-size: 1.05rem; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.65)); }
+.sbh-rx-n { font-size: 0.5rem; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
+.sbh-rx-btn.is-on .sbh-rx-n { color: #ffd76b; }
+.sbh-reelx-foot {
+  position: absolute; z-index: 5; left: 6px; right: 6px; bottom: 6px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sbh-reelx-who {
+  position: absolute; z-index: 5; left: 8px; top: 8px; right: 36px;
+  display: flex; flex-direction: column; color: #fff; min-width: 0;
+}
+.sbh-reelx-who strong { font-size: 0.68rem; font-weight: 800; text-shadow: 0 1px 6px rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbh-reelx-who span { font-size: 0.56rem; opacity: 0.9; text-shadow: 0 1px 6px rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbh-reelx-from { display: flex; align-items: baseline; gap: 3px; color: #fff; font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.92; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
+.sbh-reelx-from b { font-size: 0.78rem; font-weight: 800; letter-spacing: 0; }
+.sbh-reelx-from em { font-style: normal; font-size: 0.5rem; opacity: 0.75; }
+.sbh-reelx-book, .sbh-reelx-bid {
+  width: 100%; padding: 6px 6px; border-radius: 9px; font-size: 0.64rem; font-weight: 800;
+  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform 0.12s ease;
+}
+.sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #ffd76b, #f0b429); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 3px 10px rgba(240,180,41,0.4); }
+.sbh-reelx-bid { color: #fff; background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.32); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.sbh-reelx-book:active, .sbh-reelx-bid:active { transform: scale(0.96); }
+
+/* v578.2 — the hover preview video is a visual layer only; it must never
+   swallow clicks meant for the reel card's action rail / CTAs. (Unlayered,
+   so it beats the desktop.css layer rule.) */
+.sbh-reel-vid { pointer-events: none; }

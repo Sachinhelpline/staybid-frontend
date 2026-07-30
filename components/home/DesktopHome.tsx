@@ -22,6 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
 import { currentMonthDemand, demandTier } from "@/lib/circle/demand-cycle";
 import { CountUp } from "@/components/CountUp";
@@ -66,7 +67,10 @@ type Reel = {
   location_name?: string | null;
   author?: { display_name?: string | null; avatar_url?: string | null } | null;
   display_name?: string | null;
-  hotel?: { id?: string; name?: string; minPrice?: number | null } | null;
+  like_count?: number | null;
+  comment_count?: number | null;
+  view_count?: number | null;
+  hotel?: { id?: string; name?: string; minPrice?: number | null; avgRating?: number | null; totalReviews?: number | null } | null;
 };
 type CircleProp = {
   id: string;
@@ -88,6 +92,8 @@ type Scorecard = {
 };
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
+const fmtCount = (n: number) => n >= 1_000_000 ? (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M"
+  : n >= 1_000 ? (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K" : String(n);
 
 /**
  * The "% OFF" a flash deal is ACTUALLY showing, derived from the two prices the
@@ -393,6 +399,16 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   const [hot, setHot] = useState(false);
   const [playing, setPlaying] = useState(false);
   const vid = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
+  const hotelId = r.hotel?.id || "";
+  const openReel = useCallback(() => { router.push(`/discover?start=${encodeURIComponent(r.id)}`); }, [router, r.id]);
+  const go = (href: string) => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); router.push(href); };
+  const [liked, setLiked] = useState(false);
+  const [savedR, setSavedR] = useState(false);
+  useEffect(() => { setSavedR(readSavedIds().has(`video:${r.id}`)); }, [r.id]);
+  const likeN = (Number(r.like_count) || 0) + (liked ? 1 : 0);
+  const cmtN = Number(r.comment_count) || 0;
+  const viewN = Number(r.view_count) || 0;
   useEffect(() => {
     const v = vid.current;
     if (!v) return;
@@ -413,9 +429,11 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
     return () => { cancelled = true; clearTimeout(t); };
   }, [hot]);
   return (
-    <Link
-      href={`/discover?start=${encodeURIComponent(r.id)}`}
-      className="sbh-card sbh-card-tall"
+    <div
+      className="sbh-card sbh-card-tall sbh-reelx"
+      role="link" tabIndex={0}
+      onClick={openReel}
+      onKeyDown={(e) => { if (e.key === "Enter") openReel(); }}
       onMouseEnter={() => setHot(true)}
       onMouseLeave={() => setHot(false)}
     >
@@ -424,29 +442,51 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
         {isVideo ? (
           <video
             ref={vid}
-            /* only fade in once frames are actually flowing — never a black box */
             className={`sbh-reel-vid${hot && playing ? " is-on" : ""}`}
             src={r.media_url || undefined}
-            muted
-            loop
-            playsInline
-            preload="metadata"
+            muted loop playsInline preload="metadata"
             onPlaying={() => setPlaying(true)}
             onEnded={() => setPlaying(false)}
-            tabIndex={-1}
-            aria-hidden
+            tabIndex={-1} aria-hidden
           />
         ) : null}
         <div className="sbh-card-sheen" aria-hidden />
         <div className="sbh-card-scrim" aria-hidden />
-        <span className="sbh-play" aria-hidden>▶</span>
-        <div className="sbh-reel-foot">
-          <strong>{who}</strong>
-          {r.location_name ? <span>{r.location_name}</span> : null}
+
+        {/* the SAME action rail as the reel page: like · comment · share · save · more */}
+        <div className="sbh-reelx-rail">
+          <button type="button" className={`sbh-rx-btn${liked ? " is-on" : ""}`} aria-label="Like"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked((v) => !v); }}>
+            <span className="sbh-rx-ic">{liked ? "❤️" : "🤍"}</span><span className="sbh-rx-n">{fmtCount(likeN)}</span>
+          </button>
+          <button type="button" className="sbh-rx-btn" aria-label="Comments" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
+            <span className="sbh-rx-ic">💬</span><span className="sbh-rx-n">{fmtCount(cmtN)}</span>
+          </button>
+          <button type="button" className="sbh-rx-btn" aria-label="Views" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
+            <span className="sbh-rx-ic">👁</span><span className="sbh-rx-n">{fmtCount(viewN)}</span>
+          </button>
+          <button type="button" className={`sbh-rx-btn${savedR ? " is-on" : ""}`} aria-label={savedR ? "Remove from wishlist" : "Add to wishlist"}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSavedR(toggleSaved("video", r.id, { hotel_name: r.hotel?.name, hotel_image: poster, thumbnail_url: poster, title: r.caption })); }}>
+            <span className="sbh-rx-ic">{savedR ? "🔖" : "📑"}</span><span className="sbh-rx-n">{savedR ? "Saved" : "Save"}</span>
+          </button>
+          <button type="button" className="sbh-rx-btn" aria-label="More" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReel(); }}>
+            <span className="sbh-rx-ic">⋮</span>
+          </button>
         </div>
-        {price ? <span className="sbh-chip sbh-chip-price">{inr(price)}<em>/n</em></span> : null}
+
+        {/* creator, top-left (leaves the bottom for the CTA row) */}
+        <div className="sbh-reelx-who"><strong>{who}</strong>{r.location_name ? <span>{r.location_name}</span> : null}</div>
+
+        {/* bottom: Book Now / Bid your price (real deep links) */}
+        {hotelId ? (
+          <div className="sbh-reelx-foot">
+            {price ? <span className="sbh-reelx-from">From <b>{inr(price)}</b><em>/n</em></span> : null}
+            <button type="button" className="sbh-reelx-book" onClick={go(`/hotels/${hotelId}`)}>🏷 Book</button>
+            <button type="button" className="sbh-reelx-bid" onClick={go(`/hotels/${hotelId}?intent=negotiate#availability-picker`)}>Bid your price</button>
+          </div>
+        ) : null}
       </div>
-    </Link>
+    </div>
   );
 }
 
