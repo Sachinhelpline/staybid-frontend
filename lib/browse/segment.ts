@@ -59,6 +59,12 @@ export function recordParty(adults: number, children: number, rooms: number) {
   write(segmentFromParty(adults, children, rooms), "party");
 }
 
+/** v582 — the Trip Finder's first tap IS the segment, said explicitly. */
+export function recordSegmentChoice(seg: SegmentId) {
+  if (typeof window === "undefined") return;
+  write(seg, "chip");
+}
+
 /** Call when the user explicitly taps a trip-type chip. */
 export function recordFormatChoice(format: TripFormatId) {
   if (typeof window === "undefined") return;

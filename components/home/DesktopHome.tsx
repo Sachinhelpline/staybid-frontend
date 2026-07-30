@@ -44,6 +44,9 @@ import { getSignals, markLiked } from "@/lib/track";
 import { TRIP_FORMATS, tripFormat, formatFit, formatForSegment, type TripFormatId } from "@/lib/browse/trip-formats";
 import { programForMonth } from "@/lib/browse/season-programs";
 import { readSegment, recordFormatChoice } from "@/lib/browse/segment";
+// v582 — Decision Engine P2: the 3-tap Trip Finder for the traveller who
+// cannot name a destination (engine: lib/browse/trip-finder.ts).
+import TripFinder from "@/components/home/TripFinder";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -1457,6 +1460,22 @@ export default function DesktopHome() {
 
       {/* ── RAILS ────────────────────────────────────────────────────── */}
       <div className="sbh-rails">
+        {/* v582 — TRIP FINDER: the first thing under the hero, because the
+            most common visitor state is "I don't know where to go". Three
+            taps → three destinations with reasons. Every number is real
+            (min nightly rate × typical nights). */}
+        <TripFinder
+          viewer={viewer}
+          hotels={hotels.map((h) => ({
+            id: h.id,
+            name: h.name,
+            city: h.city,
+            minPrice: minPriceOf(h),
+            overall: scores[h.id]?.overall ?? null,
+            image: imgOf(h) || null,
+          }))}
+        />
+
         {/* v581 — SEASONAL SELLING PROGRAM (deck: "How StayBid should sell
             it"). Month-driven: Dec–Feb Winter Leisure, Mar–May Summer Hills,
             Jun–Aug Monsoon Value + Workation, Sep–Dec Festive. The CTA

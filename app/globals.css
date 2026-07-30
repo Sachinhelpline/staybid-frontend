@@ -12382,3 +12382,135 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-season-cta, .sbh-trip-chip { transition: none !important; }
   .sbh-season-cta:hover { transform: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v582 — TRIP FINDER (.sbh-tf-*, both viewports, unlayered)
+   The Decision Engine's guided journey: a display-serif question, big warm
+   option tiles, then three medal Answer Cards. Same walnut+gold material as
+   the season band so the two read as one system.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sbh-tf { padding: 0 var(--sbh-gut, 16px); margin: 16px 0 2px; }
+.sbh-tf-card {
+  border-radius: 20px;
+  padding: 16px 14px 14px;
+  background:
+    radial-gradient(130% 170% at 100% 0%, rgba(217, 190, 130, 0.14), transparent 55%),
+    linear-gradient(150deg, #26190e 0%, #382a1c 60%, #26190e 100%);
+  border: 1px solid rgba(217, 190, 130, 0.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 233, 173, 0.12),
+    0 12px 30px -16px rgba(31, 26, 15, 0.7);
+}
+.sbh-tf-top { margin-bottom: 12px; }
+.sbh-tf-title {
+  font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 700;
+  font-size: 1.28rem; line-height: 1.12; color: #ffe9ad; margin: 0;
+}
+.sbh-tf-sub { font-size: 0.68rem; color: rgba(250, 245, 235, 0.72); margin: 4px 0 0; }
+.sbh-tf-dots { display: flex; gap: 6px; margin-top: 9px; }
+.sbh-tf-dot {
+  width: 22px; height: 4px; border-radius: 999px;
+  background: rgba(217, 190, 130, 0.18);
+}
+.sbh-tf-dot.is-on { background: linear-gradient(90deg, #f2c650, #d69a1e); }
+.sbh-tf-change {
+  margin-top: 8px; border: 0; cursor: pointer;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em;
+  color: rgba(255, 233, 173, 0.85);
+  background: rgba(217, 190, 130, 0.12);
+  border: 1px solid rgba(217, 190, 130, 0.26);
+  padding: 6px 11px; border-radius: 999px;
+}
+.sbh-tf-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.sbh-tf-opt {
+  flex: 1 1 calc(33.33% - 8px); min-width: 96px; min-height: 52px;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  cursor: pointer;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.7rem; font-weight: 650; letter-spacing: 0.02em; color: #f7ecd8;
+  padding: 10px 8px; border-radius: 14px;
+  background: rgba(217, 190, 130, 0.08);
+  border: 1px solid rgba(217, 190, 130, 0.24);
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+.sbh-tf-opt:active { transform: scale(0.96); }
+.sbh-tf-opt.is-hint { border-color: rgba(242, 198, 80, 0.7); background: rgba(217, 190, 130, 0.16); }
+.sbh-tf-opt-emo { font-size: 1.05rem; line-height: 1; }
+.sbh-tf-answers { display: flex; flex-direction: column; gap: 10px; }
+.sbh-tf-ans {
+  display: flex; overflow: hidden;
+  border-radius: 16px;
+  background: rgba(255, 249, 238, 0.045);
+  border: 1px solid rgba(217, 190, 130, 0.22);
+}
+.sbh-tf-ans-img {
+  flex: 0 0 92px; background-size: cover; background-position: center;
+  border-right: 1px solid rgba(217, 190, 130, 0.16);
+}
+.sbh-tf-ans-body { flex: 1 1 auto; min-width: 0; padding: 10px 11px; }
+.sbh-tf-ans-head { display: flex; align-items: center; gap: 8px; }
+.sbh-tf-ans-medal { font-size: 1.15rem; line-height: 1; }
+.sbh-tf-ans-city {
+  font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 700;
+  font-size: 1.02rem; color: #ffe9ad; margin: 0; text-transform: capitalize;
+}
+.sbh-tf-ans-name {
+  font-size: 0.6rem; color: rgba(250, 245, 235, 0.65); margin: 1px 0 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sbh-tf-ans-why { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.sbh-tf-why {
+  font-size: 0.54rem; font-weight: 650; letter-spacing: 0.02em;
+  color: rgba(255, 233, 173, 0.9);
+  padding: 3px 7px; border-radius: 999px;
+  background: rgba(217, 190, 130, 0.1);
+  border: 1px solid rgba(217, 190, 130, 0.22);
+  white-space: nowrap;
+}
+.sbh-tf-ans-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 9px;
+}
+.sbh-tf-ans-price { font-size: 0.68rem; font-weight: 800; color: #fff3d6; }
+.sbh-tf-ans-price i { font-style: normal; font-weight: 600; font-size: 0.56rem; color: rgba(250, 245, 235, 0.6); }
+.sbh-tf-ans-ctas { display: flex; gap: 6px; flex: 0 0 auto; }
+.sbh-tf-go, .sbh-tf-bid {
+  border: 0; cursor: pointer; white-space: nowrap;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.6rem; font-weight: 750; letter-spacing: 0.04em;
+  padding: 7px 11px; border-radius: 999px; min-height: 28px;
+}
+.sbh-tf-go {
+  color: #3a2606;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.sbh-tf-bid {
+  color: #ffe9ad; background: transparent;
+  border: 1px solid rgba(242, 198, 80, 0.55);
+}
+.sbh-tf-go:active, .sbh-tf-bid:active, .sbh-tf-change:active { transform: scale(0.96); }
+.sbh-tf-empty { font-size: 0.7rem; color: rgba(250, 245, 235, 0.7); margin: 4px 0 0; }
+
+@media (min-width: 1024px) {
+  .sbh-tf { margin: 22px 0 4px; }
+  .sbh-tf-card { padding: 22px 22px 20px; }
+  .sbh-tf-title { font-size: 1.7rem; }
+  .sbh-tf-sub { font-size: 0.8rem; }
+  .sbh-tf-opt { flex: 1 1 calc(16.66% - 8px); min-height: 60px; font-size: 0.78rem; }
+  .sbh-tf-opt:hover { background: rgba(217, 190, 130, 0.16); }
+  .sbh-tf-answers { flex-direction: row; }
+  .sbh-tf-ans { flex: 1 1 0; min-width: 0; flex-direction: column; }
+  .sbh-tf-ans-img { flex: 0 0 108px; border-right: 0; border-bottom: 1px solid rgba(217, 190, 130, 0.16); }
+  .sbh-tf-ans-city { font-size: 1.14rem; }
+  .sbh-tf-ans-name { font-size: 0.66rem; }
+  .sbh-tf-why { font-size: 0.6rem; }
+  .sbh-tf-ans-price { font-size: 0.76rem; }
+  .sbh-tf-go, .sbh-tf-bid { font-size: 0.66rem; padding: 8px 13px; }
+  .sbh-tf-go:hover { transform: translateY(-1px); }
+  .sbh-tf-bid:hover { background: rgba(242, 198, 80, 0.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sbh-tf-opt, .sbh-tf-go, .sbh-tf-bid, .sbh-tf-change { transition: none !important; }
+  .sbh-tf-go:hover { transform: none !important; }
+}
