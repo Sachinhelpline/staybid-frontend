@@ -299,7 +299,7 @@ export function Navbar() {
         .nav3d-eq:active { transform: translateY(0) scale(0.96); }
         /* ACTIVE route — vivid brand-gold fill, dark text, unmistakable. */
         .nav3d-eq.nav3d-chip-active {
-          background: linear-gradient(135deg, #e0c274 0%, #cca346 55%, #b3831e 100%) !important;
+          background: linear-gradient(135deg, #c1a24e 0%, #a4802f 55%, #7a5c18 100%) !important;
           border-color: rgba(255,255,255,0.4) !important;
           color: #1f1a0f !important;
           box-shadow:
@@ -325,14 +325,14 @@ export function Navbar() {
             inset 0 1px 0 rgba(255,233,173,0.16) !important;
         }
         [data-theme="dark"] .nav3d-eq.nav3d-chip-active {
-          background: linear-gradient(135deg, #e0c274 0%, #cca346 55%, #b3831e 100%) !important;
+          background: linear-gradient(135deg, #c1a24e 0%, #a4802f 55%, #7a5c18 100%) !important;
           color: #1f1a0f !important;
         }
         /* the two real CTAs (Create / Sign In) — solid gold, one look in
            both themes, the brightest thing on the bar. */
         .nav3d-solidgold,
         [data-theme="dark"] .nav3d-solidgold {
-          background: linear-gradient(135deg, #e2c477 0%, #cca346 52%, #b3831e 100%) !important;
+          background: linear-gradient(135deg, #c1a24e 0%, #a4802f 52%, #7a5c18 100%) !important;
           border: 1px solid rgba(255,255,255,0.45) !important;
           color: #1f1a0f !important;
           box-shadow:
@@ -491,7 +491,7 @@ export function Navbar() {
           transform: translateX(-50%);
           width: 4px; height: 4px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #dcba68, #c69a34);
+          background: linear-gradient(135deg, #bd9a44, #97762a);
           box-shadow: 0 0 8px #f0b429, 0 0 14px rgba(240,180,41,0.55);
           animation: dockPulse 2.4s ease-in-out infinite;
         }
@@ -506,7 +506,7 @@ export function Navbar() {
         .dock-fab {
           width: 64px; height: 64px;
           margin: 0 -2px;
-          background: linear-gradient(135deg, #dcba68 0%, #c69a34 55%, #b3831e 100%);
+          background: linear-gradient(135deg, #bd9a44 0%, #97762a 55%, #7a5c18 100%);
           color: #1a1208;
           border-radius: 50%;
           box-shadow:
@@ -613,7 +613,7 @@ export function Navbar() {
                   )}
                   {isReels && !active && (
                     <span className="ml-0.5 text-[0.55rem] font-black px-1.5 py-0.5 rounded-full"
-                      style={{ background: "linear-gradient(135deg,#b89330,#cfa244)", color: "#000" }}>
+                      style={{ background: "linear-gradient(135deg,#957628,#a4802f)", color: "#000" }}>
                       NEW
                     </span>
                   )}
@@ -758,7 +758,7 @@ export function Navbar() {
                   className={`nav3d-chip nav3d-eq group relative ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}
                   style={{ paddingLeft: 5 }}>
                   <div className="rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
-                    style={{ width: 26, height: 26, background: "linear-gradient(135deg,#b89330,#cfa244)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                    style={{ width: 26, height: 26, background: "linear-gradient(135deg,#957628,#a4802f)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>
                   {/* v586 — inherit the chip's themed colour (cream in dark,
@@ -787,7 +787,7 @@ export function Navbar() {
             {user ? (
               <Link href="/profile"
                 className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: "linear-gradient(135deg,#b89330,#cfa244)", boxShadow: "0 3px 12px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                style={{ background: "linear-gradient(135deg,#957628,#a4802f)", boxShadow: "0 3px 12px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                 {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
               </Link>
             ) : (
@@ -851,7 +851,7 @@ export function Navbar() {
                 className="w-full mb-3 flex items-center gap-3 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
                 style={{ background: "linear-gradient(135deg,rgba(201,166,107,0.16),rgba(240,180,41,0.10))", border: "1px solid rgba(240,180,41,0.3)" }}
               >
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(135deg,#b89330,#cfa244)", color: "#1F1A0F" }}>⇅</span>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(135deg,#957628,#a4802f)", color: "#1F1A0F" }}>⇅</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white leading-none mb-0.5">Switch experience</p>
                   <p className="text-xs text-white/50 truncate">Partner · Circle · Hosts · Creator</p>
@@ -878,7 +878,7 @@ export function Navbar() {
                   <Link href="/profile" onClick={() => setMoreOpen(false)}
                     className="lux-glass lux-border flex items-center gap-3 p-3 rounded-2xl active:scale-[0.98] transition-transform">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
-                      style={{ background: "linear-gradient(135deg,#b89330,#cfa244)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                      style={{ background: "linear-gradient(135deg,#957628,#a4802f)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                       {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

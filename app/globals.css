@@ -220,7 +220,7 @@
 }
 @utility badge-gold {
   /* ── Gold badge ────────────────────────────────────────────────── */
-  background: linear-gradient(135deg, #b89330, #cfa244);
+  background: linear-gradient(135deg, #957628, #a4802f);
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -550,7 +550,7 @@
 }
 .lux-btn {
   position: relative; overflow: hidden;
-  background: linear-gradient(135deg,#c8992f 0%,#ddb658 46%,#e2bd6b 58%,#c1902d 100%);
+  background: linear-gradient(135deg,#9c7c2a 0%,#c1a24e 46%,#c6a552 58%,#836423 100%);
   color: #1a1205; font-weight: 800; letter-spacing: .04em;
   border: none;
 }
@@ -1043,7 +1043,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 .btn-3d-gold {
   color: #1a1205;
   background:
-    linear-gradient(180deg, #e0c274 0%, #cca346 34%, #b3831e 100%);
+    linear-gradient(180deg, #c1a24e 0%, #a4802f 34%, #7a5c18 100%);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.6),
     inset 0 -2px 0 rgba(120,70,5,0.35),
@@ -1544,7 +1544,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 /* Selected (check-in / check-out) */
 .lux-cal-day.is-checkin,
 .lux-cal-day.is-checkout {
-  background: linear-gradient(180deg, #cfa244 0%, #b3831e 100%);
+  background: linear-gradient(180deg, #a4802f 0%, #7a5c18 100%);
   border-color: #c9911a;
   color: #fff;
   box-shadow:
@@ -1596,7 +1596,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
 }
 .lux-cal-btn-ghost:hover { background: rgba(255,244,217,0.7); color: #2b1d05; }
 .lux-cal-btn-primary {
-  background: linear-gradient(180deg, #cfa244 0%, #b3831e 100%);
+  background: linear-gradient(180deg, #a4802f 0%, #7a5c18 100%);
   color: #fff; font-weight: 800; font-size: 0.82rem;
   padding: 0.65rem 1.2rem; border-radius: 999px; border: none; cursor: pointer;
   box-shadow:
@@ -11162,7 +11162,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   }
   .sbh-btn-primary {
     color: #1a1208;
-    background: linear-gradient(135deg, #d0a446, #dcb356 52%, #bf8f2f);
+    background: linear-gradient(135deg, #ab8534, #bd9a44 52%, #836423);
     box-shadow: 0 10px 26px -10px rgba(240, 180, 41, 0.7);
   }
   .sbh-btn-ghost {
@@ -11240,7 +11240,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   .sbh-tk-accent {
     padding: 3px 8px; border-radius: 999px;
     font-size: 0.66rem; font-weight: 800; letter-spacing: 0.03em; color: #3a2606;
-    background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+    background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
     box-shadow: 0 4px 10px -6px rgba(160, 116, 20, 0.8);
   }
   @keyframes sbhTickerM { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -11364,7 +11364,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
      (This was red; red is not the flash-deal language anywhere else.) */
   .sbh-chip-off {
     top: 9px; left: 9px; color: #3a2606;
-    background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+    background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
   }
   .sbh-chip-live { top: 9px; right: 9px; color: #fff; background: rgba(20, 15, 9, 0.66); }
@@ -11939,7 +11939,7 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   color: #3a2606;
   padding: 7px 12px;
   border-radius: 999px;
-  background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+  background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
     0 2px 6px -3px rgba(31, 26, 15, 0.5);
@@ -12188,7 +12188,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-reelx-dp {
   flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
   display: grid; place-items: center; font-size: 0.6rem; font-weight: 800; color: #1a1208;
-  background: linear-gradient(135deg, #dcba68, #c69a34); border: 1.5px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(135deg, #bd9a44, #97762a); border: 1.5px solid rgba(255, 255, 255, 0.6);
 }
 .sbh-reelx-dp img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sbh-reelx-dp b { line-height: 1; }
@@ -12197,7 +12197,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-reelx-id span { font-size: 0.5rem; color: rgba(255,255,255,0.78); line-height: 1.05; text-shadow: 0 1px 3px rgba(0,0,0,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sbh-reelx-follow {
   flex: 0 0 auto; padding: 4px 9px; border-radius: 999px; font-size: 0.56rem; font-weight: 800; cursor: pointer;
-  color: #1a1208; background: linear-gradient(135deg, #dcba68, #c69a34);
+  color: #1a1208; background: linear-gradient(135deg, #bd9a44, #97762a);
   border: 1px solid rgba(255, 255, 255, 0.45); box-shadow: 0 2px 6px rgba(240, 180, 41, 0.4);
   transition: transform 0.12s ease;
 }
@@ -12223,7 +12223,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .sbh-rx-n { font-size: 0.5rem; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
 .sbh-rx-btn.is-on .sbh-rx-ic { color: #ff3040; }        /* liked heart — player red */
-.sbh-rx-btn.is-saved .sbh-rx-ic { color: #dcba68; }     /* saved bookmark — gold */
+.sbh-rx-btn.is-saved .sbh-rx-ic { color: #bd9a44; }     /* saved bookmark — gold */
 .sbh-reelx-tick { margin-left: 3px; vertical-align: -1px; }
 /* bottom CTA — ONE compact row, the player's BookingCTABar scaled down */
 .sbh-reelx-foot {
@@ -12244,9 +12244,9 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 /* "Book Now" vs "Bid Now" are near-equal labels — near-equal flex shares */
 .sbh-reelx-book { flex: 1.08 1 0; }
-.sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #dcba68, #c69a34); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5); }
+.sbh-reelx-book { color: #1a1208; background: linear-gradient(135deg, #bd9a44, #97762a); border: 1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5); }
 /* "Bid Now" — the player's gold-outline glass style (not purple) */
-.sbh-reelx-bid { color: #dcba68; background: rgba(20, 15, 9, 0.55); border: 1px solid rgba(240, 180, 41, 0.6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.sbh-reelx-bid { color: #bd9a44; background: rgba(20, 15, 9, 0.55); border: 1px solid rgba(240, 180, 41, 0.6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .sbh-reelx-book:active, .sbh-reelx-bid:active { transform: scale(0.96); }
 
 /* v579 — flash/property score badge: premium compact scale so it never
@@ -12354,7 +12354,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   font-family: "Space Grotesk", var(--font-sans), sans-serif;
   font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; white-space: nowrap;
   color: #3a2606; padding: 9px 13px; border-radius: 999px;
-  background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+  background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 9px -4px rgba(0, 0, 0, 0.55);
 }
 .sbh-season-cta:active { transform: scale(0.96); }
@@ -12382,7 +12382,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-trip-chip:active { transform: scale(0.96); }
 .sbh-trip-chip.is-on {
   color: #3a2606;
-  background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+  background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
   border-color: rgba(214, 154, 30, 0.55);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 3px 9px -5px rgba(139, 106, 40, 0.7);
 }
@@ -12399,7 +12399,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-trip { margin: 26px 0 4px; }
   .sbh-trip-chip { font-size: 0.74rem; padding: 9px 15px; min-height: 36px; }
   .sbh-trip-chip:hover { background: rgba(201, 166, 107, 0.18); }
-  .sbh-trip-chip.is-on:hover { background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%); }
+  .sbh-trip-chip.is-on:hover { background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%); }
 }
 @media (max-width: 1023px) {
   /* phone: CTA drops under the text so the card never squeezes the title */
@@ -12609,7 +12609,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .sbh-tf-go {
   border: 0; color: #3a2606;
-  background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+  background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 3px 8px -4px rgba(0, 0, 0, 0.55);
 }
 .sbh-tf-bid {
@@ -12749,14 +12749,14 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-tf-season:active { transform: scale(0.95); }
 .sbh-tf-season.is-on {
   color: #3a2606;
-  background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+  background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
   border-color: rgba(214, 154, 30, 0.55);
 }
 .sbh-tf-season.is-auto { color: rgba(250, 245, 235, 0.7); border-style: dashed; }
 @media (min-width: 1024px) {
   .sbh-tf-season { font-size: 0.64rem; min-height: 32px; }
   .sbh-tf-season:hover { background: rgba(217, 190, 130, 0.16); }
-  .sbh-tf-season.is-on:hover { background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%); }
+  .sbh-tf-season.is-on:hover { background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .sbh-tf-season { transition: none !important; }
@@ -12824,7 +12824,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-tf-gstep.is-now {
   border-style: solid; border-color: rgba(214, 154, 30, 0.7);
   color: #3a2606;
-  background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+  background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
   box-shadow: 0 3px 10px rgba(214, 154, 30, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   animation: sbhTfGnow 2s ease-in-out infinite;
 }
@@ -12842,7 +12842,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   font-size: 0.52rem; font-weight: 800;
   letter-spacing: 0.05em; text-transform: uppercase;
   color: #3a2606;
-  background: linear-gradient(140deg, #e2c477, #d3ac4d 60%, #bd9130);
+  background: linear-gradient(140deg, #c1a24e, #a4802f 60%, #85661d);
   border: 1px solid rgba(214, 154, 30, 0.5);
   border-radius: 999px; padding: 3px 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
@@ -12950,26 +12950,26 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 
 /* ── satin-matte gold buttons (was bright glossy gradients + shine sweeps) ── */
 .lux-btn {
-  background: linear-gradient(150deg, #c8992f 0%, #ddb658 46%, #e2bd6b 58%, #c1902d 100%) !important;
+  background: linear-gradient(150deg, #9c7c2a 0%, #c1a24e 46%, #c6a552 58%, #836423 100%) !important;
 }
 .lux-btn::after { display: none !important; }              /* kill the gold sweep */
 
 .sbh-btn-primary {
-  background: linear-gradient(150deg, #d0a446, #dcb356 52%, #bf8f2f) !important;
+  background: linear-gradient(150deg, #ab8534, #bd9a44 52%, #836423) !important;
   box-shadow: 0 8px 20px -12px rgba(170, 122, 38, 0.6) !important;
 }
 
 .sbh-tf-go {
-  background: linear-gradient(150deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+  background: linear-gradient(150deg, #c1a24e 0%, #a4802f 46%, #85661d 100%) !important;
   box-shadow: inset 0 1px 0 rgba(255, 248, 230, 0.28), 0 3px 8px -5px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* offer badges (home + reel) — satin gold, keep the one-deal-one-colour rule */
 .sbh-chip-off {
-  background: linear-gradient(145deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+  background: linear-gradient(145deg, #c1a24e 0%, #a4802f 46%, #85661d 100%) !important;
 }
 .sbh-tk-accent {
-  background: linear-gradient(145deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+  background: linear-gradient(145deg, #c1a24e 0%, #a4802f 46%, #85661d 100%) !important;
 }
 
 /* ── refined matte WALNUT cards (warmer, richer, satin-gold hairline + sage) ── */
@@ -13011,12 +13011,12 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 
 /* ── (A) satin-matte gold on the last loud buttons ── */
 .sbh-reelx-book {
-  background: linear-gradient(150deg, #dcba68, #c69a34) !important;
+  background: linear-gradient(150deg, #bd9a44, #97762a) !important;
   border: 1px solid rgba(255, 248, 230, 0.4) !important;
   box-shadow: 0 2px 8px rgba(160, 115, 25, 0.32), inset 0 1px 0 rgba(255, 248, 230, 0.3) !important;
 }
 .sbh-rail-act {
-  background: linear-gradient(150deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%) !important;
+  background: linear-gradient(150deg, #c1a24e 0%, #a4802f 46%, #85661d 100%) !important;
   box-shadow: inset 0 1px 0 rgba(255, 248, 230, 0.32), 0 2px 6px -3px rgba(31, 26, 15, 0.4) !important;
 }
 

@@ -1453,7 +1453,7 @@ function FdStyles() {
       .fd-disc-stamp {
         position: absolute; top: 12px; right: 12px; z-index: 2;
         /* v590 — satin matte gold coin (was glossy + a moving shine sweep). */
-        background: linear-gradient(145deg, #e0c274 0%, #cca346 46%, #b98a2c 100%);
+        background: linear-gradient(145deg, #c1a24e 0%, #a4802f 46%, #b98a2c 100%);
         border-radius: 15px;
         padding: 8px 12px;
         display: flex; flex-direction: column; align-items: center;
@@ -1948,7 +1948,7 @@ function FdStyles() {
         padding: 12px 18px;
         /* v590 — SATIN matte gold (was bright glossy #ffe9a6→#c88914). Even,
            brushed metal, no harsh white specular. */
-        background: linear-gradient(150deg, #dcba68 0%, #cca346 44%, #b98a2c 100%);
+        background: linear-gradient(150deg, #bd9a44 0%, #a4802f 44%, #b98a2c 100%);
         color: #2a1d05; font-size: 0.78rem; font-weight: 900;
         border: none; border-radius: 14px;
         cursor: pointer;
@@ -2283,7 +2283,7 @@ function FdStyles() {
       .fd-drawer-cta {
         flex: 1;
         padding: clamp(11px, 3vw, 14px) clamp(14px, 4vw, 20px);
-        background: linear-gradient(135deg, #dcba68, #c69a34 60%, #b3831e);
+        background: linear-gradient(135deg, #bd9a44, #97762a 60%, #7a5c18);
         color: #0a0814; font-size: clamp(0.82rem, 2.9vw, 0.92rem); font-weight: 800;
         border: none; border-radius: 13px;
         cursor: pointer;

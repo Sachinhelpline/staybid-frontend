@@ -477,7 +477,7 @@
   }
   .reel-side-btn:active { transform: scale(0.985); }
   .reel-side-btn.primary {
-    background: linear-gradient(135deg, #b89330, #cfa244, #bf8f2f);
+    background: linear-gradient(135deg, #957628, #a4802f, #836423);
     color: #1a1208;
     box-shadow: 0 8px 22px -8px rgba(240, 180, 41, 0.5);
   }
@@ -2440,7 +2440,7 @@ body main textarea.input-luxury {
   }
   .sbh-btn-primary {
     color: #1a1208;
-    background: linear-gradient(135deg, #d0a446, #dcb356 52%, #bf8f2f);
+    background: linear-gradient(135deg, #ab8534, #bd9a44 52%, #836423);
     box-shadow: 0 14px 34px -12px rgba(240, 180, 41, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
   .sbh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 44px -12px rgba(240, 180, 41, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
@@ -2616,7 +2616,7 @@ body main textarea.input-luxury {
   /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour */
   .sbh-chip-off {
     top: 11px; left: 11px; color: #3a2606;
-    background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+    background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
     box-shadow: 0 6px 16px -8px rgba(160, 116, 20, 0.75);
   }
@@ -2750,7 +2750,7 @@ body main textarea.input-luxury {
   .sbh-tk-accent {
     padding: 3px 10px; border-radius: 999px;
     font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #3a2606;
-    background: linear-gradient(140deg, #e2c477 0%, #d3ac4d 46%, #bd9130 100%);
+    background: linear-gradient(140deg, #c1a24e 0%, #a4802f 46%, #85661d 100%);
     box-shadow: 0 6px 14px -8px rgba(160, 116, 20, 0.8);
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
