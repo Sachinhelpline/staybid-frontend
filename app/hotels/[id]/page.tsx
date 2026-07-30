@@ -5176,12 +5176,13 @@ export default function HotelDetail() {
                   className="neg-cta-shimmer w-full py-4 rounded-2xl font-extrabold text-base tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
                   style={{
                     background: isInstant
-                      ? "linear-gradient(135deg,#10b981 0%,#a9b9c8 50%,#10b981 100%)"
+                      ? "linear-gradient(160deg,#d3dde7 0%,#aebdcf 50%,#8ba0b6 100%)"
                       : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
-                    color: "#ffffff",
+                    color: isInstant ? "#16222e" : "#ffffff",
+                    textShadow: isInstant ? "0 1px 0 rgba(255,255,255,0.35)" : "0 1px 1px rgba(20,30,44,0.35)",
                     boxShadow: isInstant
-                      ? "0 12px 32px rgba(16,185,129,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset"
-                      : "0 12px 32px rgba(120,150,182,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
+                      ? "0 10px 26px -8px rgba(45,62,82,0.45), inset 0 1px 0 rgba(255,255,255,0.6)"
+                      : "0 12px 32px -8px rgba(45,62,82,0.5), inset 0 1px 0 rgba(255,255,255,0.4)",
                   }}>
                   {negLoading
                     ? "⏳ Submitting your bid…"
