@@ -97,6 +97,12 @@ const CITY_CORRIDOR: Record<string, string> = {
   goa: "longhaul", coorg: "longhaul", kerala: "longhaul", leh: "longhaul",
 };
 
+/** The corridor a catalog city belongs to (v584 — powers the pilgrimage
+ *  badge + any corridor-aware chip). Null for unknown cities. */
+export function cityCorridor(city: string | null | undefined): string | null {
+  return CITY_CORRIDOR[String(city || "").trim().toLowerCase()] || null;
+}
+
 /**
  * How well a property fits a trip format — 0..1.
  *   • corridor match is the gate (0.7 weight): right REGION for the format

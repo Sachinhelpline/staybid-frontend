@@ -627,7 +627,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // via display:contents) + fixed the 5-col strip bug.
 // v485 — bump (v295 -> v296). /saved (.lux-soft max-w-5xl) widened on desktop so
 // its lg:grid-cols-4 grid breathes.
-const HTML_CACHE = 'staybid-html-v380';
+const HTML_CACHE = 'staybid-html-v381';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
