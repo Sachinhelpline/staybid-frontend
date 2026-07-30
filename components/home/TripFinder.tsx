@@ -25,6 +25,7 @@ import { answerTrip, BUDGET_BANDS, type BudgetBandId, type FinderHotel } from "@
 import { TRIP_FORMATS, formatForSegment, type SegmentId, type TripFormatId } from "@/lib/browse/trip-formats";
 import { programForMonth } from "@/lib/browse/season-programs";
 import { recordFormatChoice, recordSegmentChoice } from "@/lib/browse/segment";
+import { conciergeWaLink } from "@/lib/browse/whatsapp";
 import type { ViewerPoint } from "@/lib/browse/affinity";
 
 const WHO: { id: SegmentId; emoji: string; label: string }[] = [
@@ -201,7 +202,8 @@ export default function TripFinder({
 
         {step === 3 ? (
           picks.length ? (
-            <div className="sbh-tf-answers sbh-tf-anim" key="s3">
+            <div className="sbh-tf-anim" key="s3">
+            <div className="sbh-tf-answers">
               {picks.map((p, i) => (
                 <article key={p.hotel.id} className="sbh-tf-ans">
                   <button
@@ -244,8 +246,26 @@ export default function TripFinder({
                 </article>
               ))}
             </div>
+            {/* v583 — WhatsApp-led trust (deck: 56% of the core market
+                prefers assisted booking). Same concierge line as the /bid
+                group concierge; message pre-filled from the answers. */}
+            <a
+              className="sbh-tf-wa"
+              href={conciergeWaLink(
+                `Hi! I'm planning a trip and StayBid suggested ${picks.map((p) => p.hotel.city).filter(Boolean).join(", ")}. Can you help me plan and book?`,
+              )}
+              target="_blank" rel="noopener noreferrer"
+            >
+              💬 Want a human to plan it? <b>Chat on WhatsApp</b>
+            </a>
+            </div>
           ) : (
-            <p className="sbh-tf-empty">No exact match this time — try a different trip type or budget.</p>
+            <p className="sbh-tf-empty">
+              No exact match this time — try a different trip type or budget, or{" "}
+              <a className="sbh-tf-wa-inline" href={conciergeWaLink("Hi! I need help planning a trip on StayBid.")} target="_blank" rel="noopener noreferrer">
+                ask us on WhatsApp
+              </a>.
+            </p>
           )
         ) : null}
       </div>

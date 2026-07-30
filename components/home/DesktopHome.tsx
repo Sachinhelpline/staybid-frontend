@@ -46,6 +46,8 @@ import { readSegment, recordFormatChoice } from "@/lib/browse/segment";
 // v582 — Decision Engine P2: the 3-tap Trip Finder for the traveller who
 // cannot name a destination (engine: lib/browse/trip-finder.ts).
 import TripFinder from "@/components/home/TripFinder";
+// v583 — P3: drive-time labels share the Finder's distance engine.
+import { driveLabelFor } from "@/lib/browse/trip-finder";
 
 const SEASON_ICON: Record<string, string> = {
   Winter: "❄️", Spring: "🌸", Summer: "☀️", Monsoon: "🌧️", Autumn: "🍂",
@@ -339,7 +341,7 @@ function Rail({
 }
 
 /* ── cards ─────────────────────────────────────────────────────────────── */
-function HotelCard({ h, score }: { h: Hotel; score?: Scorecard }) {
+function HotelCard({ h, score, drive }: { h: Hotel; score?: Scorecard; drive?: string | null }) {
   const price = minPriceOf(h);
   const img = imgOf(h);
   const rate = Number(h.avgRating) || 0;
@@ -365,6 +367,11 @@ function HotelCard({ h, score }: { h: Hotel; score?: Scorecard }) {
           {rate > 0 ? (
             <span className="sbh-card-rating">★ {rate.toFixed(1)}{reviews > 0 ? <em> ({reviews})</em> : null}</span>
           ) : null}
+          {/* v583 — effort answered on the card itself ("how far is it?").
+              Real distance from the viewer (Delhi-Core default) via the same
+              engine the Finder uses — hours, because hours are how people
+              actually judge a road trip. */}
+          {drive ? <span className="sbh-card-drive">{drive}</span> : null}
         </p>
         {price != null ? (
           <p className="sbh-card-price">
@@ -1262,7 +1269,13 @@ export default function DesktopHome() {
       const items = hotels.filter((h) => zoneForCity(h.city) === z.id);
       if (!items.length) continue;
       const ranked = rankForBrowse(items, (h) => h.city, (h) => h.id, { viewer, signals: getSignals() });
-      const reach = Math.max(...items.map((h) => cityAccess(h.city, viewer).score));
+      // v583 — answer-first ordering: the inferred audience segment's natural
+      // trip format pulls its zones up (a family sees family corridors first).
+      const segFmt = tripFormat(formatForSegment(readSegment()));
+      const segBoost = segFmt
+        ? Math.max(...items.map((h) => formatFit(segFmt, h.city, minPriceOf(h)))) * 0.3
+        : 0;
+      const reach = Math.max(...items.map((h) => cityAccess(h.city, viewer).score)) + segBoost;
       out.push({ id: z.id, label: z.label, items: ranked, reach });
     }
     out.sort((a, b) => b.reach - a.reach);
@@ -1291,6 +1304,15 @@ export default function DesktopHome() {
     if (pt) { setViewer(pt); setGeoDenied(false); }
     else setGeoDenied(true);
   }, [geoBusy]);
+
+  // v583 — the "how far is it?" chip every property card carries. Hours,
+  // not km (hours are how people judge a road trip); long-haul reads as a
+  // fly-away. Same engine (cityAccess + driveLabelFor) as the Trip Finder.
+  const driveFor = useCallback((city?: string | null) => {
+    const lbl = driveLabelFor(cityAccess(city, viewer).km);
+    if (!lbl) return null;
+    return lbl === "Fly-away escape" ? "✈️ fly-away" : `🚗 ${lbl.replace(" drive", "")}`;
+  }, [viewer]);
 
   // ── DECISION ENGINE P1 (v581): trip-type browse chips ────────────────
   const tripRef = useRef<HTMLElement>(null);
@@ -1533,7 +1555,7 @@ export default function DesktopHome() {
             sub={`${selFormat.blurb} · ${selFormat.nights}`}
             href="/hotels"
           >
-            {tripRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} />)}
+            {tripRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} />)}
           </Rail>
         ) : null}
 
@@ -1560,13 +1582,13 @@ export default function DesktopHome() {
                 : undefined
             }
           >
-            {reachRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} />)}
+            {reachRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} />)}
           </Rail>
         ) : null}
 
         {zoneRails.map((z) => (
           <Rail key={z.id} title={z.label} sub={`${z.items.length} propert${z.items.length === 1 ? "y" : "ies"}`} href="/hotels">
-            {z.items.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} />)}
+            {z.items.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} />)}
           </Rail>
         ))}
 
