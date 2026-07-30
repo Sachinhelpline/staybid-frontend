@@ -171,11 +171,27 @@ export function markNotInterested(id: string) {
 /** Read the current "Not interested" suppression set (used by the feed filter). */
 export function getNotInterested(): string[] { return loadSignals().notInterestedIds; }
 
+// v580 — the reel player's engagement events (like / save / follow / tagged
+// book / tagged bid) now feed the SAME preference store, so watching, saving
+// and liking a reel personalises every future feed — including the server
+// ranker (/api/discover/feed reads these signals on the next request).
+// A long watch (dwell ≥ 8s on one reel) is a positive signal, mirrored from
+// the "dwell" event the reel page emits on card change.
+const LIKE_EVENTS = new Set<string>([
+  "click_bid", "click_book", "booking_success",
+  "ig_like", "ig_double_tap_like", "ig_follow",
+  "ig_tagged_hotel_book", "ig_tagged_hotel_bid",
+]);
+const LONG_WATCH_MS = 8000;
+
 function updateSignalsFromEvent(type: EventType, data: Partial<Evt>) {
   if (!data.hotelId) return;
-  if (type === "hotel_view") markViewed(data.hotelId, data.meta?.city, data.meta?.minPrice, data.meta?.amenities);
-  else if (type === "click_bid" || type === "click_book" || type === "booking_success") markLiked(data.hotelId);
-  else if (type === "swipe_next" && (data.meta?.dwellMs ?? 9999) < 1500) markSkipped(data.hotelId);
+  const t = String(type);
+  if (t === "hotel_view") markViewed(data.hotelId, data.meta?.city, data.meta?.minPrice, data.meta?.amenities);
+  else if (LIKE_EVENTS.has(t)) markLiked(data.hotelId);
+  else if (t === "ig_save") { if ((data as any)?.save !== false && data.meta?.save !== false) markLiked(data.hotelId); }
+  else if (t === "dwell" && (data.meta?.dwellMs ?? 0) >= LONG_WATCH_MS) markLiked(data.hotelId);
+  else if (t === "swipe_next" && (data.meta?.dwellMs ?? 9999) < 1500) markSkipped(data.hotelId);
 }
 
 /** Wire global flush handlers (call once from a layout component). */
