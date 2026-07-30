@@ -158,8 +158,8 @@ export function BottomDock() {
           gap: 1px;
           padding: 4px 2px;
           overflow: hidden;
-          /* v88 — cream-tinted instead of harsh white */
-          color: rgba(176, 192, 209, 0.62);
+          /* v88 — cream-tinted instead of harsh white; v609 lifted for legibility */
+          color: rgba(197, 212, 228, 0.86);
           text-decoration: none;
           border-radius: 12px;
           transition:
@@ -167,8 +167,9 @@ export function BottomDock() {
             transform 0.14s cubic-bezier(.32,1.2,.36,1),
             background 0.18s ease;
         }
-        /* v608 — owner: nav labels/icons were old walnut in light mode. Slate. */
-        [data-theme="light"] .ig-dock-item { color: rgba(79, 109, 138, 0.72); }
+        /* v609 — owner: the v608 slate read dull. Deep, saturated slate so the
+           nav (the app's main control) reads premium + clearly legible. */
+        [data-theme="light"] .ig-dock-item { color: #3f5369; font-weight: 650; }
         /* v408 — On the immersive reel (always dark, even in light theme) the
            cream dock read as a bright block stacked on the phone's system nav
            bar ("double layer"). Force the dark walnut dock + light glyphs there

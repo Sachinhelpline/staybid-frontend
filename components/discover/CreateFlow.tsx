@@ -543,7 +543,7 @@ export function LocationPicker({
         {/* Popular city chips */}
         {!query && (
           <div className="px-4 pb-2">
-            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Popular</p>
+            <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Popular</p>
             <div className="flex flex-wrap gap-1.5">
               {POPULAR_CITIES.map((c) => (
                 <button
@@ -950,11 +950,12 @@ export function ProfilePhotoEditor({
           display: "flex", flexDirection: "column",
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full" style={{ background: "var(--border-strong)" }} /></div>
         <div className="flex items-center justify-between px-5 pb-2">
           <p className="font-semibold text-[0.92rem]" style={{ color: "var(--text-base)" }}>✏️ Edit profile</p>
           <button
             type="button"
+            className="ppe-close"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             style={{
               position: "relative", zIndex: 5,
@@ -1020,7 +1021,7 @@ export function ProfilePhotoEditor({
 
           {/* Display name */}
           <div className="pb-3">
-            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Display name</p>
+            <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Display name</p>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -1037,7 +1038,7 @@ export function ProfilePhotoEditor({
 
           {/* Bio */}
           <div className="pb-3">
-            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Bio</p>
+            <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Bio</p>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
@@ -1052,14 +1053,14 @@ export function ProfilePhotoEditor({
                 minHeight: 70,
               }}
             />
-            <p className="text-white/40 text-[0.6rem] mt-1">
+            <p className="text-[0.6rem] mt-1" style={{ color: "var(--text-muted)" }}>
               🛡️ Phone numbers, emails and off-platform links are auto-scrubbed when shown.
             </p>
           </div>
 
           {/* Location */}
           <div className="pb-3">
-            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Location</p>
+            <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Location</p>
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -1076,7 +1077,7 @@ export function ProfilePhotoEditor({
 
           {/* Website */}
           <div className="pb-3">
-            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Website</p>
+            <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Website</p>
             <input
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
@@ -1093,8 +1094,8 @@ export function ProfilePhotoEditor({
 
           {/* Custom highlights manager */}
           <div className="pb-3">
-            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">My highlights</p>
-            <p className="text-white/55 text-[0.66rem] mb-2">
+            <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>My highlights</p>
+            <p className="text-[0.66rem] mb-2" style={{ color: "var(--text-muted)" }}>
               Built-in highlights (Mountains, Beaches, Foodie, Suites, Top picks, Solo) are always shown. Add custom ones below — they appear on your profile alongside the built-ins.
             </p>
             <div className="flex flex-wrap gap-1.5 mb-2">
@@ -1115,7 +1116,7 @@ export function ProfilePhotoEditor({
                 </span>
               ))}
               {myCustomHighlights.length === 0 && (
-                <span className="text-white/40 text-[0.7rem]">No custom highlights yet.</span>
+                <span className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>No custom highlights yet.</span>
               )}
             </div>
             <div className="flex gap-2 items-stretch">
@@ -1172,7 +1173,7 @@ export function ProfilePhotoEditor({
           </button>
         </div>
 
-        <p className="px-5 pt-2 text-white/35 text-[0.58rem] text-center">
+        <p className="px-5 pt-2 text-[0.58rem] text-center" style={{ color: "var(--text-muted)" }}>
           Stays on your device · phone number stays hidden by design
         </p>
       </div>
@@ -1918,24 +1919,25 @@ export function CoverFramePicker({
       <style jsx global>{`
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { scrollbar-width: none; }
-        /* v608 — theme-aware Edit-profile sheet: inputs, labels + faint white
-           text now read from tokens so the sheet works in light AND dark. */
+        /* v609 — theme-aware Edit-profile sheet. Only simple element/class
+           selectors here (Stylis in styled-jsx drops a whole global block on
+           an attribute selector like [class*=…] — that was the v608 bug that
+           made every field invisible in light mode). Labels/close/handle are
+           themed inline instead. */
         .sb-ppe input, .sb-ppe textarea {
           color: var(--text-base) !important;
-          background: var(--bg-input) !important;
-          border-color: var(--border-soft) !important;
+          background: color-mix(in srgb, var(--accent) 7%, var(--bg-card)) !important;
+          border: 1px solid var(--border-strong) !important;
           caret-color: var(--accent) !important;
         }
         .sb-ppe input::placeholder, .sb-ppe textarea::placeholder {
-          color: var(--text-muted) !important; opacity: 0.75;
+          color: var(--text-muted) !important; opacity: 0.85;
         }
-        .sb-ppe [class*="text-white"] { color: var(--text-muted) !important; }
-        .sb-ppe button[aria-label="Close"] {
+        .sb-ppe .ppe-close {
           background: var(--accent-soft) !important;
           border-color: var(--border-soft) !important;
-          color: var(--text-soft) !important;
+          color: var(--text-base) !important;
         }
-        .sb-ppe [class*="bg-white"] { background: var(--border-strong) !important; }
       `}</style>
     </div>
   );
@@ -3839,7 +3841,7 @@ export function Composer({
 
               {/* Caption */}
               <div className="relative">
-                <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">
+                <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>
                   Caption
                   <span className="ml-2 normal-case tracking-normal text-white/45 font-normal">
                     · type <span className="text-amber-300 font-semibold">@</span> to mention someone
@@ -3946,7 +3948,7 @@ export function Composer({
 
               {/* Tags */}
               <div>
-                <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Tags</p>
+                <p className="text-[0.6rem] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-muted)" }}>Tags</p>
                 <div className="flex flex-wrap gap-1.5">
                   {TAG_PRESETS.map((t) => {
                     const active = tags.includes(t);

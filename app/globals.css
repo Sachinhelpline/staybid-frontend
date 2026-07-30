@@ -328,9 +328,10 @@
     --text-base: var(--cozy-warm-dark);
     --text-soft: var(--cozy-cocoa);
     /* v515 — app-wide legibility: the faintest text tier was too light in light
-       mode. Nudge it ~22% toward --text-soft so muted labels read cleanly while
-       keeping the hierarchy (base > soft > muted). Refined, not heavy. */
-    --text-muted: color-mix(in srgb, var(--cozy-cocoa-soft) 78%, var(--cozy-cocoa));
+       mode. v609 — owner: still too faint on small labels (scorecard captions,
+       card meta). Push it further toward --text-soft (55/45) so muted labels are
+       clearly legible while base > soft > muted hierarchy holds. */
+    --text-muted: color-mix(in srgb, var(--cozy-cocoa-soft) 55%, var(--cozy-cocoa));
     --text-inverse: var(--cozy-warm-dark);
     --border-soft: var(--cozy-taupe);
     --border-strong: rgba(110, 84, 48, 0.3);
@@ -361,7 +362,7 @@
     --text-soft: #aab6c4;
     /* v515 — app-wide legibility (dark): raise the faintest tier's opacity so
        muted labels don't disappear against the slate-night background. */
-    --text-muted: rgba(172, 187, 204, 0.72);
+    --text-muted: rgba(178, 193, 210, 0.82);
     --text-inverse: #13171c;
     --border-soft: rgba(170, 190, 214, 0.12);
     --border-strong: rgba(170, 190, 214, 0.30);
@@ -401,7 +402,7 @@
       --bg-pill-active: linear-gradient(135deg, #6f8aa6, #42566d);
       --text-base: #dbe3ea;
       --text-soft: #aab6c4;
-      --text-muted: rgba(172, 187, 204, 0.72);
+      --text-muted: rgba(178, 193, 210, 0.82);
       --text-inverse: #13171c;
       --border-soft: rgba(170, 190, 214, 0.12);
       --border-strong: rgba(170, 190, 214, 0.30);
@@ -11358,7 +11359,9 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     min-height: 2.4em;   /* reserve both lines so prices align across the rail */
   }
-  .sbh-card-meta { margin: 0; font-size: 0.7rem; color: var(--text-soft, #4a3820); opacity: 0.72; }
+  /* v609 — owner: the small card meta (city, rating, ~drive) read too faint.
+     Raised opacity + use --text-base so it's clearly legible on both viewports. */
+  .sbh-card-meta { margin: 0; font-size: 0.72rem; color: var(--text-base, #1f1a0f); opacity: 0.9; }
   .sbh-card-rank { color: #536b82; font-weight: 600; }
   .sbh-card-price {
     margin: 2px 0 0; display: flex; align-items: baseline; gap: 4px;
@@ -11367,8 +11370,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     font-variant-numeric: tabular-nums;
   }
   .sbh-card-price b { font-size: 0.9rem; font-weight: 700; color: var(--text-base, #1f1a0f); }
-  .sbh-card-price s { opacity: 0.5; }
-  .sbh-card-price em { font-style: normal; opacity: 0.66; }
+  .sbh-card-price s { opacity: 0.62; }
+  .sbh-card-price em { font-style: normal; opacity: 0.85; }
   .sbh-chip {
     position: absolute; z-index: 4;
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
@@ -12154,10 +12157,10 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-card-loc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sbh-card-rating {
   display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; opacity: 1;
-  color: #728ca5; font-weight: 700;
+  color: #4f6d8a; font-weight: 700;
   font-family: "Space Grotesk", var(--font-sans), sans-serif; font-variant-numeric: tabular-nums;
 }
-.sbh-card-rating em { font-style: normal; font-weight: 600; opacity: 0.6; }
+.sbh-card-rating em { font-style: normal; font-weight: 600; opacity: 0.82; }
 .sbh-card-below {
   margin-top: 2px; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em;
   color: #4f6d8a; font-family: "Space Grotesk", var(--font-sans), sans-serif;
