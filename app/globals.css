@@ -294,9 +294,15 @@
      the v85-era stark blacks + bright magenta/purple accents with
      minimal, ultra-premium cozy tones. Used by reel surfaces,
      PostsScrollFeed, BottomDock, action buttons, etc. */
-    --cozy-cream-50: #fffcf6; /* lightest cream surface */
-    --cozy-cream-100: #faf5eb; /* default page bg on light surfaces */
-    --cozy-cream-200: #f2ead8; /* warm card surface */
+    /* v588 — brighter, more luminous cream (owner ask: brighter = premium).
+       Lifted the page + card surfaces toward a cleaner warm white while
+       keeping the WARM tint (never stark clinical white) and preserving the
+       card > page tonal delta so cards still separate. Text stays #1f1a0f so
+       contrast only improves on the brighter ground. Was 50 #fffcf6 / 100
+       #faf5eb / 200 #f2ead8. */
+    --cozy-cream-50: #fffefb; /* lightest cream surface — near warm-white */
+    --cozy-cream-100: #fdfaf3; /* default page bg on light surfaces — brighter */
+    --cozy-cream-200: #f6efe0; /* warm card surface — brighter */
     --cozy-taupe: #e8dcc8; /* dividers + soft borders */
     --cozy-warm-dark: #1f1a0f; /* primary text on light + dark surface bg */
     --cozy-warm-soft: #2b2415; /* less-harsh dark for nested chrome */

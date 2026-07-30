@@ -1133,7 +1133,7 @@ function FdStyles() {
         box-shadow: 0 6px 16px -12px rgba(31, 26, 15, 0.28);
       }
       .fd-sticky-inner {
-        max-width: 1480px; margin: 0 auto;
+        max-width: 1920px; margin: 0 auto;
         padding: 10px 18px 11px;
       }
       @media (min-width: 640px)  { .fd-sticky-inner { padding: 12px 24px 13px; } }
@@ -1157,7 +1157,7 @@ function FdStyles() {
          Tiny stat strip lives just under the title as a secondary row. */
       .fd-hero-slim {
         position: relative; z-index: 1;
-        max-width: 1480px; margin: 0 auto;
+        max-width: 1920px; margin: 0 auto;
         padding: 6px 16px 5px;
       }
       @media (min-width: 640px)  { .fd-hero-slim { padding: 8px 24px 6px; } }
@@ -1329,7 +1329,7 @@ function FdStyles() {
          pill + room picker + meter) stays legible. */
       .fd-grid-wrap {
         position: relative; z-index: 1;
-        max-width: 1480px; margin: 0 auto;
+        max-width: 1920px; margin: 0 auto;
         padding: 0 16px 80px;
       }
       @media (min-width: 640px)  { .fd-grid-wrap { padding: 0 22px 88px; } }
