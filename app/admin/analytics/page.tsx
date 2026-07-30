@@ -31,7 +31,7 @@ type Kpis = {
 const SOURCE_STYLE_ADMIN: Record<string, { icon: string; label: string; color: string }> = {
   direct:        { icon: "🔗", label: "Direct",      color: "#3D9CF5" },
   creator:       { icon: "✨", label: "Creator",     color: "#A855F7" },
-  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#D4AF37" },
+  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#9fb1c2" },
   flash:         { icon: "⚡", label: "Flash deal",  color: "#FF4757" },
   unknown:       { icon: "•",  label: "Unknown",     color: "#8A8FA8" },
 };
@@ -39,7 +39,7 @@ const SOURCE_STYLE_ADMIN: Record<string, { icon: string; label: string; color: s
 const TIER_COLORS: Record<string, string> = {
   PREMIUM: "#10b981",
   STRONG: "#22c55e",
-  NORMAL: "#eab308",
+  NORMAL: "#a4b5c5",
   CAUTIOUS: "#f59e0b",
   LOWBALL: "#ef4444",
   NEW: "#3b82f6",
@@ -110,7 +110,7 @@ export default function AdminAnalytics() {
                 fontSize: 12, fontWeight: 600, cursor: "pointer",
                 border: "1px solid",
                 ...(days === opt.d
-                  ? { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", borderColor: "transparent" }
+                  ? { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", borderColor: "transparent" }
                   : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
               }}>
               {opt.label}
@@ -135,7 +135,7 @@ export default function AdminAnalytics() {
             <KpiCardShared
               title="Bids placed"
               value={k.totalBids || 0}
-              sub={`${days}d`} icon="🎯" color="#D4AF37" live
+              sub={`${days}d`} icon="🎯" color="#9fb1c2" live
               sparkline={dailyTrend.map((d: any) => d.placed)}
             />
             <KpiCardShared
@@ -160,7 +160,7 @@ export default function AdminAnalytics() {
               title="Revenue"
               value={k.revenueTotal || 0}
               format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
-              sub="paid amounts" icon="💰" color="#F0D060" live
+              sub="paid amounts" icon="💰" color="#c6d0da" live
             />
             <KpiCardShared
               title="Avg time-to-accept"
@@ -175,12 +175,12 @@ export default function AdminAnalytics() {
               <div style={{ height: 280 }}>
                 <AdminLineChart
                   data={dailyTrend.map((d) => ({ label: d.date.slice(5), value: d.placed }))}
-                  color="#D4AF37"
+                  color="#9fb1c2"
                   height={280}
                 />
               </div>
               <div style={{ display: "flex", gap: 14, fontSize: 11, color: "#8A8FA8", marginTop: 8 }}>
-                <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 999, background: "#D4AF37", marginRight: 5 }} />Placed</span>
+                <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 999, background: "#9fb1c2", marginRight: 5 }} />Placed</span>
                 <span>·  Accepted: <strong style={{ color: "#2ECC71" }}>{k.accepted}</strong></span>
                 <span>·  Countered: <strong style={{ color: "#f59e0b" }}>{k.countered}</strong></span>
                 <span>·  Rejected: <strong style={{ color: "#ef4444" }}>{k.rejected}</strong></span>
@@ -219,22 +219,22 @@ export default function AdminAnalytics() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }} className="analytics-grid">
             <Panel title="Hold lifecycle" subtitle={`₹${k.holds.lockedNow.toLocaleString("en-IN")} locked right now`}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-                <MiniStat label="Total holds"   value={k.holds.total}     color="#D4AF37" />
+                <MiniStat label="Total holds"   value={k.holds.total}     color="#9fb1c2" />
                 <MiniStat label="Active"         value={k.holds.active}    color="#2ECC71" />
                 <MiniStat label="Completed"      value={k.holds.completed} color="#A855F7" />
                 <MiniStat label="Expired"        value={k.holds.expired}   color="#EF4444" />
                 <MiniStat label="Pay-at-hotel"   value={k.holds.payAtHotelCount} color="#3D9CF5" />
-                <MiniStat label="Conversion %"   value={`${k.holds.conversion}%`} color="#F0D060" />
+                <MiniStat label="Conversion %"   value={`${k.holds.conversion}%`} color="#c6d0da" />
               </div>
             </Panel>
 
             <Panel title="Acceptance windows" subtitle="15-min-to-pay timer">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-                <MiniStat label="Total windows" value={k.windows.total}    color="#D4AF37" />
+                <MiniStat label="Total windows" value={k.windows.total}    color="#9fb1c2" />
                 <MiniStat label="Active"         value={k.windows.active}  color="#2ECC71" />
                 <MiniStat label="Paid"           value={k.windows.paid}    color="#A855F7" />
                 <MiniStat label="Expired"        value={k.windows.expired} color="#EF4444" />
-                <MiniStat label="Pay rate"       value={`${k.windows.payRate}%`} color="#F0D060" />
+                <MiniStat label="Pay rate"       value={`${k.windows.payRate}%`} color="#c6d0da" />
               </div>
             </Panel>
           </div>
@@ -247,7 +247,7 @@ export default function AdminAnalytics() {
                 .map(([flow, amt]) => (
                   <div key={flow} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 12 }}>
                     <p style={{ color: "#8A8FA8", fontSize: 10, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", margin: 0 }}>{flow}</p>
-                    <p style={{ color: "#D4AF37", fontSize: 18, fontWeight: 700, margin: "4px 0 0", fontFamily: "Syne, sans-serif" }}>
+                    <p style={{ color: "#9fb1c2", fontSize: 18, fontWeight: 700, margin: "4px 0 0", fontFamily: "Syne, sans-serif" }}>
                       ₹{amt.toLocaleString("en-IN")}
                     </p>
                   </div>
@@ -341,7 +341,7 @@ export default function AdminAnalytics() {
                       {h.city && <p style={{ color: "#8A8FA8", margin: 0, fontSize: 11 }}>{h.city}</p>}
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ color: "#D4AF37", margin: 0, fontWeight: 700 }}>{h.rate}%</p>
+                      <p style={{ color: "#9fb1c2", margin: 0, fontWeight: 700 }}>{h.rate}%</p>
                       <p style={{ color: "#8A8FA8", margin: 0, fontSize: 11 }}>{h.accepted}/{h.placed} bids</p>
                     </div>
                   </div>

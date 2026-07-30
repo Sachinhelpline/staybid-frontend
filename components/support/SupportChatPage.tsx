@@ -310,9 +310,9 @@ export default function SupportChatPage({
               }
             }}
             style={{
-              background: "rgba(212, 175, 55, 0.10)",
-              color: "#D4AF37",
-              border: "1px solid rgba(212, 175, 55, 0.35)",
+              background: "rgba(140, 160, 182, 0.10)",
+              color: "#9fb1c2",
+              border: "1px solid rgba(140, 160, 182, 0.35)",
               padding: "4px 10px",
               borderRadius: 999,
               fontSize: 10.5,
@@ -509,7 +509,7 @@ function Bubble({ m }: { m: Message }) {
               fontWeight: 700,
               opacity: 0.7,
               marginBottom: 2,
-              color: isAI ? "#D4AF37" : isAgent ? "#7BA361" : "#A89674",
+              color: isAI ? "#9fb1c2" : isAgent ? "#7BA361" : "#849ab1",
             }}
           >
             {m.sender_name || m.sender}
@@ -807,7 +807,7 @@ function AIBadge({ status }: { status: AIStatus }) {
     );
   }
   const isGroq = status.activeProvider === "groq";
-  const color = isGroq ? "#7BA361" : "#D4AF37";
+  const color = isGroq ? "#7BA361" : "#9fb1c2";
   return (
     <span
       style={{
@@ -830,7 +830,7 @@ function AIBadge({ status }: { status: AIStatus }) {
 
 function StatusPill({ status }: { status: SupportStatus }) {
   const map: Record<SupportStatus, [string, string]> = {
-    ai_active: ["#D4AF37", "AI"],
+    ai_active: ["#9fb1c2", "AI"],
     escalated: ["#FF4757", "Queue"],
     agent_active: ["#2ECC71", "Live"],
     resolved: ["#3D9CF5", "Resolved"],
@@ -913,7 +913,7 @@ const S: Record<string, React.CSSProperties> = {
     gap: 8,
   },
   btnPrimary: {
-    background: "#D4AF37",
+    background: "#9fb1c2",
     color: "#0F1117",
     border: "none",
     padding: "8px 18px",
@@ -971,15 +971,15 @@ const S: Record<string, React.CSSProperties> = {
     gap: 10,
   },
   categoryChip: {
-    background: "rgba(212, 175, 55, 0.12)",
-    color: "#D4AF37",
+    background: "rgba(140, 160, 182, 0.12)",
+    color: "#9fb1c2",
     fontSize: 11,
     fontWeight: 600,
     padding: "3px 10px",
     borderRadius: 999,
     textTransform: "capitalize",
     letterSpacing: 0.04,
-    border: "1px solid rgba(212, 175, 55, 0.3)",
+    border: "1px solid rgba(140, 160, 182, 0.3)",
   },
   subMeta: {
     fontSize: 12,
@@ -1007,7 +1007,7 @@ const S: Record<string, React.CSSProperties> = {
     transform: "translateX(-50%)",
     display: "block",
     margin: "0 auto",
-    background: "linear-gradient(140deg, #D4AF37, #8B6914)",
+    background: "linear-gradient(140deg, #9fb1c2, #8B6914)",
     color: "#0F1117",
     border: "none",
     padding: "8px 18px",
@@ -1015,7 +1015,7 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
-    boxShadow: "0 8px 20px -4px rgba(0,0,0,0.6), 0 0 0 1px rgba(212, 175, 55, 0.5)",
+    boxShadow: "0 8px 20px -4px rgba(0,0,0,0.6), 0 0 0 1px rgba(140, 160, 182, 0.5)",
     letterSpacing: 0.05,
     zIndex: 5,
   },
@@ -1048,12 +1048,12 @@ const S: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   aiBadge: {
-    background: "rgba(212, 175, 55, 0.15)",
-    color: "#D4AF37",
+    background: "rgba(140, 160, 182, 0.15)",
+    color: "#9fb1c2",
     fontSize: 11,
     padding: "5px 12px",
     borderRadius: 999,
-    border: "1px solid rgba(212, 175, 55, 0.4)",
+    border: "1px solid rgba(140, 160, 182, 0.4)",
     fontWeight: 600,
   },
   cannedDropdown: {
@@ -1109,7 +1109,7 @@ const S: Record<string, React.CSSProperties> = {
     color: "#5E6273",
   },
   btnSend: {
-    background: "linear-gradient(140deg, #E7CFA0, #D4AF37 55%, #8B6914)",
+    background: "linear-gradient(140deg, #c8d2dc, #9fb1c2 55%, #8B6914)",
     color: "#0F1117",
     border: "none",
     padding: "12px 32px",
@@ -1117,7 +1117,7 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 14,
     fontWeight: 700,
     cursor: "pointer",
-    boxShadow: "0 4px 12px -2px rgba(212, 175, 55, 0.45)",
+    boxShadow: "0 4px 12px -2px rgba(140, 160, 182, 0.45)",
   },
   contextRail: {
     width: 320,
@@ -1139,52 +1139,52 @@ const S: Record<string, React.CSSProperties> = {
     padding: 16,
   },
   contextSectionHighlight: {
-    background: "linear-gradient(170deg, rgba(212, 175, 55, 0.10), rgba(21, 24, 32, 1) 70%)",
-    border: "1px solid rgba(212, 175, 55, 0.36)",
-    boxShadow: "0 0 0 1px rgba(212, 175, 55, 0.15), 0 8px 20px -8px rgba(212, 175, 55, 0.20)",
+    background: "linear-gradient(170deg, rgba(140, 160, 182, 0.10), rgba(21, 24, 32, 1) 70%)",
+    border: "1px solid rgba(140, 160, 182, 0.36)",
+    boxShadow: "0 0 0 1px rgba(140, 160, 182, 0.15), 0 8px 20px -8px rgba(140, 160, 182, 0.20)",
   },
   contextSectionTitle: {
     fontSize: 10.5,
     fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: 0.06,
-    color: "#D4AF37",
+    color: "#9fb1c2",
     marginBottom: 12,
     display: "flex",
     alignItems: "center",
     gap: 8,
   },
   contextSectionTitleHighlight: {
-    color: "#F0D060",
+    color: "#c6d0da",
   },
   relevantPill: {
-    background: "rgba(212, 175, 55, 0.22)",
-    color: "#F0D060",
+    background: "rgba(140, 160, 182, 0.22)",
+    color: "#c6d0da",
     fontSize: 9,
     fontWeight: 700,
     padding: "2px 7px",
     borderRadius: 999,
-    border: "1px solid rgba(212, 175, 55, 0.45)",
+    border: "1px solid rgba(140, 160, 182, 0.45)",
     letterSpacing: 0.06,
   },
   focusCard: {
-    background: "linear-gradient(160deg, rgba(212, 175, 55, 0.16), rgba(15, 17, 23, 1) 80%)",
-    border: "1px solid rgba(212, 175, 55, 0.42)",
+    background: "linear-gradient(160deg, rgba(140, 160, 182, 0.16), rgba(15, 17, 23, 1) 80%)",
+    border: "1px solid rgba(140, 160, 182, 0.42)",
     borderRadius: 14,
     padding: 16,
     display: "flex",
     flexDirection: "column",
     gap: 10,
-    boxShadow: "0 12px 28px -10px rgba(212, 175, 55, 0.30)",
+    boxShadow: "0 12px 28px -10px rgba(140, 160, 182, 0.30)",
   },
   focusTitle: {
     fontSize: 14.5,
     fontWeight: 700,
-    color: "#F0D060",
+    color: "#c6d0da",
   },
   focusNote: {
     fontSize: 12,
-    color: "#C8C0A8",
+    color: "#b4c2cf",
     lineHeight: 1.5,
   },
   focusActions: {
@@ -1194,9 +1194,9 @@ const S: Record<string, React.CSSProperties> = {
   },
   focusActionBtn: {
     display: "block",
-    background: "rgba(212, 175, 55, 0.10)",
-    color: "#F0D060",
-    border: "1px solid rgba(212, 175, 55, 0.35)",
+    background: "rgba(140, 160, 182, 0.10)",
+    color: "#c6d0da",
+    border: "1px solid rgba(140, 160, 182, 0.35)",
     padding: "8px 12px",
     borderRadius: 8,
     fontSize: 12,
@@ -1208,7 +1208,7 @@ const S: Record<string, React.CSSProperties> = {
     display: "inline-block",
     marginTop: 10,
     fontSize: 11.5,
-    color: "#D4AF37",
+    color: "#9fb1c2",
     textDecoration: "none",
     fontWeight: 600,
   },

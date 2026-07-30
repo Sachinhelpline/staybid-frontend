@@ -66,12 +66,12 @@ export default function TradeBrowsePage() {
       <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-xl font-semibold" style={{ color: "#ffd98a", fontFamily: "var(--font-display, 'Cormorant Garamond', serif)" }}>StayBid Trade</div>
+            <div className="text-xl font-semibold" style={{ color: "#d5dce4", fontFamily: "var(--font-display, 'Cormorant Garamond', serif)" }}>StayBid Trade</div>
             <div className="text-[0.72rem] opacity-80">Monthly inventory auction · for travel agents</div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => router.push("/trade/my-bids")} className="text-[0.75rem] px-3 py-1.5 rounded-lg" style={{ background: "rgba(255,217,138,0.14)", color: "#ffd98a" }}>My Bids</button>
-            <button onClick={() => router.push("/trade/review")} className="text-[0.75rem] px-3 py-1.5 rounded-lg font-bold" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#1f1710" }}>
+            <button onClick={() => router.push("/trade/my-bids")} className="text-[0.75rem] px-3 py-1.5 rounded-lg" style={{ background: "rgba(176, 192, 209,0.14)", color: "#d5dce4" }}>My Bids</button>
+            <button onClick={() => router.push("/trade/review")} className="text-[0.75rem] px-3 py-1.5 rounded-lg font-bold" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>
               Bundle {basketN > 0 ? `(${basketN})` : ""}
             </button>
           </div>
@@ -86,7 +86,7 @@ export default function TradeBrowsePage() {
         {["All", ...cities].map((c) => (
           <button key={c} onClick={() => setCity(c)}
             className="shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold"
-            style={city === c ? { background: "#33251a", color: "#ffd98a" } : { background: "var(--trd-card)", color: "var(--trd-ink-2)", border: "1px solid var(--trd-line)" }}>
+            style={city === c ? { background: "#33251a", color: "#d5dce4" } : { background: "var(--trd-card)", color: "var(--trd-ink-2)", border: "1px solid var(--trd-line)" }}>
             {c}
           </button>
         ))}
@@ -98,7 +98,7 @@ export default function TradeBrowsePage() {
           {([["all", "All"], ["live", "⚡ Live"], ["sealed", "🔒 Sealed"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)}
               className="shrink-0 px-3 py-1.5 rounded-full text-[0.8rem] font-semibold"
-              style={mode === m ? { background: "#33251a", color: "#ffd98a" } : { background: "var(--trd-card)", color: "var(--trd-ink-2)", border: "1px solid var(--trd-line)" }}>
+              style={mode === m ? { background: "#33251a", color: "#d5dce4" } : { background: "var(--trd-card)", color: "var(--trd-ink-2)", border: "1px solid var(--trd-line)" }}>
               {label}
             </button>
           ))}
@@ -147,7 +147,7 @@ export default function TradeBrowsePage() {
                 <span className="text-luxury-400 text-[0.72rem]">Min bid</span>{" "}
                 <b className="text-luxury-900 tabular-nums">{inr(l.min_bid_per_room_night)}</b><span className="text-luxury-400 text-[0.72rem]">/room/night</span>
               </div>
-              <div className="mt-3 w-full py-2.5 rounded-2xl font-bold text-white text-center" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+              <div className="mt-3 w-full py-2.5 rounded-2xl font-bold text-white text-center" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                 View & bid
               </div>
             </div>
@@ -204,10 +204,10 @@ function Model2Entry({ auth }: { auth: ReturnType<typeof useTradeAuth> }) {
     <div className="max-w-6xl mx-auto px-4 pt-3">
       <div className="rounded-2xl p-4 flex items-center justify-between gap-3" style={{ background: "linear-gradient(135deg,#33251a,#4a3820)", color: "#ffe9c7" }}>
         <div className="min-w-0">
-          <div className="font-bold" style={{ color: "#ffd98a" }}>🔑 Model 2 — curated Circle inventory (fixed price)</div>
+          <div className="font-bold" style={{ color: "#d5dce4" }}>🔑 Model 2 — curated Circle inventory (fixed price)</div>
           <p className="text-[0.75rem] opacity-85 mt-0.5">Beyond the auction: buy room-nights from StayBid Circle-operated properties at a <b>fixed, guaranteed price</b> — no bidding, no risk. You purchase as a B2B trade buyer.</p>
         </div>
-        <button onClick={goModel2} className="shrink-0 px-4 py-2 rounded-xl font-bold text-[0.8rem]" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#1f1710" }}>
+        <button onClick={goModel2} className="shrink-0 px-4 py-2 rounded-xl font-bold text-[0.8rem]" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>
           Open Model 2 →
         </button>
       </div>

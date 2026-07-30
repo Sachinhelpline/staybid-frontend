@@ -581,7 +581,7 @@ function MessageRow({ m }: { m: Message }) {
             letterSpacing: 0.04,
             opacity: 0.75,
             marginBottom: 3,
-            color: isAI ? "#D4AF37" : isAgent ? "#7BA361" : isUser ? "#82B2DD" : "#A89674",
+            color: isAI ? "#9fb1c2" : isAgent ? "#7BA361" : isUser ? "#82B2DD" : "#849ab1",
           }}
         >
           {m.sender_name || m.sender}
@@ -688,7 +688,7 @@ function ContextPanel({ ctx, conv }: { ctx: UserContext | null; conv: Conversati
 
 function StatusPill({ status }: { status: SupportStatus }) {
   const map: Record<SupportStatus, [string, string]> = {
-    ai_active: ["#D4AF37", "AI"],
+    ai_active: ["#9fb1c2", "AI"],
     escalated: ["#FF4757", "Queue"],
     agent_active: ["#2ECC71", "Live"],
     resolved: ["#3D9CF5", "Resolved"],
@@ -768,9 +768,9 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   viewTabActive: {
-    background: "rgba(212, 175, 55, 0.15)",
-    color: "#D4AF37",
-    borderColor: "rgba(212, 175, 55, 0.4)",
+    background: "rgba(140, 160, 182, 0.15)",
+    color: "#9fb1c2",
+    borderColor: "rgba(140, 160, 182, 0.4)",
   },
   body: { flex: 1, display: "flex", overflow: "hidden" },
   // v150 — list-only inbox view (no inline split-pane)
@@ -858,7 +858,7 @@ const styles: Record<string, React.CSSProperties> = {
     right: 16,
     fontSize: 11,
     fontWeight: 700,
-    color: "#D4AF37",
+    color: "#9fb1c2",
     opacity: 0.45,
     letterSpacing: 0.06,
   },
@@ -898,8 +898,8 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "transform 0.12s ease, border-color 0.12s ease, background 0.12s ease",
   },
   convItemActive: {
-    background: "rgba(212, 175, 55, 0.10)",
-    borderColor: "rgba(212, 175, 55, 0.45)",
+    background: "rgba(140, 160, 182, 0.10)",
+    borderColor: "rgba(140, 160, 182, 0.45)",
   },
   convItemHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   convItemSubject: { fontSize: 14, color: "#E8EAF0", fontWeight: 600, lineHeight: 1.35 },
@@ -939,7 +939,7 @@ const styles: Record<string, React.CSSProperties> = {
   detailMeta: { fontSize: 11, color: "#8A8FA8", marginTop: 3, display: "flex", alignItems: "center", gap: 6 },
   detailActions: { display: "flex", gap: 6 },
   btnPrimary: {
-    background: "#D4AF37",
+    background: "#9fb1c2",
     color: "#0F1117",
     border: "none",
     padding: "6px 14px",
@@ -990,12 +990,12 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   aiSuggestBadge: {
-    background: "rgba(212, 175, 55, 0.15)",
-    color: "#D4AF37",
+    background: "rgba(140, 160, 182, 0.15)",
+    color: "#9fb1c2",
     fontSize: 11,
     padding: "4px 10px",
     borderRadius: 999,
-    border: "1px solid rgba(212, 175, 55, 0.4)",
+    border: "1px solid rgba(140, 160, 182, 0.4)",
     fontWeight: 600,
   },
   cannedDropdown: {
@@ -1040,7 +1040,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   btnSend: {
     alignSelf: "flex-end",
-    background: "linear-gradient(140deg, #E7CFA0, #D4AF37 55%, #8B6914)",
+    background: "linear-gradient(140deg, #c8d2dc, #9fb1c2 55%, #8B6914)",
     color: "#0F1117",
     border: "none",
     padding: "10px 28px",
@@ -1048,7 +1048,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",
-    boxShadow: "0 4px 10px -2px rgba(212, 175, 55, 0.35)",
+    boxShadow: "0 4px 10px -2px rgba(140, 160, 182, 0.35)",
   },
   contextPanel: {
     width: 300,
@@ -1069,7 +1069,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: 0.05,
-    color: "#D4AF37",
+    color: "#9fb1c2",
     marginBottom: 10,
   },
   contextEmpty: { color: "#8A8FA8", fontSize: 12, fontStyle: "italic" },

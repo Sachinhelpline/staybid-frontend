@@ -11,7 +11,7 @@ import Link from "next/link";
 type AnyConfig = any;
 
 const BG = "#07080C", SURF = "#0F1117", CARD = "#151820", BORDER = "rgba(255,255,255,0.08)";
-const GOLD = "#D4AF37", TXT = "#E8EAF0", MUT = "#8A8FA8", GREEN = "#2ECC71";
+const GOLD = "#9fb1c2", TXT = "#E8EAF0", MUT = "#8A8FA8", GREEN = "#2ECC71";
 
 export default function HostPricingPage() {
   const [cfg, setCfg] = useState<AnyConfig | null>(null);
@@ -186,7 +186,7 @@ function NumRow({ label, value, onChange, hint, step }: { label: string; value: 
   return (
     <label style={{ display: "block", marginBottom: 8 }}>
       <span style={{ display: "flex", justifyContent: "space-between", color: MUT, fontSize: 11, marginBottom: 3 }}>
-        <span>{label}</span>{hint && <span style={{ color: "rgba(212,175,55,0.7)" }}>{hint}</span>}
+        <span>{label}</span>{hint && <span style={{ color: "rgba(140, 160, 182,0.7)" }}>{hint}</span>}
       </span>
       <input type="number" value={value} step={step || "1"} onChange={(e) => onChange(e.target.value)}
         style={{ width: "100%", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, color: TXT, padding: "8px 10px", fontSize: 14, outline: "none" }} />

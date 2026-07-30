@@ -290,8 +290,8 @@ function SelfTierBanner({
           onClick={() => onClose()}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.72rem] font-bold text-black"
           style={{
-            background: "linear-gradient(135deg,#ffd76b,#f0b429)",
-            boxShadow: "0 3px 10px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
+            background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
+            boxShadow: "0 3px 10px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
             border: "1px solid rgba(255,255,255,0.45)",
           }}
         >
@@ -305,8 +305,8 @@ function SelfTierBanner({
       <div
         className="mt-2 px-3 py-2.5 rounded-xl"
         style={{
-          background: "linear-gradient(135deg, rgba(240,180,41,0.10), rgba(255,69,141,0.06))",
-          border: "1px solid rgba(240,180,41,0.45)",
+          background: "linear-gradient(135deg, rgba(140, 160, 182,0.10), rgba(255,69,141,0.06))",
+          border: "1px solid rgba(140, 160, 182,0.45)",
         }}
       >
         <p className="text-white text-[0.78rem] font-semibold mb-1">⏳ Creator application under review</p>
@@ -487,7 +487,7 @@ function CommentDrawer({
         closeBg: "rgba(255,255,255,0.10)", closeText: "#ffffff",
       }
     : {
-        sheet: "linear-gradient(180deg,#ffffff 0%,#faf5ea 100%)",
+        sheet: "linear-gradient(180deg,#ffffff 0%,#f3f6f8 100%)",
         border: "rgba(74,50,8,0.16)", headBorder: "rgba(74,50,8,0.10)",
         title: "#2c1d04", text: "rgba(44,29,4,0.92)", name: "#2c1d04",
         sub: "rgba(74,50,8,0.55)", grip: "rgba(74,50,8,0.25)",
@@ -551,8 +551,8 @@ function CommentDrawer({
         <div
           className="mx-5 mt-3 mb-1 px-3 py-2 rounded-xl flex items-start gap-2"
           style={{
-            background: "linear-gradient(135deg, rgba(240,180,41,0.16), rgba(255,69,141,0.08))",
-            border: "1px solid rgba(240,180,41,0.35)",
+            background: "linear-gradient(135deg, rgba(140, 160, 182,0.16), rgba(255,69,141,0.08))",
+            border: "1px solid rgba(140, 160, 182,0.35)",
           }}
         >
           <span className="text-base leading-none mt-0.5">🛡️</span>
@@ -572,9 +572,9 @@ function CommentDrawer({
               style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
             >
               <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[0.7rem] font-bold text-black"
-                style={{ background: `conic-gradient(from ${(i*47)%360}deg, #f0b429, #ff458d, #b964ff, #f0b429)` }}>
+                style={{ background: `conic-gradient(from ${(i*47)%360}deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)` }}>
                 <span className="w-[26px] h-[26px] rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)" }}>
+                  style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>
                   {cm.user.slice(0, 1).toUpperCase()}
                 </span>
               </div>
@@ -629,7 +629,7 @@ function CommentDrawer({
           style={{ borderTop: `1px solid ${c.headBorder}`, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold text-black"
-            style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)" }}>You</div>
+            style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>You</div>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -637,7 +637,7 @@ function CommentDrawer({
             className="ig-comment-input flex-1 rounded-full px-4 py-2 text-[0.82rem] outline-hidden transition-colors"
             style={{
               color: c.inputText,
-              caretColor: "#f0b429",
+              caretColor: "#a9b9c8",
               background: c.inputBg,
               border: `1px solid ${c.inputBorder}`,
               fontWeight: 500,
@@ -682,8 +682,8 @@ function MoreMenu({
   const dark = theme === "dark";
   // The sheet follows the app appearance mode (was hardcoded dark).
   const c = dark
-    ? { sheet: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)", topBorder: "rgba(217,190,130,0.22)", grip: "rgba(217,190,130,0.4)", head: "#C9A66B", rowBorder: "rgba(217,190,130,0.16)", rowBg: "linear-gradient(135deg, rgba(217,190,130,0.10), rgba(217,190,130,0.03))", label: "#FAF5EB", chevron: "rgba(217,190,130,0.45)", overlay: "rgba(15,12,8,0.62)" }
-    : { sheet: "linear-gradient(180deg,#ffffff 0%,#faf5ea 100%)", topBorder: "rgba(139,105,20,0.20)", grip: "rgba(139,105,20,0.30)", head: "#8B6914", rowBorder: "rgba(139,105,20,0.16)", rowBg: "linear-gradient(135deg, rgba(139,105,20,0.07), rgba(139,105,20,0.02))", label: "#2c1d04", chevron: "rgba(139,105,20,0.4)", overlay: "rgba(15,12,8,0.55)" };
+    ? { sheet: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)", topBorder: "rgba(176, 192, 209,0.22)", grip: "rgba(176, 192, 209,0.4)", head: "#C9A66B", rowBorder: "rgba(176, 192, 209,0.16)", rowBg: "linear-gradient(135deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.03))", label: "#f4f6f8", chevron: "rgba(176, 192, 209,0.45)", overlay: "rgba(15,12,8,0.62)" }
+    : { sheet: "linear-gradient(180deg,#ffffff 0%,#f3f6f8 100%)", topBorder: "rgba(139,105,20,0.20)", grip: "rgba(139,105,20,0.30)", head: "#8B6914", rowBorder: "rgba(139,105,20,0.16)", rowBg: "linear-gradient(135deg, rgba(139,105,20,0.07), rgba(139,105,20,0.02))", label: "#2c1d04", chevron: "rgba(139,105,20,0.4)", overlay: "rgba(15,12,8,0.55)" };
 
   const [view, setView] = useState<"menu" | "report">("menu");
 
@@ -727,7 +727,7 @@ function MoreMenu({
     >
       <span
         className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-        style={{ background: danger ? "linear-gradient(135deg,#E0937A,#C46A4E)" : "linear-gradient(135deg,#E7CFA0,#C9A66B 60%,#8B6914)", boxShadow: "0 3px 10px rgba(15,12,8,0.3), inset 0 1px 0 rgba(255,255,255,0.35)" }}
+        style={{ background: danger ? "linear-gradient(135deg,#E0937A,#C46A4E)" : "linear-gradient(135deg,#c8d2dc,#C9A66B 60%,#8B6914)", boxShadow: "0 3px 10px rgba(15,12,8,0.3), inset 0 1px 0 rgba(255,255,255,0.35)" }}
       >{icon}</span>
       <span className="text-[0.92rem] font-semibold" style={{ color: danger ? (dark ? "#E8A89C" : "#B4472E") : c.label }}>{label}</span>
       {chevron && <span className="ml-auto text-lg" style={{ color: c.chevron }}>›</span>}
@@ -970,7 +970,7 @@ function CreatorProfileSheet({
               onClick={(creator as any)._isSelf ? () => setEditProfileOpen(true) : undefined}
               className="w-[88px] h-[88px] rounded-full p-[3px] shrink-0 active:scale-95 transition-transform"
               style={{
-                background: `conic-gradient(from ${creator.avatarHue}deg, #f0b429, #ff458d, #b964ff, #f0b429)`,
+                background: `conic-gradient(from ${creator.avatarHue}deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)`,
                 animation: "igRingPulse 2.6s ease-in-out infinite",
                 cursor: (creator as any)._isSelf ? "pointer" : "default",
               }}
@@ -1027,7 +1027,7 @@ function CreatorProfileSheet({
               <span title="Hotel partner" className="ml-1.5" style={{ color: "#5b8dff", fontWeight: 800 }} aria-label="Hotel partner">🏨</span>
             )}
             {(creator as any).sourceType === "creator" && (
-              <span title="Creator" className="ml-1.5" style={{ color: "#f0d060", fontWeight: 800 }} aria-label="Creator">✦</span>
+              <span title="Creator" className="ml-1.5" style={{ color: "#c6d0da", fontWeight: 800 }} aria-label="Creator">✦</span>
             )}
             {(creator as any).verified && (
               <span title="Verified" className="ml-1" style={{ color: "#5b8dff", fontWeight: 800 }} aria-label="Verified">✓</span>
@@ -1159,8 +1159,8 @@ function CreatorProfileSheet({
                       <div className="w-[60px] h-[60px] rounded-full p-[2px]"
                         style={{
                           background: active
-                            ? "conic-gradient(from 0deg, #ffd76b, #ff458d, #b964ff, #ffd76b)"
-                            : "linear-gradient(135deg, rgba(240,180,41,0.85), rgba(255,69,141,0.65))",
+                            ? "conic-gradient(from 0deg, #d0d9e1, #ff458d, #b964ff, #d0d9e1)"
+                            : "linear-gradient(135deg, rgba(140, 160, 182,0.85), rgba(255,69,141,0.65))",
                         }}
                       >
                         <div className="w-full h-full rounded-full flex items-center justify-center text-xl"
@@ -1201,7 +1201,7 @@ function CreatorProfileSheet({
                   {labelMap[t]}
                   {tab === t && (
                     <span className="absolute left-3 right-3 bottom-0 h-[2px]"
-                      style={{ background: "linear-gradient(90deg,#ffd76b,#ff458d,#b964ff)" }} />
+                      style={{ background: "linear-gradient(90deg,#d0d9e1,#ff458d,#b964ff)" }} />
                   )}
                 </button>
               );
@@ -1317,7 +1317,7 @@ function CreatorProfileSheet({
                   className="ig-comment-input w-full rounded-full px-4 py-2 text-[0.82rem] outline-hidden"
                   style={{
                     color: "#ffffff",
-                    caretColor: "#ffd76b",
+                    caretColor: "#d0d9e1",
                     background: "rgba(255,255,255,0.10)",
                     border: "1px solid rgba(255,255,255,0.20)",
                     fontWeight: 500,
@@ -1339,7 +1339,7 @@ function CreatorProfileSheet({
                       <div
                         className="w-9 h-9 rounded-full flex items-center justify-center text-[0.72rem] font-bold text-white shrink-0"
                         style={{
-                          background: `conic-gradient(from ${(hashStr(entry) % 360)}deg, #f0b429, #ff458d, #b964ff, #f0b429)`,
+                          background: `conic-gradient(from ${(hashStr(entry) % 360)}deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)`,
                         }}
                       >
                         <span className="w-[30px] h-[30px] rounded-full flex items-center justify-center"
@@ -1356,9 +1356,9 @@ function CreatorProfileSheet({
                           onClick={() => toggleFollow(cleanHandle)}
                           className={`px-3 py-1 rounded-full text-[0.66rem] font-bold transition-colors ${youFollow ? "text-white" : "text-black"}`}
                           style={{
-                            background: youFollow ? "rgba(255,255,255,0.10)" : "linear-gradient(135deg,#ffd76b,#f0b429)",
+                            background: youFollow ? "rgba(255,255,255,0.10)" : "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
                             border: youFollow ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.45)",
-                            boxShadow: youFollow ? "none" : "0 2px 6px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
+                            boxShadow: youFollow ? "none" : "0 2px 6px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
                           }}
                         >
                           {youFollow ? "Following" : "Follow"}
@@ -1446,10 +1446,10 @@ function FilterSheet({
                   className="ig-filter-pill flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all"
                   style={{
                     background: active
-                      ? "linear-gradient(135deg, rgba(240,180,41,0.30), rgba(255,69,141,0.18))"
+                      ? "linear-gradient(135deg, rgba(140, 160, 182,0.30), rgba(255,69,141,0.18))"
                       : "rgba(255,255,255,0.05)",
-                    border: active ? "1px solid rgba(240,180,41,0.65)" : "1px solid rgba(255,255,255,0.10)",
-                    boxShadow: active ? "0 4px 14px rgba(240,180,41,0.25), inset 0 1px 0 rgba(255,255,255,0.18)" : "none",
+                    border: active ? "1px solid rgba(140, 160, 182,0.65)" : "1px solid rgba(255,255,255,0.10)",
+                    boxShadow: active ? "0 4px 14px rgba(140, 160, 182,0.25), inset 0 1px 0 rgba(255,255,255,0.18)" : "none",
                   }}
                 >
                   <span className="text-lg">{SOURCE_ICON[s]}</span>
@@ -1479,9 +1479,9 @@ function FilterSheet({
             onClick={() => setGlobeOpen(true)}
             className="w-full flex items-center gap-3 mb-2 px-3 py-3 rounded-2xl text-left transition-all"
             style={{
-              background: "linear-gradient(135deg, rgba(240,180,41,0.16), rgba(255,69,141,0.10))",
-              border: "1px solid rgba(240,180,41,0.4)",
-              boxShadow: "0 4px 14px rgba(240,180,41,0.18), inset 0 1px 0 rgba(255,255,255,0.18)",
+              background: "linear-gradient(135deg, rgba(140, 160, 182,0.16), rgba(255,69,141,0.10))",
+              border: "1px solid rgba(140, 160, 182,0.4)",
+              boxShadow: "0 4px 14px rgba(140, 160, 182,0.18), inset 0 1px 0 rgba(255,255,255,0.18)",
             }}
           >
             {/* Mini-globe icon — same spinning vibe as the modal */}
@@ -1491,7 +1491,7 @@ function FilterSheet({
                 width: 36, height: 36, flexShrink: 0,
                 borderRadius: "50%",
                 background: "conic-gradient(from 0deg, #1c3a5c, #2a5a8a, #1c3a5c, #2c4a72, #1c3a5c, #244268, #1c3a5c)",
-                boxShadow: "inset -3px -3px 8px rgba(0,0,0,0.5), inset 2px 2px 6px rgba(240,180,41,0.2), 0 0 14px rgba(240,180,41,0.3)",
+                boxShadow: "inset -3px -3px 8px rgba(0,0,0,0.5), inset 2px 2px 6px rgba(140, 160, 182,0.2), 0 0 14px rgba(140, 160, 182,0.3)",
                 overflow: "hidden",
                 animation: "igGlobeMiniSpin 8s linear infinite",
               }}
@@ -1513,7 +1513,7 @@ function FilterSheet({
                 Tap to open the live globe · auto-detect or search
               </span>
             </span>
-            <span style={{ color: "rgba(240,180,41,0.85)", fontSize: "1rem", fontWeight: 700 }}>›</span>
+            <span style={{ color: "rgba(140, 160, 182,0.85)", fontSize: "1rem", fontWeight: 700 }}>›</span>
           </button>
           <style jsx global>{`
             @keyframes igGlobeMiniSpin {
@@ -1536,11 +1536,11 @@ function FilterSheet({
                   className="px-3 py-1.5 rounded-full text-[0.74rem] font-bold transition-all"
                   style={{
                     background: active
-                      ? "linear-gradient(135deg, #ffd76b, #f0b429)"
+                      ? "linear-gradient(135deg, #d0d9e1, #a9b9c8)"
                       : "rgba(255,255,255,0.06)",
                     color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                     border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.12)",
-                    boxShadow: active ? "0 3px 10px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",
+                    boxShadow: active ? "0 3px 10px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",
                   }}
                 >
                   {c === "all" ? "🌐 All India" : `📍 ${c}`}
@@ -1648,7 +1648,7 @@ function EditPostSheet({
               className="w-full rounded-xl px-3 py-2 text-[0.82rem] outline-hidden resize-none"
               style={{
                 color: "#fff",
-                caretColor: "#ffd76b",
+                caretColor: "#d0d9e1",
                 background: "rgba(255,255,255,0.10)",
                 border: "1px solid rgba(255,255,255,0.20)",
                 minHeight: 70,
@@ -1675,7 +1675,7 @@ function EditPostSheet({
                   <button key={t} type="button" onClick={() => toggleTag(t)}
                     className="px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all"
                     style={{
-                      background: active ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "rgba(255,255,255,0.05)",
+                      background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.05)",
                       color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                       border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                     }}>#{t}</button>
@@ -2290,7 +2290,7 @@ const HotelCard = memo(function HotelCard({
             >
               <span
                 className="w-4 h-4 rounded-full flex items-center justify-center text-[0.58rem] font-bold text-white"
-                style={{ background: `conic-gradient(from ${creator.avatarHue}deg, #f0b429, #ff458d, #b964ff, #f0b429)` }}
+                style={{ background: `conic-gradient(from ${creator.avatarHue}deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)` }}
               >
                 <span className="w-[12px] h-[12px] rounded-full flex items-center justify-center"
                   style={{ background: `linear-gradient(135deg, hsl(${creator.avatarHue},70%,55%), hsl(${(creator.avatarHue+60)%360},70%,40%))`, fontSize: "0.5rem" }}>
@@ -2312,8 +2312,8 @@ const HotelCard = memo(function HotelCard({
           <span
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[0.7rem] font-bold shrink-0"
             style={{
-              background: "linear-gradient(135deg, rgba(240,180,41,0.22), rgba(201,166,107,0.14))",
-              border: "1px solid rgba(217,190,130,0.42)",
+              background: "linear-gradient(135deg, rgba(140, 160, 182,0.22), rgba(201,166,107,0.14))",
+              border: "1px solid rgba(176, 192, 209,0.42)",
               color: "#fff",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
@@ -2504,8 +2504,8 @@ const HotelCard = memo(function HotelCard({
               className="ig-pill"
               style={{
                 /* v88 — cozy champagne+cocoa instead of magenta/purple */
-                background: "linear-gradient(135deg, rgba(217,190,130,0.30), rgba(110,84,48,0.25))",
-                border: "1px solid rgba(217,190,130,0.55)",
+                background: "linear-gradient(135deg, rgba(176, 192, 209,0.30), rgba(110,84,48,0.25))",
+                border: "1px solid rgba(176, 192, 209,0.55)",
                 color: "var(--cozy-cream-50)",
               }}
             >
@@ -2589,8 +2589,8 @@ const HotelCard = memo(function HotelCard({
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full mb-2"
             style={{
-              background: "linear-gradient(135deg, rgba(240,180,41,0.22), rgba(201,166,107,0.13))",
-              border: "1px solid rgba(240,180,41,0.55)",
+              background: "linear-gradient(135deg, rgba(140, 160, 182,0.22), rgba(201,166,107,0.13))",
+              border: "1px solid rgba(140, 160, 182,0.55)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
             }}
@@ -3869,13 +3869,13 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         }
         .ig-comment-input:focus {
           background: rgba(255,255,255,0.16) !important;
-          border-color: rgba(240,180,41,0.65) !important;
-          box-shadow: 0 0 0 3px rgba(240,180,41,0.18);
+          border-color: rgba(140, 160, 182,0.65) !important;
+          box-shadow: 0 0 0 3px rgba(140, 160, 182,0.18);
         }
         @keyframes igDiscSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
         @keyframes igRingPulse {
-          0%,100% { box-shadow: 0 0 0 0 rgba(240,180,41,0.8), 0 0 0 0 rgba(255,69,141,0.6); }
-          50%     { box-shadow: 0 0 0 4px rgba(240,180,41,0.0), 0 0 0 8px rgba(255,69,141,0.0); }
+          0%,100% { box-shadow: 0 0 0 0 rgba(140, 160, 182,0.8), 0 0 0 0 rgba(255,69,141,0.6); }
+          50%     { box-shadow: 0 0 0 4px rgba(140, 160, 182,0.0), 0 0 0 8px rgba(255,69,141,0.0); }
         }
         @keyframes igAudioMarquee {
           0%   { transform: translateX(0); }
@@ -3981,13 +3981,13 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           padding: 4px 8px;
           max-width: 42vw;
           border-radius: 9999px;
-          color: var(--cozy-cream-50, #FFFCF6);
+          color: var(--cozy-cream-50, #fcfcfd);
           /* v88 — cozy cocoa+champagne instead of magenta/purple */
           background: linear-gradient(135deg, rgba(74,56,32,0.55), rgba(31,26,15,0.40));
-          border: 1px solid rgba(217,190,130,0.30);
+          border: 1px solid rgba(176, 192, 209,0.30);
           backdrop-filter: blur(14px) saturate(1.4);
           -webkit-backdrop-filter: blur(14px) saturate(1.4);
-          box-shadow: 0 3px 10px rgba(31,26,15,0.32), inset 0 1px 0 rgba(217,190,130,0.18);
+          box-shadow: 0 3px 10px rgba(31,26,15,0.32), inset 0 1px 0 rgba(176, 192, 209,0.18);
           transition: transform 0.12s ease;
           font-size: 0.6rem;
           line-height: 1.05;
@@ -4005,8 +4005,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           padding: 5px 10px;
           max-width: 52vw;
           background: linear-gradient(135deg, rgba(74,56,32,0.92), rgba(31,26,15,0.86));
-          border: 1px solid rgba(217,190,130,0.4);
-          box-shadow: 0 4px 14px rgba(31,26,15,0.4), inset 0 1px 0 rgba(217,190,130,0.22);
+          border: 1px solid rgba(176, 192, 209,0.4);
+          box-shadow: 0 4px 14px rgba(31,26,15,0.4), inset 0 1px 0 rgba(176, 192, 209,0.22);
         }
 
         /* Avatar tap-popover (Instagram-style) */
@@ -4077,8 +4077,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           width: 48px; height: 48px;
           border-radius: 9999px;
           display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(135deg, #FFE9AD 0%, #F2C650 45%, #D69A1E 100%);
-          border: 2px solid rgba(255, 246, 226, 0.75);
+          background: linear-gradient(135deg, #e5eaef 0%, #bdc9d5 45%, #8ca1b5 100%);
+          border: 2px solid rgba(176, 192, 209, 0.75);
           font-weight: 900;
           animation: igFabPulse 2.4s ease-in-out infinite;
         }
@@ -4086,7 +4086,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-create-fab-plus {
           font-size: 1.55rem;
           line-height: 1;
-          text-shadow: 0 1px 2px rgba(255, 246, 226, 0.55);
+          text-shadow: 0 1px 2px rgba(176, 192, 209, 0.55);
           margin-top: -1px;
         }
         .ig-create-fab-label {
@@ -4185,8 +4185,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           50%     { transform: translateY(-6px); }
         }
         @keyframes igUnmuteGlow {
-          0%,100% { box-shadow: 0 0 0 0 rgba(255,215,107,0.55), 0 8px 24px rgba(0,0,0,0.55); }
-          50%     { box-shadow: 0 0 0 14px rgba(255,215,107,0.0), 0 8px 24px rgba(0,0,0,0.55); }
+          0%,100% { box-shadow: 0 0 0 0 rgba(176, 192, 209,0.55), 0 8px 24px rgba(0,0,0,0.55); }
+          50%     { box-shadow: 0 0 0 14px rgba(176, 192, 209,0.0), 0 8px 24px rgba(0,0,0,0.55); }
         }
         .ig-unmute-hint {
           position: fixed;
@@ -4200,7 +4200,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           padding: 12px 18px;
           border-radius: 9999px;
           background: rgba(20,16,30,0.78);
-          border: 1px solid rgba(255,215,107,0.45);
+          border: 1px solid rgba(176, 192, 209,0.45);
           color: #fff;
           font-size: 0.86rem;
           font-weight: 700;
@@ -4255,7 +4255,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           background: linear-gradient(135deg, rgba(31,26,15,0.44), rgba(31,26,15,0.22));
           backdrop-filter: blur(14px) saturate(1.3);
           -webkit-backdrop-filter: blur(14px) saturate(1.3);
-          border: 1px solid rgba(217,190,130,0.24);
+          border: 1px solid rgba(176, 192, 209,0.24);
           box-shadow: 0 4px 16px rgba(15,12,8,0.30), inset 0 1px 0 rgba(255,255,255,0.10);
           width: -moz-max-content;
           width: max-content;
@@ -4266,20 +4266,20 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-avatar {
           width: 42px; height: 42px; display: inline-block;
           padding: 2px; border-radius: 9999px;
-          background: conic-gradient(from 220deg, #C9A66B, #D9BE82, #6E5430, #C9A66B);
+          background: conic-gradient(from 220deg, #C9A66B, #b4c1cf, #6E5430, #C9A66B);
           animation: igRingPulse 2.6s ease-in-out infinite;
         }
         /* Active-story ring — slightly thicker + still cozy. */
         .ig-avatar.has-story {
           padding: 3px;
-          background: conic-gradient(from 0deg, #C9A66B, #D9BE82, #6E5430, #C9A66B, #D9BE82, #C9A66B);
+          background: conic-gradient(from 0deg, #C9A66B, #b4c1cf, #6E5430, #C9A66B, #b4c1cf, #C9A66B);
           animation: igStoryRingSpin 3.6s linear infinite;
           box-shadow: 0 0 0 1.5px var(--cozy-warm-dark, #1F1A0F) inset, 0 0 12px rgba(201,166,107,0.40);
         }
         .ig-avatar-inner {
           display: flex; align-items: center; justify-content: center;
           width: 100%; height: 100%; border-radius: 9999px;
-          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
           border: 2px solid var(--cozy-warm-dark, #1F1A0F); overflow: hidden;
         }
         @keyframes igStoryRingSpin {
@@ -4301,16 +4301,16 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           font-size: 0.74rem; font-weight: 800;
           letter-spacing: 0.02em;
           color: var(--cozy-warm-dark, #1F1A0F);
-          background: linear-gradient(180deg, #E7CFA0 0%, #D9BE82 40%, #C9A66B 75%, #9C7E48 100%);
-          border: 1px solid rgba(255, 246, 226, 0.45);
-          text-shadow: 0 1px 0 rgba(255, 246, 226, 0.45);
+          background: linear-gradient(180deg, #c8d2dc 0%, #b4c1cf 40%, #C9A66B 75%, #69849f 100%);
+          border: 1px solid rgba(176, 192, 209, 0.45);
+          text-shadow: 0 1px 0 rgba(176, 192, 209, 0.45);
           box-shadow:
             0 0 14px rgba(201, 166, 107, 0.40),
             0 8px 16px -3px rgba(110, 84, 48, 0.55),
             0 3px 6px -1px rgba(31, 26, 15, 0.4),
-            inset 0 1.5px 0 rgba(255, 246, 226, 0.55),
+            inset 0 1.5px 0 rgba(176, 192, 209, 0.55),
             inset 0 -2px 0 rgba(110, 84, 48, 0.45),
-            inset 0 0 0 1px rgba(255, 246, 226, 0.18);
+            inset 0 0 0 1px rgba(176, 192, 209, 0.18);
           transition: transform 0.15s cubic-bezier(0.2,0.9,0.3,1), box-shadow 0.15s ease;
           overflow: hidden;
         }
@@ -4324,7 +4324,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-follow-3d:active {
           transform: translateY(2px) scale(0.96);
           box-shadow:
-            0 1px 3px rgba(160,110,8,0.6),
+            0 1px 3px rgba(106, 133, 160,0.6),
             inset 0 -1px 0 rgba(0,0,0,0.18),
             inset 0 2px 6px rgba(0,0,0,0.35),
             inset 0 0 0 1px rgba(255,255,255,0.18);
@@ -4347,9 +4347,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           display: flex; align-items: center; justify-content: center;
         }
         .ig-spark {
-          position: absolute; color: #fff8c5;
+          position: absolute; color: #f4f6f8;
           font-size: 0.85rem;
-          filter: drop-shadow(0 0 4px rgba(255,215,90,0.8));
+          filter: drop-shadow(0 0 4px rgba(176, 192, 209,0.8));
           animation: igSparkOut 0.7s ease-out forwards;
         }
         .ig-spark.s0 { --sx:  22px; --sy: -18px; }
@@ -4384,21 +4384,21 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
            they read on any video, replacing the old emoji glyphs. */
         .ig-icon svg { width: 25px; height: 25px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45)); }
         .ig-icon-liked { color: #ff4d6d; }   /* filled heart when liked */
-        .ig-icon-saved { color: var(--cozy-gold-2, #E7CFA0); }  /* filled bookmark when saved */
+        .ig-icon-saved { color: var(--cozy-gold-2, #c8d2dc); }  /* filled bookmark when saved */
         .ig-icon {
           font-size: 1.18rem; line-height: 1;
           width: 42px; height: 42px;
           display: inline-flex; align-items: center; justify-content: center;
           border-radius: 9999px;
           background: linear-gradient(135deg, rgba(31,26,15,0.46), rgba(31,26,15,0.24));
-          border: 1px solid rgba(217,190,130,0.28);
+          border: 1px solid rgba(176, 192, 209,0.28);
           backdrop-filter: blur(12px) saturate(1.3);
           -webkit-backdrop-filter: blur(12px) saturate(1.3);
           box-shadow: 0 4px 14px rgba(15,12,8,0.32), inset 0 1px 0 rgba(255,255,255,0.14);
           transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
         .ig-rail-btn:hover .ig-icon {
-          border-color: rgba(217,190,130,0.5);
+          border-color: rgba(176, 192, 209,0.5);
           box-shadow: 0 5px 18px rgba(15,12,8,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
         }
         .ig-liked { animation: igLikePop 0.4s ease-out; }
@@ -4426,7 +4426,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           /* v444 — cocoa-frosted champagne base (matches the action-rail discs);
              raises contrast over bright video vs the old translucent white. */
           background: linear-gradient(135deg, rgba(31,26,15,0.46), rgba(31,26,15,0.28));
-          border: 1px solid rgba(217,190,130,0.30);
+          border: 1px solid rgba(176, 192, 209,0.30);
           color: #fff;
           backdrop-filter: blur(10px) saturate(1.2);
           -webkit-backdrop-filter: blur(10px) saturate(1.2);
@@ -4434,9 +4434,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           font-variant-numeric: tabular-nums;
         }
         .ig-pill-gold {
-          background: linear-gradient(135deg, rgba(240,180,41,0.35), rgba(240,180,41,0.10));
-          border: 1px solid rgba(240,180,41,0.55);
-          color: #ffd76b;
+          background: linear-gradient(135deg, rgba(140, 160, 182,0.35), rgba(140, 160, 182,0.10));
+          border: 1px solid rgba(140, 160, 182,0.55);
+          color: #d0d9e1;
         }
         .ig-pill-live {
           background: rgba(255, 69, 89, 0.20);
@@ -4519,13 +4519,13 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-cta-book {
           color: #2a1a05;
           background:
-            radial-gradient(120% 120% at 30% 0%, rgba(255,231,140,0.55), rgba(255,231,140,0) 45%),
-            linear-gradient(180deg, rgba(255,215,107,0.85) 0%, rgba(240,180,41,0.55) 60%, rgba(180,118,8,0.55) 100%);
-          border: 1px solid rgba(255,231,140,0.55);
+            radial-gradient(120% 120% at 30% 0%, rgba(176, 192, 209,0.55), rgba(176, 192, 209,0) 45%),
+            linear-gradient(180deg, rgba(176, 192, 209,0.85) 0%, rgba(140, 160, 182,0.55) 60%, rgba(106, 133, 160,0.55) 100%);
+          border: 1px solid rgba(176, 192, 209,0.55);
           text-shadow: 0 1px 0 rgba(255,255,255,0.4);
           box-shadow:
-            0 0 20px rgba(240,180,41,0.45),
-            0 10px 24px -5px rgba(160,110,8,0.55),
+            0 0 20px rgba(140, 160, 182,0.45),
+            0 10px 24px -5px rgba(106, 133, 160,0.55),
             0 3px 8px rgba(0,0,0,0.35),
             inset 0 1.5px 0 rgba(255,255,255,0.7),
             inset 0 -1px 0 rgba(110,70,5,0.5);
@@ -4533,17 +4533,17 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         /* v88 — Bid CTA softened from harsh purple/magenta to cozy
            champagne-on-cocoa. Same 3D depth, premium minimal palette. */
         .ig-cta-bid {
-          color: #FFF6E2;
+          color: #f5f7f9;
           background:
-            radial-gradient(120% 120% at 30% 0%, rgba(217,190,130,0.42), rgba(217,190,130,0) 45%),
+            radial-gradient(120% 120% at 30% 0%, rgba(176, 192, 209,0.42), rgba(176, 192, 209,0) 45%),
             linear-gradient(180deg, rgba(110,84,48,0.55) 0%, rgba(74,56,32,0.50) 60%, rgba(31,26,15,0.60) 100%);
-          border: 1px solid rgba(217,190,130,0.55);
+          border: 1px solid rgba(176, 192, 209,0.55);
           text-shadow: 0 1px 4px rgba(0,0,0,0.55);
           box-shadow:
             0 0 18px rgba(201,166,107,0.28),
             0 10px 24px -5px rgba(31,26,15,0.55),
             0 3px 8px rgba(0,0,0,0.40),
-            inset 0 1.5px 0 rgba(255,246,226,0.25),
+            inset 0 1.5px 0 rgba(176, 192, 209,0.25),
             inset 0 -1px 0 rgba(20,16,8,0.45);
         }
 
@@ -4577,9 +4577,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           style={{
             top: "44px",
             left: "12px",
-            background: "linear-gradient(135deg, rgba(240,180,41,0.30), rgba(255,69,141,0.18))",
-            border: "1px solid rgba(240,180,41,0.45)",
-            color: "#ffd76b",
+            background: "linear-gradient(135deg, rgba(140, 160, 182,0.30), rgba(255,69,141,0.18))",
+            border: "1px solid rgba(140, 160, 182,0.45)",
+            color: "#d0d9e1",
             fontSize: "0.6rem",
             fontWeight: 700,
             backdropFilter: "blur(10px)",
@@ -5037,7 +5037,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
               maxHeight: "82vh",
               overflowY: "auto",
               background: "var(--bg-elevated, #1a1424)",
-              border: "1px solid var(--border-strong, rgba(201, 145, 26, 0.30))",
+              border: "1px solid var(--border-strong, rgba(106, 133, 160, 0.30))",
               borderRadius: "22px",
               padding: "24px 26px",
               boxShadow: "0 30px 80px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",

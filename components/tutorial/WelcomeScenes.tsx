@@ -312,7 +312,7 @@ function SceneStyles() {
         position:absolute;
         width:8px;
         height:8px;
-        background:radial-gradient(circle, #FFF4CC 0%, #D9BE82 60%, transparent 100%);
+        background:radial-gradient(circle, #f1f4f6 0%, #b4c1cf 60%, transparent 100%);
         border-radius:50%;
         filter:drop-shadow(0 0 6px #C9A66B);
         pointer-events:none;
@@ -360,7 +360,7 @@ function SceneStyles() {
         font-size:96px;
         line-height:1;
         z-index:2;
-        filter:drop-shadow(0 4px 18px rgba(217,190,130,0.55));
+        filter:drop-shadow(0 4px 18px rgba(176, 192, 209,0.55));
         animation:sbFlashBolt 1.6s ease-in-out infinite;
       }
       .sb-flash-live{
@@ -405,7 +405,7 @@ function SceneStyles() {
         font-size:9px;
         font-weight:700;
         letter-spacing:0.16em;
-        color:rgba(255,244,204,0.78);
+        color:rgba(176, 192, 209,0.78);
       }
       .sb-flash-timer-val{
         font-family:'Inter', system-ui, sans-serif;
@@ -413,13 +413,13 @@ function SceneStyles() {
         font-variant-numeric:tabular-nums;
         font-size:13px;
         font-weight:700;
-        color:#FFF4CC;
+        color:#f1f4f6;
         letter-spacing:0.02em;
       }
 
       /* ── 3. Bid — 3-step process ─────────────────────────────────── */
       .sb-scene-halo-bid{
-        background:radial-gradient(circle at 50% 50%, rgba(217,190,130,0.28) 0%, transparent 60%);
+        background:radial-gradient(circle at 50% 50%, rgba(176, 192, 209,0.28) 0%, transparent 60%);
       }
       .sb-bid3-steps{
         position:relative;
@@ -440,7 +440,7 @@ function SceneStyles() {
         gap:2px;
         padding:8px 10px;
         border-radius:12px;
-        background:rgba(255,252,246,0.92);
+        background:rgba(176, 192, 209,0.92);
         border:1px solid rgba(201,166,107,0.28);
         box-shadow:0 6px 14px -4px rgba(31,26,15,0.16);
         min-width:78px;
@@ -450,7 +450,7 @@ function SceneStyles() {
       .sb-bid3-s3{
         animation:sbBid3Pop 0.5s cubic-bezier(.16,.84,.32,1) -0.24s both;
         border:1.5px solid rgba(157,173,143,0.55);
-        background:linear-gradient(135deg, rgba(157,173,143,0.15), rgba(255,252,246,0.92));
+        background:linear-gradient(135deg, rgba(157,173,143,0.15), rgba(176, 192, 209,0.92));
       }
       .sb-bid3-emoji{ font-size:18px; line-height:1; }
       .sb-bid3-label{
@@ -505,7 +505,7 @@ function SceneStyles() {
         width:5px;
         height:5px;
         border-radius:50%;
-        background:linear-gradient(135deg, #E7CFA0, #C9A66B);
+        background:linear-gradient(135deg, #c8d2dc, #C9A66B);
         box-shadow:0 0 5px #C9A66B;
         animation:sbScenePulse 1.6s ease-in-out infinite;
       }
@@ -591,7 +591,7 @@ function SceneStyles() {
       }
       .sb-cmp-bar-win{
         height:11px !important;
-        background:linear-gradient(90deg, #C9A66B 0%, #E7CFA0 100%) !important;
+        background:linear-gradient(90deg, #C9A66B 0%, #c8d2dc 100%) !important;
         box-shadow:0 4px 12px -3px rgba(201,166,107,0.55), inset 0 1px 0 rgba(255,255,255,0.55) !important;
         animation:sbCmpBarPulse 2.4s ease-in-out infinite;
       }
@@ -615,7 +615,7 @@ function SceneStyles() {
         transform:translateX(-50%);
         padding:5px 12px;
         border-radius:999px;
-        background:linear-gradient(135deg, #E7CFA0, #C9A66B);
+        background:linear-gradient(135deg, #c8d2dc, #C9A66B);
         color:#1F1A0F;
         font-size:10px;
         font-weight:800;
@@ -626,7 +626,7 @@ function SceneStyles() {
 
       /* ── 5. Score — medal disc + ribbon + dots ───────────────────── */
       .sb-scene-halo-score{
-        background:radial-gradient(circle at 50% 50%, rgba(217,190,130,0.32) 0%, transparent 60%);
+        background:radial-gradient(circle at 50% 50%, rgba(176, 192, 209,0.32) 0%, transparent 60%);
       }
       .sb-score-ribbon{
         position:absolute;
@@ -651,7 +651,7 @@ function SceneStyles() {
         height:96px;
         border-radius:50%;
         background:
-          radial-gradient(circle at 32% 28%, #FFE7A3 0%, #D9BE82 50%, #8B6914 100%);
+          radial-gradient(circle at 32% 28%, #e3e8ed 0%, #b4c1cf 50%, #8B6914 100%);
         box-shadow:
           0 14px 28px -10px rgba(31,26,15,0.45),
           0 5px 10px -3px rgba(31,26,15,0.25),
@@ -726,7 +726,7 @@ function SceneStyles() {
         box-shadow:0 0 0 1px rgba(255,255,255,0.55), 0 2px 4px rgba(31,26,15,0.18);
       }
       .sb-score-dot-g{ background:radial-gradient(circle at 30% 30%, #B5CDA0, #5E7A4F); }
-      .sb-score-dot-y{ background:radial-gradient(circle at 30% 30%, #F0D78A, #C9A66B); }
+      .sb-score-dot-y{ background:radial-gradient(circle at 30% 30%, #cfd8e1, #C9A66B); }
 
       /* ── 6. Earn ─────────────────────────────────────────────────── */
       .sb-scene-halo-earn{
@@ -744,7 +744,7 @@ function SceneStyles() {
         width:74px;
         height:96px;
         border-radius:14px;
-        background:rgba(255,252,246,0.92);
+        background:rgba(176, 192, 209,0.92);
         border:1px solid rgba(201,166,107,0.28);
         box-shadow:0 8px 18px -6px rgba(31,26,15,0.18);
         display:flex;
@@ -771,7 +771,7 @@ function SceneStyles() {
         right:-4px;
         padding:3px 7px;
         border-radius:999px;
-        background:linear-gradient(135deg, #E7CFA0, #C9A66B);
+        background:linear-gradient(135deg, #c8d2dc, #C9A66B);
         color:#1F1A0F;
         font-size:9px;
         font-weight:800;
@@ -809,8 +809,8 @@ function SceneStyles() {
         50%      { transform:translateY(-10px) scale(1.18); opacity:1; }
       }
       @keyframes sbFlashBolt {
-        0%, 100% { transform:scale(1)    rotate(-4deg); filter:drop-shadow(0 4px 18px rgba(217,190,130,0.55)); }
-        50%      { transform:scale(1.08) rotate( 4deg); filter:drop-shadow(0 6px 26px rgba(217,190,130,0.85)); }
+        0%, 100% { transform:scale(1)    rotate(-4deg); filter:drop-shadow(0 4px 18px rgba(176, 192, 209,0.55)); }
+        50%      { transform:scale(1.08) rotate( 4deg); filter:drop-shadow(0 6px 26px rgba(176, 192, 209,0.85)); }
       }
       @keyframes sbBid3Pop {
         0%   { opacity:0; transform:translateY(8px) scale(0.92); }

@@ -159,10 +159,10 @@ export default function ChannelManagerTab({
     const conn = connByOta[ota];
     if (anyError) return { label: "Sync error", color: "#dc2626", dot: "#ef4444" };
     if (anyOk) return { label: `Active · ${fs.length} feed${fs.length > 1 ? "s" : ""}`, color: "#15803d", dot: "#22c55e" };
-    if (fs.length) return { label: "Awaiting first sync", color: "#b45309", dot: "#eab308" };
+    if (fs.length) return { label: "Awaiting first sync", color: "#b45309", dot: "#a4b5c5" };
     if (conn && conn.mode === "api") return { label: "Configured · awaiting connector", color: "#7c3aed", dot: "#a855f7" };
     if (conn) return { label: "Configured", color: "#6b7280", dot: "#9ca3af" };
-    return { label: "Not connected", color: "#9a8a6a", dot: "#d4d4d4" };
+    return { label: "Not connected", color: "#768fa7", dot: "#d4d4d4" };
   }
 
   // ── health rollup ─────────────────────────────────────────────────────────
@@ -280,7 +280,7 @@ export default function ChannelManagerTab({
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3.5 border-amber-200" style={{ background: "#fffbeb" }}>
+        <div className="card-p card-tight mb-3.5 border-amber-200" style={{ background: "#fafbfc" }}>
           <p className="text-[0.7rem] text-amber-700">
             ⚠ API-credential storage abhi setup nahi hua — <span className="font-mono">migrations/2026-07-11-v315-channel-manager-phase1.sql</span> apply karo. (iCal import + export neeche phir bhi chalega.)
           </p>
@@ -391,7 +391,7 @@ export default function ChannelManagerTab({
                 const bad = l.status === "error";
                 return (
                   <div key={l.id} className="flex items-center gap-2 text-[0.68rem] py-0.5 border-b border-luxury-100 last:border-0">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: bad ? "#ef4444" : l.status === "empty" ? "#eab308" : "#22c55e" }} />
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: bad ? "#ef4444" : l.status === "empty" ? "#a4b5c5" : "#22c55e" }} />
                     <span className="font-semibold text-luxury-700 uppercase w-14 shrink-0">{l.provider || l.direction}</span>
                     <span className="text-luxury-500 shrink-0">
                       {bad ? "failed" : `+${l.blocks_added ?? 0}/−${l.blocks_removed ?? 0} of ${l.events_total ?? 0}`}
@@ -411,7 +411,7 @@ export default function ChannelManagerTab({
         <div className="flex items-center justify-between mb-2.5">
           <p className="text-[0.78rem] font-bold text-luxury-900">Integration readiness</p>
           <span className="text-[0.66rem] font-bold px-2 py-0.5 rounded-full"
-            style={ready === checks.length ? { background: "#dcfce7", color: "#15803d" } : { background: "#fef3c7", color: "#b45309" }}>
+            style={ready === checks.length ? { background: "#dcfce7", color: "#15803d" } : { background: "#f0f3f5", color: "#b45309" }}>
             {ready}/{checks.length} ready
           </span>
         </div>
@@ -719,7 +719,7 @@ function ChannelEditor({
               API credentials tab chahiye jab is OTA ka certified live connector activate ho.
             </p>
           </div>
-          <div className="rounded-xl p-2.5" style={{ background: "#f6f1e6" }}>
+          <div className="rounded-xl p-2.5" style={{ background: "#eff2f5" }}>
             <p className="text-[0.66rem] text-luxury-600">📍 Ye details kahan se lein: <b>{m.hint}</b></p>
           </div>
           <div><label className={lbl}>Property / Hotel ID</label>

@@ -30,7 +30,7 @@ const STATUS_STYLE: Record<string, { bg: string; c: string; label: string }> = {
   open:      { bg: "#ecfdf5", c: "#047857", label: "Live" },
   draft:     { bg: "#eff6ff", c: "#1d4ed8", label: "Scheduled" },
   closed:    { bg: "#f5f3ff", c: "#6d28d9", label: "Closed" },
-  awarded:   { bg: "#fef9c3", c: "#a16207", label: "Awarded" },
+  awarded:   { bg: "#f5f6f8", c: "#a16207", label: "Awarded" },
   cancelled: { bg: "#f3f4f6", c: "#6b7280", label: "Cancelled" },
 };
 
@@ -207,7 +207,7 @@ export default function AgentAuctionTab({
     <div className="space-y-5">
       {/* Intro */}
       <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
-        <div className="text-lg font-bold" style={{ color: "#ffd98a" }}>🏷️ Sell to Travel Agents</div>
+        <div className="text-lg font-bold" style={{ color: "#d5dce4" }}>🏷️ Sell to Travel Agents</div>
         <p className="text-sm mt-1 opacity-90">
           Offer your spare inventory to travel agents by the <b>month</b>. StayBid computes the minimum price from your
           cost (never sells below it); you can only raise it. Choose <b>Live</b> — always-open bidding your autopilot
@@ -227,7 +227,7 @@ export default function AgentAuctionTab({
           ] as const).map((o) => (
             <button key={o.k} type="button" onClick={() => setSaleMode(o.k)}
               className="text-left rounded-xl border-2 px-3 py-2.5 transition"
-              style={{ borderColor: saleMode === o.k ? "#c9911a" : "#e5e0d5", background: saleMode === o.k ? "#fffbef" : "#fff" }}>
+              style={{ borderColor: saleMode === o.k ? "#8198ae" : "#dbe1e8", background: saleMode === o.k ? "#fafbfc" : "#fff" }}>
               <div className="text-sm font-bold text-luxury-900">{o.t}</div>
               <div className="text-[0.72rem] text-luxury-500 mt-0.5">{o.d}</div>
             </button>
@@ -242,7 +242,7 @@ export default function AgentAuctionTab({
               {(["hybrid", "auto", "manual"] as LiveAutopilotMode[]).map((m) => (
                 <button key={m} type="button" onClick={() => setAutopilotMode(m)}
                   className="text-left rounded-lg border-2 px-2.5 py-2 transition"
-                  style={{ borderColor: autopilotMode === m ? "#c9911a" : "#e5e0d5", background: autopilotMode === m ? "#fffbef" : "#fff" }}>
+                  style={{ borderColor: autopilotMode === m ? "#8198ae" : "#dbe1e8", background: autopilotMode === m ? "#fafbfc" : "#fff" }}>
                   <div className="text-[0.8rem] font-bold text-luxury-900">{LIVE_AUTOPILOT_LABEL[m]}</div>
                   <div className="text-[0.68rem] text-luxury-500 mt-0.5 leading-snug">{LIVE_AUTOPILOT_DESC[m]}</div>
                 </button>
@@ -368,7 +368,7 @@ export default function AgentAuctionTab({
 
         <button onClick={publish} disabled={!roomId || !monthKey || !effFloor || publishing}
           className="px-5 py-2.5 rounded-xl font-bold text-white disabled:opacity-50"
-          style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+          style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
           {publishing ? "Publishing…" : "Publish auction lot"}
         </button>
       </div>

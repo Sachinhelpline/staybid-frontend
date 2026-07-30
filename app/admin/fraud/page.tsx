@@ -158,9 +158,9 @@ export default function AdminFraud() {
 }
 
 const smallBtn = {
-  background: "rgba(212,175,55,0.1)",
+  background: "rgba(140, 160, 182,0.1)",
   color: C.gold,
-  border: `1px solid rgba(212,175,55,0.3)`,
+  border: `1px solid rgba(140, 160, 182,0.3)`,
   padding: "5px 12px",
   borderRadius: 8,
   cursor: "pointer",

@@ -2562,7 +2562,7 @@ export default function HotelDetail() {
               marginBottom: "20px",
               padding: "14px 18px",
               borderRadius: "20px",
-              background: "linear-gradient(135deg, rgba(217, 190, 130, 0.20), rgba(212, 149, 131, 0.14))",
+              background: "linear-gradient(135deg, rgba(176, 192, 209, 0.20), rgba(212, 149, 131, 0.14))",
               backdropFilter: "blur(14px)",
               border: "1px solid rgba(201, 166, 107, 0.45)",
               boxShadow: "0 18px 40px -16px rgba(201, 166, 107, 0.42)",
@@ -3135,7 +3135,7 @@ export default function HotelDetail() {
                           </p>
                           {(cin || cout) && (
                             <div className="grid grid-cols-2 gap-2 mb-2.5 rounded-xl p-2"
-                              style={{ background: "rgba(255,252,246,0.6)" }}>
+                              style={{ background: "rgba(176, 192, 209,0.6)" }}>
                               <div>
                                 <p className="text-[0.55rem] uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>Check-in</p>
                                 <p className="text-xs font-semibold" style={{ color: "var(--text-base)" }}>{fmtDate(cin)}</p>
@@ -3608,7 +3608,7 @@ export default function HotelDetail() {
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
                         padding: "4px 9px", borderRadius: 999,
-                        background: "rgba(201,145,26,0.94)", color: "#1a1205",
+                        background: "rgba(106, 133, 160,0.94)", color: "#1a1205",
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
                       }}>💎 +₹{lockUpgradeDelta.toLocaleString()} Upgrade</span>
@@ -3791,8 +3791,8 @@ export default function HotelDetail() {
                   {!isFlashRoom && isOtherWhenLocked && lockUpgradeDelta > 0 && (
                     <div style={{
                       marginBottom: 14, padding: "10px 12px", borderRadius: 12,
-                      background: "rgba(201,145,26,0.12)",
-                      border: "1px solid rgba(201,145,26,0.36)",
+                      background: "rgba(106, 133, 160,0.12)",
+                      border: "1px solid rgba(106, 133, 160,0.36)",
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
                       <span style={{ fontSize: "1.05rem" }}>💎</span>
@@ -4149,8 +4149,8 @@ export default function HotelDetail() {
               change to a different stay. */}
           {datesLocked && (
             <div className="mb-3 p-3 rounded-2xl flex items-center gap-2 border" style={{
-              background: "linear-gradient(135deg, #fff9e6 0%, #fff4cc 100%)",
-              borderColor: "rgba(184,134,11,0.30)",
+              background: "linear-gradient(135deg, #f8f9fa 0%, #f1f4f6 100%)",
+              borderColor: "rgba(106, 133, 160,0.30)",
             }}>
               <span style={{ fontSize: "1.1rem" }}>🔒</span>
               <div style={{ fontSize: "0.72rem", lineHeight: 1.35 }}>
@@ -4957,7 +4957,7 @@ export default function HotelDetail() {
                 .neg-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
                 .neg-particles span{position:absolute;bottom:-6px;width:3px;height:3px;border-radius:50%;background:rgba(120,150,182,.55);animation:negParticle linear infinite}
                 /* Glowing rainbow slider */
-                .neg-slider2{appearance:none;-webkit-appearance:none;width:100%;height:10px;border-radius:999px;outline:none;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#eab308 52%,#22c55e 80%,#10b981 100%);box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 24px -4px rgba(120,150,182,.25)}
+                .neg-slider2{appearance:none;-webkit-appearance:none;width:100%;height:10px;border-radius:999px;outline:none;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#a4b5c5 52%,#22c55e 80%,#10b981 100%);box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 24px -4px rgba(120,150,182,.25)}
                 .neg-slider2::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(120,150,182,.18), 0 6px 22px rgba(120,150,182,.55);transition:transform .1s}
                 .neg-slider2::-webkit-slider-thumb:hover{transform:scale(1.1)}
                 .neg-slider2::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(120,150,182,.18), 0 6px 22px rgba(120,150,182,.55)}
@@ -5129,7 +5129,7 @@ export default function HotelDetail() {
                       <button key={s.label} onClick={() => setNegAmt(amt)}
                         className={`neg-chip rounded-2xl p-2.5 text-center ${active?"active":""}`}
                         style={{
-                          background: active ? "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" : "rgba(255,255,255,0.04)",
+                          background: active ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "rgba(255,255,255,0.04)",
                           border: `1px solid ${active?"rgba(120,150,182,.6)":"rgba(255,255,255,.08)"}`,
                           boxShadow: active ? "0 6px 22px rgba(120,150,182,.35)" : "none",
                         }}>
@@ -5177,8 +5177,8 @@ export default function HotelDetail() {
                   style={{
                     background: isInstant
                       ? "linear-gradient(135deg,#10b981 0%,#a9b9c8 50%,#10b981 100%)"
-                      : "linear-gradient(135deg,#748da6 0%,#a9b9c8 48%,#cbd5de 60%,#8198ae 100%)",
-                    color: "#0c0a14",
+                      : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+                    color: "#ffffff",
                     boxShadow: isInstant
                       ? "0 12px 32px rgba(16,185,129,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset"
                       : "0 12px 32px rgba(120,150,182,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
@@ -5417,7 +5417,7 @@ export default function HotelDetail() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2 border-b" style={{ borderColor: "rgba(184,134,11,0.15)" }}>
+            <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2 border-b" style={{ borderColor: "rgba(106, 133, 160,0.15)" }}>
               <div>
                 <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#748da6" }}>💎 Upgrade your room</p>
                 <h3 className="text-lg font-black mt-1" style={{ fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.2 }}>
@@ -5434,7 +5434,7 @@ export default function HotelDetail() {
 
             {/* Breakdown */}
             <div className="px-5 py-4 space-y-3">
-              <div className="rounded-2xl p-3.5" style={{ background: "linear-gradient(135deg,#fff9e6 0%,#fff4cc 100%)", border: "1px solid rgba(184,134,11,0.25)" }}>
+              <div className="rounded-2xl p-3.5" style={{ background: "linear-gradient(135deg,#f8f9fa 0%,#f1f4f6 100%)", border: "1px solid rgba(106, 133, 160,0.25)" }}>
                 <div className="flex justify-between items-center text-sm">
                   <span style={{ color: "#6e5430" }}>Accepted price</span>
                   <span style={{ color: "#1a1205", fontWeight: 700 }}>₹{upgradeModal.acceptedAmount.toLocaleString("en-IN")}/n</span>
@@ -5443,7 +5443,7 @@ export default function HotelDetail() {
                   <span style={{ color: "#6e5430" }}>Upgrade extra</span>
                   <span style={{ color: "#748da6", fontWeight: 700 }}>+ ₹{upgradeModal.deltaPerNight.toLocaleString("en-IN")}/n</span>
                 </div>
-                <div className="border-t mt-2 pt-2 flex justify-between items-center" style={{ borderColor: "rgba(184,134,11,0.30)" }}>
+                <div className="border-t mt-2 pt-2 flex justify-between items-center" style={{ borderColor: "rgba(106, 133, 160,0.30)" }}>
                   <span className="text-sm font-bold" style={{ color: "#1a1205" }}>New rate</span>
                   <span className="text-lg font-black" style={{ color: "#1a1205" }}>₹{(upgradeModal.acceptedAmount + upgradeModal.deltaPerNight).toLocaleString("en-IN")}/n</span>
                 </div>

@@ -308,7 +308,7 @@ function RuleSummary({ rule, compact }: { rule: CommissionRule | null; compact?:
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
       {rule.slabs.map((s, i) => (
         <span key={i} style={{ ...slabPill, padding: compact ? "3px 8px" : "5px 12px", fontSize: compact ? 11 : 12 }}>
-          {s.minBookings}–{s.maxBookings} · <b style={{ color: "#D4AF37" }}>{s.pct}%</b>
+          {s.minBookings}–{s.maxBookings} · <b style={{ color: "#9fb1c2" }}>{s.pct}%</b>
         </span>
       ))}
       {rule.loyaltyBonuses.map((b, i) => (
@@ -334,11 +334,11 @@ function RulePreview({ slabs, bonuses }: { slabs: Slab[]; bonuses: LoyaltyBonus[
           <div key={n} style={{ display: "grid", gridTemplateColumns: "70px 1fr 70px 70px 70px", gap: 8, alignItems: "center", fontSize: 12, color: "#E8EAF0" }}>
             <span style={{ color: "#8A8FA8" }}>{n} bkgs</span>
             <span style={{ color: "#8A8FA8" }}>→ {matched ? `slab ${matched.minBookings}–${matched.maxBookings}` : "no slab match"}</span>
-            <span style={{ textAlign: "right", color: "#D4AF37" }}><b>{base}%</b> base</span>
+            <span style={{ textAlign: "right", color: "#9fb1c2" }}><b>{base}%</b> base</span>
             <span style={{ textAlign: "right", color: "#2ECC71" }}>
               {bonuses[0] ? `+${bonuses[0].bonusPct}% @ ${bonuses[0].months}mo` : ""}
             </span>
-            <span style={{ textAlign: "right", color: "#F0D060" }}>
+            <span style={{ textAlign: "right", color: "#c6d0da" }}>
               {bonuses[bonuses.length - 1] && bonuses.length > 1 ? `+${bonuses[bonuses.length - 1].bonusPct}% @ ${bonuses[bonuses.length - 1].months}mo` : ""}
             </span>
           </div>
@@ -401,12 +401,12 @@ function Modal({ title, onClose, maxWidth, children }: { title: string; onClose:
 }
 
 const inputStyle: React.CSSProperties = { background: "#0F1117", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "10px 12px", color: "#E8EAF0", fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
-const primaryBtn: React.CSSProperties = { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
+const primaryBtn: React.CSSProperties = { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const ghostBtn: React.CSSProperties = { background: "rgba(255,255,255,0.06)", color: "#E8EAF0", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const dangerBtn: React.CSSProperties = { background: "rgba(255,71,87,0.12)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const removeBtn: React.CSSProperties = { background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "none", borderRadius: 8, padding: "0 10px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif", height: 36 };
 const slabRow: React.CSSProperties = { display: "flex", gap: 8, alignItems: "flex-end", background: "rgba(255,255,255,0.03)", padding: "8px 10px", borderRadius: 10 };
-const slabPill: React.CSSProperties = { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.35)", color: "#E8EAF0", borderRadius: 999, fontSize: 12, fontWeight: 600 };
+const slabPill: React.CSSProperties = { background: "rgba(140, 160, 182,0.12)", border: "1px solid rgba(140, 160, 182,0.35)", color: "#E8EAF0", borderRadius: 999, fontSize: 12, fontWeight: 600 };
 const overrideCard: React.CSSProperties = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 12, display: "flex", alignItems: "flex-start", gap: 14 };
 const pickerRow: React.CSSProperties = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 12px", color: "#E8EAF0", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "DM Sans, sans-serif", textAlign: "left" };
 const sectionH: React.CSSProperties = { color: "#E8EAF0", fontSize: 14, fontWeight: 700, margin: "0 0 6px", fontFamily: "Syne, sans-serif" };

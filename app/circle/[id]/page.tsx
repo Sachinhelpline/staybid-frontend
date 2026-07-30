@@ -399,7 +399,7 @@ export default function CircleTourPage() {
             <button className={`sbc-tour-invest-lock ${locked ? "locked" : ""}`} onClick={toggleLock} disabled={soldOut && !locked}>
               {locked ? "✓ Locked in your bundle — tap to release" : "🔒 Lock this property"}
             </button>
-            <p style={{ fontSize: ".72rem", color: "rgba(231,207,160,.6)", marginTop: 12, textAlign: "center" }}>
+            <p style={{ fontSize: ".72rem", color: "rgba(176, 192, 209,.6)", marginTop: 12, textAlign: "center" }}>
               Locking is free &amp; non-binding. Payment happens only in the bundle builder.
             </p>
           </div>
@@ -410,7 +410,7 @@ export default function CircleTourPage() {
         <div style={{
           position: "fixed", left: "50%", transform: "translateX(-50%)",
           bottom: "calc(24px + env(safe-area-inset-bottom, 0px))", zIndex: 90,
-          background: "rgba(36,27,16,.94)", color: "#F3E3BF", padding: "10px 18px",
+          background: "rgba(36,27,16,.94)", color: "#dfe5ea", padding: "10px 18px",
           borderRadius: 999, fontSize: ".85rem", boxShadow: "0 12px 32px -10px rgba(0,0,0,.5)",
           maxWidth: "90vw", textAlign: "center",
         }}>{toast}</div>

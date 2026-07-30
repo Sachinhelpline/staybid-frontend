@@ -30,7 +30,7 @@ const STATUS_META: Record<string, { color: string; soft: string; label: string }
   CONFIRMED:   { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
   ACCEPTED:    { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
   CHECKED_IN:  { color: "#5E83A8", soft: "rgba(94,131,168,0.16)",  label: "Checked In"  },
-  CHECKED_OUT: { color: "#9A8B6F", soft: "rgba(154,139,111,0.17)", label: "Checked Out" },
+  CHECKED_OUT: { color: "#7790a8", soft: "rgba(154,139,111,0.17)", label: "Checked Out" },
   CANCELLED:   { color: "#C77E6D", soft: "rgba(199,126,109,0.14)", label: "Cancelled"   },
 };
 
@@ -54,7 +54,7 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
     // Pay-at-hotel: no countdown, just info banner — balance settled at desk
     return (
       <div className="mb-4 rounded-2xl p-4 border"
-        style={{ background: "rgba(201,145,26,0.10)", borderColor: "rgba(201,145,26,0.42)" }}>
+        style={{ background: "rgba(106,133,160,0.10)", borderColor: "rgba(106,133,160,0.42)" }}>
         <div className="flex items-start gap-3">
           <span className="text-xl">🏨</span>
           <div className="flex-1">
@@ -253,7 +253,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
       <button
         onClick={() => setOpen(true)}
         className="w-full mb-4 rounded-2xl p-4 transition text-left sb-card-lift"
-        style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.32)" }}
+        style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.32)" }}
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">⭐</span>
@@ -263,7 +263,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
               Share feedback and earn <strong>+100 StayPoints</strong> on top of your {stayPoints} cashback points
             </p>
           </div>
-          <span className="text-sm font-bold" style={{ color: "#c9911a" }}>Rate →</span>
+          <span className="text-sm font-bold" style={{ color: "#8198ae" }}>Rate →</span>
         </div>
       </button>
 
@@ -298,7 +298,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
                       onMouseLeave={() => setHover(0)}
                       onClick={() => setRating(n)}
                       className={`text-4xl transition-transform ${lit ? "scale-110" : "scale-100"}`}
-                      style={{ color: lit ? "#f0b429" : "var(--border-strong)" }}
+                      style={{ color: lit ? "#a9b9c8" : "var(--border-strong)" }}
                       aria-label={`${n} star${n > 1 ? "s" : ""}`}
                     >
                       ★
@@ -356,7 +356,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
 
 function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false);
-  const st = STATUS_META[b.status] || { color: "#9A8B6F", soft: "rgba(154,139,111,0.16)", label: b.status };
+  const st = STATUS_META[b.status] || { color: "#7790a8", soft: "rgba(154,139,111,0.16)", label: b.status };
 
   const bookingId = b.id?.slice(0, 8).toUpperCase() || "STAYBID1";
 
@@ -401,7 +401,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
   const InfoRow = ({ icon, children }: { icon: string; children: React.ReactNode }) => (
     <div className="flex items-start gap-3">
       <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-base"
-        style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.28)" }}>{icon}</div>
+        style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.28)" }}>{icon}</div>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
@@ -411,14 +411,14 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
 
   return (
     <div className="bk-card rounded-2xl overflow-hidden">
-      <div className="h-[3px]" style={{ background: "linear-gradient(90deg,#c9911a,#f0d27a,#c9911a)" }} />
+      <div className="h-[3px]" style={{ background: "linear-gradient(90deg,#8198ae,#cad3dd,#8198ae)" }} />
 
       <div className="p-4 sm:p-5">
         {/* Hotel name + status */}
         <div className="flex items-start justify-between gap-3 mb-1">
           <div className="flex-1 min-w-0">
             <h3 className="font-display font-semibold text-[1.3rem] leading-tight" style={{ color: "var(--text-base)", letterSpacing: "0.005em" }}>{hotel.name || "Hotel"}</h3>
-            {stars && <p className="text-xs tracking-widest mt-0.5" style={{ color: "#c9911a" }}>{"★".repeat(Math.min(5, stars))}</p>}
+            {stars && <p className="text-xs tracking-widest mt-0.5" style={{ color: "#8198ae" }}>{"★".repeat(Math.min(5, stars))}</p>}
           </div>
           <span className="flex items-center gap-1.5 text-[0.68rem] font-bold px-3 py-1 rounded-full shrink-0"
             style={{ color: st.color, background: st.soft, border: `1px solid ${st.color}55` }}>
@@ -433,7 +433,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         {/* Allocated room number */}
         {unitNumber ? (
           <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-xs tracking-wide"
-            style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.36)", color: "#c9911a" }}>
+            style={{ background: "rgba(106,133,160,0.12)", border: "1px solid rgba(106,133,160,0.36)", color: "#8198ae" }}>
             🔑 Room #{unitNumber} Allocated
           </div>
         ) : isConfirmed && (
@@ -464,10 +464,10 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         {/* StayPoints banner */}
         {isCompleted ? (
           <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 mb-4"
-            style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.30)" }}>
+            style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.30)" }}>
             <span className="text-lg">🎁</span>
             <div>
-              <p className="text-xs font-bold" style={{ color: "#c9911a" }}>+{stayPoints} StayPoints Credited!</p>
+              <p className="text-xs font-bold" style={{ color: "#8198ae" }}>+{stayPoints} StayPoints Credited!</p>
               <p className="text-[0.65rem]" style={{ color: "var(--text-soft)" }}>Added to your wallet as cashback</p>
             </div>
           </div>
@@ -507,7 +507,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
             {nights > 1 && <p className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>₹{Math.round(displayAmount / nights).toLocaleString()}/night</p>}
           </div>
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#c9911a,#9c7414)", boxShadow: "0 6px 18px rgba(201,145,26,0.34)" }}>
+            style={{ background: "linear-gradient(135deg,#8198ae,#5f7994)", boxShadow: "0 6px 18px rgba(106,133,160,0.34)" }}>
             <span className="text-white font-bold text-lg">{nights}N</span>
           </div>
         </div>
@@ -535,7 +535,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
           <a
             href="/verification"
             className="mt-2 inline-flex items-center justify-center w-full px-4 py-2.5 rounded-xl text-sm font-semibold transition"
-            style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.32)", color: "#c9911a" }}
+            style={{ background: "rgba(106,133,160,0.12)", border: "1px solid rgba(106,133,160,0.32)", color: "#8198ae" }}
           >
             😊 Rate hotel video &amp; service · earn 100 StayPoints →
           </a>
@@ -604,7 +604,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
             {email && (
               <InfoRow icon="✉️">
                 <Lbl>Email</Lbl>
-                <a href={`mailto:${email}`} className="text-sm font-semibold hover:underline" style={{ color: "#c9911a" }}>{email}</a>
+                <a href={`mailto:${email}`} className="text-sm font-semibold hover:underline" style={{ color: "#8198ae" }}>{email}</a>
               </InfoRow>
             )}
 
@@ -626,8 +626,8 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
 
             {/* StayPoints redemption info */}
             <div className="rounded-xl p-4"
-              style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.28)" }}>
-              <p className="text-xs font-bold mb-1" style={{ color: "#c9911a" }}>⭐ StayPoints Program</p>
+              style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.28)" }}>
+              <p className="text-xs font-bold mb-1" style={{ color: "#8198ae" }}>⭐ StayPoints Program</p>
               <p className="text-[0.7rem] leading-relaxed" style={{ color: "var(--text-soft)" }}>
                 Earn <strong>{stayPoints} points</strong> (₹{stayPoints} value) on completing this stay.
                 Points are credited to your wallet after check-out and can be redeemed on future bookings.
@@ -752,7 +752,7 @@ export default function BookingsPage() {
       @keyframes bkFadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
       .bk-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
       .bk-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
-      .bk-gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%); color:#1a1205; font-weight:800; letter-spacing:.03em; }
+      .bk-gold-btn { position:relative; overflow:hidden; background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; text-shadow:0 1px 1px rgba(20,30,44,.35); font-weight:800; letter-spacing:.03em; box-shadow:inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(28,38,52,.28), 0 8px 18px -9px rgba(45,62,82,.5); }
     `}</style>
   );
 
@@ -796,7 +796,7 @@ export default function BookingsPage() {
               )}
               {totalPoints > 0 && (
                 <span className="text-xs font-semibold px-3 py-1 rounded-full"
-                  style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.32)", color: "#c9911a" }}>
+                  style={{ background: "rgba(106,133,160,0.12)", border: "1px solid rgba(106,133,160,0.32)", color: "#8198ae" }}>
                   ⭐ <CountUp value={totalPoints} duration={900} /> StayPoints earned
                 </span>
               )}

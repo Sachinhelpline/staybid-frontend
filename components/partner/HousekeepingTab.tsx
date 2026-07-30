@@ -17,7 +17,7 @@ type HKStatus = "clean" | "dirty" | "inspected" | "out_of_order";
 
 const META: Record<HKStatus, { label: string; icon: string; bg: string; c: string; border: string }> = {
   clean:        { label: "Clean",        icon: "✨", bg: "#ecfdf5", c: "#15803d", border: "#a7f3d0" },
-  dirty:        { label: "Dirty",        icon: "🧹", bg: "#fffbeb", c: "#b45309", border: "#fde68a" },
+  dirty:        { label: "Dirty",        icon: "🧹", bg: "#fafbfc", c: "#b45309", border: "#dfe5eb" },
   inspected:    { label: "Inspected",    icon: "✅", bg: "#eff6ff", c: "#1d4ed8", border: "#bfdbfe" },
   out_of_order: { label: "Out of Order", icon: "🚫", bg: "#fef2f2", c: "#b91c1c", border: "#fecaca" },
 };
@@ -114,7 +114,7 @@ export default function HousekeepingTab({
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fffbeb" }}>
+        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
           <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Housekeeping storage abhi setup nahi hua</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
             Status save karne ke liye <span className="font-mono">migrations/2026-05-21-room-housekeeping.sql</span> Supabase me apply karni hai. Tab tak board read-only hai.
@@ -247,7 +247,7 @@ function UnitPicker({
                     className="rounded-xl p-2.5 text-left transition-all"
                     style={{
                       background: on ? m.bg : "#fff",
-                      border: `1.5px solid ${on ? m.c : "#e6ddc8"}`,
+                      border: `1.5px solid ${on ? m.c : "#d7dee6"}`,
                     }}>
                     <span className="text-sm">{m.icon}</span>
                     <p className="text-[0.74rem] font-bold mt-0.5" style={{ color: on ? m.c : "#7a6645" }}>{m.label}</p>

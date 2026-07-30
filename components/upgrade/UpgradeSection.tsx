@@ -169,7 +169,7 @@ function StatusBanner({
       {tier === "PENDING_CREATOR" && (
         <div
           className="rounded-xl p-4 flex items-center gap-3"
-          style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.12), rgba(255,69,141,0.08))", border: "1px solid rgba(240,180,41,0.45)" }}
+          style={{ background: "linear-gradient(135deg, rgba(140, 160, 182,0.12), rgba(255,69,141,0.08))", border: "1px solid rgba(140, 160, 182,0.45)" }}
         >
           <span className="text-2xl">⏳</span>
           <div className="flex-1">
@@ -495,5 +495,5 @@ const HOTEL_COPY = {
   ],
   cta: "Apply as a Hotel",
   kyc: "KYC: GST + property ownership proof. Reviewed within 24 hours.",
-  gradient: "linear-gradient(135deg,#ffd76b,#f0b429)",
+  gradient: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
 };

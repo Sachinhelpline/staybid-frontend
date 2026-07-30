@@ -136,7 +136,7 @@ export default function AdminMessages() {
                     background: "transparent", border: "none", borderBottom: "1px solid rgba(255,255,255,0.06)",
                     cursor: "pointer", fontFamily: "inherit", color: "#E8EAF0",
                   }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 999, background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 999, background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
                     {(c.customer?.name || "G").slice(0, 1).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

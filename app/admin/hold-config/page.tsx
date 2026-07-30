@@ -162,12 +162,12 @@ function ConfigCard({ config, onEdit, onChanged }: { config: Config; onEdit: () 
     onChanged();
   };
   return (
-    <div style={{ background: "#151820", border: `1px solid ${isGlobal ? "rgba(212,175,55,0.35)" : "rgba(255,255,255,0.07)"}`, borderRadius: 14, padding: 18 }}>
+    <div style={{ background: "#151820", border: `1px solid ${isGlobal ? "rgba(140, 160, 182,0.35)" : "rgba(255,255,255,0.07)"}`, borderRadius: 14, padding: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {isGlobal ? (
-              <span style={{ background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, letterSpacing: 1, textTransform: "uppercase" }}>
+              <span style={{ background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, letterSpacing: 1, textTransform: "uppercase" }}>
                 Platform Defaults
               </span>
             ) : null}
@@ -208,7 +208,7 @@ function ConfigCard({ config, onEdit, onChanged }: { config: Config; onEdit: () 
                   <p style={{ color: "#8A8FA8", fontSize: 10, margin: 0 }}>
                     ₹{prev.toLocaleString()} — {t.upTo >= 999_999_999 ? "∞" : `₹${t.upTo.toLocaleString()}`}
                   </p>
-                  <p style={{ color: "#D4AF37", fontSize: 18, fontWeight: 700, margin: "2px 0 0", fontFamily: "Syne, sans-serif" }}>
+                  <p style={{ color: "#9fb1c2", fontSize: 18, fontWeight: 700, margin: "2px 0 0", fontFamily: "Syne, sans-serif" }}>
                     ₹{t.amount}
                   </p>
                 </div>
@@ -290,7 +290,7 @@ function EditModal({ config, onClose, onSaved }: { config: Config; onClose: () =
     <div onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(7,8,12,0.78)", backdropFilter: "blur(6px)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()}
-        style={{ width: 640, maxWidth: "94vw", maxHeight: "92vh", background: "#151820", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 16, display: "flex", flexDirection: "column" }}>
+        style={{ width: 640, maxWidth: "94vw", maxHeight: "92vh", background: "#151820", border: "1px solid rgba(140, 160, 182,0.25)", borderRadius: 16, display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ padding: "18px 22px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
@@ -415,7 +415,7 @@ const hint: React.CSSProperties = {
   color: "#8A8FA8", fontSize: 11, margin: "0 0 8px",
 };
 const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117",
+  background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117",
   border: "none", borderRadius: 10, padding: "10px 18px", fontWeight: 700, cursor: "pointer",
   fontFamily: "inherit", fontSize: 13, letterSpacing: 0.3,
 };

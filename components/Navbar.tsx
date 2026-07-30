@@ -214,7 +214,7 @@ export function Navbar() {
            0.92/0.94 = nearly opaque). The heavy blur + saturate does the
            premium frosted-glass work; content scrolls softly under it. */
         .nav3d-bar {
-          background: rgba(255,251,244,0.68);
+          background: rgba(176, 192, 209,0.68);
           backdrop-filter: blur(26px) saturate(185%);
           -webkit-backdrop-filter: blur(26px) saturate(185%);
           border-bottom: 1px solid var(--border-soft);
@@ -257,7 +257,7 @@ export function Navbar() {
            Owner review of v584.1 (screenshot): the nav chips read as flat
            WHITE boxes and Location/Explore looked dull — "premium nahi lag
            raha". Root cause: .nav3d-chip pulls var(--bg-pill), which is
-           near-white (#fffcf6) in light mode → flat. Every desktop-bar chip
+           near-white (#fcfcfd) in light mode → flat. Every desktop-bar chip
            is now ONE raised tonal-glass pill with a champagne-gold hairline
            and real depth, tuned SEPARATELY for light + dark so both read
            premium with strong text contrast. Exactly two accents on top of
@@ -279,7 +279,7 @@ export function Navbar() {
           cursor: pointer;
           /* LIGHT: warm ivory → champagne, gold rim, raised — reads as
              embossed cream cardstock with a foil edge, not a white box. */
-          background: linear-gradient(180deg, #fdf6e9 0%, #f0e0c2 100%) !important;
+          background: linear-gradient(180deg, #f5f7f9 0%, #dce2e8 100%) !important;
           border: 1px solid rgba(106,133,160,0.42) !important;
           color: #241a0b !important;
           box-shadow:
@@ -289,7 +289,7 @@ export function Navbar() {
         }
         .nav3d-eq:hover {
           transform: translateY(-2px) scale(1.07);
-          background: linear-gradient(180deg, #fff7e3 0%, #f2ddac 100%) !important;
+          background: linear-gradient(180deg, #f6f7f9 0%, #d8dfe6 100%) !important;
           border-color: rgba(106,133,160,0.75) !important;
           color: #241a0b !important;
           box-shadow:
@@ -310,19 +310,19 @@ export function Navbar() {
         /* DARK: warm espresso → walnut, gold hairline, cream text. */
         [data-theme="dark"] .nav3d-eq {
           background: linear-gradient(180deg, #322817 0%, #221a0f 100%) !important;
-          border-color: rgba(224,196,132,0.34) !important;
-          color: #f7efdd !important;
+          border-color: rgba(176, 192, 209,0.34) !important;
+          color: #edf0f3 !important;
           box-shadow:
             0 3px 9px rgba(0,0,0,0.45),
-            inset 0 1px 0 rgba(255,233,173,0.10) !important;
+            inset 0 1px 0 rgba(176, 192, 209,0.10) !important;
         }
         [data-theme="dark"] .nav3d-eq:hover {
           background: linear-gradient(180deg, #40331b 0%, #2a2011 100%) !important;
           border-color: rgba(106,133,160,0.62) !important;
-          color: #fff6e2 !important;
+          color: #f5f7f9 !important;
           box-shadow:
             0 10px 24px rgba(106,133,160,0.24),
-            inset 0 1px 0 rgba(255,233,173,0.16) !important;
+            inset 0 1px 0 rgba(176, 192, 209,0.16) !important;
         }
         [data-theme="dark"] .nav3d-eq.nav3d-chip-active {
           background: linear-gradient(135deg, #92a5b9 0%, #6a85a0 55%, #4b6075 100%) !important;
@@ -614,7 +614,7 @@ export function Navbar() {
                   )}
                   {isReels && !active && (
                     <span className="ml-0.5 text-[0.55rem] font-black px-1.5 py-0.5 rounded-full"
-                      style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", color: "#000" }}>
+                      style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#000" }}>
                       NEW
                     </span>
                   )}
@@ -759,7 +759,7 @@ export function Navbar() {
                   className={`nav3d-chip nav3d-eq group relative ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}
                   style={{ paddingLeft: 5 }}>
                   <div className="rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
-                    style={{ width: 26, height: 26, background: "linear-gradient(135deg,#607b96,#6a85a0)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                    style={{ width: 26, height: 26, background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>
                   {/* v586 — inherit the chip's themed colour (cream in dark,
@@ -788,7 +788,7 @@ export function Navbar() {
             {user ? (
               <Link href="/profile"
                 className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", boxShadow: "0 3px 12px rgba(106,133,160,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 3px 12px rgba(106,133,160,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                 {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
               </Link>
             ) : (
@@ -852,7 +852,7 @@ export function Navbar() {
                 className="w-full mb-3 flex items-center gap-3 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
                 style={{ background: "linear-gradient(135deg,rgba(201,166,107,0.16),rgba(106,133,160,0.10))", border: "1px solid rgba(106,133,160,0.3)" }}
               >
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", color: "#1F1A0F" }}>⇅</span>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>⇅</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white leading-none mb-0.5">Switch experience</p>
                   <p className="text-xs text-white/50 truncate">Partner · Circle · Hosts · Creator</p>
@@ -879,7 +879,7 @@ export function Navbar() {
                   <Link href="/profile" onClick={() => setMoreOpen(false)}
                     className="lux-glass lux-border flex items-center gap-3 p-3 rounded-2xl active:scale-[0.98] transition-transform">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
-                      style={{ background: "linear-gradient(135deg,#607b96,#6a85a0)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                      style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                       {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

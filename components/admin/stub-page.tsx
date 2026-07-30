@@ -14,7 +14,7 @@ export default function StubPage({ title, description, icon }: { title: string; 
         }}
       >
         <div style={{ fontSize: 56, marginBottom: 16 }}>{icon}</div>
-        <h2 style={{ fontFamily: "Syne, sans-serif", color: "#D4AF37", fontSize: 22, margin: "0 0 8px" }}>
+        <h2 style={{ fontFamily: "Syne, sans-serif", color: "#9fb1c2", fontSize: 22, margin: "0 0 8px" }}>
           Coming in Session 2
         </h2>
         <p style={{ color: "#8A8FA8", fontSize: 14, maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>
@@ -25,10 +25,10 @@ export default function StubPage({ title, description, icon }: { title: string; 
             display: "inline-block",
             marginTop: 20,
             padding: "8px 18px",
-            background: "rgba(212,175,55,0.1)",
-            border: "1px solid rgba(212,175,55,0.3)",
+            background: "rgba(140, 160, 182,0.1)",
+            border: "1px solid rgba(140, 160, 182,0.3)",
             borderRadius: 10,
-            color: "#D4AF37",
+            color: "#9fb1c2",
             fontSize: 12,
             fontWeight: 600,
           }}

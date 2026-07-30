@@ -235,7 +235,7 @@ export default function ActiveBidConflictSheet({
               <button
                 onClick={() => { onClose(); router.push("/my-bids"); }}
                 className="w-full py-3 rounded-xl font-bold text-sm"
-                style={{ background: "linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a)", color: "#1a1205" }}
+                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
               >
                 {winners.accepted > 0 ? "💰 Pay Now in My Bids →" : "View My Bids →"}
               </button>
@@ -282,7 +282,7 @@ export default function ActiveBidConflictSheet({
           </div>
           <div className="flex items-baseline gap-2">
             <p className="text-xs" style={{ color: "var(--text-muted, #6b6357)" }}>Current bid</p>
-            <p className="text-sm font-bold" style={{ color: "#c9911a" }}>
+            <p className="text-sm font-bold" style={{ color: "#8198ae" }}>
               ₹{currentAmt.toLocaleString("en-IN")}/night
             </p>
             {conflict.expiresAt && (
@@ -300,7 +300,7 @@ export default function ActiveBidConflictSheet({
               <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted, #6b6357)" }}>
                 New budget per night
               </label>
-              <span className="text-lg font-bold" style={{ color: "#c9911a" }}>
+              <span className="text-lg font-bold" style={{ color: "#8198ae" }}>
                 ₹{amount.toLocaleString("en-IN")}
               </span>
             </div>
@@ -311,7 +311,7 @@ export default function ActiveBidConflictSheet({
               step={100}
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "#c9911a" }}
+              style={{ width: "100%", accentColor: "#8198ae" }}
               disabled={saving}
             />
             <div className="flex justify-between text-[0.62rem] mt-1" style={{ color: "var(--text-muted, #6b6357)" }}>
@@ -338,7 +338,7 @@ export default function ActiveBidConflictSheet({
               onClick={handleUpdate}
               disabled={saving || amount <= 0}
               className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a)", color: "#1a1205" }}
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
             >
               {saving ? "Updating…" : `💰 Update Budget to ₹${amount.toLocaleString("en-IN")}/night`}
             </button>

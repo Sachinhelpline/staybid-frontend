@@ -109,13 +109,13 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
         @keyframes fpIdSheen { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
         .fp-id-btn {
           border-radius: 14px;
-          background: linear-gradient(135deg,#2A2417,#1F1A0F);
+          background: linear-gradient(135deg,#1d252e,#151b21);
           box-shadow: 0 6px 18px -8px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(201,166,107,0.3);
         }
         .fp-id-val {
           font-family: ui-monospace, "SF Mono", Menlo, monospace;
           font-weight: 800; font-size: 0.92rem; letter-spacing: 0.04em;
-          background: linear-gradient(110deg,#FCEFC6,#F0D060 45%,#C79A3A 70%,#FCEFC6);
+          background: linear-gradient(110deg,#eceff3,#c6d0da 45%,#8ba0b5 70%,#eceff3);
           background-size: 220% 220%;
           -webkit-background-clip: text; background-clip: text;
           -webkit-text-fill-color: transparent; color: transparent;
@@ -125,7 +125,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
         .fp-comb { position: relative; overflow: hidden; }
         .fp-comb::after {
           content:""; position:absolute; top:0; left:0; width:42%; height:100%;
-          background: linear-gradient(90deg, transparent, rgba(255,247,214,0.55), transparent);
+          background: linear-gradient(90deg, transparent, rgba(176, 192, 209,0.55), transparent);
           animation: fpCombShine 6s ease-in-out infinite; pointer-events:none;
         }
         @media (prefers-reduced-motion: reduce) {
@@ -163,7 +163,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             onClick={create}
             disabled={busy}
             className="px-5 py-2.5 rounded-xl text-white font-bold text-sm relative overflow-hidden sb-shimmer"
-            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}
+            style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
           >
             <span className="relative" style={{ zIndex: 2 }}>{busy ? "Creating…" : "Start a Family Passport"}</span>
           </button>
@@ -270,7 +270,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
                 />
                 <button onClick={addMember} disabled={busy || !addId.trim()}
                   className="shrink-0 px-4 py-2 rounded-xl text-white font-bold text-sm disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+                  style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                   Add
                 </button>
               </div>
@@ -286,7 +286,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
               <span className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "var(--accent)" }}>Your ID</span>
               <span className="fp-id-val">{myExplorerId}</span>
               {/* .fp-id-btn is a FIXED dark surface → use fixed light-muted, not the flipping --text-muted (dark-brown, unreadable on near-black in light mode) */}
-              <span className="text-[0.6rem]" style={{ color: copied ? "#a9d6b8" : "rgba(243,230,200,0.55)" }}>
+              <span className="text-[0.6rem]" style={{ color: copied ? "#a9d6b8" : "rgba(176, 192, 209,0.55)" }}>
                 {copied ? "✓ Copied" : "tap to copy"}
               </span>
             </button>

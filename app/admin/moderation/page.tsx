@@ -94,8 +94,8 @@ export default function AdminModeration() {
 
   const tabBtn = (key: "reports" | "flags", label: string): React.CSSProperties => ({
     padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
-    background: tab === key ? "rgba(212,175,55,0.14)" : "transparent",
-    border: `1px solid ${tab === key ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`,
+    background: tab === key ? "rgba(140, 160, 182,0.14)" : "transparent",
+    border: `1px solid ${tab === key ? "rgba(140, 160, 182,0.4)" : "rgba(255,255,255,0.1)"}`,
     color: tab === key ? C.gold : C.textDim,
   });
 

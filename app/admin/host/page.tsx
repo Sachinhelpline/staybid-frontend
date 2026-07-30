@@ -244,7 +244,7 @@ export default function AdminHost() {
       {/* KPI cards */}
       {k && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 20 }}>
-          <Kpi label="Leads" value={String(k.leads)} sub={`${k.leadsNew} new`} color="#D4AF37" />
+          <Kpi label="Leads" value={String(k.leads)} sub={`${k.leadsNew} new`} color="#9fb1c2" />
           <Kpi label="Portfolios" value={String(k.portfolios ?? 0)} sub={`${k.portfoliosActive ?? 0} active · ${inr(k.portfolioRevenue)}`} color="#E879A0" />
           <Kpi label="Property listings" value={String(k.propertySubmissions ?? 0)} sub={`${k.propertySubmissionsPending ?? 0} pending review`} color="#22C55E" />
           <Kpi label="Property inquiries" value={String(k.inquiries)} sub={`${k.inquiriesNew} new`} color="#3D9CF5" />
@@ -273,7 +273,7 @@ export default function AdminHost() {
                 padding: "7px 15px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
                 border: "1px solid",
                 ...(tab === t.id
-                  ? { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", borderColor: "transparent" }
+                  ? { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", borderColor: "transparent" }
                   : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
               }}>
               {t.icon} {t.label}{count !== undefined ? ` · ${count}` : ""}
@@ -319,7 +319,7 @@ function LeadsTable({ rows, busy, onStatus }: TableProps) {
             </Td>
             <Td>
               <span style={pill}>{r.interest || "general"}</span>
-              {r.metadata?.tier && <div style={{ color: "#D4AF37", fontSize: 11, marginTop: 3 }}>{r.metadata.tier}</div>}
+              {r.metadata?.tier && <div style={{ color: "#9fb1c2", fontSize: 11, marginTop: 3 }}>{r.metadata.tier}</div>}
             </Td>
             <Td style={{ color: "#8A8FA8" }}>{r.city || "—"}</Td>
             <Td style={{ color: "#8A8FA8", fontSize: 12, maxWidth: 240 }}>{r.message || "—"}</Td>
@@ -422,7 +422,7 @@ function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableP
                   <div>
                     <div style={{ color: "#E8EAF0", fontWeight: 600 }}>{r.title || "Untitled"}</div>
                     <div style={{ color: "#8A8FA8", fontSize: 11 }}>{[r.locality, r.city, r.state].filter(Boolean).join(", ") || "—"}</div>
-                    <a href={`/host/property/${r.id}`} target="_blank" rel="noreferrer" style={{ color: "#D4AF37", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🎬 Manage content ↗</a>
+                    <a href={`/host/property/${r.id}`} target="_blank" rel="noreferrer" style={{ color: "#9fb1c2", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🎬 Manage content ↗</a>
                   </div>
                 </div>
               </Td>
@@ -450,7 +450,7 @@ function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableP
                     const live = r._provisionedHotel?.approval_status === "approved";
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <span style={{ ...pill, background: "rgba(212,175,55,0.15)", color: "#D4AF37", borderColor: "rgba(212,175,55,0.4)", whiteSpace: "nowrap" }}>🏨 Provisioned</span>
+                        <span style={{ ...pill, background: "rgba(140, 160, 182,0.15)", color: "#9fb1c2", borderColor: "rgba(140, 160, 182,0.4)", whiteSpace: "nowrap" }}>🏨 Provisioned</span>
                         {live ? (
                           <>
                             <span style={{ ...pill, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)", whiteSpace: "nowrap" }}>✓ Live on StayBid</span>
@@ -488,7 +488,7 @@ function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableP
                     {onProvision && r.status !== "rejected" && (
                       <button disabled={busy === r.id} onClick={() => onProvision(r.id)}
                         title="Create the operated StayBid hotel (rooms + units) + grant the lister dashboard access"
-                        style={{ ...miniBtn, background: "rgba(212,175,55,0.15)", color: "#D4AF37", borderColor: "rgba(212,175,55,0.4)" }}>
+                        style={{ ...miniBtn, background: "rgba(140, 160, 182,0.15)", color: "#9fb1c2", borderColor: "rgba(140, 160, 182,0.4)" }}>
                         {busy === r.id ? "…" : "🏨 Approve + Provision"}
                       </button>
                     )}
@@ -710,7 +710,7 @@ const trBody: React.CSSProperties = { borderTop: "1px solid rgba(255,255,255,0.0
 const pill: React.CSSProperties = { padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.05)", color: "#C9CEDB", border: "1px solid rgba(255,255,255,0.1)" };
 const miniBtn: React.CSSProperties = { padding: "4px 9px", borderRadius: 8, fontSize: 11.5, fontWeight: 700, cursor: "pointer", border: "1px solid", fontFamily: "inherit", whiteSpace: "nowrap" };
 const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117",
+  background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117",
   border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: "pointer",
   fontFamily: "inherit", fontSize: 13,
 };

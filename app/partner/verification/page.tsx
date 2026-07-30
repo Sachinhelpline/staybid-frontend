@@ -79,11 +79,11 @@ export default function PartnerVerification() {
   return (
     <div className="bg-luxury-50 min-h-screen">
       {/* premium dark navbar — matches the partner dashboard */}
-      <nav className="sticky top-0 z-40" style={{ background: "linear-gradient(180deg,#1c140a,#13100a)", borderBottom: "1px solid rgba(240,180,41,0.16)" }}>
+      <nav className="sticky top-0 z-40" style={{ background: "linear-gradient(180deg,#1c140a,#13100a)", borderBottom: "1px solid rgba(140, 160, 182,0.16)" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-5 flex items-center justify-between" style={{ height: "56px" }}>
           <Link href="/partner/dashboard" className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
-              style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 2px 8px rgba(201,145,26,0.4)" }}>S</div>
+              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 2px 8px rgba(106, 133, 160,0.4)" }}>S</div>
             <div className="min-w-0">
               <span className="font-display text-base text-white tracking-wide">StayBid</span>
               <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
@@ -109,12 +109,12 @@ export default function PartnerVerification() {
         <div className="relative overflow-hidden rounded-3xl p-5 mb-5"
              style={{ background: "linear-gradient(135deg,#1c140a 0%,#241a0c 55%,#33260f 100%)", boxShadow: "0 16px 36px -18px rgba(0,0,0,0.6)" }}>
           <div className="absolute -right-8 -top-10 w-40 h-40 rounded-full opacity-30"
-               style={{ background: "radial-gradient(circle, rgba(240,180,41,0.5), transparent 70%)" }} />
+               style={{ background: "radial-gradient(circle, rgba(140, 160, 182,0.5), transparent 70%)" }} />
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-2"
-                   style={{ background: "rgba(240,180,41,0.14)", border: "1px solid rgba(240,180,41,0.3)" }}>
-                <span className="sb-pulse-dot" style={{ background: "#f0b429" }} />
+                   style={{ background: "rgba(140, 160, 182,0.14)", border: "1px solid rgba(140, 160, 182,0.3)" }}>
+                <span className="sb-pulse-dot" style={{ background: "#a9b9c8" }} />
                 <span className="text-[0.6rem] font-bold tracking-[0.18em] uppercase text-amber-200">Verification &amp; Complaints</span>
               </div>
               <h1 className="font-display text-2xl text-white leading-tight truncate">{partner.hotel.name}</h1>
@@ -123,9 +123,9 @@ export default function PartnerVerification() {
           </div>
           <div className="relative grid grid-cols-3 gap-2 mt-4">
             {[
-              { label: "Pending", value: pending.length, c: "#f0d060" },
+              { label: "Pending", value: pending.length, c: "#c6d0da" },
               { label: "Submitted", value: submitted.length, c: "#9DB07F" },
-              { label: "Open complaints", value: openComplaints, c: openComplaints ? "#e6a0a0" : "#b8b29c" },
+              { label: "Open complaints", value: openComplaints, c: openComplaints ? "#e6a0a0" : "#a4b4c5" },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl px-3 py-2.5 text-center"
                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -164,7 +164,7 @@ function TabBtn({ active, children, onClick }: any) {
             className={`shrink-0 px-3.5 py-1.5 rounded-full text-[0.78rem] font-semibold transition-all ${
               active ? "text-white" : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-100"
             }`}
-            style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 4px 12px rgba(201,145,26,0.32)" } : undefined}>
+            style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 4px 12px rgba(106, 133, 160,0.32)" } : undefined}>
       {children}
     </button>
   );

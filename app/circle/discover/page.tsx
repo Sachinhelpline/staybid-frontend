@@ -280,7 +280,7 @@ export default function CircleDiscoverPage() {
           <div className="sbc-rfull-empty">
             <div>
               <div style={{ fontSize: 44 }}>🏔️</div>
-              <p style={{ marginTop: 10, color: "rgba(251,243,226,.8)", maxWidth: 300 }}>
+              <p style={{ marginTop: 10, color: "rgba(176, 192, 209,.8)", maxWidth: 300 }}>
                 Is filter me abhi koi property nahi — budget ya city change karke dekhein.
               </p>
               <button className="sbc-rfull-btn-invest" style={{ marginTop: 16, padding: "0 22px" }}
@@ -376,7 +376,7 @@ export default function CircleDiscoverPage() {
         <div style={{
           position: "fixed", left: "50%", transform: "translateX(-50%)",
           bottom: "calc(84px + env(safe-area-inset-bottom, 0px))", zIndex: 90,
-          background: "rgba(36,27,16,.94)", color: "#F3E3BF", padding: "10px 18px",
+          background: "rgba(36,27,16,.94)", color: "#dfe5ea", padding: "10px 18px",
           borderRadius: 999, fontSize: ".85rem", boxShadow: "0 12px 32px -10px rgba(0,0,0,.5)",
         }}>{toast}</div>
       )}

@@ -107,7 +107,7 @@ export default function SupportMetrics({ tokenKey, userKey, backHref, hideTitle 
               label="AI deflected"
               value={`${Math.round(data.summary.aiDeflectionRate * 100)}%`}
               sub={`${data.summary.aiOnlyResolved} of ${data.summary.total}`}
-              accent="#D4AF37"
+              accent="#9fb1c2"
             />
             <Kpi
               label="Human-touched"
@@ -126,7 +126,7 @@ export default function SupportMetrics({ tokenKey, userKey, backHref, hideTitle 
               label="Live queue"
               value={data.queueDepth.queue}
               sub={`${data.queueDepth.ai} AI · ${data.queueDepth.agent} agent active`}
-              accent="#F0B429"
+              accent="#a9b9c8"
             />
           </section>
 
@@ -141,7 +141,7 @@ export default function SupportMetrics({ tokenKey, userKey, backHref, hideTitle 
                   contentStyle={{ background: "#151820", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }}
                   labelStyle={{ color: "#E8EAF0" }}
                 />
-                <Line type="monotone" dataKey="total" name="Total" stroke="#D4AF37" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="total" name="Total" stroke="#9fb1c2" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="resolved" name="Resolved" stroke="#2ECC71" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="escalated" name="Escalated" stroke="#FF4757" strokeWidth={2} dot={false} />
               </LineChart>
@@ -162,7 +162,7 @@ export default function SupportMetrics({ tokenKey, userKey, backHref, hideTitle 
                   label="AI"
                   value={data.summary.messagesAITotal}
                   total={data.summary.messagesUserTotal + data.summary.messagesAITotal + data.summary.messagesAgentTotal}
-                  color="#D4AF37"
+                  color="#9fb1c2"
                 />
                 <RatioBar
                   label="Agent"
@@ -184,7 +184,7 @@ export default function SupportMetrics({ tokenKey, userKey, backHref, hideTitle 
                     <XAxis type="number" stroke="#8A8FA8" fontSize={11} allowDecimals={false} />
                     <YAxis type="category" dataKey="reason" stroke="#8A8FA8" fontSize={11} width={80} />
                     <Tooltip contentStyle={{ background: "#151820", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }} />
-                    <Bar dataKey="count" fill="#D4AF37" />
+                    <Bar dataKey="count" fill="#9fb1c2" />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -282,7 +282,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: "pointer",
   },
-  rangeTabActive: { background: "rgba(212, 175, 55, 0.15)", color: "#D4AF37", borderColor: "rgba(212, 175, 55, 0.4)" },
+  rangeTabActive: { background: "rgba(140, 160, 182, 0.15)", color: "#9fb1c2", borderColor: "rgba(140, 160, 182, 0.4)" },
   loading: { textAlign: "center", padding: 60, color: "#8A8FA8" },
   body: { display: "flex", flexDirection: "column", gap: 16 },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 },

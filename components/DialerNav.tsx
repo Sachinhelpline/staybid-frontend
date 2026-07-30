@@ -369,8 +369,8 @@ export function DialerNav() {
     <>
       <style jsx global>{`
         @keyframes dialerFabBreath {
-          0%, 100% { box-shadow: 0 8px 22px rgba(240,180,41,0.4), 0 0 0 0 rgba(240,180,41,0.5), inset 0 2px 0 rgba(255,255,255,0.5); }
-          50%      { box-shadow: 0 10px 28px rgba(240,180,41,0.55), 0 0 0 8px rgba(240,180,41,0), inset 0 2px 0 rgba(255,255,255,0.5); }
+          0%, 100% { box-shadow: 0 8px 22px rgba(140, 160, 182,0.4), 0 0 0 0 rgba(140, 160, 182,0.5), inset 0 2px 0 rgba(255,255,255,0.5); }
+          50%      { box-shadow: 0 10px 28px rgba(140, 160, 182,0.55), 0 0 0 8px rgba(140, 160, 182,0), inset 0 2px 0 rgba(255,255,255,0.5); }
         }
         @keyframes dialerFabPopIn {
           0%   { transform: scale(0.6); opacity: 0; }
@@ -390,11 +390,11 @@ export function DialerNav() {
           position: fixed;
           width: ${FAB_SIZE}px; height: ${FAB_SIZE}px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #f0d060 0%, #f0b429 55%, #c9911a 100%);
+          background: linear-gradient(135deg, #c6d0da 0%, #a9b9c8 55%, #8198ae 100%);
           color: #1a1208;
           display: flex; align-items: center; justify-content: center;
           font-size: 1.4rem; font-weight: 800;
-          border: 1px solid rgba(255,231,140,0.7);
+          border: 1px solid rgba(176, 192, 209,0.7);
           padding: 0; cursor: grab;
           outline: none;
           z-index: 60;
@@ -488,12 +488,12 @@ export function DialerNav() {
           width: 28px;
           height: 28px;
           display: flex; align-items: center; justify-content: center;
-          color: #fbd26a;
+          color: #cbd5de;
           font-size: 0.9rem;
           font-weight: 800;
           line-height: 1;
           pointer-events: none;
-          filter: drop-shadow(0 0 6px rgba(240,180,41,0.65));
+          filter: drop-shadow(0 0 6px rgba(140, 160, 182,0.65));
           transition: opacity 0.4s ease;
           z-index: 11;
         }
@@ -549,12 +549,12 @@ export function DialerNav() {
           /* Centre item keeps the gold pill so user knows it's selected.
              Still borderless — depth comes from gradient + glow halo,
              not from an outline ring. */
-          background: linear-gradient(135deg, rgba(255,225,140,0.98) 0%, rgba(240,180,41,0.98) 55%, rgba(201,145,26,0.98) 100%);
+          background: linear-gradient(135deg, rgba(176, 192, 209,0.98) 0%, rgba(140, 160, 182,0.98) 55%, rgba(106, 133, 160,0.98) 100%);
           color: #1a1208;
           text-shadow: none;
           box-shadow:
-            0 10px 28px rgba(240,180,41,0.55),
-            0 0 0 4px rgba(240,180,41,0.18),
+            0 10px 28px rgba(140, 160, 182,0.55),
+            0 0 0 4px rgba(140, 160, 182,0.18),
             inset 0 2px 0 rgba(255,255,255,0.55),
             inset 0 -2px 0 rgba(120,80,0,0.3);
         }
@@ -577,7 +577,7 @@ export function DialerNav() {
           background: linear-gradient(135deg, rgba(20,18,30,0.95), rgba(10,8,16,0.97));
           backdrop-filter: blur(16px) saturate(180%);
           -webkit-backdrop-filter: blur(16px) saturate(180%);
-          border: 1px solid rgba(240,180,41,0.5);
+          border: 1px solid rgba(140, 160, 182,0.5);
           border-radius: 999px;
           box-shadow: 0 10px 28px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
           display: flex; flex-direction: column; align-items: flex-start;
@@ -590,7 +590,7 @@ export function DialerNav() {
           font-size: 0.78rem;
           font-weight: 800;
           letter-spacing: 0.04em;
-          color: #fbd26a;
+          color: #cbd5de;
           line-height: 1;
         }
         .dialer-picker-label-use {

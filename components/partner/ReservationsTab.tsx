@@ -36,7 +36,7 @@ function statusOf(r: any): "upcoming" | "inhouse" | "departed" {
 const ST: Record<string, { label: string; bg: string; c: string }> = {
   upcoming: { label: "Upcoming", bg: "#dbeafe", c: "#1d4ed8" },
   inhouse:  { label: "In-house", bg: "#dcfce7", c: "#15803d" },
-  departed: { label: "Departed", bg: "#f1efe9", c: "#78716c" },
+  departed: { label: "Departed", bg: "#eceff3", c: "#78716c" },
 };
 
 export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; rooms: any[] }) {
@@ -119,7 +119,7 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
               className={`text-[0.74rem] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
                 active ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200 hover:border-luxury-400"
               }`}
-              style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)" } : undefined}>
+              style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {f.label}{f.n != null && <span className="ml-1 opacity-70">({f.n})</span>}
             </button>
           );

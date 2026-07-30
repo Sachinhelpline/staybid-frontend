@@ -122,24 +122,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Reel pages add `.is-reel-page` and re-blacken to #000 in their
             own rules. */}
         <style dangerouslySetInnerHTML={{__html: `
-          html,body{margin:0;padding:0;background:#FAF5EB;color:#1F1A0F;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+          html,body{margin:0;padding:0;background:#f4f6f8;color:#1F1A0F;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
           html[data-theme="dark"],html[data-theme="dark"] body{background:#0F0C08;color:#E8DCC8}
-          html.is-reel-page,html.is-reel-page body{background:#000;color:#f0eee2}
+          html.is-reel-page,html.is-reel-page body{background:#000;color:#eaeef2}
           body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
           /* v412 — Paint the TOP safe-area (status-bar / notch region) with the
              page background so an installed PWA's dark window background can
              never show as a black band above the content. Works in ANY display
              mode (standalone OR a stale fullscreen install) with no reinstall.
              On reel pages the rail/video own the top, so stay transparent there. */
-          #sb-safe-top-fill{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#FAF5EB;z-index:5;pointer-events:none}
+          #sb-safe-top-fill{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#f4f6f8;z-index:5;pointer-events:none}
           html[data-theme="dark"] #sb-safe-top-fill{background:#0F0C08}
-          html.is-reel-page #sb-safe-top-fill{background:#fff9ec}
+          html.is-reel-page #sb-safe-top-fill{background:#f8fafb}
           /* v413 — the /bid reverse-auction is a dark walnut game zone; paint the
              top safe-area walnut too (matching the #0d0a05 status bar) so no cream
              sliver shows above the dark climber. */
           body.sb-bid-immersive #sb-safe-top-fill{background:#0d0a05}
           .sb-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#07060e;z-index:0;pointer-events:none}
-          .sb-boot-spinner{width:38px;height:38px;border-radius:50%;border:2px solid rgba(240,180,41,0.18);border-top-color:#f0b429;animation:sbSpin .8s linear infinite}
+          .sb-boot-spinner{width:38px;height:38px;border-radius:50%;border:2px solid rgba(140, 160, 182,0.18);border-top-color:#a9b9c8;animation:sbSpin .8s linear infinite}
           @keyframes sbSpin{to{transform:rotate(360deg)}}
         `}} />
 
@@ -180,7 +180,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               // to the current theme background so there's no white flash.
               var meta=document.querySelector('meta[name="theme-color"]');
               if(!meta){meta=document.createElement('meta');meta.setAttribute('name','theme-color');document.head.appendChild(meta);}
-              meta.setAttribute('content',t==='dark'?'#0F0C08':'#FAF5EB');
+              meta.setAttribute('content',t==='dark'?'#0F0C08':'#f4f6f8');
 
               // Mark PWA mode so the reel pages can skip the body-lock dance
               if(window.matchMedia && (window.matchMedia('(display-mode:fullscreen)').matches || window.matchMedia('(display-mode:standalone)').matches)){
@@ -275,7 +275,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v600</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v604</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -296,7 +296,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v600-satin-rest-degreen-whatsapp";
+var SB_BUILD="v604-satin-pass2-chips-depth";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete

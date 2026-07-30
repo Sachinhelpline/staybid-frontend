@@ -20,7 +20,7 @@ export default function FlashDealsLoading() {
           animation:sbNavSkel 1.35s ease-in-out infinite;
         }
         html[data-theme="dark"] .sb-nav-skel-bar{
-          background:linear-gradient(90deg, rgba(217,190,130,0.06) 25%, rgba(217,190,130,0.13) 50%, rgba(217,190,130,0.06) 75%);
+          background:linear-gradient(90deg, rgba(176, 192, 209,0.06) 25%, rgba(176, 192, 209,0.13) 50%, rgba(176, 192, 209,0.06) 75%);
           background-size:200% 100%;
         }
         @keyframes sbNavSkel{0%{background-position:200% 0}100%{background-position:-200% 0}}

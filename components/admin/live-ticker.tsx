@@ -102,7 +102,7 @@ export function LiveCountdown({
   else if (h > 0) display = `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   else display = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 
-  const color = expired ? "#8A8FA8" : totalSec < 60 ? "#FF4757" : totalSec < 300 ? "#F0D060" : "#2ECC71";
+  const color = expired ? "#8A8FA8" : totalSec < 60 ? "#FF4757" : totalSec < 300 ? "#c6d0da" : "#2ECC71";
   const dim = size === "md" ? { font: 12, pad: "4px 9px" } : { font: 10.5, pad: "2px 7px" };
 
   return (

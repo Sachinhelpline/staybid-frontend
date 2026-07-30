@@ -163,8 +163,8 @@ export default function Home() {
             50%     { transform: scale(1.06); }
           }
           @keyframes cfGlow {
-            0%,100% { box-shadow: 0 30px 80px -10px rgba(240,180,41,0.30), 0 0 0 1px rgba(240,180,41,0.18); }
-            50%     { box-shadow: 0 36px 90px -10px rgba(240,180,41,0.55), 0 0 0 1px rgba(240,180,41,0.40); }
+            0%,100% { box-shadow: 0 30px 80px -10px rgba(140, 160, 182,0.30), 0 0 0 1px rgba(140, 160, 182,0.18); }
+            50%     { box-shadow: 0 36px 90px -10px rgba(140, 160, 182,0.55), 0 0 0 1px rgba(140, 160, 182,0.40); }
           }
           .cf-img-pulse { animation: cfZoom 6s ease-in-out infinite; will-change: transform; }
           .cf-card-glow { animation: cfGlow 3.2s ease-in-out infinite; }
@@ -376,9 +376,9 @@ export default function Home() {
       {/* ═══ HERO — Name Your Price ═══ */}
       <section className="relative overflow-hidden border-t border-white/5">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(240,180,41,0.08) 0%, transparent 70%)" }} />
+          style={{ background: "radial-gradient(circle, rgba(140, 160, 182,0.08) 0%, transparent 70%)" }} />
         <div className="absolute -bottom-60 -left-32 w-[500px] h-[500px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(201,145,26,0.06) 0%, transparent 70%)" }} />
+          style={{ background: "radial-gradient(circle, rgba(106, 133, 160,0.06) 0%, transparent 70%)" }} />
 
         <div className="relative max-w-7xl mx-auto px-5 pt-14 pb-10 w-full">
           <div className="flex items-center gap-3 mb-5">
@@ -418,7 +418,7 @@ export default function Home() {
       </section>
 
       {/* ═══ HOTELS IN SELECTED LOCATION ═══ */}
-      <section className="py-14" style={{ background: "linear-gradient(180deg,#0a0812 0%,#13101f 50%,#f4f2ec 100%)" }}>
+      <section className="py-14" style={{ background: "linear-gradient(180deg,#0a0812 0%,#13101f 50%,#f0f2f5 100%)" }}>
         <div className="max-w-7xl mx-auto px-5">
           <div className="flex items-end justify-between mb-7">
             <div>
@@ -538,8 +538,8 @@ function HiTechStats({ hotelCounter, cityCounter, savingCounter }: { hotelCounte
       <style>{`
         @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 40px 40px; } }
         @keyframes ringSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes numberGlow { 0%,100% { text-shadow: 0 0 20px rgba(240,180,41,0.4), 0 0 40px rgba(240,180,41,0.2); } 50% { text-shadow: 0 0 30px rgba(240,180,41,0.7), 0 0 60px rgba(240,180,41,0.35); } }
-        .hitech-grid { background-image: linear-gradient(rgba(240,180,41,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(240,180,41,0.08) 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 20s linear infinite; }
+        @keyframes numberGlow { 0%,100% { text-shadow: 0 0 20px rgba(140, 160, 182,0.4), 0 0 40px rgba(140, 160, 182,0.2); } 50% { text-shadow: 0 0 30px rgba(140, 160, 182,0.7), 0 0 60px rgba(140, 160, 182,0.35); } }
+        .hitech-grid { background-image: linear-gradient(rgba(140, 160, 182,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(140, 160, 182,0.08) 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 20s linear infinite; }
         .hitech-ring { animation: ringSpin 12s linear infinite; }
         .hitech-number { animation: numberGlow 3s ease-in-out infinite; }
       `}</style>

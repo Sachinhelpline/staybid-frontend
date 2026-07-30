@@ -207,8 +207,8 @@ export default function CircleOnboardPage() {
           margin: 0 auto;
         }
         .sbc-onb-card {
-          background: var(--bg-card, #fffcf6);
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          background: var(--bg-card, #fcfcfd);
+          border: 1px solid var(--border-soft, rgba(106, 133, 160, 0.18));
           border-radius: 18px;
           padding: 20px;
           box-shadow: var(--shadow-card, 0 6px 24px rgba(120, 90, 30, 0.08));
@@ -257,7 +257,7 @@ export default function CircleOnboardPage() {
           align-items: center;
           background: transparent;
           color: var(--text-soft, #4a3820);
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.2));
+          border: 1px solid var(--border-soft, rgba(106, 133, 160, 0.2));
           border-radius: 12px;
           padding: 12px 18px;
           font-size: 13px;
@@ -279,8 +279,8 @@ export default function CircleOnboardPage() {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          background: var(--bg-card, #fffcf6);
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.16));
+          background: var(--bg-card, #fcfcfd);
+          border: 1px solid var(--border-soft, rgba(106, 133, 160, 0.16));
           border-radius: 14px;
           padding: 12px 14px;
         }

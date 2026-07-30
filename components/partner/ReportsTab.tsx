@@ -34,7 +34,7 @@ type Range = "7" | "30" | "90" | "month";
 const SRC: Record<string, { label: string; c: string }> = {
   direct:       { label: "Direct",     c: "#0284c7" },
   creator:      { label: "Creator",    c: "#9333ea" },
-  "hotel-feed": { label: "Your reel",  c: "#c9911a" },
+  "hotel-feed": { label: "Your reel",  c: "#8198ae" },
   flash:        { label: "Flash deal", c: "#dc2626" },
   walkin:       { label: "Walk-in",    c: "#7c2d12" },
 };
@@ -169,7 +169,7 @@ export default function ReportsTab({
 
   const maxBar = Math.max(1, ...m.buckets.map((b) => b.rev));
   const KPIS = [
-    { label: "Revenue",     value: fmtCur(m.revenue),               c: "#a16207", bg: "#fefce8" },
+    { label: "Revenue",     value: fmtCur(m.revenue),               c: "#a16207", bg: "#fafbfc" },
     { label: "Bookings",    value: String(m.bookings),              c: "#0d9488", bg: "#ccfbf1" },
     { label: "Room-nights", value: String(m.roomNights),            c: "#2563eb", bg: "#dbeafe" },
     { label: "ADR",         value: fmtCur(m.adr),                   c: "#7c3aed", bg: "#f3e8ff" },
@@ -189,7 +189,7 @@ export default function ReportsTab({
               className={`text-[0.72rem] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
                 range === id ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200 hover:border-luxury-400"
               }`}
-              style={range === id ? { background: "linear-gradient(135deg,#c9911a,#f0b429)" } : undefined}>
+              style={range === id ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {lbl}
             </button>
           ))}
@@ -219,7 +219,7 @@ export default function ReportsTab({
                 <div className="text-[0.5rem] font-bold text-luxury-500 opacity-0 group-hover:opacity-100 transition mb-0.5 whitespace-nowrap">{fmtK(b.rev)}</div>
                 <div className="w-full rounded-t" style={{
                   height: `${Math.max(2, (b.rev / maxBar) * 100)}%`,
-                  background: "linear-gradient(180deg,#f0b429,#c9911a)",
+                  background: "linear-gradient(180deg,#a9b9c8,#8198ae)",
                 }} />
                 <div className="text-[0.46rem] text-luxury-400 mt-1 truncate w-full text-center">{b.label}</div>
               </div>

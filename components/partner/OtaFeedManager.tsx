@@ -197,7 +197,7 @@ export default function OtaFeedManager({
           const paused = f.autoSync === false;
           const errored = f.lastSyncStatus === "error";
           const acting = busy === f.id;
-          const dot = paused ? "#a1a1aa" : errored ? "#ef4444" : f.lastSyncAt ? "#22c55e" : "#eab308";
+          const dot = paused ? "#a1a1aa" : errored ? "#ef4444" : f.lastSyncAt ? "#22c55e" : "#a4b5c5";
           return (
             <div key={f.id} className="p-3 rounded-xl bg-luxury-50 border border-luxury-200">
               <div className="flex items-start justify-between flex-wrap gap-2">

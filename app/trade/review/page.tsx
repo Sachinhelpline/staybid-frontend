@@ -86,7 +86,7 @@ export default function TradeReviewPage() {
       <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => router.push("/trade")} className="text-lg">‹</button>
-          <div className="font-extrabold" style={{ color: "#ffd98a" }}>Your bid bundle</div>
+          <div className="font-extrabold" style={{ color: "#d5dce4" }}>Your bid bundle</div>
         </div>
       </div>
 
@@ -121,10 +121,10 @@ export default function TradeReviewPage() {
             {msg && <div className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div>}
 
             {msg?.ok ? (
-              <button onClick={() => router.push("/trade/my-bids")} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>View My Bids →</button>
+              <button onClick={() => router.push("/trade/my-bids")} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>View My Bids →</button>
             ) : (
               <button onClick={pay} disabled={paying || auth.status !== "approved"}
-                className="w-full py-3 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+                className="w-full py-3 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                 {paying ? "Processing…" : `Pay EMD ${inr(depositTotal)}`}
               </button>
             )}

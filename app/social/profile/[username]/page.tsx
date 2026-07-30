@@ -122,7 +122,7 @@ export default function SocialProfilePage() {
             {t === "reels" ? "▶ Reels" : t === "photos" ? "📷 Photos" : "📖 Stories"}
             {tab === t && (
               <span className="absolute left-1/4 right-1/4 bottom-0 h-[2px]"
-                style={{ background: "linear-gradient(90deg,#ffd76b,#ff458d,#b964ff)" }} />
+                style={{ background: "linear-gradient(90deg,#d0d9e1,#ff458d,#b964ff)" }} />
             )}
           </button>
         ))}

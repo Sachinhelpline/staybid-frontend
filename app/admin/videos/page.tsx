@@ -46,7 +46,7 @@ export default function AdminVideosPage() {
   return (
     <div style={{ padding: "24px", color: "#E8EAF0", fontFamily: "DM Sans, sans-serif" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
-        <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, fontWeight: 700, color: "#D4AF37", margin: 0 }}>
+        <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, fontWeight: 700, color: "#9fb1c2", margin: 0 }}>
           Hotel Video Queue
         </h1>
         <span style={{ fontSize: 12, color: "#8A8FA8" }}>
@@ -59,9 +59,9 @@ export default function AdminVideosPage() {
           <button key={t} onClick={() => setTab(t)}
             style={{
               padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer",
-              background: tab === t ? "rgba(212,175,55,0.15)" : "#151820",
-              color: tab === t ? "#D4AF37" : "#8A8FA8",
-              border: tab === t ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.07)",
+              background: tab === t ? "rgba(140, 160, 182,0.15)" : "#151820",
+              color: tab === t ? "#9fb1c2" : "#8A8FA8",
+              border: tab === t ? "1px solid #9fb1c2" : "1px solid rgba(255,255,255,0.07)",
               textTransform: "capitalize",
             }}>
             {t}
@@ -93,8 +93,8 @@ export default function AdminVideosPage() {
                 )}
                 <span style={{
                   position: "absolute", top: 8, right: 8, padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em",
-                  background: v.verification_status === "approved" ? "rgba(46,204,113,0.2)" : v.verification_status === "rejected" ? "rgba(255,71,87,0.2)" : "rgba(212,175,55,0.2)",
-                  color:      v.verification_status === "approved" ? "#2ECC71" : v.verification_status === "rejected" ? "#FF4757" : "#D4AF37",
+                  background: v.verification_status === "approved" ? "rgba(46,204,113,0.2)" : v.verification_status === "rejected" ? "rgba(255,71,87,0.2)" : "rgba(140, 160, 182,0.2)",
+                  color:      v.verification_status === "approved" ? "#2ECC71" : v.verification_status === "rejected" ? "#FF4757" : "#9fb1c2",
                 }}>{v.verification_status}</span>
                 {v.duration_seconds && (
                   <span style={{ position: "absolute", bottom: 8, right: 8, padding: "2px 6px", borderRadius: 4, fontSize: 11, background: "rgba(0,0,0,0.7)", color: "#fff" }}>
@@ -159,7 +159,7 @@ export default function AdminVideosPage() {
                       Reject
                     </button>
                     <button onClick={() => approve(selected.id)} disabled={busy}
-                      style={{ padding: "10px 18px", borderRadius: 8, background: "#D4AF37", color: "#0F1117", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                      style={{ padding: "10px 18px", borderRadius: 8, background: "#9fb1c2", color: "#0F1117", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                       Approve
                     </button>
                   </div>

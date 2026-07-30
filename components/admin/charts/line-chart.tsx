@@ -45,9 +45,9 @@ function CustomTooltip({ active, payload, label, prefix }: any) {
   return null;
 }
 
-export default function AdminLineChart({ data, color = "#D4AF37", height = 200, prefix }: LineChartProps) {
+export default function AdminLineChart({ data, color = "#9fb1c2", height = 200, prefix }: LineChartProps) {
   const chartData = data.map((d) => ({ name: d.label, value: d.value }));
-  const safeColor = (color || "#D4AF37").replace(/[^a-z0-9]/gi, "");
+  const safeColor = (color || "#9fb1c2").replace(/[^a-z0-9]/gi, "");
   const gradId = `lc-area-${safeColor}`;
   // v103 — key derived from a small fingerprint of the data forces a remount
   // when values change, so recharts replays the entry animation rather than

@@ -164,7 +164,7 @@ export default function AdminPricing() {
           <button onClick={runPricingCronNow} disabled={cronBusy}
             style={{
               marginLeft: "auto",
-              background: "linear-gradient(135deg,#D4AF37,#F0D060)",
+              background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)",
               color: "#1a1205", border: "none",
               padding: "7px 14px", borderRadius: 8,
               fontSize: 12, fontWeight: 700, cursor: cronBusy ? "wait" : "pointer",
@@ -179,7 +179,7 @@ export default function AdminPricing() {
             marginLeft: tab === "status" ? 8 : "auto",
             fontSize: 12, color: C.gold, fontWeight: 600,
             padding: "5px 12px", borderRadius: 999,
-            background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.35)",
+            background: "rgba(140, 160, 182,0.12)", border: "1px solid rgba(140, 160, 182,0.35)",
           }}>{cronToast}</span>
         )}
         {tab === "flash" && (
@@ -255,7 +255,7 @@ export default function AdminPricing() {
             <div style={{ gridColumn: "1 / -1" }}>
               <div style={{ color: C.textDim, fontSize: 11, lineHeight: 1.5 }}>
                 Room prices recalculate every 60 seconds via /api/cron/pricing. Flash deals run on the same cron — if "Last flash recalc" shows Never, trigger
-                <code style={{ background: "rgba(212,175,55,0.1)", padding: "1px 6px", borderRadius: 4, marginLeft: 4, color: C.gold }}>/api/cron/pricing?token=staybid-cron-dev</code>
+                <code style={{ background: "rgba(140, 160, 182,0.1)", padding: "1px 6px", borderRadius: 4, marginLeft: 4, color: C.gold }}>/api/cron/pricing?token=staybid-cron-dev</code>
                 manually. Use the Overrides tab to lock specific rooms.
               </div>
             </div>
@@ -326,9 +326,9 @@ function Lbl({ children }: { children: any }) {
 }
 
 const smallBtn = {
-  background: "rgba(212,175,55,0.1)",
+  background: "rgba(140, 160, 182,0.1)",
   color: C.gold,
-  border: `1px solid rgba(212,175,55,0.3)`,
+  border: `1px solid rgba(140, 160, 182,0.3)`,
   padding: "5px 12px",
   borderRadius: 8,
   cursor: "pointer",

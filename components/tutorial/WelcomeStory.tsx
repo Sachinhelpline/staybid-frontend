@@ -192,7 +192,7 @@ export function WelcomeStory() {
           maxHeight: "calc(100dvh - 32px)",
           borderRadius: 28,
           overflow: "hidden",
-          background: "linear-gradient(160deg, #FFFCF6 0%, #FAF5EB 55%, #F2EAD8 100%)",
+          background: "linear-gradient(160deg, #fcfcfd 0%, #f4f6f8 55%, #e7ebef 100%)",
           boxShadow: "0 30px 80px -20px rgba(31, 26, 15, 0.55), 0 0 0 1px rgba(201, 166, 107, 0.22)",
           isolation: "isolate",
           cursor: "pointer",
@@ -227,7 +227,7 @@ export function WelcomeStory() {
                 style={{
                   height: "100%",
                   width: i < idx ? "100%" : i === idx ? "100%" : "0%",
-                  background: "linear-gradient(90deg, #C9A66B, #D9BE82)",
+                  background: "linear-gradient(90deg, #C9A66B, #b4c1cf)",
                   transition: "width 0.4s ease",
                 }}
               />
@@ -385,7 +385,7 @@ export function WelcomeStory() {
               cursor: "pointer",
               padding: "12px 24px",
               borderRadius: 999,
-              background: "linear-gradient(135deg, #E7CFA0, #D9BE82, #C9A66B)",
+              background: "linear-gradient(135deg, #c8d2dc, #b4c1cf, #C9A66B)",
               color: "#1F1A0F",
               fontSize: "0.95rem",
               fontWeight: 700,

@@ -537,7 +537,7 @@ export default function SupportWidget() {
           /* 3D base: radial highlight + linear undercoat */
           background:
             radial-gradient(circle at 30% 25%, rgba(255,255,255,0.55), rgba(255,255,255,0) 55%),
-            linear-gradient(155deg, #E7CFA0 0%, #C9A66B 45%, #8B6914 100%);
+            linear-gradient(155deg, #c8d2dc 0%, #C9A66B 45%, #8B6914 100%);
           color: #fff;
           cursor: pointer;
           display: flex;
@@ -550,7 +550,7 @@ export default function SupportWidget() {
             0 10px 22px -6px rgba(31, 26, 15, 0.45),
             0 4px 8px -2px rgba(31, 26, 15, 0.28),
             /* Outer rim ring */
-            0 0 0 1px rgba(184, 134, 11, 0.32),
+            0 0 0 1px rgba(106, 133, 160, 0.32),
             /* Inner top highlight */
             inset 0 1px 0 rgba(255, 255, 255, 0.55),
             /* Inner bottom shadow */
@@ -566,7 +566,7 @@ export default function SupportWidget() {
           position: absolute;
           inset: -3px;
           border-radius: 50%;
-          border: 2px solid rgba(212, 175, 55, 0.55);
+          border: 2px solid rgba(140, 160, 182, 0.55);
           opacity: 0;
           animation: sbFabPulse 2.4s ease-out infinite;
           pointer-events: none;
@@ -607,7 +607,7 @@ export default function SupportWidget() {
           box-shadow:
             0 14px 30px -6px rgba(31, 26, 15, 0.55),
             0 6px 12px -2px rgba(31, 26, 15, 0.35),
-            0 0 0 1px rgba(184, 134, 11, 0.45),
+            0 0 0 1px rgba(106, 133, 160, 0.45),
             inset 0 1px 0 rgba(255, 255, 255, 0.65),
             inset 0 -2px 4px rgba(31, 26, 15, 0.25);
           animation-play-state: paused;
@@ -628,7 +628,7 @@ export default function SupportWidget() {
           background: linear-gradient(140deg, #FF6B7A, #D49583);
           color: #fff;
           border-radius: 999px;
-          border: 1.5px solid #FFFCF6;
+          border: 1.5px solid #fcfcfd;
           font-size: 9.5px;
           font-weight: 800;
           display: flex;
@@ -684,7 +684,7 @@ export default function SupportWidget() {
           bottom: calc(160px + env(safe-area-inset-bottom, 0px));
           width: min(420px, calc(100vw - 24px));
           height: min(680px, calc(100vh - 220px));
-          background: #FFFCF6;
+          background: #fcfcfd;
           border-radius: 22px;
           border: 1px solid rgba(201, 166, 107, 0.28);
           box-shadow:
@@ -742,8 +742,8 @@ export default function SupportWidget() {
           align-items: center;
           justify-content: space-between;
           gap: 10px;
-          background: linear-gradient(180deg, #FFFCF6 0%, #FAF5EB 100%);
-          border-bottom: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          background: linear-gradient(180deg, #fcfcfd 0%, #f4f6f8 100%);
+          border-bottom: 1px solid var(--border-soft, rgba(106, 133, 160, 0.18));
           position: relative;
         }
         .sb-support-header::after {
@@ -774,7 +774,7 @@ export default function SupportWidget() {
           height: 38px;
           flex: 0 0 auto;
           border-radius: 50%;
-          background: linear-gradient(140deg, #E7CFA0, #C9A66B 60%, #8B6914);
+          background: linear-gradient(140deg, #c8d2dc, #C9A66B 60%, #8B6914);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -793,7 +793,7 @@ export default function SupportWidget() {
           height: 11px;
           border-radius: 50%;
           background: #7F9269;
-          border: 2px solid #FFFCF6;
+          border: 2px solid #fcfcfd;
           box-shadow: 0 0 0 0 rgba(127, 146, 105, 0.4);
           animation: sbSupportAvatarPulse 2s ease-in-out infinite;
         }
@@ -858,8 +858,8 @@ export default function SupportWidget() {
           position: absolute;
           top: calc(100% + 6px);
           right: 0;
-          background: #FFFCF6;
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          background: #fcfcfd;
+          border: 1px solid var(--border-soft, rgba(106, 133, 160, 0.18));
           border-radius: 10px;
           box-shadow: 0 12px 32px -6px rgba(31, 26, 15, 0.25);
           padding: 4px;
@@ -1022,7 +1022,7 @@ function SubjectPicker({
           flex-direction: column;
           align-items: flex-start;
           gap: 4px;
-          background: linear-gradient(160deg, #FFFCF6 0%, #F8EFDA 100%);
+          background: linear-gradient(160deg, #fcfcfd 0%, #edf0f3 100%);
           border: 1px solid rgba(201, 166, 107, 0.32);
           border-radius: 14px;
           padding: 14px 14px 12px;
@@ -1176,8 +1176,8 @@ function ConversationList({
         }
         .sb-support-list-item {
           text-align: left;
-          background: var(--bg-elevated, #F2EAD8);
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.12));
+          background: var(--bg-elevated, #e7ebef);
+          border: 1px solid var(--border-soft, rgba(106, 133, 160, 0.12));
           border-radius: 10px;
           padding: 10px;
           cursor: pointer;
@@ -1201,7 +1201,7 @@ function ConversationList({
           text-transform: uppercase;
           letter-spacing: 0.04em;
         }
-        .sb-support-list-status-ai_active { background: #fff3d4; color: #8b6914; }
+        .sb-support-list-status-ai_active { background: #f1f4f6; color: #8b6914; }
         .sb-support-list-status-escalated { background: #fde2d6; color: #a45034; }
         .sb-support-list-status-agent_active { background: #d8ecd1; color: #4a6f4a; }
         .sb-support-list-status-resolved,
@@ -1750,8 +1750,8 @@ function ChatView({
           padding: 8px 12px;
           font-size: 11px;
           color: var(--text-muted, #6E5430);
-          background: var(--bg-elevated, #F2EAD8);
-          border-bottom: 1px solid var(--border-soft, rgba(184, 134, 11, 0.12));
+          background: var(--bg-elevated, #e7ebef);
+          border-bottom: 1px solid var(--border-soft, rgba(106, 133, 160, 0.12));
           display: flex;
           align-items: center;
           gap: 8px;
@@ -1788,7 +1788,7 @@ function ChatView({
           display: flex;
           flex-direction: column;
           gap: 8px;
-          background: var(--bg-page, #FAF5EB);
+          background: var(--bg-page, #f4f6f8);
         }
         .sb-support-msg { display: flex; }
         .sb-support-msg-user { justify-content: flex-end; }
@@ -1811,7 +1811,7 @@ function ChatView({
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .sb-support-bubble-user {
-          background: linear-gradient(140deg, #D9BE82, #C9A66B 55%, #8B6914);
+          background: linear-gradient(140deg, #b4c1cf, #C9A66B 55%, #8B6914);
           color: #fff;
           border-bottom-right-radius: 6px;
           text-shadow: 0 1px 0 rgba(0,0,0,0.05);
@@ -1819,7 +1819,7 @@ function ChatView({
         .sb-support-bubble-ai {
           background: #fff;
           color: var(--text-base, #1F1A0F);
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          border: 1px solid var(--border-soft, rgba(106, 133, 160, 0.18));
           border-bottom-left-radius: 6px;
         }
         .sb-support-bubble-agent {
@@ -1869,8 +1869,8 @@ function ChatView({
           display: flex;
           gap: 8px;
           padding: 12px 14px;
-          background: linear-gradient(180deg, #FFFCF6 0%, #FAF5EB 100%);
-          border-top: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          background: linear-gradient(180deg, #fcfcfd 0%, #f4f6f8 100%);
+          border-top: 1px solid var(--border-soft, rgba(106, 133, 160, 0.18));
           align-items: center;
         }
         .sb-support-chat-input input {
@@ -1878,7 +1878,7 @@ function ChatView({
           min-width: 0;
           padding: 11px 14px;
           border-radius: 24px;
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.22));
+          border: 1px solid var(--border-soft, rgba(106, 133, 160, 0.22));
           font-size: 14px;
           background: #fff;
           color: var(--text-base, #1F1A0F);
@@ -1898,7 +1898,7 @@ function ChatView({
           height: 42px;
           border-radius: 50%;
           border: none;
-          background: linear-gradient(140deg, #D9BE82, #C9A66B 55%, #8B6914);
+          background: linear-gradient(140deg, #b4c1cf, #C9A66B 55%, #8B6914);
           color: #fff;
           font-weight: 700;
           font-size: 14px;

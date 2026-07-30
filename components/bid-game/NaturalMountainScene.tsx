@@ -144,7 +144,7 @@ export default function NaturalMountainScene({ step, totalSteps, active }: Props
           <path
             d={trailPath}
             fill="none"
-            stroke="rgba(255, 245, 215, 0.20)"
+            stroke="rgba(176, 192, 209, 0.20)"
             strokeWidth="1.6"
             strokeLinecap="round"
             strokeDasharray="2 1.6"
@@ -153,14 +153,14 @@ export default function NaturalMountainScene({ step, totalSteps, active }: Props
           <path
             d={trailPath}
             fill="none"
-            stroke="#FFF5D7"
+            stroke="#f3f5f7"
             strokeWidth="0.75"
             strokeLinecap="round"
             strokeDasharray={trailLen}
             strokeDashoffset={trailLen * (1 - drawn)}
             style={{
               transition: "stroke-dashoffset 1.1s cubic-bezier(0.22, 0.9, 0.3, 1)",
-              filter: "drop-shadow(0 0 3px rgba(255,245,215,0.6))",
+              filter: "drop-shadow(0 0 3px rgba(176, 192, 209,0.6))",
             }}
           />
           {/* Step markers along the trail */}
@@ -176,12 +176,12 @@ export default function NaturalMountainScene({ step, totalSteps, active }: Props
                 cx={sx}
                 cy={sy}
                 r={i === step ? 1.6 : 1.0}
-                fill={reached ? "#FFFCEC" : "rgba(255, 252, 236, 0.32)"}
-                stroke={i === step ? "#FFF5D7" : "transparent"}
+                fill={reached ? "#fbfcfc" : "rgba(176, 192, 209, 0.32)"}
+                stroke={i === step ? "#f3f5f7" : "transparent"}
                 strokeWidth={0.4}
                 className={i === step ? "nms-climber-active" : ""}
                 style={{
-                  filter: reached ? "drop-shadow(0 0 2px rgba(255,245,215,0.85))" : "none",
+                  filter: reached ? "drop-shadow(0 0 2px rgba(176, 192, 209,0.85))" : "none",
                 }}
               />
             );

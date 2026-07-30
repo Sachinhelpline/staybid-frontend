@@ -14,7 +14,7 @@ interface PieChartProps {
   donut?: boolean;
 }
 
-const COLORS = ["#2ECC71", "#FF4757", "#D4AF37", "#3D9CF5", "#A855F7"];
+const COLORS = ["#2ECC71", "#FF4757", "#9fb1c2", "#3D9CF5", "#A855F7"];
 
 function renderActiveShape(props: any) {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent } = props;

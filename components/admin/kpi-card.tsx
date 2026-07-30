@@ -29,7 +29,7 @@ export default function KpiCard({
   title,
   value,
   sub,
-  color = "#D4AF37",
+  color = "#9fb1c2",
   icon,
   trend,
   sparkline,

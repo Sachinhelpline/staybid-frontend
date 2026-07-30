@@ -18,7 +18,7 @@ const LEVELS = [
   },
   {
     name: "Gold", icon: "🥇", min: 10000, max: 49999,
-    gradient: "linear-gradient(135deg,#c9911a,#f0b429,#c9911a)",
+    gradient: "linear-gradient(135deg,#8198ae,#a9b9c8,#8198ae)",
     ring: "ring-gold-400", text: "text-gold-600", bg: "bg-gold-50", border: "border-gold-200",
     pointsRate: 7,
     perks: ["7 StayPoints per ₹100 spent", "Priority bid processing", "Exclusive Gold member deals", "Early Flash Deal access"],
@@ -118,7 +118,7 @@ export default function ProfilePage() {
         html .lux-bg .pf-hero .text-white\\/30 { color:rgba(255,255,255,0.3) !important; }
         html .lux-bg .pf-hero .border-white\\/10 { border-color:rgba(255,255,255,0.1) !important; }
         html .lux-bg .pf-hero .bg-white\\/10 { background-color:rgba(255,255,255,0.1) !important; }
-        html .lux-bg .pf-hero .text-gold-400 { color:#f0b429 !important; }
+        html .lux-bg .pf-hero .text-gold-400 { color:#a9b9c8 !important; }
         html .lux-bg .pf-hero .text-purple-300 { color:#c4b5fd !important; }
       `}</style>
 

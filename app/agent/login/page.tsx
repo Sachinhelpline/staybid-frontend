@@ -207,7 +207,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "Syne, sans-serif",
     fontWeight: 700,
     fontSize: 24,
-    color: "#D4AF37",
+    color: "#9fb1c2",
   },
   subtitle: { color: "#8A8FA8", fontSize: 14, marginTop: 6 },
   label: {
@@ -257,7 +257,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   primaryBtn: {
     width: "100%",
-    background: "#D4AF37",
+    background: "#9fb1c2",
     color: "#0F1117",
     border: "none",
     padding: "14px",
@@ -279,7 +279,7 @@ const styles: Record<string, React.CSSProperties> = {
   linkBtn: {
     width: "100%",
     background: "transparent",
-    color: "#D4AF37",
+    color: "#9fb1c2",
     border: "none",
     padding: 10,
     fontSize: 13,
@@ -287,9 +287,9 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 10,
   },
   note: {
-    background: "rgba(212, 175, 55, 0.08)",
-    border: "1px solid rgba(212, 175, 55, 0.25)",
-    color: "#D4AF37",
+    background: "rgba(140, 160, 182, 0.08)",
+    border: "1px solid rgba(140, 160, 182, 0.25)",
+    color: "#9fb1c2",
     fontSize: 12,
     padding: 10,
     borderRadius: 8,

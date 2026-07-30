@@ -160,12 +160,12 @@ export default function VerificationPage() {
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-2"
                    style={{ background: "rgba(201,166,107,0.16)", border: "1px solid rgba(201,166,107,0.3)" }}>
                 <span className="sb-pulse-dot" style={{ background: "#C9A66B" }} />
-                <span className="text-[0.62rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#E7CFA0" }}>Stay Verification</span>
+                <span className="text-[0.62rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#c8d2dc" }}>Stay Verification</span>
               </div>
-              <h1 className="font-display text-[1.7rem] sm:text-3xl leading-tight" style={{ color: "#FAF5EB" }}>
+              <h1 className="font-display text-[1.7rem] sm:text-3xl leading-tight" style={{ color: "#f4f6f8" }}>
                 Room proofs &amp; complaints
               </h1>
-              <p className="text-sm mt-1" style={{ color: "rgba(250,245,235,0.62)" }}>
+              <p className="text-sm mt-1" style={{ color: "rgba(176, 192, 209,0.62)" }}>
                 Hotels record what they promised. AI scores it. You stay protected.
               </p>
             </div>
@@ -173,7 +173,7 @@ export default function VerificationPage() {
               onClick={() => loadAll(true)}
               disabled={refreshing}
               className="shrink-0 text-xs px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
-              style={{ background: "rgba(255,255,255,0.08)", color: "#E7CFA0", border: "1px solid rgba(201,166,107,0.28)" }}
+              style={{ background: "rgba(255,255,255,0.08)", color: "#c8d2dc", border: "1px solid rgba(201,166,107,0.28)" }}
               aria-label="Refresh">
               {refreshing ? "Refreshing…" : "↻ Refresh"}
             </button>
@@ -183,8 +183,8 @@ export default function VerificationPage() {
           <div className="relative grid grid-cols-4 gap-2 mt-5">
             {[
               { label: "Verified", value: summary.verified, c: "#9DB07F" },
-              { label: "In progress", value: summary.pending, c: "#E7CFA0" },
-              { label: "Awaiting", value: summary.awaiting, c: "#D9C7A0" },
+              { label: "In progress", value: summary.pending, c: "#c8d2dc" },
+              { label: "Awaiting", value: summary.awaiting, c: "#becad5" },
               { label: "Avg trust", value: summary.avg, suffix: summary.scored ? "" : "", c: "#C9A66B", isScore: true },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl px-3 py-2.5 text-center"
@@ -192,17 +192,17 @@ export default function VerificationPage() {
                 <div className="text-xl font-bold" style={{ color: s.c, fontVariantNumeric: "tabular-nums" }}>
                   <CountUp value={s.value} duration={900} />{s.isScore && summary.scored ? <span className="text-[0.65rem] opacity-70">/100</span> : null}
                 </div>
-                <div className="text-[0.6rem] uppercase tracking-wider mt-0.5" style={{ color: "rgba(250,245,235,0.5)" }}>{s.label}</div>
+                <div className="text-[0.6rem] uppercase tracking-wider mt-0.5" style={{ color: "rgba(176, 192, 209,0.5)" }}>{s.label}</div>
               </div>
             ))}
           </div>
 
           <div className="relative mt-4 flex items-center justify-between">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${TIER_BADGE[tier]}`}>
-              <span className="sb-pulse-dot is-warn" style={{ background: tier === "platinum" ? "#A855F7" : tier === "gold" ? "#c9911a" : "#94a3b8" }} />
+              <span className="sb-pulse-dot is-warn" style={{ background: tier === "platinum" ? "#A855F7" : tier === "gold" ? "#8198ae" : "#94a3b8" }} />
               {tier} member
             </span>
-            <Link href="/trust" className="text-[0.68rem]" style={{ color: "rgba(231,207,160,0.8)" }}>How it works →</Link>
+            <Link href="/trust" className="text-[0.68rem]" style={{ color: "rgba(176, 192, 209,0.8)" }}>How it works →</Link>
           </div>
         </div>
 
@@ -341,7 +341,7 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, p
       </div>
       {report ? (
         <div className="verif-report rounded-2xl p-4 border border-luxury-100"
-             style={{ background: "linear-gradient(135deg, var(--cozy-cream-50,#FFFCF6), var(--cozy-cream-200,#F2EAD8))" }}>
+             style={{ background: "linear-gradient(135deg, var(--cozy-cream-50,#fcfcfd), var(--cozy-cream-200,#e7ebef))" }}>
           <div className="flex items-center gap-4">
             <TrustRing score={report.trust_score ?? 0} size={92} tone="light" />
             <div className="min-w-0 flex-1">

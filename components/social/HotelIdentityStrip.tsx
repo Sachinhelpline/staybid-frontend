@@ -38,7 +38,7 @@ export function HotelIdentityStrip({ hotel }: { hotel: HotelLike | null }) {
     >
       <div
         className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[0.78rem] font-bold text-black"
-        style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1.5px solid rgba(255,255,255,0.5)" }}
+        style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1.5px solid rgba(255,255,255,0.5)" }}
       >
         {hotel.images?.[0] ? <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" /> : initials}
       </div>

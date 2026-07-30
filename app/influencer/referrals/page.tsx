@@ -190,7 +190,7 @@ export default function InfluencerReferralsPage() {
       {/* Floating toast */}
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full text-sm font-semibold shadow-lg"
-          style={{ background: "linear-gradient(135deg, #1f1a0f, #2b2415)", color: "#fff9ec", border: "1px solid rgba(201,166,107,0.35)" }}>
+          style={{ background: "linear-gradient(135deg, #1f1a0f, #2b2415)", color: "#f8fafb", border: "1px solid rgba(201,166,107,0.35)" }}>
           {toast}
         </div>
       )}
@@ -237,7 +237,7 @@ function CodeCard({
 
       <div className="flex flex-wrap gap-2">
         {supportsNative && (
-          <ShareBtn onClick={onNative} bg="linear-gradient(135deg, #c9911a, #f0b429)" color="#fff" border="rgba(201,166,107,0.6)" icon="📲" label="Share" />
+          <ShareBtn onClick={onNative} bg="linear-gradient(135deg, #8198ae, #a9b9c8)" color="#fff" border="rgba(201,166,107,0.6)" icon="📲" label="Share" />
         )}
         <ShareBtn onClick={onWhatsapp} bg="#25D366" color="#fff" border="#1FB855" icon="💬" label="WhatsApp" />
         <ShareBtn onClick={onInstagram} bg="linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" color="#fff" border="rgba(220,39,67,0.6)" icon="📸" label="Instagram" />

@@ -499,8 +499,8 @@ export default function AdminReportsPage() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <span style={{
-            fontSize: 11, color: "#D4AF37", fontWeight: 700, padding: "5px 10px",
-            background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.3)",
+            fontSize: 11, color: "#9fb1c2", fontWeight: 700, padding: "5px 10px",
+            background: "rgba(140, 160, 182,0.1)", border: "1px solid rgba(140, 160, 182,0.3)",
             borderRadius: 999, letterSpacing: "0.06em",
           }}>
             {REPORTS.length} REPORTS · {totalRowCount.toLocaleString("en-IN")} ROWS
@@ -516,9 +516,9 @@ export default function AdminReportsPage() {
             onClick={() => setFilter(c)}
             style={{
               padding: "5px 14px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-              border: filter === c ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.12)",
-              background: filter === c ? "rgba(212,175,55,0.12)" : "transparent",
-              color: filter === c ? "#D4AF37" : "#8A8FA8",
+              border: filter === c ? "1px solid #9fb1c2" : "1px solid rgba(255,255,255,0.12)",
+              background: filter === c ? "rgba(140, 160, 182,0.12)" : "transparent",
+              color: filter === c ? "#9fb1c2" : "#8A8FA8",
               cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase",
             }}>
             {c}
@@ -537,7 +537,7 @@ export default function AdminReportsPage() {
               <div style={{
                 width: 36, height: 36, borderRadius: 8, fontSize: 18,
                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                background: "linear-gradient(135deg, rgba(212,175,55,0.16), rgba(212,175,55,0.04))",
+                background: "linear-gradient(135deg, rgba(140, 160, 182,0.16), rgba(140, 160, 182,0.04))",
               }}>{rep.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ color: "#E8EAF0", fontWeight: 700, fontSize: 13, margin: 0 }}>{rep.label}</p>
@@ -555,7 +555,7 @@ export default function AdminReportsPage() {
                   👁 Preview
                 </button>
                 <button onClick={() => runExport(rep)} disabled={!!busy} title="Download as CSV"
-                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(212,175,55,0.16)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.36)", cursor: "pointer" }}>
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(140, 160, 182,0.16)", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.36)", cursor: "pointer" }}>
                   📄 CSV
                 </button>
                 <button onClick={() => runPDF(rep)} disabled={!!busy} title="Download as PDF"
@@ -577,7 +577,7 @@ export default function AdminReportsPage() {
         <div onClick={() => setPreview(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#0F1117", borderRadius: 16, width: "100%", maxWidth: 1100, padding: 18, border: "1px solid rgba(255,255,255,0.1)", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h2 style={{ color: "#D4AF37", fontFamily: "Syne, sans-serif", margin: 0, fontSize: 16 }}>
+              <h2 style={{ color: "#9fb1c2", fontFamily: "Syne, sans-serif", margin: 0, fontSize: 16 }}>
                 {REPORTS.find((r) => r.id === preview.id)?.label} — first 20 rows
               </h2>
               <button onClick={() => setPreview(null)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#8A8FA8", borderRadius: 7, padding: "5px 11px", fontSize: 11, cursor: "pointer" }}>Close</button>
@@ -617,7 +617,7 @@ export default function AdminReportsPage() {
                   rep.fetch({}).then(({ rows, columns }) => exportRows(rep.id, rows, columns));
                   setPreview(null);
                 }
-              }} style={{ background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              }} style={{ background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#1a1205", border: "none", padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                 Export full CSV
               </button>
             </div>
@@ -629,7 +629,7 @@ export default function AdminReportsPage() {
       {shareOpen && (
         <div onClick={() => setShareOpen(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#0F1117", borderRadius: 16, width: "100%", maxWidth: 460, padding: 18, border: "1px solid rgba(255,255,255,0.1)" }}>
-            <h2 style={{ color: "#D4AF37", fontFamily: "Syne, sans-serif", margin: 0, fontSize: 16, marginBottom: 6 }}>📲 Share {shareOpen.rep.label}</h2>
+            <h2 style={{ color: "#9fb1c2", fontFamily: "Syne, sans-serif", margin: 0, fontSize: 16, marginBottom: 6 }}>📲 Share {shareOpen.rep.label}</h2>
             <p style={{ color: "#8A8FA8", fontSize: 11, margin: "0 0 14px" }}>
               {shareOpen.rows.length.toLocaleString("en-IN")} rows · pick a destination
             </p>
@@ -680,7 +680,7 @@ export default function AdminReportsPage() {
                     <button onClick={() => {
                       exportRows(shareOpen.rep.id, shareOpen.rows, shareOpen.columns);
                       showToast("CSV downloaded — attach in your app");
-                    }} style={shareBtn("#D4AF37")}>
+                    }} style={shareBtn("#9fb1c2")}>
                       📄 Download CSV first
                     </button>
                     <button onClick={() => {
@@ -706,7 +706,7 @@ export default function AdminReportsPage() {
       )}
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#0F1117", color: "#D4AF37", padding: "10px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600, border: "1px solid rgba(212,175,55,0.3)", zIndex: 70, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#0F1117", color: "#9fb1c2", padding: "10px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600, border: "1px solid rgba(140, 160, 182,0.3)", zIndex: 70, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
           {toast}
         </div>
       )}

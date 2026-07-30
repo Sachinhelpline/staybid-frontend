@@ -26,7 +26,7 @@ function buildEmailHtml(d: BookingDetails): string {
   <div style="max-width:600px;margin:32px auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
 
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#c9911a 0%,#f0b429 100%);padding:36px 32px;text-align:center;">
+    <div style="background:linear-gradient(135deg,#8198ae 0%,#a9b9c8 100%);padding:36px 32px;text-align:center;">
       <p style="margin:0 0 4px;color:rgba(255,255,255,0.75);font-size:11px;letter-spacing:3px;text-transform:uppercase;">Booking Confirmed</p>
       <h1 style="margin:0;color:#ffffff;font-size:32px;font-weight:300;letter-spacing:1px;">StayBid</h1>
       <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">Your luxury stay is confirmed 🎉</p>
@@ -36,7 +36,7 @@ function buildEmailHtml(d: BookingDetails): string {
     <div style="padding:36px 32px;">
 
       <!-- Booking ID chip -->
-      <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:12px;padding:18px 24px;text-align:center;margin-bottom:28px;">
+      <div style="background:#f0f3f5;border:1px solid #b5c2d0;border-radius:12px;padding:18px 24px;text-align:center;margin-bottom:28px;">
         <p style="margin:0 0 4px;color:#92400e;font-size:10px;letter-spacing:3px;text-transform:uppercase;">Booking ID</p>
         <p style="margin:0;color:#1c1917;font-size:22px;font-weight:700;font-family:monospace;letter-spacing:5px;">#${d.bookingId.toUpperCase()}</p>
         ${d.paymentId ? `<p style="margin:6px 0 0;color:#78716c;font-size:11px;">Payment: ${d.paymentId}</p>` : ""}
@@ -77,12 +77,12 @@ function buildEmailHtml(d: BookingDetails): string {
       </div>
 
       <!-- Total paid -->
-      <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:14px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;">
+      <div style="background:linear-gradient(135deg,#f0f3f5,#dfe5eb);border:1px solid #f59e0b;border-radius:14px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;">
         <div>
           <p style="margin:0;color:#92400e;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Total Paid</p>
           <p style="margin:4px 0 0;color:#78350f;font-size:28px;font-weight:700;">&#8377;${d.amount.toLocaleString("en-IN")}</p>
         </div>
-        <div style="width:56px;height:56px;background:linear-gradient(135deg,#c9911a,#f0b429);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;">✓</div>
+        <div style="width:56px;height:56px;background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;">✓</div>
       </div>
 
       <!-- Policy strip -->
@@ -96,7 +96,7 @@ function buildEmailHtml(d: BookingDetails): string {
 
     <!-- Footer -->
     <div style="background:#fafaf9;border-top:1px solid #e7e5e4;padding:24px 32px;text-align:center;">
-      <p style="margin:0 0 6px;color:#a8a29e;font-size:12px;">Questions? Email us at <a href="mailto:support@staybids.in" style="color:#c9911a;text-decoration:none;">support@staybids.in</a></p>
+      <p style="margin:0 0 6px;color:#a8a29e;font-size:12px;">Questions? Email us at <a href="mailto:support@staybids.in" style="color:#8198ae;text-decoration:none;">support@staybids.in</a></p>
       <p style="margin:0;color:#d4c5b0;font-size:11px;">StayBid · Luxury Hotel Bidding Platform · staybids.in</p>
     </div>
 

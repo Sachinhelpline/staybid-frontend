@@ -1018,20 +1018,20 @@ export default function PartnerDashboard() {
         .font-display { font-family:'Cormorant Garamond',serif; }
         body { font-family:'Inter',sans-serif; }
         /* v170 — premium partner panel: tighter padding, refined depth, smaller radii */
-        .card-p { background:#fff; border-radius:15px; border:1px solid #efe7d7; box-shadow:0 1px 2px rgba(61,44,20,0.04),0 4px 16px rgba(160,130,80,0.045); padding:15px; }
+        .card-p { background:#fff; border-radius:15px; border:1px solid #e3e8ed; box-shadow:0 1px 2px rgba(61,44,20,0.04),0 4px 16px rgba(160,130,80,0.045); padding:15px; }
         .card-tight { padding:12px !important; border-radius:13px !important; }
-        .inp-p { border:1px solid #e6ddc8; border-radius:9px; padding:8px 11px; font-size:0.8rem; width:100%; outline:none; transition:all 0.18s; color:#3d2c14; background:#fff; }
+        .inp-p { border:1px solid #d7dee6; border-radius:9px; padding:8px 11px; font-size:0.8rem; width:100%; outline:none; transition:all 0.18s; color:#3d2c14; background:#fff; }
         /* Currency-prefixed inputs: the rupee glyph sits at left:0.75rem, so
            the value needs 1.75rem of left padding to clear it. The .inp-p
            padding shorthand was overriding the pl-7 utility (rupee overlapped
            the number); the compound selector wins on specificity. */
         .inp-p.pl-7 { padding-left:1.75rem !important; }
-        .inp-p:focus { border-color:#c9911a; box-shadow:0 0 0 3px rgba(201,145,26,0.13); }
-        .btn-gold { background:linear-gradient(135deg,#c9911a,#f0b429); color:#fff; border:none; border-radius:9px; padding:8px 15px; font-weight:700; cursor:pointer; font-size:0.8rem; transition:all 0.18s; box-shadow:0 2px 8px rgba(201,145,26,0.22); }
-        .btn-gold:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(201,145,26,0.34); }
+        .inp-p:focus { border-color:#8198ae; box-shadow:0 0 0 3px rgba(106, 133, 160,0.13); }
+        .btn-gold { background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#fff; border:none; border-radius:9px; padding:8px 15px; font-weight:700; cursor:pointer; font-size:0.8rem; transition:all 0.18s; box-shadow:0 2px 8px rgba(106, 133, 160,0.22); }
+        .btn-gold:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(106, 133, 160,0.34); }
         .btn-gold:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
-        .btn-ghost { background:#fff; color:#7a6645; border:1px solid #e6ddc8; border-radius:9px; padding:7px 13px; font-weight:700; cursor:pointer; font-size:0.78rem; transition:all 0.18s; }
-        .btn-ghost:hover:not(:disabled) { border-color:#c9911a; color:#3d2c14; background:#fdfaf2; }
+        .btn-ghost { background:#fff; color:#7a6645; border:1px solid #d7dee6; border-radius:9px; padding:7px 13px; font-weight:700; cursor:pointer; font-size:0.78rem; transition:all 0.18s; }
+        .btn-ghost:hover:not(:disabled) { border-color:#8198ae; color:#3d2c14; background:#f9fafb; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .fade-up { animation:fadeUp 0.3s ease-out both; }
         /* v449 — data-dense partner panel: tabular numerals everywhere so every
@@ -1040,19 +1040,19 @@ export default function PartnerDashboard() {
            is global (not scoped), so the rule cascades into all tab components. */
         .pdash-root { font-variant-numeric: tabular-nums; }
         /* premium clickable hub launcher tile (dashboard boxes) */
-        .hub-tile { background:#fff; border:1px solid #efe7d7; border-radius:14px; padding:12px; text-align:left; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:5px; min-height:96px; }
-        .hub-tile:hover { transform:translateY(-2px); border-color:#e3c98f; box-shadow:0 9px 24px rgba(160,130,80,0.14); }
+        .hub-tile { background:#fff; border:1px solid #e3e8ed; border-radius:14px; padding:12px; text-align:left; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:5px; min-height:96px; }
+        .hub-tile:hover { transform:translateY(-2px); border-color:#c1ccd7; box-shadow:0 9px 24px rgba(160,130,80,0.14); }
         .hub-tile:active { transform:translateY(0); }
         .hub-ico { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; }
         .sec-title { font-family:'Cormorant Garamond',serif; font-weight:500; color:#241a0c; letter-spacing:0.01em; }
         /* premium camera scanner */
         .scan-frame { position:relative; width:100%; aspect-ratio:4/3; max-height:360px; background:#0b0907; border-radius:15px; overflow:hidden; }
         .scan-frame video { width:100%; height:100%; object-fit:cover; }
-        .scan-reticle { position:absolute; top:13%; bottom:13%; left:13%; right:13%; border-radius:14px; border:2px solid rgba(240,180,41,0.92); box-shadow:0 0 0 100vmax rgba(8,7,5,0.56); }
-        .scan-reticle::before,.scan-reticle::after { content:""; position:absolute; width:22px; height:22px; border:3px solid #f0b429; }
+        .scan-reticle { position:absolute; top:13%; bottom:13%; left:13%; right:13%; border-radius:14px; border:2px solid rgba(140, 160, 182,0.92); box-shadow:0 0 0 100vmax rgba(8,7,5,0.56); }
+        .scan-reticle::before,.scan-reticle::after { content:""; position:absolute; width:22px; height:22px; border:3px solid #a9b9c8; }
         .scan-reticle::before { top:-2px; left:-2px; border-right:0; border-bottom:0; border-radius:6px 0 0 0; }
         .scan-reticle::after { bottom:-2px; right:-2px; border-left:0; border-top:0; border-radius:0 0 6px 0; }
-        .scan-laser { position:absolute; left:14%; right:14%; height:2.5px; border-radius:2px; background:linear-gradient(90deg,transparent,#f0b429,transparent); box-shadow:0 0 12px rgba(240,180,41,0.85); animation:scanLaser 2.1s ease-in-out infinite; }
+        .scan-laser { position:absolute; left:14%; right:14%; height:2.5px; border-radius:2px; background:linear-gradient(90deg,transparent,#a9b9c8,transparent); box-shadow:0 0 12px rgba(140, 160, 182,0.85); animation:scanLaser 2.1s ease-in-out infinite; }
         @keyframes scanLaser { 0%{top:15%} 50%{top:83%} 100%{top:15%} }
         @media (max-width:640px){ .card-p { padding:13px; border-radius:14px; } }
         /* v145 — premium counter slider thumb (gold halo, larger drag target).
@@ -1065,30 +1065,30 @@ export default function PartnerDashboard() {
         .counter-range::-webkit-slider-thumb {
           -webkit-appearance: none; appearance: none;
           width: 22px; height: 22px; border-radius: 999px;
-          background: linear-gradient(135deg, #fef3c7 0%, #f0b429 60%, #c9911a 100%);
+          background: linear-gradient(135deg, #f0f3f5 0%, #a9b9c8 60%, #8198ae 100%);
           border: 2px solid #fff;
-          box-shadow: 0 0 0 2px rgba(201,145,26,0.32), 0 4px 10px rgba(201,145,26,0.45);
+          box-shadow: 0 0 0 2px rgba(106, 133, 160,0.32), 0 4px 10px rgba(106, 133, 160,0.45);
           cursor: grab; margin-top: -6px; transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
         .counter-range::-moz-range-thumb {
           width: 22px; height: 22px; border-radius: 999px;
-          background: linear-gradient(135deg, #fef3c7 0%, #f0b429 60%, #c9911a 100%);
+          background: linear-gradient(135deg, #f0f3f5 0%, #a9b9c8 60%, #8198ae 100%);
           border: 2px solid #fff;
-          box-shadow: 0 0 0 2px rgba(201,145,26,0.32), 0 4px 10px rgba(201,145,26,0.45);
+          box-shadow: 0 0 0 2px rgba(106, 133, 160,0.32), 0 4px 10px rgba(106, 133, 160,0.45);
           cursor: grab; transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
-        .counter-range:hover::-webkit-slider-thumb { transform: scale(1.1); box-shadow: 0 0 0 3px rgba(201,145,26,0.40), 0 6px 14px rgba(201,145,26,0.55); }
-        .counter-range:hover::-moz-range-thumb { transform: scale(1.1); box-shadow: 0 0 0 3px rgba(201,145,26,0.40), 0 6px 14px rgba(201,145,26,0.55); }
+        .counter-range:hover::-webkit-slider-thumb { transform: scale(1.1); box-shadow: 0 0 0 3px rgba(106, 133, 160,0.40), 0 6px 14px rgba(106, 133, 160,0.55); }
+        .counter-range:hover::-moz-range-thumb { transform: scale(1.1); box-shadow: 0 0 0 3px rgba(106, 133, 160,0.40), 0 6px 14px rgba(106, 133, 160,0.55); }
         .counter-range:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); }
         .counter-range:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.15); }
       `}</style>
 
       {/* ── Partner Navbar ─────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-40" style={{background:"linear-gradient(180deg,#1c140a,#13100a)",borderBottom:"1px solid rgba(240,180,41,0.16)"}}>
+      <nav className="sticky top-0 z-40" style={{background:"linear-gradient(180deg,#1c140a,#13100a)",borderBottom:"1px solid rgba(140, 160, 182,0.16)"}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-5 flex items-center justify-between" style={{height:"56px"}}>
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
-              style={{background:"linear-gradient(135deg,#c9911a,#f0b429)",boxShadow:"0 2px 8px rgba(201,145,26,0.4)"}}>S</div>
+              style={{background:"linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",boxShadow:"0 2px 8px rgba(106, 133, 160,0.4)"}}>S</div>
             <div className="min-w-0">
               <span className="font-display text-base text-white tracking-wide">StayBid</span>
               <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
@@ -1115,7 +1115,7 @@ export default function PartnerDashboard() {
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setSwitcherOpen(false)} />
                     <div className="absolute right-0 mt-1.5 z-50 w-64 rounded-xl overflow-hidden shadow-2xl"
-                      style={{ background: "#1c140a", border: "1px solid rgba(240,180,41,0.22)" }}>
+                      style={{ background: "#1c140a", border: "1px solid rgba(140, 160, 182,0.22)" }}>
                       <div className="px-3 py-2 text-[0.58rem] font-bold text-amber-400/70 uppercase tracking-[0.16em] border-b border-white/8">
                         Your properties · {hotelList.length}
                       </div>
@@ -1174,14 +1174,14 @@ export default function PartnerDashboard() {
                 aria-label="Account menu"
                 title="Account"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0 border border-amber-400/40 hover:border-amber-300/70 transition-all"
-                style={{background:"linear-gradient(135deg,#c9911a,#f0b429)"}}>
+                style={{background:"linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)"}}>
                 {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
               </button>
               {acctOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setAcctOpen(false)} />
                   <div className="absolute right-0 mt-1.5 z-50 w-60 rounded-xl overflow-hidden shadow-2xl"
-                    style={{ background: "#1c140a", border: "1px solid rgba(240,180,41,0.22)" }}>
+                    style={{ background: "#1c140a", border: "1px solid rgba(140, 160, 182,0.22)" }}>
                     <div className="px-3 py-2.5 border-b border-white/8">
                       <div className="text-sm font-semibold text-white truncate">
                         {pUser?.name || "Partner"}
@@ -1255,7 +1255,7 @@ export default function PartnerDashboard() {
                 : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-50"
             }`;
             const style = active
-              ? { background:"linear-gradient(135deg,#c9911a,#f0b429)", boxShadow:"0 2px 8px rgba(201,145,26,0.3)" }
+              ? { background:"linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow:"0 2px 8px rgba(106, 133, 160,0.3)" }
               : undefined;
             const inner = (
               <>
@@ -1330,7 +1330,7 @@ export default function PartnerDashboard() {
 
             {/* ── Quick Walk-in / PMS Control ── */}
             <div className="rounded-3xl overflow-hidden bg-linear-to-br from-luxury-900 via-luxury-800 to-luxury-900 shadow-xl border border-gold-500/20 relative">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #f0b429 0%, transparent 50%), radial-gradient(circle at 80% 80%, #c9911a 0%, transparent 50%)" }} />
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #a9b9c8 0%, transparent 50%), radial-gradient(circle at 80% 80%, #8198ae 0%, transparent 50%)" }} />
               <div className="relative p-5 flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.25em]">🏨 Front Desk</p>
@@ -1473,10 +1473,10 @@ export default function PartnerDashboard() {
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
               {[
-                { label:"Pending Bids",  value: pendingBids,  icon:"📩", color:"#b45309", bg:"#fffbeb", border:"#fde68a", action: () => setTab("bids") },
+                { label:"Pending Bids",  value: pendingBids,  icon:"📩", color:"#b45309", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bids") },
                 { label:"Countered",     value: counteredBids, icon:"💬", color:"#c2410c", bg:"#fff7ed", border:"#fed7aa", action: () => setTab("bids") },
                 { label:"Confirmed",     value: acceptedBids, icon:"✅", color:"#047857", bg:"#ecfdf5", border:"#a7f3d0", action: () => setTab("bookings") },
-                { label:"Est. Revenue",  value: fmtCur(revenue), icon:"💰", color:"#a16207", bg:"#fefce8", border:"#fde68a", action: () => setTab("bookings") },
+                { label:"Est. Revenue",  value: fmtCur(revenue), icon:"💰", color:"#a16207", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bookings") },
               ].map(s => (
                 <button key={s.label} onClick={s.action}
                   className="card-p card-tight text-left hover:-translate-y-0.5 transition-transform cursor-pointer"
@@ -1496,7 +1496,7 @@ export default function PartnerDashboard() {
               <p className="sec-title text-lg mb-2.5">Manage your property</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
                 {[
-                  { id:"bids",        icon:"📩", label:"Bids",            hint: pendingBids>0?`${pendingBids} to respond`:"All clear",        c:"#b45309", bg:"#fef3c7" },
+                  { id:"bids",        icon:"📩", label:"Bids",            hint: pendingBids>0?`${pendingBids} to respond`:"All clear",        c:"#b45309", bg:"#f0f3f5" },
                   { id:"rooms",       icon:"🏨", label:"Rooms & Pricing", hint:`${rooms.length} room${rooms.length!==1?"s":""}`,             c:"#7c3aed", bg:"#f3e8ff" },
                   { id:"flash",       icon:"⚡", label:"Flash Deals",     hint: activeDeals.length>0?`${activeDeals.length} live`:"Create one", c:"#dc2626", bg:"#fee2e2" },
                   { id:"bookings",    icon:"📅", label:"Bookings",        hint:`${bookings.length} confirmed`,                                c:"#0d9488", bg:"#ccfbf1" },
@@ -1509,7 +1509,7 @@ export default function PartnerDashboard() {
                   { id:"guests",      icon:"👥", label:"Guests",          hint:"CRM · stay history",                                          c:"#7c3aed", bg:"#ede9fe" },
                   { id:"reports",     icon:"📈", label:"Reports",         hint:"Revenue · ADR · occupancy",                                   c:"#15803d", bg:"#ecfdf5" },
                   { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
-                  { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"📷 Scan at check-in",                                          c:"#c9911a", bg:"#fef9e7" },
+                  { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"📷 Scan at check-in",                                          c:"#8198ae", bg:"#f8f9fa" },
                   { id:"content",     icon:"🖼️", label:"Guest Content",   hint:"Reels & photos guests posted",                                c:"#0891b2", bg:"#cffafe" },
                   { id:"verification",icon:"🎬", label:"Verification",    hint:"Video proofs",        href:"/partner/verification",            c:"#4f46e5", bg:"#e0e7ff" },
                   { id:"profile",     icon:"⚙️", label:"Profile",         hint:"Hotel & autopilot",                                            c:"#525252", bg:"#f5f5f4" },
@@ -1528,7 +1528,7 @@ export default function PartnerDashboard() {
                     <p className="text-[0.78rem] font-bold text-luxury-900 leading-tight">
                       {h.label}{locked && <span className="ml-1">🔒</span>}
                     </p>
-                    <p className="text-[0.62rem] font-semibold leading-tight" style={{ color: locked ? "#9a8a6a" : h.c }}>
+                    <p className="text-[0.62rem] font-semibold leading-tight" style={{ color: locked ? "#768fa7" : h.c }}>
                       {locked ? "Tap to unlock" : h.hint}
                     </p>
                   </button>
@@ -1848,7 +1848,7 @@ export default function PartnerDashboard() {
                             </div>
                             <div className="text-right">
                               <div className="h-1.5 w-24 bg-white/60 rounded-full overflow-hidden mb-1">
-                                <div className="h-full rounded-full" style={{width:`${ai.demandScore}%`, background: ds?.dot.replace("bg-","").includes("-") ? "#c9911a" : "#10b981"}} />
+                                <div className="h-full rounded-full" style={{width:`${ai.demandScore}%`, background: ds?.dot.replace("bg-","").includes("-") ? "#8198ae" : "#10b981"}} />
                               </div>
                               <p className={`text-[0.6rem] ${ds?.text}`}>{ai.factors[0]}</p>
                             </div>
@@ -2723,7 +2723,7 @@ export default function PartnerDashboard() {
                 type="button"
                 onClick={() => setBillingOpen(true)}
                 className="shrink-0 rounded-lg px-3 py-1.5 text-[0.7rem] font-bold text-white"
-                style={{ background: "#c9911a" }}
+                style={{ background: "#8198ae" }}
               >
                 View history
               </button>
@@ -3109,7 +3109,7 @@ export default function PartnerDashboard() {
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full pointer-events-none"
                           style={{
                             width: `${currentPct}%`,
-                            background: "linear-gradient(90deg, #C9A66B 0%, #D9BE82 60%, #E7CFA0 100%)",
+                            background: "linear-gradient(90deg, #C9A66B 0%, #b4c1cf 60%, #c8d2dc 100%)",
                             boxShadow: "0 1px 3px rgba(201,166,107,0.45) inset",
                           }}
                         />
@@ -3611,9 +3611,9 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
       {/* ── Scanner-first capture card ── */}
       <div className="card-p mb-3.5">
         <div className="rounded-xl p-3.5 mb-3 flex items-center gap-3"
-          style={{ background:"linear-gradient(135deg,#fff8e6,#fdf1cf)", border:"1px solid #f0e0b0" }}>
+          style={{ background:"linear-gradient(135deg,#f7f8fa,#eff2f4)", border:"1px solid #dae1e7" }}>
           <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
-            style={{ background:"linear-gradient(135deg,#f0b429,#c9911a)" }}>📷</div>
+            style={{ background:"linear-gradient(160deg,#c7d3df 0%,#9fb1c4 52%,#7a92aa 100%)" }}>📷</div>
           <div className="flex-1 min-w-0">
             <p className="text-[0.82rem] font-bold text-luxury-900 leading-tight">Camera scan</p>
             <p className="text-[0.66rem] text-luxury-500 leading-tight mt-0.5">Point the camera at the guest's QR or barcode</p>
@@ -3648,10 +3648,10 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
       </div>
 
       {validated && (
-        <div className="card-p mb-3.5 fade-up" style={{ border:"1.5px solid #e3c98f", background:"#fffdf6" }}>
+        <div className="card-p mb-3.5 fade-up" style={{ border:"1.5px solid #c1ccd7", background:"#fdfdfd" }}>
           <div className="flex items-start gap-3 mb-3">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
-              style={{ background: "linear-gradient(135deg,#f0b429,#c9911a)" }}>
+              style={{ background: "linear-gradient(160deg,#c7d3df 0%,#9fb1c4 52%,#7a92aa 100%)" }}>
               {validated.code.kind === "amenity" ? "🏨" : validated.code.kind === "coupon" ? "🎟️" : "🎁"}
             </div>
             <div className="flex-1 min-w-0">

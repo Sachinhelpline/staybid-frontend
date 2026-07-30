@@ -332,8 +332,8 @@ function ReviewsPageInner() {
         .rev-shell {
           min-height: 100dvh;
           background: linear-gradient(180deg,
-            color-mix(in oklab, var(--cozy-champagne, #C9A66B) 6%, var(--bg-page, #FAF5EB)) 0%,
-            var(--bg-page, #FAF5EB) 30%);
+            color-mix(in oklab, var(--cozy-champagne, #C9A66B) 6%, var(--bg-page, #f4f6f8)) 0%,
+            var(--bg-page, #f4f6f8) 30%);
           color: var(--text-base, #1f1a0f);
           padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
@@ -346,7 +346,7 @@ function ReviewsPageInner() {
           align-items: center;
           gap: 12px;
           padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
-          background: var(--bg-card, #faf5eb);
+          background: var(--bg-card, #f4f6f8);
           border-bottom: 1px solid rgba(201, 166, 107, 0.22);
           backdrop-filter: blur(10px) saturate(140%);
           -webkit-backdrop-filter: blur(10px) saturate(140%);
@@ -359,7 +359,7 @@ function ReviewsPageInner() {
           border: 1px solid rgba(201, 166, 107, 0.35);
           /* v499 — theme tokens (was fixed cream/cocoa → a stray light circle
              on the dark shell). Flips with Appearance. */
-          background: var(--bg-pill, rgba(255, 252, 246, 0.85));
+          background: var(--bg-pill, rgba(176, 192, 209, 0.85));
           color: var(--text-soft, #4a3820);
           font-size: 1rem;
           cursor: pointer;
@@ -407,8 +407,8 @@ function ReviewsPageInner() {
           gap: 22px;
           padding: 18px;
           background: linear-gradient(150deg,
-            color-mix(in oklab, var(--cozy-champagne, #C9A66B) 14%, var(--bg-elevated, #fffcf6)) 0%,
-            var(--bg-card, #faf5eb) 80%);
+            color-mix(in oklab, var(--cozy-champagne, #C9A66B) 14%, var(--bg-elevated, #fcfcfd)) 0%,
+            var(--bg-card, #f4f6f8) 80%);
           border: 1px solid rgba(201, 166, 107, 0.30);
           border-radius: 18px;
           box-shadow:
@@ -487,7 +487,7 @@ function ReviewsPageInner() {
         .rev-bar-fill {
           display: block;
           height: 100%;
-          background: linear-gradient(90deg, #D9BE82, #C9A66B);
+          background: linear-gradient(90deg, #b4c1cf, #C9A66B);
           border-radius: 4px;
         }
         .rev-bar-count {
@@ -516,7 +516,7 @@ function ReviewsPageInner() {
           font-size: 0.72rem;
           font-weight: 700;
           letter-spacing: 0.04em;
-          background: var(--bg-elevated, #fffcf6);
+          background: var(--bg-elevated, #fcfcfd);
           border: 1px solid rgba(201, 166, 107, 0.30);
           color: var(--cozy-cocoa, #4a3820);
           cursor: pointer;
@@ -527,7 +527,7 @@ function ReviewsPageInner() {
         .rev-chip:hover { background: rgba(201, 166, 107, 0.10); }
         .rev-chip-active {
           background: var(--cozy-warm-dark, #1F1A0F);
-          color: var(--cozy-cream-50, #FFFCF6);
+          color: var(--cozy-cream-50, #fcfcfd);
           border-color: var(--cozy-warm-dark, #1F1A0F);
         }
         .rev-chip-active:hover {
@@ -542,7 +542,7 @@ function ReviewsPageInner() {
         }
         .rev-card {
           padding: 14px 16px;
-          background: var(--bg-elevated, #fffcf6);
+          background: var(--bg-elevated, #fcfcfd);
           border: 1px solid rgba(201, 166, 107, 0.22);
           border-radius: 14px;
           box-shadow: 0 2px 8px -4px rgba(31, 26, 15, 0.10);
@@ -604,7 +604,7 @@ function ReviewsPageInner() {
           gap: 10px;
           padding: 18px;
           margin-bottom: 18px;
-          background: linear-gradient(150deg, rgba(201,166,107,0.16) 0%, var(--bg-elevated, #fffcf6) 90%);
+          background: linear-gradient(150deg, rgba(201,166,107,0.16) 0%, var(--bg-elevated, #fcfcfd) 90%);
           border: 1px solid rgba(201, 166, 107, 0.32);
           border-radius: 18px;
           box-shadow:
@@ -670,7 +670,7 @@ function ReviewsPageInner() {
           font-weight: 800;
           letter-spacing: 0.10em;
           background: var(--cozy-warm-dark, #1F1A0F);
-          color: var(--cozy-cream-50, #FFFCF6);
+          color: var(--cozy-cream-50, #fcfcfd);
           padding: 3px 8px;
           border-radius: 999px;
         }

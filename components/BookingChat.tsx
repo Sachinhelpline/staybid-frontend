@@ -208,7 +208,7 @@ export default function BookingChat({
             placeholder="Type a message…"
             rows={1}
             className="flex-1 px-3 py-2 rounded-xl border border-luxury-200 focus:border-gold-400 focus:outline-hidden text-sm bg-luxury-50/40 resize-none"
-            style={{ color: "var(--text-base, #1F1A0F)", caretColor: "var(--accent, #c9911a)" }}
+            style={{ color: "var(--text-base, #1F1A0F)", caretColor: "var(--accent, #8198ae)" }}
           />
           <button
             onClick={send}

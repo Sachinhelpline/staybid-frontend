@@ -804,7 +804,7 @@ export function PostsScrollFeed({
            champagne accents. Replaces the v87 stark white + pure black. */
         .pf-root {
           min-height: 100dvh;
-          background: var(--cozy-cream-50, #FFFCF6);
+          background: var(--cozy-cream-50, #fcfcfd);
           color: var(--cozy-warm-dark, #1F1A0F);
           padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
           font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
@@ -817,7 +817,7 @@ export function PostsScrollFeed({
           align-items: center;
           gap: 14px;
           padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
-          background: rgba(255, 252, 246, 0.94);
+          background: rgba(176, 192, 209, 0.94);
           backdrop-filter: blur(12px) saturate(1.15);
           -webkit-backdrop-filter: blur(12px) saturate(1.15);
           border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
@@ -888,7 +888,7 @@ export function PostsScrollFeed({
         .pf-drawer {
           width: 100%;
           max-width: 520px;
-          background: var(--cozy-cream-50, #FFFCF6);
+          background: var(--cozy-cream-50, #fcfcfd);
           border-radius: 18px 18px 0 0;
           padding: 14px 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
           animation: pfSlideUp 0.28s cubic-bezier(.32,1.2,.36,1) both;
@@ -921,7 +921,7 @@ export function PostsScrollFeed({
           border: none;
           border-radius: 12px;
           background: var(--cozy-warm-dark, #1F1A0F);
-          color: var(--cozy-cream-50, #FFFCF6);
+          color: var(--cozy-cream-50, #fcfcfd);
           font-size: 0.86rem;
           font-weight: 700;
           cursor: pointer;
@@ -959,7 +959,7 @@ export function PostsScrollFeed({
         .pf-comment-av {
           width: 30px; height: 30px;
           border-radius: 999px;
-          background: linear-gradient(135deg, var(--cozy-cream-200, #F2EAD8), var(--cozy-taupe, #E8DCC8));
+          background: linear-gradient(135deg, var(--cozy-cream-200, #e7ebef), var(--cozy-taupe, #E8DCC8));
           color: var(--cozy-warm-dark, #1F1A0F);
           font-size: 0.86rem; font-weight: 800;
           display: inline-flex; align-items: center; justify-content: center;
@@ -990,7 +990,7 @@ export function PostsScrollFeed({
           font-size: 0.86rem;
           border-radius: 999px;
           border: 1px solid var(--cozy-taupe, #E8DCC8);
-          background: var(--cozy-cream-50, #FFFCF6);
+          background: var(--cozy-cream-50, #fcfcfd);
           color: var(--cozy-warm-dark, #1F1A0F);
           outline: none;
         }
@@ -1047,7 +1047,7 @@ export function PostsScrollFeed({
         }
         .pf-edit-hotel-results {
           margin-top: 6px;
-          background: var(--cozy-cream-50, #FFFCF6);
+          background: var(--cozy-cream-50, #fcfcfd);
           border: 1px solid var(--cozy-taupe, #E8DCC8);
           border-radius: 12px;
           overflow: hidden;
@@ -1095,7 +1095,7 @@ export function PostsScrollFeed({
           top: calc(100% + 4px);
           z-index: 50;
           min-width: 180px;
-          background: var(--cozy-cream-50, #FFFCF6);
+          background: var(--cozy-cream-50, #fcfcfd);
           border: 1px solid var(--cozy-taupe, #E8DCC8);
           border-radius: 12px;
           box-shadow: 0 12px 28px rgba(31, 26, 15, 0.18);
@@ -1235,9 +1235,9 @@ export function PostsScrollFeed({
           color: var(--cozy-cocoa, #4A3820);
         }
         .pf-edit-save {
-          background: linear-gradient(135deg, #f0d060, #ffd76b);
+          background: linear-gradient(135deg, #c6d0da, #d0d9e1);
           color: #2c1d04;
-          border-color: rgba(184, 134, 11, 0.55);
+          border-color: rgba(106, 133, 160, 0.55);
         }
         .pf-edit-save:disabled, .pf-edit-cancel:disabled { opacity: 0.5; cursor: default; }
         .pf-edit-save:not(:disabled):active,
@@ -1250,8 +1250,8 @@ export function PostsScrollFeed({
           padding: 10px 16px;
           border-radius: 999px;
           background: rgba(31, 26, 15, 0.94);
-          color: var(--cozy-cream-50, #FFFCF6);
-          border: 1px solid rgba(217, 190, 130, 0.20);
+          color: var(--cozy-cream-50, #fcfcfd);
+          border: 1px solid rgba(176, 192, 209, 0.20);
           font-size: 0.82rem;
           font-weight: 600;
           backdrop-filter: blur(10px);
@@ -1612,7 +1612,7 @@ function PostCard({
         /* v88 — Card surfaces in premium cozy palette: cream bg, cocoa
            text, taupe dividers, champagne accents for highlighted state. */
         .pf-card {
-          background: var(--cozy-cream-50, #FFFCF6);
+          background: var(--cozy-cream-50, #fcfcfd);
           border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
           padding: 6px 0 10px;
         }
@@ -1626,7 +1626,7 @@ function PostCard({
           width: 36px;
           height: 36px;
           border-radius: 999px;
-          background: var(--cozy-cream-200, #F2EAD8);
+          background: var(--cozy-cream-200, #e7ebef);
           overflow: hidden;
           flex-shrink: 0;
           display: inline-flex;
@@ -1712,8 +1712,8 @@ function PostCard({
           border-radius: 999px;
           /* v88 — warm cocoa instead of cool near-black */
           background: rgba(31, 26, 15, 0.55);
-          border: 1px solid rgba(217, 190, 130, 0.18);
-          color: var(--cozy-cream-50, #FFFCF6);
+          border: 1px solid rgba(176, 192, 209, 0.18);
+          color: var(--cozy-cream-50, #fcfcfd);
           font-size: 0.85rem;
           cursor: pointer;
           display: inline-flex;

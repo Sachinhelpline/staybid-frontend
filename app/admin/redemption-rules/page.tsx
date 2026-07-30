@@ -34,7 +34,7 @@ const KIND_LABEL: Record<Kind, string> = {
 
 const TIER_COLOR: Record<Tier, string> = {
   silver: "#94a3b8",
-  gold: "#D4AF37",
+  gold: "#9fb1c2",
   platinum: "#A855F7",
 };
 
@@ -125,7 +125,7 @@ export default function AdminRedemptionRulesPage() {
         <button
           onClick={() => setEditing({ ...blankRule })}
           style={{
-            background: "linear-gradient(135deg,#D4AF37,#F0D060)",
+            background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)",
             color: "#1a1205",
             border: "none",
             padding: "9px 16px",
@@ -140,10 +140,10 @@ export default function AdminRedemptionRulesPage() {
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
         {[
-          ["Total Rules", KPI.total, "#D4AF37"],
+          ["Total Rules", KPI.total, "#9fb1c2"],
           ["Active", KPI.active, "#2ECC71"],
           ["Coupons", KPI.coupons, "#3D9CF5"],
-          ["Wallet Credits", KPI.wallet, "#F0D060"],
+          ["Wallet Credits", KPI.wallet, "#c6d0da"],
           ["Amenities", KPI.amenities, "#A855F7"],
         ].map(([label, val, color]) => (
           <div key={String(label)} className="admin-card" style={{ background: "#151820", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -161,9 +161,9 @@ export default function AdminRedemptionRulesPage() {
               borderRadius: 999,
               fontSize: 12,
               fontWeight: 600,
-              border: filter === k ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.12)",
-              background: filter === k ? "rgba(212,175,55,0.1)" : "#0F1117",
-              color: filter === k ? "#D4AF37" : "#8A8FA8",
+              border: filter === k ? "1px solid #9fb1c2" : "1px solid rgba(255,255,255,0.12)",
+              background: filter === k ? "rgba(140, 160, 182,0.1)" : "#0F1117",
+              color: filter === k ? "#9fb1c2" : "#8A8FA8",
               cursor: "pointer",
             }}>
             {label}
@@ -177,7 +177,7 @@ export default function AdminRedemptionRulesPage() {
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map((r) => (
             <div key={r.id} className="admin-card" style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, background: "#151820", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(135deg,#D4AF37,#F0D060)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
                 {r.icon || "🎁"}
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
@@ -202,7 +202,7 @@ export default function AdminRedemptionRulesPage() {
                   {r.active ? "ACTIVE" : "INACTIVE"}
                 </span>
                 <button onClick={() => setEditing(r)}
-                  style={{ background: "rgba(212,175,55,0.1)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)", padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  style={{ background: "rgba(140, 160, 182,0.1)", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)", padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Edit
                 </button>
                 {r.active && (
@@ -228,7 +228,7 @@ export default function AdminRedemptionRulesPage() {
             background: "#0F1117", borderRadius: 16, width: "100%", maxWidth: 560, padding: 22,
             border: "1px solid rgba(255,255,255,0.1)", maxHeight: "92vh", overflowY: "auto",
           }}>
-            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 18, color: "#D4AF37", marginTop: 0, marginBottom: 16 }}>
+            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 18, color: "#9fb1c2", marginTop: 0, marginBottom: 16 }}>
               {editing.id ? "Edit Rule" : "New Redemption Rule"}
             </h2>
 
@@ -306,7 +306,7 @@ export default function AdminRedemptionRulesPage() {
                 Cancel
               </button>
               <button onClick={save} disabled={busy}
-                style={{ background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#1a1205", border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                style={{ background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#1a1205", border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                 {busy ? "Saving…" : "Save Rule"}
               </button>
             </div>
@@ -317,8 +317,8 @@ export default function AdminRedemptionRulesPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)",
-          background: "#0F1117", color: "#D4AF37", padding: "10px 18px", borderRadius: 999,
-          fontSize: 13, fontWeight: 600, border: "1px solid rgba(212,175,55,0.3)",
+          background: "#0F1117", color: "#9fb1c2", padding: "10px 18px", borderRadius: 999,
+          fontSize: 13, fontWeight: 600, border: "1px solid rgba(140, 160, 182,0.3)",
           zIndex: 60, boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
         }}>{toast}</div>
       )}
@@ -336,7 +336,7 @@ export default function AdminRedemptionRulesPage() {
         }
         input:focus, select:focus, textarea:focus {
           outline: none;
-          border-color: #D4AF37;
+          border-color: #9fb1c2;
         }
       `}</style>
     </div>

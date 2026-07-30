@@ -185,21 +185,21 @@ export default function Model2ReviewPage() {
         .sbc2r-unlocked { font-size: .62rem; font-weight: 700; color: #6b8f4e; }
         .sbc2r-item { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-top: 1px solid rgba(139,105,20,.1); }
         .sbc2r-item img { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; flex: none; }
-        .sbc2r-noimg { width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center; background: #efe6d4; font-size: 1.2rem; flex: none; }
+        .sbc2r-noimg { width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center; background: #e2e7ed; font-size: 1.2rem; flex: none; }
         .sbc2r-itile { font-weight: 700; color: var(--sbc-coffee); font-size: .84rem; }
         .sbc2r-isub { font-size: .68rem; color: rgba(74,56,32,.6); }
         .sbc2r-idates { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-        .sbc2r-dchip { font-size: .64rem; font-weight: 600; color: #7a5c1e; background: rgba(212,162,74,.12); border: 1px solid rgba(212,162,74,.28); border-radius: 7px; padding: 3px 7px; }
+        .sbc2r-dchip { font-size: .64rem; font-weight: 600; color: #7a5c1e; background: rgba(140, 160, 182,.12); border: 1px solid rgba(140, 160, 182,.28); border-radius: 7px; padding: 3px 7px; }
         .sbc2r-rm { display: block; font-size: .6rem; color: #c96f4a; background: none; border: 0; cursor: pointer; margin-top: 2px; margin-left: auto; }
-        .sbc2r-panel { background: linear-gradient(150deg, #1f1710, #33251a); border: 1px solid rgba(212,162,74,.28); border-radius: 16px; padding: 16px 17px; margin: 6px 0 14px; color: #f3e7d0; box-shadow: 0 8px 26px rgba(40,26,12,.2); }
-        .sbc2r-panel-h { font-size: .66rem; font-weight: 800; letter-spacing: .1em; color: rgba(243,231,208,.55); margin-bottom: 10px; }
-        .sbc2r-prow { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; color: rgba(243,231,208,.85); padding: 4px 0; }
-        .sbc2r-prow b { color: #ffd98a; }
-        .sbc2r-prow.total { border-top: 1px dashed rgba(212,162,74,.35); margin-top: 5px; padding-top: 11px; font-size: 1rem; }
-        .sbc2r-prow.total b { font-size: 1.3rem; font-weight: 800; color: #ffcf6e; }
-        .sbc2r-value { border-top: 1px solid rgba(212,162,74,.18); margin-top: 9px; padding-top: 9px; }
-        .sbc2r-vrow { display: flex; justify-content: space-between; font-size: .78rem; color: rgba(243,231,208,.62); padding: 2px 0; }
-        .sbc2r-vrow b { color: #f3e7d0; }
+        .sbc2r-panel { background: linear-gradient(150deg, #1f1710, #33251a); border: 1px solid rgba(140, 160, 182,.28); border-radius: 16px; padding: 16px 17px; margin: 6px 0 14px; color: #e4e9ee; box-shadow: 0 8px 26px rgba(40,26,12,.2); }
+        .sbc2r-panel-h { font-size: .66rem; font-weight: 800; letter-spacing: .1em; color: rgba(176, 192, 209,.55); margin-bottom: 10px; }
+        .sbc2r-prow { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; color: rgba(176, 192, 209,.85); padding: 4px 0; }
+        .sbc2r-prow b { color: #d5dce4; }
+        .sbc2r-prow.total { border-top: 1px dashed rgba(140, 160, 182,.35); margin-top: 5px; padding-top: 11px; font-size: 1rem; }
+        .sbc2r-prow.total b { font-size: 1.3rem; font-weight: 800; color: #cad4dd; }
+        .sbc2r-value { border-top: 1px solid rgba(140, 160, 182,.18); margin-top: 9px; padding-top: 9px; }
+        .sbc2r-vrow { display: flex; justify-content: space-between; font-size: .78rem; color: rgba(176, 192, 209,.62); padding: 2px 0; }
+        .sbc2r-vrow b { color: #e4e9ee; }
         .sbc2r-vrow.up { color: #a6d17a; } .sbc2r-vrow.up b { color: #a6d17a; font-weight: 800; }
         .sbc2r-note { font-size: .66rem; color: rgba(74,56,32,.5); margin-top: 12px; line-height: 1.5; }
         .sbc2r-done { text-align: center; padding: 40px 10px; }

@@ -198,7 +198,7 @@ export default function BookingReview(p: BookingReviewProps) {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--bg-card)",
-          boxShadow: "0 30px 80px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(240,180,41,0.12)",
+          boxShadow: "0 30px 80px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(140, 160, 182,0.12)",
           // v228 — flex column with capped height. Header + footer are
           // shrink-0 (auto-size to content); body is flex-1 + scrolls.
           // Old fixed `maxHeight: calc(94vh - 64px - 96px)` on body assumed a
@@ -214,7 +214,7 @@ export default function BookingReview(p: BookingReviewProps) {
           @keyframes brSweep { 0%{transform:translateX(-120%)} 100%{transform:translateX(220%)} }
           @keyframes brPulse { 0%,100%{transform:scale(1);opacity:.9} 50%{transform:scale(1.06);opacity:1} }
           @keyframes brFadeUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-          .br-gold-text{background:linear-gradient(90deg,#b8871a,#f0b429,#c9911a,#f0b429,#b8871a);background-size:220% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:brShine 6s linear infinite}
+          .br-gold-text{background:linear-gradient(90deg,#748da6,#a9b9c8,#8198ae,#a9b9c8,#748da6);background-size:220% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:brShine 6s linear infinite}
           .br-cta-pay{position:relative;overflow:hidden}
           .br-cta-pay::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%);animation:brSweep 2.6s ease-in-out infinite}
           .br-section{animation:brFadeUp .35s ease both}
@@ -222,11 +222,11 @@ export default function BookingReview(p: BookingReviewProps) {
 
         {/* HEADER — v228 shrink-0 so body shrinks, not header */}
         <div className="relative px-5 py-4 flex items-center justify-between border-b shrink-0"
-          style={{ borderColor: "rgba(240,180,41,0.25)", background: "linear-gradient(135deg,#0c0a14 0%,#1a1424 50%,#0c0a14 100%)" }}>
+          style={{ borderColor: "rgba(140, 160, 182,0.25)", background: "linear-gradient(135deg,#0c0a14 0%,#1a1424 50%,#0c0a14 100%)" }}>
           <div className="flex items-center gap-2.5">
             {p.flowLabel && (
               <span className="text-[0.55rem] font-bold tracking-[0.18em] uppercase px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(240,180,41,0.15)", color: "#f0b429", border: "1px solid rgba(240,180,41,0.35)" }}>
+                style={{ background: "rgba(140, 160, 182,0.15)", color: "#a9b9c8", border: "1px solid rgba(140, 160, 182,0.35)" }}>
                 {p.flowLabel}
               </span>
             )}
@@ -247,7 +247,7 @@ export default function BookingReview(p: BookingReviewProps) {
           {/* Hotel + room summary */}
           <div className="br-section flex items-start gap-3 p-3 rounded-2xl border border-luxury-100 bg-luxury-50">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg shrink-0"
-              style={{ background: "linear-gradient(135deg,#f0b429,#b8871a)", color: "#fff" }}>🏨</div>
+              style={{ background: "linear-gradient(135deg,#a9b9c8,#748da6)", color: "#fff" }}>🏨</div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-luxury-900 leading-snug truncate">{p.hotelName}</p>
               {(p.hotelCity || p.roomType) && (
@@ -337,7 +337,7 @@ export default function BookingReview(p: BookingReviewProps) {
                     onClick={() => validateCoupon(couponInput)}
                     disabled={couponBusy || !couponInput.trim()}
                     className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
-                    style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+                    style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                     {couponBusy ? "…" : "Apply"}
                   </button>
                 </div>
@@ -429,7 +429,7 @@ export default function BookingReview(p: BookingReviewProps) {
           {/* Hold info card */}
           {(p.holdEnabled !== false && p.onHold && finalAmount > 0) && (
             <div className="br-section rounded-2xl p-4 border"
-              style={{ background: "linear-gradient(135deg,rgba(16,185,129,0.06),rgba(240,180,41,0.04))", borderColor: "rgba(16,185,129,0.25)" }}>
+              style={{ background: "linear-gradient(135deg,rgba(16,185,129,0.06),rgba(140, 160, 182,0.04))", borderColor: "rgba(16,185,129,0.25)" }}>
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-lg shrink-0"
                   style={{ animation: "brPulse 2.5s ease-in-out infinite" }}>🔒</div>
@@ -460,9 +460,9 @@ export default function BookingReview(p: BookingReviewProps) {
             disabled={!!busy}
             className="br-cta-pay w-full py-3.5 rounded-2xl font-extrabold text-base tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
             style={{
-              background: "linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%)",
-              color: "#1a1205",
-              boxShadow: "0 8px 24px rgba(240,180,41,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
+              background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+              color: "#ffffff",
+              boxShadow: "0 8px 24px rgba(140, 160, 182,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
             }}>
             {busy === "pay" ? "⏳ Opening Razorpay…" :
              finalAmount === 0 ? `✨ Confirm Booking — FREE`

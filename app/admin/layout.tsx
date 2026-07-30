@@ -68,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (checking) {
     return (
       <div style={{ minHeight: "100vh", background: "#07080C", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "#D4AF37", fontSize: 24 }}>⚡</div>
+        <div style={{ color: "#9fb1c2", fontSize: 24 }}>⚡</div>
       </div>
     );
   }

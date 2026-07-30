@@ -97,7 +97,7 @@ export default function HostMe() {
             {/* Investor dashboard — portfolio configs from the 5-phase journey (v284) */}
             {(data!.portfolios?.length || 0) > 0 && (
               <div className="sb-card-lift rounded-2xl p-4 sm:p-5"
-                style={{ background: "linear-gradient(140deg, rgba(201,145,26,0.10), var(--bg-card) 55%)", border: "1px solid var(--border-soft)" }}>
+                style={{ background: "linear-gradient(140deg, rgba(106, 133, 160,0.10), var(--bg-card) 55%)", border: "1px solid var(--border-soft)" }}>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-display text-lg" style={{ color: "var(--text-base)" }}>💼 My portfolios</h2>
                   <Link href="/host/build" className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Build another ›</Link>
@@ -273,7 +273,7 @@ function EmptyAll() {
           design a space, or hire staff — it'll all show up here.
         </p>
         <div className="flex flex-wrap gap-3 justify-center mt-5">
-          <Link href="/host" className="px-5 py-2.5 rounded-full text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg,#c9911a,#a8740f)" }}>Explore tiers</Link>
+          <Link href="/host" className="px-5 py-2.5 rounded-full text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg,#8198ae,#607c97)" }}>Explore tiers</Link>
           <Link href="/host/properties" className="px-5 py-2.5 rounded-full font-semibold text-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Browse properties</Link>
         </div>
       </div>
@@ -291,7 +291,7 @@ function Guest() {
           Your host applications, inquiries, orders and hires are tied to your account. Sign in to track them here.
         </p>
         <div className="flex flex-wrap gap-3 justify-center mt-5">
-          <Link href="/auth" className="px-6 py-2.5 rounded-full text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg,#c9911a,#a8740f)" }}>Sign in</Link>
+          <Link href="/auth" className="px-6 py-2.5 rounded-full text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg,#8198ae,#607c97)" }}>Sign in</Link>
           <Link href="/host" className="px-6 py-2.5 rounded-full font-semibold text-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Back to /host</Link>
         </div>
       </div>

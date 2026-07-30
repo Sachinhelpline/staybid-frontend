@@ -188,7 +188,7 @@ export default function BillingTab({
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fffbeb" }}>
+        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
           <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Billing storage abhi setup nahi hua</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
             <span className="font-mono">migrations/2026-05-21-guest-folios.sql</span> + <span className="font-mono">folio-gst-mode.sql</span> apply karni hai.
@@ -205,7 +205,7 @@ export default function BillingTab({
               className={`text-[0.74rem] font-bold px-2.5 py-1.5 rounded-lg border transition-all capitalize ${
                 active ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200 hover:border-luxury-400"
               }`}
-              style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)" } : undefined}>
+              style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {f}<span className="ml-1 opacity-70">({n})</span>
             </button>
           );
@@ -244,11 +244,11 @@ export default function BillingTab({
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{f.guest_name}</p>
                     <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                      style={online ? { background: "#dbeafe", color: "#1d4ed8" } : { background: "#f1efe9", color: "#78716c" }}>
+                      style={online ? { background: "#dbeafe", color: "#1d4ed8" } : { background: "#eceff3", color: "#78716c" }}>
                       {online ? "🌐 Online" : "🚶 Walk-in"}
                     </span>
                     <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                      style={f.status === "settled" ? { background: "#dcfce7", color: "#15803d" } : { background: "#fef3c7", color: "#b45309" }}>
+                      style={f.status === "settled" ? { background: "#dcfce7", color: "#15803d" } : { background: "#f0f3f5", color: "#b45309" }}>
                       {f.status}
                     </span>
                   </div>
@@ -373,7 +373,7 @@ function NewFolioModal({
               className={`flex-1 text-[0.74rem] font-bold py-1.5 rounded-lg border transition-all ${
                 mode === id ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200"
               }`}
-              style={mode === id ? { background: "linear-gradient(135deg,#c9911a,#f0b429)" } : undefined}>
+              style={mode === id ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
               {label}
             </button>
           ))}
@@ -398,7 +398,7 @@ function NewFolioModal({
                     return (
                       <button key={b.id} onClick={() => setPickBidId(b.id)}
                         className="w-full text-left rounded-xl p-2.5 transition-all"
-                        style={{ background: on ? "#fff8e6" : "#fff", border: `1.5px solid ${on ? "#c9911a" : "#e6ddc8"}` }}>
+                        style={{ background: on ? "#f7f8fa" : "#fff", border: `1.5px solid ${on ? "#8198ae" : "#d7dee6"}` }}>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[0.8rem] font-bold text-luxury-900">{b.guestName || `Guest …${String(b.customerId || "").slice(-4)}`}</span>
                           {isToday && <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">TODAY CHECK-IN</span>}
@@ -511,11 +511,11 @@ function FolioDetail({
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice — ${esc(folio.guest_name)}</title>
       <style>
         body{font-family:Inter,Arial,sans-serif;color:#241a0c;margin:0;padding:28px;max-width:720px}
-        h1{font-size:20px;margin:0}.gold{color:#c9911a}
+        h1{font-size:20px;margin:0}.gold{color:#8198ae}
         table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
         th,td{padding:7px 8px;border-bottom:1px solid #eee}
-        th{text-align:left;background:#faf6ec;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-        .tot td{border:0;padding:3px 8px}.tot .grand{font-size:16px;font-weight:800;border-top:2px solid #c9911a}
+        th{text-align:left;background:#f5f6f8;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+        .tot td{border:0;padding:3px 8px}.tot .grand{font-size:16px;font-weight:800;border-top:2px solid #8198ae}
         .muted{color:#8a795a;font-size:12px}
       </style></head><body>
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -555,11 +555,11 @@ function FolioDetail({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>{folio.guest_name}</p>
             <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-              style={online ? { background: "#dbeafe", color: "#1d4ed8" } : { background: "#f1efe9", color: "#78716c" }}>
+              style={online ? { background: "#dbeafe", color: "#1d4ed8" } : { background: "#eceff3", color: "#78716c" }}>
               {online ? "🌐 Online booking" : "🚶 Walk-in"}
             </span>
             <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-              style={folio.status === "settled" ? { background: "#dcfce7", color: "#15803d" } : { background: "#fef3c7", color: "#b45309" }}>
+              style={folio.status === "settled" ? { background: "#dcfce7", color: "#15803d" } : { background: "#f0f3f5", color: "#b45309" }}>
               {folio.status}
             </span>
           </div>
@@ -656,7 +656,7 @@ function FolioDetail({
                 className={`flex-1 text-[0.7rem] font-bold py-1.5 rounded-lg border transition-all ${
                   active ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200"
                 }`}
-                style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)" } : undefined}>
+                style={active ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
                 {label}
               </button>
             );

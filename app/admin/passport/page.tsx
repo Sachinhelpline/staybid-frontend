@@ -20,7 +20,7 @@ const BG = "#07080C";
 const CARD = "#151820";
 const SURFACE = "#0F1117";
 const BORDER = "rgba(255,255,255,0.08)";
-const GOLD = "#D4AF37";
+const GOLD = "#9fb1c2";
 const TEXT = "#E8EAF0";
 const MUTE = "#8A8FA8";
 const GREEN = "#2ECC71";
@@ -384,7 +384,7 @@ export default function AdminPassportPage() {
                 {RANKS.map((r) => {
                   const here = effectiveRank?.rank.key === r.key;
                   return (
-                    <span key={r.key} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: `1px solid ${here ? GOLD : BORDER}`, color: here ? GOLD : MUTE, background: here ? "rgba(212,175,55,0.1)" : "transparent" }}>
+                    <span key={r.key} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: `1px solid ${here ? GOLD : BORDER}`, color: here ? GOLD : MUTE, background: here ? "rgba(140, 160, 182,0.1)" : "transparent" }}>
                       {r.emoji} {r.label} · {r.xpMin.toLocaleString()}
                     </span>
                   );
@@ -423,7 +423,7 @@ export default function AdminPassportPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#D4AF37", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#9fb1c2", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>{title}</div>
       {children}
     </div>
   );
@@ -434,6 +434,6 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 9, padding: "9px 12px", fontSize: 13, outline: "none", width: "100%",
 };
 const primaryBtn: React.CSSProperties = {
-  background: "#D4AF37", color: "#1a1a1a", border: "none", borderRadius: 9,
+  background: "#9fb1c2", color: "#1a1a1a", border: "none", borderRadius: 9,
   padding: "9px 16px", fontWeight: 700, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap",
 };

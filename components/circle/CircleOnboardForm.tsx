@@ -130,14 +130,14 @@ type Pal = {
   hint: string; divider: string; danger: string; ok: string; roomCard: string;
 };
 const ADMIN_PAL: Pal = {
-  panel: "#151820", sub: "#8A8FA8", text: "#E8EAF0", muted: "#8A8FA8", accent: "#D4AF37",
-  input: "#0F1117", inputBorder: "rgba(255,255,255,0.09)", chip: "#0F1117", chipOn: "rgba(212,175,55,0.14)", chipOnBorder: "#D4AF37",
+  panel: "#151820", sub: "#8A8FA8", text: "#E8EAF0", muted: "#8A8FA8", accent: "#9fb1c2",
+  input: "#0F1117", inputBorder: "rgba(255,255,255,0.09)", chip: "#0F1117", chipOn: "rgba(140, 160, 182,0.14)", chipOnBorder: "#9fb1c2",
   hint: "#8A8FA8", divider: "rgba(255,255,255,0.08)", danger: "#FF4757", ok: "#2ECC71", roomCard: "#0F1117",
 };
 const PUBLIC_PAL: Pal = {
-  panel: "var(--bg-card, #FFFCF6)", sub: "var(--text-muted, #6E5430)", text: "var(--text-base, #1F1A0F)", muted: "var(--text-muted, #6E5430)", accent: "var(--cozy-champagne, #C9A66B)",
-  input: "var(--bg-input, #FBF6EC)", inputBorder: "var(--border-soft, rgba(184,134,11,0.20))", chip: "var(--bg-input, #FBF6EC)", chipOn: "rgba(201,166,107,0.16)", chipOnBorder: "var(--cozy-champagne, #C9A66B)",
-  hint: "var(--text-muted, #6E5430)", divider: "var(--border-soft, rgba(184,134,11,0.18))", danger: "#C0503E", ok: "#5E7C4E", roomCard: "var(--bg-input, #FBF6EC)",
+  panel: "var(--bg-card, #fcfcfd)", sub: "var(--text-muted, #6E5430)", text: "var(--text-base, #1F1A0F)", muted: "var(--text-muted, #6E5430)", accent: "var(--cozy-champagne, #C9A66B)",
+  input: "var(--bg-input, #f5f7f8)", inputBorder: "var(--border-soft, rgba(106, 133, 160,0.20))", chip: "var(--bg-input, #f5f7f8)", chipOn: "rgba(201,166,107,0.16)", chipOnBorder: "var(--cozy-champagne, #C9A66B)",
+  hint: "var(--text-muted, #6E5430)", divider: "var(--border-soft, rgba(106, 133, 160,0.18))", danger: "#C0503E", ok: "#5E7C4E", roomCard: "var(--bg-input, #f5f7f8)",
 };
 
 // ── Section (module-scope: defining it inside the component gave it a new
