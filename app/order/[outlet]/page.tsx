@@ -95,31 +95,31 @@ export default function OrderPage() {
   const locLabel = isRoom ? "Room number" : data?.outlet?.type === "restaurant" ? "Table number" : "Room / Table";
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#faf6ec" }}>
+    <div style={{ minHeight: "100dvh", background: "#f5f6f8" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
         * { -webkit-tap-highlight-color: transparent; }
         body { font-family:'Inter',sans-serif; margin:0; }
         .od-disp { font-family:'Cormorant Garamond',serif; }
-        .od-card { background:#fff; border:1px solid #efe7d7; border-radius:14px; }
-        .od-btn { background:linear-gradient(135deg,#c9911a,#f0b429); color:#fff; border:none; border-radius:11px; font-weight:700; cursor:pointer; transition:all .15s; }
+        .od-card { background:#fff; border:1px solid #e3e8ed; border-radius:14px; }
+        .od-btn { background:linear-gradient(135deg,#8198ae,#a9b9c8); color:#fff; border:none; border-radius:11px; font-weight:700; cursor:pointer; transition:all .15s; }
         .od-btn:active { transform:scale(.98); }
         .od-btn:disabled { opacity:.5; }
-        .od-step { width:26px; height:26px; border-radius:8px; border:1px solid #e3c98f; background:#fff; color:#c9911a; font-weight:800; font-size:15px; line-height:1; cursor:pointer; }
-        .od-inp { width:100%; border:1px solid #e6ddc8; border-radius:10px; padding:10px 12px; font-size:0.86rem; outline:none; color:#3d2c14; }
-        .od-inp:focus { border-color:#c9911a; box-shadow:0 0 0 3px rgba(201,145,26,.13); }
+        .od-step { width:26px; height:26px; border-radius:8px; border:1px solid #c1ccd7; background:#fff; color:#8198ae; font-weight:800; font-size:15px; line-height:1; cursor:pointer; }
+        .od-inp { width:100%; border:1px solid #d7dee6; border-radius:10px; padding:10px 12px; font-size:0.86rem; outline:none; color:#3d2c14; }
+        .od-inp:focus { border-color:#8198ae; box-shadow:0 0 0 3px rgba(106, 133, 160,.13); }
       `}</style>
 
       {loading ? (
         <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 38, height: 38, border: "3px solid #e3c98f", borderTopColor: "transparent", borderRadius: 999, animation: "spin 1s linear infinite" }} />
+          <div style={{ width: 38, height: 38, border: "3px solid #c1ccd7", borderTopColor: "transparent", borderRadius: 999, animation: "spin 1s linear infinite" }} />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       ) : err ? (
         <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <p style={{ fontSize: 40 }}>🍽️</p>
           <p style={{ fontWeight: 700, color: "#3d2c14" }}>{err}</p>
-          <p style={{ fontSize: 13, color: "#9a8a6a", marginTop: 4 }}>QR sahi hai? Hotel se confirm karein.</p>
+          <p style={{ fontSize: 13, color: "#768fa7", marginTop: 4 }}>QR sahi hai? Hotel se confirm karein.</p>
         </div>
       ) : placed ? (
         <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
@@ -128,7 +128,7 @@ export default function OrderPage() {
           <p style={{ fontSize: 13, color: "#6e5430", marginTop: 2 }}>
             {locLabel}: <b>{placed.loc}</b> · {fmtCur(placed.total)}
           </p>
-          <p style={{ fontSize: 12.5, color: "#9a8a6a", marginTop: 10, maxWidth: 320 }}>
+          <p style={{ fontSize: 12.5, color: "#768fa7", marginTop: 10, maxWidth: 320 }}>
             {data?.hotel?.name} aapka order verify karke taiyaar karega. Bill aapke room folio me add ho jayega.
           </p>
           <button className="od-btn" style={{ padding: "10px 22px", marginTop: 18, fontSize: 14 }}
@@ -138,7 +138,7 @@ export default function OrderPage() {
         <>
           {/* header */}
           <div style={{ background: "linear-gradient(135deg,#1c140a,#2b2010)", padding: "18px 16px 16px", color: "#fff" }}>
-            <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#f0b429", fontWeight: 700 }}>
+            <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#a9b9c8", fontWeight: 700 }}>
               {isRoom ? "🛎 Room Service" : data?.outlet?.type === "restaurant" ? "🍴 Restaurant" : "📋 Menu"} · {data?.outlet?.name}
             </p>
             <p className="od-disp" style={{ fontSize: 26, fontWeight: 600, marginTop: 2 }}>{data?.hotel?.name}</p>
@@ -147,7 +147,7 @@ export default function OrderPage() {
 
           <div style={{ padding: "14px 14px 120px", maxWidth: 640, margin: "0 auto" }}>
             {(data?.items || []).length === 0 ? (
-              <div className="od-card" style={{ padding: 28, textAlign: "center", color: "#9a8a6a" }}>
+              <div className="od-card" style={{ padding: 28, textAlign: "center", color: "#768fa7" }}>
                 <p style={{ fontSize: 30 }}>🍽️</p>
                 <p style={{ fontWeight: 600, color: "#3d2c14" }}>Menu abhi taiyaar ho raha hai</p>
               </div>
@@ -158,7 +158,7 @@ export default function OrderPage() {
 
           {/* sticky cart bar */}
           {cartCount > 0 && (
-            <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 14px calc(10px + env(safe-area-inset-bottom,0px))", background: "rgba(250,246,236,0.96)", backdropFilter: "blur(8px)", borderTop: "1px solid #e6ddc8" }}>
+            <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 14px calc(10px + env(safe-area-inset-bottom,0px))", background: "rgba(176, 192, 209,0.96)", backdropFilter: "blur(8px)", borderTop: "1px solid #d7dee6" }}>
               <button className="od-btn" style={{ width: "100%", maxWidth: 640, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 18px", fontSize: 15 }}
                 onClick={() => setCartOpen(true)}>
                 <span>{cartCount} item{cartCount > 1 ? "s" : ""}</span>
@@ -171,11 +171,11 @@ export default function OrderPage() {
           {cartOpen && (
             <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(10,8,5,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
               onClick={() => setCartOpen(false)}>
-              <div style={{ background: "#faf6ec", width: "100%", maxWidth: 640, borderRadius: "18px 18px 0 0", maxHeight: "90dvh", display: "flex", flexDirection: "column" }}
+              <div style={{ background: "#f5f6f8", width: "100%", maxWidth: 640, borderRadius: "18px 18px 0 0", maxHeight: "90dvh", display: "flex", flexDirection: "column" }}
                 onClick={(e) => e.stopPropagation()}>
-                <div style={{ padding: "14px 16px", borderBottom: "1px solid #e6ddc8", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <div style={{ padding: "14px 16px", borderBottom: "1px solid #d7dee6", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
                   <p className="od-disp" style={{ fontSize: 20, fontWeight: 600, color: "#241a0c" }}>Your order</p>
-                  <button onClick={() => setCartOpen(false)} style={{ width: 30, height: 30, borderRadius: 999, border: "none", background: "#efe7d7", fontSize: 17, cursor: "pointer" }}>×</button>
+                  <button onClick={() => setCartOpen(false)} style={{ width: 30, height: 30, borderRadius: 999, border: "none", background: "#e3e8ed", fontSize: 17, cursor: "pointer" }}>×</button>
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 14 }}>
                   {cartLines.map((l) => {
@@ -185,7 +185,7 @@ export default function OrderPage() {
                         <FoodMark type={l.foodType} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13.5, fontWeight: 700, color: "#241a0c" }}>{l.name}</p>
-                          <p style={{ fontSize: 11.5, color: "#9a8a6a" }}>{l.portionLabel ? l.portionLabel + " · " : ""}{fmtCur(l.price)}</p>
+                          <p style={{ fontSize: 11.5, color: "#768fa7" }}>{l.portionLabel ? l.portionLabel + " · " : ""}{fmtCur(l.price)}</p>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <button className="od-step" onClick={() => setQty(key, l.qty - 1)}>−</button>
@@ -203,7 +203,7 @@ export default function OrderPage() {
                     <input className="od-inp" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Special instructions (optional)" />
                   </div>
                 </div>
-                <div style={{ padding: "12px 16px calc(12px + env(safe-area-inset-bottom,0px))", borderTop: "1px solid #e6ddc8", flexShrink: 0 }}>
+                <div style={{ padding: "12px 16px calc(12px + env(safe-area-inset-bottom,0px))", borderTop: "1px solid #d7dee6", flexShrink: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14, fontWeight: 700, color: "#241a0c" }}>
                     <span>Total</span><span>{fmtCur(cartTotal)}</span>
                   </div>
@@ -211,7 +211,7 @@ export default function OrderPage() {
                     onClick={placeOrder} disabled={placing}>
                     {placing ? "Placing…" : "Place Order"}
                   </button>
-                  <p style={{ fontSize: 10.5, color: "#9a8a6a", textAlign: "center", marginTop: 7 }}>
+                  <p style={{ fontSize: 10.5, color: "#768fa7", textAlign: "center", marginTop: 7 }}>
                     Hotel order verify karega · bill aapke folio me add hoga
                   </p>
                 </div>
@@ -250,14 +250,14 @@ function MenuList({ data, cart, onAdd, onSetQty }: any) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={it.image} alt="" style={{ width: 70, height: 70, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
                 ) : (
-                  <div style={{ width: 70, height: 70, borderRadius: 10, background: "#f4eedd", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🍽️</div>
+                  <div style={{ width: 70, height: 70, borderRadius: 10, background: "#ebeff2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🍽️</div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <FoodMark type={it.food_type} />
                     <p style={{ fontSize: 14, fontWeight: 700, color: "#241a0c" }}>{it.name}</p>
                   </div>
-                  {it.description && <p style={{ fontSize: 11.5, color: "#9a8a6a", marginTop: 2, lineHeight: 1.35 }}>{it.description}</p>}
+                  {it.description && <p style={{ fontSize: 11.5, color: "#768fa7", marginTop: 2, lineHeight: 1.35 }}>{it.description}</p>}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
                     {(Array.isArray(it.portions) ? it.portions : []).map((p: any, i: number) => {
                       const key = `${it.id}|${p.label || ""}`;
@@ -265,15 +265,15 @@ function MenuList({ data, cart, onAdd, onSetQty }: any) {
                       return (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {inCart ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #e3c98f", borderRadius: 9, padding: "2px 4px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #c1ccd7", borderRadius: 9, padding: "2px 4px" }}>
                               <button className="od-step" onClick={() => onSetQty(key, inCart.qty - 1)}>−</button>
                               <span style={{ fontWeight: 800, fontSize: 13, minWidth: 14, textAlign: "center" }}>{inCart.qty}</span>
                               <button className="od-step" onClick={() => onSetQty(key, inCart.qty + 1)}>+</button>
-                              <span style={{ fontSize: 11, color: "#9a8a6a", paddingRight: 4 }}>{p.label}</span>
+                              <span style={{ fontSize: 11, color: "#768fa7", paddingRight: 4 }}>{p.label}</span>
                             </div>
                           ) : (
                             <button onClick={() => onAdd(it, p)}
-                              style={{ border: "1px solid #e3c98f", background: "#fff8e6", borderRadius: 9, padding: "5px 10px", fontSize: 12, fontWeight: 700, color: "#3d2c14", cursor: "pointer" }}>
+                              style={{ border: "1px solid #c1ccd7", background: "#f7f8fa", borderRadius: 9, padding: "5px 10px", fontSize: 12, fontWeight: 700, color: "#3d2c14", cursor: "pointer" }}>
                               + {p.label ? p.label + " " : ""}{fmtCur(p.price)}
                             </button>
                           )}

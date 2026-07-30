@@ -120,7 +120,7 @@ export function TutorialHelpButton() {
               width: "min(440px, 100%)",
               maxHeight: "calc(100dvh - 64px)",
               borderRadius: 22,
-              background: "linear-gradient(160deg, #FFFCF6 0%, #FAF5EB 100%)",
+              background: "linear-gradient(160deg, #fcfcfd 0%, #f4f6f8 100%)",
               border: "1px solid rgba(201, 166, 107, 0.32)",
               boxShadow: "0 30px 60px -16px rgba(31, 26, 15, 0.45)",
               padding: "18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px",

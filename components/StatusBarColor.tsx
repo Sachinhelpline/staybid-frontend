@@ -23,14 +23,14 @@ import { usePathname } from "next/navigation";
 
 const REEL_ROUTES = new Set(["/", "/discover", "/reels"]);
 const WALNUT_PREFIXES = ["/bid"];
-const RAIL_CREAM = "#fff9ec"; // matches .fdeal-rail-wrap top gradient stop
+const RAIL_CREAM = "#f8fafb"; // matches .fdeal-rail-wrap top gradient stop
 // The tone the Stage home's hero fades INTO at its top edge (.sbh-hero::before).
 // The bar and that first sliver of hero have to be the same colour or the seam
 // between them reads as a cut-off screen.
 const STAGE_INK = "#0F0C08";
 
 function statusColorFor(pathname: string): string {
-  if (typeof document === "undefined") return "#FAF5EB";
+  if (typeof document === "undefined") return "#f4f6f8";
   // v572 — `/` is the Stage home now, not the reel player, so the old
   // "reel is at the top ⇒ pure black" branch was painting a #000 bar above a
   // photographic hero: a hard black band with a bright sky under it, which is
@@ -49,7 +49,7 @@ function statusColorFor(pathname: string): string {
   }
   if (WALNUT_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) return "#0d0a05";
   const dark = document.documentElement.getAttribute("data-theme") === "dark";
-  return dark ? "#0F0C08" : "#FAF5EB";
+  return dark ? "#0F0C08" : "#f4f6f8";
 }
 
 export default function StatusBarColor() {

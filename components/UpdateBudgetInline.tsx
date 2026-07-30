@@ -73,7 +73,7 @@ export default function UpdateBudgetInline({
         <span className="text-[0.62rem] uppercase tracking-wide font-semibold" style={{ color: "var(--text-muted)" }}>
           New budget / night
         </span>
-        <span className="text-sm font-bold" style={{ color: "#c9911a" }}>
+        <span className="text-sm font-bold" style={{ color: "#8198ae" }}>
           ₹{amt.toLocaleString("en-IN")}
         </span>
       </div>
@@ -83,7 +83,7 @@ export default function UpdateBudgetInline({
         value={amt}
         onChange={(e) => setAmt(Number(e.target.value))}
         disabled={busy}
-        style={{ width: "100%", accentColor: "#c9911a" }}
+        style={{ width: "100%", accentColor: "#8198ae" }}
       />
       <div className="flex justify-between text-[0.6rem] mt-1" style={{ color: "var(--text-muted)" }}>
         <span>₹{min.toLocaleString("en-IN")}</span>

@@ -23,10 +23,10 @@ import { api } from "@/lib/api";
 import type { MyTierResponse } from "@/lib/tier/types";
 
 const COZY = {
-  paperBg: "linear-gradient(135deg, #FAF5EB 0%, #F2EAD8 100%)",
-  cardBg: "#FFFCF6",
+  paperBg: "linear-gradient(135deg, #f4f6f8 0%, #e7ebef 100%)",
+  cardBg: "#fcfcfd",
   champagne: "#C9A66B",
-  champagneLight: "#D9BE82",
+  champagneLight: "#b4c1cf",
   sage: "#7DA86C",
   sageDark: "#3F5C2E",
   cocoa: "#4A3820",

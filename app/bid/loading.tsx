@@ -18,7 +18,7 @@ export default function BidLoading() {
     >
       <div style={{ display: "grid", justifyItems: "center", gap: 16 }}>
         <div className="sb-bid-splash-spinner" />
-        <div style={{ color: "rgba(217,190,130,0.85)", fontSize: 13, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+        <div style={{ color: "rgba(176, 192, 209,0.85)", fontSize: 13, letterSpacing: "0.18em", textTransform: "uppercase" }}>
           Loading your auction
         </div>
       </div>

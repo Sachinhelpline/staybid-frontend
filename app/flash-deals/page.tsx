@@ -171,14 +171,14 @@ function CountdownRing({ pctRemaining, urgent }: { pctRemaining: number; urgent:
   const dash = (pctRemaining / 100) * c;
   return (
     <svg width="38" height="38" viewBox="0 0 38 38" style={{ flexShrink: 0 }}>
-      <circle cx="19" cy="19" r={r} fill="none" stroke="rgba(255,246,226,0.14)" strokeWidth="2.6" />
+      <circle cx="19" cy="19" r={r} fill="none" stroke="rgba(176, 192, 209,0.14)" strokeWidth="2.6" />
       <circle
         cx="19" cy="19" r={r} fill="none"
         stroke={urgent ? "#f6a721" : "#b8c5d2"}
         strokeWidth="2.6" strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
         transform="rotate(-90 19 19)"
-        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 6px rgba(246,167,33,0.9))" : "drop-shadow(0 0 5px rgba(240,194,74,0.75))" }}
+        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 6px rgba(246,167,33,0.9))" : "drop-shadow(0 0 5px rgba(176, 192, 209,0.75))" }}
       />
     </svg>
   );
@@ -1102,12 +1102,12 @@ function FdStyles() {
       .fd-root {
         position: relative;
         min-height: 100vh;
-        /* v589 — brighter matte cream (was hardcoded dull #FAF5EB, missed the
+        /* v589 — brighter matte cream (was hardcoded dull #f4f6f8, missed the
            v588 lift) + a dusty-sage whisper low-left for the earthy accent. */
         background: radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.09), transparent 60%),
-                    radial-gradient(900px 500px at 90% 30%, rgba(217, 190, 130, 0.07), transparent 55%),
+                    radial-gradient(900px 500px at 90% 30%, rgba(176, 192, 209, 0.07), transparent 55%),
                     radial-gradient(1100px 700px at -5% 108%, rgba(154,172,196, 0.11), transparent 62%),
-                    linear-gradient(180deg, #FDFAF3 0%, #FBF7EE 50%, #FDFAF3 100%);
+                    linear-gradient(180deg, #f9fafb 0%, #f6f7f9 50%, #f9fafb 100%);
         color: var(--cozy-warm-dark, #1F1A0F);
         overflow-x: hidden;
       }
@@ -1145,14 +1145,14 @@ function FdStyles() {
       /* v521 — champagne-gold live dot (cozy theme; no red/pink). */
       .fd-dot-live {
         width: 7px; height: 7px; border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, #ffe6a8, #aebccb 55%, #859bb1);
-        box-shadow: 0 0 0 0 rgba(224, 176, 74, 0.7), 0 0 6px rgba(224,176,74,0.55);
+        background: radial-gradient(circle at 35% 35%, #e2e8ed, #aebccb 55%, #859bb1);
+        box-shadow: 0 0 0 0 rgba(140, 160, 182, 0.7), 0 0 6px rgba(140, 160, 182,0.55);
         animation: fdPulse 1.7s infinite;
       }
       @keyframes fdPulse {
-        0%   { box-shadow: 0 0 0 0 rgba(224, 176, 74, 0.6), 0 0 6px rgba(224,176,74,0.5); }
-        70%  { box-shadow: 0 0 0 11px rgba(224, 176, 74, 0), 0 0 6px rgba(224,176,74,0.2); }
-        100% { box-shadow: 0 0 0 0 rgba(224, 176, 74, 0), 0 0 6px rgba(224,176,74,0.5); }
+        0%   { box-shadow: 0 0 0 0 rgba(140, 160, 182, 0.6), 0 0 6px rgba(140, 160, 182,0.5); }
+        70%  { box-shadow: 0 0 0 11px rgba(140, 160, 182, 0), 0 0 6px rgba(140, 160, 182,0.2); }
+        100% { box-shadow: 0 0 0 0 rgba(140, 160, 182, 0), 0 0 6px rgba(140, 160, 182,0.5); }
       }
 
       /* v159.5 — Single-line hero ABOVE the sticky. Scrolls away first.
@@ -1205,7 +1205,7 @@ function FdStyles() {
       }
       .fd-hero-dot { color: var(--cozy-cocoa-soft, #6E5430); opacity: 0.5; }
       .fd-title-gold {
-        background: linear-gradient(90deg, #D9BE82, #C9A66B, #69849f, #C9A66B, #D9BE82);
+        background: linear-gradient(90deg, #b4c1cf, #C9A66B, #69849f, #C9A66B, #b4c1cf);
         background-size: 200% 100%;
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -1237,7 +1237,7 @@ function FdStyles() {
         padding: 1px 7px; border-radius: 999px;
         border: 1px solid rgba(201,166,107,0.30);
       }
-      .fd-stat-sep { color: var(--cozy-taupe, #C8B891); opacity: 0.7; }
+      .fd-stat-sep { color: var(--cozy-taupe, #acbbca); opacity: 0.7; }
       .fd-stat-dot {
         width: 6px; height: 6px; border-radius: 50%;
         background: var(--cozy-sage, #97aabd);
@@ -1307,7 +1307,7 @@ function FdStyles() {
       .fd-refine-chip {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 3px 9px; height: 25px;
-        background: var(--cozy-cream-50, #FFFCF6);
+        background: var(--cozy-cream-50, #fcfcfd);
         border: 1px solid var(--cozy-taupe, #E8DCC8);
         border-radius: 999px;
         color: var(--cozy-cocoa, #4A3820);
@@ -1438,12 +1438,12 @@ function FdStyles() {
         background: linear-gradient(135deg, rgba(31,24,14,0.72), rgba(18,13,7,0.82));
         backdrop-filter: blur(8px) saturate(140%);
         -webkit-backdrop-filter: blur(8px) saturate(140%);
-        border: 1px solid rgba(217, 190, 130, 0.5);
+        border: 1px solid rgba(176, 192, 209, 0.5);
         border-radius: 999px;
         font-size: 0.6rem; font-weight: 800;
-        letter-spacing: 0.2em; color: #F7EEDA;
+        letter-spacing: 0.2em; color: #ebeff2;
         box-shadow: 0 6px 16px -8px rgba(0,0,0,0.55),
-          inset 0 1px 0 rgba(255,246,226,0.22);
+          inset 0 1px 0 rgba(176, 192, 209,0.22);
         text-shadow: 0 1px 2px rgba(0,0,0,0.45);
       }
 
@@ -1476,7 +1476,7 @@ function FdStyles() {
         background: linear-gradient(145deg, #adbbca 0%, #8a9fb4 46%, #67829e 100%);
         box-shadow:
           0 10px 22px -8px rgba(130,90,12,0.5),
-          inset 0 1px 0 rgba(255,248,230,0.26);
+          inset 0 1px 0 rgba(176, 192, 209,0.26);
       }
       @keyframes fdStamp {
         0%, 100% { transform: rotate(-3deg) scale(1); }
@@ -1499,8 +1499,8 @@ function FdStyles() {
         background: rgba(15, 12, 8, 0.62); backdrop-filter: blur(6px);
         padding: 5px 10px; border-radius: 999px;
         font-size: 0.65rem; font-weight: 600;
-        color: #F5EFE0;
-        border: 1px solid rgba(217, 190, 130, 0.20);
+        color: #ecf0f3;
+        border: 1px solid rgba(176, 192, 209, 0.20);
       }
       .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cozy-champagne, #C9A66B); }
 
@@ -1520,30 +1520,30 @@ function FdStyles() {
         -webkit-backdrop-filter: blur(12px) saturate(150%);
         border-radius: 999px;
         padding: 3px 11px 3px 3px;
-        border: 1px solid rgba(224, 190, 120, 0.42);
+        border: 1px solid rgba(176, 192, 209, 0.42);
         box-shadow:
           0 9px 22px -7px rgba(0, 0, 0, 0.6),
           0 2px 6px -2px rgba(0,0,0,0.4),
-          inset 0 1px 0 rgba(255, 246, 226, 0.2),
+          inset 0 1px 0 rgba(176, 192, 209, 0.2),
           inset 0 -2px 5px rgba(0,0,0,0.3);
       }
       .fd-ring-wrap > svg { width: 38px !important; height: 38px !important; }
       .fd-ring-time {
         display: flex; flex-direction: column; line-height: 1;
         font-family: 'Menlo', 'Consolas', monospace;
-        color: #F5EFE0;
+        color: #ecf0f3;
       }
       .fd-ring-digits {
         font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
         display: inline-flex; align-items: center;
         font-variant-numeric: tabular-nums;
-        color: #F5EFE0;
+        color: #ecf0f3;
         text-shadow: 0 1px 2px rgba(0,0,0,0.4);
       }
-      .fd-ring-digits.urgent { color: #ffd487; }
+      .fd-ring-digits.urgent { color: #d0d9e1; }
       .fd-ring-lbl {
         font-size: 0.46rem; font-weight: 700; letter-spacing: 0.22em;
-        color: rgba(217, 190, 130, 0.78); text-transform: uppercase;
+        color: rgba(176, 192, 209, 0.78); text-transform: uppercase;
         margin-top: 1px;
       }
       /* Drawer header timer — same digit-cell rules apply via .td-cell. */
@@ -1650,7 +1650,7 @@ function FdStyles() {
       }
       .fd-slots-shimmer {
         position: absolute; inset: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 246, 226, 0.35), transparent);
+        background: linear-gradient(90deg, transparent, rgba(176, 192, 209, 0.35), transparent);
         background-size: 200% 100%;
         animation: fdShimmerBar 2.4s linear infinite;
       }
@@ -1866,8 +1866,8 @@ function FdStyles() {
         padding: 1px 7px; border-radius: 999px;
         font-size: 0.58rem; font-weight: 900; letter-spacing: 0.03em;
         color: #3a2606;
-        background: linear-gradient(135deg, #ffe6a3, #b6c3d0 60%, #8ca1b6);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px -2px rgba(180,130,25,0.5);
+        background: linear-gradient(135deg, #e2e7ec, #b6c3d0 60%, #8ca1b6);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px -2px rgba(106, 133, 160,0.5);
       }
 
       /* v522 — rating chip in the meta line */
@@ -1909,7 +1909,7 @@ function FdStyles() {
       .fd-scarcity-fill {
         height: 100%; border-radius: 999px;
         background: linear-gradient(90deg, #b8c5d2, #94a7ba);
-        box-shadow: 0 0 6px rgba(224,160,32,0.5);
+        box-shadow: 0 0 6px rgba(140, 160, 182,0.5);
         transition: width 0.6s cubic-bezier(.4,0,.2,1);
       }
       .fd-scarcity.urgent .fd-scarcity-fill { background: linear-gradient(90deg, #f6a721, #e07d12); }
@@ -1942,7 +1942,7 @@ function FdStyles() {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         /* a11y: 12px vertical padding → ~44px tap target. */
         padding: 12px 18px;
-        /* v590 — SATIN matte gold (was bright glossy #ffe9a6→#7a92aa). Even,
+        /* v590 — SATIN matte gold (was bright glossy #e5eaee→#7a92aa). Even,
            brushed metal, no harsh white specular. */
         background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 44%, #42566d 100%);
         color: #ffffff; font-size: 0.78rem; font-weight: 900;
@@ -1965,7 +1965,7 @@ function FdStyles() {
       .fd-cta:hover {
         transform: translateY(-2px);
         box-shadow:
-          0 16px 32px -8px rgba(200,140,20,0.6),
+          0 16px 32px -8px rgba(106, 133, 160,0.6),
           0 3px 8px -1px rgba(75,96,117,0.4),
           inset 0 1.5px 0 rgba(255,255,255,0.8),
           inset 0 -3px 6px rgba(150,95,10,0.4);
@@ -2113,8 +2113,8 @@ function FdStyles() {
         position: absolute; top: 14px; right: 14px; z-index: 3;
         width: 36px; height: 36px; border-radius: 50%;
         background: rgba(15, 12, 8, 0.62); backdrop-filter: blur(6px);
-        border: 1px solid rgba(217, 190, 130, 0.22);
-        color: #F5EFE0; font-size: 1rem; cursor: pointer;
+        border: 1px solid rgba(176, 192, 209, 0.22);
+        color: #ecf0f3; font-size: 1rem; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         transition: all 0.2s ease;
       }
@@ -2146,10 +2146,10 @@ function FdStyles() {
       .fd-drawer-img-head h2 {
         font-family: 'Cormorant Garamond', 'Syne', serif;
         font-weight: 400; font-size: clamp(1.25rem, 5.6vw, 1.7rem); margin: 0;
-        color: #F5EFE0; line-height: 1.15;
+        color: #ecf0f3; line-height: 1.15;
       }
       .fd-drawer-img-head p {
-        color: rgba(245, 239, 224, 0.78); font-size: clamp(0.7rem, 2.4vw, 0.8rem);
+        color: rgba(176, 192, 209, 0.78); font-size: clamp(0.7rem, 2.4vw, 0.8rem);
         margin: 4px 0 0;
       }
 

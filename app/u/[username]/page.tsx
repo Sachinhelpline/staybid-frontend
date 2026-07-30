@@ -229,7 +229,7 @@ export default function UserProfilePage() {
       <style jsx global>{`
         .u-root {
           min-height: 100dvh;
-          background: linear-gradient(180deg, #fff9ec 0%, #fdf3df 60%, #faecc7 100%);
+          background: linear-gradient(180deg, #f8fafb 0%, #f2f4f6 60%, #e9edf1 100%);
           color: #2c1d04;
           padding-bottom: 84px;
           font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
@@ -238,15 +238,15 @@ export default function UserProfilePage() {
           display: flex; align-items: center; justify-content: space-between;
           padding: 14px 16px 10px;
           position: sticky; top: 0; z-index: 30;
-          background: rgba(255, 249, 236, 0.92);
+          background: rgba(176, 192, 209, 0.92);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(184, 134, 11, 0.10);
+          border-bottom: 1px solid rgba(106, 133, 160, 0.10);
         }
         .u-back {
           width: 30px; height: 30px; border-radius: 999px;
-          background: rgba(184, 134, 11, 0.10);
-          border: 1px solid rgba(184, 134, 11, 0.22);
+          background: rgba(106, 133, 160, 0.10);
+          border: 1px solid rgba(106, 133, 160, 0.22);
           color: #6e4a08; font-weight: 700; cursor: pointer;
         }
         .u-top-handle {
@@ -260,17 +260,17 @@ export default function UserProfilePage() {
         }
         .u-avatar-wrap {
           width: 88px; height: 88px; border-radius: 999px; padding: 2.5px;
-          background: conic-gradient(from 0deg, #c9911a, #f0d060, #fff4cc, #f0d060, #c9911a);
+          background: conic-gradient(from 0deg, #8198ae, #c6d0da, #f1f4f6, #c6d0da, #8198ae);
           flex-shrink: 0;
         }
         .u-avatar-img {
           width: 100%; height: 100%; border-radius: 999px; object-fit: cover;
-          border: 3px solid #fff9ec; display: block;
+          border: 3px solid #f8fafb; display: block;
         }
         .u-avatar-fallback {
           display: flex; align-items: center; justify-content: center;
           width: 100%; height: 100%; border-radius: 999px;
-          background: #fff9ec; border: 3px solid #fff9ec;
+          background: #f8fafb; border: 3px solid #f8fafb;
           font-size: 2.2rem; font-weight: 800; color: #6e4a08;
         }
         .u-stats {
@@ -287,13 +287,13 @@ export default function UserProfilePage() {
           cursor: pointer; border-radius: 8px;
           transition: background 0.16s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
-        .u-stat-btn:hover { background: rgba(184, 134, 11, 0.06); }
+        .u-stat-btn:hover { background: rgba(106, 133, 160, 0.06); }
         .u-stat-btn:active { transform: scale(0.96); }
 
         .u-bio-wrap { padding: 4px 18px 10px; }
         .u-display-name { font-size: 0.92rem; font-weight: 800; color: #2c1d04; margin: 0 0 2px; }
-        .u-verified { color: #c9911a; font-weight: 700; }
-        .u-creator  { color: #c9911a; }
+        .u-verified { color: #8198ae; font-weight: 700; }
+        .u-creator  { color: #8198ae; }
         .u-hotel    { font-size: 0.9rem; }
         .u-bio {
           font-size: 0.84rem; color: #4a3208;
@@ -309,7 +309,7 @@ export default function UserProfilePage() {
           display: inline-flex; align-items: center; justify-content: center;
           padding: 8px 12px;
           border-radius: 10px;
-          border: 1px solid rgba(184, 134, 11, 0.30);
+          border: 1px solid rgba(106, 133, 160, 0.30);
           background: rgba(255, 255, 255, 0.6);
           color: #2c1d04;
           font-size: 0.84rem; font-weight: 700;
@@ -318,16 +318,16 @@ export default function UserProfilePage() {
         }
         .u-action-btn:active { transform: scale(0.97); }
         .u-action-primary {
-          background: linear-gradient(135deg, #f0d060, #ffd76b);
-          border-color: rgba(184, 134, 11, 0.45);
+          background: linear-gradient(135deg, #c6d0da, #d0d9e1);
+          border-color: rgba(106, 133, 160, 0.45);
           color: #2c1d04;
         }
         .u-action-secondary { background: rgba(255, 255, 255, 0.9); }
 
         .u-tabs {
           display: flex; align-items: center; justify-content: space-around;
-          border-top: 1px solid rgba(184, 134, 11, 0.18);
-          border-bottom: 1px solid rgba(184, 134, 11, 0.18);
+          border-top: 1px solid rgba(106, 133, 160, 0.18);
+          border-bottom: 1px solid rgba(106, 133, 160, 0.18);
           background: rgba(255, 255, 255, 0.45);
         }
         .u-tab {
@@ -342,7 +342,7 @@ export default function UserProfilePage() {
         }
         .u-grid-tile {
           position: relative; aspect-ratio: 1 / 1;
-          background: rgba(184, 134, 11, 0.08);
+          background: rgba(106, 133, 160, 0.08);
           overflow: hidden; border: none; padding: 0; cursor: pointer;
           width: 100%; display: block;
           transition: transform 0.14s cubic-bezier(.32,1.2,.36,1);
@@ -352,7 +352,7 @@ export default function UserProfilePage() {
         .u-grid-fallback {
           display: flex; align-items: center; justify-content: center;
           height: 100%; font-size: 1.8rem; font-weight: 700;
-          color: rgba(184, 134, 11, 0.5);
+          color: rgba(106, 133, 160, 0.5);
         }
         .u-grid-icon {
           position: absolute; top: 6px; right: 6px;
@@ -449,7 +449,7 @@ function FollowListSheet({
         aria-modal="true"
         style={{
           width: "100%", maxWidth: 520, maxHeight: "78dvh",
-          background: "linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%)",
+          background: "linear-gradient(180deg, #f8fafb 0%, #ecf0f3 100%)",
           borderTopLeftRadius: 18, borderTopRightRadius: 18,
           boxShadow: "0 -16px 40px rgba(0, 0, 0, 0.32)",
           display: "flex", flexDirection: "column", overflow: "hidden",
@@ -458,8 +458,8 @@ function FollowListSheet({
         <div style={{
           display: "grid", gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center", gap: 8, padding: "14px 16px 10px",
-          borderBottom: "1px solid rgba(184, 134, 11, 0.18)",
-          background: "rgba(255, 249, 236, 0.92)",
+          borderBottom: "1px solid rgba(106, 133, 160, 0.18)",
+          background: "rgba(176, 192, 209, 0.92)",
         }}>
           <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "rgba(74, 50, 8, 0.70)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {targetHandle}
@@ -471,7 +471,7 @@ function FollowListSheet({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            style={{ justifySelf: "end", width: 30, height: 30, borderRadius: 999, background: "rgba(184, 134, 11, 0.10)", border: "1px solid rgba(184, 134, 11, 0.22)", color: "#6e4a08", fontWeight: 700, cursor: "pointer" }}
+            style={{ justifySelf: "end", width: 30, height: 30, borderRadius: 999, background: "rgba(106, 133, 160, 0.10)", border: "1px solid rgba(106, 133, 160, 0.22)", color: "#6e4a08", fontWeight: 700, cursor: "pointer" }}
           >✕</button>
         </div>
         <div style={{ padding: "10px 14px 6px" }}>
@@ -484,7 +484,7 @@ function FollowListSheet({
             style={{
               width: "100%", padding: "9px 12px", fontSize: "0.86rem",
               color: "#2c1d04", background: "rgba(255, 255, 255, 0.7)",
-              border: "1px solid rgba(184, 134, 11, 0.30)", borderRadius: 10, outline: "none",
+              border: "1px solid rgba(106, 133, 160, 0.30)", borderRadius: 10, outline: "none",
             }}
           />
         </div>
@@ -509,10 +509,10 @@ function FollowListSheet({
                   >
                     <span style={{
                       width: 42, height: 42, borderRadius: 999,
-                      background: "linear-gradient(135deg, #f0d060, #c9911a)",
+                      background: "linear-gradient(135deg, #c6d0da, #8198ae)",
                       color: "#2c1d04", fontWeight: 800,
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "1rem", border: "2px solid #fff9ec", flexShrink: 0,
+                      fontSize: "1rem", border: "2px solid #f8fafb", flexShrink: 0,
                     }}>{(name || "?").trim().slice(0, 1).toUpperCase()}</span>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#2c1d04", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</p>

@@ -52,7 +52,7 @@ export function FeedContextHeader({ profile, hotel, isFollowing, onToggleFollow 
       <Link href={`/social/profile/${profile.username}`} className="shrink-0">
         <div
           className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-base font-bold text-black"
-          style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "2px solid rgba(255,255,255,0.5)" }}
+          style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "2px solid rgba(255,255,255,0.5)" }}
         >
           {profile.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : initials}
         </div>
@@ -108,10 +108,10 @@ export function FeedContextHeader({ profile, hotel, isFollowing, onToggleFollow 
           color: "#fff",
           border: "1px solid rgba(255,255,255,0.30)",
         } : {
-          background: "linear-gradient(135deg,#ffd76b,#f0b429)",
+          background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
           color: "#1a1208",
           border: "1px solid rgba(255,255,255,0.45)",
-          boxShadow: "0 3px 10px rgba(240,180,41,0.4)",
+          boxShadow: "0 3px 10px rgba(140, 160, 182,0.4)",
         }}
       >
         {isFollowing ? "Following" : "Follow"}

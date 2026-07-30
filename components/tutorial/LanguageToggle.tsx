@@ -56,7 +56,7 @@ export function LanguageToggle({ variant = "chip", className }: Props) {
         gap: 4,
         padding: "5px 4px",
         borderRadius: 999,
-        background: "rgba(255, 252, 246, 0.18)",
+        background: "rgba(176, 192, 209, 0.18)",
         border: "1px solid rgba(201, 166, 107, 0.45)",
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
@@ -72,7 +72,7 @@ export function LanguageToggle({ variant = "chip", className }: Props) {
         style={{
           padding: "3px 9px",
           borderRadius: 999,
-          background: lang === "en" ? "linear-gradient(135deg, #D9BE82, #C9A66B)" : "transparent",
+          background: lang === "en" ? "linear-gradient(135deg, #b4c1cf, #C9A66B)" : "transparent",
           color: lang === "en" ? "#1F1A0F" : "rgba(74, 56, 32, 0.62)",
           transition: "all 0.18s ease",
         }}
@@ -83,7 +83,7 @@ export function LanguageToggle({ variant = "chip", className }: Props) {
         style={{
           padding: "3px 9px",
           borderRadius: 999,
-          background: lang === "hi" ? "linear-gradient(135deg, #D9BE82, #C9A66B)" : "transparent",
+          background: lang === "hi" ? "linear-gradient(135deg, #b4c1cf, #C9A66B)" : "transparent",
           color: lang === "hi" ? "#1F1A0F" : "rgba(74, 56, 32, 0.62)",
           transition: "all 0.18s ease",
         }}

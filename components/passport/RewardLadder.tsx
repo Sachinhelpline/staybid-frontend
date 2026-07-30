@@ -84,7 +84,7 @@ export function RewardLadder({
             onClick={() => claim(r.key)}
             disabled={busyKey === r.key}
             className="block w-full text-center py-3 rounded-2xl font-bold text-sm text-white relative overflow-hidden sb-shimmer"
-            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}
+            style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" }}
           >
             <span className="relative" style={{ zIndex: 2 }}>
               {busyKey === r.key ? "Claiming…" : "🎁 Claim reward"}
@@ -170,7 +170,7 @@ export function RewardLadder({
                   claimed
                     ? { background: "#e6f0e6", color: "#4a6f4a" }
                     : r.unlocked
-                      ? { background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)", color: "#fff" }
+                      ? { background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)", color: "#fff" }
                       : { background: "var(--bg-pill)", color: "var(--text-muted)" }
                 }
               >

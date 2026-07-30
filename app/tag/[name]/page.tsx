@@ -59,7 +59,7 @@ export default function HashtagPage() {
           <Link
             href={`/reels?tag=${encodeURIComponent(data.tag)}`}
             className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-white text-sm shadow-gold sb-card-lift sb-shimmer relative"
-            style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+            style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
             <span className="relative" style={{ zIndex: 2 }}>▶ Watch in Reels</span>
           </Link>
         </div>

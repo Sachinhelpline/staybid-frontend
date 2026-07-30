@@ -934,8 +934,8 @@ function MyBidsPageInner() {
         @keyframes celebPop { 0%{transform:scale(0.6);opacity:0} 40%{transform:scale(1.05);opacity:1} 100%{transform:scale(1);opacity:1} }
         @keyframes confettiFall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
         @keyframes goldSweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
-        .gold-text { background: linear-gradient(90deg,#d9a93e,#c9911a,#b8871a,#c9911a,#d9a93e); background-size:200% auto; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation: shine 6s linear infinite; }
-        .gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%); color:#1a1205; font-weight:800; letter-spacing:.03em; }
+        .gold-text { background: linear-gradient(90deg,#9caec0,#8198ae,#748da6,#8198ae,#9caec0); background-size:200% auto; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation: shine 6s linear infinite; }
+        .gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#748da6 0%,#a9b9c8 48%,#cbd5de 60%,#8198ae 100%); color:#1a1205; font-weight:800; letter-spacing:.03em; }
         .gold-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%); transform:translateX(-120%); animation: goldSweep 2.8s ease-in-out infinite; }
         .mb-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
         .mb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
@@ -943,7 +943,7 @@ function MyBidsPageInner() {
         .mb-card-highlight { animation: mbHighlightRing 2.5s ease-out 1 both; }
         .mb-seg { background: var(--bg-pill); border:1px solid var(--border-soft); border-radius:999px; padding:4px; display:flex; gap:4px; }
         .mb-seg button { flex:1; border-radius:999px; padding:10px 12px; font-weight:700; font-size:.82rem; color: var(--text-soft); transition: all .2s ease; display:flex; align-items:center; justify-content:center; gap:6px; }
-        .mb-seg button.on { background: linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a); color:#1a1205; box-shadow:0 4px 16px rgba(201,145,26,0.32); }
+        .mb-seg button.on { background: linear-gradient(135deg,#748da6,#a9b9c8 55%,#8198ae); color:#1a1205; box-shadow:0 4px 16px rgba(106,133,160,0.32); }
         .confetti-piece { position:absolute; top:-10px; width:8px; height:14px; border-radius:2px; animation: confettiFall linear forwards; }
       `}</style>
 
@@ -954,7 +954,7 @@ function MyBidsPageInner() {
             const left = Math.random() * 100;
             const dur  = 2.2 + Math.random() * 2.4;
             const del  = Math.random() * 0.6;
-            const hue  = [ "#f0b429", "#d9a93e", "#c9911a", "#7F9269", "#C9A66B" ][i % 5];
+            const hue  = [ "#a9b9c8", "#9caec0", "#8198ae", "#7F9269", "#C9A66B" ][i % 5];
             return (
               <span key={i} className="confetti-piece"
                 style={{ left: `${left}%`, background: hue, animationDuration: `${dur}s`, animationDelay: `${del}s`, transform: `rotate(${Math.random()*360}deg)` }} />
@@ -1123,13 +1123,13 @@ function MyBidsPageInner() {
                       </span>
                       {b._isFlash && (
                         <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
-                          style={{ background: "rgba(201,145,26,0.14)", border: "1px solid rgba(201,145,26,0.36)", color: "#c9911a" }}>
+                          style={{ background: "rgba(106,133,160,0.14)", border: "1px solid rgba(106,133,160,0.36)", color: "#8198ae" }}>
                           ⚡ Flash
                         </span>
                       )}
                       {units[b.id]?.unitNumber && (
                         <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
-                          style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.34)", color: "#c9911a" }}>
+                          style={{ background: "rgba(106,133,160,0.12)", border: "1px solid rgba(106,133,160,0.34)", color: "#8198ae" }}>
                           🔑 Room #{units[b.id].unitNumber}
                         </span>
                       )}
@@ -1147,7 +1147,7 @@ function MyBidsPageInner() {
                   style={{ background: "var(--bg-pill)" }}>
                   <div>
                     <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Your Bid</p>
-                    <p className="text-base font-bold tabular-nums" style={{ color: "#c9911a" }}>₹{yourBid.toLocaleString("en-IN")}</p>
+                    <p className="text-base font-bold tabular-nums" style={{ color: "#8198ae" }}>₹{yourBid.toLocaleString("en-IN")}</p>
                     <p className="text-[0.56rem]" style={{ color: "var(--text-muted)" }}>/night</p>
                     {wasBelowFloor && (
                       <p className="text-[0.52rem] mt-0.5" style={{ color: "var(--text-muted)" }}>below min · pending review</p>
@@ -1292,7 +1292,7 @@ function MyBidsPageInner() {
                   <div className="mt-3 p-3 rounded-xl flex items-center justify-between gap-2"
                     style={{ background: STATUS_META.ACCEPTED.soft, border: `1px solid ${STATUS_META.ACCEPTED.color}44` }}>
                     <p className="text-sm font-medium" style={{ color: STATUS_META.ACCEPTED.color }}>✓ Booked at ₹{confirmAmt}/night</p>
-                    <Link href="/bookings" className="text-xs font-semibold shrink-0" style={{ color: "#c9911a" }}>View Booking →</Link>
+                    <Link href="/bookings" className="text-xs font-semibold shrink-0" style={{ color: "#8198ae" }}>View Booking →</Link>
                   </div>
                 )}
 
@@ -1305,7 +1305,7 @@ function MyBidsPageInner() {
                       : ""}
                   </p>
                   <Link href={`/hotels/${b.hotelId}`} className="text-xs font-medium tracking-wide shrink-0"
-                    style={{ color: "#c9911a" }}>
+                    style={{ color: "#8198ae" }}>
                     View Hotel →
                   </Link>
                 </div>

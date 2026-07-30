@@ -277,9 +277,9 @@ export function CreateSheet({
 
   if (!open) return null;
   const cards: { kind: ContentKind; emoji: string; title: string; sub: string; gradient: string }[] = [
-    { kind: "reel",  emoji: "🎬", title: "Reel",  sub: "Up to 60s vertical video · audio, tags & emojis", gradient: "linear-gradient(135deg,#E7CFA0,#C9A66B 55%,#8B6914)" },
-    { kind: "photo", emoji: "📷", title: "Photo", sub: "Single image post · caption · tag a hotel",        gradient: "linear-gradient(135deg,#F0E0BE,#D9BE82 55%,#A6852F)" },
-    { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",  gradient: "linear-gradient(135deg,#D9C19A,#B89B63 55%,#6E5430)" },
+    { kind: "reel",  emoji: "🎬", title: "Reel",  sub: "Up to 60s vertical video · audio, tags & emojis", gradient: "linear-gradient(135deg,#c8d2dc,#C9A66B 55%,#8B6914)" },
+    { kind: "photo", emoji: "📷", title: "Photo", sub: "Single image post · caption · tag a hotel",        gradient: "linear-gradient(135deg,#dbe2e8,#b4c1cf 55%,#7089a3)" },
+    { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",  gradient: "linear-gradient(135deg,#D9C19A,#8ba0b5 55%,#6E5430)" },
   ];
   const sheet = (
     <div className="fixed inset-0 z-90 flex items-end sm:items-center sm:justify-center sb-cmodal" onClick={onClose}>
@@ -291,16 +291,16 @@ export function CreateSheet({
           background: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)",
           borderTopLeftRadius: 26, borderTopRightRadius: 26,
           borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-          borderTop: "1px solid rgba(217,190,130,0.22)",
+          borderTop: "1px solid rgba(176, 192, 209,0.22)",
           boxShadow: "0 -24px 70px rgba(15,12,8,0.7)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)",
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full" style={{ background: "rgba(217,190,130,0.4)" }} /></div>
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full" style={{ background: "rgba(176, 192, 209,0.4)" }} /></div>
         <div className="flex items-center justify-between px-5 pb-1">
           <div>
             <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#C9A66B" }}>Share your stay</p>
-            <p className="font-semibold text-[1.15rem]" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: "italic", color: "#FAF5EB" }}>Create</p>
+            <p className="font-semibold text-[1.15rem]" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: "italic", color: "#f4f6f8" }}>Create</p>
           </div>
           <button
             type="button"
@@ -310,9 +310,9 @@ export function CreateSheet({
               position: "relative", zIndex: 5,
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               width: 36, height: 36, borderRadius: 9999,
-              background: "rgba(217,190,130,0.10)",
-              border: "1px solid rgba(217,190,130,0.22)",
-              color: "rgba(250,245,235,0.85)", fontSize: "1.15rem",
+              background: "rgba(176, 192, 209,0.10)",
+              border: "1px solid rgba(176, 192, 209,0.22)",
+              color: "rgba(176, 192, 209,0.85)", fontSize: "1.15rem",
               pointerEvents: "auto",
             }}
             aria-label="Close"
@@ -332,22 +332,22 @@ export function CreateSheet({
                 {c.emoji}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[0.96rem]" style={{ color: "#FAF5EB" }}>{c.title}</p>
-                <p className="text-[0.68rem] mt-0.5" style={{ color: "rgba(231,207,160,0.62)" }}>{c.sub}</p>
+                <p className="font-semibold text-[0.96rem]" style={{ color: "#f4f6f8" }}>{c.title}</p>
+                <p className="text-[0.68rem] mt-0.5" style={{ color: "rgba(176, 192, 209,0.62)" }}>{c.sub}</p>
               </div>
-              <span className="text-xl" style={{ color: "rgba(217,190,130,0.55)" }}>›</span>
+              <span className="text-xl" style={{ color: "rgba(176, 192, 209,0.55)" }}>›</span>
             </button>
           ))}
         </div>
         <style jsx>{`
           .cf-create-card {
-            background: linear-gradient(135deg, rgba(217,190,130,0.10), rgba(217,190,130,0.03));
-            border: 1px solid rgba(217,190,130,0.16);
+            background: linear-gradient(135deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.03));
+            border: 1px solid rgba(176, 192, 209,0.16);
             transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), border-color 0.18s ease, background 0.18s ease;
           }
           .cf-create-card:hover {
-            border-color: rgba(217,190,130,0.42);
-            background: linear-gradient(135deg, rgba(217,190,130,0.16), rgba(217,190,130,0.06));
+            border-color: rgba(176, 192, 209,0.42);
+            background: linear-gradient(135deg, rgba(176, 192, 209,0.16), rgba(176, 192, 209,0.06));
           }
           .cf-create-card:active { transform: scale(0.98); }
         `}</style>
@@ -531,7 +531,7 @@ export function LocationPicker({
             placeholder="Search city, area, hotel, landmark…"
             className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-hidden"
             style={{
-              color: "#fff", caretColor: "#ffd76b",
+              color: "#fff", caretColor: "#d0d9e1",
               background: "rgba(255,255,255,0.10)",
               border: "1px solid rgba(255,255,255,0.20)",
             }}
@@ -694,7 +694,7 @@ export function HotelPicker({
             placeholder="Search hotel name or city…"
             className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-hidden"
             style={{
-              color: "#fff", caretColor: "#ffd76b",
+              color: "#fff", caretColor: "#d0d9e1",
               background: "rgba(255,255,255,0.10)",
               border: "1px solid rgba(255,255,255,0.20)",
             }}
@@ -972,7 +972,7 @@ export function ProfilePhotoEditor({
             <div
               className="w-[120px] h-[120px] rounded-full p-[3px] shrink-0"
               style={{
-                background: "conic-gradient(from 0deg, #f0b429, #ff458d, #b964ff, #f0b429)",
+                background: "conic-gradient(from 0deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)",
               }}
             >
               <div
@@ -997,7 +997,7 @@ export function ProfilePhotoEditor({
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 className="px-4 py-2 rounded-full text-[0.78rem] font-bold text-black"
-                style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 📷 {preview ? "Change photo" : "Upload photo"}
               </button>
@@ -1026,7 +1026,7 @@ export function ProfilePhotoEditor({
               maxLength={32}
               className="w-full rounded-xl px-3 py-2 text-[0.86rem] outline-hidden"
               style={{
-                color: "#fff", caretColor: "#ffd76b",
+                color: "#fff", caretColor: "#d0d9e1",
                 background: "rgba(255,255,255,0.10)",
                 border: "1px solid rgba(255,255,255,0.20)",
               }}
@@ -1044,7 +1044,7 @@ export function ProfilePhotoEditor({
               maxLength={280}
               className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden resize-none"
               style={{
-                color: "#fff", caretColor: "#ffd76b",
+                color: "#fff", caretColor: "#d0d9e1",
                 background: "rgba(255,255,255,0.10)",
                 border: "1px solid rgba(255,255,255,0.20)",
                 minHeight: 70,
@@ -1065,7 +1065,7 @@ export function ProfilePhotoEditor({
               maxLength={80}
               className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
               style={{
-                color: "#fff", caretColor: "#ffd76b",
+                color: "#fff", caretColor: "#d0d9e1",
                 background: "rgba(255,255,255,0.10)",
                 border: "1px solid rgba(255,255,255,0.20)",
               }}
@@ -1082,7 +1082,7 @@ export function ProfilePhotoEditor({
               maxLength={120}
               className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
               style={{
-                color: "#fff", caretColor: "#ffd76b",
+                color: "#fff", caretColor: "#d0d9e1",
                 background: "rgba(255,255,255,0.10)",
                 border: "1px solid rgba(255,255,255,0.20)",
               }}
@@ -1123,7 +1123,7 @@ export function ProfilePhotoEditor({
                 maxLength={4}
                 className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-hidden text-center"
                 style={{
-                  color: "#fff", caretColor: "#ffd76b",
+                  color: "#fff", caretColor: "#d0d9e1",
                   background: "rgba(255,255,255,0.10)",
                   border: "1px solid rgba(255,255,255,0.20)",
                 }}
@@ -1136,7 +1136,7 @@ export function ProfilePhotoEditor({
                 maxLength={24}
                 className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
                 style={{
-                  color: "#fff", caretColor: "#ffd76b",
+                  color: "#fff", caretColor: "#d0d9e1",
                   background: "rgba(255,255,255,0.10)",
                   border: "1px solid rgba(255,255,255,0.20)",
                 }}
@@ -1146,7 +1146,7 @@ export function ProfilePhotoEditor({
                 onClick={addHighlight}
                 disabled={!hlLabel.trim()}
                 className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 + Add
               </button>
@@ -1260,7 +1260,7 @@ export function HighlightPicker({
           <div className="px-4 pb-2">
             <div
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-              style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))", border: "1px solid rgba(240,180,41,0.45)" }}
+              style={{ background: "linear-gradient(135deg, rgba(140, 160, 182,0.14), rgba(255,69,141,0.10))", border: "1px solid rgba(140, 160, 182,0.45)" }}
             >
               <span className="text-base">{current.emoji}</span>
               <span className="flex-1 text-white text-[0.84rem] font-semibold truncate">{current.label}</span>
@@ -1280,10 +1280,10 @@ export function HighlightPicker({
                 className="flex flex-col items-center justify-center py-3 rounded-2xl transition-transform active:scale-95"
                 style={{
                   background: active
-                    ? "linear-gradient(135deg, rgba(240,180,41,0.18), rgba(255,69,141,0.12))"
+                    ? "linear-gradient(135deg, rgba(140, 160, 182,0.18), rgba(255,69,141,0.12))"
                     : "rgba(255,255,255,0.05)",
-                  border: active ? "1px solid rgba(240,180,41,0.55)" : "1px solid rgba(255,255,255,0.10)",
-                  boxShadow: active ? "0 4px 14px rgba(240,180,41,0.20)" : "none",
+                  border: active ? "1px solid rgba(140, 160, 182,0.55)" : "1px solid rgba(255,255,255,0.10)",
+                  boxShadow: active ? "0 4px 14px rgba(140, 160, 182,0.20)" : "none",
                 }}
               >
                 <div
@@ -1305,7 +1305,7 @@ export function HighlightPicker({
             <button
               onClick={() => setCreating(true)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
-              style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+              style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
             >
               + New highlight
             </button>
@@ -1317,7 +1317,7 @@ export function HighlightPicker({
                 maxLength={4}
                 className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-hidden text-center"
                 style={{
-                  color: "#fff", caretColor: "#ffd76b",
+                  color: "#fff", caretColor: "#d0d9e1",
                   background: "rgba(255,255,255,0.10)",
                   border: "1px solid rgba(255,255,255,0.20)",
                 }}
@@ -1331,7 +1331,7 @@ export function HighlightPicker({
                 autoFocus
                 className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
                 style={{
-                  color: "#fff", caretColor: "#ffd76b",
+                  color: "#fff", caretColor: "#d0d9e1",
                   background: "rgba(255,255,255,0.10)",
                   border: "1px solid rgba(255,255,255,0.20)",
                 }}
@@ -1340,7 +1340,7 @@ export function HighlightPicker({
                 onClick={create}
                 disabled={!hlLabel.trim()}
                 className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 Create
               </button>
@@ -1449,7 +1449,7 @@ export function AudioPicker({
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search music…"
             className="ig-comment-input w-full rounded-full px-4 py-2 text-[0.82rem] outline-hidden"
-            style={{ color: "#fff", caretColor: "#ffd76b", background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)" }}
+            style={{ color: "#fff", caretColor: "#d0d9e1", background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)" }}
           />
         </div>
 
@@ -1497,7 +1497,7 @@ export function AudioPicker({
                 onClick={() => setCategory(c.id as any)}
                 className="px-3 py-1 rounded-full text-[0.7rem] font-bold whitespace-nowrap shrink-0"
                 style={{
-                  background: active ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "rgba(255,255,255,0.06)",
+                  background: active ? "linear-gradient(135deg,#d0d9e1,#a9b9c8)" : "rgba(255,255,255,0.06)",
                   color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                   border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                 }}
@@ -1518,8 +1518,8 @@ export function AudioPicker({
             <div
               className="my-2 p-4 rounded-2xl"
               style={{
-                background: "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))",
-                border: "1px solid rgba(240,180,41,0.32)",
+                background: "linear-gradient(135deg, rgba(140, 160, 182,0.14), rgba(255,69,141,0.10))",
+                border: "1px solid rgba(140, 160, 182,0.32)",
               }}
             >
               <p className="text-2xl mb-1.5">🪕 🎬 🎵</p>
@@ -1535,8 +1535,8 @@ export function AudioPicker({
                 onClick={() => fileRef.current?.click()}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
                 style={{
-                  background: "linear-gradient(135deg,#ffd76b,#f0b429)",
-                  boxShadow: "0 6px 18px rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.5)",
+                  background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)",
+                  boxShadow: "0 6px 18px rgba(140, 160, 182,0.45), inset 0 1px 0 rgba(255,255,255,0.5)",
                   border: "1px solid rgba(255,255,255,0.45)",
                 }}
               >
@@ -1552,8 +1552,8 @@ export function AudioPicker({
                 key={t.id}
                 className="flex items-center gap-3 px-2.5 py-2 rounded-xl"
                 style={{
-                  background: active ? "rgba(240,180,41,0.14)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${active ? "rgba(240,180,41,0.45)" : "rgba(255,255,255,0.08)"}`,
+                  background: active ? "rgba(140, 160, 182,0.14)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${active ? "rgba(140, 160, 182,0.45)" : "rgba(255,255,255,0.08)"}`,
                 }}
               >
                 <div className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-xl"
@@ -1575,7 +1575,7 @@ export function AudioPicker({
                 <button
                   onClick={() => { handleStopPreview(); onPick(t); onClose(); }}
                   className="px-3 py-1.5 rounded-full text-[0.72rem] font-bold text-black"
-                  style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)", boxShadow: "0 2px 6px rgba(240,180,41,0.45)" }}
+                  style={{ background: "linear-gradient(135deg,#d0d9e1,#a9b9c8)", border: "1px solid rgba(255,255,255,0.45)", boxShadow: "0 2px 6px rgba(140, 160, 182,0.45)" }}
                 >
                   Use
                 </button>
@@ -1780,7 +1780,7 @@ export function CoverFramePicker({
             onClick={pickAtScrub}
             disabled={busy}
             className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
-            style={{ color: busy ? "rgba(255,215,107,0.35)" : "#ffd76b" }}
+            style={{ color: busy ? "rgba(176, 192, 209,0.35)" : "#d0d9e1" }}
           >
             {busy ? "Saving…" : "Set cover"}
           </button>
@@ -1809,8 +1809,8 @@ export function CoverFramePicker({
               className="absolute top-2 left-2 px-2.5 py-1 rounded-full text-[0.66rem] font-bold tracking-wide"
               style={{
                 background: "rgba(0,0,0,0.55)",
-                color: "#ffd76b",
-                border: "1px solid rgba(255,215,107,0.35)",
+                color: "#d0d9e1",
+                border: "1px solid rgba(176, 192, 209,0.35)",
                 backdropFilter: "blur(8px)",
               }}
             >
@@ -1881,8 +1881,8 @@ export function CoverFramePicker({
                     left: `${markerPct}%`,
                     transform: "translateX(-50%)",
                     width: 3,
-                    background: "linear-gradient(180deg,#ffe28a,#f0b429)",
-                    boxShadow: "0 0 0 1px rgba(0,0,0,0.55), 0 0 12px rgba(240,180,41,0.65)",
+                    background: "linear-gradient(180deg,#dce3e9,#a9b9c8)",
+                    boxShadow: "0 0 0 1px rgba(0,0,0,0.55), 0 0 12px rgba(140, 160, 182,0.65)",
                   }}
                 />
                 <div
@@ -1894,9 +1894,9 @@ export function CoverFramePicker({
                     width: 14,
                     height: 14,
                     borderRadius: 999,
-                    background: "#ffd76b",
+                    background: "#d0d9e1",
                     border: "2px solid #0a0612",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.55), 0 0 10px rgba(240,180,41,0.6)",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.55), 0 0 10px rgba(140, 160, 182,0.6)",
                   }}
                 />
               </>
@@ -2976,7 +2976,7 @@ export function Composer({
               onClick={() => setSubStep("details")}
               disabled={!mediaFile}
               className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
-              style={{ color: !mediaFile ? "rgba(255,215,107,0.35)" : "#ffd76b" }}
+              style={{ color: !mediaFile ? "rgba(176, 192, 209,0.35)" : "#d0d9e1" }}
             >
               Next ›
             </button>
@@ -2986,7 +2986,7 @@ export function Composer({
               disabled={!mediaFile || posting || step !== "edit" || (!tierContext && !taggedHotel)}
               className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
               style={{
-                color: !mediaFile || posting || step !== "edit" || (!tierContext && !taggedHotel) ? "rgba(255,215,107,0.35)" : "#ffd76b",
+                color: !mediaFile || posting || step !== "edit" || (!tierContext && !taggedHotel) ? "rgba(176, 192, 209,0.35)" : "#d0d9e1",
               }}
             >
               {posting ? "Posting…" : "Post"}
@@ -3155,8 +3155,8 @@ export function Composer({
                       style={{
                         background: "rgba(0,0,0,0.55)",
                         backdropFilter: "blur(10px)",
-                        color: "#ffd76b",
-                        border: "1px solid rgba(255,215,107,0.45)",
+                        color: "#d0d9e1",
+                        border: "1px solid rgba(176, 192, 209,0.45)",
                         boxShadow: "0 6px 18px rgba(0,0,0,0.55)",
                       }}
                     >
@@ -3188,8 +3188,8 @@ export function Composer({
                   style={{
                     background: "rgba(0,0,0,0.45)",
                     backdropFilter: "blur(8px)",
-                    color: "rgba(255,215,107,0.95)",
-                    border: "1px solid rgba(255,215,107,0.35)",
+                    color: "rgba(176, 192, 209,0.95)",
+                    border: "1px solid rgba(176, 192, 209,0.35)",
                   }}
                 >
                   {targetLabel.split(" ")[0].toUpperCase()}
@@ -3222,7 +3222,7 @@ export function Composer({
                   // composite pipeline so what you see is what gets baked in.
                   const ts = o.kind === "text" ? getTextStyle(o.styleId) : null;
                   const textGlow = ts?.glow
-                    ? `0 0 ${Math.round(8 * o.scale)}px ${o.color || "#ffd76b"}, 0 0 ${Math.round(16 * o.scale)}px ${o.color || "#ffd76b"}`
+                    ? `0 0 ${Math.round(8 * o.scale)}px ${o.color || "#d0d9e1"}, 0 0 ${Math.round(16 * o.scale)}px ${o.color || "#d0d9e1"}`
                     : o.bgFill ? "none" : "0 1px 4px rgba(0,0,0,0.55)";
                   return (
                     <div
@@ -3239,7 +3239,7 @@ export function Composer({
                         cursor: "grab",
                         userSelect: "none",
                         touchAction: "none",
-                        outline: isSel ? "2px dashed rgba(255,215,107,0.95)" : "none",
+                        outline: isSel ? "2px dashed rgba(176, 192, 209,0.95)" : "none",
                         outlineOffset: "4px",
                         zIndex: isSel ? 5 : 1,
                       }}
@@ -3381,7 +3381,7 @@ export function Composer({
                       style={{
                         background: "rgba(13,9,25,0.78)",
                         backdropFilter: "blur(14px)",
-                        border: "1px solid rgba(255,215,107,0.28)",
+                        border: "1px solid rgba(176, 192, 209,0.28)",
                         boxShadow: "0 10px 24px rgba(0,0,0,0.55)",
                       }}
                       onClick={(e) => e.stopPropagation()}
@@ -3397,7 +3397,7 @@ export function Composer({
                               onClick={() => updateOverlay(selectedTextOverlay.id, { styleId: s.id })}
                               className="shrink-0 px-2.5 py-1 rounded-full text-[0.66rem] font-bold transition-all"
                               style={{
-                                background: active ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "rgba(255,255,255,0.08)",
+                                background: active ? "linear-gradient(135deg,#d0d9e1,#a9b9c8)" : "rgba(255,255,255,0.08)",
                                 color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                                 border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.16)",
                                 fontFamily: s.fontFamily,
@@ -3424,8 +3424,8 @@ export function Composer({
                               style={{
                                 width: 24, height: 24,
                                 background: c,
-                                border: active ? "2px solid #ffd76b" : "2px solid rgba(255,255,255,0.22)",
-                                boxShadow: active ? "0 0 0 2px rgba(255,215,107,0.35)" : "none",
+                                border: active ? "2px solid #d0d9e1" : "2px solid rgba(255,255,255,0.22)",
+                                boxShadow: active ? "0 0 0 2px rgba(176, 192, 209,0.35)" : "none",
                               }}
                             />
                           );
@@ -3441,7 +3441,7 @@ export function Composer({
                           step={0.05}
                           value={selectedTextOverlay.scale}
                           onChange={(e) => updateOverlay(selectedTextOverlay.id, { scale: Number(e.target.value) })}
-                          style={{ flex: 1, accentColor: "#ffd76b" }}
+                          style={{ flex: 1, accentColor: "#d0d9e1" }}
                         />
                         <button
                           type="button"
@@ -3535,8 +3535,8 @@ export function Composer({
                           <span
                             className="w-14 h-20 rounded-lg overflow-hidden block"
                             style={{
-                              border: active ? "2px solid #ffd76b" : "2px solid rgba(255,255,255,0.18)",
-                              boxShadow: active ? "0 0 0 1px rgba(0,0,0,0.4), 0 4px 14px rgba(240,180,41,0.45)" : "none",
+                              border: active ? "2px solid #d0d9e1" : "2px solid rgba(255,255,255,0.18)",
+                              boxShadow: active ? "0 0 0 1px rgba(0,0,0,0.4), 0 4px 14px rgba(140, 160, 182,0.45)" : "none",
                               transition: "all 0.18s ease",
                             }}
                           >
@@ -3547,7 +3547,7 @@ export function Composer({
                               style={{ filter: f.css }}
                             />
                           </span>
-                          <span className="text-[0.6rem] font-semibold" style={{ color: active ? "#ffd76b" : "rgba(255,255,255,0.65)" }}>
+                          <span className="text-[0.6rem] font-semibold" style={{ color: active ? "#d0d9e1" : "rgba(255,255,255,0.65)" }}>
                             {f.label}
                           </span>
                         </button>
@@ -3683,10 +3683,10 @@ export function Composer({
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
                   style={{
                     background: highlight
-                      ? "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))"
+                      ? "linear-gradient(135deg, rgba(140, 160, 182,0.14), rgba(255,69,141,0.10))"
                       : "rgba(255,255,255,0.04)",
                     border: highlight
-                      ? "1px solid rgba(240,180,41,0.45)"
+                      ? "1px solid rgba(140, 160, 182,0.45)"
                       : "1px solid rgba(255,255,255,0.10)",
                   }}
                 >
@@ -3768,12 +3768,12 @@ export function Composer({
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
                 style={{
                   background: taggedHotel
-                    ? "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))"
+                    ? "linear-gradient(135deg, rgba(140, 160, 182,0.14), rgba(255,69,141,0.10))"
                     : "rgba(255,255,255,0.04)",
                   border: taggedHotel
-                    ? "1px solid rgba(240,180,41,0.45)"
+                    ? "1px solid rgba(140, 160, 182,0.45)"
                     : (!tierContext
-                        ? "1px solid rgba(240,180,41,0.40)"
+                        ? "1px solid rgba(140, 160, 182,0.40)"
                         : "1px solid rgba(255,255,255,0.10)"),
                 }}
               >
@@ -3832,7 +3832,7 @@ export function Composer({
                   className="ig-comment-input w-full rounded-xl px-3 py-2 text-[0.82rem] outline-hidden resize-none"
                   style={{
                     color: "#fff",
-                    caretColor: "#ffd76b",
+                    caretColor: "#d0d9e1",
                     background: "rgba(255,255,255,0.10)",
                     border: "1px solid rgba(255,255,255,0.20)",
                     minHeight: 70,
@@ -3853,7 +3853,7 @@ export function Composer({
                       top: 88,
                       background: "rgba(13, 9, 25, 0.96)",
                       backdropFilter: "blur(14px)",
-                      border: "1px solid rgba(255,215,107,0.30)",
+                      border: "1px solid rgba(176, 192, 209,0.30)",
                       boxShadow: "0 12px 30px rgba(0,0,0,0.55)",
                       maxHeight: 240,
                       overflowY: "auto",
@@ -3877,7 +3877,7 @@ export function Composer({
                           className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
                           style={{
                             background: "linear-gradient(135deg,#3a2a1a,#0d1a2e)",
-                            color: "#ffd76b",
+                            color: "#d0d9e1",
                             fontSize: "0.78rem",
                             fontWeight: 800,
                           }}
@@ -3932,10 +3932,10 @@ export function Composer({
                         onClick={() => toggleTag(t)}
                         className="px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all"
                         style={{
-                          background: active ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "rgba(255,255,255,0.05)",
+                          background: active ? "linear-gradient(135deg,#d0d9e1,#a9b9c8)" : "rgba(255,255,255,0.05)",
                           color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                           border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
-                          boxShadow: active ? "0 2px 6px rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",
+                          boxShadow: active ? "0 2px 6px rgba(140, 160, 182,0.45), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",
                         }}
                       >
                         #{t}

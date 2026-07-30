@@ -17,7 +17,7 @@ type Props = {
 const TIER_BADGE: Record<string, { label: string; emoji: string; color: string }> = {
   PREMIUM:  { label: "Premium",  emoji: "👑", color: "#10b981" },
   STRONG:   { label: "Strong",   emoji: "⭐", color: "#22c55e" },
-  NORMAL:   { label: "Smart",    emoji: "✨", color: "#eab308" },
+  NORMAL:   { label: "Smart",    emoji: "✨", color: "#a4b5c5" },
   CAUTIOUS: { label: "Cautious", emoji: "🎯", color: "#f59e0b" },
   NEW:      { label: "New",      emoji: "🌟", color: "#3b82f6" },
 };
@@ -74,12 +74,12 @@ export default function AutoAcceptCountdown({ bidId, autoAcceptAt, bidderTier, o
     <div className="mt-3 p-2.5 rounded-xl border" style={{
       background: isUrgent
         ? "linear-gradient(135deg,rgba(245,158,11,0.16),rgba(217,119,6,0.08))"
-        : "linear-gradient(135deg,rgba(240,180,41,0.10),rgba(184,135,26,0.05))",
-      borderColor: isUrgent ? "rgba(245,158,11,0.45)" : "rgba(240,180,41,0.3)",
+        : "linear-gradient(135deg,rgba(140, 160, 182,0.10),rgba(106, 133, 160,0.05))",
+      borderColor: isUrgent ? "rgba(245,158,11,0.45)" : "rgba(140, 160, 182,0.3)",
     }}>
       <div className="flex items-center gap-2">
         <span className="text-base">⏱</span>
-        <p className="text-[0.72rem] font-bold flex-1" style={{ color: isUrgent ? "#fbbf24" : "#f0b429" }}>
+        <p className="text-[0.72rem] font-bold flex-1" style={{ color: isUrgent ? "#b5c2d0" : "#a9b9c8" }}>
           Hotel confirms in <span className="font-mono">{m}:{String(s).padStart(2, "0")}</span>
         </p>
         {tier && (

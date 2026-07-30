@@ -34,7 +34,7 @@ function GuestRow({ icon, label, sub, subTone = "default", value, onChange, min,
     else if (value < prev.current) setDir("down");
     prev.current = value;
   }, [value]);
-  const subColor = subTone === "amber" ? "#b8871a" : subTone === "emerald" ? "#4a7f4a" : "var(--text-muted)";
+  const subColor = subTone === "amber" ? "#748da6" : subTone === "emerald" ? "#4a7f4a" : "var(--text-muted)";
   return (
     <div className="grp-row">
       <span className="grp-row-icon" aria-hidden>{icon}</span>

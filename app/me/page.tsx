@@ -461,7 +461,7 @@ export default function MePage() {
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            border: 2px solid var(--accent-soft, rgba(201, 145, 26, 0.18));
+            border: 2px solid var(--accent-soft, rgba(106,133,160, 0.18));
             border-top-color: var(--accent, #C9A66B);
             animation: meLoSpin 0.8s linear infinite;
           }
@@ -547,7 +547,7 @@ export default function MePage() {
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
-            background: var(--accent-soft, rgba(201, 145, 26, 0.10));
+            background: var(--accent-soft, rgba(106,133,160, 0.10));
           }
           .me-loggedout-card-text { flex: 1; min-width: 0; }
           .me-loggedout-card-title {
@@ -583,7 +583,7 @@ export default function MePage() {
             color: var(--text-soft);
             text-decoration: none;
             border-radius: 18px;
-            background: var(--bg-elevated, rgba(201, 145, 26, 0.04));
+            background: var(--bg-elevated, rgba(106,133,160, 0.04));
             border: 1px solid var(--border-soft);
           }
           .me-loggedout-signin strong {
@@ -834,7 +834,7 @@ export default function MePage() {
       <style jsx global>{`
         .me-root {
           min-height: 100dvh;
-          background: linear-gradient(180deg, #fff9ec 0%, #fdf3df 60%, #faecc7 100%);
+          background: linear-gradient(180deg, #f8fafb 0%, #f2f4f6 60%, #e9edf1 100%);
           color: #2c1d04;
           padding-bottom: 84px;  /* clear the bottom dock */
           font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
@@ -847,10 +847,10 @@ export default function MePage() {
           position: sticky;
           top: 0;
           z-index: 30;
-          background: rgba(255, 249, 236, 0.92);
+          background: rgba(176, 192, 209, 0.92);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(184, 134, 11, 0.10);
+          border-bottom: 1px solid rgba(106,133,160, 0.10);
         }
         .me-top-handle {
           font-weight: 700;
@@ -864,8 +864,8 @@ export default function MePage() {
           display: inline-flex; align-items: center; justify-content: center;
           border-radius: 999px;
           background: transparent;
-          border: 1px solid rgba(184, 134, 11, 0.18);
-          color: #6e4a08;
+          border: 1px solid rgba(106,133,160, 0.18);
+          color: #3e4f61;
           font-size: 1.05rem;
           font-weight: 700;
           text-decoration: none;
@@ -873,7 +873,7 @@ export default function MePage() {
           transition: background 0.18s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
         .me-top-icon:active { transform: scale(0.92); }
-        .me-top-icon:hover { background: rgba(184, 134, 11, 0.08); }
+        .me-top-icon:hover { background: rgba(106,133,160, 0.08); }
 
         .me-header {
           display: flex;
@@ -885,7 +885,7 @@ export default function MePage() {
           width: 88px; height: 88px;
           border-radius: 999px;
           padding: 2.5px;
-          background: conic-gradient(from 0deg, #c9911a, #f0d060, #fff4cc, #f0d060, #c9911a);
+          background: conic-gradient(from 0deg, #8198ae, #c6d0da, #f1f4f6, #c6d0da, #8198ae);
           flex-shrink: 0;
         }
         /* v111 — avatar is now a button. Reset native chrome but keep
@@ -903,30 +903,30 @@ export default function MePage() {
           right: -2px; bottom: -2px;
           width: 26px; height: 26px;
           border-radius: 999px;
-          background: linear-gradient(135deg, #f0d060, #c9911a);
-          border: 2px solid #fff9ec;
+          background: linear-gradient(135deg, #c6d0da, #8198ae);
+          border: 2px solid #f8fafb;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 0.78rem;
-          box-shadow: 0 2px 6px rgba(184, 134, 11, 0.35);
+          box-shadow: 0 2px 6px rgba(106,133,160, 0.35);
         }
         .me-avatar-img {
           width: 100%; height: 100%;
           border-radius: 999px;
           object-fit: cover;
-          border: 3px solid #fff9ec;
+          border: 3px solid #f8fafb;
           display: block;
         }
         .me-avatar-fallback {
           display: flex; align-items: center; justify-content: center;
           width: 100%; height: 100%;
           border-radius: 999px;
-          background: #fff9ec;
-          border: 3px solid #fff9ec;
+          background: #f8fafb;
+          border: 3px solid #f8fafb;
           font-size: 2.2rem;
           font-weight: 800;
-          color: #6e4a08;
+          color: #3e4f61;
         }
         .me-stats {
           display: flex;
@@ -942,7 +942,7 @@ export default function MePage() {
           gap: 1px;
         }
         .me-stat-value { font-size: 1.05rem; font-weight: 800; color: #2c1d04; font-variant-numeric: tabular-nums; }
-        .me-stat-label { font-size: 0.72rem; font-weight: 500; color: #6e4a08; }
+        .me-stat-label { font-size: 0.72rem; font-weight: 500; color: #3e4f61; }
 
         .me-bio-wrap { padding: 4px 18px 10px; }
         .me-display-name {
@@ -959,11 +959,11 @@ export default function MePage() {
           font-weight: 800;
           font-size: 0.92rem;
         }
-        .me-tier-badge-creator { color: #c9911a; }
+        .me-tier-badge-creator { color: #8198ae; }
         .me-tier-badge-hotel   { font-size: 0.86rem; }
         .me-bio {
           font-size: 0.84rem;
-          color: #4a3208;
+          color: #2a3642;
           line-height: 1.35;
           white-space: pre-line;
           margin: 0 0 4px;
@@ -975,7 +975,7 @@ export default function MePage() {
         }
         .me-website {
           font-size: 0.78rem;
-          color: #6e4a08;
+          color: #3e4f61;
           text-decoration: none;
           font-weight: 600;
         }
@@ -992,7 +992,7 @@ export default function MePage() {
           justify-content: center;
           padding: 8px 12px;
           border-radius: 14px;
-          border: 1px solid rgba(184, 134, 11, 0.30);
+          border: 1px solid rgba(106,133,160, 0.30);
           background: rgba(255, 255, 255, 0.6);
           color: #2c1d04;
           font-size: 0.84rem;
@@ -1004,10 +1004,10 @@ export default function MePage() {
         .me-action-btn:active { transform: scale(0.97); }
         .me-action-btn:hover { background: rgba(255, 255, 255, 0.85); }
         .me-action-primary {
-          background: linear-gradient(135deg, #f5dd8a 0%, #ffd76b 55%, #e8b84a 100%);
-          border-color: rgba(184, 134, 11, 0.45);
+          background: linear-gradient(135deg, #d6dde5 0%, #d0d9e1 55%, #aebccb 100%);
+          border-color: rgba(106,133,160, 0.45);
           color: #2c1d04;
-          box-shadow: 0 4px 14px rgba(184, 134, 11, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+          box-shadow: 0 4px 14px rgba(106,133,160, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5);
         }
         .me-action-icon { flex: 0 0 auto; padding: 8px 14px; }
 
@@ -1041,9 +1041,9 @@ export default function MePage() {
         }
         .me-highlight-btn:active { transform: scale(0.94); }
         .me-highlight-btn.is-active .me-highlight-ring {
-          background: linear-gradient(135deg, #ffd76b, #f0b429);
-          border-color: rgba(184, 134, 11, 0.62);
-          box-shadow: 0 0 0 2px rgba(255, 215, 107, 0.45);
+          background: linear-gradient(135deg, #d0d9e1, #a9b9c8);
+          border-color: rgba(106,133,160, 0.62);
+          box-shadow: 0 0 0 2px rgba(176, 192, 209, 0.45);
         }
         .me-highlight-btn.is-active .me-highlight-label {
           color: #2c1d04;
@@ -1052,14 +1052,14 @@ export default function MePage() {
         .me-highlight-ring {
           width: 64px; height: 64px;
           border-radius: 999px;
-          background: #fff9ec;
-          border: 1.5px solid rgba(184, 134, 11, 0.30);
+          background: #f8fafb;
+          border: 1.5px solid rgba(106,133,160, 0.30);
           display: flex; align-items: center; justify-content: center;
           font-size: 1.5rem;
           transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
         .me-highlight-ring-all {
-          background: linear-gradient(135deg, #fff9ec, #f0d060);
+          background: linear-gradient(135deg, #f8fafb, #c6d0da);
         }
         .me-highlight-label {
           font-size: 0.7rem;
@@ -1075,8 +1075,8 @@ export default function MePage() {
           display: flex;
           align-items: center;
           justify-content: space-around;
-          border-top: 1px solid rgba(184, 134, 11, 0.18);
-          border-bottom: 1px solid rgba(184, 134, 11, 0.18);
+          border-top: 1px solid rgba(106,133,160, 0.18);
+          border-bottom: 1px solid rgba(106,133,160, 0.18);
           background: rgba(255, 255, 255, 0.45);
         }
         .me-tab {
@@ -1092,7 +1092,7 @@ export default function MePage() {
         }
         .me-tab.is-active {
           color: #2c1d04;
-          border-bottom-color: #6e4a08;
+          border-bottom-color: #3e4f61;
         }
 
         .me-grid {
@@ -1106,7 +1106,7 @@ export default function MePage() {
         .me-grid-tile {
           position: relative;
           aspect-ratio: 1 / 1;
-          background: rgba(184, 134, 11, 0.08);
+          background: rgba(106,133,160, 0.08);
           overflow: hidden;
           /* Button reset — was a div in v79; now navigates to /me/posts
              on tap (IG-style scrollable Posts view, v86). */
@@ -1131,7 +1131,7 @@ export default function MePage() {
           height: 100%;
           font-size: 1.8rem;
           font-weight: 700;
-          color: rgba(184, 134, 11, 0.5);
+          color: rgba(106,133,160, 0.5);
         }
         .me-grid-icon {
           position: absolute;
@@ -1323,7 +1323,7 @@ function MoreDrawer({
         .me-drawer-panel {
           width: min(360px, 86vw);
           height: 100%;
-          background: linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%);
+          background: linear-gradient(180deg, #f8fafb 0%, #ecf0f3 100%);
           box-shadow: -12px 0 32px rgba(0, 0, 0, 0.32);
           overflow-y: auto;
           animation: meDrawerSlide 0.28s cubic-bezier(.32,1.2,.36,1) both;
@@ -1333,10 +1333,10 @@ function MoreDrawer({
           align-items: center;
           justify-content: space-between;
           padding: 16px 18px;
-          border-bottom: 1px solid rgba(184, 134, 11, 0.18);
+          border-bottom: 1px solid rgba(106,133,160, 0.18);
           position: sticky;
           top: 0;
-          background: rgba(255, 249, 236, 0.92);
+          background: rgba(176, 192, 209, 0.92);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
           z-index: 2;
@@ -1351,9 +1351,9 @@ function MoreDrawer({
         .me-drawer-close {
           width: 34px; height: 34px;
           border-radius: 999px;
-          background: rgba(184, 134, 11, 0.10);
-          border: 1px solid rgba(184, 134, 11, 0.22);
-          color: #6e4a08;
+          background: rgba(106,133,160, 0.10);
+          border: 1px solid rgba(106,133,160, 0.22);
+          color: #3e4f61;
           font-size: 1rem;
           font-weight: 700;
           cursor: pointer;
@@ -1378,10 +1378,10 @@ function MoreDrawer({
           transition: background 0.18s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
         .me-drawer-link:active { transform: scale(0.98); }
-        .me-drawer-link:hover { background: rgba(184, 134, 11, 0.08); }
+        .me-drawer-link:hover { background: rgba(106,133,160, 0.08); }
         .me-drawer-logout {
           margin-top: 10px;
-          border-top: 1px solid rgba(184, 134, 11, 0.18);
+          border-top: 1px solid rgba(106,133,160, 0.18);
           padding-top: 18px;
           color: #b22222;
         }
@@ -1394,7 +1394,7 @@ function MoreDrawer({
           flex-shrink: 0;
           width: 38px; height: 38px;
           border-radius: 14px;
-          background: rgba(184, 134, 11, 0.10);
+          background: rgba(106,133,160, 0.10);
           display: flex; align-items: center; justify-content: center;
           font-size: 1.15rem;
         }
@@ -1592,7 +1592,7 @@ function FollowListSheet({
           width: 100%;
           max-width: 520px;
           max-height: 78dvh;
-          background: linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%);
+          background: linear-gradient(180deg, #f8fafb 0%, #ecf0f3 100%);
           border-top-left-radius: 22px;
           border-top-right-radius: 22px;
           box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.32);
@@ -1607,8 +1607,8 @@ function FollowListSheet({
           align-items: center;
           gap: 8px;
           padding: 14px 16px 10px;
-          border-bottom: 1px solid rgba(184, 134, 11, 0.18);
-          background: rgba(255, 249, 236, 0.92);
+          border-bottom: 1px solid rgba(106,133,160, 0.18);
+          background: rgba(176, 192, 209, 0.92);
           position: sticky;
           top: 0;
           z-index: 1;
@@ -1633,9 +1633,9 @@ function FollowListSheet({
           justify-self: end;
           width: 30px; height: 30px;
           border-radius: 999px;
-          background: rgba(184, 134, 11, 0.10);
-          border: 1px solid rgba(184, 134, 11, 0.22);
-          color: #6e4a08;
+          background: rgba(106,133,160, 0.10);
+          border: 1px solid rgba(106,133,160, 0.22);
+          color: #3e4f61;
           font-size: 0.9rem;
           font-weight: 700;
           cursor: pointer;
@@ -1650,14 +1650,14 @@ function FollowListSheet({
           font-family: inherit;
           color: #2c1d04;
           background: rgba(255, 255, 255, 0.7);
-          border: 1px solid rgba(184, 134, 11, 0.30);
+          border: 1px solid rgba(106,133,160, 0.30);
           border-radius: 10px;
           outline: none;
           transition: border-color 0.18s ease, background 0.18s ease;
         }
         .me-follow-search::placeholder { color: rgba(74, 50, 8, 0.50); }
         .me-follow-search:focus {
-          border-color: rgba(184, 134, 11, 0.55);
+          border-color: rgba(106,133,160, 0.55);
           background: rgba(255, 255, 255, 0.9);
         }
         .me-follow-list {
@@ -1682,7 +1682,7 @@ function FollowListSheet({
           transition: background 0.16s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
         .me-follow-row:hover {
-          background: rgba(184, 134, 11, 0.06);
+          background: rgba(106,133,160, 0.06);
         }
         /* v110 — row is now a button so taps route to /u/[handle]. Reset
            button chrome but keep the row layout. */
@@ -1706,14 +1706,14 @@ function FollowListSheet({
           flex-shrink: 0;
           width: 42px; height: 42px;
           border-radius: 999px;
-          background: linear-gradient(135deg, #f0d060, #c9911a);
+          background: linear-gradient(135deg, #c6d0da, #8198ae);
           color: #2c1d04;
           font-weight: 800;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           font-size: 1rem;
-          border: 2px solid #fff9ec;
+          border: 2px solid #f8fafb;
         }
         .me-follow-text {
           min-width: 0;
@@ -1752,10 +1752,10 @@ function FollowListSheet({
           border-radius: 12px;
           transition: background 0.16s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
-        .me-stat-btn:hover { background: rgba(184, 134, 11, 0.06); }
+        .me-stat-btn:hover { background: rgba(106,133,160, 0.06); }
         .me-stat-btn:active { transform: scale(0.96); }
         .me-stat-btn:focus-visible {
-          outline: 2px solid rgba(184, 134, 11, 0.55);
+          outline: 2px solid rgba(106,133,160, 0.55);
           outline-offset: 2px;
         }
       `}</style>

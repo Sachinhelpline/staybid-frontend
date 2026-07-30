@@ -220,17 +220,17 @@ function ReelCard({
             fontWeight: 600,
             fontSize: "1.05rem",
             letterSpacing: "0.01em",
-            color: "var(--cozy-cream-50, #FFFCF6)",
+            color: "var(--cozy-cream-50, #fcfcfd)",
             textShadow: "0 1px 6px rgba(0, 0, 0, 0.45)",
             textDecoration: "none",
           }}
         >
-          stay<span style={{ color: "var(--cozy-champagne-light, #D9BE82)" }}>·</span>bid
+          stay<span style={{ color: "var(--cozy-champagne-light, #b4c1cf)" }}>·</span>bid
         </Link>
         <button
           onClick={() => setMuted(m => !m)}
           className="w-9 h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-xs"
-          style={{ background: "rgba(31, 26, 15, 0.45)", border: "1px solid rgba(217, 190, 130, 0.18)" }}
+          style={{ background: "rgba(31, 26, 15, 0.45)", border: "1px solid rgba(176, 192, 209, 0.18)" }}
         >
           {muted ? "🔇" : "🔊"}
         </button>
@@ -353,7 +353,7 @@ function ReelCard({
           <Link
             href={`/hotels/${hotel.id}`}
             className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl font-bold text-sm text-white shadow-lg"
-            style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+            style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
             🛎️ Book This Stay
           </Link>
         )}
@@ -511,7 +511,7 @@ function CommentDrawer({
             onClick={send}
             disabled={sending || !draft.trim()}
             className="px-4 py-2 rounded-full text-sm font-bold text-white disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+            style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
             {sending ? "…" : "Post"}
           </button>
         </div>
@@ -606,7 +606,7 @@ function EmptyFeed() {
       <Link
         href="/influencer/upload"
         className="px-8 py-3 rounded-full font-bold text-black"
-        style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+        style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
         Upload Your First Reel
       </Link>
     </div>
@@ -695,7 +695,7 @@ export default function ReelsPage() {
             onClick={() => { setMode(m); setTag(null); }}
             className="px-4 py-1.5 rounded-full text-xs font-bold transition-all"
             style={{
-              background: mode === m ? "linear-gradient(135deg,#c9911a,#f0b429)" : "transparent",
+              background: mode === m ? "linear-gradient(135deg,#8198ae,#a9b9c8)" : "transparent",
               color: mode === m ? "#000" : "rgba(255,255,255,0.85)",
             }}>
             {m === "foryou" ? "For You" : "Following"}
@@ -754,7 +754,7 @@ export default function ReelsPage() {
             <p className="text-white/60 text-sm mb-6">Switch to <span className="font-bold text-gold-300">For You</span> and start following creators whose vibe you like.</p>
             <button onClick={() => setMode("foryou")}
               className="px-6 py-2.5 rounded-full font-bold text-black"
-              style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+              style={{ background: "linear-gradient(135deg,#8198ae,#a9b9c8)" }}>
               Browse For You
             </button>
           </div>
@@ -798,7 +798,7 @@ export default function ReelsPage() {
               style={{
                 width:  i === activeIdx ? 6 : 3,
                 height: i === activeIdx ? 16 : 6,
-                background: i === activeIdx ? "#f0b429" : "rgba(255,255,255,0.4)",
+                background: i === activeIdx ? "#a9b9c8" : "rgba(255,255,255,0.4)",
               }}
             />
           ))}

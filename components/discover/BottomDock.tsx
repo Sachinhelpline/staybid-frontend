@@ -120,7 +120,7 @@ export function BottomDock() {
           background: rgba(31, 26, 15, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
-          border-top: 1px solid rgba(217, 190, 130, 0.12);
+          border-top: 1px solid rgba(176, 192, 209, 0.12);
           box-shadow: 0 -6px 22px rgba(31, 26, 15, 0.45);
           /* The dock is exactly viewport-width (left:0;right:0). On the
              280px Galaxy Fold cover screen the 6 emoji glyphs' intrinsic
@@ -131,7 +131,7 @@ export function BottomDock() {
           overflow-x: clip;
         }
         [data-theme="light"] .ig-bottom-dock {
-          background: rgba(255, 252, 246, 0.94);
+          background: rgba(176, 192, 209, 0.94);
           border-top: 1px solid var(--border-soft);
           box-shadow: 0 -4px 18px rgba(31, 26, 15, 0.08);
         }
@@ -157,7 +157,7 @@ export function BottomDock() {
           padding: 6px 2px;
           overflow: hidden;
           /* v88 — cream-tinted instead of harsh white */
-          color: rgba(250, 245, 235, 0.62);
+          color: rgba(176, 192, 209, 0.62);
           text-decoration: none;
           border-radius: 12px;
           transition:
@@ -174,19 +174,19 @@ export function BottomDock() {
            without touching any other surface. */
         body.is-reel-page .ig-bottom-dock {
           background: rgba(10, 8, 5, 0.92);
-          border-top: 1px solid rgba(217, 190, 130, 0.14);
+          border-top: 1px solid rgba(176, 192, 209, 0.14);
           box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.55);
         }
-        body.is-reel-page .ig-dock-item { color: rgba(250, 245, 235, 0.62); }
+        body.is-reel-page .ig-dock-item { color: rgba(176, 192, 209, 0.62); }
         body.is-reel-page .ig-dock-item.is-active {
-          color: var(--cozy-champagne-light, #D9BE82);
-          background: linear-gradient(180deg, rgba(217,190,130,0.10), rgba(217,190,130,0.02));
+          color: var(--cozy-champagne-light, #b4c1cf);
+          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
         .ig-dock-item:active { transform: scale(0.94); }
         .ig-dock-item.is-active {
           /* v88 — desaturated cozy champagne instead of saturated gold */
-          color: var(--cozy-champagne-light, #D9BE82);
-          background: linear-gradient(180deg, rgba(217,190,130,0.10), rgba(217,190,130,0.02));
+          color: var(--cozy-champagne-light, #b4c1cf);
+          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
         [data-theme="light"] .ig-dock-item.is-active {
           color: var(--cozy-cocoa);

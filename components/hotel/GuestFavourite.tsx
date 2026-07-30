@@ -92,10 +92,10 @@ export default function GuestFavourite({ hotelId, city, avgRating, totalReviews,
             radial-gradient(120% 90% at 50% 0%, rgba(201, 166, 107, 0.12), transparent 70%),
             var(--bg-card);
           border: 1px solid var(--border-soft);
-          box-shadow: 0 16px 44px -26px rgba(201, 145, 26, 0.5);
+          box-shadow: 0 16px 44px -26px rgba(106, 133, 160, 0.5);
         }
         .gf-inner { display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .gf-laurel { font-size: 2.6rem; line-height: 1; filter: saturate(1.1) drop-shadow(0 2px 4px rgba(201,145,26,0.35)); }
+        .gf-laurel { font-size: 2.6rem; line-height: 1; filter: saturate(1.1) drop-shadow(0 2px 4px rgba(106, 133, 160,0.35)); }
         .gf-laurel-l { transform: scaleX(-1); }
         .gf-mid { display: flex; align-items: baseline; }
         .gf-num {

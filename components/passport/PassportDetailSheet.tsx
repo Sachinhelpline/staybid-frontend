@@ -52,7 +52,7 @@ export function PassportDetailSheet({
       ? { bg: "#e6f0e6", fg: "#4a6f4a" }
       : item.status?.tone === "lock"
         ? { bg: "var(--bg-pill)", fg: "var(--text-muted)" }
-        : { bg: "rgba(201,166,107,0.18)", fg: "#8B6914" };
+        : { bg: "rgba(201,166,107,0.18)", fg: "#556d86" };
 
   return (
     <div className="pds-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={item.title}>
@@ -89,7 +89,7 @@ export function PassportDetailSheet({
         .pds-bar { height: 9px; border-radius: 999px; overflow: hidden; background: var(--bg-pill); }
         .pds-bar > i {
           display: block; height: 100%; border-radius: 999px;
-          background: linear-gradient(90deg, #E7CFA0, #C9A66B, #8B6914);
+          background: linear-gradient(90deg, #c8d2dc, #C9A66B, #556d86);
           animation: pdsGrow .9s cubic-bezier(.2,.9,.25,1) both;
         }
         @keyframes pdsFade { from { opacity: 0 } to { opacity: 1 } }

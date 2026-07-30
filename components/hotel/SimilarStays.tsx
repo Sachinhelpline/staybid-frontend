@@ -233,7 +233,7 @@ export default function SimilarStays({ hotelId, city, state, starRating, propert
         }
         .sim-card-img {
           position: relative; width: 100%; aspect-ratio: 4 / 3;
-          background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+          background: linear-gradient(135deg, #e0e6eb, #c3ced9);
           display: flex; align-items: center; justify-content: center;
           overflow: hidden;
           /* explicit top rounding so the photo's corners always read as curved */
@@ -245,14 +245,14 @@ export default function SimilarStays({ hotelId, city, state, starRating, propert
           position: absolute; bottom: 10px; left: 10px;
           font-size: 0.62rem; font-weight: 800; letter-spacing: 0.02em;
           color: #2a1f0c;
-          background: linear-gradient(135deg, #f4e3b8, #e9c877);
+          background: linear-gradient(135deg, #dee4ea, #bfcbd6);
           padding: 4px 9px; border-radius: 999px;
           box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.45);
         }
         .sim-card-ph { font-size: 2rem; opacity: 0.5; }
         .sim-card-badge {
           position: absolute; top: 10px; left: 10px;
-          font-size: 0.62rem; letter-spacing: 1px; color: #f0c24a;
+          font-size: 0.62rem; letter-spacing: 1px; color: #b8c5d2;
           background: rgba(0, 0, 0, 0.42); padding: 3px 8px; border-radius: 999px;
           -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
         }

@@ -297,9 +297,9 @@ export function FlashDealStoryRail({
              region seamlessly; StatusBarColor sets the bar itself to this cream. */
           padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 12px;
           background:
-            linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%);
-          border-bottom: 1px solid rgba(184, 134, 11, 0.18);
-          box-shadow: 0 2px 14px rgba(184, 134, 11, 0.10);
+            linear-gradient(180deg, #f8fafb 0%, #ecf0f3 100%);
+          border-bottom: 1px solid rgba(106, 133, 160, 0.18);
+          box-shadow: 0 2px 14px rgba(106, 133, 160, 0.10);
           animation: fdealRailSlideIn 0.5s cubic-bezier(.32,1.2,.36,1) both;
         }
         .fdeal-rail-header {
@@ -407,14 +407,14 @@ export function FlashDealStoryRail({
           border-radius: 999px;
           padding: 2px;
           background: conic-gradient(from 0deg,
-            #c9911a 0deg,
-            #f0d060 90deg,
-            #fff4cc 180deg,
-            #f0d060 270deg,
-            #c9911a 360deg);
+            #8198ae 0deg,
+            #c6d0da 90deg,
+            #f1f4f6 180deg,
+            #c6d0da 270deg,
+            #8198ae 360deg);
           animation: fdealRingSpin 12s linear infinite;
           box-shadow:
-            0 2px 8px rgba(184, 134, 11, 0.25),
+            0 2px 8px rgba(106, 133, 160, 0.25),
             inset 0 0 0 1px rgba(255, 255, 255, 0.6);
         }
         .fdeal-rail-avatar {
@@ -423,8 +423,8 @@ export function FlashDealStoryRail({
           height: 100%;
           border-radius: 999px;
           overflow: hidden;
-          background: #fff9ec;
-          border: 2px solid #fff9ec;
+          background: #f8fafb;
+          border: 2px solid #f8fafb;
           /* counter-rotate the inner so the image stays upright while the ring spins */
           animation: fdealRingSpin 12s linear infinite reverse;
         }
@@ -462,8 +462,8 @@ export function FlashDealStoryRail({
           letter-spacing: 0.02em;
           line-height: 1.1;
           color: #6e4a08;
-          background: linear-gradient(180deg, rgba(255,244,204,0.95), rgba(240,208,96,0.55));
-          border: 1px solid rgba(184,134,11,0.35);
+          background: linear-gradient(180deg, rgba(176, 192, 209,0.95), rgba(176, 192, 209,0.55));
+          border: 1px solid rgba(106, 133, 160,0.35);
           border-radius: 999px;
           padding: 1px 6px;
           max-width: 64px;
@@ -953,14 +953,14 @@ export function FlashDealStoryViewer({
           100% { transform: scale(1.08) translate(0,0); }
         }
         @keyframes fdealViewerStampSpin {
-          0%   { transform: rotate(-12deg) scale(1);    box-shadow: 0 10px 32px rgba(184,134,11,0.45), 0 0 0 0 rgba(255,215,107,0.55), inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
-          40%  { transform: rotate(-10deg) scale(1.10); box-shadow: 0 14px 38px rgba(184,134,11,0.65), 0 0 0 14px rgba(255,215,107,0),     inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
-          70%  { transform: rotate(-14deg) scale(1.05); box-shadow: 0 14px 38px rgba(184,134,11,0.65), 0 0 0 22px rgba(255,215,107,0),     inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
-          100% { transform: rotate(-12deg) scale(1);    box-shadow: 0 10px 32px rgba(184,134,11,0.45), 0 0 0 0 rgba(255,215,107,0.55), inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
+          0%   { transform: rotate(-12deg) scale(1);    box-shadow: 0 10px 32px rgba(106, 133, 160,0.45), 0 0 0 0 rgba(176, 192, 209,0.55), inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
+          40%  { transform: rotate(-10deg) scale(1.10); box-shadow: 0 14px 38px rgba(106, 133, 160,0.65), 0 0 0 14px rgba(176, 192, 209,0),     inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
+          70%  { transform: rotate(-14deg) scale(1.05); box-shadow: 0 14px 38px rgba(106, 133, 160,0.65), 0 0 0 22px rgba(176, 192, 209,0),     inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
+          100% { transform: rotate(-12deg) scale(1);    box-shadow: 0 10px 32px rgba(106, 133, 160,0.45), 0 0 0 0 rgba(176, 192, 209,0.55), inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
         }
         @keyframes fdealViewerStampGlow {
-          0%, 100% { filter: drop-shadow(0 0 8px rgba(255,215,107,0.45)); }
-          50%      { filter: drop-shadow(0 0 18px rgba(255,215,107,0.85)); }
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(176, 192, 209,0.45)); }
+          50%      { filter: drop-shadow(0 0 18px rgba(176, 192, 209,0.85)); }
         }
         @keyframes fdealViewerStampShine {
           0%   { background-position: -120% 0; }
@@ -1071,9 +1071,9 @@ export function FlashDealStoryViewer({
         .fdeal-viewer-audio-btn {
           width: 34px; height: 34px;
           border-radius: 999px;
-          background: linear-gradient(135deg, rgba(255,215,107,0.32), rgba(240,180,41,0.18));
-          border: 1px solid rgba(255,215,107,0.55);
-          color: #ffd76b;
+          background: linear-gradient(135deg, rgba(176, 192, 209,0.32), rgba(140, 160, 182,0.18));
+          border: 1px solid rgba(176, 192, 209,0.55);
+          color: #d0d9e1;
           font-size: 1rem;
           display: flex;
           align-items: center;
@@ -1081,7 +1081,7 @@ export function FlashDealStoryViewer({
           cursor: pointer;
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
-          box-shadow: 0 4px 12px rgba(240,180,41,0.3);
+          box-shadow: 0 4px 12px rgba(140, 160, 182,0.3);
           transition: transform 0.18s cubic-bezier(.32,1.2,.36,1);
         }
         .fdeal-viewer-audio-btn:active { transform: scale(0.92); }
@@ -1163,7 +1163,7 @@ export function FlashDealStoryViewer({
           justify-content: center;
           font-size: 6rem;
           font-weight: 800;
-          color: rgba(255,215,107,0.45);
+          color: rgba(176, 192, 209,0.45);
           background: linear-gradient(135deg, #0a0a1a, #1a0a1a);
         }
         .fdeal-viewer-bg-shade {
@@ -1195,16 +1195,16 @@ export function FlashDealStoryViewer({
           background:
             radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 35%),
             conic-gradient(from 210deg,
-              #f0d060 0deg,
-              #c9911a 90deg,
+              #c6d0da 0deg,
+              #8198ae 90deg,
               #6e4a08 180deg,
-              #c9911a 270deg,
-              #f0d060 360deg);
+              #8198ae 270deg,
+              #c6d0da 360deg);
           color: #2c1d04;
-          border: 3px solid #fff9ec;
+          border: 3px solid #f8fafb;
           box-shadow:
-            0 10px 32px rgba(184,134,11,0.45),
-            0 0 0 0 rgba(255,215,107,0.55),
+            0 10px 32px rgba(106, 133, 160,0.45),
+            0 0 0 0 rgba(176, 192, 209,0.55),
             inset 0 2px 0 rgba(255,255,255,0.55),
             inset 0 -3px 6px rgba(110,74,8,0.35);
           animation:
@@ -1274,9 +1274,9 @@ export function FlashDealStoryViewer({
           margin-top: 6px;
           padding: 3px 9px;
           border-radius: 999px;
-          background: linear-gradient(135deg, rgba(255,215,107,0.28), rgba(240,180,41,0.16));
-          border: 1px solid rgba(255,215,107,0.55);
-          color: #ffe6a6;
+          background: linear-gradient(135deg, rgba(176, 192, 209,0.28), rgba(140, 160, 182,0.16));
+          border: 1px solid rgba(176, 192, 209,0.55);
+          color: #e2e7ed;
           font-size: 0.6rem;
           font-weight: 800;
           letter-spacing: 0.06em;
@@ -1307,7 +1307,7 @@ export function FlashDealStoryViewer({
           justify-content: space-between;
         }
         .fdeal-viewer-countdown-label {
-          color: rgba(255,215,107,0.95);
+          color: rgba(176, 192, 209,0.95);
           font-size: 0.6rem;
           font-weight: 800;
           letter-spacing: 0.16em;
@@ -1407,13 +1407,13 @@ export function FlashDealStoryViewer({
           cursor: pointer;
           background:
             linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.32) 50%, transparent 100%),
-            linear-gradient(135deg, #f0b429 0%, #ffd76b 50%, #f0b429 100%);
+            linear-gradient(135deg, #a9b9c8 0%, #d0d9e1 50%, #a9b9c8 100%);
           background-size: 220% 100%, 100% 100%;
           background-position: -200% 0, 0 0;
           color: #0a0a14;
           font-weight: 800;
           box-shadow:
-            0 12px 30px rgba(240,180,41,0.45),
+            0 12px 30px rgba(140, 160, 182,0.45),
             inset 0 1px 0 rgba(255,255,255,0.55),
             inset 0 -2px 0 rgba(0,0,0,0.15);
           animation: fdealViewerCtaShimmer 2.6s linear infinite;

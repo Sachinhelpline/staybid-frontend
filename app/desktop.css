@@ -91,7 +91,7 @@
     max-height: none !important;
     overflow: auto !important;
     width: auto !important;
-    background: var(--bg-page, #FAF5EB) !important;
+    background: var(--bg-page, #f4f6f8) !important;
     touch-action: auto !important;
   }
   html.is-reel-page { --reel-vh: auto !important; }
@@ -213,7 +213,7 @@
   /* v477 — LIGHT cozy-cream canvas for the HOME reel window only (/discover +
      /reels keep the dark cinematic wash). The blurred reel becomes a faint,
      bright pastel wash and the vignette melts to warm cream at the edges. */
-  body.reel-with-rail:has(.reel-page-root) { background: #f1e8d6 !important; }
+  body.reel-with-rail:has(.reel-page-root) { background: #e5e9ee !important; }
   body.reel-with-rail:has(.reel-page-root)::before {
     filter: blur(82px) saturate(1.25) brightness(1.4);
     opacity: 0.4;
@@ -226,8 +226,8 @@
     background:
       radial-gradient(circle 46vw at 14% 16%, rgba(201, 166, 107, 0.38), transparent 62%),
       radial-gradient(circle 42vw at 88% 88%, rgba(210, 146, 128, 0.26), transparent 64%),
-      radial-gradient(ellipse 72% 82% at 50% 40%, rgba(241, 232, 214, 0) 22%, rgba(222, 207, 180, 0.97) 100%),
-      linear-gradient(180deg, rgba(249, 243, 230, 0.36) 0%, rgba(221, 205, 178, 0.74) 100%);
+      radial-gradient(ellipse 72% 82% at 50% 40%, rgba(176, 192, 209, 0) 22%, rgba(176, 192, 209, 0.97) 100%),
+      linear-gradient(180deg, rgba(176, 192, 209, 0.36) 0%, rgba(221, 205, 178, 0.74) 100%);
   }
 
   /* v498 — DARK MODE for the HOME reel canvas. The light cozy-cream canvas
@@ -359,7 +359,7 @@
 .reel-side-empty {
   padding: 10px 18px 18px;
   font-size: 0.82rem;
-  color: rgba(242, 236, 221, 0.5);
+  color: rgba(176, 192, 209, 0.5);
 }
 
 @media (min-width: 1200px) {
@@ -385,7 +385,7 @@
     border: 1px solid rgba(255, 255, 255, 0.11);
     border-radius: 26px;
     box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-    color: #f2ecdd;
+    color: #e9edf1;
     animation: reelSideIn 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
   @keyframes reelSideIn { from { opacity: 0; transform: translateY(-50%) translateX(6px); } to { opacity: 1; transform: translateY(-50%); } }
@@ -403,7 +403,7 @@
     font-weight: 800;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(224, 198, 140, 0.92);
+    color: rgba(176, 192, 209, 0.92);
     padding: 16px 18px 8px;
   }
 
@@ -450,7 +450,7 @@
   }
   .reel-np-cover-fallback {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 2.6rem; font-weight: 700; color: rgba(255, 235, 190, 0.55);
+    font-size: 2.6rem; font-weight: 700; color: rgba(176, 192, 209, 0.55);
     background: linear-gradient(135deg, #3a2c1a, #241a10);
   }
   .reel-side-title {
@@ -458,14 +458,14 @@
     font-size: 1.55rem;
     font-weight: 600;
     line-height: 1.12;
-    color: #fbf5ea;
+    color: #f4f6f8;
   }
-  .reel-side-meta { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: rgba(242, 236, 221, 0.72); }
+  .reel-side-meta { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: rgba(176, 192, 209, 0.72); }
   .reel-side-stars { color: #b8c5d2; letter-spacing: 1px; }
   .reel-side-place { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .reel-side-price { margin-top: 8px; font-size: 0.9rem; color: rgba(242, 236, 221, 0.7); }
+  .reel-side-price { margin-top: 8px; font-size: 0.9rem; color: rgba(176, 192, 209, 0.7); }
   .reel-side-price b { font-size: 1.4rem; color: #fff; font-weight: 700; margin: 0 2px; }
-  .reel-side-price em { font-style: normal; font-size: 0.78rem; color: rgba(242, 236, 221, 0.55); }
+  .reel-side-price em { font-style: normal; font-size: 0.78rem; color: rgba(176, 192, 209, 0.55); }
   .reel-side-cta { display: flex; flex-direction: column; gap: 9px; margin-top: 16px; }
   .reel-side-btn {
     text-align: center;
@@ -482,15 +482,15 @@
     box-shadow: 0 8px 22px -8px rgba(106,133,160, 0.5);
   }
   .reel-side-btn.primary:hover { filter: brightness(1.07); }
-  .reel-side-btn.ghost { border: 1px solid rgba(255, 255, 255, 0.22); color: #f2ecdd; }
+  .reel-side-btn.ghost { border: 1px solid rgba(255, 255, 255, 0.22); color: #e9edf1; }
   .reel-side-btn.ghost:hover { background: rgba(255, 255, 255, 0.09); }
-  .reel-side-desc { margin-top: 14px; font-size: 0.78rem; line-height: 1.55; color: rgba(242, 236, 221, 0.58); }
+  .reel-side-desc { margin-top: 14px; font-size: 0.78rem; line-height: 1.55; color: rgba(176, 192, 209, 0.58); }
 
   /* v471 — amenity chips in the now-playing card */
   .reel-side-amenities { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
   .reel-side-amenity {
     font-size: 0.72rem; font-weight: 600;
-    color: rgba(242, 236, 221, 0.78);
+    color: rgba(176, 192, 209, 0.78);
     padding: 4px 10px; border-radius: 999px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.10);
@@ -501,7 +501,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 100%; height: 100%;
     font-size: 1.2rem; font-weight: 700;
-    color: rgba(255, 235, 190, 0.85);
+    color: rgba(176, 192, 209, 0.85);
     background: linear-gradient(135deg, #3a2c1a, #241a10);
     border-radius: inherit;
   }
@@ -524,7 +524,7 @@
     transition: background 0.15s ease, transform 0.1s ease;
   }
   .reel-queue-item:hover { background: rgba(255, 255, 255, 0.08); }
-  .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(240, 194, 74, 0.6); }
+  .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(176, 192, 209, 0.6); }
   .reel-queue-item:active { transform: scale(0.99); }
 
   /* keyboard hint */
@@ -532,7 +532,7 @@
     margin-top: 16px;
     font-size: 0.66rem;
     letter-spacing: 0.08em;
-    color: rgba(242, 236, 221, 0.45);
+    color: rgba(176, 192, 209, 0.45);
   }
   .reel-queue-thumb {
     width: 52px; height: 66px;
@@ -544,10 +544,10 @@
   .reel-queue-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .reel-queue-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
   .reel-queue-name {
-    font-size: 0.82rem; font-weight: 600; color: #f2ecdd;
+    font-size: 0.82rem; font-weight: 600; color: #e9edf1;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
   }
-  .reel-queue-sub { font-size: 0.72rem; color: rgba(242, 236, 221, 0.55); }
+  .reel-queue-sub { font-size: 0.72rem; color: rgba(176, 192, 209, 0.55); }
 }
 
 @media (min-width: 1440px) {
@@ -635,7 +635,7 @@
     top: 0; bottom: 0; right: 0;
     width: 70px;
     pointer-events: none;
-    background: linear-gradient(90deg, rgba(241, 232, 214, 0) 0%, rgba(241, 232, 214, 0.92) 78%);
+    background: linear-gradient(90deg, rgba(176, 192, 209, 0) 0%, rgba(176, 192, 209, 0.92) 78%);
     z-index: 3;
   }
   body.reel-has-rail .reel-rail-nav {
@@ -646,7 +646,7 @@
     width: 38px; height: 38px;
     border-radius: 999px;
     border: 1px solid rgba(122, 88, 30, 0.26);
-    background: rgba(255, 250, 240, 0.92);
+    background: rgba(176, 192, 209, 0.92);
     color: #5a3f0a;
     font-size: 1.3rem; line-height: 1; font-weight: 600;
     display: flex; align-items: center; justify-content: center;
@@ -680,7 +680,7 @@
        the cream canvas, reading "undesigned"). A warm cream glass with a layered
        ambient-occlusion shadow + gold-tinted border + inner top highlight so each
        panel reads as a crafted premium surface catching light. */
-    background: linear-gradient(180deg, rgba(255, 251, 244, 0.82), rgba(250, 243, 231, 0.74));
+    background: linear-gradient(180deg, rgba(176, 192, 209, 0.82), rgba(250, 243, 231, 0.74));
     -webkit-backdrop-filter: blur(26px) saturate(1.4);
     backdrop-filter: blur(26px) saturate(1.4);
     border: 1px solid rgba(201, 166, 107, 0.34);
@@ -713,7 +713,7 @@
     border-color: rgba(201, 166, 107, 0.26);
     box-shadow:
       0 34px 76px -32px rgba(0, 0, 0, 0.78),
-      inset 0 1px 0 rgba(255, 236, 200, 0.10);
+      inset 0 1px 0 rgba(176, 192, 209, 0.10);
   }
 
   /* Up-next: wider premium rows (bigger thumb, price pinned right). */
@@ -724,10 +724,10 @@
      never reads as a black box. */
   body.reel-with-rail .reel-queue-thumb {
     width: 92px; height: 120px; border-radius: 15px;
-    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
   }
   body.reel-with-rail .reel-queue-thumb-fallback {
-    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
     color: rgba(122, 88, 30, 0.6);
     font-size: 1.7rem;
   }
@@ -736,8 +736,8 @@
   body.reel-with-rail .reel-queue-name { max-width: none; font-size: 0.96rem; }
   body.reel-with-rail .reel-queue-sub { font-size: 0.8rem; }
   body.reel-with-rail .reel-queue-price { margin-left: auto; flex-shrink: 0; display: flex; align-items: baseline; gap: 1px; }
-  body.reel-with-rail .reel-queue-price b { font-size: 0.98rem; color: #fbf5ea; font-weight: 700; }
-  body.reel-with-rail .reel-queue-price em { font-style: normal; font-size: 0.68rem; color: rgba(242, 236, 221, 0.5); }
+  body.reel-with-rail .reel-queue-price b { font-size: 0.98rem; color: #f4f6f8; font-weight: 700; }
+  body.reel-with-rail .reel-queue-price em { font-style: normal; font-size: 0.68rem; color: rgba(176, 192, 209, 0.5); }
   body.reel-with-rail .reel-side-left .reel-side-kicker { padding: 6px 8px 8px; }
 
   /* v554 — a warm gold "stage light" bloom around the centred reel frame, so it
@@ -787,7 +787,7 @@
   }
   body.reel-with-rail .reel-np-cover-fallback {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 3.4rem; font-weight: 700; color: rgba(255, 235, 190, 0.6);
+    font-size: 3.4rem; font-weight: 700; color: rgba(176, 192, 209, 0.6);
     background: linear-gradient(135deg, #3a2c1a, #241a10);
   }
   body.reel-with-rail .reel-side-right .reel-side-body {
@@ -820,14 +820,14 @@
   body.reel-with-rail .reel-queue-price b { color: #2a1f0c; }
   body.reel-with-rail .reel-queue-price em { color: rgba(58, 44, 24, 0.5); }
   body.reel-with-rail .reel-queue-item:hover { background: rgba(122, 88, 30, 0.08); }
-  body.reel-with-rail .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.5); }
+  body.reel-with-rail .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(106, 133, 160, 0.5); }
   body.reel-with-rail .reel-side-btn.ghost { border-color: rgba(58, 44, 24, 0.3); color: #33260f; }
   body.reel-with-rail .reel-side-btn.ghost:hover { background: rgba(122, 88, 30, 0.09); }
   /* Now-playing cover: a CREAM placeholder while the reel image loads (a dark
      placeholder read as a black box on the light canvas). */
-  body.reel-with-rail .reel-np-cover { background-color: #e7dbc2; }
+  body.reel-with-rail .reel-np-cover { background-color: #d5dde4; }
   body.reel-with-rail .reel-np-cover-fallback {
-    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
     color: rgba(122, 88, 30, 0.55);
   }
   /* v491 — cover is now a real <img> (onError → cream fallback, never a black
@@ -884,9 +884,9 @@
      text/price/emoji is ever hidden. Light mode is untouched. ─────────────── */
   /* Flash Deals rail labels → readable cream on dark. */
   [data-theme="dark"] body.reel-has-rail .reel-stage-rail { border-bottom-color: rgba(255, 255, 255, 0.08); }
-  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-name { color: #efe6d2 !important; }
-  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-title { color: rgba(240, 194, 74, 0.92) !important; }
-  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: rgba(242, 236, 221, 0.82) !important; }
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-name { color: #e2e7ec !important; }
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-title { color: rgba(176, 192, 209, 0.92) !important; }
+  [data-theme="dark"] body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: rgba(176, 192, 209, 0.82) !important; }
   /* Right-edge scroll fade → dark. */
   [data-theme="dark"] body.reel-has-rail .reel-stage-rail::after {
     background: linear-gradient(90deg, rgba(10, 8, 6, 0) 0%, rgba(10, 8, 6, 0.92) 78%);
@@ -895,57 +895,57 @@
   [data-theme="dark"] body.reel-has-rail .reel-rail-nav {
     border-color: rgba(255, 255, 255, 0.18);
     background: rgba(28, 22, 15, 0.82);
-    color: #efe6d2;
+    color: #e2e7ec;
     box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.6);
   }
   [data-theme="dark"] body.reel-has-rail .reel-rail-nav:hover { background: rgba(40, 32, 22, 0.92); }
 
   /* Left "Up next" queue → cream text + dark thumbs. */
-  [data-theme="dark"] body.reel-with-rail .reel-queue-name { color: #f2ecdd; }
-  [data-theme="dark"] body.reel-with-rail .reel-queue-sub { color: rgba(242, 236, 221, 0.58); }
-  [data-theme="dark"] body.reel-with-rail .reel-queue-price b { color: #fbf5ea; }
-  [data-theme="dark"] body.reel-with-rail .reel-queue-price em { color: rgba(242, 236, 221, 0.5); }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-name { color: #e9edf1; }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-sub { color: rgba(176, 192, 209, 0.58); }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-price b { color: #f4f6f8; }
+  [data-theme="dark"] body.reel-with-rail .reel-queue-price em { color: rgba(176, 192, 209, 0.5); }
   [data-theme="dark"] body.reel-with-rail .reel-queue-item:hover { background: rgba(255, 255, 255, 0.07); }
   [data-theme="dark"] body.reel-with-rail .reel-queue-thumb { background: linear-gradient(135deg, #2a2018, #17110b); }
   [data-theme="dark"] body.reel-with-rail .reel-queue-thumb-fallback {
     background: linear-gradient(135deg, #2a2018, #17110b);
-    color: rgba(255, 235, 190, 0.55);
+    color: rgba(176, 192, 209, 0.55);
   }
 
   /* Right "Now playing" panel text → cream on dark. */
-  [data-theme="dark"] body.reel-with-rail .reel-side-kicker { color: rgba(224, 198, 140, 0.92); }
-  [data-theme="dark"] body.reel-with-rail .reel-side-title { color: #fbf5ea; }
+  [data-theme="dark"] body.reel-with-rail .reel-side-kicker { color: rgba(176, 192, 209, 0.92); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-title { color: #f4f6f8; }
   [data-theme="dark"] body.reel-with-rail .reel-side-meta,
-  [data-theme="dark"] body.reel-with-rail .reel-side-place { color: rgba(242, 236, 221, 0.72); }
-  [data-theme="dark"] body.reel-with-rail .reel-side-price { color: rgba(242, 236, 221, 0.7); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-place { color: rgba(176, 192, 209, 0.72); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-price { color: rgba(176, 192, 209, 0.7); }
   [data-theme="dark"] body.reel-with-rail .reel-side-price b { color: #fff; }
-  [data-theme="dark"] body.reel-with-rail .reel-side-price em { color: rgba(242, 236, 221, 0.55); }
-  [data-theme="dark"] body.reel-with-rail .reel-side-desc { color: rgba(242, 236, 221, 0.6); }
-  [data-theme="dark"] body.reel-with-rail .reel-side-hint { color: rgba(242, 236, 221, 0.45); }
-  [data-theme="dark"] body.reel-with-rail .reel-side-empty { color: rgba(242, 236, 221, 0.55); }
-  [data-theme="dark"] body.reel-with-rail .reel-side-views { color: rgba(242, 236, 221, 0.66); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-price em { color: rgba(176, 192, 209, 0.55); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-desc { color: rgba(176, 192, 209, 0.6); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-hint { color: rgba(176, 192, 209, 0.45); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-empty { color: rgba(176, 192, 209, 0.55); }
+  [data-theme="dark"] body.reel-with-rail .reel-side-views { color: rgba(176, 192, 209, 0.66); }
   [data-theme="dark"] body.reel-with-rail .reel-side-amenity {
-    color: rgba(242, 236, 221, 0.78);
+    color: rgba(176, 192, 209, 0.78);
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.1);
   }
-  [data-theme="dark"] body.reel-with-rail .reel-side-btn.ghost { border-color: rgba(255, 255, 255, 0.22); color: #f2ecdd; }
+  [data-theme="dark"] body.reel-with-rail .reel-side-btn.ghost { border-color: rgba(255, 255, 255, 0.22); color: #e9edf1; }
   [data-theme="dark"] body.reel-with-rail .reel-side-btn.ghost:hover { background: rgba(255, 255, 255, 0.09); }
   /* Now-playing cover placeholder + fallback → dark (a cream box read as a
      bright rectangle on the dark canvas). */
   [data-theme="dark"] body.reel-with-rail .reel-np-cover { background-color: rgba(255, 255, 255, 0.05); }
   [data-theme="dark"] body.reel-with-rail .reel-np-cover-fallback {
     background: linear-gradient(135deg, #3a2c1a, #241a10);
-    color: rgba(255, 235, 190, 0.6);
+    color: rgba(176, 192, 209, 0.6);
   }
   /* Reel ↑/↓ nav buttons + label → dark glass + cream. */
   [data-theme="dark"] body.reel-with-rail .reel-nav-btn {
-    color: #efe6d2;
+    color: #e2e7ec;
     background: rgba(255, 255, 255, 0.07);
     border-color: rgba(255, 255, 255, 0.16);
   }
   [data-theme="dark"] body.reel-with-rail .reel-nav-btn:hover { background: rgba(255, 255, 255, 0.13); }
-  [data-theme="dark"] body.reel-with-rail .reel-nav-label { color: rgba(242, 236, 221, 0.6); }
+  [data-theme="dark"] body.reel-with-rail .reel-nav-label { color: rgba(176, 192, 209, 0.6); }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -1011,12 +1011,12 @@
     -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
-  .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #f6efe1 !important; }
+  .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #edf0f3 !important; }
 
   /* v477 — the HOME reel canvas is now LIGHT cream, so its navbar flips back to
      a light frosted bar with dark text (/discover + /reels stay dark above). */
   body.reel-with-rail .nav3d-bar[data-reel-route="true"] {
-    background: rgba(249, 243, 230, 0.78) !important;
+    background: rgba(176, 192, 209, 0.78) !important;
     border-bottom: 1px solid rgba(122, 88, 30, 0.14) !important;
     /* v491 — hard-pin the home navbar so it never scrolls out of view. The reel
        window elements are all position:fixed with explicit top offsets, so a
@@ -1039,7 +1039,7 @@
     background: rgba(14, 11, 8, 0.5) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
-  [data-theme="dark"] body.reel-with-rail .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #f6efe1 !important; }
+  [data-theme="dark"] body.reel-with-rail .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #edf0f3 !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -2322,10 +2322,10 @@ body main textarea.input-luxury {
   body.sbh-on .reel-stage-rail,
   body.sbh-on .reel-window { display: none !important; }
   body.sbh-on,
-  body.sbh-on:has(.reel-page-root) { background: var(--bg-page, #faf5eb) !important; }
+  body.sbh-on:has(.reel-page-root) { background: var(--bg-page, #f4f6f8) !important; }
   body.sbh-on::before,
   body.sbh-on::after { content: none !important; }
-  html.is-reel-page body.sbh-on { background: var(--bg-page, #faf5eb) !important; }
+  html.is-reel-page body.sbh-on { background: var(--bg-page, #f4f6f8) !important; }
 
   .sbh-root {
     --sbh-gut: clamp(26px, 4.2vw, 76px);
@@ -2372,7 +2372,7 @@ body main textarea.input-luxury {
     position: relative; z-index: 2;
     padding: 0 var(--sbh-gut) clamp(44px, 6vh, 76px);
     max-width: 780px;
-    color: #f7f0e2;
+    color: #eef1f4;
   }
   .sbh-eyebrow {
     display: inline-flex; align-items: center; gap: 9px;
@@ -2400,12 +2400,12 @@ body main textarea.input-luxury {
     letter-spacing: -0.012em;
     text-wrap: balance;
     margin: 0 0 14px;
-    color: #fffaf0;
+    color: #f9fafb;
     text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
   }
   .sbh-hero-meta {
     display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
-    font-size: 0.95rem; color: rgba(247, 240, 226, 0.86);
+    font-size: 0.95rem; color: rgba(176, 192, 209, 0.86);
     margin: 0 0 18px;
   }
   .sbh-stars { color: #b8c5d2; letter-spacing: 2px; }
@@ -2419,14 +2419,14 @@ body main textarea.input-luxury {
   }
   .sbh-hero-price {
     display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px;
-    font-size: 0.98rem; color: rgba(247, 240, 226, 0.76);
+    font-size: 0.98rem; color: rgba(176, 192, 209, 0.76);
     margin: 0 0 26px;
   }
   /* `>` — see the note in globals.css: the nudge has its own <b>. */
   .sbh-hero-price > b {
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-variant-numeric: tabular-nums;
-    font-size: 2rem; font-weight: 700; color: #fffaf0; letter-spacing: -0.01em;
+    font-size: 2rem; font-weight: 700; color: #f9fafb; letter-spacing: -0.01em;
   }
   .sbh-hero-price > em { font-style: normal; font-size: 0.86rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.88rem; }
@@ -2445,7 +2445,7 @@ body main textarea.input-luxury {
   }
   .sbh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 44px -12px rgba(106,133,160, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
   .sbh-btn-ghost {
-    color: #f7f0e2;
+    color: #eef1f4;
     background: rgba(255, 255, 255, 0.10);
     border: 1px solid rgba(255, 255, 255, 0.26);
     -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
@@ -2454,7 +2454,7 @@ body main textarea.input-luxury {
   .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
   .sbh-amen {
     font-size: 0.74rem; font-weight: 600;
-    color: rgba(247, 240, 226, 0.84);
+    color: rgba(176, 192, 209, 0.84);
     padding: 5px 12px; border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -2504,7 +2504,7 @@ body main textarea.input-luxury {
     display: flex; align-items: center; justify-content: center;
     font-size: 1.5rem; line-height: 1; font-weight: 500;
     color: #3d2f16;
-    background: rgba(255, 252, 246, 0.94);
+    background: rgba(176, 192, 209, 0.94);
     border: 1px solid rgba(122, 88, 30, 0.2);
     box-shadow: 0 10px 26px -10px rgba(31, 26, 15, 0.5);
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
@@ -2550,7 +2550,7 @@ body main textarea.input-luxury {
   .sbh-card-media {
     position: relative; overflow: hidden;
     border-radius: 18px;                  /* the image IS the card */
-    background: linear-gradient(135deg, #efe4cf, #ddcbaa);
+    background: linear-gradient(135deg, #e0e6eb, #c3ced9);
     box-shadow:
       0 0 0 1px rgba(139, 106, 40, 0.14),
       0 3px 8px -4px rgba(31, 26, 15, 0.42),
@@ -2564,7 +2564,7 @@ body main textarea.input-luxury {
     transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .sbh-card:hover .sbh-card-media img { transform: scale(1.06); }
-  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #efe4cf, #ddcbaa); }
+  .sbh-card-ph { width: 100%; height: 100%; background: linear-gradient(135deg, #e0e6eb, #c3ced9); }
   .sbh-card-scrim {
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.14) 0%, rgba(0, 0, 0, 0) 34%, rgba(14, 11, 8, 0.55) 100%);
@@ -2618,17 +2618,17 @@ body main textarea.input-luxury {
     top: 11px; left: 11px; color: #3a2606;
     background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-    box-shadow: 0 6px 16px -8px rgba(160, 116, 20, 0.75);
+    box-shadow: 0 6px 16px -8px rgba(106, 133, 160, 0.75);
   }
   .sbh-chip-live { top: 11px; right: 11px; color: #fff; background: rgba(20, 15, 9, 0.62); border: 1px solid rgba(255, 255, 255, 0.2); }
-  .sbh-chip-price { top: 11px; right: 11px; color: #1d1608; background: rgba(255, 250, 240, 0.94); }   /* see globals.css */
+  .sbh-chip-price { top: 11px; right: 11px; color: #1d1608; background: rgba(176, 192, 209, 0.94); }   /* see globals.css */
   .sbh-play {
     position: absolute; z-index: 4; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     width: 52px; height: 52px; border-radius: 999px;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.05rem; color: #1d1608; padding-left: 3px;
-    background: rgba(255, 250, 240, 0.9);
+    background: rgba(176, 192, 209, 0.9);
     box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.6);
     opacity: 0; transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -2646,12 +2646,12 @@ body main textarea.input-luxury {
 
   /* ── dark mode ────────────────────────────────────────────────────── */
   [data-theme="dark"] .sbh-rail-nav {
-    color: #f2e8d4; background: rgba(30, 24, 16, 0.9); border-color: rgba(201, 166, 107, 0.28);
+    color: #e5e9ee; background: rgba(30, 24, 16, 0.9); border-color: rgba(201, 166, 107, 0.28);
   }
   [data-theme="dark"] .sbh-rail-nav:hover:not(:disabled) { background: rgba(42, 34, 22, 0.96); }
   [data-theme="dark"] .sbh-card-media {
     box-shadow:
-      0 0 0 1px rgba(226, 196, 137, 0.16),
+      0 0 0 1px rgba(176, 192, 209, 0.16),
       0 3px 8px -4px rgba(0, 0, 0, 0.8),
       0 20px 34px -20px rgba(0, 0, 0, 0.95);
   }
@@ -2702,7 +2702,7 @@ body main textarea.input-luxury {
     margin-left: 6px;
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-size: 0.66rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
-    color: rgba(247, 240, 226, 0.72);
+    color: rgba(176, 192, 209, 0.72);
   }
 
   /* live ticker — ambient auto-motion (decorative, never a click target) */
@@ -2710,8 +2710,8 @@ body main textarea.input-luxury {
     position: relative; overflow: hidden;
     border-block: 1px solid var(--border-soft, #e8dcc8);
     background:
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #fffcf6) 92%, transparent),
-                              color-mix(in srgb, var(--bg-card, #fffcf6) 74%, #e3d4b4));
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-card, #fcfcfd) 92%, transparent),
+                              color-mix(in srgb, var(--bg-card, #fcfcfd) 74%, #cdd6df));
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   }
   /* the ends fade so chips enter and leave instead of being guillotined */
@@ -2719,8 +2719,8 @@ body main textarea.input-luxury {
     content: ""; position: absolute; top: 0; bottom: 0; width: 64px; z-index: 2;
     pointer-events: none;
   }
-  .sbh-ticker::before { left: 0;  background: linear-gradient(90deg, var(--bg-page, #faf5eb), transparent); }
-  .sbh-ticker::after  { right: 0; background: linear-gradient(270deg, var(--bg-page, #faf5eb), transparent); }
+  .sbh-ticker::before { left: 0;  background: linear-gradient(90deg, var(--bg-page, #f4f6f8), transparent); }
+  .sbh-ticker::after  { right: 0; background: linear-gradient(270deg, var(--bg-page, #f4f6f8), transparent); }
   .sbh-ticker-track { display: flex; width: max-content; animation: sbhTicker 46s linear infinite; }
   /* every chip is a link, so the motion MUST be stoppable to be clickable —
      hover for the mouse, focus-within for the keyboard (WCAG 2.2.2). */
@@ -2735,7 +2735,7 @@ body main textarea.input-luxury {
     font-family: "Space Grotesk", var(--font-sans), sans-serif;
     font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
     color: var(--text-base, #1f1a0f);
-    background: var(--bg-page, #faf5eb);
+    background: var(--bg-page, #f4f6f8);
     border: 1px solid rgba(139, 106, 40, 0.22);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 3px 8px -5px rgba(74, 56, 32, 0.55);
     transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
@@ -2751,7 +2751,7 @@ body main textarea.input-luxury {
     padding: 3px 10px; border-radius: 999px;
     font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #3a2606;
     background: linear-gradient(140deg, #92a5b9 0%, #6a85a0 46%, #536b82 100%);
-    box-shadow: 0 6px 14px -8px rgba(160, 116, 20, 0.8);
+    box-shadow: 0 6px 14px -8px rgba(106, 133, 160, 0.8);
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
@@ -2806,11 +2806,11 @@ body main textarea.input-luxury {
   }
   [data-theme="dark"] html,
   html[data-theme="dark"] {
-    scrollbar-color: rgba(226, 196, 137, 0.5) rgba(255, 255, 255, 0.06);
+    scrollbar-color: rgba(176, 192, 209, 0.5) rgba(255, 255, 255, 0.06);
   }
   html[data-theme="dark"]::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.05);
-    border-left-color: rgba(226, 196, 137, 0.14);
+    border-left-color: rgba(176, 192, 209, 0.14);
   }
   html[data-theme="dark"]::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #96a9bc, #708aa4);

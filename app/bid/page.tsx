@@ -291,7 +291,7 @@ function WinCount({ value }: { value: number }) {
 }
 
 /* ── v162 — celebration confetti pieces (deterministic) ─────────── */
-const CONFETTI_COLORS = ["#C9A66B", "#D9BE82", "#D49583", "#9DAD8F", "#E7CFA0", "#B18943"];
+const CONFETTI_COLORS = ["#C9A66B", "#b4c1cf", "#D49583", "#9DAD8F", "#c8d2dc", "#7790a8"];
 const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
   left:  (i * 4.37 + (i % 4) * 6) % 100,
   color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
@@ -2186,7 +2186,7 @@ export default function BidPage() {
                     lineHeight: 1.5,
                     marginBottom: 14,
                   }}>
-                    One bid per city — your {c.hotelName ? `${c.hotelName} ` : ""}bid at <strong style={{ color: "#c9911a" }}>₹{currentAmt.toLocaleString("en-IN")}/night</strong> is still live. View it to update the budget or cancel before launching a new one.
+                    One bid per city — your {c.hotelName ? `${c.hotelName} ` : ""}bid at <strong style={{ color: "#8198ae" }}>₹{currentAmt.toLocaleString("en-IN")}/night</strong> is still live. View it to update the budget or cancel before launching a new one.
                   </div>
                   <button
                     type="button"
@@ -2196,7 +2196,7 @@ export default function BidPage() {
                       borderRadius: 999,
                       fontWeight: 700,
                       fontSize: "0.92rem",
-                      background: "linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a)",
+                      background: "linear-gradient(135deg,#748da6,#a9b9c8 55%,#8198ae)",
                       color: "var(--cozy-warm-dark)",
                       border: "1px solid rgba(110,84,48,0.35)",
                       boxShadow: "0 3px 10px rgba(110,84,48,0.18)",
@@ -2231,7 +2231,7 @@ export default function BidPage() {
                     borderRadius: 999,
                     fontWeight: 700,
                     fontSize: "0.92rem",
-                    background: "linear-gradient(180deg,#fbe6b5,#e6c382)",
+                    background: "linear-gradient(180deg,#e3e8ed,#bbc7d4)",
                     color: "var(--cozy-warm-dark)",
                     border: "1px solid rgba(110,84,48,0.35)",
                     boxShadow: "0 3px 10px rgba(110,84,48,0.18)",

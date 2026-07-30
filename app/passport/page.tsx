@@ -157,7 +157,7 @@ function PassportHub() {
               className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
               style={
                 tab === t.key
-                  ? { background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)", color: "#fff", boxShadow: "0 4px 12px -5px rgba(201,145,26,0.6)" }
+                  ? { background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)", color: "#fff", boxShadow: "0 4px 12px -5px rgba(106,133,160,0.6)" }
                   : { color: "var(--text-muted)" }
               }
             >
@@ -218,7 +218,7 @@ function PassportHub() {
                   Complete a stay to mint your Explorer ID + first stamp.
                 </p>
                 <Link href="/hotels" className="inline-block mt-4 px-5 py-2.5 rounded-xl text-white font-bold text-sm sb-shimmer relative overflow-hidden"
-                  style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+                  style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" }}>
                   <span className="relative" style={{ zIndex: 2 }}>Browse hotels</span>
                 </Link>
               </div>
@@ -287,7 +287,7 @@ function WalletTab({
         style={{ background: "linear-gradient(135deg,#0a0812 0%,#130f24 60%,#0a1020 100%)" }}
       >
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none opacity-[0.09]"
-          style={{ background: "radial-gradient(circle,#f0b429 0%,transparent 70%)", transform: "translate(30%,-30%)" }} />
+          style={{ background: "radial-gradient(circle,#a9b9c8 0%,transparent 70%)", transform: "translate(30%,-30%)" }} />
         <p className="text-white/40 text-[0.6rem] tracking-[0.2em] uppercase font-semibold mb-1">Available Balance</p>
         <p className="font-display font-light text-white mb-1 tabular-nums" style={{ fontSize: "clamp(2rem,5.5vw,2.9rem)" }}>
           ₹<CountUp value={walletBalance} duration={1100} />
@@ -313,7 +313,7 @@ function WalletTab({
       <div className="grid grid-cols-2 gap-2.5">
         <button onClick={onGoRewards}
           className="rounded-2xl py-2.5 px-3 text-white font-bold text-xs relative overflow-hidden sb-card-lift sb-shimmer flex items-center justify-center gap-1.5"
-          style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+          style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" }}>
           <span className="relative" style={{ zIndex: 2 }}>✨ Redeem Points</span>
         </button>
         <button onClick={onGoCodes}
@@ -444,7 +444,7 @@ function RewardsTab({
             <button key={k} onClick={() => setFilter(k)}
               className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap sb-card-lift"
               style={filter === k
-                ? { background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)", color: "#fff" }
+                ? { background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)", color: "#fff" }
                 : { background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
               {k === "all" ? "All" : `${kindIcon(k as any)} ${k.replace("_", " ")}`}
             </button>
@@ -485,7 +485,7 @@ function RewardsTab({
                   onClick={() => v.ok && setConfirm(r)}
                   disabled={!v.ok}
                   className="shrink-0 text-[0.72rem] font-bold px-3.5 py-2 rounded-xl text-white relative overflow-hidden disabled:opacity-50"
-                  style={{ background: v.ok ? "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" : "var(--bg-pill)" }}
+                  style={{ background: v.ok ? "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" : "var(--bg-pill)" }}
                   title={v.ok ? "Redeem" : (v as any).error}>
                   <span className="relative" style={{ zIndex: 2, color: v.ok ? "#fff" : "var(--text-muted)" }}>
                     {v.ok ? "Redeem" : "🔒"}
@@ -520,7 +520,7 @@ function RewardsTab({
               </button>
               <button onClick={doRedeem} disabled={busy}
                 className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white relative overflow-hidden sb-shimmer"
-                style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+                style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" }}>
                 <span className="relative" style={{ zIndex: 2 }}>{busy ? "Redeeming…" : "Confirm"}</span>
               </button>
             </div>
@@ -549,7 +549,7 @@ function RewardsTab({
               </button>
               <button onClick={() => { setSuccess(null); onGoCodes(); }}
                 className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white"
-                style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+                style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" }}>
                 View in Codes
               </button>
             </div>
@@ -611,7 +611,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
           <button key={f} onClick={() => setFilter(f)}
             className="px-3 py-1.5 rounded-full text-xs font-bold capitalize sb-card-lift"
             style={filter === f
-              ? { background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)", color: "#fff" }
+              ? { background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)", color: "#fff" }
               : { background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
             {f}
           </button>
@@ -665,7 +665,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
                   {st === "active" && (c.kind === "coupon" || c.kind === "voucher") && (
                     <button onClick={() => useAtCheckout(c)}
                       className="text-[0.66rem] font-bold px-3 py-1.5 rounded-lg text-white"
-                      style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+                      style={{ background: "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" }}>
                       {copied === `queued-${c.code}` ? "✓ Queued" : "Use at checkout"}
                     </button>
                   )}

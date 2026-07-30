@@ -13,9 +13,9 @@ export type MedalFace = {
 };
 
 // ── Presets ────────────────────────────────────────────────────────────────
-export const MEDAL_GOLD: MedalFace = { metal: "gold", core: "#E8C765", glow: "#F0D060" };
-export const MEDAL_CHAMPAGNE: MedalFace = { metal: "gold", core: "#EFDDA8", glow: "#F0D060" };
-export const MEDAL_LOCKED: MedalFace = { metal: "silver", core: "#D6CDBC", glow: "#CFC2AB" };
+export const MEDAL_GOLD: MedalFace = { metal: "gold", core: "#bdc9d5", glow: "#c6d0da" };
+export const MEDAL_CHAMPAGNE: MedalFace = { metal: "gold", core: "#d7dee5", glow: "#c6d0da" };
+export const MEDAL_LOCKED: MedalFace = { metal: "silver", core: "#c5cfda", glow: "#b8c5d2" };
 
 /** Gold-bezel medal with a tier-colored core — used for rank crests. */
 export function rankMedalFace(color: string): MedalFace {
@@ -28,8 +28,8 @@ export function stampFace(ring: string): MedalFace {
 
 const METAL: Record<string, { ring: string; rivet: string; rim: string }> = {
   gold: {
-    ring: "conic-gradient(from 125deg,#FCEFC6 0deg,#E6C775 38deg,#9C7424 88deg,#FBEAB0 140deg,#7E5E18 200deg,#E0BE6E 268deg,#FCEFC6 360deg)",
-    rivet: "#9C7424",
+    ring: "conic-gradient(from 125deg,#eceff3 0deg,#bec9d5 38deg,#607b95 88deg,#e5eaef 140deg,#7E5E18 200deg,#b4c1cf 268deg,#eceff3 360deg)",
+    rivet: "#607b95",
     rim: "#7A581A",
   },
   silver: {
@@ -96,8 +96,8 @@ export function PassportMedal({
         .pm-${uid}.pm-tap{cursor:pointer;-webkit-tap-highlight-color:transparent;}
         .pm-${uid} .pm-ribbon{position:relative;z-index:6;margin-bottom:${px(-0.08)};
           font-size:${Math.max(8, Math.round(size * 0.135))}px;font-weight:900;letter-spacing:.06em;
-          text-transform:uppercase;color:#fff7e2;padding:2px 9px;border-radius:999px;white-space:nowrap;
-          background:linear-gradient(180deg,#F3D784,#C79A3A 60%,#8A6A1E);
+          text-transform:uppercase;color:#f6f7f9;padding:2px 9px;border-radius:999px;white-space:nowrap;
+          background:linear-gradient(180deg,#d0d8e1,#8ba0b5 60%,#8A6A1E);
           box-shadow:0 3px 8px -3px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.55),
             inset 0 -1px 1px rgba(0,0,0,.3);
           text-shadow:0 1px 1px rgba(0,0,0,.35);}
@@ -110,7 +110,7 @@ export function PassportMedal({
 
         /* ── METAL bezel ── */
         .pm-${uid} .pm-bezel{position:absolute;inset:${hasRing ? "10%" : "0"};border-radius:50%;z-index:2;
-          overflow:hidden;background:${variant === "stamp" ? "#F8F0DE" : metal.ring};
+          overflow:hidden;background:${variant === "stamp" ? "#eef1f4" : metal.ring};
           box-shadow:
             0 ${px(0.16)} ${px(0.3)} -${px(0.1)} rgba(0,0,0,.5),
             0 ${px(0.04)} ${px(0.08)} rgba(0,0,0,.32),
@@ -127,7 +127,7 @@ export function PassportMedal({
           background:
             radial-gradient(circle at 36% 27%, rgba(255,255,255,.6) 0%, transparent 40%),
             radial-gradient(circle at 62% 80%, rgba(0,0,0,.42) 0%, transparent 60%),
-            ${variant === "stamp" ? "#FBF4E4" : m.core};
+            ${variant === "stamp" ? "#f2f5f7" : m.core};
           box-shadow:
             inset 0 0 0 ${Math.max(1.5, size * 0.02)}px ${variant === "stamp" ? `${m.core}` : "rgba(255,255,255,.22)"},
             inset 0 ${px(0.04)} ${px(0.07)} rgba(0,0,0,.46),
@@ -156,7 +156,7 @@ export function PassportMedal({
         .pm-${uid} .pm-lock{position:absolute;right:-3%;bottom:-3%;z-index:7;
           width:${px(0.36)};height:${px(0.36)};border-radius:50%;display:flex;align-items:center;
           justify-content:center;font-size:${px(0.18)};
-          background:radial-gradient(circle at 34% 30%,#fff,#e7dcc6 75%);
+          background:radial-gradient(circle at 34% 30%,#fff,#d6dee5 75%);
           box-shadow:0 3px 8px -3px rgba(0,0,0,.55),inset 0 0 0 1px rgba(201,166,107,.5);}
 
         .pm-${uid}.pm-tap:active .pm-bezel{transform:scale(.92);}
@@ -200,7 +200,7 @@ export function PassportMedal({
                 cy="50"
                 r={ringR}
                 fill="none"
-                stroke="#D9B65A"
+                stroke="#aab9c8"
                 strokeWidth="5"
                 strokeLinecap="round"
                 strokeDasharray={ringC}

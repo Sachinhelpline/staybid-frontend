@@ -214,7 +214,7 @@ export function Navbar() {
            0.92/0.94 = nearly opaque). The heavy blur + saturate does the
            premium frosted-glass work; content scrolls softly under it. */
         .nav3d-bar {
-          background: rgba(255,251,244,0.68);
+          background: rgba(176, 192, 209,0.68);
           backdrop-filter: blur(26px) saturate(185%);
           -webkit-backdrop-filter: blur(26px) saturate(185%);
           border-bottom: 1px solid var(--border-soft);
@@ -257,7 +257,7 @@ export function Navbar() {
            Owner review of v584.1 (screenshot): the nav chips read as flat
            WHITE boxes and Location/Explore looked dull — "premium nahi lag
            raha". Root cause: .nav3d-chip pulls var(--bg-pill), which is
-           near-white (#fffcf6) in light mode → flat. Every desktop-bar chip
+           near-white (#fcfcfd) in light mode → flat. Every desktop-bar chip
            is now ONE raised tonal-glass pill with a champagne-gold hairline
            and real depth, tuned SEPARATELY for light + dark so both read
            premium with strong text contrast. Exactly two accents on top of
@@ -279,7 +279,7 @@ export function Navbar() {
           cursor: pointer;
           /* LIGHT: warm ivory → champagne, gold rim, raised — reads as
              embossed cream cardstock with a foil edge, not a white box. */
-          background: linear-gradient(180deg, #fdf6e9 0%, #f0e0c2 100%) !important;
+          background: linear-gradient(180deg, #f5f7f9 0%, #dce2e8 100%) !important;
           border: 1px solid rgba(106,133,160,0.42) !important;
           color: #241a0b !important;
           box-shadow:
@@ -289,7 +289,7 @@ export function Navbar() {
         }
         .nav3d-eq:hover {
           transform: translateY(-2px) scale(1.07);
-          background: linear-gradient(180deg, #fff7e3 0%, #f2ddac 100%) !important;
+          background: linear-gradient(180deg, #f6f7f9 0%, #d8dfe6 100%) !important;
           border-color: rgba(106,133,160,0.75) !important;
           color: #241a0b !important;
           box-shadow:
@@ -310,19 +310,19 @@ export function Navbar() {
         /* DARK: warm espresso → walnut, gold hairline, cream text. */
         [data-theme="dark"] .nav3d-eq {
           background: linear-gradient(180deg, #322817 0%, #221a0f 100%) !important;
-          border-color: rgba(224,196,132,0.34) !important;
-          color: #f7efdd !important;
+          border-color: rgba(176, 192, 209,0.34) !important;
+          color: #edf0f3 !important;
           box-shadow:
             0 3px 9px rgba(0,0,0,0.45),
-            inset 0 1px 0 rgba(255,233,173,0.10) !important;
+            inset 0 1px 0 rgba(176, 192, 209,0.10) !important;
         }
         [data-theme="dark"] .nav3d-eq:hover {
           background: linear-gradient(180deg, #40331b 0%, #2a2011 100%) !important;
           border-color: rgba(106,133,160,0.62) !important;
-          color: #fff6e2 !important;
+          color: #f5f7f9 !important;
           box-shadow:
             0 10px 24px rgba(106,133,160,0.24),
-            inset 0 1px 0 rgba(255,233,173,0.16) !important;
+            inset 0 1px 0 rgba(176, 192, 209,0.16) !important;
         }
         [data-theme="dark"] .nav3d-eq.nav3d-chip-active {
           background: linear-gradient(135deg, #92a5b9 0%, #6a85a0 55%, #4b6075 100%) !important;

@@ -204,7 +204,7 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
             style={{ color: ringColor }}>{countdown}</div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold" style={{ color: warning ? "#fbbf24" : "#10b981" }}>
+          <p className="text-xs font-bold" style={{ color: warning ? "#b5c2d0" : "#10b981" }}>
             {warning ? "⏱ Only 5 minutes left!" : "🎉 Hotel accepted · Pay to confirm"}
           </p>
           <p className="text-[0.62rem] text-white/60 mt-0.5 leading-snug">
@@ -217,7 +217,7 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
           className="text-[0.65rem] font-bold tracking-wide px-3 py-1.5 rounded-full shrink-0 transition-transform active:scale-[0.96]"
           style={{
             background: warning
-              ? "linear-gradient(135deg,#f0b429,#f97316)"
+              ? "linear-gradient(135deg,#a9b9c8,#f97316)"
               : "linear-gradient(135deg,#10b981,#34d399)",
             color: warning ? "#1c1208" : "#022c22",
             boxShadow: warning ? "0 6px 18px rgba(249,115,22,0.4)" : "0 6px 18px rgba(16,185,129,0.35)",

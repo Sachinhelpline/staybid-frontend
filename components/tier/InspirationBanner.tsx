@@ -28,9 +28,9 @@ export type InspirationBannerProps = {
 };
 
 const COZY = {
-  paperBg: "linear-gradient(135deg, #FAF5EB 0%, #F2EAD8 100%)",
+  paperBg: "linear-gradient(135deg, #f4f6f8 0%, #e7ebef 100%)",
   champagne: "#C9A66B",
-  champagneLight: "#D9BE82",
+  champagneLight: "#b4c1cf",
   cocoa: "#4A3820",
   cocoaSoft: "#6E5430",
   border: "rgba(201,166,107,0.40)",

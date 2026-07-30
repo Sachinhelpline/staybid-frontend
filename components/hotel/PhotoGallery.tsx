@@ -224,23 +224,23 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
         }
         .pg-head-btn {
           flex-shrink: 0;
-          font-size: 0.82rem; font-weight: 700; color: #efe6d2;
+          font-size: 0.82rem; font-weight: 700; color: #e2e7ec;
           background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14);
           padding: 8px 14px; border-radius: 999px; cursor: pointer;
           transition: background 0.16s ease;
         }
         .pg-head-btn:hover { background: rgba(255, 255, 255, 0.16); }
         .pg-head-title { text-align: center; min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
-        .pg-head-name { font-size: 0.9rem; font-weight: 700; color: #fbf5ea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pg-head-count { font-size: 0.68rem; color: rgba(242, 236, 221, 0.55); }
+        .pg-head-name { font-size: 0.9rem; font-weight: 700; color: #f4f6f8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pg-head-count { font-size: 0.68rem; color: rgba(176, 192, 209, 0.55); }
         .pg-head-spacer { width: 92px; flex-shrink: 0; }
         .pg-tabs { display: flex; gap: 4px; flex-shrink: 0; background: rgba(255, 255, 255, 0.06); padding: 3px; border-radius: 999px; }
         .pg-tab {
-          font-size: 0.76rem; font-weight: 700; color: rgba(242, 236, 221, 0.7);
+          font-size: 0.76rem; font-weight: 700; color: rgba(176, 192, 209, 0.7);
           padding: 6px 14px; border-radius: 999px; border: none; background: transparent; cursor: pointer;
           transition: background 0.16s ease, color 0.16s ease;
         }
-        .pg-tab.is-on { background: #efe6d2; color: #2a2115; }
+        .pg-tab.is-on { background: #e2e7ec; color: #2a2115; }
 
         /* v511 — category rail */
         .pg-catbar {
@@ -255,16 +255,16 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
         .pg-catbar::-webkit-scrollbar { display: none; }
         .pg-chip {
           flex-shrink: 0; white-space: nowrap; cursor: pointer;
-          font-size: 0.78rem; font-weight: 700; color: rgba(242, 236, 221, 0.72);
+          font-size: 0.78rem; font-weight: 700; color: rgba(176, 192, 209, 0.72);
           background: rgba(255, 255, 255, 0.07);
           border: 1px solid rgba(255, 255, 255, 0.12);
           padding: 7px 14px; border-radius: 999px;
           display: inline-flex; align-items: center; gap: 5px;
           transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
         }
-        .pg-chip:hover { background: rgba(255, 255, 255, 0.13); color: #fbf5ea; }
+        .pg-chip:hover { background: rgba(255, 255, 255, 0.13); color: #f4f6f8; }
         .pg-chip.is-on {
-          background: #efe6d2; color: #2a2115; border-color: #efe6d2;
+          background: #e2e7ec; color: #2a2115; border-color: #e2e7ec;
         }
         .pg-chip-emo { font-size: 0.9rem; line-height: 1; }
         .pg-chip-n {
@@ -291,12 +291,12 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
         .pg-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
         /* First photo spans 2 cols as a hero, Airbnb-style. */
         @media (min-width: 900px) { .pg-cell-hero { grid-column: span 2; grid-row: span 2; aspect-ratio: 16 / 11; } }
-        .pg-empty { color: rgba(242, 236, 221, 0.6); text-align: center; padding: 40px; }
+        .pg-empty { color: rgba(176, 192, 209, 0.6); text-align: center; padding: 40px; }
 
         .pg-rooms { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
         .pg-room-title {
           font-family: var(--font-display, "Cormorant Garamond"), serif;
-          font-size: 1.25rem; font-weight: 700; color: #fbf5ea; margin: 0 0 12px;
+          font-size: 1.25rem; font-weight: 700; color: #f4f6f8; margin: 0 0 12px;
         }
 
         .pg-zoom { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; min-height: 0; }
@@ -313,8 +313,8 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
         .pg-zoom-nav:hover { background: rgba(0, 0, 0, 0.8); }
         .pg-zoom-prev { left: 10px; }
         .pg-zoom-next { right: 10px; }
-        .pg-zoom-count { color: rgba(242, 236, 221, 0.55); font-size: 0.82rem; margin: 12px 0 10px; }
-        .pg-zoom-hint { color: rgba(242, 236, 221, 0.3); font-size: 0.72rem; }
+        .pg-zoom-count { color: rgba(176, 192, 209, 0.55); font-size: 0.82rem; margin: 12px 0 10px; }
+        .pg-zoom-hint { color: rgba(176, 192, 209, 0.3); font-size: 0.72rem; }
         @media (max-width: 640px) { .pg-zoom-hint { display: none; } }
         .pg-zoom-strip { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding-bottom: 6px; scrollbar-width: none; }
         .pg-zoom-strip::-webkit-scrollbar { display: none; }
@@ -323,7 +323,7 @@ export default function PhotoGallery({ open, onClose, hotelName, images, rooms, 
           border: 2px solid transparent; opacity: 0.55; padding: 0; background: #1a1610;
           transition: opacity 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
         }
-        .pg-strip-thumb.is-on { opacity: 1; border-color: #f0c24a; transform: scale(1.05); }
+        .pg-strip-thumb.is-on { opacity: 1; border-color: #b8c5d2; transform: scale(1.05); }
         .pg-strip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
       `}</style>
     </div>

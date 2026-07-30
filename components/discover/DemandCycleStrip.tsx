@@ -83,7 +83,7 @@ export default function DemandCycleStrip({
           /* v514 — subtle reflective top highlight (premium sheen) */
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 1px 2px rgba(31,26,15,0.06);
         }
-        .dcs-chip:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 6px 16px rgba(180,150,90,0.22); border-color: var(--accent); }
+        .dcs-chip:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 6px 16px rgba(140, 160, 182,0.22); border-color: var(--accent); }
         .dcs-chip-p {
           background: color-mix(in srgb, var(--accent) 16%, var(--bg-card));
           border-color: color-mix(in srgb, var(--accent) 45%, var(--border-soft));

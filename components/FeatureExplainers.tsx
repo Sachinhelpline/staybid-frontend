@@ -31,7 +31,7 @@ function pickVoice(lang: "en" | "hi"): SpeechSynthesisVoice | null {
 /* ═══════════════════════════════════════════════════════════════════
    Phone-frame wrapper — shared by all demo scenes
    ═══════════════════════════════════════════════════════════════════ */
-function PhoneFrame({ children, accent = "#c9911a" }: { children: ReactNode; accent?: string }) {
+function PhoneFrame({ children, accent = "#8198ae" }: { children: ReactNode; accent?: string }) {
   return (
     <div className="relative mx-auto" style={{ width: "min(280px, 75vw)", aspectRatio: "9 / 18" }}>
       <div className="absolute inset-0 rounded-[2.2rem] p-[4px]"
@@ -68,7 +68,7 @@ function FlashScenes({ step }: { step: number }) {
         <div className="flex gap-1.5 overflow-hidden">
           {[0, 1, 2].map(i => (
             <div key={i} className={`shrink-0 rounded-lg border transition-all ${i === 1 ? "border-gold-400 scale-105 shadow-lg" : "border-white/10 opacity-60"}`}
-                 style={{ width: 68, background: "rgba(255,255,255,0.04)", boxShadow: i === 1 ? "0 0 12px rgba(240,180,41,0.5)" : undefined }}>
+                 style={{ width: 68, background: "rgba(255,255,255,0.04)", boxShadow: i === 1 ? "0 0 12px rgba(140, 160, 182,0.5)" : undefined }}>
               <div className="h-12 bg-linear-to-br from-gold-500/40 to-purple-500/20 rounded-t-lg relative">
                 <span className="absolute top-0.5 right-0.5 bg-gold-500 text-[6px] font-bold text-white px-1 rounded-full">40%</span>
               </div>
@@ -209,7 +209,7 @@ function HotelsScenes({ step }: { step: number }) {
         </div>
         <p className="text-gold-400 text-[8px] font-bold tracking-widest uppercase mb-2">Explore</p>
         <p className="text-white text-[11px] font-bold mb-2">Find Your Perfect Stay</p>
-        <div className="flex items-center gap-1 bg-white/5 border border-gold-400 rounded-lg px-2 py-1.5 mb-2" style={{ boxShadow: "0 0 10px rgba(240,180,41,0.4)" }}>
+        <div className="flex items-center gap-1 bg-white/5 border border-gold-400 rounded-lg px-2 py-1.5 mb-2" style={{ boxShadow: "0 0 10px rgba(140, 160, 182,0.4)" }}>
           <span className="text-[9px]">🔍</span>
           <span className="text-white/80 text-[8px]">Search hotels…</span>
         </div>
@@ -295,7 +295,7 @@ function HotelsScenes({ step }: { step: number }) {
             {name:"StayBid",     price:2999, you:true},
           ].map(o => (
             <div key={o.name} className={`flex items-center justify-between p-1.5 rounded-sm border ${o.you ? "border-gold-400 bg-gold-500/15" : "border-white/10 bg-white/2"}`}
-                 style={o.you ? { boxShadow: "0 0 8px rgba(240,180,41,0.4)" } : undefined}>
+                 style={o.you ? { boxShadow: "0 0 8px rgba(140, 160, 182,0.4)" } : undefined}>
               <span className={`text-[8px] font-bold ${o.you ? "text-gold-300" : "text-white/60"}`}>{o.you ? "⚡ " : ""}{o.name}</span>
               <span className={`text-[9px] font-bold tabular-nums ${o.you ? "text-gold-400" : "text-white/50 line-through"}`}>₹{o.price}</span>
             </div>
@@ -353,7 +353,7 @@ function BidScenes({ step }: { step: number }) {
         </div>
         <div className="relative h-1.5 bg-white/10 rounded-full mb-1">
           <div className="absolute left-0 top-0 h-full w-1/3 bg-linear-to-r from-gold-500 to-gold-300 rounded-full" />
-          <div className="absolute left-1/3 top-1/2 -translate-y-1/2 w-3 h-3 bg-gold-400 border-2 border-white rounded-full" style={{ boxShadow: "0 0 8px rgba(240,180,41,0.8)" }} />
+          <div className="absolute left-1/3 top-1/2 -translate-y-1/2 w-3 h-3 bg-gold-400 border-2 border-white rounded-full" style={{ boxShadow: "0 0 8px rgba(140, 160, 182,0.8)" }} />
         </div>
         <div className="flex justify-between text-[6px] text-white/40 mb-2">
           <span>₹1,000</span><span>₹10,000</span>
@@ -414,7 +414,7 @@ function BidScenes({ step }: { step: number }) {
       {/* Scene 4: Accept offer */}
       <div className={sceneCls} style={{ opacity: s === 4 ? 1 : 0 }}>
         <p className="text-gold-400 text-[8px] font-bold tracking-widest uppercase mb-2">Best Offer</p>
-        <div className="bg-gold-500/10 border border-gold-400 rounded-xl p-2 mb-2" style={{ boxShadow: "0 0 14px rgba(240,180,41,0.5)" }}>
+        <div className="bg-gold-500/10 border border-gold-400 rounded-xl p-2 mb-2" style={{ boxShadow: "0 0 14px rgba(140, 160, 182,0.5)" }}>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-sm bg-linear-to-br from-gold-500 to-orange-500" />
             <div>
@@ -427,7 +427,7 @@ function BidScenes({ step }: { step: number }) {
             <span className="text-gold-400 font-bold text-lg">₹2,699<span className="text-[7px] text-white/50">/nt</span></span>
           </div>
         </div>
-        <div className="h-6 bg-linear-to-r from-gold-600 to-gold-400 rounded-lg flex items-center justify-center" style={{ boxShadow: "0 4px 12px rgba(240,180,41,0.4)" }}>
+        <div className="h-6 bg-linear-to-r from-gold-600 to-gold-400 rounded-lg flex items-center justify-center" style={{ boxShadow: "0 4px 12px rgba(140, 160, 182,0.4)" }}>
           <span className="text-white text-[9px] font-bold">✓ Accept & Pay</span>
         </div>
       </div>
@@ -487,7 +487,7 @@ const FEATURES: Feature[] = [
     id: "flash",
     icon: "⚡",
     title: { en: "Flash Deals", hi: "फ्लैश डील्स" },
-    color: "#ef4444", accent: "#f0b429",
+    color: "#ef4444", accent: "#a9b9c8",
     Scenes: FlashScenes,
     cta: { href: "/flash-deals", en: "Browse Flash Deals →", hi: "फ्लैश डील्स देखें →" },
     steps: [
@@ -509,7 +509,7 @@ const FEATURES: Feature[] = [
     id: "hotels",
     icon: "🏨",
     title: { en: "Hotels", hi: "होटल्स" },
-    color: "#c9911a", accent: "#c9911a",
+    color: "#8198ae", accent: "#8198ae",
     Scenes: HotelsScenes,
     cta: { href: "/hotels", en: "Explore Hotels →", hi: "होटल्स देखें →" },
     steps: [
@@ -531,7 +531,7 @@ const FEATURES: Feature[] = [
     id: "bid",
     icon: "🎯",
     title: { en: "Place Bid", hi: "अपना दाम तय करें" },
-    color: "#f0b429", accent: "#f0b429",
+    color: "#a9b9c8", accent: "#a9b9c8",
     Scenes: BidScenes,
     cta: { href: "/bid", en: "Place Your Bid →", hi: "अपनी बिड लगाएं →" },
     steps: [

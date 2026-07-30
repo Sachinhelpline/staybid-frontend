@@ -34,7 +34,7 @@ export function MemberCard({
         .mc-id {
           font-family: ui-monospace, "SF Mono", Menlo, monospace;
           font-weight: 800; font-size: 0.94rem; letter-spacing: 0.04em;
-          background: linear-gradient(110deg,#FCEFC6,#F0D060 45%,#C79A3A 70%,#FCEFC6);
+          background: linear-gradient(110deg,#eceff3,#c6d0da 45%,#8ba0b5 70%,#eceff3);
           background-size: 220% 220%;
           -webkit-background-clip: text; background-clip: text;
           -webkit-text-fill-color: transparent; color: transparent;
@@ -49,7 +49,7 @@ export function MemberCard({
       />
 
       <div className="flex items-center justify-between">
-        <p className="text-[0.6rem] tracking-[0.3em] uppercase font-bold" style={{ color: "rgba(212,175,55,0.9)" }}>
+        <p className="text-[0.6rem] tracking-[0.3em] uppercase font-bold" style={{ color: "rgba(140, 160, 182,0.9)" }}>
           StayBid Member
         </p>
         <span className="mc-foil text-[0.66rem] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: R.gradient }}>
