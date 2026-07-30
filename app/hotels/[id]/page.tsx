@@ -2591,8 +2591,10 @@ export default function HotelDetail() {
                     <span style={{
                       marginLeft: "8px",
                       padding: "2px 9px",
-                      background: "linear-gradient(135deg, #899eb3, #6a85a0)",
-                      color: "#14212e",
+                      background: "linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369)",
+                      color: "#ffffff",
+                      textShadow: "0 1px 1px rgba(20,30,44,0.35)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
                       fontSize: "0.65rem",
                       fontWeight: 800,
                       borderRadius: "999px",

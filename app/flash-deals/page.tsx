@@ -1453,15 +1453,16 @@ function FdStyles() {
       .fd-disc-stamp {
         position: absolute; top: 12px; right: 12px; z-index: 2;
         /* v590 — satin matte gold coin (was glossy + a moving shine sweep). */
-        background: linear-gradient(145deg, #92a5b9 0%, #6a85a0 46%, #7890a9 100%);
+        background: linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%);
         border-radius: 15px;
         padding: 8px 12px;
         display: flex; flex-direction: column; align-items: center;
         line-height: 1;
         overflow: hidden;
         box-shadow:
-          0 9px 20px -8px rgba(83,107,130,0.45),
-          inset 0 1px 0 rgba(255,248,230,0.30);
+          0 8px 16px -8px rgba(40,55,72,0.5),
+          inset 0 1px 0 rgba(255,255,255,0.5),
+          inset 0 -2px 4px rgba(28,38,52,0.26);
         animation: fdStamp 2.6s ease-in-out infinite;
       }
       /* v590 — matte: the moving gloss sweep is gone. */
@@ -1481,10 +1482,10 @@ function FdStyles() {
         0%, 100% { transform: rotate(-3deg) scale(1); }
         50%      { transform: rotate(-3deg) scale(1.045); }
       }
-      .fd-disc-num { position: relative; z-index: 1; color: #3a2606; font-weight: 900; font-size: 1.12rem; letter-spacing: -0.02em; text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
-      .fd-disc-stamp.fire .fd-disc-num { color: #3a2606; }
-      .fd-disc-off { position: relative; z-index: 1; color: #6a4a0e; font-weight: 800; font-size: 0.55rem; letter-spacing: 0.18em; }
-      .fd-disc-stamp.fire .fd-disc-off { color: #6a4a0e; }
+      .fd-disc-num { position: relative; z-index: 1; color: #ffffff; font-weight: 900; font-size: 1.12rem; letter-spacing: -0.02em; text-shadow: 0 1px 1px rgba(20,30,44,0.4); }
+      .fd-disc-stamp.fire .fd-disc-num { color: #ffffff; }
+      .fd-disc-off { position: relative; z-index: 1; color: rgba(255,255,255,0.92); font-weight: 800; font-size: 0.55rem; letter-spacing: 0.18em; }
+      .fd-disc-stamp.fire .fd-disc-off { color: rgba(255,255,255,0.92); }
 
       .fd-img-bottom {
         position: absolute; bottom: 12px; left: 12px; z-index: 2;
@@ -1882,10 +1883,10 @@ function FdStyles() {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 3px 9px; border-radius: 999px;
         font-size: 0.62rem; font-weight: 800; letter-spacing: 0.01em;
-        color: #242e38;
-        background: linear-gradient(135deg, #d2dae2, #96a9bc 60%, #6a85a0);
-        border: 1px solid rgba(83,107,130,0.5);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 3px 8px -4px rgba(83,107,130,0.45);
+        color: #ffffff; text-shadow: 0 1px 1px rgba(20,30,44,0.35);
+        background: linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369);
+        border: 1px solid rgba(255,255,255,0.35);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(28,38,52,0.25), 0 4px 10px -6px rgba(40,55,72,0.45);
       }
       .fd-amen-chip {
         display: inline-flex; align-items: center; gap: 4px;
@@ -1943,18 +1944,18 @@ function FdStyles() {
         padding: 12px 18px;
         /* v590 — SATIN matte gold (was bright glossy #ffe9a6→#7a92aa). Even,
            brushed metal, no harsh white specular. */
-        background: linear-gradient(150deg, #899eb3 0%, #6a85a0 44%, #7890a9 100%);
-        color: #2a1d05; font-size: 0.78rem; font-weight: 900;
+        background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 44%, #42566d 100%);
+        color: #ffffff; font-size: 0.78rem; font-weight: 900;
         border: none; border-radius: 14px;
         cursor: pointer;
         box-shadow:
-          0 9px 20px -8px rgba(83,107,130,0.5),
-          0 2px 5px -1px rgba(75,96,117,0.3),
-          inset 0 1px 0 rgba(255,248,230,0.28);
+          0 10px 22px -9px rgba(45,62,82,0.55),
+          inset 0 1px 0 rgba(255,255,255,0.5),
+          inset 0 -2px 4px rgba(28,38,52,0.28);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         letter-spacing: 0.02em;
         white-space: nowrap;
-        text-shadow: 0 1px 0 rgba(255,248,230,0.22);
+        text-shadow: 0 1px 1px rgba(20,30,44,0.35);
       }
       /* v590 — matte: the reflective gloss sweep is gone. */
       .fd-cta::after { display: none; }

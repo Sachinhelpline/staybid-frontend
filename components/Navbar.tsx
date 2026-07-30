@@ -332,21 +332,22 @@ export function Navbar() {
            both themes, the brightest thing on the bar. */
         .nav3d-solidgold,
         [data-theme="dark"] .nav3d-solidgold {
-          background: linear-gradient(135deg, #92a5b9 0%, #6a85a0 52%, #4b6075 100%) !important;
-          border: 1px solid rgba(255,255,255,0.45) !important;
-          color: #1f1a0f !important;
+          background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%) !important;
+          border: 1px solid rgba(255,255,255,0.4) !important;
+          color: #ffffff !important;
+          text-shadow: 0 1px 1px rgba(20,30,44,0.35) !important;
           box-shadow:
-            0 3px 13px rgba(106,133,160,0.42),
-            inset 0 1px 0 rgba(255,255,255,0.6),
-            inset 0 -2px 0 rgba(75,96,117,0.28) !important;
+            0 4px 14px rgba(45,62,82,0.45),
+            inset 0 1px 0 rgba(255,255,255,0.5),
+            inset 0 -2px 4px rgba(28,38,52,0.28) !important;
         }
         .nav3d-solidgold:hover,
         [data-theme="dark"] .nav3d-solidgold:hover {
-          color: #1f1a0f !important;
+          color: #ffffff !important;
           box-shadow:
-            0 10px 26px rgba(106,133,160,0.55),
-            inset 0 1px 0 rgba(255,255,255,0.65),
-            inset 0 -2px 0 rgba(75,96,117,0.28) !important;
+            0 11px 26px rgba(45,62,82,0.5),
+            inset 0 1px 0 rgba(255,255,255,0.55),
+            inset 0 -2px 4px rgba(28,38,52,0.3) !important;
         }
         /* the logo (and anything not a chip) pops the same way */
         .nav3d-pop {
