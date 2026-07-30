@@ -128,7 +128,7 @@ function bidProb(amount: number, floor: number) {
   // story. (Pricing chrome elsewhere on the page can still say "AI Smart
   // Pricing" since live demand-based rates are industry standard.)
   if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981", tip: "Highest priority — the hotel will confirm right away.", responseTime: "Confirms right away" };
-  if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "⭐ Strong Offer",    badge: "Bonus Points Eligible", color: "text-yellow-600", bg: "bg-yellow-50",  track: "#ca8a04", tip: "Very strong offer — hotel will likely respond within the hour.", responseTime: "~1 hr" };
+  if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "⭐ Strong Offer",    badge: "Bonus Points Eligible", color: "text-yellow-600", bg: "bg-yellow-50",  track: "#7991a9", tip: "Very strong offer — hotel will likely respond within the hour.", responseTime: "~1 hr" };
   if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "✨ Good Standing",   badge: "Standard Points",       color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706", tip: "Good offer — hotel typically responds in 2–3 hours.", responseTime: "2–3 hrs" };
   if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",           badge: "",                      color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316", tip: "Hotel may counter with a higher price. Try raising slightly.", responseTime: "3–6 hrs" };
   if (r >= 0.78) return { p: Math.round(10+(r-0.78)/0.07*14), label: "Low Chance",         badge: "",                      color: "text-orange-600", bg: "bg-orange-100", track: "#ea580c", tip: "Risky bid — hotel likely to reject or counter high.", responseTime: "May reject" };
@@ -2591,8 +2591,8 @@ export default function HotelDetail() {
                     <span style={{
                       marginLeft: "8px",
                       padding: "2px 9px",
-                      background: "linear-gradient(135deg, var(--cozy-champagne-light), var(--cozy-champagne))",
-                      color: "#2b1d05",
+                      background: "linear-gradient(135deg, #899eb3, #6a85a0)",
+                      color: "#14212e",
                       fontSize: "0.65rem",
                       fontWeight: 800,
                       borderRadius: "999px",
@@ -2682,7 +2682,7 @@ export default function HotelDetail() {
               </div>
               <Link href="/my-bids" style={{
                 fontSize: "0.72rem", fontWeight: 800, padding: "7px 13px",
-                borderRadius: 999, background: "#c9911a", color: "#1a1205",
+                borderRadius: 999, background: "#8198ae", color: "#1a1205",
                 textDecoration: "none", whiteSpace: "nowrap",
               }}>Open My Bids →</Link>
             </div>
@@ -3477,7 +3477,7 @@ export default function HotelDetail() {
                       }
                     }}
                     className="hx-cta hx-cta-primary"
-                    style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205", padding: "12px 14px", lineHeight: 1.25 }}
+                    style={{ width: "100%", background: "linear-gradient(135deg,#748da6 0%,#8198ae 50%,#748da6 100%)", color: "#1a1205", padding: "12px 14px", lineHeight: 1.25 }}
                   >
                     <div style={{ fontSize: "0.85rem", fontWeight: 800 }}>
                       💎 Upgrade to {r.name || r.type}
@@ -3997,7 +3997,7 @@ export default function HotelDetail() {
                                     <div style={{
                                       width: `${aiPrice.demandScore}%`,
                                       height: "100%",
-                                      background: "linear-gradient(90deg, var(--cozy-champagne-light), var(--cozy-champagne))",
+                                      background: "linear-gradient(90deg, #899eb3, #6a85a0)",
                                       borderRadius: "999px",
                                       transition: "width 0.7s ease",
                                     }} />
@@ -4196,7 +4196,7 @@ export default function HotelDetail() {
               className="picker-tile block text-left"
               style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in {datesLocked && <span style={{ color: "#748da6" }}>· 🔒</span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckIn
                   ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -4218,7 +4218,7 @@ export default function HotelDetail() {
               className="picker-tile block text-left"
               style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out {datesLocked && <span style={{ color: "#748da6" }}>· 🔒</span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckOut
                   ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -4951,14 +4951,14 @@ export default function HotelDetail() {
                 @keyframes negSweep    { 0%{transform:translateX(-120%)} 100%{transform:translateX(220%)} }
                 @keyframes negRingPulse{ 0%,100%{filter:drop-shadow(0 0 4px var(--ring))} 50%{filter:drop-shadow(0 0 14px var(--ring))} }
                 @keyframes negThumbGlow{ 0%,100%{box-shadow:0 0 0 0 var(--sc-glow,rgba(240,180,41,.6))} 50%{box-shadow:0 0 0 10px transparent} }
-                .neg-gold-text{background:linear-gradient(90deg,#f4d06f,#f0b429,#c9911a,#f0b429,#f4d06f);background-size:220% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:negShine 6s linear infinite}
+                .neg-gold-text{color:#3a5069;-webkit-text-fill-color:#3a5069;}
                 .neg-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
                 .neg-particles span{position:absolute;bottom:-6px;width:3px;height:3px;border-radius:50%;background:rgba(240,180,41,.55);animation:negParticle linear infinite}
                 /* Glowing rainbow slider */
                 .neg-slider2{appearance:none;-webkit-appearance:none;width:100%;height:10px;border-radius:999px;outline:none;background:linear-gradient(90deg,#ef4444 0%,#f97316 28%,#eab308 52%,#22c55e 80%,#10b981 100%);box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 24px -4px rgba(240,180,41,.25)}
-                .neg-slider2::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#f0b429 60%,#b8871a);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(240,180,41,.18), 0 6px 22px rgba(240,180,41,.55);transition:transform .1s}
+                .neg-slider2::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(240,180,41,.18), 0 6px 22px rgba(240,180,41,.55);transition:transform .1s}
                 .neg-slider2::-webkit-slider-thumb:hover{transform:scale(1.1)}
-                .neg-slider2::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#f0b429 60%,#b8871a);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(240,180,41,.18), 0 6px 22px rgba(240,180,41,.55)}
+                .neg-slider2::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#a9b9c8 60%,#748da6);border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 4px rgba(240,180,41,.18), 0 6px 22px rgba(240,180,41,.55)}
                 .neg-chip{position:relative;overflow:hidden;transition:transform .15s ease, box-shadow .2s ease}
                 .neg-chip::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.4) 50%,transparent 65%);transform:translateX(-120%)}
                 .neg-chip.active::after{animation:negSweep 2.4s ease-in-out infinite}
@@ -5051,7 +5051,7 @@ export default function HotelDetail() {
                         <defs>
                           <linearGradient id="negRingG" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stopColor={prob.track} stopOpacity="0.9" />
-                            <stop offset="100%" stopColor="#f0b429" stopOpacity="0.95" />
+                            <stop offset="100%" stopColor="#a9b9c8" stopOpacity="0.95" />
                           </linearGradient>
                         </defs>
                         <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
@@ -5127,7 +5127,7 @@ export default function HotelDetail() {
                       <button key={s.label} onClick={() => setNegAmt(amt)}
                         className={`neg-chip rounded-2xl p-2.5 text-center ${active?"active":""}`}
                         style={{
-                          background: active ? "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" : "rgba(255,255,255,0.04)",
+                          background: active ? "linear-gradient(135deg,#748da6,#a9b9c8,#8198ae)" : "rgba(255,255,255,0.04)",
                           border: `1px solid ${active?"rgba(240,180,41,.6)":"rgba(255,255,255,.08)"}`,
                           boxShadow: active ? "0 6px 22px rgba(240,180,41,.35)" : "none",
                         }}>
@@ -5174,8 +5174,8 @@ export default function HotelDetail() {
                   className="neg-cta-shimmer w-full py-4 rounded-2xl font-extrabold text-base tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
                   style={{
                     background: isInstant
-                      ? "linear-gradient(135deg,#10b981 0%,#f0b429 50%,#10b981 100%)"
-                      : "linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%)",
+                      ? "linear-gradient(135deg,#10b981 0%,#a9b9c8 50%,#10b981 100%)"
+                      : "linear-gradient(135deg,#748da6 0%,#a9b9c8 48%,#cbd5de 60%,#8198ae 100%)",
                     color: "#0c0a14",
                     boxShadow: isInstant
                       ? "0 12px 32px rgba(16,185,129,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset"
@@ -5417,7 +5417,7 @@ export default function HotelDetail() {
             {/* Header */}
             <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2 border-b" style={{ borderColor: "rgba(184,134,11,0.15)" }}>
               <div>
-                <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#b8871a" }}>💎 Upgrade your room</p>
+                <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#748da6" }}>💎 Upgrade your room</p>
                 <h3 className="text-lg font-black mt-1" style={{ fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.2 }}>
                   {upgradeModal.fromRoomName} → {upgradeModal.toRoom.name || upgradeModal.toRoom.type}
                 </h3>
@@ -5439,7 +5439,7 @@ export default function HotelDetail() {
                 </div>
                 <div className="flex justify-between items-center text-sm mt-2">
                   <span style={{ color: "#6e5430" }}>Upgrade extra</span>
-                  <span style={{ color: "#b8871a", fontWeight: 700 }}>+ ₹{upgradeModal.deltaPerNight.toLocaleString("en-IN")}/n</span>
+                  <span style={{ color: "#748da6", fontWeight: 700 }}>+ ₹{upgradeModal.deltaPerNight.toLocaleString("en-IN")}/n</span>
                 </div>
                 <div className="border-t mt-2 pt-2 flex justify-between items-center" style={{ borderColor: "rgba(184,134,11,0.30)" }}>
                   <span className="text-sm font-bold" style={{ color: "#1a1205" }}>New rate</span>
@@ -5454,7 +5454,7 @@ export default function HotelDetail() {
                 </div>
                 <div className="flex justify-between">
                   <span>Total to pay now</span>
-                  <span style={{ fontWeight: 800, color: "#b8871a" }}>₹{((upgradeModal.acceptedAmount + upgradeModal.deltaPerNight) * upgradeModal.nights).toLocaleString("en-IN")}</span>
+                  <span style={{ fontWeight: 800, color: "#748da6" }}>₹{((upgradeModal.acceptedAmount + upgradeModal.deltaPerNight) * upgradeModal.nights).toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
@@ -5469,7 +5469,7 @@ export default function HotelDetail() {
                 onClick={executeUpgrade}
                 disabled={upgradeLoading}
                 className="hx-cta hx-cta-primary"
-                style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205", opacity: upgradeLoading ? 0.7 : 1 }}
+                style={{ width: "100%", background: "linear-gradient(135deg,#748da6 0%,#8198ae 50%,#748da6 100%)", color: "#1a1205", opacity: upgradeLoading ? 0.7 : 1 }}
               >
                 {upgradeLoading ? "Processing…" : `💎 Upgrade & Pay ₹${((upgradeModal.acceptedAmount + upgradeModal.deltaPerNight) * upgradeModal.nights).toLocaleString("en-IN")}`}
               </button>

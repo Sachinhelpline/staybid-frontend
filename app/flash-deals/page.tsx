@@ -1184,7 +1184,7 @@ function FdStyles() {
       .fd-hero-eyebrow {
         font-size: 0.5rem; font-weight: 700;
         letter-spacing: 0.22em; text-transform: uppercase;
-        background: linear-gradient(90deg, #D9BE82, #C9A66B);
+        background: linear-gradient(90deg, #6a85a0, #4b6075);
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -1641,7 +1641,7 @@ function FdStyles() {
       }
       .fd-slots-fill {
         height: 100%; border-radius: 999px;
-        background: linear-gradient(90deg, var(--cozy-champagne, #C9A66B), var(--cozy-champagne-light, #D9BE82));
+        background: linear-gradient(90deg, #6a85a0, #899eb3);
         transition: width 0.8s ease;
       }
       .fd-slots-fill.urgent {
@@ -1834,22 +1834,17 @@ function FdStyles() {
       .fd-price-now {
         font-size: 1.7rem; font-weight: 900; line-height: 1;
         letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
-        background: linear-gradient(115deg, #6a4a12 0%, #7890a9 32%, #f7e6ac 50%, #7890a9 68%, #6a4a12 100%);
-        background-size: 240% 100%;
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent; color: transparent;
-        filter: drop-shadow(0 2px 3px rgba(74,56,32,0.34)) drop-shadow(0 1px 0 rgba(255,255,255,0.5));
-        animation: fdPriceShine 3.6s linear infinite;
+        color: #1c2836;
       }
       @keyframes fdPriceShine {
         0%   { background-position: 130% 0; }
         100% { background-position: -130% 0; }
       }
       [data-theme="dark"] .fd-price-now {
-        background: linear-gradient(115deg, #8a9fb4 0%, #b5c2d0 32%, #fff2c8 50%, #b5c2d0 68%, #8a9fb4 100%);
-        background-size: 240% 100%;
-        -webkit-background-clip: text; background-clip: text;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 6px rgba(235,191,85,0.3));
+        background: none;
+        -webkit-text-fill-color: #eaf1f7;
+        color: #eaf1f7;
+        filter: none;
       }
       @media (min-width: 1024px) { .fd-price-now { font-size: 1.62rem; } }
       /* Mobile wide-card price panel — big, breathable "ad" price. */
@@ -2205,7 +2200,7 @@ function FdStyles() {
         letter-spacing: 0.06em;
       }
       .fd-pill.gold {
-        background: linear-gradient(135deg, var(--cozy-champagne-light, #D9BE82), var(--cozy-champagne, #C9A66B));
+        background: linear-gradient(135deg, #899eb3, #6a85a0);
         color: var(--text-inverse);
       }
       .fd-pill.red {
