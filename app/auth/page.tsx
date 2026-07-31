@@ -144,43 +144,150 @@ function AuthPage() {
     router.push(returnRoute());
   };
 
-  // ── Google Sign-In ─────────────────────────────────────────────────────────
-  const signInWithGoogle = async () => {
+  // ── v620 — Bulletproof provider sign-in ────────────────────────────────────
+  // Diagnosis of the field reports ("Please wait… stuck" / "cookies popup" /
+  // "first attempt fails, second works"):
+  //   • authDomain is the CROSS-ORIGIN staybid-6feb7.firebaseapp.com. The
+  //     popup flow hands the result back through an iframe on that domain;
+  //     Chrome's third-party-storage partitioning both (a) shows users the
+  //     confusing cookies permission prompt and (b) makes the first handoff
+  //     flaky — a cold auth iframe throws network-request-failed/internal-error
+  //     or never resolves. Second attempt: Google session is warm → instant.
+  //     (The 100% kill for the cookies prompt is the same-origin auth proxy —
+  //     see lib/firebase.ts + docs/PENDING-GOOGLE-AUTH-SAME-ORIGIN.md.)
+  //   • The old code had NO timeout around signInWithPopup → a lost popup
+  //     result (common in the installed TWA/PWA, where the popup opens a
+  //     Custom Tab) left the page on "Please wait…" forever.
+  //   • There was NO getRedirectResult handler, no retry, and raw Firebase
+  //     error strings were shown to customers.
+  // This helper fixes all of it: 25s timeout → popup can never hang; ONE
+  // automatic quick retry on transient first-attempt errors (the "do baar
+  // karna padta hai" becomes automatic); popup-impossible environments
+  // (in-app browsers, popup-blocked, timeout) fall back to a full-page
+  // signInWithRedirect whose result is completed by the mount effect below;
+  // and errors are mapped to clean human copy.
+  const POPUP_TIMEOUT_MS = 25000;
+
+  const isInAppBrowser = () => {
+    // Instagram / Facebook / WhatsApp / Line in-app webviews (Android marker
+    // "; wv"). Google blocks OAuth popups in these — go straight to redirect.
+    // (The installed TWA is real Chrome and does NOT match these markers.)
+    try {
+      const ua = navigator.userAgent || "";
+      return /FBAN|FBAV|Instagram|Line\/|WhatsApp|; wv\)/i.test(ua);
+    } catch { return false; }
+  };
+
+  const friendlyAuthError = (code: string, label: string) => {
+    if (code === "auth/account-exists-with-different-credential")
+      return "This email is already registered with a different sign-in method — please try Google.";
+    if (code === "auth/network-request-failed")
+      return "Network issue — please check your connection and tap the button once more.";
+    if (code === "auth/too-many-requests")
+      return "Too many attempts — please wait a minute and try again.";
+    if (code === "auth/unauthorized-domain")
+      return "Sign-in isn't allowed from this address. Please open staybids.in and try again.";
+    return `${label} sign-in didn't complete. Please tap the button once more.`;
+  };
+
+  const runProviderSignIn = async (kind: "google" | "facebook") => {
     setLoading(true);
     setError("");
+    const label = kind === "google" ? "Google" : "Facebook";
     try {
       const { firebaseAuth } = await import("@/lib/firebase");
-      const { signInWithPopup, GoogleAuthProvider } = await import("firebase/auth");
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(firebaseAuth, provider);
-      await syncAndLogin(result.user, "google");
-    } catch (e: any) {
-      if (e.code !== "auth/popup-closed-by-user") {
-        setError(e.message || "Google login failed. Please try again.");
+      const { signInWithPopup, signInWithRedirect, GoogleAuthProvider, FacebookAuthProvider } =
+        await import("firebase/auth");
+      const provider = kind === "google" ? new GoogleAuthProvider() : new FacebookAuthProvider();
+
+      const doRedirect = async () => {
+        // Flag survives the round-trip so the mount effect knows to finish it.
+        try { sessionStorage.setItem("sb_auth_redirect", kind); } catch {}
+        await signInWithRedirect(firebaseAuth, provider);
+      };
+
+      if (isInAppBrowser()) { await doRedirect(); return; }
+
+      // Popup with a hard timeout — it must never hang the screen forever.
+      const attempt = () =>
+        Promise.race([
+          signInWithPopup(firebaseAuth, provider),
+          new Promise<never>((_, rej) =>
+            setTimeout(() => rej(Object.assign(new Error("popup timeout"), { code: "sb/popup-timeout" })), POPUP_TIMEOUT_MS)
+          ),
+        ]);
+
+      try {
+        const result = await attempt();
+        await syncAndLogin(result.user, kind);
+        return;
+      } catch (e: any) {
+        let code = e?.code || "";
+        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+          // User dismissed it (or superseded it with a second tap) — silent.
+          return;
+        }
+        if (code === "auth/network-request-failed" || code === "auth/internal-error") {
+          // Transient cold-iframe failure — retry once automatically, fast
+          // enough to stay inside the browser's transient-activation window.
+          await new Promise((r) => setTimeout(r, 450));
+          try {
+            const result = await attempt();
+            await syncAndLogin(result.user, kind);
+            return;
+          } catch (e2: any) { code = e2?.code || code; }
+        }
+        if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment" || code === "sb/popup-timeout") {
+          // This environment can't do popups — full-page redirect instead.
+          try { await doRedirect(); return; } catch {}
+        }
+        setError(friendlyAuthError(code, label));
       }
+    } catch {
+      setError(friendlyAuthError("", label));
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Facebook Sign-In ───────────────────────────────────────────────────────
-  const signInWithFacebook = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const { firebaseAuth } = await import("@/lib/firebase");
-      const { signInWithPopup, FacebookAuthProvider } = await import("firebase/auth");
-      const provider = new FacebookAuthProvider();
-      const result = await signInWithPopup(firebaseAuth, provider);
-      await syncAndLogin(result.user, "facebook");
-    } catch (e: any) {
-      if (e.code !== "auth/popup-closed-by-user") {
-        setError(e.message || "Facebook login failed. Please try again.");
+  const signInWithGoogle = () => runProviderSignIn("google");
+  const signInWithFacebook = () => runProviderSignIn("facebook");
+
+  // ── v620 — Complete a redirect round-trip (the popup fallback path). ───────
+  // Without this, any signInWithRedirect result was silently DROPPED on
+  // return. The sessionStorage flag written before redirecting tells us a
+  // trip is in flight; authStateReady() waits for Firebase to restore the
+  // session even when getRedirectResult itself returns null (the partitioned-
+  // storage browsers where the handoff cookie was lost).
+  useEffect(() => {
+    let pending = "";
+    try { pending = sessionStorage.getItem("sb_auth_redirect") || ""; } catch {}
+    if (pending !== "google" && pending !== "facebook") return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const { firebaseAuth } = await import("@/lib/firebase");
+        const { getRedirectResult } = await import("firebase/auth");
+        const result = await getRedirectResult(firebaseAuth).catch(() => null);
+        try { sessionStorage.removeItem("sb_auth_redirect"); } catch {}
+        if (cancelled) return;
+        if (result?.user) { await syncAndLogin(result.user, pending); return; }
+        // Fallback: the session may still have been restored locally.
+        try { await (firebaseAuth as any).authStateReady?.(); } catch {}
+        if (!cancelled && firebaseAuth.currentUser) {
+          await syncAndLogin(firebaseAuth.currentUser, pending);
+        }
+      } catch {
+        try { sessionStorage.removeItem("sb_auth_redirect"); } catch {}
+        if (!cancelled) setError(friendlyAuthError("", pending === "google" ? "Google" : "Facebook"));
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Send OTP via Firebase (Mobile) ─────────────────────────────────────────
   const sendFirebaseOtp = async () => {
