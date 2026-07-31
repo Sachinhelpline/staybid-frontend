@@ -317,6 +317,41 @@ function reqWith(headers) {
   check("mobile-otp: admin login has no phone/OTP/PIN input field", !/type=["']tel["']/.test(loginPage) && !/type=["']password["']/.test(loginPage) && !/placeholder=["'][^"']*OTP/i.test(loginPage));
   check("mobile-otp: check-role has no OTP/phone-send code path", !/send.?otp|verify.?otp/i.test(checkRole));
 
+  // ===== admin LOGOUT must terminate the whole session (no logout loop) =====
+  // Regression: the topbar used to clear ONLY sb_admin_token/sb_admin_user then
+  // navigate to /admin/login, which re-verified the still-present Gmail/Railway
+  // sb_token and recreated sb_admin_token — an infinite "logged straight back
+  // in" loop. Admin logout must use the centralized AuthProvider logout, which
+  // wipes the ENTIRE session.
+  const topbar = fs.readFileSync(path.join(REPO, "components/admin/topbar.tsx"), "utf8");
+  check("admin-logout: topbar uses centralized useAuth().logout()", /useAuth\(\)/.test(topbar) && topbar.includes('from "@/lib/auth"'));
+  check("admin-logout: topbar does NOT partial-clear only admin keys", !/removeItem\(["']sb_admin_token["']\)/.test(topbar) && !/removeItem\(["']sb_admin_user["']\)/.test(topbar));
+  check("admin-logout: topbar does NOT bounce to /admin/login on logout", !topbar.includes('"/admin/login"') && !topbar.includes("'/admin/login'"));
+  check("admin-logout: topbar has no leftover unused useRouter import", !/useRouter/.test(topbar));
+
+  // The centralized logout's device-prefs allow-list must NOT keep any session
+  // key — extract the REAL allow-list from lib/auth.tsx (not a duplicated copy)
+  // and simulate the "clear everything except KEEP" wipe.
+  const authSrc = fs.readFileSync(path.join(REPO, "lib/auth.tsx"), "utf8");
+  const keepBlock = (authSrc.match(/const\s+KEEP\s*=\s*new\s+Set<string>\(\[([\s\S]*?)\]\)/) || [])[1] || "";
+  const KEEP = new Set((keepBlock.match(/["'`]([^"'`]+)["'`]/g) || []).map((s) => s.replace(/["'`]/g, "")));
+  const SESSION_KEYS = ["sb_token", "sb_user", "sb_token_type", "sb_admin_token", "sb_admin_user"];
+  check("admin-logout: allow-list keeps NO session key", SESSION_KEYS.every((k) => !KEEP.has(k)));
+  // Simulate the wipe over a fake store and assert every session key is gone,
+  // while a device-pref survives — proving sb_token cannot be left behind.
+  const store = { sb_token: "1", sb_user: "1", sb_token_type: "1", sb_admin_token: "1", sb_admin_user: "1", sb_theme: "dark" };
+  for (const k of Object.keys(store)) { if (!KEEP.has(k)) delete store[k]; }
+  check("admin-logout: wipe removes sb_token (breaks the recreation loop)", !("sb_token" in store));
+  check("admin-logout: wipe removes sb_admin_token", !("sb_admin_token" in store));
+  check("admin-logout: wipe removes every session key", SESSION_KEYS.every((k) => !(k in store)));
+  check("admin-logout: wipe keeps device prefs (sb_theme)", store.sb_theme === "dark");
+  // The centralized logout also signs Firebase out + hard-navigates to /auth.
+  check("admin-logout: centralized logout signs Firebase out + clears its IndexedDB", /signOut/.test(authSrc) && authSrc.includes("firebaseLocalStorageDb"));
+  check("admin-logout: centralized logout lands on /auth", /replace\(["']\/auth["']\)/.test(authSrc));
+  // sb_admin_token can only be recreated by /admin/login AFTER a verified
+  // sb_token — with sb_token wiped, the loop is impossible.
+  check("admin-logout: login recreates sb_admin_token only from a present sb_token", loginPage.includes('getItem("sb_token")') && loginPage.includes('setItem("sb_admin_token"'));
+
   // ===== tracked-tree secret scrub (no secret literal embedded in this test) =====
   const setupSrc = fs.readFileSync(path.join(REPO, "setup-razorpay-vercel.js"), "utf8");
   check("secrets: setup script is env-only (reads process.env)", setupSrc.includes("process.env.RAZORPAY_KEY_SECRET"));

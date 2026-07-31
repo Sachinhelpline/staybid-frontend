@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
 
 interface Props {
   sidebarCollapsed: boolean;
@@ -9,7 +9,15 @@ interface Props {
 }
 
 export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }: Props) {
-  const router = useRouter();
+  // Admin logout must terminate the COMPLETE session — not just the admin
+  // keys. Clearing only sb_admin_token/sb_admin_user left the Gmail/Railway
+  // sb_token in place, so /admin/login immediately re-verified it and recreated
+  // sb_admin_token (a logout loop). The centralized AuthProvider logout wipes
+  // every session key (sb_token, sb_user, sb_token_type, sb_admin_token,
+  // sb_admin_user, per-user caches), signs Firebase out, deletes its IndexedDB
+  // store, and hard-navigates to /auth — so the admin cannot be logged straight
+  // back in.
+  const { logout } = useAuth();
   const [notifs, setNotifs] = useState({ verif: 0, complaints: 0, fraud: 0, payouts: 0 });
 
   useEffect(() => {
@@ -22,12 +30,6 @@ export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }
   }, []);
 
   const totalBadge = notifs.verif + notifs.complaints + notifs.fraud + notifs.payouts;
-
-  function logout() {
-    localStorage.removeItem("sb_admin_token");
-    localStorage.removeItem("sb_admin_user");
-    router.push("/admin/login");
-  }
 
   const left = isMobile ? 0 : sidebarCollapsed ? 64 : 240;
 
