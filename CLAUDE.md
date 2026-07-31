@@ -71,9 +71,8 @@ Public: `NEXT_PUBLIC_API_URL` · `NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_SfFAsbYjb
 `NEXT_PUBLIC_ENABLE_LOCATION_OTP` (default 0).
 Server-only: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` (**environment-only — hardcoded fallbacks are
 FORBIDDEN**; routes fail closed with `payment_config_missing` when unset) · `SUPABASE_SERVICE_ROLE_KEY`
-(auto-elevates RLS via `lib/sb-server.ts`) · `CRON_SECRET` · **`ADMIN_JWT_SECRET`** (HS256 signing key
-for master-PIN admin sessions; issuance fails closed when unset) · **`JWT_ACCESS_SECRET`** (Railway's
-authoritative HS256 access-token signing secret — the frontend verifies backend/admin tokens against it) ·
+(auto-elevates RLS via `lib/sb-server.ts`) · `CRON_SECRET` · **`JWT_ACCESS_SECRET`** (Railway's
+authoritative HS256 access-token signing secret — the frontend verifies backend/admin/Gmail tokens against it) ·
 `JWT_SECRET` (**now only a compatibility FALLBACK** for token verification + the onboarding token) · optional
 `GEMINI_API_KEY` (free vision primary) / `ANTHROPIC_API_KEY` (paid backup) / `AI_VERIFY_PROVIDER` ·
 `BOOKING_COM_LIVE` (inert channel-manager scaffold).
@@ -101,14 +100,22 @@ secret VALUES anywhere — variable names + safe descriptions only.**
   - **`adm_*` opaque tokens are RETIRED and must NEVER be accepted as authentication** anywhere (was the
     old `adminFromReq`/cron bypass). `adminFromReq`, bare `x-admin-id`, and `adm_`-presence are all removed.
   - **Every `app/api/admin/**` handler gates with `await requireVerifiedAdmin(req)` before any body parse /
-    DB / logging / mutation** (except `check-role` = login, and `hotel-scores/recompute` = admin-OR-cron).
+    DB / logging / mutation** (except `check-role` = login-verify, and `hotel-scores/recompute` = admin-OR-cron).
     It verifies the JWT signature + does a **server-side admin/super_admin role lookup on every request**;
     audit logs use the verified identity or `"unknown"` (never a header value).
-  - **Master-PIN admin sessions:** `check-role` mints an HS256 JWT signed with **`ADMIN_JWT_SECRET` only**
-    (no `JWT_SECRET` fallback for issuance), issuer/audience **`staybid-admin`**, **3-hour** expiry.
-  - **Railway OTP admin tokens** are verified against **`JWT_ACCESS_SECRET`** (Railway's authoritative
-    access-token secret), then the same DB role lookup; `JWT_SECRET` is tried only as a compatibility
-    fallback. Railway tokens carry no `iss`/`aud`/`token_use` — see the token-purpose follow-up below.
+  - **Admin login is GMAIL/RAILWAY ONLY (v621.1 — the phone + Master-PIN flow is REMOVED).** Admins sign in
+    with Google at `/auth` (mobile OTP is intentionally disabled); Google returns a Railway HS256 access JWT
+    stored as `sb_token`. `/admin/login` offers **"Continue with Google"** (→ `/auth?return=/admin/login`),
+    then POSTs that token to `check-role` as `Authorization: Bearer <sb_token>`. `check-role` runs
+    `requireVerifiedAdmin` (verify signature + DB role lookup, admin/super_admin only) and returns the verified
+    identity; the client reuses the **same** verified token as `sb_admin_token` and stores only the
+    server-returned identity as `sb_admin_user` (never the local `sb_user` role). **There is NO PIN, NO default
+    PIN, and NO token-issuance path** — supplying phone/pin can never mint an admin token, and `ADMIN_JWT_SECRET`
+    is no longer used anywhere (the forge-your-own-admin-token surface is gone).
+  - **Admin tokens are verified against `JWT_ACCESS_SECRET`** (Railway's authoritative access-token secret —
+    the same secret Google sign-in tokens are signed with), then the DB role lookup; `JWT_SECRET` is tried only
+    as a compatibility fallback. A Firebase RS256 token fails the HS256 check → rejected. Railway tokens carry no
+    `iss`/`aud`/`token_use` — see the token-purpose follow-up below.
   - **Cron routes (`app/api/cron/*`) accept `CRON_SECRET` ONLY, via `Authorization: Bearer <CRON_SECRET>`** — the
     `?token=` query-string and `x-cron-secret` transports are REMOVED (no secrets in URLs); the `adm_` path is gone.
   - **Notification queue** (`/api/notifications/queue`) requires a cryptographically-verified HS256 caller,
@@ -116,8 +123,9 @@ secret VALUES anywhere — variable names + safe descriptions only.**
     by `sbSafeUrl` in `public/sw.js`). **Firebase RS256 callers FAIL CLOSED** until `firebase-admin`
     verification lands (interim limitation).
   - **Permanent security regression suite:** `npm run test:security` (`tests/security/security.test.js`) —
-    hermetic, network-free; covers the admin token families, customer HS256/Firebase-fail-closed, notification
-    URL hardening, Razorpay config-absent, and `adm_`-removal across all 12 crons. Run it on every auth change.
+    hermetic, network-free; covers the Gmail/Railway admin gate, the Master-PIN/default-PIN scrub across the
+    tracked tree + rendered admin-login source, customer HS256/Firebase-fail-closed, notification URL hardening,
+    Razorpay config-absent, and cron Bearer-only fail-closed. Run it on every auth change.
   - ⚠ **Follow-up (Railway):** add an admin-scope claim (`token_use`/`aud`) minted only at admin login so the
     frontend can distinguish admin-context tokens; today any valid Railway token for an admin-role subject
     authorizes admin access (bounded to that admin principal; DB role is the guard).

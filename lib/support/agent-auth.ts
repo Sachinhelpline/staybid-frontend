@@ -6,7 +6,7 @@
 // or opaque strings into an identity. The legacy `adm_`-presence and header-only
 // `x-admin-id` trust paths, and the decode-only JWT path, are REMOVED. Identity
 // is derived ONLY from cryptographically verified tokens:
-//   1. `requireVerifiedAdmin` (master-PIN ADMIN_JWT_SECRET or Railway token +
+//   1. `requireVerifiedAdmin` (signature-verified Railway HS256 token +
 //      server-side role lookup) → admin / super_admin.
 //   2. A signature-verified customer-family HS256 token whose server-side DB
 //      role is `support_agent`.

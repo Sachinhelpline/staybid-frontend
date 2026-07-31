@@ -1,119 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SB_URL, SB_KEY } from "@/lib/sb";
-import { signAdminSessionToken, isAdminIssuanceConfigured } from "@/lib/admin/verify";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
+import { logAdminAction } from "@/lib/admin/audit";
 
-// v104.1 — was: const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJ...";
-// Removed inline env-var override because this route uses Authorization
-// Bearer in its inline header literal, which breaks when the env var
-// value is a new-format sb_secret_* key (PostgREST JWT-verify fails →
-// admin login can't find any user). The shared SB_KEY constant from
-// lib/sb.ts is the LEGACY anon JWT — users table has public-permissive
-// policies so this route works under anon. The graduation to service-
-// role for other tables continues to work via SB_H / SB_ADMIN_H.
-
-// Default master PIN — override by setting ADMIN_MASTER_PIN env var on Vercel.
-const DEFAULT_MASTER_PIN = "StayBidAdmin@2026";
-
-// POST { phone, pin? }
+// Admin session verification — Gmail/Railway ONLY (hotfix v621 security).
 //
-// MODE 1 (master-PIN login — preferred, OTP-free):
-//   If `pin` is provided AND matches ADMIN_MASTER_PIN env var (or the
-//   hardcoded default "StayBidAdmin@2026"), AND the phone resolves to a
-//   user in Supabase with role admin/super_admin → returns ok + a session
-//   token. No WhatsApp / Railway OTP needed.
+// Admins sign in with Google at /auth, which returns a Railway HS256 access
+// JWT (sb_token). The admin-login page sends that token here as
+// `Authorization: Bearer <sb_token>`; this route verifies the signature and
+// re-checks the subject's role in the database via the shared
+// requireVerifiedAdmin gate, allowing ONLY admin/super_admin, then returns the
+// verified identity. On success the client stores the SAME verified token as
+// sb_admin_token.
 //
-// MODE 2 (role check only — used by old OTP flow as a guard):
-//   If `pin` is omitted, just verifies that the phone matches an admin
-//   in Supabase. Use this AFTER another auth step has already succeeded.
+// The legacy phone + Master-PIN login is REMOVED. This route:
+//   • trusts NO client-supplied phone, email, user id, or role;
+//   • has NO PIN comparison and NO token-issuance path — supplying a phone/pin
+//     (even the retired public value) can NEVER mint an admin token;
+//   • fails closed for a missing / malformed / forged / expired / Firebase-only
+//     (RS256) / customer / non-admin token → 401.
 export async function POST(req: NextRequest) {
-  try {
-    const { phone, pin } = await req.json();
-    if (!phone) {
-      return NextResponse.json({ ok: false, error: "Phone number is required" }, { status: 400 });
-    }
-
-    // Phone normalization — support both with and without +91
-    const norm = String(phone).replace(/\D/g, "").slice(-10);
-    if (norm.length !== 10) {
-      return NextResponse.json({ ok: false, error: "Enter a valid 10-digit phone number" }, { status: 400 });
-    }
-    const variants = [`+91${norm}`, norm];
-    const inList = variants.map((v) => `"${v}"`).join(",");
-
-    // 1. Look up user in Supabase
-    const url = `${SB_URL}/rest/v1/users?select=id,phone,name,email,role&phone=in.(${encodeURIComponent(inList)})`;
-    const sbRes = await fetch(url, {
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
-    });
-    const rows = (await sbRes.json().catch(() => [])) as any[];
-
-    // Pick the row with the highest role
-    const order: Record<string, number> = { super_admin: 3, admin: 2, agent: 1, customer: 0 };
-    const best = (Array.isArray(rows) ? rows : []).sort(
-      (a, b) => (order[b?.role] ?? -1) - (order[a?.role] ?? -1)
-    )[0];
-
-    if (!best) {
-      return NextResponse.json({
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) {
+    return NextResponse.json(
+      {
         ok: false,
-        error: `No user found in Supabase for +91${norm}. Are you sure the phone is correct?`,
-      });
-    }
-
-    const isAdmin = best.role === "admin" || best.role === "super_admin";
-    if (!isAdmin) {
-      return NextResponse.json({
-        ok: false,
-        error: `Access denied. Your role is "${best.role || "customer"}". Run in Supabase: UPDATE users SET role='super_admin' WHERE phone='${best.phone}';`,
-      });
-    }
-
-    // 2. If MODE 1 (master PIN supplied), verify it
-    if (pin !== undefined) {
-      const expected = process.env.ADMIN_MASTER_PIN || DEFAULT_MASTER_PIN;
-      if (String(pin) !== expected) {
-        return NextResponse.json({
-          ok: false,
-          error: "Wrong master PIN. Contact platform owner.",
-        });
-      }
-      // Mint a signature-verifiable admin session token — HS256 signed with
-      // ADMIN_JWT_SECRET, issuer/audience "staybid-admin", short (3h) expiry.
-      // Every protected admin route verifies this signature + re-checks the
-      // subject's admin role server-side (lib/admin/verify.ts). Fail closed if
-      // the signing secret is missing — NEVER issue an unsigned/forgeable
-      // token, and never fall back to the general JWT_SECRET for issuance.
-      if (!isAdminIssuanceConfigured()) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "Admin sign-in is temporarily unavailable (ADMIN_JWT_SECRET is not configured). Contact the platform owner.",
-          },
-          { status: 503 },
-        );
-      }
-      const token = signAdminSessionToken({
-        sub: best.id,
-        phone: best.phone ?? null,
-        name: best.name ?? null,
-        role: best.role,
-      });
-      return NextResponse.json({
-        ok: true,
-        role: best.role,
-        user: best,
-        token,
-      });
-    }
-
-    // MODE 2 — role check only (no token issued, used as guard after OTP)
-    return NextResponse.json({
-      ok: true,
-      role: best.role,
-      user: best,
-    });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+        error:
+          "Admin access requires a verified Google admin session. Sign in with an admin Google account.",
+      },
+      { status: 401 },
+    );
   }
+
+  // Best-effort audit of the verified admin sign-in (never blocks the response).
+  try {
+    logAdminAction({
+      admin: auditIdentity(admin),
+      action: "admin.session.verify",
+      targetType: "admin_session",
+      targetId: admin.id,
+    });
+  } catch {}
+
+  return NextResponse.json({
+    ok: true,
+    role: admin.role,
+    user: {
+      id: admin.id,
+      phone: admin.phone,
+      name: admin.name,
+      role: admin.role,
+    },
+  });
 }
