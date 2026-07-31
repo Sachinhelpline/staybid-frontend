@@ -666,11 +666,13 @@ export default function BidPage() {
       if (v === "0") setAutoFit(false);
     } catch {}
   }, []);
-  // v407 — immersive /bid: hide the global bottom-nav dock for the whole
-  // reverse-auction flow so the game zone is one clean focused screen (no
-  // stray app nav bar under the climber / PRESS START). Top Navbar + the
-  // in-form back buttons + OS back gesture still cover navigation. Scoped
-  // via a body class so ONLY /bid is affected; removed on unmount.
+  // v407/v614 — marks /bid as the immersive game surface via a body class.
+  // It NO LONGER hides the bottom-nav dock (v610 removed that — hiding it
+  // trapped gesture-nav phones on /bid with no way to leave). The class now
+  // (a) darkens the status-bar fill and (b) tints the dock to match the dark
+  // game zone (see BottomDock). The dock stays visible + tappable; the fixed
+  // .bgz-shell overlay is carved to sit above it (globals.css .bgz-shell
+  // mobile block). Scoped so ONLY /bid is affected; removed on unmount.
   useEffect(() => {
     document.body.classList.add("sb-bid-immersive");
     return () => { document.body.classList.remove("sb-bid-immersive"); };
