@@ -1078,6 +1078,28 @@ export default function HotelScorecardModal({
         :global([data-theme="dark"]) .hsm-awaiting-pill,
         :global([data-theme="dark"]) .hsm-checkpoint-evidence,
         :global([data-theme="dark"]) .hsm-cta-refresh { color: var(--text-soft); }
+        /* v614 — the status pill ("Excellent" / "Good" …) had a HARDCODED
+           light-slate background (rgba(176,192,209,.6)) in every theme. Its
+           text colour is the tone (a mid/light slate or green), so in dark
+           mode it was light-on-light — washed out (owner ss1). Give the pill
+           a dark ground in dark mode so the tone text reads clearly. */
+        :global([data-theme="dark"]) .hsm-hero-status {
+          background: rgba(13, 17, 22, 0.55);
+        }
+        /* v614 — same fix for the other hardcoded light-slate surfaces in the
+           modal: the tally row (holds --text-base numbers → was light-on-light)
+           and the close / drill nav circles (text-soft glyph → was faint). */
+        :global([data-theme="dark"]) .hsm-tally {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(176, 192, 209, 0.14);
+        }
+        :global([data-theme="dark"]) .hsm-close,
+        :global([data-theme="dark"]) .hsm-drill-back,
+        :global([data-theme="dark"]) .hsm-drill-close {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(176, 192, 209, 0.20);
+          color: var(--text-base);
+        }
       `}</style>
     </div>
   );

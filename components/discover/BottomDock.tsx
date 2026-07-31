@@ -144,10 +144,26 @@ export function BottomDock() {
            body.sb-composer-open on mount + clears on unmount. */
         body.sb-composer-open .ig-bottom-dock,
         body.sb-modal-open    .ig-bottom-dock { display: none !important; }
-        /* v610 — owner: the /bid page USED to hide the dock (v407 immersive
-           game zone). On gesture-nav phones with no OS nav bar that trapped the
-           user — no way to leave /bid. The dock now STAYS visible on /bid so
-           there is always an escape route. (Composer/modal still hide it.) */
+        /* v610/v614 — owner: the /bid page USED to hide the dock (v407
+           immersive game zone). On gesture-nav phones with no OS nav bar that
+           trapped the user — no way to leave /bid. The dock now STAYS visible
+           on /bid (v614 also carves the dock height out of the fixed z-1000
+           .bgz-shell overlay so it can't bury the dock). (Composer/modal
+           still hide it.)
+           /bid is an always-dark game surface even in light theme, so match
+           the dock to the dark game zone here — otherwise a bright slate bar
+           flashes at the bottom of the dark climber. Reuses the inert
+           body.sb-bid-immersive class the page already sets. */
+        body.sb-bid-immersive .ig-bottom-dock {
+          background: rgba(13, 10, 5, 0.92);
+          border-top: 1px solid rgba(176, 192, 209, 0.14);
+          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.55);
+        }
+        body.sb-bid-immersive .ig-dock-item { color: rgba(197, 212, 228, 0.82); }
+        body.sb-bid-immersive .ig-dock-item.is-active {
+          color: var(--cozy-champagne-light, #b4c1cf);
+          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
+        }
         .ig-dock-item {
           flex: 1 1 0;
           min-width: 0;

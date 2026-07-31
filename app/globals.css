@@ -8226,7 +8226,17 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
    Mobile gets `top: 0` so the climber goes fully edge-to-edge. Desktop
    (≥1024px) keeps `top: 56px` so the navbar stays above unchanged. */
 @media (max-width: 1023px) {
-  .bgz-shell { top: 0; }
+  /* top:0 → climber goes edge-to-edge (the customer Navbar is hidden on
+     mobile). v614 — bottom carves out the BottomDock height so the global
+     bottom nav stays VISIBLE + tappable on /bid. Root cause of "bid page se
+     nikal nhi paate": .bgz-shell is a fixed z-1000 fullscreen overlay
+     portaled to <body>, so it sat ON TOP of the z-60 dock and buried it —
+     trapping gesture-nav phones (no OS nav bar) on /bid. Ending the shell
+     one dock-height above the viewport bottom leaves the dock uncovered
+     (the shell scrolls internally, and .bgz-cta-rail sticks just above it).
+     Matches the global `body { padding-bottom: calc(52px + safe-area) }`
+     dock reserve. Desktop keeps bottom:0 (dock is hidden ≥1024px anyway). */
+  .bgz-shell { top: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* v238 — Desktop-only ALWAYS-VISIBLE scrollbar. Mobile users scroll via
