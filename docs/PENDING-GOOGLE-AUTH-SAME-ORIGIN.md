@@ -1,6 +1,10 @@
-# PENDING OWNER OPS — Kill the sign-in "cookies popup" 100% (same-origin auth)
+# ✅ DONE — Sign-in "cookies popup" killed 100% (same-origin auth)
 
-**Status: code shipped v620, INERT until you do the 2 steps below (≈5 minutes).**
+**Status: ACTIVATED LIVE on 2026-07-31.** The owner completed both steps
+(Google Cloud redirect-URI + `NEXT_PUBLIC_FB_AUTH_SAME_ORIGIN=1` on Vercel
+Production) and verified on a real device: Google sign-in succeeds on the
+FIRST attempt with NO cookies popup. This file stays as the runbook/rollback
+reference — the steps below are what was done.
 
 ## What this fixes
 Customer reports on Gmail login: a browser **cookies permission popup** keeps
