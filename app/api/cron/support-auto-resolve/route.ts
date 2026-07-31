@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
 // resolved_by='auto'. Idempotent — runs against a filtered slice and the
 // status flip is by-definition single-write.
 //
-// Auth: cron-job.org token query, Vercel native Bearer secret, OR admin
-// adm_<48hex> header for manual trigger (matches /api/cron/expire-holds
+// Auth: cron-job.org token query, Vercel native Bearer secret
+// (matches /api/cron/expire-holds
 // precedent).
 //
 // Schedule: daily on cron-job.org (no Vercel slot needed).
@@ -50,8 +50,6 @@ function isAuthorized(req: NextRequest): boolean {
   const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (auth && auth === (process.env.CRON_SECRET || "")) return true;
 
-  const adminToken = req.headers.get("x-admin-token") || "";
-  if (/^adm_[a-f0-9]{8,}$/i.test(adminToken)) return true;
 
   return false;
 }

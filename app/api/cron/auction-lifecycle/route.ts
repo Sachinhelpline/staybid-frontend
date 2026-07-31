@@ -2,7 +2,7 @@
 //   A) OPEN  — draft lots whose window has opened (open ≤ now < close) → 'open'.
 //   B) CLEAR — open lots whose window has CLOSED (close ≤ now) → run the
 //              clash-free clearing engine (award winners, mark losers, flip lot).
-// Auth mirrors the other crons (?token= / Bearer CRON_SECRET / adm_ token).
+// Auth mirrors the other crons (?token= / Bearer CRON_SECRET).
 // Register on cron-job.org: */15 * * * * → /api/cron/auction-lifecycle?token=…
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY, SB_READ } from "@/lib/sb";
@@ -22,8 +22,6 @@ async function authorized(req: NextRequest): Promise<boolean> {
   if (qToken && qToken === (process.env.CRON_TOKEN || "staybid-cron-dev")) return true;
   const cronAuth = req.headers.get("authorization");
   if (process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
   return false;
 }
 

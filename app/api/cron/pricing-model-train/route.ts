@@ -43,8 +43,7 @@ export async function GET(req: Request) {
     req.headers.get("x-cron-secret") ||
     (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const expected = process.env.CRON_SECRET || "staybid-cron-dev";
-  const adminTok = req.headers.get("x-admin-token") || "";
-  const ok = token === expected || adminTok.startsWith("adm_");
+  const ok = token === expected;
   if (!ok) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const t0 = Date.now();

@@ -9,8 +9,7 @@
 // client timeout never fires; parallel batches; per-feed fetch timeout lives
 // inside syncFeed. Partial completion is safe — the next run converges.
 //
-// Auth (matches /api/cron/expire-holds): ?token= OR Bearer CRON_SECRET OR an
-// adm_ x-admin-token for manual admin triggers.
+// Auth (matches /api/cron/expire-holds): ?token= OR Bearer CRON_SECRET.
 //
 // cron-job.org schedule: */15 * * * *  →
 //   https://www.staybids.in/api/cron/channel-sync?token=staybid-cron-dev
@@ -30,9 +29,8 @@ function authorized(req: NextRequest): boolean {
   const url = new URL(req.url);
   const qToken = url.searchParams.get("token") || "";
   const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  const adminToken = req.headers.get("x-admin-token") || "";
   const expected = process.env.CRON_SECRET || "staybid-cron-dev";
-  return qToken === expected || bearer === expected || adminToken.startsWith("adm_");
+  return qToken === expected || bearer === expected;
 }
 
 /** ota_feeds timestamps may come back tz-less (timestamp without time zone)

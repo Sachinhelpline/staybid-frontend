@@ -30,8 +30,6 @@ async function authorized(req: NextRequest): Promise<boolean> {
   if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
 
   // Pattern 3: Admin manual trigger from /admin/holds page
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
 
   return false;
 }

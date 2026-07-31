@@ -49,8 +49,6 @@ async function authorized(req: NextRequest): Promise<boolean> {
   const cronAuth = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
   return false;
 }
 

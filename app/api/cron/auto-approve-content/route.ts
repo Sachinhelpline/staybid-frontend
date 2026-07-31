@@ -13,7 +13,6 @@
 // Auth — matches /api/cron/expire-holds pattern:
 //   1) ?token=<CRON_TOKEN> query param
 //   2) Authorization: Bearer <CRON_SECRET> (Vercel native)
-//   3) x-admin-token starting with "adm_" (manual admin trigger)
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
@@ -34,8 +33,6 @@ async function authorized(req: NextRequest): Promise<boolean> {
   const cronAuth = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
   return false;
 }
 

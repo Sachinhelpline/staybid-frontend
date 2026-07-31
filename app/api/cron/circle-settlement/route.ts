@@ -23,7 +23,7 @@
 // Records obligations only. owed→paid + money-out (RazorpayX/Route) is S3
 // (Railway/admin). Consistent with every other Circle money path (no auto money-out).
 //
-// Auth mirrors the other crons (?token= / Bearer CRON_SECRET / adm_ token).
+// Auth mirrors the other crons (?token= / Bearer CRON_SECRET).
 // Register on cron-job.org: */30 * * * * →
 //   https://www.staybids.in/api/cron/circle-settlement?token=staybid-cron-dev
 
@@ -47,8 +47,6 @@ async function authorized(req: NextRequest): Promise<boolean> {
   if (qToken && qToken === (process.env.CRON_TOKEN || "staybid-cron-dev")) return true;
   const cronAuth = req.headers.get("authorization");
   if (process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
   return false;
 }
 

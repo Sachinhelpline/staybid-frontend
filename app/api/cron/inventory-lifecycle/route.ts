@@ -10,7 +10,7 @@
 //      HOLD is released (the nights are past — the hold is moot; released for
 //      tidiness + so expiry/buyback consistently free inventory).
 //
-// Auth mirrors /api/cron/expire-holds (?token= / Bearer CRON_SECRET / adm_ token).
+// Auth mirrors /api/cron/expire-holds (?token= / Bearer CRON_SECRET).
 // Register on cron-job.org: */15 * * * * →
 //   https://www.staybids.in/api/cron/inventory-lifecycle?token=staybid-cron-dev
 //
@@ -35,8 +35,6 @@ async function authorized(req: NextRequest): Promise<boolean> {
   if (qToken && qToken === (process.env.CRON_TOKEN || "staybid-cron-dev")) return true;
   const cronAuth = req.headers.get("authorization");
   if (process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
   return false;
 }
 
