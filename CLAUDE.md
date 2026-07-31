@@ -21,7 +21,9 @@ service layer, and a unified OTA Channel Manager.
 - **Frontend deploy:** Vercel project `staybid-customer-frontend` → **`staybids.in`**.
   Auto-deploys from `main`. (Legacy Vercel projects `staybid-admin` / `staybid-hotel-panel`
   / `staybid-agent-panel` are abandoned snapshots — NOT this repo. The stray Netlify project
-  `willowy-mooncake-a50d6f` has no repo config and red-fails every PR — ignore it.)
+  `willowy-mooncake-a50d6f` was **unlinked + disabled and the Netlify GitHub App uninstalled**
+  after the v621 security merge — historical red Netlify checks may linger on old commits, but
+  no future Netlify checks are expected.)
 - **Backend:** Railway (Node/Express/Prisma/PostgreSQL) at
   `https://staybid-live-production.up.railway.app`, private repo `Sachinhelpline/staybid-Live`
   — NOT in this tree. Talk to it via `/api/proxy/*` (client) or direct fetch (server). Admin +
@@ -65,7 +67,8 @@ migrations/*.sql   docs/*.md (incl. CLAUDE-HISTORY.md + phase plans/runbooks)
 ---
 
 ## Environment Variables
-Public: `NEXT_PUBLIC_API_URL` · `NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_SfFAsbYjbHfztd` ·
+Public: `NEXT_PUBLIC_API_URL` · `NEXT_PUBLIC_RAZORPAY_KEY_ID` (**environment-only — never write the
+value in code or docs**; client checkout fails closed without it) ·
 `NEXT_PUBLIC_FIREBASE_*` (project `staybid-6feb7`) · `NEXT_PUBLIC_SB_IMAGE_TRANSFORM`
 (Pro-plan image transform gate) · `NEXT_PUBLIC_ENABLE_PHONE_OTP` (default 0) ·
 `NEXT_PUBLIC_ENABLE_LOCATION_OTP` (default 0).
@@ -76,8 +79,15 @@ authoritative HS256 access-token signing secret — the frontend verifies backen
 `JWT_SECRET` (**now only a compatibility FALLBACK** for token verification + the onboarding token) · optional
 `GEMINI_API_KEY` (free vision primary) / `ANTHROPIC_API_KEY` (paid backup) / `AI_VERIFY_PROVIDER` ·
 `BOOKING_COM_LIVE` (inert channel-manager scaffold).
-Public LIVE Razorpay key id `rzp_live_SfFAsbYjbHfztd` is safe in client code. **Never document or commit
-secret VALUES anywhere — variable names + safe descriptions only.**
+**🔒 Razorpay key contract (v621.2):** Key IDs AND Secrets are environment-only — **no Razorpay key id
+(`rzp_live_*` / `rzp_test_*`) or secret value may appear anywhere in code or docs**, client-side included
+(a key id in a tracked file survives rotation and resurrects a retired pair). `RAZORPAY_KEY_ID`
+(server) and `NEXT_PUBLIC_RAZORPAY_KEY_ID` (client build) must always be the SAME active provider key
+pair for that environment (LIVE in Production, TEST allowed in Preview/staging). Server checkout routes
+return the checkout `keyId` from `RAZORPAY_KEY_ID` via `lib/razorpay-server.ts`; the client helper uses
+`NEXT_PUBLIC_RAZORPAY_KEY_ID` only. Rotation sequence: ① deploy env-driven code, ② set the new pair in
+Vercel env, ③ validate one controlled payment + verification, ④ only then deactivate the old key at the
+provider. **Never document or commit secret VALUES anywhere — variable names + safe descriptions only.**
 
 ---
 
@@ -139,6 +149,32 @@ secret VALUES anywhere — variable names + safe descriptions only.**
   `logout()`) so SSR never calls `getAuth` without env vars.
 
 ---
+
+## Current production state (v621.2 — Razorpay rotation-readiness follow-up)
+- **Baseline:** security PR #531 merged to `main` via merge commit `8093a5b` and Vercel Production is
+  serving the merged v621 code (`GET /api/razorpay/order` → `{"ok":true,"configured":true}`). New LIVE
+  Razorpay server credentials + matching `NEXT_PUBLIC_RAZORPAY_KEY_ID` are configured in Vercel
+  Production; the old exposed key pair awaits provider-side deactivation (grace window).
+- **Stale public Key-ID literals scrubbed from the ENTIRE tracked tree** — the rotated key id was still
+  hardcoded in `lib/razorpay.ts` (client fallback) + 11 server checkout routes (`keyId` echoed to the
+  Razorpay modal) + docs. Now: server checkout routes read the checkout `keyId` from `RAZORPAY_KEY_ID`
+  via the NEW shared **`lib/razorpay-server.ts`** (`razorpayKeyId()`/`razorpayKeySecret()`/
+  `razorpayConfigured()`, shape-validated, dependency-free) and **fail closed 503
+  `payment_config_missing` before any body parse / DB / order create** when it is absent/malformed;
+  `lib/razorpay.ts` uses `NEXT_PUBLIC_RAZORPAY_KEY_ID` only (no fallback; fails closed with a typed
+  `payment_config_missing` RazorpayError, and validates the server-supplied `keyId` in
+  `openRazorpayForOrder` too). `/api/razorpay/order` consolidates onto the same helper. Preview/staging
+  work with TEST keys purely through env values.
+- **Public health GET is NON-MUTATING:** `/api/health/cta-check` previously created a REAL ₹1 Razorpay
+  order on every unauthenticated GET — that probe is REMOVED. GET now performs only read-only probes
+  (Razorpay auth ping `GET /v1/payments?count=1`, Supabase read, Railway health, self-GET of
+  `/api/razorpay/order`). **Never add an order/row-creating probe to any public GET.**
+- **Security suite extended** (`npm run test:security`): key-id shape/allowlist scan over the runtime
+  tree, zero-tracked-tree-occurrence check for the rotated key id (marker assembled dynamically — the
+  literal is never stored), per-route fail-closed + no-hardcoded-`keyId` checks, client fail-closed
+  checks, cta-check non-mutating + order-GET read-only checks.
+- ⏳ **Remaining owner ops:** validate one controlled LIVE payment + verification on the deployed
+  env-driven code, then deactivate the old Razorpay key pair at the provider (within its grace window).
 
 ## Current production state (v571 — Stage depth pass: real surfaces, honest discounts, a scroll rail)
 - **Everything on the Stage that read FLAT or OVERSIZED was fixed at the cause** (owner review of the live site).

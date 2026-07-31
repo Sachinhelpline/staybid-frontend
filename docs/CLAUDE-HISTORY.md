@@ -56,9 +56,9 @@ lib/
 ## Environment Variables
 ```
 NEXT_PUBLIC_API_URL=https://staybid-live-production.up.railway.app
-RAZORPAY_KEY_ID=rzp_live_SfFAsbYjbHfztd
+RAZORPAY_KEY_ID=[REDACTED-RAZORPAY-KEYID]
 RAZORPAY_KEY_SECRET=[REDACTED-RAZORPAY-SECRET]
-NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_SfFAsbYjbHfztd
+NEXT_PUBLIC_RAZORPAY_KEY_ID=[REDACTED-RAZORPAY-KEYID]
 NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCREXxZEUTJk1abTOxOXyxAF5QcOhjsjXQ
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=staybid-6feb7.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=staybid-6feb7
@@ -304,7 +304,7 @@ localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, che
 - `setup-razorpay-vercel.js` — one-time script to add env vars to Vercel (run with Vercel token)
 
 ### Live Keys
-- Key ID: `rzp_live_SfFAsbYjbHfztd` (public — safe in client code)
+- Key ID: `[REDACTED-RAZORPAY-KEYID]` (public — safe in client code)
 - Key Secret: `[REDACTED-RAZORPAY-SECRET]` (server-side only in API routes)
 
 ### How Payment Works
