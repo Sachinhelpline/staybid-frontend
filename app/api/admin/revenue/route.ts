@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_READ } from "@/lib/sb";
 
 // Aggregates platform revenue from accepted bids + influencer commissions +
 // outstanding loyalty points. Returns headline KPIs and a 30-day timeseries.
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
   const isoMS = monthStart.toISOString();

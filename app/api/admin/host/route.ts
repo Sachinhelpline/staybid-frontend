@@ -11,11 +11,12 @@
 //        source ∈ lead | inquiry | order | job | channel.
 //        Updates that row's status. Audit-logged.
 //
-// Auth: x-admin-token / x-admin-id (adminFromReq). Mutations audit-logged.
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup). Mutations audit-logged.
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ async function attachUsers(rows: any[], idKey = "user_id"): Promise<any[]> {
 }
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -220,7 +221,7 @@ const SOURCE_TABLE: Record<string, string> = {
 const NO_UPDATED_AT = new Set(["host_leads", "discovery_inquiries", "discovery_properties"]);
 
 export async function PATCH(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

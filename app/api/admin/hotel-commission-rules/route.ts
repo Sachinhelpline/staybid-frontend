@@ -11,15 +11,11 @@
 //   At least one of platform_pct or slabs must be set.
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
 
-function isAdmin(req: NextRequest): boolean {
-  const token = req.headers.get("x-admin-token") || "";
-  const adminId = req.headers.get("x-admin-id") || "";
-  return !!token && !!adminId;
-}
 
 const DEFAULT_PLATFORM_PCT = 5;
 
@@ -38,7 +34,8 @@ async function getGlobalDefault(): Promise<{ platform_pct: number; slabs: any[] 
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: "Admin auth required" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [hotels, rules, globalDef] = await Promise.all([
     fetch(`${SB_URL}/rest/v1/hotels?select=id,name,city,ownerId&order=name.asc&limit=500`, { headers: SB_READ })
@@ -67,9 +64,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: "Admin auth required" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
-  const adminId = req.headers.get("x-admin-id") || "system";
+  const adminId = admin.id;
 
   const hotelId: string | undefined = body?.hotel_id || body?.hotelId;
   const platformPct = body?.platform_pct != null ? Number(body.platform_pct) : null;
@@ -126,7 +124,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: "Admin auth required" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const upd = await fetch(`${SB_URL}/rest/v1/hotel_commission_rules?id=eq.${encodeURIComponent(id)}`, {

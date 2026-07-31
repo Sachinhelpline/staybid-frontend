@@ -2,15 +2,16 @@
 // (buyer premium %, seller fee %, EMD deposit %, window-open day, pay-window hrs).
 // Mirrors /api/admin/b2b-fee. Clamped server-side; cache invalidated on write.
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { resolveAuctionConfig, invalidateAuctionConfigCache, AUCTION_CONFIG_ID } from "@/lib/trade/config";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return NextResponse.json({ error: "Admin auth required." }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const cfg = await resolveAuctionConfig();
   return NextResponse.json({ config: cfg });
 }
@@ -29,8 +30,8 @@ const clampMult = (v: any, fb: number) => {
 };
 
 export async function POST(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return NextResponse.json({ error: "Admin auth required." }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch {}

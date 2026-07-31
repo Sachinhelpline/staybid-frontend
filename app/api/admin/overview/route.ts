@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_READ } from "@/lib/sb";
 
 // Admin platform-systems widget — counts only (cheap). Powers the new card
 // row on /admin without disturbing the existing dashboard data shape.
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   async function count(path: string): Promise<number> {
     const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: { ...SB_READ, Prefer: "count=exact" } });
     const range = res.headers.get("content-range") || "";

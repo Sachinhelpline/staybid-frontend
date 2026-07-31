@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 
 // Admin grant or deduct. Accepts a signed delta. Caller MUST be the admin
 // panel (gated at app/admin/layout.tsx); the route trusts the panel and does
 // not re-verify role to keep parity with other /api/admin/* routes.
 export async function POST(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const userId = String(body?.userId || "").trim();
   const delta  = Number(body?.delta);

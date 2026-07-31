@@ -15,6 +15,7 @@
 // (no vp_videos row), the caller can fall back to that URL list — that
 // path is handled in the UI, not here.
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
@@ -22,6 +23,8 @@ const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 const VIDEO_FIELDS = "id,url,urls,segments,type,status,actual_secs,created_at";
 
 export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const u = new URL(req.url);
     const requestId       = u.searchParams.get("requestId") || "";

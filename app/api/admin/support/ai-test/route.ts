@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { agentFromReq } from "@/lib/support/agent-auth";
 import { isGroqEnabled } from "@/lib/support/groq-agent";
 import { isAnthropicEnabled } from "@/lib/support/ai-agent";
@@ -15,6 +16,8 @@ export const dynamic = "force-dynamic";
 //   { ok: true, provider, latency_ms, sample_reply }
 //   { ok: false, provider, error: <full error string>, status_hint }
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const agent = await agentFromReq(req);
   if (!agent) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

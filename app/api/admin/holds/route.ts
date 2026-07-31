@@ -8,8 +8,9 @@
 //      Admin override — manually set a hold's status.
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 async function sbGet(path: string) {
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_READ });
@@ -18,6 +19,8 @@ async function sbGet(path: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const status   = searchParams.get("status");   // active | completed | expired | cancelled | all
   const hotelId  = searchParams.get("hotelId");
@@ -84,6 +87,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { bidId, action } = await req.json();
     if (!bidId || !action) return NextResponse.json({ error: "bidId + action required" }, { status: 400 });
@@ -107,7 +112,7 @@ export async function PATCH(req: NextRequest) {
 
     // v98 — audit
     logAdminAction({
-      admin: adminFromReq(req),
+      admin: auditIdentity(admin),
       action: `hold.${action}`,
       targetType: "hold",
       targetId: bidId,

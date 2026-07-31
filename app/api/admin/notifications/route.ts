@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_READ } from "@/lib/sb";
 import { notificationChannelStatus } from "@/lib/notify-server";
 
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const status = req.nextUrl.searchParams.get("status") || "pending";
   const filter = status === "all" ? "" : `status=eq.${encodeURIComponent(status)}&`;
   const res = await fetch(

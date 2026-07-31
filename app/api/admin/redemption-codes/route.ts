@@ -14,18 +14,15 @@
 //            their code expire by a few days)
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
 
-function isAdmin(req: NextRequest): boolean {
-  const token = req.headers.get("x-admin-token") || "";
-  const adminId = req.headers.get("x-admin-id") || "";
-  return !!token && !!adminId;
-}
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: "Admin auth required" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const sp = req.nextUrl.searchParams;
   const status = sp.get("status") || "";
   const kind = sp.get("kind") || "";
@@ -86,12 +83,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: "Admin auth required" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const id: string | undefined = body?.id;
   const action: string | undefined = body?.action;
   if (!id || !action) return NextResponse.json({ error: "id + action required" }, { status: 400 });
-  const adminId = req.headers.get("x-admin-id") || "system";
+  const adminId = admin.id;
 
   if (action === "revoke") {
     const upd = await fetch(`${SB_URL}/rest/v1/redemption_codes?id=eq.${encodeURIComponent(id)}`, {

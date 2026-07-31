@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +19,9 @@ async function sbGet(path: string) {
   } catch { return []; }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const [reports, flags] = await Promise.all([
     sbGet("content_reports?select=*&order=created_at.desc&limit=300"),
     sbGet("comment_flags?select=*&order=created_at.desc&limit=300"),
@@ -41,6 +44,8 @@ const TABLES = new Set(["content_reports", "comment_flags"]);
 const STATUSES = new Set(["open", "reviewed", "dismissed", "actioned"]);
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await req.json().catch(() => ({}));
     const table = String(body?.table || "");

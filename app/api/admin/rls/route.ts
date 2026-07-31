@@ -11,8 +11,9 @@
 //                      {action:"add_policy", table}
 //                      {action:"drop_policy", table, policy}
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, hasServiceRole } from "@/lib/sb";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 // Same string lives inside the four SECURITY DEFINER functions in the
 // v99 migration. Rotate both at once if/when needed.
@@ -28,18 +29,9 @@ async function rpc(name: string, args: Record<string, any>) {
   return { ok: res.ok, status: res.status, json };
 }
 
-function requireAdmin(req: Request): { ok: true; admin: any } | { ok: false; res: NextResponse } {
-  const admin = adminFromReq(req);
-  // Lightweight role check from the JWT payload if present. The /admin
-  // surface already gates by sb_admin_token + role in the layout, so this
-  // is the second line of defence.
-  if (!admin?.id) return { ok: false, res: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  return { ok: true, admin };
-}
-
 export async function GET(req: Request) {
-  const gate = requireAdmin(req);
-  if (!gate.ok) return gate.res;
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const r = await rpc("admin_list_rls", { secret: RLS_SECRET });
   if (!r.ok) {
@@ -54,8 +46,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const gate = requireAdmin(req);
-  if (!gate.ok) return gate.res;
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const action = body.action as string;
@@ -67,7 +59,7 @@ export async function POST(req: Request) {
     const r = await rpc("admin_set_rls", { secret: RLS_SECRET, tbl, enable });
     if (r.json?.error) return NextResponse.json({ error: r.json.error }, { status: 403 });
     logAdminAction({
-      admin: gate.admin,
+      admin: auditIdentity(admin),
       action: `rls.${enable ? "enable" : "disable"}`,
       targetType: "table",
       targetId: tbl,
@@ -82,7 +74,7 @@ export async function POST(req: Request) {
     const r = await rpc("admin_add_permissive_policy", { secret: RLS_SECRET, tbl });
     if (r.json?.error) return NextResponse.json({ error: r.json.error }, { status: 403 });
     logAdminAction({
-      admin: gate.admin,
+      admin: auditIdentity(admin),
       action: "rls.add_permissive_policy",
       targetType: "table",
       targetId: tbl,
@@ -106,7 +98,7 @@ export async function POST(req: Request) {
     const r = await rpc("admin_lockdown_table", { secret: RLS_SECRET, tbl });
     if (r.json?.error) return NextResponse.json({ error: r.json.error }, { status: 403 });
     logAdminAction({
-      admin: gate.admin,
+      admin: auditIdentity(admin),
       action: "rls.lockdown",
       targetType: "table",
       targetId: tbl,
@@ -129,7 +121,7 @@ export async function POST(req: Request) {
     const r = await rpc("admin_apply_policy_template", { secret: RLS_SECRET, tbl, templ: template, col });
     if (r.json?.error) return NextResponse.json({ error: r.json.error }, { status: 403 });
     logAdminAction({
-      admin: gate.admin,
+      admin: auditIdentity(admin),
       action: `rls.template.${template}`,
       targetType: "table",
       targetId: tbl,
@@ -145,7 +137,7 @@ export async function POST(req: Request) {
     const r = await rpc("admin_drop_policy", { secret: RLS_SECRET, tbl, policy });
     if (r.json?.error) return NextResponse.json({ error: r.json.error }, { status: 403 });
     logAdminAction({
-      admin: gate.admin,
+      admin: auditIdentity(admin),
       action: "rls.drop_policy",
       targetType: "table",
       targetId: tbl,

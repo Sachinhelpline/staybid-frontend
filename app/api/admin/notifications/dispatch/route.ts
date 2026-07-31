@@ -6,19 +6,21 @@
 //
 //   Body: { id: string, status: "sent" | "failed" | "pending", note?: string }
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 const VALID = new Set(["sent", "failed", "pending"]);
 
 export async function POST(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const id = String(body.id || "").trim();
   const status = VALID.has(body.status) ? body.status : null;
   if (!id || !status) {
     return NextResponse.json({ error: "id and valid status required" }, { status: 400 });
   }
-  const admin = adminFromReq(req);
   const patch: Record<string, any> = {
     status,
     updated_at: new Date().toISOString(),

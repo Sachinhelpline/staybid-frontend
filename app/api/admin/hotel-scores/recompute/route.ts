@@ -16,19 +16,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
 import { computeHotelScore } from "@/lib/hotel-score";
 import { loadHotelScoreInputs } from "@/lib/hotel-score-data";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
+import { requireVerifiedAdmin, auditIdentity, type VerifiedAdmin } from "@/lib/admin/verify";
 
-async function authorized(req: NextRequest): Promise<boolean> {
+// Dual auth: cron (query/Bearer secret) OR a signature-VERIFIED admin.
+// The legacy `x-admin-token startsWith("adm_")` presence check is removed —
+// admin access now requires a verified admin JWT + server-side role lookup.
+async function authorized(
+  req: NextRequest,
+): Promise<{ ok: boolean; admin: VerifiedAdmin | null }> {
   const { searchParams } = new URL(req.url);
   const qToken = searchParams.get("token");
   const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
+  if (qToken && qToken === expectedToken) return { ok: true, admin: null };
   const cronAuth = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
+  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) {
+    return { ok: true, admin: null };
+  }
+  const admin = await requireVerifiedAdmin(req);
+  if (admin) return { ok: true, admin };
+  return { ok: false, admin: null };
 }
 
 async function sb(path: string): Promise<any[]> {
@@ -240,18 +248,18 @@ export async function POST(req: NextRequest) {
 }
 
 async function handle(req: NextRequest) {
-  if (!(await authorized(req))) {
+  const auth = await authorized(req);
+  if (!auth.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const result = await run(req);
 
-  // Best-effort audit log (only when triggered by a human admin token).
+  // Best-effort audit log (only when triggered by a verified human admin).
   try {
-    const admin = adminFromReq(req as any);
-    if (admin) {
+    if (auth.admin) {
       const { searchParams } = new URL(req.url);
       logAdminAction({
-        admin,
+        admin: auditIdentity(auth.admin),
         action: "hotel_scores.recompute",
         targetType: "hotel_scores",
         targetId: searchParams.get("hotelId") || searchParams.get("city") || "all",

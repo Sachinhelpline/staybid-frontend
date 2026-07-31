@@ -2,16 +2,17 @@
 // run the clearing engine on demand (e.g. testing before the window naturally
 // closes, or re-running a stuck lot). Idempotent — reuses clearLotDb.
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_READ } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { clearLotDb } from "@/lib/trade/clear-run";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
-  if (!admin) return NextResponse.json({ error: "Admin auth required." }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch {}

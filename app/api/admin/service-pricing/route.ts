@@ -6,11 +6,12 @@
 //     bundle         { id?, name, serviceKeys[], monthly, quarterly, yearly }
 //     delete_bundle  { id }
 //
-// Auth: x-admin-token / x-admin-id (adminFromReq).
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup).
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_H_REPRESENT, genId } from "@/lib/sb-server";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ const num = (v: any) => {
 };
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const pRes = await fetch(`${SB_URL}/rest/v1/service_pricing?select=*`, { headers: SB_H });
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   let body: any = {};
   try { body = await req.json(); } catch {}

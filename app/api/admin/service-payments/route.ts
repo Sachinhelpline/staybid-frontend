@@ -2,16 +2,16 @@
 //
 //   GET → every service_payments row + revenue totals.
 //
-// Auth: x-admin-token / x-admin-id (adminFromReq).
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup).
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb-server";
-import { adminFromReq } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const r = await fetch(

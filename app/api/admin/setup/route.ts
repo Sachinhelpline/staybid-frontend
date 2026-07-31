@@ -5,11 +5,14 @@
  * and won't wipe any data.
  */
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 
 const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SB_KEY = "sb_publishable_N2tMgg386VuuZcuy-Tpi8A_FLRK_-eE";
 
-export async function POST() {
+export async function POST(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   // Use Supabase SQL API to add the column safely
   const res = await fetch(`${SB_URL}/rest/v1/rpc/exec_sql`, {
     method: "POST",
@@ -37,7 +40,9 @@ export async function POST() {
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json({
     message: "Send POST to this endpoint to add flashFloorPrice column to Room table.",
     sql: `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS "flashFloorPrice" DOUBLE PRECISION;`,

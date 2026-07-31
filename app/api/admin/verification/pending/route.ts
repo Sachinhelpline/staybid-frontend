@@ -3,13 +3,16 @@
 // Previous version queried order=createdAt.desc which PostgREST rejected →
 // empty response → admin verification queue showed 0 even with 42 pending.
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   // Pull pending verification requests + side-load hotel + customer names
   const requests = await fetch(
     `${SB_URL}/rest/v1/vp_requests?select=*&status=eq.pending&order=created_at.desc&limit=300`,

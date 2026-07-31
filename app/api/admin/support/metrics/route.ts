@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { agentFromReq } from "@/lib/support/agent-auth";
 import { SB_URL, SB_H } from "@/lib/sb-server";
 
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
 // keeps PostgREST chatter low. Hard cap of 5000 conversations per window
 // (more than that and we'll add a materialized view).
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const agent = await agentFromReq(req);
   if (!agent) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const [users, complaints] = await Promise.all([
     fetch(`${SB_URL}/rest/v1/users?select=id,phone,status`, {
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },

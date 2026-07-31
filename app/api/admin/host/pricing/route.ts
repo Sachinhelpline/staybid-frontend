@@ -9,12 +9,13 @@
 //        every number + keeps the fixed key set), upserts the singleton row,
 //        invalidates the resolver cache. Audit-logged.
 //
-// Auth: x-admin-token / x-admin-id (adminFromReq). No client ever charges from
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup). No client ever charges from
 // this — the wizard + /checkout re-resolve through resolveWizardConfig().
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { DEFAULT_WIZARD_CONFIG, mergeWizardConfig } from "@/lib/host/wizard-rules";
 import { resolveWizardConfig, invalidateWizardConfigCache, WIZARD_CONFIG_ID } from "@/lib/host/wizard-config-store";
 
@@ -23,7 +24,7 @@ export const dynamic = "force-dynamic";
 const REST = `${SB_URL}/rest/v1`;
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

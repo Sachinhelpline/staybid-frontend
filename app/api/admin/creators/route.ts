@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 // Admin endpoint for creator (influencer) applications.
@@ -21,6 +22,8 @@ const SB_H = {
 const ALLOWED_STATUSES = new Set(["pending", "active", "blocked"]);
 
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const status = (searchParams.get("status") || "all").toLowerCase();
   const search = (searchParams.get("search") || "").toLowerCase();
@@ -90,6 +93,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const { id, status, aadhaar_verified, pan_verified } = body;
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });

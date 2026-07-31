@@ -5,8 +5,9 @@
 //
 // Auth: x-admin-token. Identity logged via logAdminAction every mutation.
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { queueNotification } from "@/lib/notify-server";
 
 const HEADERS = {
@@ -27,8 +28,9 @@ const VALID_ACTIONS = new Set([
 ]);
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const params = await props.params;
-  const admin = adminFromReq(req);
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

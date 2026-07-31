@@ -6,10 +6,11 @@
 //   PATCH  body { id, patch:{...} }  → update (whitelisted; incl. status).
 //   DELETE ?id=<id>                  → hard delete.
 //
-// Auth: x-admin-token / x-admin-id (adminFromReq). Mutations audit-logged.
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup). Mutations audit-logged.
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 const REST = `${SB_URL}/rest/v1`;
@@ -50,7 +51,7 @@ function workerFields(body: any, partial = false) {
 }
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const r = await fetch(`${REST}/workforce_workers?select=*&order=created_at.desc&limit=500`, { headers: SB_READ, cache: "no-store" });
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   let body: any = {};
   try { body = await req.json(); } catch {}
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   let body: any = {};
   try { body = await req.json(); } catch {}
@@ -108,7 +109,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = new URL(req.url);
   const id = String(url.searchParams.get("id") || "");

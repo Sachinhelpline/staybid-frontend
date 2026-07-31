@@ -17,6 +17,7 @@
 //   → deactivates the creator's override (sets active=false). Subsequent
 //     bookings fall back to the global default.
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 import { DEFAULT_RULE, validateRule, type CommissionRule } from "@/lib/commission";
 
@@ -36,6 +37,8 @@ function shapeRow(row: any): CommissionRule | null {
 }
 
 export async function GET(_req: NextRequest) {
+  const admin = await requireVerifiedAdmin(_req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const [globalRows, overrideRows, creators] = await Promise.all([
       sbGet(`commission_rules?scope=eq.global&active=eq.true&select=*&order=updated_at.desc&limit=1`),
@@ -73,6 +76,8 @@ export async function GET(_req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await req.json();
     if (body.scope !== "global") {
@@ -111,6 +116,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await req.json();
     if (body.scope !== "creator" || !body.creatorId) {
@@ -147,6 +154,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const creatorId = new URL(req.url).searchParams.get("creatorId");
     if (!creatorId) return NextResponse.json({ error: "creatorId required" }, { status: 400 });
