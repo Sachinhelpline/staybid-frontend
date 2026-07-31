@@ -16,20 +16,10 @@ import { createHmac, timingSafeEqual } from "crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LIVE_KEY_SECRET = "dv3xFGG44R2FSqlshkDVY2Gn";
-const ENV_KEY_ID      = process.env.RAZORPAY_KEY_ID || "";
-const ENV_KEY_SECRET  = process.env.RAZORPAY_KEY_SECRET || "";
-
-function candidateSecrets(): { secret: string; source: "env" | "hardcoded" }[] {
-  const out: { secret: string; source: "env" | "hardcoded" }[] = [];
-  if (ENV_KEY_SECRET && ENV_KEY_ID.startsWith("rzp_live_")) {
-    out.push({ secret: ENV_KEY_SECRET, source: "env" });
-  }
-  if (!out.length || out[0].secret !== LIVE_KEY_SECRET) {
-    out.push({ secret: LIVE_KEY_SECRET, source: "hardcoded" });
-  }
-  return out;
-}
+// Razorpay verification secret is ENVIRONMENT-ONLY (hotfix v621 security).
+// The hardcoded LIVE fallback has been removed — verification fails closed
+// when RAZORPAY_KEY_SECRET is absent.
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
 
 export async function POST(req: NextRequest) {
   let body: any;
@@ -52,36 +42,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (!RAZORPAY_KEY_SECRET) {
+    return NextResponse.json(
+      { verified: false, error: "payment_config_missing" },
+      { status: 503 },
+    );
+  }
+
   try {
     const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
     const sigBuf = Buffer.from(String(razorpay_signature), "hex");
-
-    for (const { secret, source } of candidateSecrets()) {
-      const expectedHex = createHmac("sha256", secret)
-        .update(payload)
-        .digest("hex");
-      const expectedBuf = Buffer.from(expectedHex, "hex");
-      if (
-        expectedBuf.length === sigBuf.length &&
-        timingSafeEqual(expectedBuf, sigBuf)
-      ) {
-        if (source === "hardcoded" && ENV_KEY_SECRET) {
-          console.warn(
-            "[razorpay/verify] env-var secret did not match; succeeded with hardcoded LIVE secret",
-          );
-        }
-        return NextResponse.json({
-          verified: true,
-          paymentId: razorpay_payment_id,
-          _secretSource: source,
-        });
-      }
+    const expectedHex = createHmac("sha256", RAZORPAY_KEY_SECRET)
+      .update(payload)
+      .digest("hex");
+    const expectedBuf = Buffer.from(expectedHex, "hex");
+    if (
+      expectedBuf.length === sigBuf.length &&
+      timingSafeEqual(expectedBuf, sigBuf)
+    ) {
+      return NextResponse.json({ verified: true, paymentId: razorpay_payment_id });
     }
 
-    return NextResponse.json({
-      verified: false,
-      error: "Signature mismatch",
-    });
+    return NextResponse.json({ verified: false, error: "Signature mismatch" });
   } catch (err: any) {
     console.error("[razorpay/verify] hmac error", err);
     return NextResponse.json(

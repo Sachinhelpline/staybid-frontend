@@ -14,8 +14,8 @@
 //          plan, term-based expires_at). Pending requests for those keys
 //          are auto-approved so the lock UI clears.
 //
-// Owner-scoped. Razorpay LIVE keys hardcoded as a self-healing fallback
-// (same pattern as /api/razorpay/order). Lazy expiry — no cron.
+// Owner-scoped. Razorpay credentials are environment-only (v621) — no
+// hardcoded fallback; order/verify fail closed when unset. Lazy expiry — no cron.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
@@ -31,27 +31,15 @@ const PLAN_FIELD: Record<string, "monthly" | "quarterly" | "yearly"> = {
   monthly: "monthly", quarterly: "quarterly", yearly: "yearly",
 };
 
-const LIVE_KEY_ID     = "rzp_live_SfFAsbYjbHfztd";
-const LIVE_KEY_SECRET = "dv3xFGG44R2FSqlshkDVY2Gn";
-const ENV_KEY_ID      = process.env.RAZORPAY_KEY_ID     || "";
-const ENV_KEY_SECRET  = process.env.RAZORPAY_KEY_SECRET || "";
-
-type KeyPair = { id: string; secret: string };
-function keyCandidates(): KeyPair[] {
-  const out: KeyPair[] = [];
-  if (ENV_KEY_ID && ENV_KEY_SECRET && ENV_KEY_ID.startsWith("rzp_live_")) {
-    out.push({ id: ENV_KEY_ID, secret: ENV_KEY_SECRET });
-  }
-  if (!out.length || out[0].id !== LIVE_KEY_ID) {
-    out.push({ id: LIVE_KEY_ID, secret: LIVE_KEY_SECRET });
-  }
-  return out;
-}
-function secretCandidates(): string[] {
-  const out: string[] = [];
-  if (ENV_KEY_SECRET && ENV_KEY_ID.startsWith("rzp_live_")) out.push(ENV_KEY_SECRET);
-  if (!out.includes(LIVE_KEY_SECRET)) out.push(LIVE_KEY_SECRET);
-  return out;
+// Razorpay credentials are ENVIRONMENT-ONLY (hotfix v621 security). The
+// hardcoded LIVE fallback + candidate self-heal has been removed; this route
+// fails closed when the env pair is absent. (KEY_ID below is the PUBLIC key id
+// returned to the client to open the Razorpay modal — safe; the SECRET is only
+// used server-side for order creation + signature verification.)
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+function razorpayConfigured(): boolean {
+  return RAZORPAY_KEY_ID.startsWith("rzp_") && !!RAZORPAY_KEY_SECRET;
 }
 
 async function owned(req: NextRequest): Promise<{ ids: string[]; userId: string } | null> {
@@ -121,31 +109,29 @@ async function handleCreate(req: NextRequest, o: { ids: string[]; userId: string
   const amountPaise = Math.round(amount * 100);
   if (amountPaise < 100) return NextResponse.json({ error: "Amount too low" }, { status: 400 });
 
+  if (!razorpayConfigured()) {
+    return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
+  }
   let order: any = null;
-  let usedKeyId = LIVE_KEY_ID;
   let lastErr = "Order create nahi hua";
-  for (const cand of keyCandidates()) {
-    try {
-      const auth = Buffer.from(`${cand.id}:${cand.secret}`).toString("base64");
-      const r = await fetch("https://api.razorpay.com/v1/orders", {
-        method: "POST",
-        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: amountPaise, currency: "INR",
-          receipt: `svc_${Date.now()}`.slice(0, 40),
-          notes: { hotelId, plan, service: label },
-          payment_capture: 1,
-        }),
-        signal: AbortSignal.timeout(20_000),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (r.ok && d?.id) { order = d; usedKeyId = cand.id; break; }
-      lastErr = d?.error?.description || d?.error?.reason || `Razorpay ${r.status}`;
-      if (r.status !== 401 && r.status !== 403) break;
-    } catch (e: any) {
-      lastErr = e?.message || "Razorpay reach nahi hua";
-      break;
-    }
+  try {
+    const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
+    const r = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: amountPaise, currency: "INR",
+        receipt: `svc_${Date.now()}`.slice(0, 40),
+        notes: { hotelId, plan, service: label },
+        payment_capture: 1,
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d?.id) order = d;
+    else lastErr = d?.error?.description || d?.error?.reason || `Razorpay ${r.status}`;
+  } catch (e: any) {
+    lastErr = e?.message || "Razorpay reach nahi hua";
   }
   if (!order) return NextResponse.json({ error: lastErr }, { status: 502 });
 
@@ -189,7 +175,7 @@ async function handleCreate(req: NextRequest, o: { ids: string[]; userId: string
     orderId: order.id,
     amount,
     amountPaise,
-    keyId: usedKeyId,
+    keyId: RAZORPAY_KEY_ID,
     label,
     plan,
   });
@@ -214,14 +200,18 @@ async function handleVerify(req: NextRequest, o: { ids: string[]; userId: string
     return NextResponse.json({ ok: true, already: true });
 
   // Verify the HMAC signature against each known secret.
+  if (!razorpayConfigured()) {
+    return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
+  }
   const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
   let verified = false;
   try {
     const sigBuf = Buffer.from(String(razorpay_signature), "hex");
-    for (const secret of secretCandidates()) {
-      const expBuf = Buffer.from(createHmac("sha256", secret).update(payload).digest("hex"), "hex");
-      if (expBuf.length === sigBuf.length && timingSafeEqual(expBuf, sigBuf)) { verified = true; break; }
-    }
+    const expBuf = Buffer.from(
+      createHmac("sha256", RAZORPAY_KEY_SECRET).update(payload).digest("hex"),
+      "hex",
+    );
+    if (expBuf.length === sigBuf.length && timingSafeEqual(expBuf, sigBuf)) verified = true;
   } catch { verified = false; }
 
   if (!verified) {

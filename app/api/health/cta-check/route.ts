@@ -15,8 +15,9 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RZP_KEY_ID = process.env.RAZORPAY_KEY_ID || "rzp_live_SfFAsbYjbHfztd";
-const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "dv3xFGG44R2FSqlshkDVY2Gn";
+// Environment-only (hotfix v621) — no hardcoded secret fallback.
+const RZP_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
+const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
 const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SB_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -47,6 +48,9 @@ async function timed<T>(name: string, fn: () => Promise<T>): Promise<Probe & { r
 }
 
 async function probeRazorpay(): Promise<Probe> {
+  if (!RZP_KEY_ID || !RZP_KEY_SECRET) {
+    return { name: "razorpay", ok: false, latencyMs: 0, detail: "not configured (RAZORPAY_KEY_ID/SECRET unset)" };
+  }
   return timed("razorpay", async () => {
     const auth = Buffer.from(`${RZP_KEY_ID}:${RZP_KEY_SECRET}`).toString("base64");
     // Hits the lightest auth-required endpoint to confirm keys are alive
