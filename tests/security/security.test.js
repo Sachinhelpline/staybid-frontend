@@ -37,6 +37,7 @@ fs.mkdirSync(path.join(SRC, "lib", "cron"), { recursive: true });
 fs.copyFileSync(path.join(REPO, "lib/admin/verify.ts"), path.join(SRC, "lib/admin/verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/auth/customer-verify.ts"), path.join(SRC, "lib/auth/customer-verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/cron/auth.ts"), path.join(SRC, "lib/cron/auth.ts"));
+fs.copyFileSync(path.join(REPO, "lib/razorpay-server.ts"), path.join(SRC, "lib/razorpay-server.ts"));
 fs.writeFileSync(
   path.join(SRC, "tsconfig.json"),
   JSON.stringify({
@@ -54,7 +55,8 @@ try { cp.execSync(`npx tsc -p "${path.join(SRC, "tsconfig.json")}"`, { cwd: REPO
 const adminJs = path.join(OUT, "lib/admin/verify.js");
 const custJs = path.join(OUT, "lib/auth/customer-verify.js");
 const cronJs = path.join(OUT, "lib/cron/auth.js");
-if (!fs.existsSync(adminJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs)) {
+const rzpCfgJs = path.join(OUT, "lib/razorpay-server.js");
+if (!fs.existsSync(adminJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs)) {
   console.error("COMPILE FAILED — helper JS not emitted");
   process.exit(2);
 }
@@ -96,6 +98,7 @@ Module._resolveFilename = function (request, ...rest) {
 const adminV = require(adminJs);
 const custV = require(custJs);
 const cronV = require(cronJs);
+const rzpCfg = require(rzpCfgJs);
 
 // ---- 3. assert framework ----------------------------------------------------
 let pass = 0, fail = 0;
@@ -357,6 +360,107 @@ function reqWith(headers) {
   check("secrets: setup script is env-only (reads process.env)", setupSrc.includes("process.env.RAZORPAY_KEY_SECRET"));
   check("secrets: setup script has no hardcoded secret literal", !/RAZORPAY_KEY_SECRET\s*[:=]\s*"[A-Za-z0-9]{12,}"/.test(setupSrc) && !/rzp_live_[A-Za-z0-9]{6,}"[\s\S]{0,40}(secret|Secret)/.test(setupSrc));
   check("secrets: history file carries the redaction marker", fs.readFileSync(path.join(REPO, "docs/CLAUDE-HISTORY.md"), "utf8").includes("REDACTED-RAZORPAY-SECRET"));
+
+  // ===== Razorpay Key-ID rotation-readiness (v621.2) =====
+  // No real Razorpay Key ID (LIVE or TEST) may be hardcoded anywhere in
+  // runtime code. A key id in a tracked file survives rotation and resurrects
+  // a retired pair — env vars are the only allowed source. The scan pattern is
+  // assembled at runtime so this test never stores a key-id-shaped literal.
+  const RZP_PREFIX = ["rzp", "_"].join(""); // "rzp_"
+  const keyIdScanRe = `${RZP_PREFIX}(live|test)_[A-Za-z0-9]{3,}`;
+  const runtimeKeyHits = cp.execSync(
+    `git grep -lE "${keyIdScanRe}" -- 'app/**' 'lib/**' 'components/**' 'public/**' || true`,
+    { cwd: REPO, encoding: "utf8" },
+  ).trim();
+  check("rzp-keyid: no hardcoded LIVE/TEST key id in any runtime file", runtimeKeyHits === "");
+
+  // The previously exposed (now rotated) public Key ID must have ZERO tracked-
+  // tree occurrences — docs and history included. The marker is assembled from
+  // fragments so the retired credential is never stored as a single literal.
+  const STALE_KEY_ID = RZP_PREFIX + "live_" + "SfFAs" + "bYjbH" + "fztd";
+  const staleHits = cp.execSync(
+    `git grep -lF "${STALE_KEY_ID}" -- . ':(exclude)tests/security/*' || true`,
+    { cwd: REPO, encoding: "utf8" },
+  ).trim();
+  check("rzp-keyid: rotated stale Key ID absent from entire tracked tree", staleHits === "");
+
+  // Functional: the shared server-config helper is env-only + shape-validated.
+  const savedKeyId = process.env.RAZORPAY_KEY_ID;
+  const savedSecret = process.env.RAZORPAY_KEY_SECRET;
+  const FAKE_ID = RZP_PREFIX + "test_" + "A".repeat(14); // dynamically built dummy
+  delete process.env.RAZORPAY_KEY_ID;
+  check("rzp-keyid: helper → null when RAZORPAY_KEY_ID unset", rzpCfg.razorpayKeyId() === null);
+  process.env.RAZORPAY_KEY_SECRET = "some-secret";
+  check("rzp-keyid: configured=false without a key id (fail closed)", rzpCfg.razorpayConfigured() === false);
+  process.env.RAZORPAY_KEY_ID = "not-a-key";
+  check("rzp-keyid: helper rejects a non-rzp value", rzpCfg.razorpayKeyId() === null);
+  process.env.RAZORPAY_KEY_ID = RZP_PREFIX + "live_"; // prefix only, no id body
+  check("rzp-keyid: helper rejects a truncated key id", rzpCfg.razorpayKeyId() === null);
+  process.env.RAZORPAY_KEY_ID = FAKE_ID;
+  check("rzp-keyid: helper returns a well-formed env key id", rzpCfg.razorpayKeyId() === FAKE_ID);
+  delete process.env.RAZORPAY_KEY_SECRET;
+  check("rzp-keyid: configured=false without a secret (fail closed)", rzpCfg.razorpayConfigured() === false);
+  process.env.RAZORPAY_KEY_SECRET = "some-secret";
+  check("rzp-keyid: configured=true only with a full env pair", rzpCfg.razorpayConfigured() === true);
+  if (savedKeyId === undefined) delete process.env.RAZORPAY_KEY_ID; else process.env.RAZORPAY_KEY_ID = savedKeyId;
+  if (savedSecret === undefined) delete process.env.RAZORPAY_KEY_SECRET; else process.env.RAZORPAY_KEY_SECRET = savedSecret;
+
+  // Static per-route: every server checkout route derives its public keyId
+  // from the shared env helper and fails closed BEFORE any work — never from
+  // a hardcoded literal.
+  const CHECKOUT_ROUTES = [
+    "app/api/b2b/basket/checkout/route.ts",
+    "app/api/b2b/listings/[id]/checkout/route.ts",
+    "app/api/circle/checkout/route.ts",
+    "app/api/circle/city-access/route.ts",
+    "app/api/circle/inventory/[id]/checkout/route.ts",
+    "app/api/circle/marketplace/checkout/route.ts",
+    "app/api/circle/resale/[id]/checkout/route.ts",
+    "app/api/host/portfolio/checkout/route.ts",
+    "app/api/host/store/checkout/route.ts",
+    "app/api/trade/awards/pay/route.ts",
+    "app/api/trade/bids/checkout/route.ts",
+  ];
+  for (const rel of CHECKOUT_ROUTES) {
+    const label = rel.replace("app/api/", "").replace("/route.ts", "");
+    const src = fs.readFileSync(path.join(REPO, rel), "utf8");
+    check(`rzp-route[${label}]: keyId from env helper`, src.includes('from "@/lib/razorpay-server"') && src.includes("razorpayKeyId()"));
+    check(`rzp-route[${label}]: fails closed payment_config_missing`, src.includes('"payment_config_missing"') && /if \(!PUBLIC_KEY_ID\) return/.test(src));
+    check(`rzp-route[${label}]: no hardcoded keyId literal`, !new RegExp(`PUBLIC_KEY_ID\\s*=\\s*["'\`]|keyId:\\s*["'\`]${RZP_PREFIX}`).test(src));
+  }
+
+  // Client checkout helper: NEXT_PUBLIC_RAZORPAY_KEY_ID only, no literal
+  // fallback, fails closed with the typed configuration error.
+  const clientRzp = fs.readFileSync(path.join(REPO, "lib/razorpay.ts"), "utf8");
+  check("rzp-client: uses NEXT_PUBLIC_RAZORPAY_KEY_ID", clientRzp.includes("process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID"));
+  check("rzp-client: no hardcoded key-id fallback", !new RegExp(`\\|\\|\\s*["'\`]${RZP_PREFIX}`).test(clientRzp));
+  check("rzp-client: fails closed when key absent (payment_config_missing)", clientRzp.includes('"payment_config_missing"'));
+  check("rzp-client: never touches RAZORPAY_KEY_SECRET", !clientRzp.includes("RAZORPAY_KEY_SECRET"));
+
+  // The shared server helper never leaks the secret into any response shape,
+  // and no checkout route returns the secret.
+  const serverCfgSrc = fs.readFileSync(path.join(REPO, "lib/razorpay-server.ts"), "utf8");
+  check("rzp-server: helper is env-only (reads process.env)", serverCfgSrc.includes("process.env.RAZORPAY_KEY_ID") && serverCfgSrc.includes("process.env.RAZORPAY_KEY_SECRET"));
+  const secretInResponses = cp.execSync(
+    `git grep -nE "keySecret|key_secret" -- 'app/api/**/checkout/route.ts' 'app/api/trade/awards/pay/route.ts' || true`,
+    { cwd: REPO, encoding: "utf8" },
+  ).trim();
+  check("rzp-server: no checkout route references the key secret", secretInResponses === "");
+
+  // ===== public health GET must be NON-MUTATING (v621.2) =====
+  const ctaSrc = fs.readFileSync(path.join(REPO, "app/api/health/cta-check/route.ts"), "utf8");
+  check("health[cta-check]: GET-only route (no POST/PUT/PATCH/DELETE export)", !/export async function (POST|PUT|PATCH|DELETE)/.test(ctaSrc));
+  check("health[cta-check]: performs no POST/write fetch", !/method:\s*["'`](POST|PUT|PATCH|DELETE)/i.test(ctaSrc));
+  check("health[cta-check]: never calls the Razorpay order-create API", !ctaSrc.includes("api.razorpay.com/v1/orders"));
+  check("health[cta-check]: the ₹1 order-create probe is gone", !ctaSrc.includes("probeRazorpayOrderCreate("));
+
+  // /api/razorpay/order GET stays a pure read-only config probe.
+  const orderSrc = fs.readFileSync(path.join(REPO, "app/api/razorpay/order/route.ts"), "utf8");
+  const orderGetBody = (orderSrc.split(/export async function GET/)[1] || "");
+  check("health[razorpay-order]: GET handler exists", orderGetBody.length > 0);
+  check("health[razorpay-order]: GET performs no fetch / external call", !orderGetBody.includes("fetch("));
+  check("health[razorpay-order]: GET reports configured flag only", orderGetBody.includes("configured"));
+  check("health[razorpay-order]: order create uses the shared env helper", orderSrc.includes('from "@/lib/razorpay-server"'));
 
   console.log(results.join("\n"));
   console.log(`\n${pass} passed, ${fail} failed`);
