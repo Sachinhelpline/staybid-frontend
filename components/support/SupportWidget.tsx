@@ -718,20 +718,33 @@ export default function SupportWidget() {
         }
         /* v153 — bigger widget on laptop / desktop. User reported window
            feels small on desktop. Now scales up with screen real estate. */
+        /* v616 — desktop-native chat widget. Was a near-full-height column
+           (740–800px) behind a full-screen dim, which read as a stretched
+           mobile sheet. Now a contained floating card anchored bottom-right
+           just above the launcher, capped so it never dominates the screen,
+           and (below) the dim backdrop is removed on desktop. */
         @media (min-width: 1024px) {
           .sb-support-panel {
-            width: 480px;
-            height: 740px;
-            max-height: calc(100vh - 80px);
-            bottom: 80px;
-            right: 22px;
+            width: 416px;
+            height: 620px;
+            max-height: calc(100vh - 120px);
+            bottom: 96px;
+            right: 24px;
+          }
+          /* Desktop: no full-screen dimming — a corner chat widget shouldn't
+             black out the page. The backdrop element stays (click-outside to
+             close still works) but is fully transparent. */
+          .sb-support-backdrop {
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
           }
         }
         @media (min-width: 1440px) {
           .sb-support-panel {
-            width: 540px;
-            height: 800px;
-            max-height: calc(100vh - 80px);
+            width: 440px;
+            height: 660px;
+            max-height: calc(100vh - 120px);
           }
         }
 
@@ -1172,15 +1185,20 @@ function ConversationList({
         }
         .sb-support-new-btn {
           flex: 0 0 auto;
-          background: linear-gradient(140deg, #5f7c98, #3f5369);
+          /* v616 — owner: the old dark navy read too heavy. Match the app's
+             premium satin-slate button (soft-sheen bloom + slate satin). */
+          background:
+            radial-gradient(88% 64% at 32% 4%, rgba(240,247,253,0.24), transparent 58%),
+            linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 50%, #42566d 100%);
           color: #fff;
+          text-shadow: 0 1px 1px rgba(20, 30, 44, 0.35);
           padding: 12px;
           border: none;
           border-radius: 12px;
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
-          box-shadow: 0 4px 10px -2px rgba(139, 105, 20, 0.35);
+          box-shadow: 0 4px 12px -3px rgba(66, 86, 109, 0.45), inset 0 1px 0 rgba(255,255,255,0.28);
         }
         .sb-support-anon-note {
           font-size: 11px;
