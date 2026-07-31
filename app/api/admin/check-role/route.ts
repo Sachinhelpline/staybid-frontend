@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { signAdminSessionToken, isAdminIssuanceConfigured } from "@/lib/admin/verify";
 
 // v104.1 — was: const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJ...";
 // Removed inline env-var override because this route uses Authorization
@@ -77,9 +77,28 @@ export async function POST(req: NextRequest) {
           error: "Wrong master PIN. Contact platform owner.",
         });
       }
-      // Issue an opaque admin session token (random nonce — admin API
-      // routes query Supabase directly, so they don't need a verifiable JWT)
-      const token = `adm_${crypto.randomBytes(24).toString("hex")}`;
+      // Mint a signature-verifiable admin session token — HS256 signed with
+      // ADMIN_JWT_SECRET, issuer/audience "staybid-admin", short (3h) expiry.
+      // Every protected admin route verifies this signature + re-checks the
+      // subject's admin role server-side (lib/admin/verify.ts). Fail closed if
+      // the signing secret is missing — NEVER issue an unsigned/forgeable
+      // token, and never fall back to the general JWT_SECRET for issuance.
+      if (!isAdminIssuanceConfigured()) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Admin sign-in is temporarily unavailable (ADMIN_JWT_SECRET is not configured). Contact the platform owner.",
+          },
+          { status: 503 },
+        );
+      }
+      const token = signAdminSessionToken({
+        sub: best.id,
+        phone: best.phone ?? null,
+        name: best.name ?? null,
+        role: best.role,
+      });
       return NextResponse.json({
         ok: true,
         role: best.role,
