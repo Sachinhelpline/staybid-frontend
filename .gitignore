@@ -7,3 +7,6 @@ tsconfig.tsbuildinfo
 responsive-audit/artifacts/
 responsive-audit/report.json
 responsive-audit/report.md
+
+# security regression test build artifacts
+tests/security/.build/
