@@ -1040,7 +1040,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   btnSend: {
     alignSelf: "flex-end",
-    background: "linear-gradient(140deg, #c8d2dc, #9fb1c2 55%, #8B6914)",
+    background: "linear-gradient(140deg, #c8d2dc, #9fb1c2 55%, #3f5369)",
     color: "#0F1117",
     border: "none",
     padding: "10px 28px",

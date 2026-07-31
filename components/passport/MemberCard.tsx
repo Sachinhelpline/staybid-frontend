@@ -24,7 +24,7 @@ export function MemberCard({
       className="rounded-3xl p-5 relative overflow-hidden"
       style={{
         background: "linear-gradient(135deg,#0a0812 0%,#1a1326 55%,#0a1020 100%)",
-        boxShadow: "0 18px 50px -20px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(201,166,107,0.25)",
+        boxShadow: "0 18px 50px -20px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(106,133,160,0.25)",
       }}
     >
       <style>{`

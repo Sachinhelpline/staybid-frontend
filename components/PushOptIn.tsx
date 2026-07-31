@@ -85,7 +85,7 @@ export default function PushOptIn() {
         borderRadius: "16px",
         background: "var(--bg-card, #fcfcfd)",
         color: "var(--text-base, #1F1A0F)",
-        border: "1px solid var(--border-soft, rgba(201,166,107,0.28))",
+        border: "1px solid var(--border-soft, rgba(106,133,160,0.28))",
         boxShadow: "0 8px 28px -8px rgba(31,26,15,0.35)",
       }}
     >
@@ -107,7 +107,7 @@ export default function PushOptIn() {
           fontWeight: 700,
           border: "none",
           cursor: "pointer",
-          background: "linear-gradient(135deg,#c8d2dc,#C9A66B)",
+          background: "linear-gradient(135deg,#c8d2dc,#5f7c98)",
           color: "#2B2415",
           opacity: busy ? 0.6 : 1,
         }}

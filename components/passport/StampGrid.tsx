@@ -34,7 +34,7 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
       {stamps.length === 0 ? (
         <div
           className="rounded-[22px] p-6 text-center"
-          style={{ border: "1.5px dashed rgba(201,166,107,0.4)", background: "var(--bg-card)" }}
+          style={{ border: "1.5px dashed rgba(106,133,160,0.4)", background: "var(--bg-card)" }}
         >
           <p className="text-3xl mb-2">🧳</p>
           <p className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>
@@ -71,13 +71,13 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
                 key={s.id || s.source_id || i}
                 onClick={() => setOpen(detail)}
                 className="flex flex-col items-center gap-1.5 rounded-[22px] py-3 px-1.5 sb-card-lift"
-                style={{ background: rs.tint, border: "1px solid rgba(201,166,107,0.3)" }}
+                style={{ background: rs.tint, border: "1px solid rgba(106,133,160,0.3)" }}
               >
                 <PassportMedal glyph={rs.emoji} size={58} m={m} variant="stamp" pulse ariaLabel={s.hotel_name || "Stay"} />
                 <p className="text-[0.64rem] font-bold leading-tight text-center line-clamp-2" style={{ color: "#3A2D10" }}>
                   {s.hotel_name || "Stay"}
                 </p>
-                <p className="text-[0.55rem] font-mono" style={{ color: "#8B6914" }}>
+                <p className="text-[0.55rem] font-mono" style={{ color: "#3f5369" }}>
                   {fmtDate(s.stay_date || s.earned_at)}
                 </p>
               </button>
@@ -88,19 +88,19 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
             <div
               key={`empty-${i}`}
               className="rounded-[22px] flex flex-col items-center justify-center gap-1 py-3"
-              style={{ border: "1.5px dashed rgba(201,166,107,0.35)", minHeight: 104, opacity: 0.6 }}
+              style={{ border: "1.5px dashed rgba(106,133,160,0.35)", minHeight: 104, opacity: 0.6 }}
             >
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center"
                 style={{
                   background: "var(--bg-page)",
-                  border: "1.5px dashed rgba(201,166,107,0.45)",
-                  boxShadow: "inset 0 2px 6px rgba(201,166,107,0.12)",
+                  border: "1.5px dashed rgba(106,133,160,0.45)",
+                  boxShadow: "inset 0 2px 6px rgba(106,133,160,0.12)",
                 }}
               >
-                <span className="text-lg" style={{ color: "rgba(201,166,107,0.7)" }}>+</span>
+                <span className="text-lg" style={{ color: "rgba(106,133,160,0.7)" }}>+</span>
               </div>
-              <p className="text-[0.5rem] font-semibold" style={{ color: "rgba(201,166,107,0.75)" }}>
+              <p className="text-[0.5rem] font-semibold" style={{ color: "rgba(106,133,160,0.75)" }}>
                 Next stay
               </p>
             </div>

@@ -26,7 +26,7 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v174 — cozy-theme status palette. Mid-tone colours that read on both
 // the cream (light) and walnut (dark) surfaces — no per-theme branching.
 const STATUS_META: Record<string, { color: string; soft: string; label: string }> = {
-  PENDING:     { color: "#C9A66B", soft: "rgba(201,166,107,0.15)", label: "Pending"     },
+  PENDING:     { color: "#5f7c98", soft: "rgba(106,133,160,0.15)", label: "Pending"     },
   CONFIRMED:   { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
   ACCEPTED:    { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
   CHECKED_IN:  { color: "#5E83A8", soft: "rgba(94,131,168,0.16)",  label: "Checked In"  },

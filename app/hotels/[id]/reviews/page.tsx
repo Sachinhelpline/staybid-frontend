@@ -332,7 +332,7 @@ function ReviewsPageInner() {
         .rev-shell {
           min-height: 100dvh;
           background: linear-gradient(180deg,
-            color-mix(in oklab, var(--cozy-champagne, #C9A66B) 6%, var(--bg-page, #f4f6f8)) 0%,
+            color-mix(in oklab, var(--cozy-champagne, #5f7c98) 6%, var(--bg-page, #f4f6f8)) 0%,
             var(--bg-page, #f4f6f8) 30%);
           color: var(--text-base, #1f1a0f);
           padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
@@ -347,7 +347,7 @@ function ReviewsPageInner() {
           gap: 12px;
           padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
           background: var(--bg-card, #f4f6f8);
-          border-bottom: 1px solid rgba(201, 166, 107, 0.22);
+          border-bottom: 1px solid rgba(106, 133, 160, 0.22);
           backdrop-filter: blur(10px) saturate(140%);
           -webkit-backdrop-filter: blur(10px) saturate(140%);
         }
@@ -356,7 +356,7 @@ function ReviewsPageInner() {
           width: 38px;
           height: 38px;
           border-radius: 50%;
-          border: 1px solid rgba(201, 166, 107, 0.35);
+          border: 1px solid rgba(106, 133, 160, 0.35);
           /* v499 — theme tokens (was fixed cream/cocoa → a stray light circle
              on the dark shell). Flips with Appearance. */
           background: var(--bg-pill, rgba(176, 192, 209, 0.85));
@@ -369,7 +369,7 @@ function ReviewsPageInner() {
           transition: transform 0.18s, background 0.2s;
         }
         .rev-back:hover, .rev-close:hover {
-          background: var(--accent-soft, rgba(201,166,107,0.18));
+          background: var(--accent-soft, rgba(106,133,160,0.18));
         }
         .rev-back:active, .rev-close:active { transform: scale(0.94); }
         .rev-header-text { flex: 1 1 auto; min-width: 0; }
@@ -407,9 +407,9 @@ function ReviewsPageInner() {
           gap: 22px;
           padding: 18px;
           background: linear-gradient(150deg,
-            color-mix(in oklab, var(--cozy-champagne, #C9A66B) 14%, var(--bg-elevated, #fcfcfd)) 0%,
+            color-mix(in oklab, var(--cozy-champagne, #5f7c98) 14%, var(--bg-elevated, #fcfcfd)) 0%,
             var(--bg-card, #f4f6f8) 80%);
-          border: 1px solid rgba(201, 166, 107, 0.30);
+          border: 1px solid rgba(106, 133, 160, 0.30);
           border-radius: 18px;
           box-shadow:
             0 4px 14px -6px rgba(31, 26, 15, 0.12),
@@ -440,7 +440,7 @@ function ReviewsPageInner() {
         }
         .rev-hero-stars {
           font-size: 1.1rem;
-          color: var(--cozy-champagne, #C9A66B);
+          color: var(--cozy-champagne, #5f7c98);
           letter-spacing: 0.06em;
         }
         .rev-hero-stars span { opacity: 0.28; }
@@ -471,23 +471,23 @@ function ReviewsPageInner() {
           font-family: inherit;
           font-size: 0.78rem;
         }
-        .rev-bar-row:hover { background: rgba(201, 166, 107, 0.08); }
+        .rev-bar-row:hover { background: rgba(106, 133, 160, 0.08); }
         .rev-bar-active {
-          background: rgba(201, 166, 107, 0.18);
-          border-color: rgba(201, 166, 107, 0.45);
+          background: rgba(106, 133, 160, 0.18);
+          border-color: rgba(106, 133, 160, 0.45);
         }
         .rev-bar-label { color: var(--cozy-cocoa, #4a3820); font-weight: 700; }
         .rev-bar-track {
           display: block;
           height: 8px;
-          background: rgba(201, 166, 107, 0.18);
+          background: rgba(106, 133, 160, 0.18);
           border-radius: 4px;
           overflow: hidden;
         }
         .rev-bar-fill {
           display: block;
           height: 100%;
-          background: linear-gradient(90deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(90deg, #b4c1cf, #5f7c98);
           border-radius: 4px;
         }
         .rev-bar-count {
@@ -517,14 +517,14 @@ function ReviewsPageInner() {
           font-weight: 700;
           letter-spacing: 0.04em;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.30);
+          border: 1px solid rgba(106, 133, 160, 0.30);
           color: var(--cozy-cocoa, #4a3820);
           cursor: pointer;
           transition: background 0.2s, border-color 0.2s, transform 0.15s;
           font-family: inherit;
           white-space: nowrap;
         }
-        .rev-chip:hover { background: rgba(201, 166, 107, 0.10); }
+        .rev-chip:hover { background: rgba(106, 133, 160, 0.10); }
         .rev-chip-active {
           background: var(--cozy-warm-dark, #1F1A0F);
           color: var(--cozy-cream-50, #fcfcfd);
@@ -543,7 +543,7 @@ function ReviewsPageInner() {
         .rev-card {
           padding: 14px 16px;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.22);
+          border: 1px solid rgba(106, 133, 160, 0.22);
           border-radius: 14px;
           box-shadow: 0 2px 8px -4px rgba(31, 26, 15, 0.10);
         }
@@ -559,7 +559,7 @@ function ReviewsPageInner() {
           align-items: center;
           gap: 5px;
           padding: 4px 10px;
-          background: var(--accent-soft, rgba(201,166,107,0.18));
+          background: var(--accent-soft, rgba(106,133,160,0.18));
           color: var(--cozy-cocoa, #4a3820);
           font-size: 0.7rem;
           font-weight: 700;
@@ -568,7 +568,7 @@ function ReviewsPageInner() {
         }
         .rev-card-stars {
           font-size: 0.95rem;
-          color: var(--cozy-champagne, #C9A66B);
+          color: var(--cozy-champagne, #5f7c98);
           letter-spacing: 0.05em;
         }
         .rev-card-stars span { opacity: 0.28; }
@@ -604,8 +604,8 @@ function ReviewsPageInner() {
           gap: 10px;
           padding: 18px;
           margin-bottom: 18px;
-          background: linear-gradient(150deg, rgba(201,166,107,0.16) 0%, var(--bg-elevated, #fcfcfd) 90%);
-          border: 1px solid rgba(201, 166, 107, 0.32);
+          background: linear-gradient(150deg, rgba(106,133,160,0.16) 0%, var(--bg-elevated, #fcfcfd) 90%);
+          border: 1px solid rgba(106, 133, 160, 0.32);
           border-radius: 18px;
           box-shadow:
             0 4px 14px -6px rgba(31, 26, 15, 0.10),
@@ -641,7 +641,7 @@ function ReviewsPageInner() {
         .rev-legacy-meta { display: flex; flex-direction: column; gap: 4px; }
         .rev-legacy-stars {
           font-size: 1rem;
-          color: var(--cozy-champagne, #C9A66B);
+          color: var(--cozy-champagne, #5f7c98);
           letter-spacing: 0.06em;
         }
         .rev-legacy-stars span { opacity: 0.28; }
@@ -658,8 +658,8 @@ function ReviewsPageInner() {
           gap: 10px;
           padding: 8px 14px;
           margin-bottom: 12px;
-          background: rgba(201, 166, 107, 0.10);
-          border: 1px solid rgba(201, 166, 107, 0.25);
+          background: rgba(106, 133, 160, 0.10);
+          border: 1px solid rgba(106, 133, 160, 0.25);
           border-radius: 999px;
           font-size: 0.76rem;
           color: var(--cozy-cocoa, #4a3820);

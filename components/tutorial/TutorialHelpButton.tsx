@@ -121,7 +121,7 @@ export function TutorialHelpButton() {
               maxHeight: "calc(100dvh - 64px)",
               borderRadius: 22,
               background: "linear-gradient(160deg, #fcfcfd 0%, #f4f6f8 100%)",
-              border: "1px solid rgba(201, 166, 107, 0.32)",
+              border: "1px solid rgba(106, 133, 160, 0.32)",
               boxShadow: "0 30px 60px -16px rgba(31, 26, 15, 0.45)",
               padding: "18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px",
               overflow: "auto",
@@ -163,7 +163,7 @@ export function TutorialHelpButton() {
                 style={{
                   appearance: "none",
                   border: "none",
-                  background: "rgba(201, 166, 107, 0.14)",
+                  background: "rgba(106, 133, 160, 0.14)",
                   color: "var(--cozy-cocoa, #4A3820)",
                   width: 32,
                   height: 32,

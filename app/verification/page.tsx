@@ -154,12 +154,12 @@ export default function VerificationPage() {
                boxShadow: "0 18px 40px -18px rgba(31,26,15,0.55)",
              }}>
           <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full opacity-30"
-               style={{ background: "radial-gradient(circle, rgba(201,166,107,0.55), transparent 70%)" }} />
+               style={{ background: "radial-gradient(circle, rgba(106,133,160,0.55), transparent 70%)" }} />
           <div className="relative flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-2"
-                   style={{ background: "rgba(201,166,107,0.16)", border: "1px solid rgba(201,166,107,0.3)" }}>
-                <span className="sb-pulse-dot" style={{ background: "#C9A66B" }} />
+                   style={{ background: "rgba(106,133,160,0.16)", border: "1px solid rgba(106,133,160,0.3)" }}>
+                <span className="sb-pulse-dot" style={{ background: "#5f7c98" }} />
                 <span className="text-[0.62rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#c8d2dc" }}>Stay Verification</span>
               </div>
               <h1 className="font-display text-[1.7rem] sm:text-3xl leading-tight" style={{ color: "#f4f6f8" }}>
@@ -173,7 +173,7 @@ export default function VerificationPage() {
               onClick={() => loadAll(true)}
               disabled={refreshing}
               className="shrink-0 text-xs px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
-              style={{ background: "rgba(255,255,255,0.08)", color: "#c8d2dc", border: "1px solid rgba(201,166,107,0.28)" }}
+              style={{ background: "rgba(255,255,255,0.08)", color: "#c8d2dc", border: "1px solid rgba(106,133,160,0.28)" }}
               aria-label="Refresh">
               {refreshing ? "Refreshing…" : "↻ Refresh"}
             </button>
@@ -185,7 +185,7 @@ export default function VerificationPage() {
               { label: "Verified", value: summary.verified, c: "#9DB07F" },
               { label: "In progress", value: summary.pending, c: "#c8d2dc" },
               { label: "Awaiting", value: summary.awaiting, c: "#becad5" },
-              { label: "Avg trust", value: summary.avg, suffix: summary.scored ? "" : "", c: "#C9A66B", isScore: true },
+              { label: "Avg trust", value: summary.avg, suffix: summary.scored ? "" : "", c: "#5f7c98", isScore: true },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl px-3 py-2.5 text-center"
                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>

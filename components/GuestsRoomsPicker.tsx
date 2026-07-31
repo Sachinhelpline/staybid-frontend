@@ -121,7 +121,7 @@ export default function GuestsRoomsPicker({
         }
         .grp-card {
           background: var(--bg-card, #fff);
-          border: 1px solid var(--border-soft, rgba(201,166,107,0.22));
+          border: 1px solid var(--border-soft, rgba(106,133,160,0.22));
           border-radius: 16px;
           box-shadow: 0 1px 3px rgba(31,26,15,0.05), 0 6px 18px -10px rgba(160,130,80,0.18);
           padding: 11px 12px;
@@ -130,7 +130,7 @@ export default function GuestsRoomsPicker({
           display: flex; align-items: center; gap: 7px;
           margin-bottom: 8px;
           padding-bottom: 7px;
-          border-bottom: 1px solid var(--border-soft, rgba(201,166,107,0.16));
+          border-bottom: 1px solid var(--border-soft, rgba(106,133,160,0.16));
         }
         .grp-head--center { justify-content: center; border-bottom: none; padding-bottom: 0; margin-bottom: 6px; }
         .grp-head-icon { font-size: 0.95rem; line-height: 1; }
@@ -142,7 +142,7 @@ export default function GuestsRoomsPicker({
           margin-left: auto;
           font-size: 0.7rem; font-weight: 800;
           color: #1a1205;
-          background: rgba(201,166,107,0.18);
+          background: rgba(106,133,160,0.18);
           border-radius: 999px;
           min-width: 20px; height: 20px;
           display: inline-flex; align-items: center; justify-content: center;
@@ -152,7 +152,7 @@ export default function GuestsRoomsPicker({
           display: flex; align-items: center; gap: 8px;
           padding: 5px 0;
         }
-        .grp-row + .grp-row { border-top: 1px solid rgba(201,166,107,0.10); }
+        .grp-row + .grp-row { border-top: 1px solid rgba(106,133,160,0.10); }
         .grp-row-icon { font-size: 1rem; line-height: 1; width: 18px; text-align: center; }
         .grp-row-label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
         .grp-row-name { font-size: 0.82rem; font-weight: 700; color: var(--text-base, #1f1a0f); line-height: 1.1; }
@@ -162,14 +162,14 @@ export default function GuestsRoomsPicker({
           width: 26px; height: 26px; border-radius: 999px;
           font-size: 1rem; font-weight: 700; line-height: 1;
           display: inline-flex; align-items: center; justify-content: center;
-          background: rgba(201,166,107,0.12);
+          background: rgba(106,133,160,0.12);
           color: var(--text-base, #1f1a0f);
-          border: 1px solid var(--border-soft, rgba(201,166,107,0.22));
+          border: 1px solid var(--border-soft, rgba(106,133,160,0.22));
           cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
           transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease;
           padding: 0;
         }
-        .grp-btn:hover:not(:disabled) { background: rgba(201,166,107,0.26); transform: scale(1.08); box-shadow: 0 0 0 3px rgba(201,166,107,0.14); }
+        .grp-btn:hover:not(:disabled) { background: rgba(106,133,160,0.26); transform: scale(1.08); box-shadow: 0 0 0 3px rgba(106,133,160,0.14); }
         .grp-btn:active:not(:disabled) { transform: scale(0.9); }
         .grp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .grp-btn--lg { width: 30px; height: 30px; font-size: 1.1rem; }
@@ -188,13 +188,13 @@ export default function GuestsRoomsPicker({
           font-size: 0.56rem; font-weight: 800; letter-spacing: 0.02em;
           margin-top: 6px; padding: 3px 9px; border-radius: 999px;
           color: #7a5a12;
-          background: rgba(201,166,107,0.16);
-          border: 1px solid rgba(201,166,107,0.36);
+          background: rgba(106,133,160,0.16);
+          border: 1px solid rgba(106,133,160,0.36);
           cursor: pointer; line-height: 1.1;
           transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease;
           -webkit-tap-highlight-color: transparent;
         }
-        .grp-rooms-suggest:hover { background: rgba(201,166,107,0.28); box-shadow: 0 0 0 3px rgba(201,166,107,0.12); }
+        .grp-rooms-suggest:hover { background: rgba(106,133,160,0.28); box-shadow: 0 0 0 3px rgba(106,133,160,0.12); }
         .grp-rooms-suggest:active { transform: scale(0.94); }
         .grp-val[data-dir="up"], .grp-rooms-val[data-dir="up"] { animation: grpUp 0.26s ease both; }
         .grp-val[data-dir="down"], .grp-rooms-val[data-dir="down"] { animation: grpDown 0.26s ease both; }
@@ -222,10 +222,10 @@ export default function GuestsRoomsPicker({
           .grp-guests .grp-row {
             padding: 7px 11px;
             border-radius: 12px;
-            background: rgba(201, 166, 107, 0.06);
-            border: 1px solid rgba(201, 166, 107, 0.12);
+            background: rgba(106, 133, 160, 0.06);
+            border: 1px solid rgba(106, 133, 160, 0.12);
           }
-          .grp-guests .grp-row + .grp-row { border-top: 1px solid rgba(201, 166, 107, 0.12); }
+          .grp-guests .grp-row + .grp-row { border-top: 1px solid rgba(106, 133, 160, 0.12); }
         }
       `}</style>
     </div>

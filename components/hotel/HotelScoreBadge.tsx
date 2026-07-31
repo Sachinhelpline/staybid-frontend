@@ -262,7 +262,7 @@ export default function HotelScoreBadge({
           onClick={handleClick}
           aria-label={ariaLabel}
           title={ariaLabel}
-          style={{ ["--hsb-color" as any]: "#C9A66B" }}
+          style={{ ["--hsb-color" as any]: "#5f7c98" }}
         >
           <span className="hsb-trophy" aria-hidden>
             <span className="hsb-trophy-tail hsb-trophy-tail-l" />
@@ -300,7 +300,7 @@ export default function HotelScoreBadge({
   // ── Rated badge — 3D award-medal style (v128.1) ─────────────────
   const { badge, rank } = card!;
   const score = card!.overall as number;
-  const medalColor = badge.color || "#C9A66B";
+  const medalColor = badge.color || "#5f7c98";
 
   // Rank tier styling — 1st gold / 2nd silver / 3rd bronze / rest champagne.
   // Mirrors classic prize-medal hierarchy so customers can read it instantly.
@@ -491,7 +491,7 @@ const styles = `
 }
 .hsb:active { transform: translateY(0) scale(0.96); animation-play-state: paused; }
 .hsb:focus-visible {
-  outline: 2px solid var(--cozy-champagne, #C9A66B);
+  outline: 2px solid var(--cozy-champagne, #5f7c98);
   outline-offset: 4px;
   border-radius: 12px;
 }
@@ -527,7 +527,7 @@ const styles = `
   gap: 4px;
   padding: 4px 11px 5px;
   border-radius: 5px;
-  background: linear-gradient(180deg, var(--hsb-trophy-light, #b4c1cf) 0%, var(--hsb-trophy-base, #C9A66B) 55%, var(--hsb-trophy-dark, #8B6914) 100%);
+  background: linear-gradient(180deg, var(--hsb-trophy-light, #b4c1cf) 0%, var(--hsb-trophy-base, #5f7c98) 55%, var(--hsb-trophy-dark, #3f5369) 100%);
   color: #fcfcfd;
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
   font-weight: 800;
@@ -554,7 +554,7 @@ const styles = `
   top: 50%;
   width: 9px;
   height: 14px;
-  background: linear-gradient(180deg, var(--hsb-trophy-base, #C9A66B) 0%, var(--hsb-trophy-dark, #8B6914) 100%);
+  background: linear-gradient(180deg, var(--hsb-trophy-base, #5f7c98) 0%, var(--hsb-trophy-dark, #3f5369) 100%);
   transform: translateY(-50%);
   z-index: 1;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), 0 1px 2px rgba(31, 26, 15, 0.15);
@@ -569,20 +569,20 @@ const styles = `
 }
 
 /* Gold (1st) ─ champagne sunset */
-.hsb-tier-gold .hsb-trophy { --hsb-trophy-light: #e3e8ed; --hsb-trophy-base: #b4c1cf; --hsb-trophy-dark: #8B6914; }
+.hsb-tier-gold .hsb-trophy { --hsb-trophy-light: #e3e8ed; --hsb-trophy-base: #b4c1cf; --hsb-trophy-dark: #3f5369; }
 /* Silver (2nd) ─ cool platinum sage */
 .hsb-tier-silver .hsb-trophy { --hsb-trophy-light: #F0F0EC; --hsb-trophy-base: #C8C9C2; --hsb-trophy-dark: #6B7565; color: #fcfcfd; }
 .hsb-tier-silver .hsb-trophy-body { color: #2B2415; text-shadow: 0 1px 0 rgba(255,255,255,0.45); }
 /* Bronze (3rd) ─ warm copper */
 .hsb-tier-bronze .hsb-trophy { --hsb-trophy-light: #E8B58A; --hsb-trophy-base: #B8794A; --hsb-trophy-dark: #6B3D1F; }
 /* Champagne (4-10) */
-.hsb-tier-champagne .hsb-trophy { --hsb-trophy-light: #c8d2dc; --hsb-trophy-base: #C9A66B; --hsb-trophy-dark: #8B6914; }
+.hsb-tier-champagne .hsb-trophy { --hsb-trophy-light: #c8d2dc; --hsb-trophy-base: #5f7c98; --hsb-trophy-dark: #3f5369; }
 /* Muted (11+) */
 .hsb-tier-muted .hsb-trophy { --hsb-trophy-light: #b4c1cf; --hsb-trophy-base: #849ab1; --hsb-trophy-dark: #6E5430; }
 /* Citywide (no rank — show badge label) */
-.hsb-trophy-citywide { --hsb-trophy-light: #b4c1cf; --hsb-trophy-base: #C9A66B; --hsb-trophy-dark: #6E5430; }
+.hsb-trophy-citywide { --hsb-trophy-light: #b4c1cf; --hsb-trophy-base: #5f7c98; --hsb-trophy-dark: #6E5430; }
 /* New (unrated) — soft champagne — v128.6 */
-.hsb-tier-new .hsb-trophy { --hsb-trophy-light: #dae1e7; --hsb-trophy-base: #b4c1cf; --hsb-trophy-dark: #8B6914; }
+.hsb-tier-new .hsb-trophy { --hsb-trophy-light: #dae1e7; --hsb-trophy-base: #b4c1cf; --hsb-trophy-dark: #3f5369; }
 
 /* 3D medal disc ──────────────────────────────────────────────────── */
 .hsb-medal {
@@ -595,7 +595,7 @@ const styles = `
   align-items: center;
   justify-content: center;
   /* v128.5 — pulsing ring radiates outward to telegraph "clickable" */
-  --hsb-pulse-color: var(--hsb-color, #C9A66B);
+  --hsb-pulse-color: var(--hsb-color, #5f7c98);
 }
 .hsb-medal::after {
   content: "";
@@ -603,19 +603,19 @@ const styles = `
   inset: -2px;
   border-radius: 50%;
   pointer-events: none;
-  box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 70%, transparent);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #5f7c98) 70%, transparent);
   animation: hsb-pulse-ring 2.4s cubic-bezier(.4, 0, .2, 1) infinite;
   opacity: 0.95;
 }
 @keyframes hsb-pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 70%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #5f7c98) 70%, transparent);
   }
   70% {
-    box-shadow: 0 0 0 14px color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 0%, transparent);
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--hsb-pulse-color, #5f7c98) 0%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 0%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #5f7c98) 0%, transparent);
   }
 }
 /* Medal background-stack — overflow REMOVED so ::after pulse ring is
@@ -624,11 +624,11 @@ const styles = `
 .hsb .hsb-medal {
   background:
     radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.0) 38%),
-    radial-gradient(circle at 50% 50%, var(--hsb-color, #C9A66B) 0%, color-mix(in oklab, var(--hsb-color, #C9A66B) 70%, #2B2415) 100%);
+    radial-gradient(circle at 50% 50%, var(--hsb-color, #5f7c98) 0%, color-mix(in oklab, var(--hsb-color, #5f7c98) 70%, #2B2415) 100%);
   box-shadow:
     0 14px 28px -10px rgba(31, 26, 15, 0.50),
     0 5px 10px -3px rgba(31, 26, 15, 0.32),
-    0 0 0 2px color-mix(in oklab, var(--hsb-color, #C9A66B) 60%, #fcfcfd),
+    0 0 0 2px color-mix(in oklab, var(--hsb-color, #5f7c98) 60%, #fcfcfd),
     inset 0 3px 5px rgba(255, 255, 255, 0.55),
     inset 0 -4px 7px rgba(31, 26, 15, 0.30),
     inset 0 0 0 1px rgba(255, 255, 255, 0.25);
@@ -735,7 +735,7 @@ const styles = `
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.95);
   box-shadow:
-    0 0 0 2px color-mix(in oklab, var(--hsb-color, #C9A66B) 70%, #2B2415),
+    0 0 0 2px color-mix(in oklab, var(--hsb-color, #5f7c98) 70%, #2B2415),
     0 0 0 4px rgba(255, 255, 255, 0.30);
   display: inline-flex;
   align-items: center;
@@ -769,13 +769,13 @@ const styles = `
   min-height: 30px;
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--hsb-color, #C9A66B) 22%, var(--bg-elevated, #fcfcfd)) 0%,
-    color-mix(in oklab, var(--hsb-color, #C9A66B) 10%, var(--bg-card, #f4f6f8)) 100%
+    color-mix(in oklab, var(--hsb-color, #5f7c98) 22%, var(--bg-elevated, #fcfcfd)) 0%,
+    color-mix(in oklab, var(--hsb-color, #5f7c98) 10%, var(--bg-card, #f4f6f8)) 100%
   );
-  border: 1.5px solid color-mix(in oklab, var(--hsb-color, #C9A66B) 60%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--hsb-color, #5f7c98) 60%, transparent);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -1px 0 color-mix(in oklab, var(--hsb-color, #C9A66B) 22%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--hsb-color, #5f7c98) 22%, transparent),
     0 3px 8px rgba(31, 26, 15, 0.14);
   white-space: nowrap;
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
@@ -793,7 +793,7 @@ const styles = `
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--hsb-color, #C9A66B) 70%, var(--cozy-warm-dark, #1f1a0f));
+  color: color-mix(in oklab, var(--hsb-color, #5f7c98) 70%, var(--cozy-warm-dark, #1f1a0f));
 }
 .hsb-compact-pill .hsb-cp-dot {
   color: var(--cozy-cocoa-soft, #6e5430);
@@ -856,8 +856,8 @@ const styles = `
 [data-theme="dark"] .hsb-compact-pill {
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--hsb-color, #C9A66B) 22%, var(--cozy-warm-soft, #2B2415)) 0%,
-    color-mix(in oklab, var(--hsb-color, #C9A66B) 12%, var(--cozy-warm-dark, #1F1A0F)) 100%
+    color-mix(in oklab, var(--hsb-color, #5f7c98) 22%, var(--cozy-warm-soft, #2B2415)) 0%,
+    color-mix(in oklab, var(--hsb-color, #5f7c98) 12%, var(--cozy-warm-dark, #1F1A0F)) 100%
   );
   color: var(--cozy-cream-50, #fcfcfd);
 }
@@ -939,11 +939,11 @@ const styles = `
 /* Dark theme — medal stays metallic, trophy text colors adjust */
 [data-theme="dark"] .hsb-unrated {
   background: linear-gradient(180deg, rgba(43, 36, 21, 0.96), rgba(31, 26, 15, 0.92));
-  border-color: rgba(201, 166, 107, 0.45);
+  border-color: rgba(106, 133, 160, 0.45);
 }
 [data-theme="dark"] .hsb-compact {
   background: rgba(43, 36, 21, 0.92);
-  border-color: rgba(201, 166, 107, 0.45);
+  border-color: rgba(106, 133, 160, 0.45);
 }
 
 /* Reduced motion */

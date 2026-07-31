@@ -89,7 +89,7 @@ export default function GuestFavourite({ hotelId, city, avgRating, totalReviews,
           max-width: 640px;
           border-radius: 24px;
           background:
-            radial-gradient(120% 90% at 50% 0%, rgba(201, 166, 107, 0.12), transparent 70%),
+            radial-gradient(120% 90% at 50% 0%, rgba(106, 133, 160, 0.12), transparent 70%),
             var(--bg-card);
           border: 1px solid var(--border-soft);
           box-shadow: 0 16px 44px -26px rgba(106, 133, 160, 0.5);

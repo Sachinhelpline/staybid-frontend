@@ -154,7 +154,7 @@ export default function ActiveBidConflictSheet({
   const statusColor =
     conflict.status === "COUNTER"  ? "#C77B43" :
     conflict.status === "ACCEPTED" ? "#7F9269" :
-    "#C9A66B";
+    "#5f7c98";
 
   return (
     <div
@@ -221,9 +221,9 @@ export default function ActiveBidConflictSheet({
                   <span
                     className="text-[0.6rem] font-bold px-2 py-0.5 rounded-full shrink-0"
                     style={{
-                      background: b.autoAccepted ? "rgba(127,146,105,0.18)" : "rgba(201,166,107,0.18)",
+                      background: b.autoAccepted ? "rgba(127,146,105,0.18)" : "rgba(106,133,160,0.18)",
                       color: b.autoAccepted ? "#5a6e44" : "#8a6a1f",
-                      border: `1px solid ${b.autoAccepted ? "#7F926955" : "#C9A66B55"}`,
+                      border: `1px solid ${b.autoAccepted ? "#7F926955" : "#5f7c9855"}`,
                     }}
                   >
                     {b.autoAccepted ? "✓ Accepted" : "Pending"}

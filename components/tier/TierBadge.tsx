@@ -38,9 +38,9 @@ const STYLE: Record<
   CREATOR: {
     glyph: "✦",
     label: "Creator",
-    bg: "rgba(201,166,107,0.18)",
+    bg: "rgba(106,133,160,0.18)",
     fg: "#6E5430",
-    border: "rgba(201,166,107,0.40)",
+    border: "rgba(106,133,160,0.40)",
   },
   HOTEL: {
     glyph: "🏨",

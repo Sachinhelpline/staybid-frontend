@@ -538,7 +538,7 @@ function RewardsTab({
             <h3 className="font-display text-xl font-semibold" style={{ color: "var(--text-base)" }}>Reward unlocked!</h3>
             <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{success.title}</p>
             <div className="mt-4 rounded-2xl border-2 border-dashed py-3"
-              style={{ borderColor: "rgba(201,166,107,0.5)", background: "color-mix(in srgb, var(--accent) 12%, transparent)" }}>
+              style={{ borderColor: "rgba(106,133,160,0.5)", background: "color-mix(in srgb, var(--accent) 12%, transparent)" }}>
               <p className="font-mono text-lg font-bold tracking-wide" style={{ color: "var(--text-base)" }}>{success.code}</p>
             </div>
             <div className="flex gap-2 mt-5">
@@ -594,7 +594,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
     <div className="space-y-4 sb-fade-in">
       {walletCredit > 0 && (
         <div className="rounded-[22px] p-4 sb-card-lift flex items-center justify-between"
-          style={{ background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))", border: "1px solid rgba(201,166,107,0.4)" }}>
+          style={{ background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))", border: "1px solid rgba(106,133,160,0.4)" }}>
           <div>
             {/* the card surface now flips with the theme (gold-tinted cream in light,
                 gold-tinted dark card in dark), so the text uses normal tokens. */}
@@ -651,7 +651,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
 
                 <button onClick={() => copy(c.code)}
                   className="w-full mt-3 rounded-xl border-2 border-dashed py-2.5 flex items-center justify-center gap-2"
-                  style={{ borderColor: "rgba(201,166,107,0.4)", background: "var(--bg-page)" }}>
+                  style={{ borderColor: "rgba(106,133,160,0.4)", background: "var(--bg-page)" }}>
                   <span className="font-mono text-base font-bold tracking-wide" style={{ color: "var(--text-base)" }}>{c.code}</span>
                   <span className="text-xs" style={{ color: copied === c.code ? "#4a6f4a" : "var(--text-muted)" }}>
                     {copied === c.code ? "✓ Copied" : "Tap to copy"}

@@ -228,8 +228,8 @@ export default function SimilarStays({ hotelId, city, state, starRating, propert
         }
         .sim-card:hover {
           transform: translateY(-3px);
-          box-shadow: 0 20px 44px -22px rgba(201, 166, 107, 0.4);
-          border-color: rgba(201, 166, 107, 0.45);
+          box-shadow: 0 20px 44px -22px rgba(106, 133, 160, 0.4);
+          border-color: rgba(106, 133, 160, 0.45);
         }
         .sim-card-img {
           position: relative; width: 100%; aspect-ratio: 4 / 3;

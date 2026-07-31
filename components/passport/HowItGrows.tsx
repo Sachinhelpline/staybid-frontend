@@ -46,8 +46,8 @@ export function HowItGrows() {
             className="rounded-[22px] p-3 flex items-center gap-3 text-left sb-card-lift"
             style={{
               background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))",
-              border: "1px solid rgba(201,166,107,0.32)",
-              boxShadow: "0 6px 16px -10px rgba(201,166,107,0.5)",
+              border: "1px solid rgba(106,133,160,0.32)",
+              boxShadow: "0 6px 16px -10px rgba(106,133,160,0.5)",
             }}
           >
             <PassportMedal glyph={x.glyph} size={42} m={MEDAL_CHAMPAGNE} pulse ariaLabel={x.t} />

@@ -359,7 +359,7 @@ export default function ProfilePage() {
 
         {/* ── Next milestone ── */}
         {nextMilestone && (
-          <div className="fade-up rounded-3xl p-6 border" style={{ animationDelay:"0.24s", background:"var(--bg-card)", borderColor:"rgba(201,166,107,0.4)" }}>
+          <div className="fade-up rounded-3xl p-6 border" style={{ animationDelay:"0.24s", background:"var(--bg-card)", borderColor:"rgba(106,133,160,0.4)" }}>
             <div className="flex items-center gap-3 mb-1">
               <span className="text-2xl">{nextMilestone.icon}</span>
               <div>

@@ -537,7 +537,7 @@ export default function SupportWidget() {
           /* 3D base: radial highlight + linear undercoat */
           background:
             radial-gradient(circle at 30% 25%, rgba(255,255,255,0.55), rgba(255,255,255,0) 55%),
-            linear-gradient(155deg, #c8d2dc 0%, #C9A66B 45%, #8B6914 100%);
+            linear-gradient(155deg, #c8d2dc 0%, #5f7c98 45%, #3f5369 100%);
           color: #fff;
           cursor: pointer;
           display: flex;
@@ -686,7 +686,7 @@ export default function SupportWidget() {
           height: min(680px, calc(100vh - 220px));
           background: #fcfcfd;
           border-radius: 22px;
-          border: 1px solid rgba(201, 166, 107, 0.28);
+          border: 1px solid rgba(106, 133, 160, 0.28);
           box-shadow:
             0 32px 64px -12px rgba(31, 26, 15, 0.45),
             0 14px 32px -8px rgba(139, 105, 20, 0.18),
@@ -753,7 +753,7 @@ export default function SupportWidget() {
           right: 14px;
           bottom: -1px;
           height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(201, 166, 107, 0.45), transparent);
+          background: linear-gradient(90deg, transparent, rgba(106, 133, 160, 0.45), transparent);
         }
         .sb-support-header-left {
           display: flex;
@@ -774,7 +774,7 @@ export default function SupportWidget() {
           height: 38px;
           flex: 0 0 auto;
           border-radius: 50%;
-          background: linear-gradient(140deg, #c8d2dc, #C9A66B 60%, #8B6914);
+          background: linear-gradient(140deg, #c8d2dc, #5f7c98 60%, #3f5369);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -837,8 +837,8 @@ export default function SupportWidget() {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          background: rgba(201, 166, 107, 0.12);
-          border: 1px solid rgba(201, 166, 107, 0.35);
+          background: rgba(106, 133, 160, 0.12);
+          border: 1px solid rgba(106, 133, 160, 0.35);
           color: var(--text-base, #1F1A0F);
           padding: 5px 8px;
           border-radius: 999px;
@@ -848,8 +848,8 @@ export default function SupportWidget() {
           transition: all 0.15s ease;
         }
         .sb-support-lang-btn:hover {
-          background: rgba(201, 166, 107, 0.22);
-          border-color: rgba(201, 166, 107, 0.55);
+          background: rgba(106, 133, 160, 0.22);
+          border-color: rgba(106, 133, 160, 0.55);
         }
         .sb-support-lang-flag { font-size: 13px; line-height: 1; }
         .sb-support-lang-code { letter-spacing: 0.04em; }
@@ -885,9 +885,9 @@ export default function SupportWidget() {
           border-radius: 7px;
           text-align: left;
         }
-        .sb-support-lang-item:hover { background: rgba(201, 166, 107, 0.10); }
-        .sb-support-lang-item.is-active { background: rgba(201, 166, 107, 0.18); font-weight: 600; }
-        .sb-support-lang-check { margin-left: auto; color: #8B6914; font-size: 13px; }
+        .sb-support-lang-item:hover { background: rgba(106, 133, 160, 0.10); }
+        .sb-support-lang-item.is-active { background: rgba(106, 133, 160, 0.18); font-weight: 600; }
+        .sb-support-lang-check { margin-left: auto; color: #3f5369; font-size: 13px; }
         /* v157 — Voice-out toggle button (header) */
         .sb-support-voice-btn {
           background: transparent;
@@ -906,9 +906,9 @@ export default function SupportWidget() {
           width: 38px;
           height: 38px;
           border-radius: 50%;
-          border: 1px solid rgba(201, 166, 107, 0.4);
-          background: rgba(201, 166, 107, 0.10);
-          color: #8B6914;
+          border: 1px solid rgba(106, 133, 160, 0.4);
+          background: rgba(106, 133, 160, 0.10);
+          color: #3f5369;
           font-size: 16px;
           cursor: pointer;
           display: flex;
@@ -916,7 +916,7 @@ export default function SupportWidget() {
           justify-content: center;
           transition: all 0.18s ease;
         }
-        .sb-support-mic-btn:hover { background: rgba(201, 166, 107, 0.18); }
+        .sb-support-mic-btn:hover { background: rgba(106, 133, 160, 0.18); }
         .sb-support-mic-btn.is-listening {
           /* v158 — push-to-talk active state: bigger, redder, dramatic */
           background: linear-gradient(140deg, #FF5566, #D02030);
@@ -1023,7 +1023,7 @@ function SubjectPicker({
           align-items: flex-start;
           gap: 4px;
           background: linear-gradient(160deg, #fcfcfd 0%, #edf0f3 100%);
-          border: 1px solid rgba(201, 166, 107, 0.32);
+          border: 1px solid rgba(106, 133, 160, 0.32);
           border-radius: 14px;
           padding: 14px 14px 12px;
           cursor: pointer;
@@ -1036,7 +1036,7 @@ function SubjectPicker({
         .sb-support-subject-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 18px -6px rgba(139, 105, 20, 0.30);
-          border-color: rgba(201, 166, 107, 0.55);
+          border-color: rgba(106, 133, 160, 0.55);
         }
         .sb-support-subject-icon {
           font-size: 24px;
@@ -1141,7 +1141,7 @@ function ConversationList({
         }
         .sb-support-new-btn {
           flex: 0 0 auto;
-          background: linear-gradient(140deg, #C9A66B, #8B6914);
+          background: linear-gradient(140deg, #5f7c98, #3f5369);
           color: #fff;
           padding: 12px;
           border: none;
@@ -1155,9 +1155,9 @@ function ConversationList({
           font-size: 11px;
           color: var(--text-muted, #6E5430);
           padding: 8px 10px;
-          background: rgba(201, 166, 107, 0.08);
+          background: rgba(106, 133, 160, 0.08);
           border-radius: 8px;
-          border: 1px solid rgba(201, 166, 107, 0.18);
+          border: 1px solid rgba(106, 133, 160, 0.18);
         }
         .sb-support-empty {
           text-align: center;
@@ -1201,7 +1201,7 @@ function ConversationList({
           text-transform: uppercase;
           letter-spacing: 0.04em;
         }
-        .sb-support-list-status-ai_active { background: #f1f4f6; color: #8b6914; }
+        .sb-support-list-status-ai_active { background: #f1f4f6; color: #3f5369; }
         .sb-support-list-status-escalated { background: #fde2d6; color: #a45034; }
         .sb-support-list-status-agent_active { background: #d8ecd1; color: #4a6f4a; }
         .sb-support-list-status-resolved,
@@ -1760,7 +1760,7 @@ function ChatView({
           width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto;
           animation: sbSupportPulse 1.8s ease-in-out infinite;
         }
-        .sb-support-banner-dot-ai { background: #C9A66B; }
+        .sb-support-banner-dot-ai { background: #5f7c98; }
         .sb-support-banner-dot-esc { background: #D49583; }
         .sb-support-banner-dot-agent { background: #7F9269; }
         .sb-support-banner-dot-closed { background: #B0A290; animation: none; }
@@ -1811,7 +1811,7 @@ function ChatView({
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .sb-support-bubble-user {
-          background: linear-gradient(140deg, #b4c1cf, #C9A66B 55%, #8B6914);
+          background: linear-gradient(140deg, #b4c1cf, #5f7c98 55%, #3f5369);
           color: #fff;
           border-bottom-right-radius: 6px;
           text-shadow: 0 1px 0 rgba(0,0,0,0.05);
@@ -1829,9 +1829,9 @@ function ChatView({
           border-bottom-left-radius: 6px;
         }
         .sb-support-bubble-system {
-          background: linear-gradient(140deg, rgba(201, 166, 107, 0.16), rgba(201, 166, 107, 0.08));
+          background: linear-gradient(140deg, rgba(106, 133, 160, 0.16), rgba(106, 133, 160, 0.08));
           color: var(--text-muted, #6E5430);
-          border: 1px solid rgba(201, 166, 107, 0.22);
+          border: 1px solid rgba(106, 133, 160, 0.22);
           font-size: 12.5px;
           font-style: italic;
           text-align: center;
@@ -1889,8 +1889,8 @@ function ChatView({
           color: rgba(110, 84, 48, 0.55);
         }
         .sb-support-chat-input input:focus {
-          border-color: #C9A66B;
-          box-shadow: 0 0 0 3px rgba(201, 166, 107, 0.18), 0 0 14px rgba(201, 166, 107, 0.22);
+          border-color: #5f7c98;
+          box-shadow: 0 0 0 3px rgba(106, 133, 160, 0.18), 0 0 14px rgba(106, 133, 160, 0.22);
         }
         .sb-support-chat-input button {
           flex: 0 0 auto;
@@ -1898,7 +1898,7 @@ function ChatView({
           height: 42px;
           border-radius: 50%;
           border: none;
-          background: linear-gradient(140deg, #b4c1cf, #C9A66B 55%, #8B6914);
+          background: linear-gradient(140deg, #b4c1cf, #5f7c98 55%, #3f5369);
           color: #fff;
           font-weight: 700;
           font-size: 14px;

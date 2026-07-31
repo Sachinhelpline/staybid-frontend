@@ -860,7 +860,7 @@ export function PostsScrollFeed({
           padding-right: 4px;
           user-select: none;
         }
-        .pf-brand-dot { color: var(--cozy-champagne, #C9A66B); margin: 0 1px; }
+        .pf-brand-dot { color: var(--cozy-champagne, #5f7c98); margin: 0 1px; }
         .pf-spacer { width: 34px; }
 
         .pf-list { display: block; }
@@ -995,14 +995,14 @@ export function PostsScrollFeed({
           outline: none;
         }
         .pf-comments-input:focus {
-          border-color: var(--cozy-champagne, #C9A66B);
-          box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.18);
+          border-color: var(--cozy-champagne, #5f7c98);
+          box-shadow: 0 0 0 2px rgba(106, 133, 160, 0.18);
         }
         .pf-comments-send {
           padding: 9px 16px;
           border: none;
           border-radius: 999px;
-          background: var(--cozy-champagne, #C9A66B);
+          background: var(--cozy-champagne, #5f7c98);
           color: var(--cozy-warm-dark, #1F1A0F);
           font-size: 0.82rem; font-weight: 800;
           cursor: pointer;
@@ -1019,8 +1019,8 @@ export function PostsScrollFeed({
           display: inline-flex; align-items: center; gap: 8px;
           margin: 4px 0 10px;
           padding: 6px 6px 6px 12px;
-          background: rgba(201, 166, 107, 0.16);
-          border: 1px solid rgba(201, 166, 107, 0.40);
+          background: rgba(106, 133, 160, 0.16);
+          border: 1px solid rgba(106, 133, 160, 0.40);
           border-radius: 999px;
           max-width: 100%;
         }
@@ -1067,7 +1067,7 @@ export function PostsScrollFeed({
           cursor: pointer;
         }
         .pf-edit-hotel-row:last-child { border-bottom: none; }
-        .pf-edit-hotel-row:hover { background: rgba(201, 166, 107, 0.10); }
+        .pf-edit-hotel-row:hover { background: rgba(106, 133, 160, 0.10); }
         .pf-edit-hotel-row-name { font-weight: 700; }
         .pf-edit-hotel-row-city {
           font-size: 0.72rem;
@@ -1160,7 +1160,7 @@ export function PostsScrollFeed({
           resize: vertical;
           margin-top: 4px;
         }
-        .pf-edit-textarea:focus { border-color: var(--cozy-champagne, #C9A66B); }
+        .pf-edit-textarea:focus { border-color: var(--cozy-champagne, #5f7c98); }
         .pf-edit-input {
           width: 100%;
           padding: 10px 12px;
@@ -1173,7 +1173,7 @@ export function PostsScrollFeed({
           outline: none;
           margin-top: 4px;
         }
-        .pf-edit-input:focus { border-color: var(--cozy-champagne, #C9A66B); }
+        .pf-edit-input:focus { border-color: var(--cozy-champagne, #5f7c98); }
         select.pf-edit-input { cursor: pointer; }
         .pf-edit-count {
           margin: 6px 2px 4px;
@@ -1213,7 +1213,7 @@ export function PostsScrollFeed({
           width: 20px;
           height: 20px;
           cursor: pointer;
-          accent-color: var(--cozy-champagne, #C9A66B);
+          accent-color: var(--cozy-champagne, #5f7c98);
         }
         .pf-edit-actions {
           display: flex;
@@ -1764,8 +1764,8 @@ function PostCard({
         /* v88 — warm rose for liked, cozy champagne for saved */
         .pf-act.is-liked .pf-act-glyph { color: var(--cozy-rose, #D49583); }
         .pf-act.is-saved .pf-act-glyph {
-          color: var(--cozy-champagne, #C9A66B);
-          filter: drop-shadow(0 1px 2px rgba(201, 166, 107, 0.35));
+          color: var(--cozy-champagne, #5f7c98);
+          filter: drop-shadow(0 1px 2px rgba(106, 133, 160, 0.35));
         }
         .pf-act-count {
           font-size: 0.92rem;
@@ -1810,11 +1810,11 @@ function PostCard({
           color: var(--cozy-cocoa, #4A3820);
         }
         .pf-meta-hotel {
-          background: rgba(201, 166, 107, 0.16);
-          border: 1px solid rgba(201, 166, 107, 0.36);
+          background: rgba(106, 133, 160, 0.16);
+          border: 1px solid rgba(106, 133, 160, 0.36);
           color: var(--cozy-cocoa, #4A3820);
         }
-        .pf-meta-hotel:hover { background: rgba(201, 166, 107, 0.26); }
+        .pf-meta-hotel:hover { background: rgba(106, 133, 160, 0.26); }
       `}</style>
     </article>
   );

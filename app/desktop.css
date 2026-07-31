@@ -35,7 +35,7 @@
   /* Improve focus visibility for keyboard users — most desktop users
      keyboard-navigate to inputs / buttons. */
   *:focus-visible {
-    outline: 2px solid var(--accent, #C9A66B);
+    outline: 2px solid var(--accent, #5f7c98);
     outline-offset: 2px;
   }
 
@@ -129,8 +129,8 @@
     box-shadow:
       0 40px 110px -20px rgba(15, 12, 8, 0.60),
       0 12px 34px -8px rgba(15, 12, 8, 0.35),
-      0 0 0 1px rgba(201, 166, 107, 0.28),
-      0 0 0 6px rgba(201, 166, 107, 0.06),
+      0 0 0 1px rgba(106, 133, 160, 0.28),
+      0 0 0 6px rgba(106, 133, 160, 0.06),
       inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
     background: #07060e !important;
   }
@@ -205,7 +205,7 @@
        bump so the v472.1 "calm backdrop" intent is preserved. */
     background:
       radial-gradient(circle 44vw at 15% 18%, rgba(214, 176, 112, 0.20), transparent 66%),
-      radial-gradient(circle 40vw at 87% 86%, rgba(201, 166, 107, 0.15), transparent 68%),
+      radial-gradient(circle 40vw at 87% 86%, rgba(106, 133, 160, 0.15), transparent 68%),
       radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.80) 100%),
       linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
   }
@@ -224,7 +224,7 @@
        wide gutters gain figure/ground depth and brand warmth instead of reading
        as empty dead space. */
     background:
-      radial-gradient(circle 46vw at 14% 16%, rgba(201, 166, 107, 0.38), transparent 62%),
+      radial-gradient(circle 46vw at 14% 16%, rgba(106, 133, 160, 0.38), transparent 62%),
       radial-gradient(circle 42vw at 88% 88%, rgba(210, 146, 128, 0.26), transparent 64%),
       radial-gradient(ellipse 72% 82% at 50% 40%, rgba(176, 192, 209, 0) 22%, rgba(176, 192, 209, 0.97) 100%),
       linear-gradient(180deg, rgba(176, 192, 209, 0.36) 0%, rgba(221, 205, 178, 0.74) 100%);
@@ -246,7 +246,7 @@
   [data-theme="dark"] body.reel-with-rail:has(.reel-page-root)::after {
     background:
       radial-gradient(circle 44vw at 15% 18%, rgba(214, 176, 112, 0.20), transparent 66%),
-      radial-gradient(circle 40vw at 87% 86%, rgba(201, 166, 107, 0.15), transparent 68%),
+      radial-gradient(circle 40vw at 87% 86%, rgba(106, 133, 160, 0.15), transparent 68%),
       radial-gradient(ellipse 70% 82% at 50% 44%, rgba(28, 21, 14, 0) 26%, rgba(12, 9, 6, 0.80) 100%),
       linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
   }
@@ -683,7 +683,7 @@
     background: linear-gradient(180deg, rgba(176, 192, 209, 0.82), rgba(250, 243, 231, 0.74));
     -webkit-backdrop-filter: blur(26px) saturate(1.4);
     backdrop-filter: blur(26px) saturate(1.4);
-    border: 1px solid rgba(201, 166, 107, 0.34);
+    border: 1px solid rgba(106, 133, 160, 0.34);
     border-radius: 26px;
     box-shadow:
       0 34px 70px -34px rgba(74, 56, 32, 0.46),
@@ -710,7 +710,7 @@
   /* v554 — dark-mode variant of the home glass panels (warm smoked glass). */
   [data-theme="dark"] body.reel-with-rail .reel-side {
     background: linear-gradient(180deg, rgba(32, 25, 17, 0.68), rgba(22, 17, 12, 0.62));
-    border-color: rgba(201, 166, 107, 0.26);
+    border-color: rgba(106, 133, 160, 0.26);
     box-shadow:
       0 34px 76px -32px rgba(0, 0, 0, 0.78),
       inset 0 1px 0 rgba(176, 192, 209, 0.10);
@@ -747,9 +747,9 @@
     box-shadow:
       0 50px 120px -26px rgba(74, 56, 32, 0.52),
       0 16px 44px -14px rgba(74, 56, 32, 0.32),
-      0 0 0 1px rgba(201, 166, 107, 0.42),
-      0 0 0 7px rgba(201, 166, 107, 0.10),
-      0 0 90px 12px rgba(201, 166, 107, 0.20),
+      0 0 0 1px rgba(106, 133, 160, 0.42),
+      0 0 0 7px rgba(106, 133, 160, 0.10),
+      0 0 90px 12px rgba(106, 133, 160, 0.20),
       inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   }
 
@@ -2205,7 +2205,7 @@ body main textarea.input-luxury {
     height: 34px;
     border-radius: 50%;
     background: var(--bg-elevated, rgba(31, 26, 15, 0.78));
-    color: var(--accent, #C9A66B);
+    color: var(--accent, #5f7c98);
     border: 1px solid var(--border-strong, rgba(106,133,160, 0.28));
     box-shadow:
       0 8px 20px rgba(15, 12, 8, 0.18),
@@ -2225,7 +2225,7 @@ body main textarea.input-luxury {
     transform: translateY(-2px) scale(1.04);
   }
   .sb-help-chip:focus-visible {
-    outline: 2px solid var(--accent, #C9A66B);
+    outline: 2px solid var(--accent, #5f7c98);
     outline-offset: 2px;
   }
 }
@@ -2552,7 +2552,7 @@ body main textarea.input-luxury {
     border-radius: 18px;                  /* the image IS the card */
     background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
     box-shadow:
-      0 0 0 1px rgba(139, 106, 40, 0.14),
+      0 0 0 1px rgba(79, 109, 138, 0.14),
       0 3px 8px -4px rgba(31, 26, 15, 0.42),
       0 18px 32px -20px rgba(31, 26, 15, 0.6);
     transition: box-shadow 0.28s ease;
@@ -2611,7 +2611,7 @@ body main textarea.input-luxury {
   .sbh-chip-score {
     top: 11px; right: 11px; color: #1d1608;
     background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
-    box-shadow: 0 6px 16px -8px rgba(201, 166, 107, 0.9);
+    box-shadow: 0 6px 16px -8px rgba(106, 133, 160, 0.9);
   }
   /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour */
   .sbh-chip-off {
@@ -2646,7 +2646,7 @@ body main textarea.input-luxury {
 
   /* ── dark mode ────────────────────────────────────────────────────── */
   [data-theme="dark"] .sbh-rail-nav {
-    color: #e5e9ee; background: rgba(30, 24, 16, 0.9); border-color: rgba(201, 166, 107, 0.28);
+    color: #e5e9ee; background: rgba(30, 24, 16, 0.9); border-color: rgba(106, 133, 160, 0.28);
   }
   [data-theme="dark"] .sbh-rail-nav:hover:not(:disabled) { background: rgba(42, 34, 22, 0.96); }
   [data-theme="dark"] .sbh-card-media {
@@ -2736,13 +2736,13 @@ body main textarea.input-luxury {
     font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
     color: var(--text-base, #1f1a0f);
     background: var(--bg-page, #f4f6f8);
-    border: 1px solid rgba(139, 106, 40, 0.22);
+    border: 1px solid rgba(79, 109, 138, 0.22);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 3px 8px -5px rgba(74, 56, 32, 0.55);
     transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
   }
   .sbh-ticker-item:hover {
     transform: translateY(-2px);
-    border-color: rgba(139, 106, 40, 0.45);
+    border-color: rgba(79, 109, 138, 0.45);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 20px -10px rgba(74, 56, 32, 0.7);
   }
   .sbh-tk-ico { font-size: 0.92rem; line-height: 1; }
@@ -2787,12 +2787,12 @@ body main textarea.input-luxury {
      ═══════════════════════════════════════════════════════════════════════ */
   html {
     scrollbar-width: thin;                                   /* Firefox */
-    scrollbar-color: rgba(139, 106, 40, 0.55) rgba(31, 26, 15, 0.07);
+    scrollbar-color: rgba(79, 109, 138, 0.55) rgba(31, 26, 15, 0.07);
   }
   html::-webkit-scrollbar { width: 12px; height: 12px; }
   html::-webkit-scrollbar-track {
     background: rgba(31, 26, 15, 0.06);
-    border-left: 1px solid rgba(139, 106, 40, 0.14);
+    border-left: 1px solid rgba(79, 109, 138, 0.14);
   }
   html::-webkit-scrollbar-thumb {
     border-radius: 999px;

@@ -332,7 +332,7 @@ export function Navbar() {
            both themes, the brightest thing on the bar. */
         .nav3d-solidgold,
         [data-theme="dark"] .nav3d-solidgold {
-          background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%) !important;
+          background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%) !important;
           border: 1px solid rgba(255,255,255,0.4) !important;
           color: #ffffff !important;
           text-shadow: 0 1px 1px rgba(20,30,44,0.35) !important;
@@ -830,7 +830,7 @@ export function Navbar() {
                   type="button"
                   onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-tour")); }}
                   className="flex items-center gap-2 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-                  style={{ background: "rgba(201,166,107,0.10)", border: "1px solid rgba(201,166,107,0.24)" }}
+                  style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.24)" }}
                 >
                   <span className="text-lg shrink-0">❓</span>
                   <span className="text-sm font-bold text-white leading-tight">App Tour</span>
@@ -839,7 +839,7 @@ export function Navbar() {
                   type="button"
                   onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-support")); }}
                   className="flex items-center gap-2 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-                  style={{ background: "rgba(201,166,107,0.10)", border: "1px solid rgba(201,166,107,0.24)" }}
+                  style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.24)" }}
                 >
                   <span className="text-lg shrink-0">🎧</span>
                   <span className="text-sm font-bold text-white leading-tight">Help &amp; Support</span>
@@ -850,7 +850,7 @@ export function Navbar() {
                 type="button"
                 onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-switcher")); }}
                 className="w-full mb-3 flex items-center gap-3 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-                style={{ background: "linear-gradient(135deg,rgba(201,166,107,0.16),rgba(106,133,160,0.10))", border: "1px solid rgba(106,133,160,0.3)" }}
+                style={{ background: "linear-gradient(135deg,rgba(106,133,160,0.16),rgba(106,133,160,0.10))", border: "1px solid rgba(106,133,160,0.3)" }}
               >
                 <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>⇅</span>
                 <div className="flex-1 min-w-0">

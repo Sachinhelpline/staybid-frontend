@@ -147,7 +147,7 @@ export default function CircleEarningsPage() {
             <section style={{ marginTop: 14, border: "1px solid rgba(139,105,20,.22)", borderRadius: 16, overflow: "hidden", background: "linear-gradient(160deg,#fdfdfd,#f3f5f7)" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "13px 15px 0" }}>
                 <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}>📈 Projected from your live bookings</div>
-                <span style={{ fontSize: ".62rem", fontWeight: 800, color: "#65819c", background: "rgba(201,166,107,.16)", padding: "3px 9px", borderRadius: 999 }}>PREVIEW</span>
+                <span style={{ fontSize: ".62rem", fontWeight: 800, color: "#65819c", background: "rgba(106,133,160,.16)", padding: "3px 9px", borderRadius: 999 }}>PREVIEW</span>
               </div>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "8px 15px 4px" }}>
                 <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>PROJECTED NET</div><b style={{ fontSize: "1.35rem", color: "#047857", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(projected.projectedNetOwed) || 0)}</b></div>
@@ -173,7 +173,7 @@ export default function CircleEarningsPage() {
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}>🏦 Payout account <span style={{ fontSize: ".7rem", fontWeight: 500, color: "rgba(74,56,32,.55)" }}>· where you get paid</span></div>
               {acct && !acctEditing && (
-                <span style={{ fontSize: ".62rem", fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: acct.status === "verified" ? "#ecfdf5" : "rgba(201,166,107,.16)", color: acct.status === "verified" ? "#047857" : "#65819c" }}>{String(acct.status || "pending").toUpperCase()}</span>
+                <span style={{ fontSize: ".62rem", fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: acct.status === "verified" ? "#ecfdf5" : "rgba(106,133,160,.16)", color: acct.status === "verified" ? "#047857" : "#65819c" }}>{String(acct.status || "pending").toUpperCase()}</span>
               )}
             </div>
 

@@ -301,7 +301,7 @@ export default function HostHome() {
           </h2>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a href="#budget" className="sb-card-lift px-7 py-3 rounded-full font-semibold text-[#1f1a0f]"
-              style={{ background: "linear-gradient(135deg,#c6d0da,#c9a66b)" }}>Choose your budget</a>
+              style={{ background: "linear-gradient(135deg,#c6d0da,#5f7c98)" }}>Choose your budget</a>
             <button onClick={() => setLead({ interest: "general" })} className="sb-card-lift px-7 py-3 rounded-full font-semibold"
               style={{ border: "1px solid rgba(255,255,255,0.25)", color: "#f4f6f8" }}>Request a callback</button>
           </div>

@@ -25,14 +25,14 @@ import type { MyTierResponse } from "@/lib/tier/types";
 const COZY = {
   paperBg: "linear-gradient(135deg, #f4f6f8 0%, #e7ebef 100%)",
   cardBg: "#fcfcfd",
-  champagne: "#C9A66B",
+  champagne: "#5f7c98",
   champagneLight: "#b4c1cf",
   sage: "#7DA86C",
   sageDark: "#3F5C2E",
   cocoa: "#4A3820",
   cocoaSoft: "#6E5430",
   taupe: "#E8DCC8",
-  border: "rgba(201,166,107,0.40)",
+  border: "rgba(106,133,160,0.40)",
 };
 
 type EligibleBooking = {
@@ -335,7 +335,7 @@ export default function UpgradeChoiceSheet({
                         display: "inline-block",
                         padding: "2px 8px",
                         borderRadius: 999,
-                        background: "rgba(201,166,107,0.20)",
+                        background: "rgba(106,133,160,0.20)",
                         color: COZY.cocoaSoft,
                         fontSize: "0.68rem",
                         fontWeight: 700,

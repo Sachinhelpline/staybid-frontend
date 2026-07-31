@@ -126,7 +126,7 @@ export function RewardLadder({
               className="w-full rounded-[22px] p-3 flex items-center gap-3 text-left sb-card-lift"
               style={{
                 background: r.unlocked ? "color-mix(in srgb, var(--accent) 10%, var(--bg-card))" : "var(--bg-card)",
-                border: r.unlocked ? "1px solid rgba(201,166,107,0.4)" : "1px solid var(--border-soft)",
+                border: r.unlocked ? "1px solid rgba(106,133,160,0.4)" : "1px solid var(--border-soft)",
               }}
             >
               <PassportMedal

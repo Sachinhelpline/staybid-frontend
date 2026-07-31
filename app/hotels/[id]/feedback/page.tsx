@@ -53,7 +53,7 @@ function smileyTone(v: Sentiment | undefined): string {
   if (v === "positive") return "#7F9269";
   if (v === "neutral") return "#b4c1cf";
   if (v === "negative") return "#D49583";
-  return "#C9A66B";
+  return "#5f7c98";
 }
 function smileyEmoji(v: Sentiment | undefined): string {
   if (v === "positive") return "😊";
@@ -235,7 +235,7 @@ function FeedbackPageInner() {
                   const pct = b.total ? Math.round((b.positive / b.total) * 100) : null;
                   const tone =
                     pct == null
-                      ? "#C9A66B"
+                      ? "#5f7c98"
                       : pct >= 80
                         ? "#7F9269"
                         : pct >= 50
@@ -348,7 +348,7 @@ function FeedbackPageInner() {
           gap: 12px;
           padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
           background: var(--bg-card, #f4f6f8);
-          border-bottom: 1px solid rgba(201, 166, 107, 0.22);
+          border-bottom: 1px solid rgba(106, 133, 160, 0.22);
           backdrop-filter: blur(10px) saturate(140%);
           -webkit-backdrop-filter: blur(10px) saturate(140%);
         }
@@ -357,7 +357,7 @@ function FeedbackPageInner() {
           width: 38px;
           height: 38px;
           border-radius: 50%;
-          border: 1px solid rgba(201, 166, 107, 0.35);
+          border: 1px solid rgba(106, 133, 160, 0.35);
           /* v499 — theme tokens (was fixed cream/cocoa → a stray light circle
              on the dark shell). Flips with Appearance. */
           background: var(--bg-pill, rgba(176, 192, 209, 0.85));
@@ -370,7 +370,7 @@ function FeedbackPageInner() {
           transition: transform 0.18s, background 0.2s;
         }
         .fb-back:hover, .fb-close:hover {
-          background: var(--accent-soft, rgba(201,166,107,0.18));
+          background: var(--accent-soft, rgba(106,133,160,0.18));
         }
         .fb-back:active, .fb-close:active { transform: scale(0.94); }
         .fb-header-text { flex: 1 1 auto; min-width: 0; }
@@ -450,8 +450,8 @@ function FeedbackPageInner() {
           align-items: center;
           gap: 3px;
           padding: 10px 6px;
-          background: color-mix(in oklab, var(--fb-tone, #C9A66B) 12%, var(--bg-elevated, #fcfcfd));
-          border: 1px solid color-mix(in oklab, var(--fb-tone, #C9A66B) 38%, transparent);
+          background: color-mix(in oklab, var(--fb-tone, #5f7c98) 12%, var(--bg-elevated, #fcfcfd));
+          border: 1px solid color-mix(in oklab, var(--fb-tone, #5f7c98) 38%, transparent);
           border-radius: 12px;
           text-align: center;
         }
@@ -507,14 +507,14 @@ function FeedbackPageInner() {
           font-weight: 700;
           letter-spacing: 0.04em;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.30);
+          border: 1px solid rgba(106, 133, 160, 0.30);
           color: var(--cozy-cocoa, #4a3820);
           cursor: pointer;
           transition: background 0.2s, border-color 0.2s;
           font-family: inherit;
           white-space: nowrap;
         }
-        .fb-chip:hover { background: rgba(201, 166, 107, 0.10); }
+        .fb-chip:hover { background: rgba(106, 133, 160, 0.10); }
         .fb-chip-active {
           background: var(--cozy-warm-dark, #1F1A0F);
           color: var(--cozy-cream-50, #fcfcfd);
@@ -530,7 +530,7 @@ function FeedbackPageInner() {
         .fb-card {
           padding: 14px 16px;
           background: var(--bg-elevated, #fcfcfd);
-          border: 1px solid rgba(201, 166, 107, 0.22);
+          border: 1px solid rgba(106, 133, 160, 0.22);
           border-radius: 14px;
           box-shadow: 0 2px 8px -4px rgba(31, 26, 15, 0.10);
         }
@@ -546,7 +546,7 @@ function FeedbackPageInner() {
           align-items: center;
           gap: 5px;
           padding: 4px 10px;
-          background: var(--accent-soft, rgba(201,166,107,0.18));
+          background: var(--accent-soft, rgba(106,133,160,0.18));
           color: var(--cozy-cocoa, #4a3820);
           font-size: 0.7rem;
           font-weight: 700;
@@ -585,8 +585,8 @@ function FeedbackPageInner() {
           gap: 3px;
           padding: 9px 4px;
           border-radius: 10px;
-          border: 1px solid color-mix(in oklab, var(--fb-tone, #C9A66B) 36%, transparent);
-          background: color-mix(in oklab, var(--fb-tone, #C9A66B) 12%, var(--bg-card, #f4f6f8));
+          border: 1px solid color-mix(in oklab, var(--fb-tone, #5f7c98) 36%, transparent);
+          background: color-mix(in oklab, var(--fb-tone, #5f7c98) 12%, var(--bg-card, #f4f6f8));
         }
         .fb-cell-emoji {
           font-size: 1.2rem;

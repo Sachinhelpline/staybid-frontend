@@ -1655,9 +1655,9 @@ export default function PartnerDashboard() {
                                   display: "inline-block",
                                   marginLeft: 6, padding: "1px 6px",
                                   borderRadius: 999,
-                                  background: "rgba(201,166,107,0.18)",
-                                  border: "1px solid rgba(201,166,107,0.36)",
-                                  color: "#8B6914",
+                                  background: "rgba(106,133,160,0.18)",
+                                  border: "1px solid rgba(106,133,160,0.36)",
+                                  color: "#3f5369",
                                   fontSize: "0.62rem", fontWeight: 700,
                                 }}>
                                   🛏️ {b.numRooms} rooms
@@ -3109,8 +3109,8 @@ export default function PartnerDashboard() {
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full pointer-events-none"
                           style={{
                             width: `${currentPct}%`,
-                            background: "linear-gradient(90deg, #C9A66B 0%, #b4c1cf 60%, #c8d2dc 100%)",
-                            boxShadow: "0 1px 3px rgba(201,166,107,0.45) inset",
+                            background: "linear-gradient(90deg, #5f7c98 0%, #b4c1cf 60%, #c8d2dc 100%)",
+                            boxShadow: "0 1px 3px rgba(106,133,160,0.45) inset",
                           }}
                         />
                         {/* Floor marker (only when floor sits inside slider range). */}

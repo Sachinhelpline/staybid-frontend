@@ -290,7 +290,7 @@ function SelfTierBanner({
           onClick={() => onClose()}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.72rem] font-bold text-black"
           style={{
-            background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
+            background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
             boxShadow: "0 3px 10px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
             border: "1px solid rgba(255,255,255,0.45)",
           }}
@@ -574,7 +574,7 @@ function CommentDrawer({
               <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[0.7rem] font-bold text-black"
                 style={{ background: `conic-gradient(from ${(i*47)%360}deg, #a9b9c8, #ff458d, #b964ff, #a9b9c8)` }}>
                 <span className="w-[26px] h-[26px] rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>
+                  style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>
                   {cm.user.slice(0, 1).toUpperCase()}
                 </span>
               </div>
@@ -629,7 +629,7 @@ function CommentDrawer({
           style={{ borderTop: `1px solid ${c.headBorder}`, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold text-black"
-            style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>You</div>
+            style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" }}>You</div>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -682,8 +682,8 @@ function MoreMenu({
   const dark = theme === "dark";
   // The sheet follows the app appearance mode (was hardcoded dark).
   const c = dark
-    ? { sheet: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)", topBorder: "rgba(176, 192, 209,0.22)", grip: "rgba(176, 192, 209,0.4)", head: "#C9A66B", rowBorder: "rgba(176, 192, 209,0.16)", rowBg: "linear-gradient(135deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.03))", label: "#f4f6f8", chevron: "rgba(176, 192, 209,0.45)", overlay: "rgba(15,12,8,0.62)" }
-    : { sheet: "linear-gradient(180deg,#ffffff 0%,#f3f6f8 100%)", topBorder: "rgba(139,105,20,0.20)", grip: "rgba(139,105,20,0.30)", head: "#8B6914", rowBorder: "rgba(139,105,20,0.16)", rowBg: "linear-gradient(135deg, rgba(139,105,20,0.07), rgba(139,105,20,0.02))", label: "#2c1d04", chevron: "rgba(139,105,20,0.4)", overlay: "rgba(15,12,8,0.55)" };
+    ? { sheet: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)", topBorder: "rgba(176, 192, 209,0.22)", grip: "rgba(176, 192, 209,0.4)", head: "#5f7c98", rowBorder: "rgba(176, 192, 209,0.16)", rowBg: "linear-gradient(135deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.03))", label: "#f4f6f8", chevron: "rgba(176, 192, 209,0.45)", overlay: "rgba(15,12,8,0.62)" }
+    : { sheet: "linear-gradient(180deg,#ffffff 0%,#f3f6f8 100%)", topBorder: "rgba(139,105,20,0.20)", grip: "rgba(139,105,20,0.30)", head: "#3f5369", rowBorder: "rgba(139,105,20,0.16)", rowBg: "linear-gradient(135deg, rgba(139,105,20,0.07), rgba(139,105,20,0.02))", label: "#2c1d04", chevron: "rgba(139,105,20,0.4)", overlay: "rgba(15,12,8,0.55)" };
 
   const [view, setView] = useState<"menu" | "report">("menu");
 
@@ -727,7 +727,7 @@ function MoreMenu({
     >
       <span
         className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-        style={{ background: danger ? "linear-gradient(135deg,#E0937A,#C46A4E)" : "linear-gradient(135deg,#c8d2dc,#C9A66B 60%,#8B6914)", boxShadow: "0 3px 10px rgba(15,12,8,0.3), inset 0 1px 0 rgba(255,255,255,0.35)" }}
+        style={{ background: danger ? "linear-gradient(135deg,#E0937A,#C46A4E)" : "linear-gradient(135deg,#c8d2dc,#5f7c98 60%,#3f5369)", boxShadow: "0 3px 10px rgba(15,12,8,0.3), inset 0 1px 0 rgba(255,255,255,0.35)" }}
       >{icon}</span>
       <span className="text-[0.92rem] font-semibold" style={{ color: danger ? (dark ? "#E8A89C" : "#B4472E") : c.label }}>{label}</span>
       {chevron && <span className="ml-auto text-lg" style={{ color: c.chevron }}>›</span>}
@@ -1356,7 +1356,7 @@ function CreatorProfileSheet({
                           onClick={() => toggleFollow(cleanHandle)}
                           className={`px-3 py-1 rounded-full text-[0.66rem] font-bold transition-colors ${youFollow ? "text-white" : "text-black"}`}
                           style={{
-                            background: youFollow ? "rgba(255,255,255,0.10)" : "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
+                            background: youFollow ? "rgba(255,255,255,0.10)" : "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
                             border: youFollow ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.45)",
                             boxShadow: youFollow ? "none" : "0 2px 6px rgba(140, 160, 182,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
                           }}
@@ -1675,7 +1675,7 @@ function EditPostSheet({
                   <button key={t} type="button" onClick={() => toggleTag(t)}
                     className="px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all"
                     style={{
-                      background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.05)",
+                      background: active ? "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.05)",
                       color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                       border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                     }}>#{t}</button>
@@ -2312,7 +2312,7 @@ const HotelCard = memo(function HotelCard({
           <span
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[0.7rem] font-bold shrink-0"
             style={{
-              background: "linear-gradient(135deg, rgba(140, 160, 182,0.22), rgba(201,166,107,0.14))",
+              background: "linear-gradient(135deg, rgba(140, 160, 182,0.22), rgba(106,133,160,0.14))",
               border: "1px solid rgba(176, 192, 209,0.42)",
               color: "#fff",
               backdropFilter: "blur(8px)",
@@ -2589,7 +2589,7 @@ const HotelCard = memo(function HotelCard({
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full mb-2"
             style={{
-              background: "linear-gradient(135deg, rgba(140, 160, 182,0.22), rgba(201,166,107,0.13))",
+              background: "linear-gradient(135deg, rgba(140, 160, 182,0.22), rgba(106,133,160,0.13))",
               border: "1px solid rgba(140, 160, 182,0.55)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
@@ -4056,8 +4056,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
            bottom from 130 → 180px so the rail's "You" Follow pill (at
            ~rail-top) no longer collides with the FAB on tall screens. */
         @keyframes igFabPulse {
-          0%,100% { box-shadow: 0 8px 22px rgba(201,166,107,0.45), 0 0 0 0 rgba(201,166,107,0.40); }
-          50%     { box-shadow: 0 8px 22px rgba(201,166,107,0.45), 0 0 0 14px rgba(201,166,107,0); }
+          0%,100% { box-shadow: 0 8px 22px rgba(106,133,160,0.45), 0 0 0 0 rgba(106,133,160,0.40); }
+          50%     { box-shadow: 0 8px 22px rgba(106,133,160,0.45), 0 0 0 14px rgba(106,133,160,0); }
         }
         /* v572 — the create entry: a 48px disc plus a caption, so it can't be
            mistaken for another icon in the action rail directly above it.
@@ -4102,7 +4102,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           inset: -4px;
           border-radius: 9999px;
           pointer-events: none;
-          background: radial-gradient(circle, rgba(201,166,107,0.32) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(106,133,160,0.32) 0%, transparent 70%);
         }
 
         /* Drawer close button — explicit z-index + relative position so it
@@ -4266,20 +4266,20 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-avatar {
           width: 42px; height: 42px; display: inline-block;
           padding: 2px; border-radius: 9999px;
-          background: conic-gradient(from 220deg, #C9A66B, #b4c1cf, #6E5430, #C9A66B);
+          background: conic-gradient(from 220deg, #5f7c98, #b4c1cf, #6E5430, #5f7c98);
           animation: igRingPulse 2.6s ease-in-out infinite;
         }
         /* Active-story ring — slightly thicker + still cozy. */
         .ig-avatar.has-story {
           padding: 3px;
-          background: conic-gradient(from 0deg, #C9A66B, #b4c1cf, #6E5430, #C9A66B, #b4c1cf, #C9A66B);
+          background: conic-gradient(from 0deg, #5f7c98, #b4c1cf, #6E5430, #5f7c98, #b4c1cf, #5f7c98);
           animation: igStoryRingSpin 3.6s linear infinite;
-          box-shadow: 0 0 0 1.5px var(--cozy-warm-dark, #1F1A0F) inset, 0 0 12px rgba(201,166,107,0.40);
+          box-shadow: 0 0 0 1.5px var(--cozy-warm-dark, #1F1A0F) inset, 0 0 12px rgba(106,133,160,0.40);
         }
         .ig-avatar-inner {
           display: flex; align-items: center; justify-content: center;
           width: 100%; height: 100%; border-radius: 9999px;
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           border: 2px solid var(--cozy-warm-dark, #1F1A0F); overflow: hidden;
         }
         @keyframes igStoryRingSpin {
@@ -4301,11 +4301,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           font-size: 0.74rem; font-weight: 800;
           letter-spacing: 0.02em;
           color: var(--cozy-warm-dark, #1F1A0F);
-          background: linear-gradient(180deg, #c8d2dc 0%, #b4c1cf 40%, #C9A66B 75%, #69849f 100%);
+          background: linear-gradient(180deg, #c8d2dc 0%, #b4c1cf 40%, #5f7c98 75%, #69849f 100%);
           border: 1px solid rgba(176, 192, 209, 0.45);
           text-shadow: 0 1px 0 rgba(176, 192, 209, 0.45);
           box-shadow:
-            0 0 14px rgba(201, 166, 107, 0.40),
+            0 0 14px rgba(106, 133, 160, 0.40),
             0 8px 16px -3px rgba(110, 84, 48, 0.55),
             0 3px 6px -1px rgba(31, 26, 15, 0.4),
             inset 0 1.5px 0 rgba(176, 192, 209, 0.55),
@@ -4540,7 +4540,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           border: 1px solid rgba(176, 192, 209,0.55);
           text-shadow: 0 1px 4px rgba(0,0,0,0.55);
           box-shadow:
-            0 0 18px rgba(201,166,107,0.28),
+            0 0 18px rgba(106,133,160,0.28),
             0 10px 24px -5px rgba(31,26,15,0.55),
             0 3px 8px rgba(0,0,0,0.40),
             inset 0 1.5px 0 rgba(176, 192, 209,0.25),
@@ -5048,7 +5048,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div>
-                <p style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent, #C9A66B)", marginBottom: "2px" }}>
+                <p style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent, #5f7c98)", marginBottom: "2px" }}>
                   Reel feed
                 </p>
                 <h3 style={{ fontSize: "1.15rem", fontWeight: 600, letterSpacing: "-0.01em" }}>

@@ -434,19 +434,19 @@ function BookInner() {
           height:100dvh; width:100vw;
           color:#1F1A0F; font-family:'Inter',system-ui,sans-serif;
           background:
-            radial-gradient(1100px 560px at 18% -5%, rgba(201,166,107,.14), transparent 60%),
+            radial-gradient(1100px 560px at 18% -5%, rgba(106,133,160,.14), transparent 60%),
             radial-gradient(900px 500px at 92% 25%, rgba(176, 192, 209,.12), transparent 55%),
             linear-gradient(180deg,#fcfcfd 0%,#ecf0f3 55%,#f4f6f8 100%);
         }
         .kb-top { flex:0 0 auto; display:flex; align-items:center; gap:16px; padding:14px 26px; background:rgba(176, 192, 209,.85); backdrop-filter:blur(8px); border-bottom:1px solid #E8DCC8; overflow:hidden; }
         .kb-brand { display:flex; align-items:center; gap:9px; }
-        .kb-brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:linear-gradient(135deg,#b4c1cf,#C9A66B); color:#1F1A0F; font-size:18px; box-shadow:0 4px 12px rgba(201,166,107,.4); }
+        .kb-brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:linear-gradient(135deg,#b4c1cf,#5f7c98); color:#1F1A0F; font-size:18px; box-shadow:0 4px 12px rgba(106,133,160,.4); }
         .kb-brand-name { font-family:'Cormorant Garamond',Georgia,serif; font-size:26px; font-weight:700; letter-spacing:.3px; }
         .kb-brand-name b { color:#67839e; }
         .kb-brand-tag { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#6E5430; background:#e7ebef; padding:3px 9px; border-radius:999px; margin-left:4px; }
         .kb-nav { display:flex; gap:8px; margin:0 auto; }
         .kb-nav-item { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:#7a92aa; padding:7px 16px; border-radius:999px; border:1px solid transparent; }
-        .kb-nav-item.on { color:#1F1A0F; background:#fcfcfd; border-color:#cbd4de; box-shadow:0 2px 10px rgba(201,166,107,.25); }
+        .kb-nav-item.on { color:#1F1A0F; background:#fcfcfd; border-color:#cbd4de; box-shadow:0 2px 10px rgba(106,133,160,.25); }
         .kb-loc { font-size:13px; color:#6E5430; font-weight:600; }
 
         .kb-scroll { flex:1; overflow-y:auto; overflow-x:hidden; }
@@ -457,16 +457,16 @@ function BookInner() {
 
         .kb-city-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
         .kb-city { background:#fcfcfd; border:1px solid #E8DCC8; border-radius:18px; padding:26px 16px; text-align:center; cursor:pointer; color:#1F1A0F; box-shadow:0 6px 22px rgba(31,26,15,.06); transition:transform .12s,box-shadow .12s,border-color .12s; }
-        .kb-city:active { transform:scale(.97); border-color:#C9A66B; box-shadow:0 10px 28px rgba(201,166,107,.25); }
+        .kb-city:active { transform:scale(.97); border-color:#5f7c98; box-shadow:0 10px 28px rgba(106,133,160,.25); }
         .kb-city-emoji { font-size:44px; margin-bottom:8px; }
         .kb-city-name { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:700; }
         .kb-city-sub { font-size:12px; color:#7a92aa; margin-top:4px; }
 
         .kb-rowtop { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
-        .kb-back { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; background:#fcfcfd; color:#67839e; border:1px solid #cbd4de; border-radius:14px; font-size:25px; font-weight:700; line-height:1; cursor:pointer; box-shadow:0 4px 14px rgba(201,166,107,.16); transition:transform .12s, box-shadow .12s, border-color .12s; }
-        .kb-back:active { transform:scale(.93); border-color:#C9A66B; box-shadow:0 2px 8px rgba(201,166,107,.28); }
+        .kb-back { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; background:#fcfcfd; color:#67839e; border:1px solid #cbd4de; border-radius:14px; font-size:25px; font-weight:700; line-height:1; cursor:pointer; box-shadow:0 4px 14px rgba(106,133,160,.16); transition:transform .12s, box-shadow .12s, border-color .12s; }
+        .kb-back:active { transform:scale(.93); border-color:#5f7c98; box-shadow:0 2px 8px rgba(106,133,160,.28); }
         .kb-head { flex:1; min-width:0; }
-        .kb-eyebrow { display:inline-flex; align-items:center; gap:7px; max-width:100%; font-size:11px; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:#67839e; background:linear-gradient(135deg,rgba(176, 192, 209,.2),rgba(201,166,107,.1)); border:1px solid rgba(201,166,107,.28); padding:5px 12px; border-radius:999px; margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .kb-eyebrow { display:inline-flex; align-items:center; gap:7px; max-width:100%; font-size:11px; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:#67839e; background:linear-gradient(135deg,rgba(176, 192, 209,.2),rgba(106,133,160,.1)); border:1px solid rgba(106,133,160,.28); padding:5px 12px; border-radius:999px; margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .kb-livedot { flex:0 0 auto; width:7px; height:7px; border-radius:999px; background:#6E8C57; animation:kbpulse 1.8s infinite; }
         @keyframes kbpulse { 0%{box-shadow:0 0 0 0 rgba(110,140,87,.5)} 70%{box-shadow:0 0 0 7px rgba(110,140,87,0)} 100%{box-shadow:0 0 0 0 rgba(110,140,87,0)} }
         .kb-h2 { font-family:'Cormorant Garamond',serif; font-size:30px; font-weight:700; line-height:1.06; margin:0; color:#1F1A0F; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -475,20 +475,20 @@ function BookInner() {
         .kb-date { display:flex; flex-direction:column; gap:2px; min-width:0; }
         .kb-date span { font-size:10px; letter-spacing:.6px; text-transform:uppercase; color:#7a92aa; }
         .kb-date b { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:700; color:#1F1A0F; white-space:nowrap; }
-        .kb-datearrow { color:#C9A66B; font-size:18px; font-weight:700; flex:0 0 auto; }
+        .kb-datearrow { color:#5f7c98; font-size:18px; font-weight:700; flex:0 0 auto; }
         .kb-datenights { margin-left:auto; flex:0 0 auto; font-size:12px; font-weight:700; color:#67839e; background:#e7ebef; padding:5px 11px; border-radius:999px; white-space:nowrap; }
-        .kb-caphint { margin:-4px 0 12px; font-size:12px; color:#67839e; background:rgba(201,166,107,.1); border:1px solid rgba(201,166,107,.22); border-radius:10px; padding:8px 11px; line-height:1.35; }
+        .kb-caphint { margin:-4px 0 12px; font-size:12px; color:#67839e; background:rgba(106,133,160,.1); border:1px solid rgba(106,133,160,.22); border-radius:10px; padding:8px 11px; line-height:1.35; }
 
         .kb-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px; }
         .kb-card { text-align:left; cursor:pointer; background:#fcfcfd; border:1px solid #E8DCC8; border-radius:18px; overflow:hidden; color:#1F1A0F; box-shadow:0 6px 22px rgba(31,26,15,.07); transition:transform .12s,box-shadow .12s; padding:0; }
-        .kb-card:active { transform:scale(.99); box-shadow:0 12px 30px rgba(201,166,107,.25); }
+        .kb-card:active { transform:scale(.99); box-shadow:0 12px 30px rgba(106,133,160,.25); }
         .kb-card-img { height:150px; background-size:cover; background-position:center; position:relative; }
         .kb-card-disc { position:absolute; top:10px; left:10px; background:linear-gradient(135deg,#D49583,#C24E4E); color:#fff; font-weight:700; font-size:13px; padding:4px 10px; border-radius:999px; box-shadow:0 4px 10px rgba(194,78,78,.4); }
         .kb-card-left { position:absolute; top:10px; right:10px; background:rgba(31,26,15,.72); color:#f4f6f8; font-size:11px; padding:3px 9px; border-radius:999px; }
         .kb-card-body { padding:14px 16px 16px; }
         .kb-card-name { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .kb-card-meta { font-size:13px; color:#6E5430; margin:3px 0 12px; }
-        .kb-stars { color:#C9A66B; letter-spacing:1px; }
+        .kb-stars { color:#5f7c98; letter-spacing:1px; }
         .kb-card-foot { display:flex; align-items:flex-end; justify-content:space-between; }
         .kb-card-price { font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:700; color:#1F1A0F; }
         .kb-card-price span { font-size:13px; color:#7a92aa; font-family:'Inter',sans-serif; }
@@ -501,7 +501,7 @@ function BookInner() {
         .kb-gallery-badge { position:absolute; top:14px; left:14px; background:rgba(176, 192, 209,.92); color:#67839e; font-weight:700; font-size:13px; padding:6px 12px; border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,.15); }
         .kb-thumbs { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
         .kb-thumb { width:72px; height:54px; border-radius:10px; background-size:cover; background-position:center; border:2px solid transparent; cursor:pointer; opacity:.7; }
-        .kb-thumb.on { border-color:#C9A66B; opacity:1; }
+        .kb-thumb.on { border-color:#5f7c98; opacity:1; }
         .kb-hotel-line { display:flex; align-items:center; gap:14px; margin-top:14px; font-size:15px; color:#4A3820; }
         .kb-rating { background:#e7ebef; color:#67839e; font-weight:700; padding:2px 10px; border-radius:999px; font-size:13px; }
         .kb-distance { color:#6E5430; }
@@ -511,7 +511,7 @@ function BookInner() {
         .kb-section-title { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:700; margin-bottom:12px; }
         .kb-rooms { display:flex; flex-direction:column; gap:10px; }
         .kb-room { display:flex; align-items:center; justify-content:space-between; gap:12px; text-align:left; cursor:pointer; background:#fcfcfd; border:1.5px solid #E8DCC8; border-radius:14px; padding:13px 15px; color:#1F1A0F; transition:border-color .12s,box-shadow .12s; }
-        .kb-room.on { border-color:#C9A66B; box-shadow:0 0 0 3px rgba(201,166,107,.18); background:#fdfdfd; }
+        .kb-room.on { border-color:#5f7c98; box-shadow:0 0 0 3px rgba(106,133,160,.18); background:#fdfdfd; }
         .kb-room.soldout { opacity:.55; cursor:not-allowed; }
         .kb-room-type { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px; }
         .kb-tag { font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; font-family:'Inter',sans-serif; }
@@ -533,7 +533,7 @@ function BookInner() {
         .kb-sticky-price span { font-size:14px; color:#7a92aa; font-family:'Inter',sans-serif; }
         .kb-sticky-strike { font-size:14px; color:#9aacbe; text-decoration:line-through; margin-right:8px; font-family:'Inter',sans-serif; }
 
-        .kb-primary { background:linear-gradient(135deg,#b4c1cf,#C9A66B); color:#1F1A0F; border:none; border-radius:14px; padding:14px 24px; font-family:'Inter',sans-serif; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(201,166,107,.4); margin-left:auto; }
+        .kb-primary { background:linear-gradient(135deg,#b4c1cf,#5f7c98); color:#1F1A0F; border:none; border-radius:14px; padding:14px 24px; font-family:'Inter',sans-serif; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(106,133,160,.4); margin-left:auto; }
         .kb-primary:disabled { opacity:.6; }
         .kb-primary.kb-wide { width:100%; margin:14px 0 0; }
         .kb-primary.kb-green { background:linear-gradient(135deg,#8FA77B,#6E8C57); color:#fff; }
@@ -559,7 +559,7 @@ function BookInner() {
         .kb-phonerow { display:flex; align-items:center; gap:8px; }
         .kb-cc { font-size:18px; color:#6E5430; font-weight:700; }
         .kb-input { flex:1; width:100%; background:#fcfcfd; border:1.5px solid #cbd4de; border-radius:12px; padding:14px 16px; font-size:20px; color:#1F1A0F; }
-        .kb-input:focus { outline:none; border-color:#C9A66B; box-shadow:0 0 0 3px rgba(201,166,107,.18); }
+        .kb-input:focus { outline:none; border-color:#5f7c98; box-shadow:0 0 0 3px rgba(106,133,160,.18); }
         .kb-otp { text-align:center; letter-spacing:10px; font-size:26px; }
         .kb-link { display:block; width:100%; margin-top:10px; background:none; border:none; color:#67839e; font-size:14px; cursor:pointer; }
         .kb-err { margin-top:12px; background:rgba(212,149,131,.14); border:1px solid rgba(212,149,131,.4); color:#A85B4E; border-radius:10px; padding:10px 12px; font-size:14px; }
