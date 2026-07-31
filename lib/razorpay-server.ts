@@ -32,3 +32,13 @@ export function razorpayKeySecret(): string | null {
 export function razorpayConfigured(): boolean {
   return razorpayKeyId() !== null && razorpayKeySecret() !== null;
 }
+
+/**
+ * The public checkout key id, returned ONLY when the COMPLETE pair (key id +
+ * secret) is configured. A half-configured environment (id without secret, or
+ * secret without id) fails closed — otherwise a checkout could mint orders
+ * that can never be signature-verified.
+ */
+export function checkoutKeyId(): string | null {
+  return razorpayConfigured() ? razorpayKeyId() : null;
+}

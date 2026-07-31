@@ -38,6 +38,13 @@ export const dynamic = "force-dynamic";
 import { razorpayKeyId, razorpayKeySecret, razorpayConfigured } from "@/lib/razorpay-server";
 
 export async function POST(req: NextRequest) {
+  // Fail closed FIRST — before any body parse / pricing / DB work — when the
+  // Razorpay env pair is absent or malformed. Never fall back to a hardcoded
+  // credential (v621.2: guard hoisted ahead of all request processing).
+  if (!razorpayConfigured()) {
+    return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
+  }
+
   let body: any;
   try {
     body = await req.json();
@@ -196,12 +203,6 @@ export async function POST(req: NextRequest) {
     body?.notes && typeof body.notes === "object" && !Array.isArray(body.notes)
       ? body.notes
       : {};
-
-  // Fail closed when the Razorpay secret is not configured — never fall back
-  // to a hardcoded credential.
-  if (!razorpayConfigured()) {
-    return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
-  }
 
   const auth = Buffer.from(`${razorpayKeyId()}:${razorpayKeySecret()}`).toString("base64");
   try {

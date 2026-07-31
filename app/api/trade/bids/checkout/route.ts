@@ -15,11 +15,13 @@ import { segmentNights, bidCostPreview, type SegmentType } from "@/lib/trade/auc
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { razorpayKeyId } from "@/lib/razorpay-server";
+import { checkoutKeyId } from "@/lib/razorpay-server";
 
-// Public checkout key id — server env only (hotfix v621.2, RAZORPAY_KEY_ID);
-// the POST fails closed with payment_config_missing when absent/malformed.
-const PUBLIC_KEY_ID = razorpayKeyId();
+// Public checkout key id — present ONLY when the COMPLETE server env pair
+// (RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET) is configured (hotfix v621.2); the
+// POST fails closed with payment_config_missing BEFORE any body parse / DB /
+// order work when either half is absent or malformed.
+const PUBLIC_KEY_ID = checkoutKeyId();
 const MAX_ITEMS = 20;
 const RZP_MAX_RUPEES = 500_000;
 
