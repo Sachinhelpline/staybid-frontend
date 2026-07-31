@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
 const H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const res = await fetch(
     `${SB_URL}/rest/v1/rooms?select=id,type,floorPrice,aiPrice,hotelId,hotels(name,city)&order=hotelId.asc&limit=500`,
     { headers: H }
@@ -14,6 +17,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { roomId, floorPrice, aiPrice } = await req.json();
   if (!roomId) return NextResponse.json({ error: "roomId required" }, { status: 400 });
   const patch: any = {};

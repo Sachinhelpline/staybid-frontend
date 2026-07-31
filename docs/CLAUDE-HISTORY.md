@@ -1,5 +1,12 @@
 # StayBid Frontend — CLAUDE.md
 
+> **🔒 HISTORICAL SECURITY NOTE (hotfix v621):** a live Razorpay key SECRET that
+> previously appeared in this history file has been redacted (`[REDACTED-RAZORPAY-SECRET]`).
+> **That key must be treated as compromised and rotated/revoked provider-side** — redacting
+> the current tree does NOT remove it from earlier Git history commits. Repository history was
+> deliberately NOT rewritten; provider-side rotation is the primary containment. Razorpay
+> credentials are now environment-only everywhere; committing a secret value is forbidden.
+
 ## Project Overview
 StayBid is a luxury hotel reverse-auction platform. Customers browse hotels, place price bids, and book flash deals. Hotels accept, counter, or reject bids in real time. Built with Next.js 14 App Router, TypeScript, Tailwind CSS (custom luxury theme), and deployed on Vercel.
 
@@ -50,7 +57,7 @@ lib/
 ```
 NEXT_PUBLIC_API_URL=https://staybid-live-production.up.railway.app
 RAZORPAY_KEY_ID=rzp_live_SfFAsbYjbHfztd
-RAZORPAY_KEY_SECRET=dv3xFGG44R2FSqlshkDVY2Gn
+RAZORPAY_KEY_SECRET=[REDACTED-RAZORPAY-SECRET]
 NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_SfFAsbYjbHfztd
 NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCREXxZEUTJk1abTOxOXyxAF5QcOhjsjXQ
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=staybid-6feb7.firebaseapp.com
@@ -298,7 +305,7 @@ localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, che
 
 ### Live Keys
 - Key ID: `rzp_live_SfFAsbYjbHfztd` (public — safe in client code)
-- Key Secret: `dv3xFGG44R2FSqlshkDVY2Gn` (server-side only in API routes)
+- Key Secret: `[REDACTED-RAZORPAY-SECRET]` (server-side only in API routes)
 
 ### How Payment Works
 1. `openRazorpayCheckout({ amount, hotelName, userName, userPhone, userEmail })` called from hotel page

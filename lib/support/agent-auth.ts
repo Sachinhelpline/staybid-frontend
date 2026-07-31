@@ -1,71 +1,45 @@
 // Resolve "is this caller authorized to act as a support agent?"
 //
 // Allowed roles: admin, super_admin, support_agent.
-// Token shapes accepted (same precedence as lib/admin/audit.ts):
-//   1. Bearer JWT with { id, role, name?, phone? } claims
-//   2. Opaque adm_<48hex> token + x-admin-id header (master-PIN flow)
-//   3. Explicit x-admin-id / x-admin-role headers (server-side only)
+//
+// hotfix v621: this helper NO LONGER independently converts unverified headers
+// or opaque strings into an identity. The legacy `adm_`-presence and header-only
+// `x-admin-id` trust paths, and the decode-only JWT path, are REMOVED. Identity
+// is derived ONLY from cryptographically verified tokens:
+//   1. `requireVerifiedAdmin` (signature-verified Railway HS256 token +
+//      server-side role lookup) → admin / super_admin.
+//   2. A signature-verified customer-family HS256 token whose server-side DB
+//      role is `support_agent`.
 
-import { SB_URL, SB_H, decodeJwt } from "@/lib/sb-server";
+import { SB_URL, SB_H } from "@/lib/sb-server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
+import { verifiedCustomerFromReq } from "@/lib/auth/customer-verify";
 import type { AgentIdentity } from "./types";
 
 const ALLOWED_ROLES = new Set(["admin", "super_admin", "support_agent"]);
 
 export async function agentFromReq(req: Request): Promise<AgentIdentity | null> {
-  // Token paths
-  const auth = req.headers.get("authorization") || "";
-  const token = auth.replace(/^Bearer\s+/i, "").trim();
-
-  if (token) {
-    // JWT path
-    const payload = decodeJwt(token);
-    if (payload?.id) {
-      const role = String(payload.role || "").toLowerCase();
-      if (ALLOWED_ROLES.has(role)) {
-        return {
-          id: payload.id,
-          role: role as AgentIdentity["role"],
-          name: payload.name || null,
-          phone: payload.phone || null,
-        };
-      }
-      // JWT had id but no allowed role — fetch role from DB
-      const dbRole = await fetchUserRole(payload.id);
-      if (ALLOWED_ROLES.has(dbRole)) {
-        return {
-          id: payload.id,
-          role: dbRole as AgentIdentity["role"],
-          name: payload.name || null,
-          phone: payload.phone || null,
-        };
-      }
-    }
-
-    // Opaque admin token path
-    if (/^adm_[a-f0-9]{8,}$/i.test(token)) {
-      const id = req.headers.get("x-admin-id") || "master-pin-admin";
-      const phone = req.headers.get("x-admin-phone");
-      const name = req.headers.get("x-admin-name");
-      // master-pin tokens skip DB role check (already verified at /api/admin/check-role)
-      return {
-        id,
-        role: "admin",
-        name,
-        phone,
-      };
-    }
+  // 1. Verified admin / super_admin.
+  const admin = await requireVerifiedAdmin(req);
+  if (admin) {
+    return {
+      id: admin.id,
+      role: admin.role as AgentIdentity["role"],
+      name: admin.name,
+      phone: admin.phone,
+    };
   }
 
-  // Header-only path
-  const id = req.headers.get("x-admin-id");
-  if (id) {
-    const dbRole = await fetchUserRole(id);
+  // 2. Verified (HS256) token whose DB role is an allowed support role.
+  const caller = verifiedCustomerFromReq(req);
+  if (caller) {
+    const dbRole = await fetchUserRole(caller.id);
     if (ALLOWED_ROLES.has(dbRole)) {
       return {
-        id,
+        id: caller.id,
         role: dbRole as AgentIdentity["role"],
-        name: req.headers.get("x-admin-name"),
-        phone: req.headers.get("x-admin-phone"),
+        name: null,
+        phone: caller.phone ?? null,
       };
     }
   }

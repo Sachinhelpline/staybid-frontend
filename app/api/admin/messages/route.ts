@@ -5,6 +5,7 @@
 //        body: { messageId, action: "hide" | "unhide" }
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 
 async function sbGet(path: string) {
@@ -14,6 +15,8 @@ async function sbGet(path: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const bidId = searchParams.get("bidId");
   const flaggedOnly = searchParams.get("flagged") === "1";
@@ -96,6 +99,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { messageId, action } = await req.json();
     if (!messageId || !action) return NextResponse.json({ error: "messageId + action required" }, { status: 400 });

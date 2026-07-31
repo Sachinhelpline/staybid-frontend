@@ -17,8 +17,9 @@
 // only fills the still-unowned pool; a re-published hotel just re-stamps the
 // same approved fields). Auth: x-admin-token / x-admin-id.
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { provisionListing } from "@/lib/host/provision";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
 const REST = `${SB_URL}/rest/v1`;
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

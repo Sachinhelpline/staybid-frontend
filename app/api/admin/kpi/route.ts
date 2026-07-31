@@ -9,11 +9,11 @@
 // Honesty rule: a KPI we don't instrument yet (assisted-booking share) is
 // returned with actual=null + a note — never a fabricated number.
 //
-// GET /api/admin/kpi?days=90   (x-admin-token / Bearer, adminFromReq)
+// GET /api/admin/kpi?days=90   (x-admin-token / Bearer, requireVerifiedAdmin)
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_READ } from "@/lib/sb";
-import { adminFromReq } from "@/lib/admin/audit";
 
 async function sbGet(path: string) {
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_READ, cache: "no-store" });
@@ -30,7 +30,9 @@ const nightsOf = (ci?: string | null, co?: string | null) => {
 };
 
 export async function GET(req: NextRequest) {
-  if (!adminFromReq(req)) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!auditIdentity(admin)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { searchParams } = new URL(req.url);

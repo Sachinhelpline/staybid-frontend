@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
 export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = new URL(req.url);
   const status = url.searchParams.get("status") || "pending";
   const filter = status === "all" ? "" : `verification_status=eq.${encodeURIComponent(status)}&`;

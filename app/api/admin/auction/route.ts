@@ -4,14 +4,15 @@
 // (Agent approve = /api/admin/trade-agents · config = /api/admin/auction-config ·
 //  force-clear = /api/admin/auction/clear · owner payouts = existing finance.)
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
-  if (!admin) return NextResponse.json({ error: "Admin auth required." }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const get = async (path: string) => {
     try { const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_READ, cache: "no-store" }); return r.ok ? await r.json().catch(() => []) : []; }
@@ -27,8 +28,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
-  if (!admin) return NextResponse.json({ error: "Admin auth required." }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch {}

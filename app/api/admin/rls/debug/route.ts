@@ -7,8 +7,8 @@
 //
 // Auth: same admin gate as /api/admin/rls. Anon callers get 401.
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_KEY, SB_ADMIN_KEY, SB_H, hasServiceRole } from "@/lib/sb";
-import { adminFromReq } from "@/lib/admin/audit";
 
 function mask(s: string | null | undefined): { len: number; prefix: string; suffix: string; isJwt: boolean } {
   if (!s) return { len: 0, prefix: "", suffix: "", isJwt: false };
@@ -22,7 +22,8 @@ function mask(s: string | null | undefined): { len: number; prefix: string; suff
 }
 
 export async function GET(req: Request) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!admin?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   return NextResponse.json({

@@ -13,61 +13,24 @@
 // Usage:
 //   await someMutation();
 //   logAdminAction({
-//     admin: adminFromReq(req),
+//     admin: auditIdentity(admin),   // verified admin, or "unknown"
 //     action: "user.ban",
 //     targetType: "user",
 //     targetId: userId,
 //     details: { reason: "..." },
 //   });
-import { SB_URL, SB_ADMIN_H, decodeJwt } from "@/lib/sb";
+import { SB_URL, SB_ADMIN_H } from "@/lib/sb";
 
+// AdminIdentity is the shape written to the audit trail. It is now produced
+// ONLY by the verified admin gate (lib/admin/verify.ts `auditIdentity`) — the
+// legacy `adminFromReq` helper (which trusted a decoded-but-unverified JWT, the
+// mere presence of an `adm_` string, or a bare `x-admin-id` header) has been
+// REMOVED. Audit rows must carry the verified admin identity, or "unknown".
 export type AdminIdentity = {
   id?: string | null;
   phone?: string | null;
   name?: string | null;
 } | null;
-
-export function adminFromReq(req: Request): AdminIdentity {
-  try {
-    // v284.1 — ALSO accept the token via the `x-admin-token` header. Most
-    // admin pages send { "x-admin-token": localStorage.sb_admin_token }
-    // (NOT an Authorization Bearer), so gated routes using adminFromReq
-    // were 401-ing whenever the x-admin-id fallback header was empty
-    // (e.g. the /admin/host pages read the non-existent `sb_admin_id`
-    // localStorage key). The token itself — Railway JWT or adm_ opaque —
-    // is the proof; honor it from either header.
-    const auth = req.headers.get("authorization") || "";
-    const t =
-      auth.replace(/^Bearer\s+/i, "").trim() ||
-      (req.headers.get("x-admin-token") || "").trim();
-    if (t) {
-      // 1. JWT path — Railway-issued admin JWTs (OTP login flow) decode to
-      //    a claim payload with { id, phone, name }.
-      const p = decodeJwt(t);
-      if (p?.id) return { id: p.id, phone: p.phone || null, name: p.name || null };
-
-      // v104.2 — opaque admin token path. The master-PIN login flow in
-      // /api/admin/check-role issues `adm_<48hex>` opaque tokens (not
-      // JWTs). The check-role endpoint already verified admin role
-      // before issuing, so the token's presence alone is sufficient
-      // proof of admin. We can't extract user identity from an opaque
-      // token, so the caller MUST send their identity via x-admin-*
-      // headers (the layout sets these from localStorage.sb_admin_user).
-      if (/^adm_[a-f0-9]{8,}$/i.test(t)) {
-        const id    = req.headers.get("x-admin-id")    || "master-pin-admin";
-        const phone = req.headers.get("x-admin-phone") || null;
-        const name  = req.headers.get("x-admin-name")  || null;
-        return { id, phone, name };
-      }
-    }
-    // Fallback: explicit x-admin-* headers without a Bearer token.
-    const id = req.headers.get("x-admin-id");
-    const phone = req.headers.get("x-admin-phone");
-    const name = req.headers.get("x-admin-name");
-    if (id || phone) return { id, phone, name };
-  } catch {}
-  return null;
-}
 
 export type LogAdminActionInput = {
   admin: AdminIdentity;

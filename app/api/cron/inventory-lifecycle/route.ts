@@ -10,13 +10,14 @@
 //      HOLD is released (the nights are past — the hold is moot; released for
 //      tidiness + so expiry/buyback consistently free inventory).
 //
-// Auth mirrors /api/cron/expire-holds (?token= / Bearer CRON_SECRET / adm_ token).
+// Auth mirrors /api/cron/expire-holds (?token= / Bearer CRON_SECRET).
 // Register on cron-job.org: */15 * * * * →
-//   https://www.staybids.in/api/cron/inventory-lifecycle?token=staybid-cron-dev
+//   https://www.staybids.in/api/cron/inventory-lifecycle?token=<CRON_SECRET>
 //
 // Bounded + budget-guarded (cron-job.org ~30s client timeout — v241.27 lesson).
 
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { markdownResalePerNight, daysUntil } from "@/lib/inventory/engine";
 import { markdownB2bAskPerNight } from "@/lib/b2b/engine";
@@ -30,15 +31,6 @@ const MARKDOWN_HORIZON_DAYS = 14; // only blocks ≤ 14 days out can be marked d
 const MAX_PER_PASS = 200;
 const TIME_BUDGET_MS = 24_000;    // return well inside cron-job.org's window
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const qToken = new URL(req.url).searchParams.get("token");
-  if (qToken && qToken === (process.env.CRON_TOKEN || "staybid-cron-dev")) return true;
-  const cronAuth = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
-}
 
 const round0 = (n: any) => Math.round(Number(n) || 0);
 const isoDatePlus = (days: number) =>
@@ -256,13 +248,17 @@ async function runAll(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await authorized(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  try { return NextResponse.json(await runAll(req)); }
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
+  }try { return NextResponse.json(await runAll(req)); }
   catch (e: any) { return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 }); }
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await authorized(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  try { return NextResponse.json(await runAll(req)); }
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
+  }try { return NextResponse.json(await runAll(req)); }
   catch (e: any) { return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 }); }
 }

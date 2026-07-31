@@ -8,11 +8,12 @@
 //     grant   { hotelId, serviceKey, days }  → directly grant a service
 //     revoke  { hotelId, serviceKey }        → remove a granted service
 //
-// Auth: x-admin-token / x-admin-id (adminFromReq). Mutations audit-logged.
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup). Mutations audit-logged.
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_H_REPRESENT, sbSelect, genId } from "@/lib/sb-server";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ async function grantService(
 }
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const reqRes = await fetch(`${SB_URL}/rest/v1/service_requests?select=*&order=created_at.desc&limit=300`, { headers: SB_H });
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   let body: any = {};
   try { body = await req.json(); } catch {}

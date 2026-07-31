@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbInsert, sbSelect, sbUpdate, SB } from "@/lib/onboard/supabase-admin";
 
 // GET /api/cron/lifecycle?token=$CRON_SECRET
@@ -13,9 +14,8 @@ import { sbInsert, sbSelect, sbUpdate, SB } from "@/lib/onboard/supabase-admin";
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
-  const tokenIn = new URL(req.url).searchParams.get("token") || req.headers.get("x-cron-secret") || "";
-  const expected = process.env.CRON_SECRET || "staybid-cron-dev";
-  if (tokenIn !== expected) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const authFail = cronAuthGuard(req);
+  if (authFail) return authFail;
 
   const out: any = { reminded2h: 0, reminded35h: 0, expired: 0, errors: [] };
   const now = new Date();

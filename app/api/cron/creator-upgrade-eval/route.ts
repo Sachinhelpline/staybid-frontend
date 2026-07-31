@@ -15,7 +15,7 @@
 //       - AND user does NOT meet Type A criteria
 //
 // Schedule (cron-job.org):
-//   GET https://staybids.in/api/cron/creator-upgrade-eval?token=staybid-cron-dev
+//   GET https://staybids.in/api/cron/creator-upgrade-eval?token=<CRON_SECRET>
 //   Frequency: weekly (Sundays 04:00 IST)
 //
 // Auth — matches the other crons.
@@ -24,6 +24,7 @@
 // Phase 0 §3.1 lock. First-to-fire wins — if a user has already submitted
 // the form (influencers row exists), the cron is a no-op for them.
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import {
   autoPromoteToCreator,
@@ -34,18 +35,6 @@ import type { ContentTier } from "@/lib/tier/types";
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
-}
 
 // Tunable via env so we can ramp criteria up/down without redeploy.
 const EVAL_WINDOW_DAYS = parseInt(
@@ -274,8 +263,9 @@ async function sweep(): Promise<{
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await authorized(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   const started = Date.now();
   const result = await sweep();

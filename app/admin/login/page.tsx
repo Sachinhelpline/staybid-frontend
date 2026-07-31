@@ -1,45 +1,65 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+// Admin login — Google/Gmail ONLY (hotfix v621 security).
+//
+// The legacy phone + Master-PIN form is REMOVED. Admins sign in with Google at
+// /auth (mobile OTP is intentionally disabled). That returns a Railway HS256
+// access JWT stored as sb_token; this page sends it to /api/admin/check-role as
+// `Authorization: Bearer <sb_token>`, which verifies the signature and re-checks
+// the admin/super_admin role in the database. On success we reuse the SAME
+// verified token as sb_admin_token and store only the server-verified identity
+// as sb_admin_user — never the local sb_user role. There is no PIN field, no
+// default PIN, and no client-supplied phone/email/role.
 export default function AdminLogin() {
   const router = useRouter();
-  const [phone, setPhone] = useState("");
-  const [pin, setPin] = useState("");
-  const [showPin, setShowPin] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<"checking" | "signin" | "verifying">(
+    "checking",
+  );
   const [error, setError] = useState("");
 
-  async function login() {
-    if (!phone || phone.length < 10) {
-      setError("Enter a valid 10-digit phone number");
-      return;
-    }
-    if (!pin) {
-      setError("Enter the master PIN");
-      return;
-    }
-    setLoading(true);
+  async function verifySession(token: string) {
+    setPhase("verifying");
     setError("");
     try {
       const res = await fetch("/api/admin/check-role", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: `+91${phone}`, pin }),
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (!data.ok) {
-        setError(data.error || "Login failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setError(
+          data.error ||
+            "This Google account is not an admin. Sign in with an admin account.",
+        );
+        setPhase("signin");
         return;
       }
-      localStorage.setItem("sb_admin_token", data.token);
+      // Reuse the SAME verified Railway token as the admin session token, and
+      // store only the server-returned verified identity.
+      localStorage.setItem("sb_admin_token", token);
       localStorage.setItem("sb_admin_user", JSON.stringify(data.user));
-      router.push("/admin");
+      router.replace("/admin");
     } catch (e: any) {
-      setError(e.message || "Network error");
-    } finally {
-      setLoading(false);
+      setError(e?.message || "Network error — please try again.");
+      setPhase("signin");
     }
+  }
+
+  // On mount: if a Gmail/Railway session already exists, verify it; otherwise
+  // offer Google sign-in.
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+    if (token) verifySession(token);
+    else setPhase("signin");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function continueWithGoogle() {
+    // Send the admin to the shared Google sign-in and return here afterward.
+    router.push("/auth?return=/admin/login");
   }
 
   return (
@@ -70,12 +90,21 @@ export default function AdminLogin() {
           boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div>
-          <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 24, color: "#9fb1c2" }}>
+          <div
+            style={{
+              fontFamily: "Syne, sans-serif",
+              fontWeight: 700,
+              fontSize: 24,
+              color: "#9fb1c2",
+            }}
+          >
             StayBid Admin
           </div>
-          <div style={{ color: "#8A8FA8", fontSize: 14, marginTop: 6 }}>God-mode control panel</div>
+          <div style={{ color: "#8A8FA8", fontSize: 14, marginTop: 6 }}>
+            Control panel access
+          </div>
         </div>
 
         {error && (
@@ -96,56 +125,22 @@ export default function AdminLogin() {
           </div>
         )}
 
-        <label style={{ display: "block", color: "#8A8FA8", fontSize: 13, marginBottom: 8 }}>
-          Admin Phone Number
-        </label>
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          <span style={prefixStyle}>+91</span>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-            placeholder="98XXXXXXXX"
-            style={inputStyle}
-            autoFocus
-          />
-        </div>
-
-        <label style={{ display: "block", color: "#8A8FA8", fontSize: 13, marginBottom: 8 }}>
-          Master PIN
-        </label>
-        <div style={{ position: "relative" }}>
-          <input
-            type={showPin ? "text" : "password"}
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="Enter master PIN"
-            onKeyDown={(e) => e.key === "Enter" && login()}
-            style={{ ...inputStyle, paddingRight: 60, width: "100%", boxSizing: "border-box" }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPin((s) => !s)}
+        {phase === "verifying" || phase === "checking" ? (
+          <div
             style={{
-              position: "absolute",
-              right: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: "transparent",
-              border: "none",
-              color: "#8A8FA8",
-              fontSize: 12,
-              cursor: "pointer",
-              fontFamily: "DM Sans, sans-serif",
+              textAlign: "center",
+              color: "#9fb1c2",
+              fontSize: 14,
+              padding: "18px 0",
             }}
           >
-            {showPin ? "HIDE" : "SHOW"}
+            Verifying your admin session…
+          </div>
+        ) : (
+          <button onClick={continueWithGoogle} style={googleBtn}>
+            <span style={{ fontSize: 18 }}>🔐</span> Continue with Google
           </button>
-        </div>
-
-        <button onClick={login} disabled={loading} style={primaryBtn(loading)}>
-          {loading ? "Verifying…" : "Access Admin Panel →"}
-        </button>
+        )}
 
         <div
           style={{
@@ -159,16 +154,20 @@ export default function AdminLogin() {
             lineHeight: 1.6,
           }}
         >
-          <strong>Default master PIN:</strong>{" "}
-          <code style={{ background: "#000", padding: "2px 6px", borderRadius: 4 }}>StayBidAdmin@2026</code>
-          <br />
-          <span style={{ color: "#8A8FA8" }}>
-            Override by setting <code>ADMIN_MASTER_PIN</code> env var on Vercel. Phone must have role
-            <code> super_admin</code> or <code>admin</code> in Supabase.
-          </span>
+          Sign in with a Google account whose role is{" "}
+          <code>admin</code> or <code>super_admin</code> in the platform
+          database. Access is granted only after the server verifies your
+          Google session and your admin role.
         </div>
 
-        <p style={{ textAlign: "center", color: "#8A8FA8", fontSize: 11, marginTop: 18 }}>
+        <p
+          style={{
+            textAlign: "center",
+            color: "#8A8FA8",
+            fontSize: 11,
+            marginTop: 18,
+          }}
+        >
           Admin access only · Unauthorized attempts are logged
         </p>
       </div>
@@ -176,45 +175,19 @@ export default function AdminLogin() {
   );
 }
 
-const prefixStyle: React.CSSProperties = {
-  background: "#151820",
-  border: "1px solid rgba(255,255,255,0.07)",
-  borderRadius: 10,
-  padding: "12px 14px",
-  color: "#8A8FA8",
-  fontSize: 14,
-  flexShrink: 0,
+const googleBtn: React.CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+  background: "linear-gradient(135deg, #9fb1c2, #c6d0da)",
+  border: "none",
+  borderRadius: 12,
+  padding: "14px",
+  color: "#000",
+  fontSize: 15,
+  fontWeight: 700,
+  cursor: "pointer",
+  fontFamily: "DM Sans, sans-serif",
 };
-const inputStyle: React.CSSProperties = {
-  flex: 1,
-  // minWidth:0 lets this flex child shrink below its intrinsic input width,
-  // and border-box keeps the 28px h-padding inside the allotted width. Without
-  // both, the phone input spilled ~21px past the 280px Galaxy Fold viewport
-  // (the +91 prefix is flexShrink:0, so all the squeeze lands on this input).
-  minWidth: 0,
-  boxSizing: "border-box",
-  background: "#151820",
-  border: "1px solid rgba(255,255,255,0.07)",
-  borderRadius: 10,
-  padding: "12px 14px",
-  color: "#E8EAF0",
-  fontSize: 16,
-  outline: "none",
-  letterSpacing: "0.05em",
-};
-function primaryBtn(loading: boolean): React.CSSProperties {
-  return {
-    marginTop: 16,
-    width: "100%",
-    background: "linear-gradient(135deg, #9fb1c2, #c6d0da)",
-    border: "none",
-    borderRadius: 12,
-    padding: "14px",
-    color: "#000",
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: loading ? "default" : "pointer",
-    opacity: loading ? 0.7 : 1,
-    fontFamily: "DM Sans, sans-serif",
-  };
-}

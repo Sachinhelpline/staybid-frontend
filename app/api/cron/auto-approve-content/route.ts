@@ -7,14 +7,14 @@
 // queues an in-app notification to the author.
 //
 // Schedule (cron-job.org — Vercel cron 2-slot full):
-//   GET https://staybids.in/api/cron/auto-approve-content?token=staybid-cron-dev
+//   GET https://staybids.in/api/cron/auto-approve-content?token=<CRON_SECRET>
 //   Frequency: every 1 hour
 //
 // Auth — matches /api/cron/expire-holds pattern:
 //   1) ?token=<CRON_TOKEN> query param
 //   2) Authorization: Bearer <CRON_SECRET> (Vercel native)
-//   3) x-admin-token starting with "adm_" (manual admin trigger)
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 const HEADERS = {
@@ -26,18 +26,6 @@ const HEADERS = {
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
-}
 
 // How old does a PENDING_HOTEL_APPROVAL post need to be before we
 // auto-approve it? Configurable so we can tune from 24h → 48h later
@@ -142,8 +130,9 @@ async function sweep(): Promise<{
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await authorized(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   const started = Date.now();
   const result = await sweep();

@@ -6,6 +6,7 @@
 // hotel_videos + users + complaints with the correct column names.
 
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,9 @@ async function sb(path: string) {
 
 const ACCEPTED_STATUSES = ["ACCEPTED", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT"];
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const [bids, paid, users, vpPending, complaints, hotelVideos, holds] = await Promise.all([
       sb("bids?select=id,amount,status,createdAt,hotelId,customerId&limit=5000"),

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { agentFromReq } from "@/lib/support/agent-auth";
 import { logAdminAction } from "@/lib/admin/audit";
 import { SB_URL, SB_H } from "@/lib/sb-server";
@@ -18,6 +19,8 @@ export const dynamic = "force-dynamic";
 // GET /api/admin/support/conversations/:id?since=<iso>
 // Returns conversation + messages + lightweight user-context panel data.
 export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const params = await props.params;
   const agent = await agentFromReq(req);
   if (!agent) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -43,6 +46,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
 
 // POST /api/admin/support/conversations/:id  { action: "take" | "release" | "resolve" }
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const params = await props.params;
   const agent = await agentFromReq(req);
   if (!agent) return NextResponse.json({ error: "unauthorized" }, { status: 401 });

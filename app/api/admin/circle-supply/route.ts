@@ -15,11 +15,12 @@
 // touches ownerId / owner_type / approval_status — it only governs Model-3
 // supply visibility + the window, never the customer-feed gate.
 //
-// Auth: adminFromReq (Bearer / x-admin-token).
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup).
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,8 @@ const isoDate = (v: any): string | null => {
 };
 
 export async function GET(req: NextRequest) {
-  if (!adminFromReq(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Every operated host-circle property — enabled or not — so ops can flip
   // freshly-provisioned drafts into pre-buy supply.
@@ -103,7 +105,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

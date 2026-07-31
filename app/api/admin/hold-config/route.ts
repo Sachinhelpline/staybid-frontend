@@ -10,6 +10,7 @@
 //   acceptance_window_min INT       15 by default
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 
 const GLOBAL = "_global_defaults";
@@ -23,6 +24,8 @@ async function sbGet(path: string) {
 // GET ?hotelId=... → single row (or null)
 // GET (no params)  → all rows joined with hotels.name (for the admin list page)
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const hotelId = searchParams.get("hotelId");
 
@@ -68,6 +71,8 @@ export async function GET(req: NextRequest) {
 // POST {hotelId, hold_enabled?, pay_at_hotel_enabled?, tier_overrides?, acceptance_window_min?}
 // Upserts the row. Pass hotelId="_global_defaults" to edit platform defaults.
 export async function POST(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await req.json();
     const { hotelId, ...patch } = body || {};
@@ -105,6 +110,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE ?hotelId=... — removes the override row (config falls back to global)
 export async function DELETE(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { searchParams } = new URL(req.url);
     const hotelId = searchParams.get("hotelId");

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_READ, userFromReq } from "@/lib/sb";
 import { resolveUserIds } from "@/lib/sb-server";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ async function fetchProperty(id: string, includePrivate = false) {
 
 // Returns { role } if the caller may manage this property's content, else null.
 async function authorize(req: Request, propertyRow: any): Promise<{ role: "admin" | "owner"; admin: any } | null> {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (admin?.id) return { role: "admin", admin };
 
   const user = userFromReq(req);
@@ -115,7 +116,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     const [saved] = await r.json();
     if (auth.role === "admin") {
-      logAdminAction({ admin: auth.admin, action: "host.property.media.add", targetType: "property", targetId: id, details: { mediaType } });
+      logAdminAction({ admin: auditIdentity(auth.admin), action: "host.property.media.add", targetType: "property", targetId: id, details: { mediaType } });
     }
     return NextResponse.json({ ok: true, media: saved });
   } catch (e: any) {
@@ -145,7 +146,7 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
       return NextResponse.json({ error: "Could not delete media", detail: t.slice(0, 200) }, { status: 502 });
     }
     if (auth.role === "admin") {
-      logAdminAction({ admin: auth.admin, action: "host.property.media.delete", targetType: "property", targetId: id, details: { mediaId } });
+      logAdminAction({ admin: auditIdentity(auth.admin), action: "host.property.media.delete", targetType: "property", targetId: id, details: { mediaId } });
     }
     return NextResponse.json({ ok: true });
   } catch (e: any) {

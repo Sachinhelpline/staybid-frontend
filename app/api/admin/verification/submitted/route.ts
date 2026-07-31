@@ -1,13 +1,16 @@
 // v126.3 — vp_videos uses created_at (not uploadedAt). Previous version
 // queried order=uploadedAt.desc → PostgREST 42703 → empty response.
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const res = await fetch(
     `${SB_URL}/rest/v1/vp_videos?select=*&order=created_at.desc&limit=200`,
     { headers: SB_H },

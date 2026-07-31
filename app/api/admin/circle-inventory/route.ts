@@ -15,11 +15,12 @@
 //     mark_buyback_paid    { blockId }          block buyback obligation owed → paid
 //     mark_settlement_paid { settlementId }    settlement_ledger b2b_trade owed → paid
 //
-// Auth: adminFromReq (Bearer / x-admin-token). Every mutation logAdminAction'd.
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup). Every mutation logAdminAction'd.
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { resaleAskPerNight } from "@/lib/b2b/engine";
 import { isRazorpayXConfigured, ensureFundAccount, createPayout } from "@/lib/circle/razorpayx";
 
@@ -54,7 +55,8 @@ async function loadBlock(blockId: string): Promise<any | null> {
 }
 
 export async function GET(req: NextRequest) {
-  if (!adminFromReq(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const status = (new URL(req.url).searchParams.get("status") || "").trim();
   let blockQ = `select=*&order=created_at.desc&limit=200`;
@@ -259,7 +261,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

@@ -9,13 +9,16 @@
 // + a real last-recalc timestamp from the most-recently-updated config row.
 
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const [rooms, cfg, deals] = await Promise.all([
     fetch(`${SB_URL}/rest/v1/rooms?select=id`, { headers: SB_H }).then((r) => (r.ok ? r.json() : [])),
     fetch(

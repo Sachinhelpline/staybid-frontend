@@ -8,8 +8,9 @@
 //        (lib/channels/sync.ts syncFeed) the partner + cron use. Audit-logged.
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb-server";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { syncFeed } from "@/lib/channels/sync";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ function feedHealth(f: any, now: number): "ok" | "error" | "paused" | "stale" | 
 }
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [feeds, connections] = await Promise.all([
@@ -120,7 +121,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

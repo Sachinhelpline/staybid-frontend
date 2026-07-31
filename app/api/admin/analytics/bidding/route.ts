@@ -5,6 +5,7 @@
 // GET /api/admin/analytics/bidding?days=30
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_READ } from "@/lib/sb";
 
 async function sbGet(path: string) {
@@ -14,6 +15,8 @@ async function sbGet(path: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const days = Math.max(1, Math.min(180, Number(searchParams.get("days") || 30)));
   const sinceIso = new Date(Date.now() - days * 86400_000).toISOString();

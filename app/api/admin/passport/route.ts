@@ -16,8 +16,9 @@
 // `passport_profiles.bonus_xp`, which /api/passport adds on top of the
 // computed XP so it survives every recompute.
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { regionForCity, rankForXp } from "@/lib/passport/engine";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,7 @@ async function attachUsers(profiles: any[]): Promise<any[]> {
 }
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
@@ -124,7 +125,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => null);

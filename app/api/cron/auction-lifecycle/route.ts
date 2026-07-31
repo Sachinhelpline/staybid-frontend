@@ -2,9 +2,10 @@
 //   A) OPEN  — draft lots whose window has opened (open ≤ now < close) → 'open'.
 //   B) CLEAR — open lots whose window has CLOSED (close ≤ now) → run the
 //              clash-free clearing engine (award winners, mark losers, flip lot).
-// Auth mirrors the other crons (?token= / Bearer CRON_SECRET / adm_ token).
+// Auth mirrors the other crons (?token= / Bearer CRON_SECRET).
 // Register on cron-job.org: */15 * * * * → /api/cron/auction-lifecycle?token=…
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY, SB_READ } from "@/lib/sb";
 import { clearLotDb } from "@/lib/trade/clear-run";
 import { resolveAuctionConfig } from "@/lib/trade/config";
@@ -17,22 +18,15 @@ const SB_W = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type"
 const MAX_CLEAR = 100;
 const TIME_BUDGET_MS = 24_000;
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const qToken = new URL(req.url).searchParams.get("token");
-  if (qToken && qToken === (process.env.CRON_TOKEN || "staybid-cron-dev")) return true;
-  const cronAuth = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
-}
 
 export async function GET(req: NextRequest) { return run(req); }
 export async function POST(req: NextRequest) { return run(req); }
 
 async function run(req: NextRequest) {
-  if (!(await authorized(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const started = Date.now();
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
+  }const started = Date.now();
   const nowIso = new Date().toISOString();
 
   // Pass A — open scheduled lots whose window has begun.

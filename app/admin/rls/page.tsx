@@ -58,8 +58,10 @@ export default function AdminRLS() {
   const adminHeaders = useCallback((): Record<string, string> => {
     if (typeof window === "undefined") return { "Content-Type": "application/json" };
     const t = localStorage.getItem("sb_admin_token");
-    // v104.2 — also send x-admin-* identity headers so opaque adm_* tokens
-    // (master-PIN login flow) still surface admin identity in audit_action_logs.
+    // The Bearer token (the verified Gmail/Railway session) is the ONLY thing
+    // the server authorizes on. These x-admin-* identity headers are legacy and
+    // NOT trusted for authorization — the server derives the audit identity from
+    // the verified token, never from a header.
     let user: any = null;
     try { user = JSON.parse(localStorage.getItem("sb_admin_user") || "null"); } catch {}
     const h: Record<string, string> = { "Content-Type": "application/json" };

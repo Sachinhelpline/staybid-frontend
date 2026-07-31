@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { agentFromReq } from "@/lib/support/agent-auth";
 import { isAIEnabled, isAnthropicEnabled } from "@/lib/support/ai-agent";
 import { isGroqEnabled } from "@/lib/support/groq-agent";
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 // Returns which AI provider(s) are configured + which one will be used.
 // Agents use this to verify their env var setup is live.
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const agent = await agentFromReq(req);
   if (!agent) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

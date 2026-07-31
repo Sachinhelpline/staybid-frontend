@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
+import { logAdminAction } from "@/lib/admin/audit";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
 
 export async function POST(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const { requestId, verdict, notes, refundAmount } = body;
 
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   // v98 — audit
   logAdminAction({
-    admin: adminFromReq(req),
+    admin: auditIdentity(admin),
     action: `verification.${verdict}`,
     targetType: "verification",
     targetId: requestId,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
@@ -10,6 +11,8 @@ function decodeJwt(t: string) {
 }
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const params = await props.params;
   const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
   const payload = token ? decodeJwt(token) : null;

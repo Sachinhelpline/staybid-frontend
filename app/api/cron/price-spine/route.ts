@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbSelect, SB } from "@/lib/onboard/supabase-admin";
 import { computeRoomDatePrice } from "@/lib/pricing/spine";
 
@@ -55,14 +56,8 @@ async function upsertRows(rows: any[]): Promise<number> {
 }
 
 export async function GET(req: Request) {
-  const token =
-    new URL(req.url).searchParams.get("token") ||
-    req.headers.get("x-cron-secret") ||
-    (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const expected = process.env.CRON_SECRET || "staybid-cron-dev";
-  if (token !== expected) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const authFail = cronAuthGuard(req);
+  if (authFail) return authFail;
 
   const t0 = Date.now();
   const out: any = { rooms: 0, dates: HORIZON_DAYS, rowsWritten: 0, errors: [] };

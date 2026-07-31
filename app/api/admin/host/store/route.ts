@@ -6,13 +6,14 @@
 //   PATCH  body { entity, id, patch:{...} }               → update (whitelisted).
 //   DELETE ?entity=product|category&id=<id>               → hard delete.
 //
-// Auth: x-admin-token / x-admin-id (adminFromReq). Every mutation audit-logged.
+// Auth: requireVerifiedAdmin (signed admin JWT + server-side role lookup). Every mutation audit-logged.
 // The customer-facing catalog (/api/host/store) only ever reads active+in_stock
 // rows, so "remove" can be a soft PATCH active=false OR a hard DELETE here.
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,7 @@ function categoryFields(body: any, partial = false) {
 const TABLE: Record<string, string> = { product: "store_products", category: "store_categories" };
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const [catRes, prodRes] = await Promise.all([
@@ -93,7 +94,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
@@ -159,7 +160,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);

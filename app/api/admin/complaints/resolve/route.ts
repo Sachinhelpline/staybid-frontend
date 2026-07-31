@@ -1,21 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { purgeEvidenceVideos } from "@/lib/verify/cleanup";
 
 
 
 export async function POST(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { complaintId, resolution, refundAmount, notes, paymentId } = await req.json();
   if (!complaintId || !resolution) {
     return NextResponse.json({ error: "complaintId and resolution required" }, { status: 400 });
   }
 
+  const wantsRefund = !!(refundAmount && refundAmount > 0 && paymentId);
+  // Fail closed: a refund needs a server-provided Razorpay secret. Never fall
+  // back to a hardcoded credential. If the config is absent, reject the whole
+  // request (do NOT mark the complaint resolved without issuing the refund).
+  if (wantsRefund && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+    return NextResponse.json(
+      { error: "payment_config_missing" },
+      { status: 503 },
+    );
+  }
+
   let refundResult: any = null;
-  if (refundAmount && refundAmount > 0 && paymentId) {
+  if (wantsRefund) {
     try {
-      const keyId = process.env.RAZORPAY_KEY_ID || "rzp_live_SfFAsbYjbHfztd";
-      const keySecret = process.env.RAZORPAY_KEY_SECRET || "dv3xFGG44R2FSqlshkDVY2Gn";
+      const keyId = process.env.RAZORPAY_KEY_ID as string;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET as string;
       const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
       const rRes = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
         method: "POST",
@@ -76,7 +91,7 @@ export async function POST(req: NextRequest) {
 
   // v98 — audit
   logAdminAction({
-    admin: adminFromReq(req),
+    admin: auditIdentity(admin),
     action: `complaint.${resolution}`,
     targetType: "complaint",
     targetId: complaintId,

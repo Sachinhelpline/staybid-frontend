@@ -12,11 +12,12 @@
 //
 // If the requester owns/operates MORE than one hotel, the endpoint returns
 // { needsHotel:true, hotels:[…] } so the admin picks which one, then re-calls
-// with hotelId. Auth: adminFromReq. Audit-logged. Best-effort per step.
+// with hotelId. Auth: requireVerifiedAdmin. Audit-logged. Best-effort per step.
 //
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, genId } from "@/lib/sb-server";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { resolveOperatedHotelIds } from "@/lib/partner/operator-access";
 import { isSafeFeedUrl, syncFeed } from "@/lib/channels/sync";
@@ -56,7 +57,7 @@ async function requesterHotels(userId: string): Promise<{ id: string; name: stri
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

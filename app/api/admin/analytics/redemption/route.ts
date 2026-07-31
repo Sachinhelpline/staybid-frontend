@@ -11,18 +11,15 @@
 //   - wallet credit balance + lifetime debited (real cash-equivalent paid out)
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { SB_URL, SB_READ } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
 
-function isAdmin(req: NextRequest): boolean {
-  const token = req.headers.get("x-admin-token") || "";
-  const adminId = req.headers.get("x-admin-id") || "";
-  return !!token && !!adminId;
-}
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: "Admin auth required" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const days = Math.max(1, Math.min(365, parseInt(req.nextUrl.searchParams.get("days") || "30", 10)));
   const since = new Date(Date.now() - days * 86400_000).toISOString();
 

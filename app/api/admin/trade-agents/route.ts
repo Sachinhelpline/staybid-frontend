@@ -3,8 +3,9 @@
 //   POST { agentId, action: 'approve'|'reject'|'suspend'|'reinstate', category? }
 //        → change status (+ optional category). Audit-logged.
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,8 @@ const ACTION_STATUS: Record<string, string> = {
 };
 
 export async function GET(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return NextResponse.json({ error: "Admin auth required." }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
   const status = (url.searchParams.get("status") || "all").toLowerCase();
@@ -33,8 +34,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return NextResponse.json({ error: "Admin auth required." }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch {}

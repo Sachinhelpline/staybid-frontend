@@ -9,13 +9,13 @@
 // client timeout never fires; parallel batches; per-feed fetch timeout lives
 // inside syncFeed. Partial completion is safe — the next run converges.
 //
-// Auth (matches /api/cron/expire-holds): ?token= OR Bearer CRON_SECRET OR an
-// adm_ x-admin-token for manual admin triggers.
+// Auth (matches /api/cron/expire-holds): ?token= OR Bearer CRON_SECRET.
 //
 // cron-job.org schedule: */15 * * * *  →
-//   https://www.staybids.in/api/cron/channel-sync?token=staybid-cron-dev
+//   https://www.staybids.in/api/cron/channel-sync?token=<CRON_SECRET>
 //
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbSelect } from "@/lib/sb-server";
 import { syncFeed, SyncResult } from "@/lib/channels/sync";
 
@@ -26,14 +26,6 @@ const TIME_BUDGET_MS = 24_000;
 const BATCH = 5;
 const MAX_FEEDS_PER_RUN = 40;
 
-function authorized(req: NextRequest): boolean {
-  const url = new URL(req.url);
-  const qToken = url.searchParams.get("token") || "";
-  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  const adminToken = req.headers.get("x-admin-token") || "";
-  const expected = process.env.CRON_SECRET || "staybid-cron-dev";
-  return qToken === expected || bearer === expected || adminToken.startsWith("adm_");
-}
 
 /** ota_feeds timestamps may come back tz-less (timestamp without time zone)
  *  — parse as UTC, same trap as the v241.26 parseDbTime fix. */
@@ -46,8 +38,10 @@ function parseDbTs(v: any): number {
 }
 
 async function run(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const started = Date.now();
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
+  }const started = Date.now();
 
   let feeds: any[] = [];
   try {

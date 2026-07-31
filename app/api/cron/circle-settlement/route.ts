@@ -23,11 +23,12 @@
 // Records obligations only. owed→paid + money-out (RazorpayX/Route) is S3
 // (Railway/admin). Consistent with every other Circle money path (no auto money-out).
 //
-// Auth mirrors the other crons (?token= / Bearer CRON_SECRET / adm_ token).
+// Auth mirrors the other crons (?token= / Bearer CRON_SECRET).
 // Register on cron-job.org: */30 * * * * →
-//   https://www.staybids.in/api/cron/circle-settlement?token=staybid-cron-dev
+//   https://www.staybids.in/api/cron/circle-settlement?token=<CRON_SECRET>
 
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import {
   enumerateNights, resolveNightlyPayees, payeeNightCounts,
@@ -42,15 +43,6 @@ const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type"
 const MAX_PER_PASS = 200;
 const LOOKBACK_DAYS = 120; // only reconcile recent/active stays (bounded scan)
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const qToken = new URL(req.url).searchParams.get("token");
-  if (qToken && qToken === (process.env.CRON_TOKEN || "staybid-cron-dev")) return true;
-  const cronAuth = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
-}
 
 const csv = (xs: string[]) => xs.map((x) => encodeURIComponent(x)).join(",");
 const round0 = (n: any) => Math.round(Number(n) || 0);
@@ -60,9 +52,10 @@ async function getJson(url: string): Promise<any[]> {
 }
 
 async function run(req: NextRequest) {
-  if (!(await authorized(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const feePct = CIRCLE_BOOKING_FEE_PCT_DEFAULT;
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
+  }const feePct = CIRCLE_BOOKING_FEE_PCT_DEFAULT;
   const sinceIso = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
   const OK = "status=not.in.(CANCELLED,cancelled,REFUNDED,refunded,FAILED,failed,PENDING,pending)";
 

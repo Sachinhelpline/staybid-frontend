@@ -5,11 +5,12 @@
 //
 // Upserts the `b2b_fee_config` singleton and invalidates the resolver cache so
 // the next listing freezes the new %. Only NEW listings re-price; live listings
-// keep their frozen % (tamper-safe). Auth: adminFromReq (Bearer / x-admin-token).
+// keep their frozen % (tamper-safe). Auth: requireVerifiedAdmin (Bearer / x-admin-token).
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import {
   resolveB2bFeeConfig,
   invalidateB2bFeeConfigCache,
@@ -38,13 +39,14 @@ const clampMult = (v: any): number | null => {
 };
 
 export async function GET(req: NextRequest) {
-  if (!adminFromReq(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const config = await resolveB2bFeeConfig();
   return NextResponse.json({ config });
 }
 
 export async function POST(req: NextRequest) {
-  const admin = adminFromReq(req);
+  const admin = await requireVerifiedAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};

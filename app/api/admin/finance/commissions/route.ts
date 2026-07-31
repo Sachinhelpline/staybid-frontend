@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,9 @@ const ACCEPTED_STATUSES = new Set(["ACCEPTED", "CONFIRMED", "CHECKED_IN", "CHECK
 // Default platform commission % if no global commission_rules.platformPct exists.
 const DEFAULT_PLATFORM_PCT = 5;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const [hotels, bids, paidRows, hotelRules, globalRule] = await Promise.all([
     fetch(`${SB_URL}/rest/v1/hotels?select=id,name,city,ownerId`, { headers: SB_H })
       .then((r) => (r.ok ? r.json() : []))

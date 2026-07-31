@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
+import { logAdminAction } from "@/lib/admin/audit";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
@@ -13,6 +14,8 @@ async function sb(path: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const city = searchParams.get("city");
   const status = searchParams.get("status");
@@ -66,6 +69,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { hotelId, action, value } = await req.json();
   try {
     let update: Record<string, unknown> = {};
@@ -109,7 +114,7 @@ export async function PATCH(req: NextRequest) {
 
     // v98 — audit
     logAdminAction({
-      admin: adminFromReq(req),
+      admin: auditIdentity(admin),
       action: `hotel.${action}`,
       targetType: "hotel",
       targetId: hotelId,

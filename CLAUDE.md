@@ -69,12 +69,15 @@ Public: `NEXT_PUBLIC_API_URL` · `NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_SfFAsbYjb
 `NEXT_PUBLIC_FIREBASE_*` (project `staybid-6feb7`) · `NEXT_PUBLIC_SB_IMAGE_TRANSFORM`
 (Pro-plan image transform gate) · `NEXT_PUBLIC_ENABLE_PHONE_OTP` (default 0) ·
 `NEXT_PUBLIC_ENABLE_LOCATION_OTP` (default 0).
-Server-only: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` · `SUPABASE_SERVICE_ROLE_KEY`
-(auto-elevates RLS via `lib/sb-server.ts`) · `CRON_SECRET` · `JWT_SECRET` · optional
+Server-only: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` (**environment-only — hardcoded fallbacks are
+FORBIDDEN**; routes fail closed with `payment_config_missing` when unset) · `SUPABASE_SERVICE_ROLE_KEY`
+(auto-elevates RLS via `lib/sb-server.ts`) · `CRON_SECRET` · **`JWT_ACCESS_SECRET`** (Railway's
+authoritative HS256 access-token signing secret — the frontend verifies backend/admin/Gmail tokens against it) ·
+`JWT_SECRET` (**now only a compatibility FALLBACK** for token verification + the onboarding token) · optional
 `GEMINI_API_KEY` (free vision primary) / `ANTHROPIC_API_KEY` (paid backup) / `AI_VERIFY_PROVIDER` ·
 `BOOKING_COM_LIVE` (inert channel-manager scaffold).
-Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Public LIVE key id
-`rzp_live_SfFAsbYjbHfztd` is safe in client code.
+Public LIVE Razorpay key id `rzp_live_SfFAsbYjbHfztd` is safe in client code. **Never document or commit
+secret VALUES anywhere — variable names + safe descriptions only.**
 
 ---
 
@@ -91,8 +94,41 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   PATCH real phone/name ONLY when the JWT carries them. Never overwrite a real phone with a
   placeholder.
 - Route auth helpers: `userFromReq`/`socialUserFromReq` (customer), `x-partner-token`
-  (+ `partnerHotelScope`/`partnerUnitScope`), `adminFromReq` + `logAdminAction`, `workerFromReq`
-  (last-10-digit phone `ilike`).
+  (+ `partnerHotelScope`/`partnerUnitScope`), **`requireVerifiedAdmin`** (`lib/admin/verify.ts`) +
+  `logAdminAction`, `workerFromReq` (last-10-digit phone `ilike`).
+- **🔒 Admin/cron auth contract (hotfix v621 — LOCKED):**
+  - **`adm_*` opaque tokens are RETIRED and must NEVER be accepted as authentication** anywhere (was the
+    old `adminFromReq`/cron bypass). `adminFromReq`, bare `x-admin-id`, and `adm_`-presence are all removed.
+  - **Every `app/api/admin/**` handler gates with `await requireVerifiedAdmin(req)` before any body parse /
+    DB / logging / mutation** (except `check-role` = login-verify, and `hotel-scores/recompute` = admin-OR-cron).
+    It verifies the JWT signature + does a **server-side admin/super_admin role lookup on every request**;
+    audit logs use the verified identity or `"unknown"` (never a header value).
+  - **Admin login is GMAIL/RAILWAY ONLY (v621.1 — the phone + Master-PIN flow is REMOVED).** Admins sign in
+    with Google at `/auth` (mobile OTP is intentionally disabled); Google returns a Railway HS256 access JWT
+    stored as `sb_token`. `/admin/login` offers **"Continue with Google"** (→ `/auth?return=/admin/login`),
+    then POSTs that token to `check-role` as `Authorization: Bearer <sb_token>`. `check-role` runs
+    `requireVerifiedAdmin` (verify signature + DB role lookup, admin/super_admin only) and returns the verified
+    identity; the client reuses the **same** verified token as `sb_admin_token` and stores only the
+    server-returned identity as `sb_admin_user` (never the local `sb_user` role). **There is NO PIN, NO default
+    PIN, and NO token-issuance path** — supplying phone/pin can never mint an admin token, and `ADMIN_JWT_SECRET`
+    is no longer used anywhere (the forge-your-own-admin-token surface is gone).
+  - **Admin tokens are verified against `JWT_ACCESS_SECRET`** (Railway's authoritative access-token secret —
+    the same secret Google sign-in tokens are signed with), then the DB role lookup; `JWT_SECRET` is tried only
+    as a compatibility fallback. A Firebase RS256 token fails the HS256 check → rejected. Railway tokens carry no
+    `iss`/`aud`/`token_use` — see the token-purpose follow-up below.
+  - **Cron routes (`app/api/cron/*`) accept `CRON_SECRET` ONLY, via `Authorization: Bearer <CRON_SECRET>`** — the
+    `?token=` query-string and `x-cron-secret` transports are REMOVED (no secrets in URLs); the `adm_` path is gone.
+  - **Notification queue** (`/api/notifications/queue`) requires a cryptographically-verified HS256 caller,
+    binds `user_id` to the verified subject, and only permits validated internal same-origin paths (mirrored
+    by `sbSafeUrl` in `public/sw.js`). **Firebase RS256 callers FAIL CLOSED** until `firebase-admin`
+    verification lands (interim limitation).
+  - **Permanent security regression suite:** `npm run test:security` (`tests/security/security.test.js`) —
+    hermetic, network-free; covers the Gmail/Railway admin gate, the Master-PIN/default-PIN scrub across the
+    tracked tree + rendered admin-login source, customer HS256/Firebase-fail-closed, notification URL hardening,
+    Razorpay config-absent, and cron Bearer-only fail-closed. Run it on every auth change.
+  - ⚠ **Follow-up (Railway):** add an admin-scope claim (`token_use`/`aud`) minted only at admin login so the
+    frontend can distinguish admin-context tokens; today any valid Railway token for an admin-role subject
+    authorizes admin access (bounded to that admin principal; DB role is the guard).
 - **Sign-in-then-resume:** auth-gated CTAs use `redirectToSignIn(router,{route,action?,payload?})`
   (`lib/auth-intent.ts`, 30-min localStorage TTL) + `consumeMatchingIntent()` on the destination.
   `/auth` reads `?return=` (wrapped in `<Suspense>`).
@@ -1120,11 +1156,18 @@ Every hop has `⚠️ v131.8 LOAD-BEARING` markers; audit all 5 before touching 
 Vercel cron (2-cap): `/api/cron/pricing` (daily 4:00), `/api/cron/lifecycle` (4:05). cron-job.org
 (rest): `expire-holds`, `flash-drop`, `feedback-lifecycle`, `price-spine`, `inventory-lifecycle`
 (Circle markdown/expiry + B2B), `channel-sync`, `auto-approve-content`, `post-stay-nudge`,
-`view-milestone-rewards`, `creator-upgrade-eval`. All accept `?token=<CRON_SECRET||"staybid-cron-dev">`
-/ Bearer `CRON_SECRET` / `adm_` x-admin-token. Keep internal budgets ≤24s (cron-job.org ~30s client
-timeout); per-item `withTimeout` in batched loops (Node fetch has no default timeout). ✅ Registered
-on cron-job.org (2026-07-27, Option A default token `staybid-cron-dev`): `channel-sync` +
-`inventory-lifecycle` (`*/15`) + `circle-settlement` (`*/30`).
+`view-milestone-rewards`, `creator-upgrade-eval`. **Cron auth is FAIL-CLOSED + Bearer-ONLY (hotfix v621, shared
+`lib/cron/auth.ts`):** the ONLY credential is the exact `CRON_SECRET`, and the ONLY accepted transport is the
+`Authorization: Bearer <CRON_SECRET>` header. **A secret must NEVER travel in a URL** — the `?token=` query-string
+transport (and the `x-cron-secret` header) are REMOVED; request URLs are logged by proxies / the CDN edge / browser
+history, so a token in the query string is a credential leak. There is **NO public "staybid-cron-dev" fallback and no
+`CRON_TOKEN`** — a route returns **503 `cron_auth_unconfigured`** when `CRON_SECRET` is unset and **401** on a
+wrong/absent/fake/query-only token, **before any side effect**. The `adm_` x-admin-token bypass is RETIRED. `vercel.json`
+crons carry no query token (Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically once `CRON_SECRET` is set
+in Vercel Production). Keep internal budgets ≤24s (cron-job.org ~30s client timeout); per-item `withTimeout` in batched
+loops (Node fetch has no default timeout). ⚠ **CRON_SECRET must be set in prod** (a hard merge blocker) and external
+schedulers (cron-job.org) must be configured with a **custom header** `Authorization: Bearer <CRON_SECRET>` (never a
+`?token=` URL). Registered `*/15`/`*/30`: `channel-sync` + `inventory-lifecycle` + `circle-settlement`.
 ⏳ **Owner ops still PENDING (deferred 2026-07-27):** RazorpayX live payout setup (the 3
 `RAZORPAYX_*` env vars → Circle owner money-out). Full step-by-step in
 `docs/PENDING-RAZORPAYX-SETUP.md`. Interim: `/admin/circle-inventory` "Mark paid (manual)".

@@ -4,8 +4,8 @@
 // POST /api/admin/hotel-scores/recompute?hotelId=X → recompute single
 // POST /api/admin/hotel-scores/recompute?city=Y  → recompute city
 //
-// Auth: x-admin-token (adm_*) OR Bearer cron-secret OR ?token=CRON_TOKEN.
-// Same pattern as /api/cron/feedback-lifecycle.
+// Auth: a signature-verified admin OR `Authorization: Bearer <CRON_SECRET>`.
+// Same cron pattern as /api/cron/feedback-lifecycle.
 //
 // Runs sequentially per hotel to keep memory flat. After computing each
 // scorecard, rewrites the rank for every hotel in that city in one pass
@@ -16,19 +16,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
 import { computeHotelScore } from "@/lib/hotel-score";
 import { loadHotelScoreInputs } from "@/lib/hotel-score-data";
-import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
+import { requireVerifiedAdmin, auditIdentity, type VerifiedAdmin } from "@/lib/admin/verify";
+import { isCronAuthorized } from "@/lib/cron/auth";
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
+// Dual auth: cron (exact CRON_SECRET via `Authorization: Bearer <CRON_SECRET>`
+// — no query-string transport, no public fallback) OR a signature-VERIFIED
+// admin. The legacy adm_ presence check and the public cron-token fallback are
+// both removed.
+async function authorized(
+  req: NextRequest,
+): Promise<{ ok: boolean; admin: VerifiedAdmin | null }> {
+  if (isCronAuthorized(req).ok) return { ok: true, admin: null };
+  const admin = await requireVerifiedAdmin(req);
+  if (admin) return { ok: true, admin };
+  return { ok: false, admin: null };
 }
 
 async function sb(path: string): Promise<any[]> {
@@ -240,18 +242,18 @@ export async function POST(req: NextRequest) {
 }
 
 async function handle(req: NextRequest) {
-  if (!(await authorized(req))) {
+  const auth = await authorized(req);
+  if (!auth.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const result = await run(req);
 
-  // Best-effort audit log (only when triggered by a human admin token).
+  // Best-effort audit log (only when triggered by a verified human admin).
   try {
-    const admin = adminFromReq(req as any);
-    if (admin) {
+    if (auth.admin) {
       const { searchParams } = new URL(req.url);
       logAdminAction({
-        admin,
+        admin: auditIdentity(auth.admin),
         action: "hotel_scores.recompute",
         targetType: "hotel_scores",
         targetId: searchParams.get("hotelId") || searchParams.get("city") || "all",

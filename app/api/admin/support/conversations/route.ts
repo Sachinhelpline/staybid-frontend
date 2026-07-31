@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin } from "@/lib/admin/verify";
 import { agentFromReq } from "@/lib/support/agent-auth";
 import { listConversationsForAgent } from "@/lib/support/repo";
 import type { SupportStatus } from "@/lib/support/types";
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 // view=mine  → assigned to caller, active
 // view=all   → everything except closed
 export async function GET(req: NextRequest) {
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const agent = await agentFromReq(req);
   if (!agent) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

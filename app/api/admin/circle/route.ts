@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_H } from "@/lib/sb";
-import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { logAdminAction } from "@/lib/admin/audit";
 import { sbCacheInvalidate } from "@/lib/sb-cache";
 import { mergeRevenueConfig } from "@/lib/circle/engine";
 import {
@@ -148,8 +149,8 @@ async function attachUsers(rows: any[], key: string): Promise<any[]> {
 }
 
 export async function GET(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return unauthorized();
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const [propsR, rtR, locksR, bundlesR, payoutsR, unitsR] = await Promise.all([
@@ -211,8 +212,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return unauthorized();
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
@@ -257,8 +258,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return unauthorized();
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
@@ -347,8 +348,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const admin = adminFromReq(req);
-  if (!admin) return unauthorized();
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
   const entity = String(url.searchParams.get("entity") || "");

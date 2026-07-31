@@ -12,7 +12,7 @@
 // credit AT MOST ONCE per user across all time.
 //
 // Schedule (cron-job.org):
-//   GET https://staybids.in/api/cron/view-milestone-rewards?token=staybid-cron-dev
+//   GET https://staybids.in/api/cron/view-milestone-rewards?token=<CRON_SECRET>
 //   Frequency: every 1 day
 //
 // Auth — matches the other crons.
@@ -21,6 +21,7 @@
 // not the viewer. Posts with verification_method='hotel' or 'creator'
 // are skipped — existing creator commission system pays those.
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { queueNotification } from "@/lib/notify-server";
 
@@ -33,18 +34,6 @@ const HEADERS = {
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  const adminTok = req.headers.get("x-admin-token");
-  if (adminTok && adminTok.startsWith("adm_")) return true;
-  return false;
-}
 
 type Milestone = { key: string; threshold: number; reward_inr: number };
 
@@ -245,8 +234,9 @@ async function sweep(): Promise<{
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await authorized(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   const started = Date.now();
   const result = await sweep();

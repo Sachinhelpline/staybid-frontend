@@ -7,14 +7,15 @@
 // the token presence per the v98 audit pattern. Identity logged via
 // logAdminAction on every mutation.
 import { NextRequest, NextResponse } from "next/server";
+import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
 import { SB_URL, SB_KEY } from "@/lib/sb";
-import { adminFromReq } from "@/lib/admin/audit";
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
 export async function GET(req: NextRequest) {
-  const admin = adminFromReq(req);
-  // adminFromReq returns null only when there's no header AND no token.
+  const admin = await requireVerifiedAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // requireVerifiedAdmin returns null only when there's no header AND no token.
   // For pre-Phase-2 admins the layout sets x-admin-* headers, so null here
   // is a genuine unauth.
   if (!admin) {
