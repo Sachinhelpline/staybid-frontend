@@ -33,8 +33,10 @@ const OUT = path.join(BUILD, "out");
 fs.rmSync(BUILD, { recursive: true, force: true });
 fs.mkdirSync(path.join(SRC, "lib", "admin"), { recursive: true });
 fs.mkdirSync(path.join(SRC, "lib", "auth"), { recursive: true });
+fs.mkdirSync(path.join(SRC, "lib", "cron"), { recursive: true });
 fs.copyFileSync(path.join(REPO, "lib/admin/verify.ts"), path.join(SRC, "lib/admin/verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/auth/customer-verify.ts"), path.join(SRC, "lib/auth/customer-verify.ts"));
+fs.copyFileSync(path.join(REPO, "lib/cron/auth.ts"), path.join(SRC, "lib/cron/auth.ts"));
 fs.writeFileSync(
   path.join(SRC, "tsconfig.json"),
   JSON.stringify({
@@ -51,7 +53,8 @@ fs.writeFileSync(
 try { cp.execSync(`npx tsc -p "${path.join(SRC, "tsconfig.json")}"`, { cwd: REPO, stdio: "pipe" }); } catch (_) {}
 const adminJs = path.join(OUT, "lib/admin/verify.js");
 const custJs = path.join(OUT, "lib/auth/customer-verify.js");
-if (!fs.existsSync(adminJs) || !fs.existsSync(custJs)) {
+const cronJs = path.join(OUT, "lib/cron/auth.js");
+if (!fs.existsSync(adminJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs)) {
   console.error("COMPILE FAILED — helper JS not emitted");
   process.exit(2);
 }
@@ -77,16 +80,20 @@ global.fetch = async (url) => {
 
 const STUB = path.join(OUT, "_sb_stub.js");
 fs.writeFileSync(STUB, 'module.exports = { SB_URL: "http://mock", SB_READ: {} };');
+const NEXTSTUB = path.join(OUT, "_next_server_stub.js");
+fs.writeFileSync(NEXTSTUB, 'module.exports = { NextResponse: { json: (body, init) => ({ status: (init && init.status) || 200, body }) } };');
 const JWT_PATH = require.resolve(path.join(REPO, "node_modules/jsonwebtoken"));
 const origResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, ...rest) {
   if (request === "@/lib/sb") return STUB;
+  if (request === "next/server") return NEXTSTUB;
   if (request === "jsonwebtoken") return JWT_PATH;
   return origResolve.call(this, request, ...rest);
 };
 
 const adminV = require(adminJs);
 const custV = require(custJs);
+const cronV = require(cronJs);
 
 // ---- 3. assert framework ----------------------------------------------------
 let pass = 0, fail = 0;
@@ -97,37 +104,6 @@ function check(name, cond) {
 }
 function reqWith(headers) {
   return { headers: { get: (k) => headers[k.toLowerCase()] ?? null } };
-}
-
-// ---- cron authorize() extraction (hermetic; no route imports) ---------------
-function extractFn(src, name) {
-  const re = new RegExp("(?:async\\s+)?function\\s+" + name + "\\s*\\(");
-  const m = re.exec(src);
-  if (!m) return null;
-  const open = src.indexOf("{", m.index);
-  let d = 0;
-  for (let i = open; i < src.length; i++) {
-    if (src[i] === "{") d++;
-    else if (src[i] === "}") { d--; if (!d) return src.slice(m.index, i + 1); }
-  }
-  return null;
-}
-async function evalCronAuth(file, name, headers, url) {
-  const src = fs.readFileSync(path.join(REPO, file), "utf8");
-  const fnSrc = extractFn(src, name);
-  if (!fnSrc) throw new Error("auth fn not found in " + file);
-  // Strip TypeScript signature annotations so plain JS `new Function` can parse
-  // the extracted gate (the bodies use only process.env / URL / header reads).
-  const js = fnSrc
-    .replace(/\(\s*req\s*:\s*[A-Za-z0-9_<>.\[\]| ]+\)/, "(req)")
-    .replace(/\)\s*:\s*(Promise<\s*boolean\s*>|boolean)\s*\{/, ") {");
-  const runner = new Function("req", js + "\nreturn " + name + "(req);");
-  const req = {
-    url,
-    nextUrl: new URL(url),
-    headers: { get: (k) => headers[k.toLowerCase()] ?? null },
-  };
-  return await runner(req);
 }
 
 (async () => {
@@ -238,41 +214,58 @@ async function evalCronAuth(file, name, headers, url) {
   check("razorpay: env-secret HMAC verifies (order|payment)", sig === expected && sig.length === 64);
   check("razorpay: configured=false when id/secret unset (guard rule)", !("".startsWith("rzp_") && !!""));
 
-  // ===== CRON auth gates (adm_ bypass removed) =====
+  // ===== CRON auth (shared fail-closed helper lib/cron/auth.ts) =====
+  const cronReq = (headers, url) => ({ url, headers: { get: (k) => headers[k.toLowerCase()] ?? null } });
+  const CU = "https://staybids.in/api/cron/x";
+  // Unset CRON_SECRET → 503 cron_auth_unconfigured, reject even the old public default.
+  delete process.env.CRON_SECRET;
+  check("cron: unset secret + staybid-cron-dev → 503", cronV.isCronAuthorized(cronReq({}, CU + "?token=staybid-cron-dev")).status === 503);
+  check("cron: unset secret + any token → rejected (503)", (() => { const r = cronV.isCronAuthorized(cronReq({}, CU + "?token=whatever")); return !r.ok && r.status === 503; })());
+  check("cron: unset secret → guard returns 503 before any work", (() => { const g = cronV.cronAuthGuard(cronReq({}, CU)); return g && g.status === 503; })());
+  // Configured CRON_SECRET.
   process.env.CRON_SECRET = "cron-secret-xyz";
-  process.env.CRON_TOKEN = "cron-secret-xyz";
-  const CRONS = [
-    ["app/api/cron/channel-sync/route.ts", "authorized"],
-    ["app/api/cron/auction-lifecycle/route.ts", "authorized"],
-    ["app/api/cron/inventory-lifecycle/route.ts", "authorized"],
-    ["app/api/cron/pricing-model-train/route.ts", null], // inline in GET — checked statically below
-    ["app/api/cron/view-milestone-rewards/route.ts", "authorized"],
-    ["app/api/cron/creator-upgrade-eval/route.ts", "authorized"],
-    ["app/api/cron/post-stay-nudge/route.ts", "authorized"],
-    ["app/api/cron/feedback-lifecycle/route.ts", "authorized"],
-    ["app/api/cron/expire-holds/route.ts", "authorized"],
-    ["app/api/cron/circle-settlement/route.ts", "authorized"],
-    ["app/api/cron/auto-approve-content/route.ts", "authorized"],
-    ["app/api/cron/support-auto-resolve/route.ts", "isAuthorized"],
-  ];
-  const BASE = "https://staybids.in";
-  for (const [file, fn] of CRONS) {
-    const label = file.split("/")[3];
-    // Static invariant: no adm_ bypass remains, and no requireVerifiedAdmin in a pure cron.
-    const src = fs.readFileSync(path.join(REPO, file), "utf8");
-    check(`cron[${label}]: no adm_ bypass in source`, !/startsWith\("adm_"\)|test\(adminToken\)|\/\^adm_/.test(src));
-    check(`cron[${label}]: no requireVerifiedAdmin (pure cron, not admin-or-cron)`, !src.includes("requireVerifiedAdmin"));
-    if (!fn) continue; // pricing-model-train: inline gate, covered by the static checks
-    check(`cron[${label}]: no token → rejected`, (await evalCronAuth(file, fn, {}, `${BASE}/api/cron/${label}`)) === false);
-    check(`cron[${label}]: fake adm_ token → rejected`, (await evalCronAuth(file, fn, { "x-admin-token": "adm_deadbeef" }, `${BASE}/api/cron/${label}`)) === false);
-    check(`cron[${label}]: wrong cron token → rejected`, (await evalCronAuth(file, fn, {}, `${BASE}/api/cron/${label}?token=WRONG`)) === false);
-    check(`cron[${label}]: valid CRON_SECRET (?token) → accepted`, (await evalCronAuth(file, fn, {}, `${BASE}/api/cron/${label}?token=cron-secret-xyz`)) === true);
+  check("cron: configured + no token → 401", cronV.isCronAuthorized(cronReq({}, CU)).status === 401);
+  check("cron: configured + wrong token → 401", cronV.isCronAuthorized(cronReq({}, CU + "?token=WRONG")).status === 401);
+  check("cron: configured + fake adm_ header → 401", cronV.isCronAuthorized(cronReq({ "x-admin-token": "adm_deadbeef" }, CU)).status === 401);
+  check("cron: configured + exact ?token → accepted", cronV.isCronAuthorized(cronReq({}, CU + "?token=cron-secret-xyz")).ok === true);
+  check("cron: configured + exact Bearer → accepted", cronV.isCronAuthorized(cronReq({ authorization: "Bearer cron-secret-xyz" }, CU)).ok === true);
+  check("cron: configured + exact x-cron-secret → accepted", cronV.isCronAuthorized(cronReq({ "x-cron-secret": "cron-secret-xyz" }, CU)).ok === true);
+  check("cron: guard returns null when authorized", cronV.cronAuthGuard(cronReq({}, CU + "?token=cron-secret-xyz")) === null);
+
+  // Static per-route: every cron route delegates to the shared guard as its FIRST
+  // statement (no work before auth), with no public fallback and no adm_ path.
+  const cronFiles = cp.execSync("find app/api/cron -name route.ts", { cwd: REPO, encoding: "utf8" }).trim().split("\n");
+  for (const rel of cronFiles) {
+    const label = rel.split("/")[3];
+    const src = fs.readFileSync(path.join(REPO, rel), "utf8");
+    check(`cron[${label}]: delegates to cronAuthGuard`, src.includes("cronAuthGuard(req)"));
+    check(`cron[${label}]: no staybid-cron-dev`, !src.includes("staybid-cron-dev"));
+    check(`cron[${label}]: no adm_ accept path`, !/startsWith\("adm_"\)|test\(adminToken\)|\/\^adm_/.test(src));
+    // Guard precedes any side effect within its enclosing function block.
+    const gi = src.indexOf("cronAuthGuard(req)");
+    const openBrace = src.lastIndexOf("{", gi);
+    const between = src.slice(openBrace, gi);
+    check(`cron[${label}]: no side effect before the guard`, !/await\s+fetch\(|sbSelect\(|sbInsert\(/.test(between));
   }
-  // recompute IS admin-or-cron by design: verified admin accepted there only.
+  // recompute IS admin-or-cron: verified admin path + shared cron helper, no fallback/adm_.
   const recompute = fs.readFileSync(path.join(REPO, "app/api/admin/hotel-scores/recompute/route.ts"), "utf8");
   check("admin-or-cron[recompute]: uses requireVerifiedAdmin", recompute.includes("requireVerifiedAdmin"));
-  // Look for an actual acceptance code path (not the comment documenting removal).
+  check("admin-or-cron[recompute]: uses shared cron helper", recompute.includes("isCronAuthorized"));
+  check("admin-or-cron[recompute]: no staybid-cron-dev fallback code", !/(CRON_TOKEN|CRON_SECRET)\s*\|\|\s*"staybid-cron-dev"/.test(recompute));
   check("admin-or-cron[recompute]: no adm_ accept path", !/startsWith\("adm_"\)\s*\)\s*return true|\/\^adm_[^/]*\/i\.test/.test(recompute));
+
+  // ===== agent-auth: no unverified header/adm_ trust (code patterns, not comments) =====
+  const agentAuth = fs.readFileSync(path.join(REPO, "lib/support/agent-auth.ts"), "utf8");
+  check("support-auth: no adm_ code accept path", !/startsWith\("adm_"\)|\/\^adm_/.test(agentAuth));
+  check("support-auth: no header-only x-admin-id identity read", !/headers\.get\("x-admin-id"\)/.test(agentAuth));
+  check("support-auth: derives from requireVerifiedAdmin", agentAuth.includes("requireVerifiedAdmin"));
+  check("support-auth: no decodeJwt (decode-only) trust", !agentAuth.includes("decodeJwt"));
+
+  // ===== tracked-tree secret scrub (no secret literal embedded in this test) =====
+  const setupSrc = fs.readFileSync(path.join(REPO, "setup-razorpay-vercel.js"), "utf8");
+  check("secrets: setup script is env-only (reads process.env)", setupSrc.includes("process.env.RAZORPAY_KEY_SECRET"));
+  check("secrets: setup script has no hardcoded secret literal", !/RAZORPAY_KEY_SECRET\s*[:=]\s*"[A-Za-z0-9]{12,}"/.test(setupSrc) && !/rzp_live_[A-Za-z0-9]{6,}"[\s\S]{0,40}(secret|Secret)/.test(setupSrc));
+  check("secrets: history file carries the redaction marker", fs.readFileSync(path.join(REPO, "docs/CLAUDE-HISTORY.md"), "utf8").includes("REDACTED-RAZORPAY-SECRET"));
 
   console.log(results.join("\n"));
   console.log(`\n${pass} passed, ${fail} failed`);
