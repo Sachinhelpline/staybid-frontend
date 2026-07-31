@@ -950,6 +950,37 @@ export default function SupportWidget() {
           flex: 0 0 auto;
         }
         .sb-support-close:hover { background: rgba(0, 0, 0, 0.04); color: var(--text-base, #1F1A0F); }
+
+        /* v614 — dark-mode pass. The whole widget was authored light-only
+           (#fcfcfd panels/headers/inputs/bubbles) while its text uses
+           --text-base / --text-muted, which flip LIGHT in dark mode →
+           light-on-light, unreadable. These global overrides give every
+           light surface a dark ground so the tokened text reads. Light mode
+           is untouched. Rules are global (styled-jsx global) so they cover
+           the subject picker, list, and chat sub-views too. */
+        [data-theme="dark"] .sb-support-panel { background: var(--bg-card, #1b212a); }
+        [data-theme="dark"] .sb-support-header {
+          background: linear-gradient(180deg, #1b212a 0%, #13171c 100%);
+        }
+        [data-theme="dark"] .sb-support-lang-menu { background: var(--bg-card, #1b212a); }
+        [data-theme="dark"] .sb-support-subject-btn {
+          background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%);
+          border-color: rgba(176, 192, 209, 0.20);
+        }
+        [data-theme="dark"] .sb-support-bubble-ai {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(176, 192, 209, 0.18);
+        }
+        [data-theme="dark"] .sb-support-chat-input {
+          background: linear-gradient(180deg, #1b212a 0%, #13171c 100%);
+        }
+        [data-theme="dark"] .sb-support-chat-input input {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(176, 192, 209, 0.22);
+        }
+        [data-theme="dark"] .sb-support-chat-input input::placeholder {
+          color: rgba(197, 212, 228, 0.5);
+        }
       `}</style>
     </>
   );

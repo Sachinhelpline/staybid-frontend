@@ -3134,8 +3134,7 @@ export default function HotelDetail() {
                             {" "}— pay to confirm
                           </p>
                           {(cin || cout) && (
-                            <div className="grid grid-cols-2 gap-2 mb-2.5 rounded-xl p-2"
-                              style={{ background: "rgba(176, 192, 209,0.6)" }}>
+                            <div className="grid grid-cols-2 gap-2 mb-2.5 rounded-xl p-2 hp-accepted-cinout">
                               <div>
                                 <p className="text-[0.55rem] uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>Check-in</p>
                                 <p className="text-xs font-semibold" style={{ color: "var(--text-base)" }}>{fmtDate(cin)}</p>

@@ -3223,6 +3223,15 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   font-weight: 600;
 }
 
+/* Accepted-bid check-in/out grid on /hotels/[id]: kept a HARDCODED
+   light-slate ground (rgba(176,192,209,.6)) in every theme, but its
+   labels/values are --text-muted / --text-base, which flip LIGHT in dark
+   mode → light-on-light. Light appearance unchanged; dark gets a subtle
+   dark tint so the token text reads (mirrors the /my-bids grid which uses
+   the theme-aware --bg-pill). */
+.hp-accepted-cinout { background: rgba(176, 192, 209, 0.6); }
+[data-theme="dark"] .hp-accepted-cinout { background: rgba(255, 255, 255, 0.05); }
+
 /* ─── AI Insight box (used on Step 1 + Step 3) ─────────────────── */
 .bx-insight {
   margin-top: 14px;
