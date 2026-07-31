@@ -4,8 +4,8 @@
 // POST /api/admin/hotel-scores/recompute?hotelId=X → recompute single
 // POST /api/admin/hotel-scores/recompute?city=Y  → recompute city
 //
-// Auth: x-admin-token (adm_*) OR Bearer cron-secret OR ?token=CRON_TOKEN.
-// Same pattern as /api/cron/feedback-lifecycle.
+// Auth: a signature-verified admin OR `Authorization: Bearer <CRON_SECRET>`.
+// Same cron pattern as /api/cron/feedback-lifecycle.
 //
 // Runs sequentially per hotel to keep memory flat. After computing each
 // scorecard, rewrites the rank for every hotel in that city in one pass
@@ -20,9 +20,10 @@ import { logAdminAction } from "@/lib/admin/audit";
 import { requireVerifiedAdmin, auditIdentity, type VerifiedAdmin } from "@/lib/admin/verify";
 import { isCronAuthorized } from "@/lib/cron/auth";
 
-// Dual auth: cron (exact CRON_SECRET via ?token=/Bearer/x-cron-secret — no
-// public fallback) OR a signature-VERIFIED admin. The legacy adm_ presence
-// check and the public cron-token fallback are both removed.
+// Dual auth: cron (exact CRON_SECRET via `Authorization: Bearer <CRON_SECRET>`
+// — no query-string transport, no public fallback) OR a signature-VERIFIED
+// admin. The legacy adm_ presence check and the public cron-token fallback are
+// both removed.
 async function authorized(
   req: NextRequest,
 ): Promise<{ ok: boolean; admin: VerifiedAdmin | null }> {

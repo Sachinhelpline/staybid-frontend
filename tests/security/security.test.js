@@ -219,18 +219,22 @@ function reqWith(headers) {
   const CU = "https://staybids.in/api/cron/x";
   // Unset CRON_SECRET → 503 cron_auth_unconfigured, reject even the old public default.
   delete process.env.CRON_SECRET;
-  check("cron: unset secret + staybid-cron-dev → 503", cronV.isCronAuthorized(cronReq({}, CU + "?token=staybid-cron-dev")).status === 503);
-  check("cron: unset secret + any token → rejected (503)", (() => { const r = cronV.isCronAuthorized(cronReq({}, CU + "?token=whatever")); return !r.ok && r.status === 503; })());
+  check("cron: unset secret + staybid-cron-dev → 503", cronV.isCronAuthorized(cronReq({ authorization: "Bearer staybid-cron-dev" }, CU)).status === 503);
+  check("cron: unset secret + any Bearer → rejected (503)", (() => { const r = cronV.isCronAuthorized(cronReq({ authorization: "Bearer whatever" }, CU)); return !r.ok && r.status === 503; })());
   check("cron: unset secret → guard returns 503 before any work", (() => { const g = cronV.cronAuthGuard(cronReq({}, CU)); return g && g.status === 503; })());
-  // Configured CRON_SECRET.
+  // Configured CRON_SECRET — Bearer is the ONLY accepted transport.
   process.env.CRON_SECRET = "cron-secret-xyz";
-  check("cron: configured + no token → 401", cronV.isCronAuthorized(cronReq({}, CU)).status === 401);
-  check("cron: configured + wrong token → 401", cronV.isCronAuthorized(cronReq({}, CU + "?token=WRONG")).status === 401);
+  check("cron: configured + no auth → 401", cronV.isCronAuthorized(cronReq({}, CU)).status === 401);
+  check("cron: configured + wrong Bearer → 401", cronV.isCronAuthorized(cronReq({ authorization: "Bearer WRONG" }, CU)).status === 401);
   check("cron: configured + fake adm_ header → 401", cronV.isCronAuthorized(cronReq({ "x-admin-token": "adm_deadbeef" }, CU)).status === 401);
-  check("cron: configured + exact ?token → accepted", cronV.isCronAuthorized(cronReq({}, CU + "?token=cron-secret-xyz")).ok === true);
+  // Query-string transport is REMOVED: the exact secret in ?token= must now be rejected.
+  check("cron: configured + exact ?token → REJECTED (query transport removed)", cronV.isCronAuthorized(cronReq({}, CU + "?token=cron-secret-xyz")).status === 401);
+  check("cron: configured + exact secret in ?token but no Bearer → not ok", cronV.isCronAuthorized(cronReq({}, CU + "?token=cron-secret-xyz")).ok === false);
+  // x-cron-secret transport is REMOVED: the exact secret in that header must now be rejected.
+  check("cron: configured + exact x-cron-secret → REJECTED (header transport removed)", cronV.isCronAuthorized(cronReq({ "x-cron-secret": "cron-secret-xyz" }, CU)).status === 401);
+  // The only accepted transport.
   check("cron: configured + exact Bearer → accepted", cronV.isCronAuthorized(cronReq({ authorization: "Bearer cron-secret-xyz" }, CU)).ok === true);
-  check("cron: configured + exact x-cron-secret → accepted", cronV.isCronAuthorized(cronReq({ "x-cron-secret": "cron-secret-xyz" }, CU)).ok === true);
-  check("cron: guard returns null when authorized", cronV.cronAuthGuard(cronReq({}, CU + "?token=cron-secret-xyz")) === null);
+  check("cron: guard returns null when authorized (Bearer)", cronV.cronAuthGuard(cronReq({ authorization: "Bearer cron-secret-xyz" }, CU)) === null);
 
   // Static per-route: every cron route delegates to the shared guard as its FIRST
   // statement (no work before auth), with no public fallback and no adm_ path.

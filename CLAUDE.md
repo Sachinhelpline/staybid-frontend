@@ -109,7 +109,8 @@ secret VALUES anywhere — variable names + safe descriptions only.**
   - **Railway OTP admin tokens** are verified against **`JWT_ACCESS_SECRET`** (Railway's authoritative
     access-token secret), then the same DB role lookup; `JWT_SECRET` is tried only as a compatibility
     fallback. Railway tokens carry no `iss`/`aud`/`token_use` — see the token-purpose follow-up below.
-  - **Cron routes (`app/api/cron/*`) accept `CRON_SECRET` ONLY** (`?token=`/`Bearer`) — the `adm_` path is gone.
+  - **Cron routes (`app/api/cron/*`) accept `CRON_SECRET` ONLY, via `Authorization: Bearer <CRON_SECRET>`** — the
+    `?token=` query-string and `x-cron-secret` transports are REMOVED (no secrets in URLs); the `adm_` path is gone.
   - **Notification queue** (`/api/notifications/queue`) requires a cryptographically-verified HS256 caller,
     binds `user_id` to the verified subject, and only permits validated internal same-origin paths (mirrored
     by `sbSafeUrl` in `public/sw.js`). **Firebase RS256 callers FAIL CLOSED** until `firebase-admin`
@@ -1147,15 +1148,18 @@ Every hop has `⚠️ v131.8 LOAD-BEARING` markers; audit all 5 before touching 
 Vercel cron (2-cap): `/api/cron/pricing` (daily 4:00), `/api/cron/lifecycle` (4:05). cron-job.org
 (rest): `expire-holds`, `flash-drop`, `feedback-lifecycle`, `price-spine`, `inventory-lifecycle`
 (Circle markdown/expiry + B2B), `channel-sync`, `auto-approve-content`, `post-stay-nudge`,
-`view-milestone-rewards`, `creator-upgrade-eval`. **Cron auth is FAIL-CLOSED (hotfix v621, shared
-`lib/cron/auth.ts`):** the ONLY credential is the exact `CRON_SECRET`, supplied via `?token=<CRON_SECRET>`,
-`Bearer <CRON_SECRET>`, or an `x-cron-secret` header. There is **NO public "staybid-cron-dev" fallback and no
+`view-milestone-rewards`, `creator-upgrade-eval`. **Cron auth is FAIL-CLOSED + Bearer-ONLY (hotfix v621, shared
+`lib/cron/auth.ts`):** the ONLY credential is the exact `CRON_SECRET`, and the ONLY accepted transport is the
+`Authorization: Bearer <CRON_SECRET>` header. **A secret must NEVER travel in a URL** — the `?token=` query-string
+transport (and the `x-cron-secret` header) are REMOVED; request URLs are logged by proxies / the CDN edge / browser
+history, so a token in the query string is a credential leak. There is **NO public "staybid-cron-dev" fallback and no
 `CRON_TOKEN`** — a route returns **503 `cron_auth_unconfigured`** when `CRON_SECRET` is unset and **401** on a
-wrong/absent/fake token, **before any side effect**. The `adm_` x-admin-token bypass is RETIRED. `vercel.json`
-crons carry no query token (Vercel sends `Bearer CRON_SECRET` automatically). Keep internal budgets ≤24s
-(cron-job.org ~30s client timeout); per-item `withTimeout` in batched loops (Node fetch has no default timeout).
-⚠ **CRON_SECRET must be set in prod** (a hard merge blocker) and cron-job.org registrations must send the real
-`CRON_SECRET` as `?token=`. Registered `*/15`/`*/30`: `channel-sync` + `inventory-lifecycle` + `circle-settlement`.
+wrong/absent/fake/query-only token, **before any side effect**. The `adm_` x-admin-token bypass is RETIRED. `vercel.json`
+crons carry no query token (Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically once `CRON_SECRET` is set
+in Vercel Production). Keep internal budgets ≤24s (cron-job.org ~30s client timeout); per-item `withTimeout` in batched
+loops (Node fetch has no default timeout). ⚠ **CRON_SECRET must be set in prod** (a hard merge blocker) and external
+schedulers (cron-job.org) must be configured with a **custom header** `Authorization: Bearer <CRON_SECRET>` (never a
+`?token=` URL). Registered `*/15`/`*/30`: `channel-sync` + `inventory-lifecycle` + `circle-settlement`.
 ⏳ **Owner ops still PENDING (deferred 2026-07-27):** RazorpayX live payout setup (the 3
 `RAZORPAYX_*` env vars → Circle owner money-out). Full step-by-step in
 `docs/PENDING-RAZORPAYX-SETUP.md`. Interim: `/admin/circle-inventory` "Mark paid (manual)".
