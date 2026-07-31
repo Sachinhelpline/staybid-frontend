@@ -95,18 +95,18 @@ type Props = {
 
 // Dummy hotel reel videos — stable Google CDN test videos, looping. Replace
 // with hotel.videoUrl whenever the backend ships real reels per hotel.
-const DUMMY_HOTEL_VIDEOS = [
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-];
+// v621 — DUMMY_HOTEL_VIDEOS RETIRED. The scaffold list pointed at Google's
+// public sample bucket (gtv-videos-bucket), which Google has now LOCKED —
+// every URL returns 403 AccessDenied worldwide (verified 2026-07-31 via an
+// independent fetcher, NOT a sandbox artifact). Every hotel card without a
+// real video was firing a doomed request, erroring, and only then falling
+// back to photos ("reels photo ki tarah render ho rahi hain" — owner report,
+// initially suspected to be the Supabase downgrade; Supabase storage was
+// verified healthy, 206 on real reel files). Hotels without a real video now
+// go STRAIGHT to the premium Ken-Burns photo cycle over their real photos —
+// no dead network request, no error flash, honest content (no more random
+// Big Buck Bunny cartoons on a luxury hotel reel). Hotels/posts WITH a real
+// videoUrl are unaffected and still play video.
 
 function hashStr(s: string): number {
   let h = 0;
@@ -147,10 +147,11 @@ function videoForHotel(h: any): string {
   const v = h?.videoUrl;
   // Accept both remote http(s) URLs and local blob: URLs (user uploads).
   if (typeof v === "string" && (v.startsWith("http") || v.startsWith("blob:"))) return v;
-  // User photo/story post with no video — return empty so the <video>
-  // errors out and the photo fallback (h.images[0]) renders instead.
-  if (h?._userPost) return "";
-  return DUMMY_HOTEL_VIDEOS[hashStr(h?.id || h?.name || "x") % DUMMY_HOTEL_VIDEOS.length];
+  // v621 — no real video ⇒ empty src ⇒ the card renders the Ken-Burns photo
+  // cycle immediately (videoBroken initialises true). Applies to hotel cards
+  // too now that the dead Google sample-video fallback is retired (see the
+  // retirement note above).
+  return "";
 }
 function pseudoStat(seed: string, salt: string, min: number, max: number) {
   const h = hashStr(`${seed}::${salt}`);
