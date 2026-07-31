@@ -11632,6 +11632,11 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     flex-direction: row; align-items: center;
     gap: clamp(36px, 5vw, 84px);
     padding: clamp(44px, 5vw, 66px) var(--sbh-gut, 40px);
+    /* v618 — cap + centre the Live-Bidding band content so its text doesn't
+       run to a ~2400px line-length on 1920/2560 monitors (the band's own
+       background stays full-bleed; only the content column is capped). The
+       hero + Circle note are already capped (780px / 92ch). */
+    max-width: 1240px; margin-inline: auto;
   }
   .sbh-bid-lead { flex: 1 1 42%; min-width: 0; }
   .sbh-bid-right { flex: 1 1 58%; min-width: 0; }

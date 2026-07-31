@@ -116,13 +116,17 @@ export function BottomDock() {
           align-items: center;
           justify-content: space-around;
           gap: 2px;
-          /* v607 — owner: shrink the dock height. Trimmed the top/bottom
-             padding (5→3) so the bar hugs the icons.
-             v615 — owner: DROP the env(safe-area-inset-bottom) reservation.
-             It was leaving a tall cream band below the nav (the reserved
-             gesture-bar gap) which the owner no longer wants — the dock now
-             hugs the very bottom edge. */
-          padding: 3px 4px 5px;
+          /* v607 — shrink the dock height (top/bottom padding 5→3).
+             v618 — EDGE-TO-EDGE experiment. The dock is at bottom:0, so its
+             background already reaches the true bottom edge. max(5px, safe-area)
+             pads the ICONS up above the gesture pill while the dock's OWN
+             background continuously fills the gesture-bar region — so on a
+             device that draws content edge-to-edge (viewport-fit=cover), the
+             pill floats over the nav instead of over a separate OS-coloured
+             strip. On devices that don't (safe-area=0) it collapses to 5px =
+             unchanged. This is the standard iOS/Android pattern (IG's bar
+             extends under the home indicator). */
+          padding: 3px 4px max(5px, env(safe-area-inset-bottom, 0px));
           background: rgba(19, 23, 28, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
@@ -234,7 +238,7 @@ export function BottomDock() {
            so the LAST in-page CTA (Book Now, Submit Bid, etc.) is always
            clear of the dock on mobile + tablet. Real-device feedback —
            several pages had the last CTA row half-covered. */
-        body { padding-bottom: 52px; }
+        body { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
         body.is-reel-page { padding-bottom: 0; }
         /* Operator panels (admin, partner, onboard, auth) hide the dock —
            don't reserve the dock-height there. */

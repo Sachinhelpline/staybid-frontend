@@ -581,11 +581,13 @@ function ShareSheet({ video, onClose }: { video: Video | null; onClose: () => vo
             { id: "twitter",   emoji: "🐦", label: "Twitter" },
             { id: "copy",      emoji: "🔗", label: "Copy link" },
           ].map(s => (
-            <button key={s.id} onClick={() => share(s.id)} className="flex flex-col items-center gap-1">
-              <div className="w-14 h-14 rounded-2xl bg-luxury-50 border border-luxury-200 flex items-center justify-center text-2xl">
+            <button key={s.id} onClick={() => share(s.id)} className="flex flex-col items-center gap-1 min-w-0">
+              {/* v618 — fluid cell (was fixed w-14/56px) so 4 tiles + gaps never
+                  overflow the sheet at 280–320px; capped at 56px on wide sheets. */}
+              <div className="w-full max-w-[56px] aspect-square rounded-2xl bg-luxury-50 border border-luxury-200 flex items-center justify-center text-2xl">
                 {s.emoji}
               </div>
-              <span className="text-[0.65rem] font-semibold text-luxury-600">{s.label}</span>
+              <span className="text-[0.65rem] font-semibold text-luxury-600 truncate max-w-full">{s.label}</span>
             </button>
           ))}
         </div>
