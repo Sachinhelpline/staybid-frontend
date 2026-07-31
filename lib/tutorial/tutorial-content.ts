@@ -206,70 +206,60 @@ export type TourStep = {
 
 type LocalisedSteps = { en: TourStep[]; hi: TourStep[] };
 
-// Home / discover reel feed — 5 steps (v141: added filter chip)
+// Home "The Stage" — 4 steps. v616: retargeted from the old reel-feed
+// selectors (.fdeal-rail-wrap / .ig-* — removed when `/` became the Stage,
+// which silently aborted the tour) to the current .sbh-* Stage anchors.
 const HOME_STEPS: LocalisedSteps = {
   en: [
     {
-      element: ".fdeal-rail-wrap",
-      title: "🔥 Flash Deals",
-      description: "Top hotels release massive same-day discounts here. Tap any avatar to grab one.",
+      element: ".sbh-hero",
+      title: "🏔️ Your featured stay",
+      description: "A hand-picked property in season right now. It rotates through the best stays for this month.",
       side: "bottom",
     },
     {
-      element: ".ig-filter-chip",
-      title: "🎯 Filter the feed",
-      description: "Switch source (Hotels · Creators · Public) and city. Your feed updates live.",
+      element: ".sbh-hero-cta",
+      title: "🏷️ Bid or watch",
+      description: "Bid your own price on this stay, or watch its reels first. The hotel accepts, counters, or rejects in real time.",
       side: "bottom",
     },
     {
-      element: ".ig-card",
-      title: "👆 Reel feed",
-      description: "Swipe up / down to browse hotels. Each reel is a real verified property.",
-      side: "left",
+      element: ".sbh-rail-wrap",
+      title: "⚡ Flash Deals & rails",
+      description: "Scroll the rails — same-day flash deals, reels, and curated collections. Tap any card to open the hotel.",
+      side: "bottom",
     },
     {
-      element: ".ig-cta-book",
-      title: "Book Now",
-      description: "Pay the listed price and confirm instantly. Always cheaper than OTAs.",
-      side: "left",
-    },
-    {
-      element: ".ig-cta-bid",
-      title: "Or Bid Your Price",
-      description: "Name what you'd pay — the hotel accepts, counters, or rejects in real time.",
-      side: "left",
+      element: ".sbh-bid",
+      title: "💡 How bidding works",
+      description: "Name what you'd pay, the hotel responds live. Always cheaper than the big OTAs.",
+      side: "top",
     },
   ],
   hi: [
     {
-      element: ".fdeal-rail-wrap",
-      title: "🔥 Flash Deals",
-      description: "Top hotels yahaan same-day massive discount dete hain. Tap karo aur grab karo.",
+      element: ".sbh-hero",
+      title: "🏔️ Aapki featured stay",
+      description: "Is mahine ke liye hand-picked property jo abhi season mein hai. Yeh best stays ke beech rotate hoti hai.",
       side: "bottom",
     },
     {
-      element: ".ig-filter-chip",
-      title: "🎯 Feed filter karo",
-      description: "Source (Hotels · Creators · Public) aur city switch karo. Feed live update hoga.",
+      element: ".sbh-hero-cta",
+      title: "🏷️ Bid ya watch",
+      description: "Is stay par apni price bid karo, ya pehle iske reels dekho. Hotel live accept, counter, ya reject karta hai.",
       side: "bottom",
     },
     {
-      element: ".ig-card",
-      title: "👆 Reel feed",
-      description: "Up / down swipe karo hotels browse karne ke liye. Har reel verified property hai.",
-      side: "left",
+      element: ".sbh-rail-wrap",
+      title: "⚡ Flash Deals aur rails",
+      description: "Rails scroll karo — same-day flash deals, reels, aur curated collections. Kisi bhi card ko tap karke hotel kholo.",
+      side: "bottom",
     },
     {
-      element: ".ig-cta-book",
-      title: "Book Now",
-      description: "Listed price pe pay karo aur instant confirm. Hamesha OTA se sasta.",
-      side: "left",
-    },
-    {
-      element: ".ig-cta-bid",
-      title: "Ya Apni Price Bid Karo",
-      description: "Apni price batao — hotel turant accept, counter, ya reject karega.",
-      side: "left",
+      element: ".sbh-bid",
+      title: "💡 Bidding kaise chalti hai",
+      description: "Apni price batao, hotel live jawab deta hai. Bade OTAs se hamesha sasta.",
+      side: "top",
     },
   ],
 };
@@ -434,8 +424,8 @@ const BID_STEPS: LocalisedSteps = {
 const FLASH_STEPS: LocalisedSteps = {
   en: [
     {
-      element: ".fd-ticker",
-      title: "🔴 Live ticker",
+      element: ".fd-hero-line",
+      title: "🔴 Live flash board",
       description: "Real-time count of deals live · hotels in your city · average discount.",
       side: "bottom",
     },
@@ -454,8 +444,8 @@ const FLASH_STEPS: LocalisedSteps = {
   ],
   hi: [
     {
-      element: ".fd-ticker",
-      title: "🔴 Live ticker",
+      element: ".fd-hero-line",
+      title: "🔴 Live flash board",
       description: "Real-time count: deals live · apke city ke hotels · avg discount.",
       side: "bottom",
     },

@@ -99,6 +99,7 @@ export function TutorialHelpButton() {
           role="dialog"
           aria-modal="true"
           aria-label="App tour & help"
+          className="sb-help-sheet-root"
           onClick={() => setOpen(false)}
           style={{
             position: "fixed",
@@ -211,8 +212,12 @@ export function TutorialHelpButton() {
           to   { opacity: 1; transform: translateY(0); }
         }
         @media (min-width: 768px) {
-          /* Centered modal on desktop instead of bottom sheet */
-          .sb-help-fab + div[role="dialog"] {
+          /* v616 — centered modal on desktop instead of a bottom sheet.
+             The old selector (.sb-help-fab + div[role="dialog"]) was DEAD:
+             the "?" FAB was removed in v404, so the adjacent-sibling match
+             never applied and the sheet stayed bottom-aligned (mobile-style)
+             on desktop. Target the sheet root class directly. */
+          .sb-help-sheet-root {
             align-items: center !important;
           }
         }

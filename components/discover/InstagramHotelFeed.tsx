@@ -2495,10 +2495,10 @@ const HotelCard = memo(function HotelCard({
           "buttons neeche ho gaye" — they were never gone, the dock was sitting
           on top of them. */}
       <div
-        className="ig-reel-caption absolute left-3 right-20 z-30"
-        style={{ bottom: "calc(20px + 64px + env(safe-area-inset-bottom, 0px))" }}
+        className="ig-reel-caption absolute left-3 right-[4.5rem] z-30"
+        style={{ bottom: "calc(54px + env(safe-area-inset-bottom, 0px))" }}
       >
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
           {h._userPost && (
             <span
               className="ig-pill"
@@ -2542,12 +2542,12 @@ const HotelCard = memo(function HotelCard({
 
         {/* v416 — editorial serif hotel name (Cormorant, loaded in globals.css)
             brings the Flash Deals design language to the home reel card. */}
-        <h3 className="text-white leading-tight mb-1" style={{ fontFamily: "var(--font-display, 'Cormorant Garamond'), Georgia, serif", fontSize: "1.34rem", fontWeight: 600, letterSpacing: "0.005em", textShadow: "0 2px 8px rgba(0,0,0,0.85)" }}>
+        <h3 className="text-white leading-tight mb-0.5" style={{ fontFamily: "var(--font-display, 'Cormorant Garamond'), Georgia, serif", fontSize: "1.14rem", fontWeight: 600, letterSpacing: "0.005em", textShadow: "0 2px 8px rgba(0,0,0,0.85)" }}>
           {h.name}
         </h3>
 
         <p
-          className="text-white/90 text-[0.78rem] leading-snug mb-1.5"
+          className="text-white/90 text-[0.72rem] leading-snug mb-1"
           style={{
             textShadow: "0 1px 3px rgba(0,0,0,0.75)",
             display: "-webkit-box",
@@ -2566,7 +2566,7 @@ const HotelCard = memo(function HotelCard({
         </p>
 
         {!showCaption && (description.length > 100 || tags.length > 0) && (
-          <button onClick={(e) => { e.stopPropagation(); setShowCaption(true); }} className="text-white/55 text-[0.7rem] mb-1.5">
+          <button onClick={(e) => { e.stopPropagation(); setShowCaption(true); }} className="text-white/55 text-[0.66rem] mb-1">
             ... more
           </button>
         )}
@@ -2587,7 +2587,7 @@ const HotelCard = memo(function HotelCard({
           <Link
             href={`/hotels/${h._userPostTaggedHotel.id}`}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full mb-2"
+            className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-1.5"
             style={{
               background: "linear-gradient(135deg, rgba(140, 160, 182,0.22), rgba(106,133,160,0.13))",
               border: "1px solid rgba(140, 160, 182,0.55)",
@@ -2644,10 +2644,10 @@ const HotelCard = memo(function HotelCard({
             </div>
           );
         })() : (!h._userPost || h._userPostTaggedHotel?.id) ? (
-          <div className="mt-3 flex items-end gap-2">
+          <div className="mt-2 flex items-end gap-2">
             <div className="flex flex-col leading-none mr-1 shrink-0">
-              <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
-              <span className="text-white font-bold text-[1.2rem] tabular-nums">
+              <span className="text-white/55 text-[0.52rem] uppercase tracking-widest">From</span>
+              <span className="text-white font-bold text-[1.05rem] tabular-nums">
                 {(() => {
                   // v398 — show the real "starting from" (flash deal / cheapest
                   // room) price on EVERY reel, tagged or not. The discover feed
@@ -4250,7 +4250,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
            follow button were already premium; this gives the row a cohesive
            floating-bar backing instead of bare text on the video. */
         .ig-profile-chip {
-          padding: 5px 8px 5px 5px;
+          /* v616 — owner: shrink the whole reel overlay so it stops covering
+             the video. Tighter chip padding. */
+          padding: 4px 7px 4px 4px;
           border-radius: 999px;
           background: linear-gradient(135deg, rgba(31,26,15,0.44), rgba(31,26,15,0.22));
           backdrop-filter: blur(14px) saturate(1.3);
@@ -4264,7 +4266,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
 
         /* v89 — Avatar ring: cozy champagne conic instead of rainbow magenta/purple */
         .ig-avatar {
-          width: 42px; height: 42px; display: inline-block;
+          width: 36px; height: 36px; display: inline-block;
           padding: 2px; border-radius: 9999px;
           background: conic-gradient(from 220deg, #5f7c98, #b4c1cf, #6E5430, #5f7c98);
           animation: igRingPulse 2.6s ease-in-out infinite;
@@ -4297,8 +4299,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         /* ─── Cozy Follow button (v89) — desaturated champagne ─────────── */
         .ig-follow-3d {
           position: relative; isolation: isolate;
-          padding: 6px 16px; border-radius: 11px;
-          font-size: 0.74rem; font-weight: 800;
+          padding: 5px 13px; border-radius: 10px;
+          font-size: 0.7rem; font-weight: 800;
           letter-spacing: 0.02em;
           color: var(--cozy-warm-dark, #1F1A0F);
           background: linear-gradient(180deg, #c8d2dc 0%, #b4c1cf 40%, #5f7c98 75%, #69849f 100%);
@@ -4369,25 +4371,25 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
            cozy palette. The label below is small + clean. */
         .ig-rail-btn {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 4px;
+          gap: 3px;
           color: #fff;
-          font-size: 0.56rem; font-weight: 700;
+          font-size: 0.54rem; font-weight: 700;
           transition: transform 0.14s cubic-bezier(.32,1.2,.36,1);
           background: transparent;
           border: 0;
           padding: 0;
-          min-width: 44px;
+          min-width: 38px;
           box-shadow: none;
         }
         .ig-rail-btn:active { transform: scale(0.86); }
         /* v442 — SVG rail icons: fixed size + white with a soft drop-shadow so
            they read on any video, replacing the old emoji glyphs. */
-        .ig-icon svg { width: 25px; height: 25px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45)); }
+        .ig-icon svg { width: 21px; height: 21px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45)); }
         .ig-icon-liked { color: #ff4d6d; }   /* filled heart when liked */
         .ig-icon-saved { color: var(--cozy-gold-2, #c8d2dc); }  /* filled bookmark when saved */
         .ig-icon {
-          font-size: 1.18rem; line-height: 1;
-          width: 42px; height: 42px;
+          font-size: 1.05rem; line-height: 1;
+          width: 36px; height: 36px;
           display: inline-flex; align-items: center; justify-content: center;
           border-radius: 9999px;
           background: linear-gradient(135deg, rgba(31,26,15,0.46), rgba(31,26,15,0.24));
@@ -4420,9 +4422,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
 
         /* ─── Pills ───────────────────────────────────────────────────────── */
         .ig-pill {
-          display: inline-flex; align-items: center; gap: 4px;
-          padding: 2px 8px; border-radius: 9999px;
-          font-size: 0.58rem; font-weight: 700; letter-spacing: 0.04em;
+          display: inline-flex; align-items: center; gap: 3px;
+          padding: 2px 7px; border-radius: 9999px;
+          font-size: 0.53rem; font-weight: 700; letter-spacing: 0.03em;
           /* v444 — cocoa-frosted champagne base (matches the action-rail discs);
              raises contrast over bright video vs the old translucent white. */
           background: linear-gradient(135deg, rgba(31,26,15,0.46), rgba(31,26,15,0.28));
@@ -4481,10 +4483,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           flex: 1 1 0;
           min-width: 0;
           position: relative; isolation: isolate;
-          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-          padding: 11px 12px;
-          border-radius: 14px;
-          font-size: 0.82rem; font-weight: 800;
+          display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+          padding: 8px 10px;
+          border-radius: 12px;
+          font-size: 0.76rem; font-weight: 800;
           letter-spacing: 0.02em;
           background: linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.06) 100%);
           backdrop-filter: blur(18px) saturate(1.5);
@@ -4513,7 +4515,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             inset 0 -1px 0 rgba(0,0,0,0.18),
             inset 0 2px 5px rgba(0,0,0,0.35);
         }
-        .ig-cta-icon { font-size: 0.95rem; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+        .ig-cta-icon { font-size: 0.88rem; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
         .ig-cta-text { white-space: nowrap; }
 
         .ig-cta-book {
