@@ -64,5 +64,21 @@ const nextConfig = {
       },
     ];
   },
+  // v620 — SAME-ORIGIN Firebase auth helper proxy (Firebase's documented fix
+  // for the "cookies popup + first-sign-in-fails" third-party-storage
+  // problem). Serves the auth handler from staybids.in itself, so when
+  // lib/firebase.ts flips authDomain to staybids.in (env-gated,
+  // NEXT_PUBLIC_FB_AUTH_SAME_ORIGIN=1 — see
+  // docs/PENDING-GOOGLE-AUTH-SAME-ORIGIN.md) there is NO cross-origin iframe
+  // in the sign-in path at all. These rewrites are INERT until that flag is
+  // on — nothing requests /__/auth/* while authDomain still points at
+  // firebaseapp.com.
+  async rewrites() {
+    const fb = `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "staybid-6feb7"}.firebaseapp.com`;
+    return [
+      { source: "/__/auth/:path*", destination: `${fb}/__/auth/:path*` },
+      { source: "/__/firebase/:path*", destination: `${fb}/__/firebase/:path*` },
+    ];
+  },
 };
 module.exports = nextConfig;
