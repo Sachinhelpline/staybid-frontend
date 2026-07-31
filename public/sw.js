@@ -772,6 +772,30 @@ self.addEventListener('fetch', (event) => {
 // SHOULD send data-only payloads ({ data: { title, body, url, icon } }) so
 // Chrome does not auto-display a second notification. We also read a
 // top-level `notification` block defensively.
+// Only allow a same-origin HTTPS destination or a validated relative app path.
+// Rejects javascript:, data:, blob:, custom schemes and external origins,
+// falling back safely to '/'. Preserves valid internal deep links.
+function sbSafeUrl(raw) {
+  try {
+    if (typeof raw !== 'string' || !raw || raw.length > 2048) return '/';
+    if (raw.indexOf('\\') !== -1) return '/';           // backslash → treated as "/"
+    if (/[\u0000-\u0020\u007f]/.test(raw)) return '/';  // control chars + whitespace
+    if (/%2f|%5c/i.test(raw)) return '/';               // encoded slash / backslash
+    // Relative app path (single leading slash only) — re-parse to confirm origin.
+    if (raw[0] === '/' && raw[1] !== '/') {
+      var rel = new URL(raw, self.location.origin);
+      return rel.origin === self.location.origin ? rel.pathname + rel.search + rel.hash : '/';
+    }
+    var u = new URL(raw, self.location.origin);
+    if (u.protocol === 'https:' && u.origin === self.location.origin) {
+      return u.pathname + u.search + u.hash;
+    }
+    return '/';
+  } catch (e) {
+    return '/';
+  }
+}
+
 self.addEventListener('push', (event) => {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch (e) {
@@ -781,7 +805,7 @@ self.addEventListener('push', (event) => {
   const n = payload.notification || {};
   const title = d.title || n.title || 'StayBid';
   const body  = d.body  || n.body  || '';
-  const url   = d.url   || (d.click_action) || '/';
+  const url   = sbSafeUrl(d.url || d.click_action);
   const options = {
     body: body,
     icon: d.icon || n.icon || '/icons/icon-192x192.png',
@@ -797,7 +821,7 @@ self.addEventListener('push', (event) => {
 // open a new one at the target URL.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/';
+  const target = sbSafeUrl(event.notification.data && event.notification.data.url);
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of all) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
+import { SB_URL, SB_H } from "@/lib/sb";
+import { verifiedCustomerFromReq, safeInternalPath } from "@/lib/auth/customer-verify";
 
 const ALLOWED_CHANNELS = new Set(["email", "sms", "push", "whatsapp"]);
 
@@ -7,7 +8,9 @@ const ALLOWED_CHANNELS = new Set(["email", "sms", "push", "whatsapp"]);
 // Supabase Edge Function that drains rows where status='pending' and
 // scheduled_at <= NOW() via SendGrid (email) or MSG91 (sms/whatsapp).
 export async function POST(req: NextRequest) {
-  const u = userFromReq(req);
+  // Require a cryptographically VERIFIED caller (HS256 backend token). A
+  // Firebase RS256 token fails closed here until firebase-admin lands.
+  const u = verifiedCustomerFromReq(req);
   if (!u) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
@@ -17,11 +20,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "channel and template required" }, { status: 400 });
   }
 
+  // Sanitize the client-supplied payload: the notification URL may only be a
+  // validated internal application path (no external origins, no js:/data:).
+  const rawPayload =
+    body.payload && typeof body.payload === "object" ? { ...body.payload } : {};
+  const safeUrl = safeInternalPath(rawPayload.url);
+  if (safeUrl) rawPayload.url = safeUrl;
+  else delete rawPayload.url;
+
   const row = {
-    user_id: body.userId || u.id,
+    // Bound to the VERIFIED subject only. A client-supplied target userId is
+    // ignored — a caller can never enqueue a notification for another user.
+    user_id: u.id,
     channel,
     template,
-    payload: body.payload || {},
+    payload: rawPayload,
     scheduled_at: body.scheduledAt || new Date().toISOString(),
     status: "pending",
   };
