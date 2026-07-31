@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbSelect, sbInsert, genId } from "@/lib/sb-server";
 import { ratioBandFor } from "@/lib/pricing/outcomes";
 import { upsertModelParams, type ModelParamRow, type ModelScope } from "@/lib/pricing/model-store";
@@ -38,13 +39,8 @@ const idList = (ids: string[]) =>
   ids.map((s) => `"${String(s).replace(/"/g, "")}"`).join(",");
 
 export async function GET(req: Request) {
-  const token =
-    new URL(req.url).searchParams.get("token") ||
-    req.headers.get("x-cron-secret") ||
-    (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const expected = process.env.CRON_SECRET || "staybid-cron-dev";
-  const ok = token === expected;
-  if (!ok) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const authFail = cronAuthGuard(req);
+  if (authFail) return authFail;
 
   const t0 = Date.now();
   const lookbackDays = Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 180);

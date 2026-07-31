@@ -18,22 +18,15 @@ import { computeHotelScore } from "@/lib/hotel-score";
 import { loadHotelScoreInputs } from "@/lib/hotel-score-data";
 import { logAdminAction } from "@/lib/admin/audit";
 import { requireVerifiedAdmin, auditIdentity, type VerifiedAdmin } from "@/lib/admin/verify";
+import { isCronAuthorized } from "@/lib/cron/auth";
 
-// Dual auth: cron (query/Bearer secret) OR a signature-VERIFIED admin.
-// The legacy `x-admin-token startsWith("adm_")` presence check is removed —
-// admin access now requires a verified admin JWT + server-side role lookup.
+// Dual auth: cron (exact CRON_SECRET via ?token=/Bearer/x-cron-secret — no
+// public fallback) OR a signature-VERIFIED admin. The legacy adm_ presence
+// check and the public cron-token fallback are both removed.
 async function authorized(
   req: NextRequest,
 ): Promise<{ ok: boolean; admin: VerifiedAdmin | null }> {
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return { ok: true, admin: null };
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) {
-    return { ok: true, admin: null };
-  }
+  if (isCronAuthorized(req).ok) return { ok: true, admin: null };
   const admin = await requireVerifiedAdmin(req);
   if (admin) return { ok: true, admin };
   return { ok: false, admin: null };

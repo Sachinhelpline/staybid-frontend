@@ -13,26 +13,11 @@
 // Returns the row counts touched so the caller can log/alert if it's stuck.
 
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  // Pattern 1: ?token=... query param — matches the other crons in vercel.json
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
-
-  // Pattern 2: Vercel's native cron bearer
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-
-  // Pattern 3: Admin manual trigger from /admin/holds page
-
-  return false;
-}
 
 async function runRpc() {
   const r = await fetch(`${SB_URL}/rest/v1/rpc/mark_expired_holds`, {
@@ -202,8 +187,9 @@ async function runAll(origin: string) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!await authorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   try {
     const origin = req.nextUrl?.origin || "https://www.staybids.in";
@@ -216,8 +202,9 @@ export async function GET(req: NextRequest) {
 
 // POST allows the same — admin button calls POST so the action isn't cached.
 export async function POST(req: NextRequest) {
-  if (!await authorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   try {
     const origin = req.nextUrl?.origin || "https://www.staybids.in";

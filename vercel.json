@@ -2,11 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/pricing?token=staybid-cron-dev",
+      "path": "/api/cron/pricing",
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/lifecycle?token=staybid-cron-dev",
+      "path": "/api/cron/lifecycle",
       "schedule": "5 4 * * *"
     }
   ]

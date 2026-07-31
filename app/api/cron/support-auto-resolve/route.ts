@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_H } from "@/lib/sb-server";
 import { t } from "@/lib/support/i18n";
 
@@ -29,30 +30,21 @@ const MAX_PER_RUN = 200;
 const REPRESENT = { ...SB_H, Prefer: "return=representation,resolution=ignore-duplicates" };
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   return run();
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   return run();
 }
 
-function isAuthorized(req: NextRequest): boolean {
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token") || "";
-  if (token && token === (process.env.CRON_SECRET || "staybid-cron-dev")) return true;
-
-  const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  if (auth && auth === (process.env.CRON_SECRET || "")) return true;
-
-
-  return false;
-}
 
 async function run(): Promise<NextResponse> {
   const now = new Date();

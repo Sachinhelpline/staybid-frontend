@@ -34,6 +34,7 @@
 // NOT caused by the v241.26 bid/accept work — flash-drop is a separate path.
 
 import { NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbSelect } from "@/lib/onboard/supabase-admin";
 import { recalculateRoomPrice } from "@/lib/pricing/engine";
 import { processFlashDeals } from "@/lib/pricing/flash";
@@ -55,11 +56,8 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 export async function GET(req: Request) {
-  const token = new URL(req.url).searchParams.get("token") || req.headers.get("x-cron-secret") || "";
-  const expected = process.env.CRON_SECRET || "staybid-cron-dev";
-  if (token !== expected) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const authFail = cronAuthGuard(req);
+  if (authFail) return authFail;
 
   const t0 = Date.now();
   const out: any = {

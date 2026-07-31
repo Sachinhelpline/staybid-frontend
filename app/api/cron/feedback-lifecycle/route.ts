@@ -29,6 +29,7 @@
 // sweep's WHERE clause excludes rows already handled.
 
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { purgeVerificationVideos, purgeEvidenceVideos } from "@/lib/verify/cleanup";
 import { computeHotelScore } from "@/lib/hotel-score";
@@ -41,16 +42,6 @@ const FEEDBACK_WINDOW_HOURS = Number(process.env.SB_FEEDBACK_WINDOW_HOURS || 12)
 // 48 hours → resolution deadline for complaints carrying evidence video.
 const RESOLUTION_WINDOW_HOURS = Number(process.env.SB_RESOLUTION_WINDOW_HOURS || 48);
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  return false;
-}
 
 async function runLifecycle() {
   const now = new Date();
@@ -417,8 +408,9 @@ export async function GET(req: NextRequest) { return handle(req); }
 export async function POST(req: NextRequest) { return handle(req); }
 
 async function handle(req: NextRequest) {
-  if (!(await authorized(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   const started = Date.now();
   const stats = await runLifecycle();

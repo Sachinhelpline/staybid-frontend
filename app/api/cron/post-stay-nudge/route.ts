@@ -5,7 +5,7 @@
 // uniq_insp_user_booking_type unique index added in Phase 1).
 //
 // Schedule (cron-job.org):
-//   GET https://staybids.in/api/cron/post-stay-nudge?token=staybid-cron-dev
+//   GET https://staybids.in/api/cron/post-stay-nudge?token=<CRON_SECRET>
 //   Frequency: every 1 day (any time after midnight IST)
 //
 // Auth — matches the other crons.
@@ -14,6 +14,7 @@
 // view-milestone-rewards cron handles the ₹50 / ₹200 wallet credits
 // AFTER the user has actually posted and the post has earned views.
 import { NextRequest, NextResponse } from "next/server";
+import { cronAuthGuard } from "@/lib/cron/auth";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { queueNotification } from "@/lib/notify-server";
 
@@ -26,16 +27,6 @@ const HEADERS = {
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-async function authorized(req: NextRequest): Promise<boolean> {
-  const { searchParams } = new URL(req.url);
-  const qToken = searchParams.get("token");
-  const expectedToken = process.env.CRON_TOKEN || "staybid-cron-dev";
-  if (qToken && qToken === expectedToken) return true;
-  const cronAuth = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronAuth === `Bearer ${cronSecret}`) return true;
-  return false;
-}
 
 // Window: checkOut between 24h ago and 48h ago. Far enough that the
 // guest has settled at home and is reviewing photos; close enough that
@@ -205,8 +196,9 @@ async function sweep(): Promise<{
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await authorized(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  {
+    const authFail = cronAuthGuard(req);
+    if (authFail) return authFail;
   }
   const started = Date.now();
   const result = await sweep();

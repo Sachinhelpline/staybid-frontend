@@ -1147,12 +1147,15 @@ Every hop has `⚠️ v131.8 LOAD-BEARING` markers; audit all 5 before touching 
 Vercel cron (2-cap): `/api/cron/pricing` (daily 4:00), `/api/cron/lifecycle` (4:05). cron-job.org
 (rest): `expire-holds`, `flash-drop`, `feedback-lifecycle`, `price-spine`, `inventory-lifecycle`
 (Circle markdown/expiry + B2B), `channel-sync`, `auto-approve-content`, `post-stay-nudge`,
-`view-milestone-rewards`, `creator-upgrade-eval`. All accept `?token=<CRON_SECRET||"staybid-cron-dev">`
-/ Bearer `CRON_SECRET` **ONLY** (the `adm_` x-admin-token bypass was RETIRED in hotfix v621 — cron routes
-never accept admin tokens; fail closed on missing/invalid token). Keep internal budgets ≤24s (cron-job.org ~30s client
-timeout); per-item `withTimeout` in batched loops (Node fetch has no default timeout). ✅ Registered
-on cron-job.org (2026-07-27, Option A default token `staybid-cron-dev`): `channel-sync` +
-`inventory-lifecycle` (`*/15`) + `circle-settlement` (`*/30`).
+`view-milestone-rewards`, `creator-upgrade-eval`. **Cron auth is FAIL-CLOSED (hotfix v621, shared
+`lib/cron/auth.ts`):** the ONLY credential is the exact `CRON_SECRET`, supplied via `?token=<CRON_SECRET>`,
+`Bearer <CRON_SECRET>`, or an `x-cron-secret` header. There is **NO public "staybid-cron-dev" fallback and no
+`CRON_TOKEN`** — a route returns **503 `cron_auth_unconfigured`** when `CRON_SECRET` is unset and **401** on a
+wrong/absent/fake token, **before any side effect**. The `adm_` x-admin-token bypass is RETIRED. `vercel.json`
+crons carry no query token (Vercel sends `Bearer CRON_SECRET` automatically). Keep internal budgets ≤24s
+(cron-job.org ~30s client timeout); per-item `withTimeout` in batched loops (Node fetch has no default timeout).
+⚠ **CRON_SECRET must be set in prod** (a hard merge blocker) and cron-job.org registrations must send the real
+`CRON_SECRET` as `?token=`. Registered `*/15`/`*/30`: `channel-sync` + `inventory-lifecycle` + `circle-settlement`.
 ⏳ **Owner ops still PENDING (deferred 2026-07-27):** RazorpayX live payout setup (the 3
 `RAZORPAYX_*` env vars → Circle owner money-out). Full step-by-step in
 `docs/PENDING-RAZORPAYX-SETUP.md`. Interim: `/admin/circle-inventory` "Mark paid (manual)".
