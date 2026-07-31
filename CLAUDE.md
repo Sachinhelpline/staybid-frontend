@@ -69,12 +69,16 @@ Public: `NEXT_PUBLIC_API_URL` · `NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_SfFAsbYjb
 `NEXT_PUBLIC_FIREBASE_*` (project `staybid-6feb7`) · `NEXT_PUBLIC_SB_IMAGE_TRANSFORM`
 (Pro-plan image transform gate) · `NEXT_PUBLIC_ENABLE_PHONE_OTP` (default 0) ·
 `NEXT_PUBLIC_ENABLE_LOCATION_OTP` (default 0).
-Server-only: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` · `SUPABASE_SERVICE_ROLE_KEY`
-(auto-elevates RLS via `lib/sb-server.ts`) · `CRON_SECRET` · `JWT_SECRET` · optional
+Server-only: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` (**environment-only — hardcoded fallbacks are
+FORBIDDEN**; routes fail closed with `payment_config_missing` when unset) · `SUPABASE_SERVICE_ROLE_KEY`
+(auto-elevates RLS via `lib/sb-server.ts`) · `CRON_SECRET` · **`ADMIN_JWT_SECRET`** (HS256 signing key
+for master-PIN admin sessions; issuance fails closed when unset) · **`JWT_ACCESS_SECRET`** (Railway's
+authoritative HS256 access-token signing secret — the frontend verifies backend/admin tokens against it) ·
+`JWT_SECRET` (**now only a compatibility FALLBACK** for token verification + the onboarding token) · optional
 `GEMINI_API_KEY` (free vision primary) / `ANTHROPIC_API_KEY` (paid backup) / `AI_VERIFY_PROVIDER` ·
 `BOOKING_COM_LIVE` (inert channel-manager scaffold).
-Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Public LIVE key id
-`rzp_live_SfFAsbYjbHfztd` is safe in client code.
+Public LIVE Razorpay key id `rzp_live_SfFAsbYjbHfztd` is safe in client code. **Never document or commit
+secret VALUES anywhere — variable names + safe descriptions only.**
 
 ---
 
@@ -91,8 +95,31 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   PATCH real phone/name ONLY when the JWT carries them. Never overwrite a real phone with a
   placeholder.
 - Route auth helpers: `userFromReq`/`socialUserFromReq` (customer), `x-partner-token`
-  (+ `partnerHotelScope`/`partnerUnitScope`), `adminFromReq` + `logAdminAction`, `workerFromReq`
-  (last-10-digit phone `ilike`).
+  (+ `partnerHotelScope`/`partnerUnitScope`), **`requireVerifiedAdmin`** (`lib/admin/verify.ts`) +
+  `logAdminAction`, `workerFromReq` (last-10-digit phone `ilike`).
+- **🔒 Admin/cron auth contract (hotfix v621 — LOCKED):**
+  - **`adm_*` opaque tokens are RETIRED and must NEVER be accepted as authentication** anywhere (was the
+    old `adminFromReq`/cron bypass). `adminFromReq`, bare `x-admin-id`, and `adm_`-presence are all removed.
+  - **Every `app/api/admin/**` handler gates with `await requireVerifiedAdmin(req)` before any body parse /
+    DB / logging / mutation** (except `check-role` = login, and `hotel-scores/recompute` = admin-OR-cron).
+    It verifies the JWT signature + does a **server-side admin/super_admin role lookup on every request**;
+    audit logs use the verified identity or `"unknown"` (never a header value).
+  - **Master-PIN admin sessions:** `check-role` mints an HS256 JWT signed with **`ADMIN_JWT_SECRET` only**
+    (no `JWT_SECRET` fallback for issuance), issuer/audience **`staybid-admin`**, **3-hour** expiry.
+  - **Railway OTP admin tokens** are verified against **`JWT_ACCESS_SECRET`** (Railway's authoritative
+    access-token secret), then the same DB role lookup; `JWT_SECRET` is tried only as a compatibility
+    fallback. Railway tokens carry no `iss`/`aud`/`token_use` — see the token-purpose follow-up below.
+  - **Cron routes (`app/api/cron/*`) accept `CRON_SECRET` ONLY** (`?token=`/`Bearer`) — the `adm_` path is gone.
+  - **Notification queue** (`/api/notifications/queue`) requires a cryptographically-verified HS256 caller,
+    binds `user_id` to the verified subject, and only permits validated internal same-origin paths (mirrored
+    by `sbSafeUrl` in `public/sw.js`). **Firebase RS256 callers FAIL CLOSED** until `firebase-admin`
+    verification lands (interim limitation).
+  - **Permanent security regression suite:** `npm run test:security` (`tests/security/security.test.js`) —
+    hermetic, network-free; covers the admin token families, customer HS256/Firebase-fail-closed, notification
+    URL hardening, Razorpay config-absent, and `adm_`-removal across all 12 crons. Run it on every auth change.
+  - ⚠ **Follow-up (Railway):** add an admin-scope claim (`token_use`/`aud`) minted only at admin login so the
+    frontend can distinguish admin-context tokens; today any valid Railway token for an admin-role subject
+    authorizes admin access (bounded to that admin principal; DB role is the guard).
 - **Sign-in-then-resume:** auth-gated CTAs use `redirectToSignIn(router,{route,action?,payload?})`
   (`lib/auth-intent.ts`, 30-min localStorage TTL) + `consumeMatchingIntent()` on the destination.
   `/auth` reads `?return=` (wrapped in `<Suspense>`).
@@ -1121,7 +1148,8 @@ Vercel cron (2-cap): `/api/cron/pricing` (daily 4:00), `/api/cron/lifecycle` (4:
 (rest): `expire-holds`, `flash-drop`, `feedback-lifecycle`, `price-spine`, `inventory-lifecycle`
 (Circle markdown/expiry + B2B), `channel-sync`, `auto-approve-content`, `post-stay-nudge`,
 `view-milestone-rewards`, `creator-upgrade-eval`. All accept `?token=<CRON_SECRET||"staybid-cron-dev">`
-/ Bearer `CRON_SECRET` / `adm_` x-admin-token. Keep internal budgets ≤24s (cron-job.org ~30s client
+/ Bearer `CRON_SECRET` **ONLY** (the `adm_` x-admin-token bypass was RETIRED in hotfix v621 — cron routes
+never accept admin tokens; fail closed on missing/invalid token). Keep internal budgets ≤24s (cron-job.org ~30s client
 timeout); per-item `withTimeout` in batched loops (Node fetch has no default timeout). ✅ Registered
 on cron-job.org (2026-07-27, Option A default token `staybid-cron-dev`): `channel-sync` +
 `inventory-lifecycle` (`*/15`) + `circle-settlement` (`*/30`).
