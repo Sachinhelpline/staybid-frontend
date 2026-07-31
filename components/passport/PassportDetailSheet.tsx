@@ -52,7 +52,7 @@ export function PassportDetailSheet({
       ? { bg: "#e6f0e6", fg: "#4a6f4a" }
       : item.status?.tone === "lock"
         ? { bg: "var(--bg-pill)", fg: "var(--text-muted)" }
-        : { bg: "rgba(201,166,107,0.18)", fg: "#556d86" };
+        : { bg: "rgba(106,133,160,0.18)", fg: "#556d86" };
 
   return (
     <div className="pds-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={item.title}>
@@ -66,7 +66,7 @@ export function PassportDetailSheet({
         .pds-card {
           position: relative; width: 100%; max-width: 460px;
           background:
-            radial-gradient(120% 70% at 50% 0%, rgba(201,166,107,0.16), transparent 60%),
+            radial-gradient(120% 70% at 50% 0%, rgba(106,133,160,0.16), transparent 60%),
             linear-gradient(180deg, var(--bg-card) 0%, var(--bg-page) 140%);
           border: 1px solid var(--border-soft);
           border-radius: 28px 28px 0 0;
@@ -76,7 +76,7 @@ export function PassportDetailSheet({
         }
         .pds-grip {
           width: 42px; height: 4px; border-radius: 999px; margin: -8px auto 14px;
-          background: var(--border-strong, rgba(201,166,107,0.4));
+          background: var(--border-strong, rgba(106,133,160,0.4));
         }
         .pds-x {
           position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
@@ -89,7 +89,7 @@ export function PassportDetailSheet({
         .pds-bar { height: 9px; border-radius: 999px; overflow: hidden; background: var(--bg-pill); }
         .pds-bar > i {
           display: block; height: 100%; border-radius: 999px;
-          background: linear-gradient(90deg, #c8d2dc, #C9A66B, #556d86);
+          background: linear-gradient(90deg, #c8d2dc, #5f7c98, #556d86);
           animation: pdsGrow .9s cubic-bezier(.2,.9,.25,1) both;
         }
         @keyframes pdsFade { from { opacity: 0 } to { opacity: 1 } }

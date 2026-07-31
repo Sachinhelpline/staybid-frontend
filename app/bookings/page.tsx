@@ -26,7 +26,7 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v174 — cozy-theme status palette. Mid-tone colours that read on both
 // the cream (light) and walnut (dark) surfaces — no per-theme branching.
 const STATUS_META: Record<string, { color: string; soft: string; label: string }> = {
-  PENDING:     { color: "#C9A66B", soft: "rgba(201,166,107,0.15)", label: "Pending"     },
+  PENDING:     { color: "#5f7c98", soft: "rgba(106,133,160,0.15)", label: "Pending"     },
   CONFIRMED:   { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
   ACCEPTED:    { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
   CHECKED_IN:  { color: "#5E83A8", soft: "rgba(94,131,168,0.16)",  label: "Checked In"  },
@@ -752,7 +752,7 @@ export default function BookingsPage() {
       @keyframes bkFadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
       .bk-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
       .bk-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
-      .bk-gold-btn { position:relative; overflow:hidden; background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; text-shadow:0 1px 1px rgba(20,30,44,.35); font-weight:800; letter-spacing:.03em; box-shadow:inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(28,38,52,.28), 0 8px 18px -9px rgba(45,62,82,.5); }
+      .bk-gold-btn { position:relative; overflow:hidden; background:radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; text-shadow:0 1px 1px rgba(20,30,44,.35); font-weight:800; letter-spacing:.03em; box-shadow:inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(28,38,52,.28), 0 8px 18px -9px rgba(45,62,82,.5); }
     `}</style>
   );
 

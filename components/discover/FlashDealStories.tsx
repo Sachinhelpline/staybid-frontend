@@ -329,7 +329,7 @@ export function FlashDealStoryRail({
           gap: 6px;
         }
         .fdeal-rail-brand-sep {
-          color: var(--cozy-champagne, #C9A66B);
+          color: var(--cozy-champagne, #5f7c98);
           font-style: italic;
           font-size: 0.92rem;
           opacity: 0.7;
@@ -356,7 +356,7 @@ export function FlashDealStoryRail({
           user-select: none;
         }
         .fdeal-rail-brand-dot {
-          color: var(--cozy-champagne, #C9A66B);
+          color: var(--cozy-champagne, #5f7c98);
           margin: 0 1px;
         }
         .fdeal-rail-sub {

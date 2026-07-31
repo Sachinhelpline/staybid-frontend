@@ -361,18 +361,18 @@ export default function AvailabilityCalendar({
           cursor: pointer;
           transition: transform 0.12s ease, background 0.15s ease;
         }
-        .ac-icon-btn:hover { background: rgba(201,166,107,0.14); }
+        .ac-icon-btn:hover { background: rgba(106,133,160,0.14); }
         .ac-icon-btn:active { transform: scale(0.94); }
         .ac-today-btn {
           margin-left: 4px;
           padding: 6px 12px; border-radius: 10px;
-          background: rgba(201,166,107,0.14);
-          color: #8B6914;
-          border: 1px solid rgba(201,166,107,0.28);
+          background: rgba(106,133,160,0.14);
+          color: #3f5369;
+          border: 1px solid rgba(106,133,160,0.28);
           font-size: 0.78rem; font-weight: 700;
           cursor: pointer;
         }
-        .ac-today-btn:hover { background: rgba(201,166,107,0.22); }
+        .ac-today-btn:hover { background: rgba(106,133,160,0.22); }
 
         .ac-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .ac-block-btn, .ac-refresh-btn {
@@ -382,12 +382,12 @@ export default function AvailabilityCalendar({
           transition: transform 0.12s ease, box-shadow 0.15s ease;
         }
         .ac-block-btn {
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
-          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+          box-shadow: 0 2px 8px rgba(106,133,160,0.30);
         }
-        .ac-block-btn:hover { box-shadow: 0 4px 14px rgba(201,166,107,0.45); }
+        .ac-block-btn:hover { box-shadow: 0 4px 14px rgba(106,133,160,0.45); }
         .ac-block-btn:active { transform: scale(0.97); }
         .ac-refresh-btn {
           background: #4A3820;
@@ -422,11 +422,11 @@ export default function AvailabilityCalendar({
           cursor: pointer;
           transition: all 0.18s ease;
         }
-        .ac-view-btn:hover { background: rgba(201,166,107,0.10); }
+        .ac-view-btn:hover { background: rgba(106,133,160,0.10); }
         .ac-view-on {
           background: linear-gradient(135deg, #fcfcfd, #e7ebef);
-          border-color: rgba(201,166,107,0.45);
-          box-shadow: 0 2px 8px rgba(201,166,107,0.18);
+          border-color: rgba(106,133,160,0.45);
+          box-shadow: 0 2px 8px rgba(106,133,160,0.18);
         }
         .ac-view-emoji {
           font-size: 1.15rem;
@@ -873,9 +873,9 @@ function MonthView({
           font-size: 0.72rem;
           color: #6E5430;
           padding: 8px 12px;
-          background: rgba(201,166,107,0.14);
+          background: rgba(106,133,160,0.14);
           border-radius: 10px;
-          border: 1px solid rgba(201,166,107,0.22);
+          border: 1px solid rgba(106,133,160,0.22);
           margin: 0;
           min-width: 0;
         }
@@ -898,10 +898,10 @@ function MonthView({
         }
         .mv-mini-btn:active { transform: scale(0.96); }
         .mv-mini-multi {
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           border-color: rgba(110,84,48,0.30);
-          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+          box-shadow: 0 2px 8px rgba(106,133,160,0.30);
         }
         .mv-mini-clear {
           background: #ffffff;
@@ -942,10 +942,10 @@ function MonthView({
           padding: 10px 16px;
           font-size: 0.84rem; font-weight: 800;
           border-radius: 12px;
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
-          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+          box-shadow: 0 2px 8px rgba(106,133,160,0.30);
           cursor: pointer;
           font-family: inherit;
         }
@@ -998,7 +998,7 @@ function MonthView({
           color: #1F1A0F;
           transition: background 0.15s ease, transform 0.12s ease;
         }
-        .mv-cell:hover { background: rgba(201,166,107,0.10); }
+        .mv-cell:hover { background: rgba(106,133,160,0.10); }
         .mv-cell:active { transform: scale(0.98); }
         .mv-cell-we { background: #f4f6f8; }
         .mv-cell-out {
@@ -1007,8 +1007,8 @@ function MonthView({
           cursor: default;
           pointer-events: none;
         }
-        .mv-cell-today { background: rgba(201,166,107,0.14); box-shadow: inset 0 0 0 1.5px rgba(201,166,107,0.55); }
-        .mv-cell-on { background: rgba(201,166,107,0.22); box-shadow: inset 0 0 0 1.5px #C9A66B; }
+        .mv-cell-today { background: rgba(106,133,160,0.14); box-shadow: inset 0 0 0 1.5px rgba(106,133,160,0.55); }
+        .mv-cell-on { background: rgba(106,133,160,0.22); box-shadow: inset 0 0 0 1.5px #5f7c98; }
         .mv-cell-top {
           display: flex; align-items: center; justify-content: space-between;
           gap: 3px;
@@ -1022,7 +1022,7 @@ function MonthView({
           flex-shrink: 0;
         }
         .mv-cell-today .mv-day-num {
-          background: linear-gradient(135deg,#b4c1cf,#C9A66B);
+          background: linear-gradient(135deg,#b4c1cf,#5f7c98);
           color: #1F1A0F;
           border-radius: 999px;
           width: 22px; height: 22px;
@@ -1076,7 +1076,7 @@ function MonthView({
         /* v132.2 — multi-select highlight + check badge */
         .mv-cell-multi-on {
           background: linear-gradient(135deg, #f0f3f5, #dfe5eb) !important;
-          box-shadow: inset 0 0 0 2px #C9A66B !important;
+          box-shadow: inset 0 0 0 2px #5f7c98 !important;
         }
         .mv-cell-check {
           position: absolute;
@@ -1132,7 +1132,7 @@ function MonthView({
         }
         .mv-panel-eyebrow {
           font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
-          color: #8B6914;
+          color: #3f5369;
           text-transform: uppercase;
         }
         .mv-panel-title {
@@ -1222,14 +1222,14 @@ function MonthView({
           line-height: 1;
         }
         .mv-row-edit:hover {
-          background: rgba(201,166,107,0.18);
+          background: rgba(106,133,160,0.18);
         }
         .mv-row-edit:active { transform: scale(0.94); }
 
         .mv-row-btn {
           flex-shrink: 0;
           padding: 8px 14px;
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
@@ -1517,12 +1517,12 @@ function RoomTimelineView({
           transition: all 0.18s ease;
         }
         .rv-room-card:hover {
-          background: rgba(201,166,107,0.14);
+          background: rgba(106,133,160,0.14);
         }
         .rv-room-card-on {
           background: linear-gradient(135deg, #fcfcfd, #e7ebef);
-          border-color: #C9A66B;
-          box-shadow: 0 4px 14px rgba(201,166,107,0.25);
+          border-color: #5f7c98;
+          box-shadow: 0 4px 14px rgba(106,133,160,0.25);
         }
         .rv-room-emoji { font-size: 1.05rem; line-height: 1; }
         .rv-room-name {
@@ -1564,9 +1564,9 @@ function RoomTimelineView({
           font-size: 0.72rem;
           color: #6E5430;
           padding: 8px 12px;
-          background: rgba(201,166,107,0.14);
+          background: rgba(106,133,160,0.14);
           border-radius: 10px;
-          border: 1px solid rgba(201,166,107,0.22);
+          border: 1px solid rgba(106,133,160,0.22);
         }
 
         .rv-grid-wrap {
@@ -1634,7 +1634,7 @@ function RoomTimelineView({
         }
         .rv-cell-out .rv-day-num { color: #6E5430; }
         .rv-cell-today {
-          box-shadow: 0 0 0 2px #C9A66B;
+          box-shadow: 0 0 0 2px #5f7c98;
         }
         .rv-day-num {
           font-size: 1rem;
@@ -1720,7 +1720,7 @@ function RoomTimelineView({
         .rv-pop-row span { color: #6E5430; font-size: 0.72rem; }
         .rv-pop-note {
           margin-top: 10px; padding: 8px 10px;
-          background: rgba(201,166,107,0.14);
+          background: rgba(106,133,160,0.14);
           border-radius: 8px;
           font-size: 0.74rem; color: #4A3820;
         }
@@ -1956,9 +1956,9 @@ function GridView({
           font-size: 0.72rem;
           color: #6E5430;
           padding: 8px 12px;
-          background: rgba(201,166,107,0.14);
+          background: rgba(106,133,160,0.14);
           border-radius: 10px;
-          border: 1px solid rgba(201,166,107,0.22);
+          border: 1px solid rgba(106,133,160,0.22);
         }
         .gv-tip b { color: #1F1A0F; }
 
@@ -2013,7 +2013,7 @@ function GridView({
           text-align: center;
         }
         .gv-day-th-we { color: #c2410c; }
-        .gv-day-th-today { color: #8B6914; }
+        .gv-day-th-today { color: #3f5369; }
         .gv-day-num {
           display: block;
           font-size: 0.82rem;
@@ -2022,7 +2022,7 @@ function GridView({
           color: #1F1A0F;
         }
         .gv-day-th-today .gv-day-num {
-          background: linear-gradient(135deg,#b4c1cf,#C9A66B);
+          background: linear-gradient(135deg,#b4c1cf,#5f7c98);
           color: #1F1A0F;
           border-radius: 999px;
           width: 24px; height: 24px;
@@ -2045,7 +2045,7 @@ function GridView({
           background: #fcfcfd;
         }
         .gv-cell-td-we { background: #f4f6f8; }
-        .gv-cell-td-today { background: rgba(201,166,107,0.10); }
+        .gv-cell-td-today { background: rgba(106,133,160,0.10); }
 
         .gv-cell {
           width: 100%;
@@ -2064,7 +2064,7 @@ function GridView({
         }
         .gv-cell:hover {
           transform: scale(1.06);
-          box-shadow: 0 2px 8px rgba(201,166,107,0.30), inset 0 0 0 1.5px rgba(31,26,15,0.20);
+          box-shadow: 0 2px 8px rgba(106,133,160,0.30), inset 0 0 0 1.5px rgba(31,26,15,0.20);
           z-index: 1;
         }
         .gv-cell:active { transform: scale(0.92); }
@@ -2113,7 +2113,7 @@ function GridView({
         .gv-pop-note {
           margin-top: 8px;
           padding: 8px 10px;
-          background: rgba(201,166,107,0.14);
+          background: rgba(106,133,160,0.14);
           border-radius: 8px;
           font-size: 0.74rem;
           color: #4A3820;
@@ -2395,7 +2395,7 @@ export function BlockDatesSheet({
         }
         .bds-eyebrow {
           font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
-          color: var(--accent, #C9A66B);
+          color: var(--accent, #5f7c98);
           text-transform: uppercase;
         }
         .bds-title {
@@ -2428,12 +2428,12 @@ export function BlockDatesSheet({
           margin-bottom: 8px;
           display: flex; align-items: center; gap: 8px;
         }
-        .bds-nights { font-weight: 700; color: var(--accent, #C9A66B); text-transform: none; letter-spacing: 0; }
+        .bds-nights { font-weight: 700; color: var(--accent, #5f7c98); text-transform: none; letter-spacing: 0; }
         .bds-mini { font-weight: 500; color: var(--text-muted, #6E5430); text-transform: none; letter-spacing: 0; }
         .bds-toggle-all {
           margin-left: auto;
           font-size: 0.72rem; font-weight: 700;
-          color: var(--accent, #C9A66B);
+          color: var(--accent, #5f7c98);
           background: transparent; border: none; cursor: pointer;
           text-transform: none; letter-spacing: 0;
         }
@@ -2450,12 +2450,12 @@ export function BlockDatesSheet({
           cursor: pointer;
           transition: all 0.15s ease;
         }
-        .bds-chip:hover { background: var(--accent-soft, rgba(201,166,107,0.14)); }
+        .bds-chip:hover { background: var(--accent-soft, rgba(106,133,160,0.14)); }
         .bds-chip-on {
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           border-color: rgba(110,84,48,0.30);
-          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+          box-shadow: 0 2px 8px rgba(106,133,160,0.30);
         }
 
         .bds-room {
@@ -2469,10 +2469,10 @@ export function BlockDatesSheet({
           cursor: pointer;
           transition: all 0.15s ease;
         }
-        .bds-room:hover { background: var(--accent-soft, rgba(201,166,107,0.14)); }
+        .bds-room:hover { background: var(--accent-soft, rgba(106,133,160,0.14)); }
         .bds-room-on {
-          background: linear-gradient(135deg, rgba(176, 192, 209,0.45), rgba(201,166,107,0.55));
-          border-color: var(--accent, #C9A66B);
+          background: linear-gradient(135deg, rgba(176, 192, 209,0.45), rgba(106,133,160,0.55));
+          border-color: var(--accent, #5f7c98);
         }
         .bds-room-tick {
           display: inline-flex; align-items: center; justify-content: center;
@@ -2511,8 +2511,8 @@ export function BlockDatesSheet({
         .bds-dates input:focus,
         .bds-input:focus,
         .bds-textarea:focus {
-          border-color: var(--accent, #C9A66B);
-          box-shadow: 0 0 0 3px rgba(201,166,107,0.18);
+          border-color: var(--accent, #5f7c98);
+          box-shadow: 0 0 0 3px rgba(106,133,160,0.18);
         }
 
         .bds-ft {
@@ -2530,20 +2530,20 @@ export function BlockDatesSheet({
           border: 1px solid var(--border-strong, rgba(110,84,48,0.30));
           cursor: pointer;
         }
-        .bds-cancel:hover { background: var(--accent-soft, rgba(201,166,107,0.14)); }
+        .bds-cancel:hover { background: var(--accent-soft, rgba(106,133,160,0.14)); }
         .bds-submit {
           flex: 1 1 auto;
           padding: 12px 22px; border-radius: 12px;
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           font-size: 0.92rem; font-weight: 800;
           letter-spacing: 0.02em;
           border: 1px solid rgba(110,84,48,0.30);
-          box-shadow: 0 4px 14px rgba(201,166,107,0.40);
+          box-shadow: 0 4px 14px rgba(106,133,160,0.40);
           cursor: pointer;
           transition: transform 0.12s ease, box-shadow 0.15s ease;
         }
-        .bds-submit:hover { box-shadow: 0 6px 18px rgba(201,166,107,0.55); }
+        .bds-submit:hover { box-shadow: 0 6px 18px rgba(106,133,160,0.55); }
         .bds-submit:active { transform: scale(0.98); }
         .bds-submit:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
       `}</style>
@@ -3004,7 +3004,7 @@ function PricingEditorModal({
         }
         .ped-eyebrow {
           font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
-          color: #8B6914;
+          color: #3f5369;
           text-transform: uppercase;
         }
         .ped-title {
@@ -3070,12 +3070,12 @@ function PricingEditorModal({
           white-space: nowrap;
           transition: all 0.15s ease;
         }
-        .ped-tab:hover { background: rgba(201,166,107,0.10); }
+        .ped-tab:hover { background: rgba(106,133,160,0.10); }
         .ped-tab-on {
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           border-color: rgba(110,84,48,0.30);
-          box-shadow: 0 2px 6px rgba(201,166,107,0.30);
+          box-shadow: 0 2px 6px rgba(106,133,160,0.30);
         }
 
         .ped-input-wrap {
@@ -3201,13 +3201,13 @@ function PricingEditorModal({
         .ped-save {
           flex: 1 1 auto;
           padding: 12px 18px;
-          background: linear-gradient(135deg, #b4c1cf, #C9A66B);
+          background: linear-gradient(135deg, #b4c1cf, #5f7c98);
           color: #1F1A0F;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
           font-size: 0.92rem; font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+          box-shadow: 0 2px 8px rgba(106,133,160,0.30);
           font-family: inherit;
         }
         .ped-save:disabled, .ped-clear:disabled { opacity: 0.55; cursor: not-allowed; }

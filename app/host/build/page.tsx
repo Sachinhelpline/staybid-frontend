@@ -398,7 +398,7 @@ function Journey() {
                 <div className="mt-1.5 flex items-center gap-1.5 justify-center sm:justify-start">
                   <span className="ho-step-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-all"
                     style={{
-                      background: p.n <= phase ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "var(--border-soft)",
+                      background: p.n <= phase ? "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "var(--border-soft)",
                       color: p.n <= phase ? "#fff" : "var(--text-muted)",
                     }}>
                     {p.n < phase ? "✓" : p.n}
@@ -688,7 +688,7 @@ function Journey() {
                   <button key={k} onClick={() => setPrefs((p) => ({ ...p, cityMode: k }))}
                     className="px-4 py-2 rounded-full text-xs font-bold transition-all"
                     style={prefs.cityMode === k
-                      ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
+                      ? { background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
                       : { border: "1px solid var(--border-strong)", color: "var(--text-soft)" }}>
                     {label}
                   </button>
@@ -1058,7 +1058,7 @@ function Journey() {
                       <button onClick={() => setPrefs((p) => ({ ...p, sourcing: s.key }))} aria-pressed={on}
                         className="ho-tile w-full text-left p-3.5 flex items-start gap-3">
                         <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                          style={{ background: on ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "var(--accent-soft)" }}>{s.icon}</span>
+                          style={{ background: on ? "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "var(--accent-soft)" }}>{s.icon}</span>
                         <span className="flex-1 min-w-0">
                           <span className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--text-base)" }}>
                             {s.name}{on && <span style={{ color: tier.accent }}>✓</span>}
@@ -1332,7 +1332,7 @@ function Journey() {
                   {DESIGN_PROCESS.map((s) => (
                     <div key={s.n} className="flex items-center gap-2 text-[11px]" style={{ color: "var(--text-soft)" }}>
                       <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                        style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>{s.n}</span>
+                        style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>{s.n}</span>
                       {s.title}
                     </div>
                   ))}
@@ -1851,7 +1851,7 @@ function PropertyTourSheet({ prop, onClose, defaultName, defaultPhone }: {
                 )}
                 <button onClick={submitInquiry} disabled={state === "working"}
                   className="ho-shine w-full mt-3 py-3 rounded-full font-semibold text-white text-sm disabled:opacity-50"
-                  style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                  style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                   {state === "working" ? "Sending…" : "Request this property →"}
                 </button>
               </>
@@ -1950,13 +1950,13 @@ function SuccessScreen({ tier, payNow, cities, rooms, balance = 0 }: { tier: str
           ].map((s, i) => (
             <div key={s} className="flex items-start gap-2 text-xs py-1" style={{ color: "var(--text-soft)" }}>
               <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>{i + 1}</span>
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>{i + 1}</span>
               {s}
             </div>
           ))}
         </div>
         <div className="mt-6 flex flex-col gap-2">
-          <Link href="/host/me" className="ho-shine px-6 py-3 rounded-full text-white font-semibold" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+          <Link href="/host/me" className="ho-shine px-6 py-3 rounded-full text-white font-semibold" style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
             Open my investor dashboard →
           </Link>
           <Link href="/host" className="px-6 py-3 rounded-full font-semibold" style={{ border: "1px solid var(--border-strong)", color: "var(--text-base)" }}>

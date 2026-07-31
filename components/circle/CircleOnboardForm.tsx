@@ -135,8 +135,8 @@ const ADMIN_PAL: Pal = {
   hint: "#8A8FA8", divider: "rgba(255,255,255,0.08)", danger: "#FF4757", ok: "#2ECC71", roomCard: "#0F1117",
 };
 const PUBLIC_PAL: Pal = {
-  panel: "var(--bg-card, #fcfcfd)", sub: "var(--text-muted, #6E5430)", text: "var(--text-base, #1F1A0F)", muted: "var(--text-muted, #6E5430)", accent: "var(--cozy-champagne, #C9A66B)",
-  input: "var(--bg-input, #f5f7f8)", inputBorder: "var(--border-soft, rgba(106, 133, 160,0.20))", chip: "var(--bg-input, #f5f7f8)", chipOn: "rgba(201,166,107,0.16)", chipOnBorder: "var(--cozy-champagne, #C9A66B)",
+  panel: "var(--bg-card, #fcfcfd)", sub: "var(--text-muted, #6E5430)", text: "var(--text-base, #1F1A0F)", muted: "var(--text-muted, #6E5430)", accent: "var(--cozy-champagne, #5f7c98)",
+  input: "var(--bg-input, #f5f7f8)", inputBorder: "var(--border-soft, rgba(106, 133, 160,0.20))", chip: "var(--bg-input, #f5f7f8)", chipOn: "rgba(106,133,160,0.16)", chipOnBorder: "var(--cozy-champagne, #5f7c98)",
   hint: "var(--text-muted, #6E5430)", divider: "var(--border-soft, rgba(106, 133, 160,0.18))", danger: "#C0503E", ok: "#5E7C4E", roomCard: "var(--bg-input, #f5f7f8)",
 };
 

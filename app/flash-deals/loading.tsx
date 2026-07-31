@@ -15,7 +15,7 @@ export default function FlashDealsLoading() {
         dangerouslySetInnerHTML={{
           __html: `
         .sb-nav-skel-bar{
-          background:linear-gradient(90deg, rgba(201,166,107,0.10) 25%, rgba(201,166,107,0.20) 50%, rgba(201,166,107,0.10) 75%);
+          background:linear-gradient(90deg, rgba(106,133,160,0.10) 25%, rgba(106,133,160,0.20) 50%, rgba(106,133,160,0.10) 75%);
           background-size:200% 100%;
           animation:sbNavSkel 1.35s ease-in-out infinite;
         }

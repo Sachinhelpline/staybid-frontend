@@ -188,7 +188,7 @@ export default function CircleOnboardPage() {
           font-weight: 800;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: var(--cozy-champagne, #c9a66b);
+          color: var(--cozy-champagne, #5f7c98);
         }
         .sbc-onb-title {
           font-family: "Cormorant Garamond", Georgia, serif;
@@ -243,7 +243,7 @@ export default function CircleOnboardPage() {
           flex-wrap: wrap;
         }
         .sbc-onb-btn-primary {
-          background: var(--cozy-champagne, #c9a66b);
+          background: var(--cozy-champagne, #5f7c98);
           color: #221a0c;
           border: none;
           border-radius: 12px;
@@ -270,7 +270,7 @@ export default function CircleOnboardPage() {
           font-weight: 800;
           letter-spacing: 0.09em;
           text-transform: uppercase;
-          color: var(--cozy-champagne, #c9a66b);
+          color: var(--cozy-champagne, #5f7c98);
           padding-left: 2px;
         }
         .sbc-onb-subs-list { display: grid; gap: 8px; }
@@ -300,12 +300,12 @@ export default function CircleOnboardPage() {
           font-weight: 700;
           padding: 5px 10px;
           border-radius: 999px;
-          background: rgba(201, 166, 107, 0.14);
+          background: rgba(106, 133, 160, 0.14);
           color: var(--cozy-cocoa, #4a3820);
           white-space: nowrap;
         }
         .sbc-onb-sub-badge.ok { background: rgba(94, 124, 78, 0.16); color: #4a6f4a; }
-        .sbc-onb-sub-badge.wait { background: rgba(201, 166, 107, 0.18); color: #8a6a20; }
+        .sbc-onb-sub-badge.wait { background: rgba(106, 133, 160, 0.18); color: #8a6a20; }
         .sbc-onb-sub-badge.bad { background: rgba(192, 80, 62, 0.14); color: #a85b4e; }
       `}</style>
     </div>

@@ -1147,7 +1147,7 @@ function FdStyles() {
         min-height: 100vh;
         /* v589 — brighter matte cream (was hardcoded dull #f4f6f8, missed the
            v588 lift) + a dusty-sage whisper low-left for the earthy accent. */
-        background: radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.09), transparent 60%),
+        background: radial-gradient(1200px 600px at 20% 0%, rgba(106, 133, 160, 0.09), transparent 60%),
                     radial-gradient(900px 500px at 90% 30%, rgba(176, 192, 209, 0.07), transparent 55%),
                     radial-gradient(1100px 700px at -5% 108%, rgba(154,172,196, 0.11), transparent 62%),
                     linear-gradient(180deg, #f9fafb 0%, #f6f7f9 50%, #f9fafb 100%);
@@ -1222,7 +1222,7 @@ function FdStyles() {
       }
       @media (min-width: 640px) {
         .fd-hero-stats-inline { margin-left: 8px; padding-left: 10px;
-          border-left: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 34%, transparent); }
+          border-left: 1px solid color-mix(in srgb, var(--cozy-champagne, #5f7c98) 34%, transparent); }
       }
       .fd-hero-eyebrow {
         font-size: 0.5rem; font-weight: 700;
@@ -1248,7 +1248,7 @@ function FdStyles() {
       }
       .fd-hero-dot { color: var(--cozy-cocoa-soft, #6E5430); opacity: 0.5; }
       .fd-title-gold {
-        background: linear-gradient(90deg, #b4c1cf, #C9A66B, #69849f, #C9A66B, #b4c1cf);
+        background: linear-gradient(90deg, #b4c1cf, #5f7c98, #69849f, #5f7c98, #b4c1cf);
         background-size: 200% 100%;
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -1276,9 +1276,9 @@ function FdStyles() {
       .fd-stat { color: var(--cozy-warm-dark, #1F1A0F); font-weight: 600; }
       .fd-stat-gold {
         color: var(--cozy-cocoa, #4A3820);
-        background: linear-gradient(135deg, rgba(201,166,107,0.18), rgba(201,166,107,0.06));
+        background: linear-gradient(135deg, rgba(106,133,160,0.18), rgba(106,133,160,0.06));
         padding: 1px 7px; border-radius: 999px;
-        border: 1px solid rgba(201,166,107,0.30);
+        border: 1px solid rgba(106,133,160,0.30);
       }
       .fd-stat-sep { color: var(--cozy-taupe, #acbbca); opacity: 0.7; }
       .fd-stat-dot {
@@ -1398,7 +1398,7 @@ function FdStyles() {
       .fd-card {
         position: relative;
         background: var(--bg-card);
-        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 22%, var(--border-soft));
+        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #5f7c98) 22%, var(--border-soft));
         border-radius: 24px;
         overflow: hidden;
         cursor: pointer;
@@ -1510,7 +1510,7 @@ function FdStyles() {
       .fd-disc-stamp {
         position: absolute; top: 12px; right: 12px; z-index: 2;
         /* v590 — satin matte gold coin (was glossy + a moving shine sweep). */
-        background: linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%);
+        background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%);
         border-radius: 15px;
         padding: 8px 12px;
         display: flex; flex-direction: column; align-items: center;
@@ -1559,7 +1559,7 @@ function FdStyles() {
         color: #ecf0f3;
         border: 1px solid rgba(176, 192, 209, 0.20);
       }
-      .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cozy-champagne, #C9A66B); }
+      .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cozy-champagne, #5f7c98); }
 
       /* v159.9 — Shrunk + premium glass timer chip. Was 52px ring + chunky
          8/12 padding on a dark glass pill. Now: 38px ring, tighter 3/10
@@ -1679,9 +1679,9 @@ function FdStyles() {
       /* v92 — Star + room type + slots use theme accent (champagne) so
          they read on both cream + cocoa surfaces. The bright #a9b9c8
          original gold disappeared on cream. */
-      .fd-stars { color: var(--accent, #C9A66B); font-size: 0.65rem; letter-spacing: 0.05em; }
+      .fd-stars { color: var(--accent, #5f7c98); font-size: 0.65rem; letter-spacing: 0.05em; }
       .fd-rt-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
-      .fd-room-type { color: var(--accent, #C9A66B); font-size: 0.7rem; font-weight: 700; }
+      .fd-room-type { color: var(--accent, #5f7c98); font-size: 0.7rem; font-weight: 700; }
       .fd-room-cap { color: var(--text-muted); font-size: 0.65rem; }
 
       .fd-slots { margin-bottom: 12px; }
@@ -1689,7 +1689,7 @@ function FdStyles() {
         display: flex; justify-content: space-between; align-items: center;
         margin-bottom: 6px; font-size: 0.65rem; font-weight: 600;
       }
-      .fd-slots-left { color: var(--accent, #C9A66B); }
+      .fd-slots-left { color: var(--accent, #5f7c98); }
       .fd-slots-left.urgent { color: #c87878; }
       .fd-slots-of { color: var(--text-muted); }
       /* v92 — Slots bar theme-aware (was nearly invisible white-alpha on cream) */
@@ -1805,11 +1805,11 @@ function FdStyles() {
         font-size: 0.74rem; line-height: 1.2;
       }
       .fd-meta-line .fd-stars {
-        color: var(--accent, #C9A66B); font-size: 0.7rem; letter-spacing: 0.04em;
+        color: var(--accent, #5f7c98); font-size: 0.7rem; letter-spacing: 0.04em;
       }
       .fd-meta-sep { color: var(--text-muted); opacity: 0.6; }
       .fd-meta-line .fd-room-type {
-        color: var(--accent, #C9A66B); font-weight: 700; font-size: 0.72rem;
+        color: var(--accent, #5f7c98); font-weight: 700; font-size: 0.72rem;
       }
       .fd-meta-line .fd-room-cap {
         color: var(--text-muted); font-size: 0.72rem;
@@ -1941,7 +1941,7 @@ function FdStyles() {
         padding: 3px 9px; border-radius: 999px;
         font-size: 0.62rem; font-weight: 800; letter-spacing: 0.01em;
         color: #ffffff; text-shadow: 0 1px 1px rgba(20,30,44,0.35);
-        background: linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369);
+        background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369);
         border: 1px solid rgba(255,255,255,0.35);
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(28,38,52,0.25), 0 4px 10px -6px rgba(40,55,72,0.45);
       }
@@ -1950,8 +1950,8 @@ function FdStyles() {
         padding: 3px 8px; border-radius: 999px;
         font-size: 0.62rem; font-weight: 600;
         color: var(--cozy-cocoa, #4A3820);
-        background: color-mix(in srgb, var(--cozy-champagne, #C9A66B) 12%, var(--bg-card));
-        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 26%, var(--border-soft));
+        background: color-mix(in srgb, var(--cozy-champagne, #5f7c98) 12%, var(--bg-card));
+        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #5f7c98) 26%, var(--border-soft));
       }
 
       /* v522 — scarcity bar */
@@ -1961,7 +1961,7 @@ function FdStyles() {
       }
       .fd-scarcity-track {
         flex: 1 1 auto; height: 5px; border-radius: 999px; overflow: hidden;
-        background: color-mix(in srgb, var(--cozy-champagne, #C9A66B) 18%, var(--border-soft));
+        background: color-mix(in srgb, var(--cozy-champagne, #5f7c98) 18%, var(--border-soft));
       }
       .fd-scarcity-fill {
         height: 100%; border-radius: 999px;
@@ -2001,7 +2001,7 @@ function FdStyles() {
         padding: 12px 18px;
         /* v590 — SATIN matte gold (was bright glossy #e5eaee→#7a92aa). Even,
            brushed metal, no harsh white specular. */
-        background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 44%, #42566d 100%);
+        background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 44%, #42566d 100%);
         color: #ffffff; font-size: 0.78rem; font-weight: 900;
         border: none; border-radius: 14px;
         cursor: pointer;
@@ -2091,7 +2091,7 @@ function FdStyles() {
       }
       .fd-search:focus-within {
         border-color: color-mix(in srgb, var(--accent) 60%, var(--border-soft));
-        box-shadow: 0 5px 18px -8px rgba(201, 166, 107, 0.42);
+        box-shadow: 0 5px 18px -8px rgba(106, 133, 160, 0.42);
       }
       .fd-search-ico { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
       .fd-search-input {
@@ -2235,7 +2235,7 @@ function FdStyles() {
       .fd-drawer-room.active {
         background: var(--accent-soft);
         border-color: var(--accent);
-        box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 20px rgba(201, 166, 107, 0.18);
+        box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 20px rgba(106, 133, 160, 0.18);
       }
       .fd-drawer-room.soldout { opacity: 0.5; cursor: not-allowed; }
       .fd-drawer-room-left { flex: 1; min-width: 0; }
@@ -2307,7 +2307,7 @@ function FdStyles() {
         background: var(--bg-pill);
         color: var(--text-base);
         font-size: clamp(0.78rem, 2.6vw, 0.88rem); font-weight: 700;
-        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 45%, var(--border-soft));
+        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #5f7c98) 45%, var(--border-soft));
         border-radius: 12px;
         cursor: pointer;
         letter-spacing: 0.01em;
@@ -2315,7 +2315,7 @@ function FdStyles() {
       }
       .fd-drawer-viewhotel:hover {
         background: var(--accent-soft);
-        border-color: var(--cozy-champagne, #C9A66B);
+        border-color: var(--cozy-champagne, #5f7c98);
         transform: translateY(-1px);
       }
       .fd-drawer-viewhotel-arrow { transition: transform 0.18s ease; }

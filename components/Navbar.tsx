@@ -332,7 +332,7 @@ export function Navbar() {
            both themes, the brightest thing on the bar. */
         .nav3d-solidgold,
         [data-theme="dark"] .nav3d-solidgold {
-          background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%) !important;
+          background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%) !important;
           border: 1px solid rgba(255,255,255,0.4) !important;
           color: #ffffff !important;
           text-shadow: 0 1px 1px rgba(20,30,44,0.35) !important;
@@ -614,7 +614,7 @@ export function Navbar() {
                   )}
                   {isReels && !active && (
                     <span className="ml-0.5 text-[0.55rem] font-black px-1.5 py-0.5 rounded-full"
-                      style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#000" }}>
+                      style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#000" }}>
                       NEW
                     </span>
                   )}
@@ -759,7 +759,7 @@ export function Navbar() {
                   className={`nav3d-chip nav3d-eq group relative ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}
                   style={{ paddingLeft: 5 }}>
                   <div className="rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
-                    style={{ width: 26, height: 26, background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                    style={{ width: 26, height: 26, background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>
                   {/* v586 — inherit the chip's themed colour (cream in dark,
@@ -788,7 +788,7 @@ export function Navbar() {
             {user ? (
               <Link href="/profile"
                 className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 3px 12px rgba(106,133,160,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 3px 12px rgba(106,133,160,0.4), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                 {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
               </Link>
             ) : (
@@ -830,7 +830,7 @@ export function Navbar() {
                   type="button"
                   onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-tour")); }}
                   className="flex items-center gap-2 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-                  style={{ background: "rgba(201,166,107,0.10)", border: "1px solid rgba(201,166,107,0.24)" }}
+                  style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.24)" }}
                 >
                   <span className="text-lg shrink-0">❓</span>
                   <span className="text-sm font-bold text-white leading-tight">App Tour</span>
@@ -839,7 +839,7 @@ export function Navbar() {
                   type="button"
                   onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-support")); }}
                   className="flex items-center gap-2 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-                  style={{ background: "rgba(201,166,107,0.10)", border: "1px solid rgba(201,166,107,0.24)" }}
+                  style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.24)" }}
                 >
                   <span className="text-lg shrink-0">🎧</span>
                   <span className="text-sm font-bold text-white leading-tight">Help &amp; Support</span>
@@ -850,9 +850,9 @@ export function Navbar() {
                 type="button"
                 onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-switcher")); }}
                 className="w-full mb-3 flex items-center gap-3 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-                style={{ background: "linear-gradient(135deg,rgba(201,166,107,0.16),rgba(106,133,160,0.10))", border: "1px solid rgba(106,133,160,0.3)" }}
+                style={{ background: "linear-gradient(135deg,rgba(106,133,160,0.16),rgba(106,133,160,0.10))", border: "1px solid rgba(106,133,160,0.3)" }}
               >
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>⇅</span>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>⇅</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white leading-none mb-0.5">Switch experience</p>
                   <p className="text-xs text-white/50 truncate">Partner · Circle · Hosts · Creator</p>
@@ -879,7 +879,7 @@ export function Navbar() {
                   <Link href="/profile" onClick={() => setMoreOpen(false)}
                     className="lux-glass lux-border flex items-center gap-3 p-3 rounded-2xl active:scale-[0.98] transition-transform">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
-                      style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                      style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                       {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

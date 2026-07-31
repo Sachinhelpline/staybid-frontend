@@ -19,7 +19,7 @@ type Tone = "light" | "dark";
 
 function bandFor(score: number): { color: string; glow: string; label: string } {
   if (score >= 80) return { color: "#7F9269", glow: "rgba(127,146,105,0.45)", label: "Trusted" };
-  if (score >= 50) return { color: "#C9A66B", glow: "rgba(201,166,107,0.45)", label: "Review" };
+  if (score >= 50) return { color: "#5f7c98", glow: "rgba(106,133,160,0.45)", label: "Review" };
   return { color: "#D49583", glow: "rgba(212,149,131,0.45)", label: "Flagged" };
 }
 

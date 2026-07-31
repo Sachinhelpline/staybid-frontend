@@ -1027,7 +1027,7 @@ export default function PartnerDashboard() {
            the number); the compound selector wins on specificity. */
         .inp-p.pl-7 { padding-left:1.75rem !important; }
         .inp-p:focus { border-color:#8198ae; box-shadow:0 0 0 3px rgba(106, 133, 160,0.13); }
-        .btn-gold { background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#fff; border:none; border-radius:9px; padding:8px 15px; font-weight:700; cursor:pointer; font-size:0.8rem; transition:all 0.18s; box-shadow:0 2px 8px rgba(106, 133, 160,0.22); }
+        .btn-gold { background:radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#fff; border:none; border-radius:9px; padding:8px 15px; font-weight:700; cursor:pointer; font-size:0.8rem; transition:all 0.18s; box-shadow:0 2px 8px rgba(106, 133, 160,0.22); }
         .btn-gold:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(106, 133, 160,0.34); }
         .btn-gold:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
         .btn-ghost { background:#fff; color:#7a6645; border:1px solid #d7dee6; border-radius:9px; padding:7px 13px; font-weight:700; cursor:pointer; font-size:0.78rem; transition:all 0.18s; }
@@ -1088,7 +1088,7 @@ export default function PartnerDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-5 flex items-center justify-between" style={{height:"56px"}}>
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
-              style={{background:"linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",boxShadow:"0 2px 8px rgba(106, 133, 160,0.4)"}}>S</div>
+              style={{background:"radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",boxShadow:"0 2px 8px rgba(106, 133, 160,0.4)"}}>S</div>
             <div className="min-w-0">
               <span className="font-display text-base text-white tracking-wide">StayBid</span>
               <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
@@ -1174,7 +1174,7 @@ export default function PartnerDashboard() {
                 aria-label="Account menu"
                 title="Account"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0 border border-amber-400/40 hover:border-amber-300/70 transition-all"
-                style={{background:"linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)"}}>
+                style={{background:"radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)"}}>
                 {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
               </button>
               {acctOpen && (
@@ -1255,7 +1255,7 @@ export default function PartnerDashboard() {
                 : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-50"
             }`;
             const style = active
-              ? { background:"linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow:"0 2px 8px rgba(106, 133, 160,0.3)" }
+              ? { background:"radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow:"0 2px 8px rgba(106, 133, 160,0.3)" }
               : undefined;
             const inner = (
               <>
@@ -1655,9 +1655,9 @@ export default function PartnerDashboard() {
                                   display: "inline-block",
                                   marginLeft: 6, padding: "1px 6px",
                                   borderRadius: 999,
-                                  background: "rgba(201,166,107,0.18)",
-                                  border: "1px solid rgba(201,166,107,0.36)",
-                                  color: "#8B6914",
+                                  background: "rgba(106,133,160,0.18)",
+                                  border: "1px solid rgba(106,133,160,0.36)",
+                                  color: "#3f5369",
                                   fontSize: "0.62rem", fontWeight: 700,
                                 }}>
                                   🛏️ {b.numRooms} rooms
@@ -3109,8 +3109,8 @@ export default function PartnerDashboard() {
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full pointer-events-none"
                           style={{
                             width: `${currentPct}%`,
-                            background: "linear-gradient(90deg, #C9A66B 0%, #b4c1cf 60%, #c8d2dc 100%)",
-                            boxShadow: "0 1px 3px rgba(201,166,107,0.45) inset",
+                            background: "linear-gradient(90deg, #5f7c98 0%, #b4c1cf 60%, #c8d2dc 100%)",
+                            boxShadow: "0 1px 3px rgba(106,133,160,0.45) inset",
                           }}
                         />
                         {/* Floor marker (only when floor sits inside slider range). */}

@@ -2564,8 +2564,8 @@ export default function HotelDetail() {
               borderRadius: "20px",
               background: "linear-gradient(135deg, rgba(176, 192, 209, 0.20), rgba(212, 149, 131, 0.14))",
               backdropFilter: "blur(14px)",
-              border: "1px solid rgba(201, 166, 107, 0.45)",
-              boxShadow: "0 18px 40px -16px rgba(201, 166, 107, 0.42)",
+              border: "1px solid rgba(106, 133, 160, 0.45)",
+              boxShadow: "0 18px 40px -16px rgba(106, 133, 160, 0.42)",
               display: "flex", flexDirection: "row", alignItems: "center",
               flexWrap: "wrap", justifyContent: "space-between", gap: "12px",
             }}
@@ -2591,7 +2591,7 @@ export default function HotelDetail() {
                     <span style={{
                       marginLeft: "8px",
                       padding: "2px 9px",
-                      background: "linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369)",
+                      background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369)",
                       color: "#ffffff",
                       textShadow: "0 1px 1px rgba(20,30,44,0.35)",
                       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
@@ -2669,8 +2669,8 @@ export default function HotelDetail() {
           return (
             <div style={{
               marginTop: 12, padding: "11px 14px", borderRadius: 14,
-              background: "rgba(201,166,107,0.14)",
-              border: "1px solid rgba(201,166,107,0.42)",
+              background: "rgba(106,133,160,0.14)",
+              border: "1px solid rgba(106,133,160,0.42)",
               display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
             }}>
               <span style={{ fontSize: "1.05rem" }}>⏳</span>
@@ -3599,7 +3599,7 @@ export default function HotelDetail() {
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
                         padding: "4px 9px", borderRadius: 999,
-                        background: "rgba(201,166,107,0.94)", color: "#1a1205",
+                        background: "rgba(106,133,160,0.94)", color: "#1a1205",
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
                       }}>⏳ Bid Pending</span>
@@ -3665,8 +3665,8 @@ export default function HotelDetail() {
                           borderRadius: 999,
                           background: Number(r.quantity) <= 2
                             ? "rgba(212,149,131,0.18)"
-                            : "rgba(201,166,107,0.16)",
-                          border: `1px solid ${Number(r.quantity) <= 2 ? "rgba(212,149,131,0.40)" : "rgba(201,166,107,0.32)"}`,
+                            : "rgba(106,133,160,0.16)",
+                          border: `1px solid ${Number(r.quantity) <= 2 ? "rgba(212,149,131,0.40)" : "rgba(106,133,160,0.32)"}`,
                           color: Number(r.quantity) <= 2 ? "#A85B4E" : "var(--cozy-cocoa, #4A3820)",
                           fontSize: "0.6rem", fontWeight: 700,
                           verticalAlign: "middle",
@@ -3773,8 +3773,8 @@ export default function HotelDetail() {
                   {!isFlashRoom && !isLockedRoom && !myRoomCountered && myRoomPending && (
                     <div style={{
                       marginBottom: 14, padding: "10px 12px", borderRadius: 12,
-                      background: "rgba(201,166,107,0.14)",
-                      border: "1px solid rgba(201,166,107,0.42)",
+                      background: "rgba(106,133,160,0.14)",
+                      border: "1px solid rgba(106,133,160,0.42)",
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
                       <span style={{ fontSize: "1.05rem" }}>⏳</span>
@@ -4039,7 +4039,7 @@ export default function HotelDetail() {
                                   borderRadius: "999px",
                                   background: "var(--accent-soft)",
                                   color: "var(--text-soft)", /* v421 — theme-aware (was --cozy-cocoa); --accent-soft tint darkens over the dark card */
-                                  border: "1px solid rgba(201, 166, 107, 0.3)",
+                                  border: "1px solid rgba(106, 133, 160, 0.3)",
                                 }}>
                                   {f}
                                 </span>
@@ -4403,7 +4403,7 @@ export default function HotelDetail() {
                 margin: "16px 0 14px",
                 padding: "10px 12px",
                 background: "var(--accent-soft)",
-                border: "1px solid rgba(201, 166, 107, 0.3)",
+                border: "1px solid rgba(106, 133, 160, 0.3)",
                 borderRadius: "12px",
               }}>
                 <SecIcon name="idea" />
@@ -5129,7 +5129,7 @@ export default function HotelDetail() {
                       <button key={s.label} onClick={() => setNegAmt(amt)}
                         className={`neg-chip rounded-2xl p-2.5 text-center ${active?"active":""}`}
                         style={{
-                          background: active ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "rgba(255,255,255,0.04)",
+                          background: active ? "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "rgba(255,255,255,0.04)",
                           border: `1px solid ${active?"rgba(120,150,182,.6)":"rgba(255,255,255,.08)"}`,
                           boxShadow: active ? "0 6px 22px rgba(120,150,182,.35)" : "none",
                         }}>
@@ -5177,7 +5177,7 @@ export default function HotelDetail() {
                   style={{
                     background: isInstant
                       ? "linear-gradient(160deg,#d3dde7 0%,#aebdcf 50%,#8ba0b6 100%)"
-                      : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+                      : "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
                     color: isInstant ? "#16222e" : "#ffffff",
                     textShadow: isInstant ? "0 1px 0 rgba(255,255,255,0.35)" : "0 1px 1px rgba(20,30,44,0.35)",
                     boxShadow: isInstant

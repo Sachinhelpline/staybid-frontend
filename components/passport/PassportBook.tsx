@@ -47,9 +47,9 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
         .pb-page {
           position:absolute; inset:0; border-radius: 22px;
           background:
-            radial-gradient(120% 80% at 100% 0%, rgba(201,166,107,0.18), transparent 60%),
+            radial-gradient(120% 80% at 100% 0%, rgba(106,133,160,0.18), transparent 60%),
             linear-gradient(160deg,#fdfdfe 0%,#f1f4f6 55%,#e4e9ee 100%);
-          box-shadow: 0 22px 60px -24px rgba(31,26,15,0.55), inset 0 0 0 1px rgba(201,166,107,0.22);
+          box-shadow: 0 22px 60px -24px rgba(31,26,15,0.55), inset 0 0 0 1px rgba(106,133,160,0.22);
           padding: 22px 20px; display:flex; flex-direction:column;
           opacity: 0; transition: opacity .4s ease .25s;
         }
@@ -63,7 +63,7 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
           background:
             radial-gradient(130% 90% at 50% 0%, rgba(255,255,255,0.12), transparent 55%),
             linear-gradient(160deg,#202a33 0%,#161c23 58%,#0d1114 100%);
-          box-shadow: 0 22px 60px -22px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(201,166,107,0.3);
+          box-shadow: 0 22px 60px -22px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(106,133,160,0.3);
           color:#e2e7ed; padding: 26px 22px; display:flex; flex-direction:column;
           z-index: 3;
         }
@@ -71,8 +71,8 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
         .pb-cover::before {
           content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
           background:
-            repeating-linear-gradient(45deg, rgba(201,166,107,0.05) 0 2px, transparent 2px 9px),
-            repeating-linear-gradient(-45deg, rgba(201,166,107,0.04) 0 2px, transparent 2px 9px);
+            repeating-linear-gradient(45deg, rgba(106,133,160,0.05) 0 2px, transparent 2px 9px),
+            repeating-linear-gradient(-45deg, rgba(106,133,160,0.04) 0 2px, transparent 2px 9px);
         }
         /* slow gloss sweep */
         .pb-cover::after {
@@ -82,7 +82,7 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
         }
         @keyframes pbGloss { 0% { left:-45% } 55%,100% { left:130% } }
         .pb-corner { position:absolute; width:26px; height:26px; z-index:2; pointer-events:none;
-          border-color: rgba(201,166,107,0.55); }
+          border-color: rgba(106,133,160,0.55); }
         .pb-corner.tl { top:12px; left:12px; border-top:2px solid; border-left:2px solid; border-radius:7px 0 0 0; }
         .pb-corner.tr { top:12px; right:12px; border-top:2px solid; border-right:2px solid; border-radius:0 7px 0 0; }
         .pb-corner.bl { bottom:12px; left:12px; border-bottom:2px solid; border-left:2px solid; border-radius:0 0 0 7px; }
@@ -93,9 +93,9 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
         .pb-mtn { position:relative; z-index:2; width:78%; height:30px; margin:6px auto -2px; display:block; opacity:.9; }
         .pb-emboss {
           position:relative; z-index:2;
-          border:1.5px solid rgba(201,166,107,0.5); border-radius:16px; padding:14px 16px 16px;
+          border:1.5px solid rgba(106,133,160,0.5); border-radius:16px; padding:14px 16px 16px;
           margin-top:auto; text-align:center;
-          background: linear-gradient(180deg, rgba(201,166,107,0.1), rgba(255,255,255,0.02));
+          background: linear-gradient(180deg, rgba(106,133,160,0.1), rgba(255,255,255,0.02));
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
         }
         .pb-id {
@@ -160,7 +160,7 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
                 {rank.next ? `${rank.xpForNext} → ${rank.next.label}` : "Top rank reached 🏆"}
               </span>
             </div>
-            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(201,166,107,0.22)" }}>
+            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(106,133,160,0.22)" }}>
               <div
                 className="h-full rounded-full transition-all duration-1000"
                 style={{ width: `${rank.progressPct}%`, background: R.gradient }}
@@ -176,7 +176,7 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
           </div>
 
           {/* Explorer ID footer */}
-          <div className="mt-auto pt-3 flex items-end justify-between border-t" style={{ borderColor: "rgba(201,166,107,0.25)" }}>
+          <div className="mt-auto pt-3 flex items-end justify-between border-t" style={{ borderColor: "rgba(106,133,160,0.25)" }}>
             <div>
               <p className="text-[0.55rem] uppercase tracking-widest font-bold" style={{ color: "#556d86" }}>
                 Explorer ID
@@ -252,7 +252,7 @@ function RankRing({ rank }: { rank: RankState }) {
           <stop offset="100%" stopColor="#556d86" />
         </linearGradient>
       </defs>
-      <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(201,166,107,0.22)" strokeWidth="7" />
+      <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(106,133,160,0.22)" strokeWidth="7" />
       <circle
         cx="50"
         cy="50"
@@ -280,7 +280,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div
       className="rounded-2xl py-2 text-center"
-      style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(201,166,107,0.2)" }}
+      style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(106,133,160,0.2)" }}
     >
       <p className="font-display text-xl font-bold tabular-nums" style={{ color: "#252f39" }}>
         <CountUp value={value} duration={900} />

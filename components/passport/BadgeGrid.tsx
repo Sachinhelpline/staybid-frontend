@@ -68,7 +68,7 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
                   ? "color-mix(in srgb, var(--accent) 10%, var(--bg-card))"
                   : "var(--bg-card)",
                 border: b.earned
-                  ? "1px solid rgba(201,166,107,0.4)"
+                  ? "1px solid rgba(106,133,160,0.4)"
                   : "1px solid var(--border-soft)",
               }}
             >

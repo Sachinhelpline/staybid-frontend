@@ -49,7 +49,7 @@ function unrated(hotelId: string) {
     city: null,
     overall: null,
     status: "unrated",
-    badge: { emoji: "✨", label: "New on StayBid", color: "#C9A66B" },
+    badge: { emoji: "✨", label: "New on StayBid", color: "#5f7c98" },
     rank: { rank: null, total: 0, percentile: null },
     checkpoints: [],
     totals: { bookings: 0, stayFeedback: 0, complaints: 0 },

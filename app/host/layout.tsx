@@ -55,7 +55,7 @@ export default function HostLayout({ children }: { children: ReactNode }) {
             <Link
               href="/onboard"
               className="px-4 py-2 rounded-full text-white font-medium shadow"
-              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
+              style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
             >List your property</Link>
           </nav>
         </div>

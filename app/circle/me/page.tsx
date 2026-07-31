@@ -27,7 +27,7 @@ const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
   listed:          { bg: "rgba(127,146,105,.16)", fg: "#3F5233" },
   sold:            { bg: "rgba(127,146,105,.16)", fg: "#3F5233" },
   completed:       { bg: "rgba(127,146,105,.16)", fg: "#3F5233" },
-  pending_payment: { bg: "rgba(201,166,107,.16)", fg: "var(--sbc-gold-deep)" },
+  pending_payment: { bg: "rgba(106,133,160,.16)", fg: "var(--sbc-gold-deep)" },
   draft:           { bg: "rgba(74,56,32,.10)", fg: "var(--sbc-coffee)" },
   quoted:          { bg: "rgba(74,56,32,.10)", fg: "var(--sbc-coffee)" },
   withdrawn:       { bg: "rgba(74,56,32,.10)", fg: "rgba(74,56,32,.6)" },
@@ -255,7 +255,7 @@ export default function CircleMePage() {
                     const items: any[] = Array.isArray(b.items) ? b.items : [];
                     const tone =
                       b.status === "active" ? { bg: "rgba(127,146,105,.14)", fg: "#3F5233", label: "● ACTIVE" } :
-                      b.status === "pending_payment" ? { bg: "rgba(201,166,107,.16)", fg: "var(--sbc-gold-deep)", label: "◌ PAYMENT PENDING" } :
+                      b.status === "pending_payment" ? { bg: "rgba(106,133,160,.16)", fg: "var(--sbc-gold-deep)", label: "◌ PAYMENT PENDING" } :
                       b.status === "completed" ? { bg: "rgba(74,56,32,.1)", fg: "var(--sbc-coffee)", label: "✓ COMPLETED" } :
                       { bg: "rgba(212,149,131,.16)", fg: "#a85b4e", label: "✕ CANCELLED" };
                     return (
@@ -434,7 +434,7 @@ export default function CircleMePage() {
                       <h2 className="sbc-h2" style={{ fontSize: "1.5rem", margin: 0 }}>B2B Exchange <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button onClick={() => bridgeToPartnerDashboard(user, "myrooms")}
-                          style={{ fontSize: ".72rem", fontWeight: 800, padding: "6px 13px", borderRadius: 999, border: 0, background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff", cursor: "pointer" }}>
+                          style={{ fontSize: ".72rem", fontWeight: 800, padding: "6px 13px", borderRadius: 999, border: 0, background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff", cursor: "pointer" }}>
                           ⇄ List on exchange
                         </button>
                         <button onClick={() => bridgeToPartnerDashboard(user, "agentauction")}
@@ -451,7 +451,7 @@ export default function CircleMePage() {
                         return (
                           <div key={`l-${l.id}`} className="sbc-panel" style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                              <span style={{ fontSize: ".6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(201,166,107,.16)", color: "var(--sbc-gold-deep)" }}>LISTING</span>
+                              <span style={{ fontSize: ".6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(106,133,160,.16)", color: "var(--sbc-gold-deep)" }}>LISTING</span>
                               <span style={{ fontSize: ".6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: t.bg, color: t.fg, textTransform: "uppercase" }}>{String(l.status).replace(/_/g, " ")}</span>
                               <span style={{ fontSize: ".82rem", color: "var(--sbc-coffee)", fontWeight: 600 }}>{l.hotel_name || "Property"} {unit ? `· ${unit}` : ""}</span>
                               <span style={{ fontSize: ".72rem", color: "rgba(74,56,32,.6)" }}>{l.date_from}→{l.date_to} · {l.nights}n</span>

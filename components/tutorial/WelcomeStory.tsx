@@ -193,7 +193,7 @@ export function WelcomeStory() {
           borderRadius: 28,
           overflow: "hidden",
           background: "linear-gradient(160deg, #fcfcfd 0%, #f4f6f8 55%, #e7ebef 100%)",
-          boxShadow: "0 30px 80px -20px rgba(31, 26, 15, 0.55), 0 0 0 1px rgba(201, 166, 107, 0.22)",
+          boxShadow: "0 30px 80px -20px rgba(31, 26, 15, 0.55), 0 0 0 1px rgba(106, 133, 160, 0.22)",
           isolation: "isolate",
           cursor: "pointer",
           userSelect: "none",
@@ -227,7 +227,7 @@ export function WelcomeStory() {
                 style={{
                   height: "100%",
                   width: i < idx ? "100%" : i === idx ? "100%" : "0%",
-                  background: "linear-gradient(90deg, #C9A66B, #b4c1cf)",
+                  background: "linear-gradient(90deg, #5f7c98, #b4c1cf)",
                   transition: "width 0.4s ease",
                 }}
               />
@@ -385,12 +385,12 @@ export function WelcomeStory() {
               cursor: "pointer",
               padding: "12px 24px",
               borderRadius: 999,
-              background: "linear-gradient(135deg, #c8d2dc, #b4c1cf, #C9A66B)",
+              background: "linear-gradient(135deg, #c8d2dc, #b4c1cf, #5f7c98)",
               color: "#1F1A0F",
               fontSize: "0.95rem",
               fontWeight: 700,
               letterSpacing: "0.03em",
-              boxShadow: "0 10px 24px -8px rgba(201, 166, 107, 0.55), inset 0 1px 0 rgba(255,255,255,0.45)",
+              boxShadow: "0 10px 24px -8px rgba(106, 133, 160, 0.55), inset 0 1px 0 rgba(255,255,255,0.45)",
               overflow: "hidden",
             }}
           >

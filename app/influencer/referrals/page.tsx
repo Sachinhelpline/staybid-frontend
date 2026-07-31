@@ -190,7 +190,7 @@ export default function InfluencerReferralsPage() {
       {/* Floating toast */}
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full text-sm font-semibold shadow-lg"
-          style={{ background: "linear-gradient(135deg, #1f1a0f, #2b2415)", color: "#f8fafb", border: "1px solid rgba(201,166,107,0.35)" }}>
+          style={{ background: "linear-gradient(135deg, #1f1a0f, #2b2415)", color: "#f8fafb", border: "1px solid rgba(106,133,160,0.35)" }}>
           {toast}
         </div>
       )}
@@ -237,13 +237,13 @@ function CodeCard({
 
       <div className="flex flex-wrap gap-2">
         {supportsNative && (
-          <ShareBtn onClick={onNative} bg="linear-gradient(135deg, #8198ae, #a9b9c8)" color="#fff" border="rgba(201,166,107,0.6)" icon="📲" label="Share" />
+          <ShareBtn onClick={onNative} bg="linear-gradient(135deg, #8198ae, #a9b9c8)" color="#fff" border="rgba(106,133,160,0.6)" icon="📲" label="Share" />
         )}
         <ShareBtn onClick={onWhatsapp} bg="#25D366" color="#fff" border="#1FB855" icon="💬" label="WhatsApp" />
         <ShareBtn onClick={onInstagram} bg="linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" color="#fff" border="rgba(220,39,67,0.6)" icon="📸" label="Instagram" />
         <ShareBtn onClick={onTelegram} bg="#0088cc" color="#fff" border="#006699" icon="✈️" label="Telegram" />
         <ShareBtn onClick={onTwitter} bg="#000" color="#fff" border="#333" icon="𝕏" label="Twitter" />
-        <ShareBtn onClick={onCopy} bg="rgba(0,0,0,0.04)" color="#1f1a0f" border="rgba(201,166,107,0.4)" icon="🔗" label="Copy link" />
+        <ShareBtn onClick={onCopy} bg="rgba(0,0,0,0.04)" color="#1f1a0f" border="rgba(106,133,160,0.4)" icon="🔗" label="Copy link" />
       </div>
     </div>
   );

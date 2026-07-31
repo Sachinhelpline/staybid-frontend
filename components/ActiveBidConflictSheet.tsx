@@ -154,7 +154,7 @@ export default function ActiveBidConflictSheet({
   const statusColor =
     conflict.status === "COUNTER"  ? "#C77B43" :
     conflict.status === "ACCEPTED" ? "#7F9269" :
-    "#C9A66B";
+    "#5f7c98";
 
   return (
     <div
@@ -221,9 +221,9 @@ export default function ActiveBidConflictSheet({
                   <span
                     className="text-[0.6rem] font-bold px-2 py-0.5 rounded-full shrink-0"
                     style={{
-                      background: b.autoAccepted ? "rgba(127,146,105,0.18)" : "rgba(201,166,107,0.18)",
+                      background: b.autoAccepted ? "rgba(127,146,105,0.18)" : "rgba(106,133,160,0.18)",
                       color: b.autoAccepted ? "#5a6e44" : "#8a6a1f",
-                      border: `1px solid ${b.autoAccepted ? "#7F926955" : "#C9A66B55"}`,
+                      border: `1px solid ${b.autoAccepted ? "#7F926955" : "#5f7c9855"}`,
                     }}
                   >
                     {b.autoAccepted ? "✓ Accepted" : "Pending"}
@@ -235,7 +235,7 @@ export default function ActiveBidConflictSheet({
               <button
                 onClick={() => { onClose(); router.push("/my-bids"); }}
                 className="w-full py-3 rounded-xl font-bold text-sm"
-                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
               >
                 {winners.accepted > 0 ? "💰 Pay Now in My Bids →" : "View My Bids →"}
               </button>
@@ -338,7 +338,7 @@ export default function ActiveBidConflictSheet({
               onClick={handleUpdate}
               disabled={saving || amount <= 0}
               className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-50"
-              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
+              style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}
             >
               {saving ? "Updating…" : `💰 Update Budget to ₹${amount.toLocaleString("en-IN")}/night`}
             </button>

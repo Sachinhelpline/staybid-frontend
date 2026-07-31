@@ -251,7 +251,7 @@ function calcBidStrength(
 
   if (r >= 1.00) return { pct: 96, label: "Instant Accept", color: "#7F9269", tier: "Instant Win",      bar: "bg-emerald-500", tip: "Hotels will compete aggressively. Auto-confirms instantly.",         responseTime: "Auto-confirms instantly" };
   if (r >= 0.90) return { pct: 78, label: "Very Strong",    color: "#9DAD8F", tier: "Very Strong",      bar: "bg-emerald-400", tip: "Excellent bid — most 4★+ hotels will accept.",                       responseTime: "Confirms in ~30 min"    };
-  if (r >= 0.80) return { pct: 60, label: "Strong",         color: "#C9A66B", tier: "Strong",           bar: "bg-gold-500",    tip: "Good chance — 3–5 hotels likely to respond with a counter or yes.",  responseTime: "Response in ~1 hr"      };
+  if (r >= 0.80) return { pct: 60, label: "Strong",         color: "#5f7c98", tier: "Strong",           bar: "bg-gold-500",    tip: "Good chance — 3–5 hotels likely to respond with a counter or yes.",  responseTime: "Response in ~1 hr"      };
   if (r >= 0.70) return { pct: 42, label: "Moderate",       color: "#D4AF7F", tier: "Moderate",         bar: "bg-amber-500",   tip: "Some hotels may counter with a slightly higher rate.",               responseTime: "Response in 2–3 hrs"    };
   if (r >= 0.60) return { pct: 25, label: "Low",            color: "#D49583", tier: "Long Shot",        bar: "bg-orange-500",  tip: "Hotels may counter — be ready to negotiate. Try +₹200/night?",       responseTime: "Response in 4–6 hrs"    };
   return              { pct: 10,  label: "Very Low",        color: "#A85B4E", tier: "Very Long Shot",   bar: "bg-red-500",     tip: "Consider increasing the budget for better responses.",               responseTime: "Unlikely to receive bids" };
@@ -291,7 +291,7 @@ function WinCount({ value }: { value: number }) {
 }
 
 /* ── v162 — celebration confetti pieces (deterministic) ─────────── */
-const CONFETTI_COLORS = ["#C9A66B", "#b4c1cf", "#D49583", "#9DAD8F", "#c8d2dc", "#7790a8"];
+const CONFETTI_COLORS = ["#5f7c98", "#b4c1cf", "#D49583", "#9DAD8F", "#c8d2dc", "#7790a8"];
 const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
   left:  (i * 4.37 + (i % 4) * 6) % 100,
   color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
@@ -1971,7 +1971,7 @@ export default function BidPage() {
             display: "flex", flexDirection: "column", gap: 8,
             marginTop: 12, padding: "10px 12px",
             background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(201,166,107,0.22)",
+            border: "1px solid rgba(106,133,160,0.22)",
             borderRadius: 10,
           }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--text-soft, rgba(255,255,255,0.78))", cursor: "pointer" }}>
@@ -1979,10 +1979,10 @@ export default function BidPage() {
                 type="checkbox"
                 checked={autoFit}
                 onChange={(e) => setAutoFitPersist(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: "#C9A66B" }}
+                style={{ width: 16, height: 16, accentColor: "#5f7c98" }}
               />
               <span>Auto-fit rooms to guests</span>
-              <span style={{ marginLeft: "auto", fontSize: "0.65rem", color: "var(--cozy-champagne, #C9A66B)" }}>
+              <span style={{ marginLeft: "auto", fontSize: "0.65rem", color: "var(--cozy-champagne, #5f7c98)" }}>
                 {autoFit ? "ON" : "OFF"}
               </span>
             </label>
@@ -2003,7 +2003,7 @@ export default function BidPage() {
                 rel="noopener noreferrer"
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
-                  fontSize: "0.7rem", color: "var(--cozy-champagne, #C9A66B)",
+                  fontSize: "0.7rem", color: "var(--cozy-champagne, #5f7c98)",
                   textDecoration: "underline",
                 }}
               >
@@ -2196,7 +2196,7 @@ export default function BidPage() {
                       borderRadius: 999,
                       fontWeight: 700,
                       fontSize: "0.92rem",
-                      background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+                      background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
                       color: "var(--cozy-warm-dark)",
                       border: "1px solid rgba(110,84,48,0.35)",
                       boxShadow: "0 3px 10px rgba(110,84,48,0.18)",
@@ -2659,8 +2659,8 @@ export default function BidPage() {
                 <div style={{
                   display: "flex", flexDirection: "column", gap: 6,
                   marginTop: 10, padding: "8px 12px",
-                  background: "var(--accent-soft, rgba(201,166,107,0.08))",
-                  border: "1px solid rgba(201,166,107,0.20)",
+                  background: "var(--accent-soft, rgba(106,133,160,0.08))",
+                  border: "1px solid rgba(106,133,160,0.20)",
                   borderRadius: 10,
                 }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--text-soft)", cursor: "pointer" }}>
@@ -2668,10 +2668,10 @@ export default function BidPage() {
                       type="checkbox"
                       checked={autoFit}
                       onChange={(e) => setAutoFitPersist(e.target.checked)}
-                      style={{ width: 16, height: 16, accentColor: "#C9A66B" }}
+                      style={{ width: 16, height: 16, accentColor: "#5f7c98" }}
                     />
                     <span>Auto-fit rooms to guests</span>
-                    <span style={{ marginLeft: "auto", fontSize: "0.65rem", color: "var(--cozy-champagne, #C9A66B)" }}>
+                    <span style={{ marginLeft: "auto", fontSize: "0.65rem", color: "var(--cozy-champagne, #5f7c98)" }}>
                       {autoFit ? "ON" : "OFF"}
                     </span>
                   </label>
@@ -2691,7 +2691,7 @@ export default function BidPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
-                        fontSize: "0.7rem", color: "var(--cozy-champagne, #C9A66B)",
+                        fontSize: "0.7rem", color: "var(--cozy-champagne, #5f7c98)",
                         textDecoration: "underline",
                       }}
                     >

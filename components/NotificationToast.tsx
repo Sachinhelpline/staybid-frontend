@@ -23,11 +23,11 @@ const KIND_STYLE: Record<NotificationKind, { accent: string; onAccent: string; i
   bid_countered:      { accent: "#C77B43", onAccent: "#fff",     icon: "🤝" },
   bid_rejected:       { accent: "#C77E6D", onAccent: "#fff",     icon: "✕"  },
   bid_auto_cancelled: { accent: "#8A7B5F", onAccent: "#fff",     icon: "⏰" },
-  bid_expiring_soon:  { accent: "#C9A66B", onAccent: "#1a1205",  icon: "⏱"  },
-  hold_expiring_soon: { accent: "#C9A66B", onAccent: "#1a1205",  icon: "🔒" },
+  bid_expiring_soon:  { accent: "#5f7c98", onAccent: "#1a1205",  icon: "⏱"  },
+  hold_expiring_soon: { accent: "#5f7c98", onAccent: "#1a1205",  icon: "🔒" },
   info:               { accent: "#8198ae", onAccent: "#fff",     icon: "ℹ️" },
   success:            { accent: "#7F9269", onAccent: "#fff",     icon: "✓"  },
-  warning:            { accent: "#C9A66B", onAccent: "#1a1205",  icon: "⚠"  },
+  warning:            { accent: "#5f7c98", onAccent: "#1a1205",  icon: "⚠"  },
   error:              { accent: "#C77E6D", onAccent: "#fff",     icon: "✕"  },
 };
 

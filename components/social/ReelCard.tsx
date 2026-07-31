@@ -175,7 +175,7 @@ export function ReelCard({
         >
           <div
             className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[0.7rem] font-bold text-black"
-            style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1.5px solid rgba(255,255,255,0.6)" }}
+            style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1.5px solid rgba(255,255,255,0.6)" }}
           >
             {a?.avatar_url ? <img src={a.avatar_url} alt="" className="w-full h-full object-cover" /> : (a?.display_name || "?")[0]}
           </div>
@@ -200,7 +200,7 @@ export function ReelCard({
             background: "rgba(255,255,255,0.10)", color: "#fff",
             border: "1px solid rgba(255,255,255,0.30)",
           } : {
-            background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", color: "#1a1208",
+            background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", color: "#1a1208",
             border: "1px solid rgba(255,255,255,0.45)",
             boxShadow: "0 3px 8px rgba(140, 160, 182,0.4)",
           }}

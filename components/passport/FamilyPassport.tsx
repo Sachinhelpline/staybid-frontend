@@ -110,7 +110,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
         .fp-id-btn {
           border-radius: 14px;
           background: linear-gradient(135deg,#1d252e,#151b21);
-          box-shadow: 0 6px 18px -8px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(201,166,107,0.3);
+          box-shadow: 0 6px 18px -8px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(106,133,160,0.3);
         }
         .fp-id-val {
           font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -163,7 +163,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             onClick={create}
             disabled={busy}
             className="px-5 py-2.5 rounded-xl text-white font-bold text-sm relative overflow-hidden sb-shimmer"
-            style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
+            style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
           >
             <span className="relative" style={{ zIndex: 2 }}>{busy ? "Creating…" : "Start a Family Passport"}</span>
           </button>
@@ -176,7 +176,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             className="fp-comb rounded-3xl p-5"
             style={{
               background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))",
-              border: "1px solid rgba(201,166,107,0.4)",
+              border: "1px solid rgba(106,133,160,0.4)",
               boxShadow: "0 14px 34px -16px rgba(120,90,20,0.45)",
             }}
           >
@@ -228,7 +228,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
                       {m.name}{m.isYou && " (You)"}
                     </p>
                     {m.role === "owner" && (
-                      <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(201,166,107,0.2)", color: "var(--accent)" }}>
+                      <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(106,133,160,0.2)", color: "var(--accent)" }}>
                         OWNER
                       </span>
                     )}
@@ -270,7 +270,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
                 />
                 <button onClick={addMember} disabled={busy || !addId.trim()}
                   className="shrink-0 px-4 py-2 rounded-xl text-white font-bold text-sm disabled:opacity-50"
-                  style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                  style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                   Add
                 </button>
               </div>

@@ -101,8 +101,8 @@ export function TutorialReplayList({ highlightTourKey, onAfterReplay }: Props) {
           justifyContent: "space-between",
           padding: "10px 12px",
           borderRadius: 12,
-          background: "rgba(201, 166, 107, 0.10)",
-          border: "1px solid rgba(201, 166, 107, 0.22)",
+          background: "rgba(106, 133, 160, 0.10)",
+          border: "1px solid rgba(106, 133, 160, 0.22)",
           marginBottom: 12,
         }}
       >
@@ -131,8 +131,8 @@ export function TutorialReplayList({ highlightTourKey, onAfterReplay }: Props) {
                   ? "linear-gradient(135deg, rgba(176, 192, 209,0.32), rgba(176, 192, 209,0.7))"
                   : "rgba(176, 192, 209, 0.6)",
                 border: isHighlight
-                  ? "1px solid rgba(201, 166, 107, 0.55)"
-                  : "1px solid rgba(201, 166, 107, 0.18)",
+                  ? "1px solid rgba(106, 133, 160, 0.55)"
+                  : "1px solid rgba(106, 133, 160, 0.18)",
               }}
             >
               <span style={{ fontSize: 18 }}>{row.emoji}</span>
@@ -152,7 +152,7 @@ export function TutorialReplayList({ highlightTourKey, onAfterReplay }: Props) {
                         marginLeft: 8,
                         padding: "2px 7px",
                         borderRadius: 999,
-                        background: "linear-gradient(135deg, #c8d2dc, #C9A66B)",
+                        background: "linear-gradient(135deg, #c8d2dc, #5f7c98)",
                         color: "#1F1A0F",
                         fontSize: 9,
                         fontWeight: 800,
@@ -185,8 +185,8 @@ export function TutorialReplayList({ highlightTourKey, onAfterReplay }: Props) {
                   padding: "7px 12px",
                   borderRadius: 999,
                   background: seen
-                    ? "rgba(201, 166, 107, 0.16)"
-                    : "linear-gradient(135deg, #c8d2dc, #C9A66B)",
+                    ? "rgba(106, 133, 160, 0.16)"
+                    : "linear-gradient(135deg, #c8d2dc, #5f7c98)",
                   color: seen ? "var(--cozy-cocoa, #4A3820)" : "#1F1A0F",
                   fontSize: 11,
                   fontWeight: 800,
@@ -209,10 +209,10 @@ export function TutorialReplayList({ highlightTourKey, onAfterReplay }: Props) {
           borderRadius: 12,
           background: disabled
             ? "rgba(212, 149, 131, 0.10)"
-            : "rgba(201, 166, 107, 0.06)",
+            : "rgba(106, 133, 160, 0.06)",
           border: disabled
             ? "1px solid rgba(212, 149, 131, 0.32)"
-            : "1px solid rgba(201, 166, 107, 0.18)",
+            : "1px solid rgba(106, 133, 160, 0.18)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -245,7 +245,7 @@ export function TutorialReplayList({ highlightTourKey, onAfterReplay }: Props) {
           onClick={() => setDisabled(!disabled)}
           style={{
             appearance: "none",
-            border: "1px solid rgba(201, 166, 107, 0.32)",
+            border: "1px solid rgba(106, 133, 160, 0.32)",
             background: "transparent",
             color: "var(--cozy-cocoa, #4A3820)",
             fontSize: 11,

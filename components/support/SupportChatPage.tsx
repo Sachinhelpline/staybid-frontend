@@ -1007,7 +1007,7 @@ const S: Record<string, React.CSSProperties> = {
     transform: "translateX(-50%)",
     display: "block",
     margin: "0 auto",
-    background: "linear-gradient(140deg, #9fb1c2, #8B6914)",
+    background: "linear-gradient(140deg, #9fb1c2, #3f5369)",
     color: "#0F1117",
     border: "none",
     padding: "8px 18px",
@@ -1109,7 +1109,7 @@ const S: Record<string, React.CSSProperties> = {
     color: "#5E6273",
   },
   btnSend: {
-    background: "linear-gradient(140deg, #c8d2dc, #9fb1c2 55%, #8B6914)",
+    background: "linear-gradient(140deg, #c8d2dc, #9fb1c2 55%, #3f5369)",
     color: "#0F1117",
     border: "none",
     padding: "12px 32px",

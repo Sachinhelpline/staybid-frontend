@@ -27,8 +27,8 @@ export default function BidLoading() {
           __html: `
         .sb-bid-splash-spinner{
           width:42px;height:42px;border-radius:50%;
-          border:2px solid rgba(201,166,107,0.20);
-          border-top-color:#c9a66b;
+          border:2px solid rgba(106,133,160,0.20);
+          border-top-color:#5f7c98;
           animation:sbBidSpin .8s linear infinite;
         }
         @keyframes sbBidSpin{to{transform:rotate(360deg)}}

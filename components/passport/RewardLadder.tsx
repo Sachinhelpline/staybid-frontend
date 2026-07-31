@@ -84,7 +84,7 @@ export function RewardLadder({
             onClick={() => claim(r.key)}
             disabled={busyKey === r.key}
             className="block w-full text-center py-3 rounded-2xl font-bold text-sm text-white relative overflow-hidden sb-shimmer"
-            style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
+            style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
           >
             <span className="relative" style={{ zIndex: 2 }}>
               {busyKey === r.key ? "Claiming…" : "🎁 Claim reward"}
@@ -126,7 +126,7 @@ export function RewardLadder({
               className="w-full rounded-[22px] p-3 flex items-center gap-3 text-left sb-card-lift"
               style={{
                 background: r.unlocked ? "color-mix(in srgb, var(--accent) 10%, var(--bg-card))" : "var(--bg-card)",
-                border: r.unlocked ? "1px solid rgba(201,166,107,0.4)" : "1px solid var(--border-soft)",
+                border: r.unlocked ? "1px solid rgba(106,133,160,0.4)" : "1px solid var(--border-soft)",
               }}
             >
               <PassportMedal
@@ -170,7 +170,7 @@ export function RewardLadder({
                   claimed
                     ? { background: "#e6f0e6", color: "#4a6f4a" }
                     : r.unlocked
-                      ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
+                      ? { background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
                       : { background: "var(--bg-pill)", color: "var(--text-muted)" }
                 }
               >

@@ -462,7 +462,7 @@ export default function MePage() {
             height: 36px;
             border-radius: 50%;
             border: 2px solid var(--accent-soft, rgba(106,133,160, 0.18));
-            border-top-color: var(--accent, #C9A66B);
+            border-top-color: var(--accent, #5f7c98);
             animation: meLoSpin 0.8s linear infinite;
           }
           @keyframes meLoSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
@@ -492,7 +492,7 @@ export default function MePage() {
             font-weight: 600;
             letter-spacing: 0.18em;
             text-transform: uppercase;
-            color: var(--accent, #C9A66B);
+            color: var(--accent, #5f7c98);
           }
           .me-loggedout-title {
             font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
@@ -558,7 +558,7 @@ export default function MePage() {
           }
           .me-loggedout-card-ext {
             font-size: 0.65rem;
-            color: var(--accent, #C9A66B);
+            color: var(--accent, #5f7c98);
             margin-left: 4px;
             font-weight: 500;
           }
@@ -570,7 +570,7 @@ export default function MePage() {
           .me-loggedout-card-arrow {
             flex-shrink: 0;
             font-size: 1.05rem;
-            color: var(--accent, #C9A66B);
+            color: var(--accent, #5f7c98);
             font-weight: 600;
             opacity: 0.7;
           }
@@ -587,7 +587,7 @@ export default function MePage() {
             border: 1px solid var(--border-soft);
           }
           .me-loggedout-signin strong {
-            color: var(--accent, #C9A66B);
+            color: var(--accent, #5f7c98);
             font-weight: 700;
           }
         `}</style>
@@ -1004,7 +1004,7 @@ export default function MePage() {
         .me-action-btn:active { transform: scale(0.97); }
         .me-action-btn:hover { background: rgba(255, 255, 255, 0.85); }
         .me-action-primary {
-          background: linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%);
+          background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 52%, #42566d 100%);
           border-color: rgba(255,255,255,0.35);
           color: #ffffff;
           text-shadow: 0 1px 1px rgba(20,30,44,0.35);

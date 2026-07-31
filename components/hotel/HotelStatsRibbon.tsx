@@ -68,7 +68,7 @@ export default function HotelStatsRibbon({
     <div className="hx-stats-ribbon hx-reveal">
       {avgRating && avgRating > 0 ? (
         <span className="hx-stat-pill">
-          <span className="hx-stat-pill-icon" style={{ color: "#C9A66B" }}>★</span>
+          <span className="hx-stat-pill-icon" style={{ color: "#5f7c98" }}>★</span>
           <span className="hx-stat-pill-value" style={{ fontSize: "0.95rem" }}>
             {avgRating.toFixed(1)}
           </span>
@@ -82,7 +82,7 @@ export default function HotelStatsRibbon({
 
       {starRating ? (
         <span className="hx-stat-pill">
-          <span style={{ color: "#C9A66B", letterSpacing: "0.18em", fontWeight: 700 }}>
+          <span style={{ color: "#5f7c98", letterSpacing: "0.18em", fontWeight: 700 }}>
             {"★".repeat(Math.min(5, Math.max(1, starRating)))}
           </span>
           <span className="hx-stat-pill-label">{starRating}-star hotel</span>

@@ -272,7 +272,7 @@ export default function CircleBuildPage() {
               : "Aapka investment bundle active ho gaya. Monthly statements + returns aapke partner dashboard par live milenge."}
           </p>
           {doneBundle?._payOption === "hold" && (doneBundle?._balanceDue || 0) > 0 && (
-            <div style={{ marginTop: 14, display: "inline-block", padding: "10px 16px", borderRadius: 12, background: "rgba(201,166,107,.14)", border: "1px solid rgba(201,166,107,.35)", color: "var(--sbc-c-ink)", fontWeight: 700 }}>
+            <div style={{ marginTop: 14, display: "inline-block", padding: "10px 16px", borderRadius: 12, background: "rgba(106,133,160,.14)", border: "1px solid rgba(106,133,160,.35)", color: "var(--sbc-c-ink)", fontWeight: 700 }}>
               Balance due after visit: {fmtINR(doneBundle._balanceDue)}
             </div>
           )}
@@ -372,7 +372,7 @@ export default function CircleBuildPage() {
                         <div key={r.name} style={{
                           display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
                           padding: "8px 12px", borderRadius: 12,
-                          background: "rgba(201,166,107,.1)", border: "1px solid rgba(139,105,20,.15)",
+                          background: "rgba(106,133,160,.1)", border: "1px solid rgba(139,105,20,.15)",
                         }}>
                           <div style={{ fontWeight: 600, fontSize: ".84rem", color: "var(--sbc-coffee)" }}>
                             {r.name} <span style={{ color: "rgba(74,56,32,.55)", fontWeight: 500 }}>× {r.rooms}</span>
@@ -632,7 +632,7 @@ export default function CircleBuildPage() {
                   style={{
                     display: "flex", alignItems: "center", gap: 12, textAlign: "left", cursor: "pointer",
                     padding: "12px 14px", borderRadius: 14, width: "100%",
-                    background: payOption === o.key ? "rgba(201,166,107,.16)" : "var(--sbc-c-surface)",
+                    background: payOption === o.key ? "rgba(106,133,160,.16)" : "var(--sbc-c-surface)",
                     border: payOption === o.key ? "1.5px solid var(--sbc-gold-deep)" : "1px solid var(--sbc-c-line)",
                     transition: "all .15s ease",
                   }}
@@ -665,7 +665,7 @@ export default function CircleBuildPage() {
                         style={{
                           display: "grid", gap: 2, textAlign: "center", cursor: "pointer",
                           padding: "9px 4px", borderRadius: 11,
-                          background: emiTenure === m ? "rgba(201,166,107,.18)" : "var(--sbc-c-surface)",
+                          background: emiTenure === m ? "rgba(106,133,160,.18)" : "var(--sbc-c-surface)",
                           border: emiTenure === m ? "1.5px solid var(--sbc-gold-deep)" : "1px solid var(--sbc-c-line)",
                         }}
                       >

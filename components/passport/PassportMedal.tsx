@@ -157,7 +157,7 @@ export function PassportMedal({
           width:${px(0.36)};height:${px(0.36)};border-radius:50%;display:flex;align-items:center;
           justify-content:center;font-size:${px(0.18)};
           background:radial-gradient(circle at 34% 30%,#fff,#d6dee5 75%);
-          box-shadow:0 3px 8px -3px rgba(0,0,0,.55),inset 0 0 0 1px rgba(201,166,107,.5);}
+          box-shadow:0 3px 8px -3px rgba(0,0,0,.55),inset 0 0 0 1px rgba(106,133,160,.5);}
 
         .pm-${uid}.pm-tap:active .pm-bezel{transform:scale(.92);}
         .pm-${uid}.pm-tap:hover .pm-bezel{transform:translateY(-2px) scale(1.04);}

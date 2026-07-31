@@ -861,7 +861,7 @@ export default function HotelScorecardModal({
           transition: transform 0.18s, background 0.2s;
         }
         .hsm-drill-back:hover, .hsm-drill-close:hover {
-          background: var(--accent-soft, rgba(201,166,107,0.15));
+          background: var(--accent-soft, rgba(106,133,160,0.15));
         }
         .hsm-drill-title {
           flex: 1 1 auto;
@@ -901,7 +901,7 @@ export default function HotelScorecardModal({
           gap: 14px;
           padding: 14px 14px 16px;
           margin-bottom: 16px;
-          background: linear-gradient(150deg, rgba(201,166,107,0.10) 0%, var(--bg-elevated, #fcfcfd) 100%);
+          background: linear-gradient(150deg, rgba(106,133,160,0.10) 0%, var(--bg-elevated, #fcfcfd) 100%);
           border: 1px solid rgba(106, 133, 160, 0.22);
           border-radius: 14px;
           align-items: center;
@@ -966,7 +966,7 @@ export default function HotelScorecardModal({
           align-items: center;
           gap: 5px;
           padding: 3px 9px;
-          background: var(--accent-soft, rgba(201,166,107,0.15));
+          background: var(--accent-soft, rgba(106,133,160,0.15));
           color: var(--text-soft);
           font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
           font-size: 0.65rem;

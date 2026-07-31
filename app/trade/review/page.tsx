@@ -121,10 +121,10 @@ export default function TradeReviewPage() {
             {msg && <div className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div>}
 
             {msg?.ok ? (
-              <button onClick={() => router.push("/trade/my-bids")} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>View My Bids →</button>
+              <button onClick={() => router.push("/trade/my-bids")} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>View My Bids →</button>
             ) : (
               <button onClick={pay} disabled={paying || auth.status !== "approved"}
-                className="w-full py-3 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                className="w-full py-3 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                 {paying ? "Processing…" : `Pay EMD ${inr(depositTotal)}`}
               </button>
             )}

@@ -277,7 +277,7 @@ export function CreateSheet({
 
   if (!open) return null;
   const cards: { kind: ContentKind; emoji: string; title: string; sub: string; gradient: string }[] = [
-    { kind: "reel",  emoji: "🎬", title: "Reel",  sub: "Up to 60s vertical video · audio, tags & emojis", gradient: "linear-gradient(135deg,#c8d2dc,#C9A66B 55%,#8B6914)" },
+    { kind: "reel",  emoji: "🎬", title: "Reel",  sub: "Up to 60s vertical video · audio, tags & emojis", gradient: "linear-gradient(135deg,#c8d2dc,#5f7c98 55%,#3f5369)" },
     { kind: "photo", emoji: "📷", title: "Photo", sub: "Single image post · caption · tag a hotel",        gradient: "linear-gradient(135deg,#dbe2e8,#b4c1cf 55%,#7089a3)" },
     { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",  gradient: "linear-gradient(135deg,#D9C19A,#8ba0b5 55%,#6E5430)" },
   ];
@@ -299,7 +299,7 @@ export function CreateSheet({
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full" style={{ background: "rgba(176, 192, 209,0.4)" }} /></div>
         <div className="flex items-center justify-between px-5 pb-1">
           <div>
-            <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#C9A66B" }}>Share your stay</p>
+            <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#5f7c98" }}>Share your stay</p>
             <p className="font-semibold text-[1.15rem]" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: "italic", color: "#f4f6f8" }}>Create</p>
           </div>
           <button
@@ -1000,7 +1000,7 @@ export function ProfilePhotoEditor({
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 className="px-4 py-2 rounded-full text-[0.78rem] font-bold text-black"
-                style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 📷 {preview ? "Change photo" : "Upload photo"}
               </button>
@@ -1149,7 +1149,7 @@ export function ProfilePhotoEditor({
                 onClick={addHighlight}
                 disabled={!hlLabel.trim()}
                 className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
-                style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 + Add
               </button>
@@ -1163,7 +1163,7 @@ export function ProfilePhotoEditor({
             className="w-full rounded-2xl font-bold flex items-center justify-center gap-2"
             style={{
               padding: "12px", fontSize: "0.86rem", color: "#ffffff",
-              background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+              background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
               textShadow: "0 1px 1px rgba(20,30,44,0.35)",
               boxShadow: "0 8px 22px -8px rgba(45,62,82,0.55), inset 0 1px 0 rgba(255,255,255,0.4)",
             }}
@@ -1313,7 +1313,7 @@ export function HighlightPicker({
             <button
               onClick={() => setCreating(true)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
-              style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
+              style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
             >
               + New highlight
             </button>
@@ -1348,7 +1348,7 @@ export function HighlightPicker({
                 onClick={create}
                 disabled={!hlLabel.trim()}
                 className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
-                style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
                 Create
               </button>
@@ -1505,7 +1505,7 @@ export function AudioPicker({
                 onClick={() => setCategory(c.id as any)}
                 className="px-3 py-1 rounded-full text-[0.7rem] font-bold whitespace-nowrap shrink-0"
                 style={{
-                  background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.06)",
+                  background: active ? "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.06)",
                   color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                   border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                 }}
@@ -1543,7 +1543,7 @@ export function AudioPicker({
                 onClick={() => fileRef.current?.click()}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
                 style={{
-                  background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
+                  background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)",
                   boxShadow: "0 6px 18px rgba(140, 160, 182,0.45), inset 0 1px 0 rgba(255,255,255,0.5)",
                   border: "1px solid rgba(255,255,255,0.45)",
                 }}
@@ -1583,7 +1583,7 @@ export function AudioPicker({
                 <button
                   onClick={() => { handleStopPreview(); onPick(t); onClose(); }}
                   className="px-3 py-1.5 rounded-full text-[0.72rem] font-bold text-black"
-                  style={{ background: "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)", boxShadow: "0 2px 6px rgba(140, 160, 182,0.45)" }}
+                  style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)", border: "1px solid rgba(255,255,255,0.45)", boxShadow: "0 2px 6px rgba(140, 160, 182,0.45)" }}
                 >
                   Use
                 </button>
@@ -3424,7 +3424,7 @@ export function Composer({
                               onClick={() => updateOverlay(selectedTextOverlay.id, { styleId: s.id })}
                               className="shrink-0 px-2.5 py-1 rounded-full text-[0.66rem] font-bold transition-all"
                               style={{
-                                background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.08)",
+                                background: active ? "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.08)",
                                 color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                                 border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.16)",
                                 fontFamily: s.fontFamily,
@@ -3959,7 +3959,7 @@ export function Composer({
                         onClick={() => toggleTag(t)}
                         className="px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all"
                         style={{
-                          background: active ? "linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.05)",
+                          background: active ? "radial-gradient(88% 64% at 32% 4%,rgba(255,255,255,0.5),transparent 58%),linear-gradient(160deg,#e6edf3 0%,#c9d4df 52%,#a4b5c6 100%)" : "rgba(255,255,255,0.05)",
                           color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
                           border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
                           boxShadow: active ? "0 2px 6px rgba(140, 160, 182,0.45), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",

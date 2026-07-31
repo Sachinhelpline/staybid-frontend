@@ -63,7 +63,7 @@ export default function BackToTopButton({
         height: "44px",
         borderRadius: "50%",
         background: "var(--bg-elevated, rgba(31, 26, 15, 0.92))",
-        color: "var(--accent, #C9A66B)",
+        color: "var(--accent, #5f7c98)",
         border: "1px solid var(--border-strong, rgba(106, 133, 160, 0.30))",
         boxShadow:
           "0 12px 28px rgba(15, 12, 8, 0.18), 0 4px 10px rgba(15, 12, 8, 0.10)",
