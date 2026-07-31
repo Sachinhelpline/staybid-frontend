@@ -9,9 +9,14 @@ import { requireApprovedAgent } from "@/lib/trade/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { razorpayKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — server env only (hotfix v621.2, RAZORPAY_KEY_ID);
+// the POST fails closed with payment_config_missing when absent/malformed.
+const PUBLIC_KEY_ID = razorpayKeyId();
 
 export async function POST(req: NextRequest) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   const gate = await requireApprovedAgent(req);
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
   const agentUserId = gate.auth.user.id;

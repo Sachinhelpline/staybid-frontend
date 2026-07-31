@@ -7,7 +7,11 @@ import { sanitizeJourneyPreferences } from "@/lib/host/journey-data";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { razorpayKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — server env only (hotfix v621.2, RAZORPAY_KEY_ID);
+// the POST fails closed with payment_config_missing when absent/malformed.
+const PUBLIC_KEY_ID = razorpayKeyId();
 
 // POST /api/host/portfolio/checkout
 // Body: { config: { tier, cities, rooms, design, addons, paymentMode },
@@ -17,6 +21,7 @@ const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
 // `preferences` are NON-PRICED journey metadata (v284 5-phase wizard) —
 // whitelisted via sanitizeJourneyPreferences, never touch computeBundle.
 export async function POST(req: Request) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
 

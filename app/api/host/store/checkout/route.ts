@@ -6,7 +6,11 @@ export const dynamic = "force-dynamic";
 
 // Public Razorpay key (safe in client). Server-side secret stays in the
 // /api/razorpay/order self-healing route, which this endpoint calls internally.
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { razorpayKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — server env only (hotfix v621.2, RAZORPAY_KEY_ID);
+// the POST fails closed with payment_config_missing when absent/malformed.
+const PUBLIC_KEY_ID = razorpayKeyId();
 
 const DELIVERY_FEE = 0; // free delivery for now
 type Mode = "buy" | "rent" | "emi";
@@ -15,6 +19,7 @@ type Mode = "buy" | "rent" | "emi";
 // Body: { items: [{ productId, mode, qty }], emiMonths?, address?, contact?, notes? }
 // Server re-prices every line from store_products — the client price is ignored.
 export async function POST(req: Request) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
 

@@ -9,10 +9,10 @@
 //
 // v125 switched to Razorpay's REST API directly. The first real error
 // description ("Authentication failed") surfaced — revealing that the
-// Vercel env vars `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` are set to a
-// stale TEST-mode value (`rzp_test_pla...`) whose secret has rotated. So
-// even after fixing the SDK swallowing the error, real customers still
-// couldn't pay because the env var pair is broken.
+// Vercel env vars `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` were set to a
+// stale TEST-mode key pair whose secret had rotated. So even after fixing
+// the SDK swallowing the error, real customers still couldn't pay because
+// the env var pair was broken.
 //
 // v125.1 makes the route self-heal: it tries env-var keys first, and if
 // Razorpay responds 401 / "Authentication failed" it automatically retries
@@ -29,17 +29,13 @@ import { resolveBidOrderCharge, resolveInstantOrderCharge, resolveBalanceCharge,
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Razorpay credentials are ENVIRONMENT-ONLY (hotfix v621 security). The
-// previous hardcoded LIVE fallback + "self-heal to hardcoded on 401" retry
-// has been removed — the route fails closed when the env pair is absent.
+// Razorpay credentials are ENVIRONMENT-ONLY (hotfix v621 security; v621.2
+// consolidates onto the shared lib/razorpay-server helper). The previous
+// hardcoded LIVE fallback + "self-heal to hardcoded on 401" retry has been
+// removed — the route fails closed when the env pair is absent.
 // Deployment prerequisite: set RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET (LIVE)
 // in the server environment BEFORE deploying this change (see runbook).
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
-
-function razorpayConfigured(): boolean {
-  return RAZORPAY_KEY_ID.startsWith("rzp_") && !!RAZORPAY_KEY_SECRET;
-}
+import { razorpayKeyId, razorpayKeySecret, razorpayConfigured } from "@/lib/razorpay-server";
 
 export async function POST(req: NextRequest) {
   let body: any;
@@ -207,7 +203,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   }
 
-  const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
+  const auth = Buffer.from(`${razorpayKeyId()}:${razorpayKeySecret()}`).toString("base64");
   try {
     const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",

@@ -107,6 +107,17 @@ export async function openRazorpayForOrder(
       reject(new RazorpayError("Razorpay checkout SDK missing on window"));
       return;
     }
+    // v621.2 — the server-supplied key id must look like a real Razorpay key;
+    // fail closed with a clear configuration error instead of an opaque SDK one.
+    if (!/^rzp_(live|test)_[A-Za-z0-9]+$/.test(opts.keyId || "")) {
+      reject(
+        new RazorpayError(
+          "Payments are not configured. Please contact support.",
+          "payment_config_missing",
+        ),
+      );
+      return;
+    }
     const rzp = new RazorpayCtor({
       key: opts.keyId,
       order_id: opts.orderId,
@@ -217,9 +228,20 @@ export async function openRazorpayCheckout(
       reject(new RazorpayError("Razorpay checkout SDK missing on window"));
       return;
     }
+    // Environment-only public key id (hotfix v621.2) — the old hardcoded
+    // fallback is removed. Fail closed when the build carries no key.
+    const publicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
+    if (!/^rzp_(live|test)_[A-Za-z0-9]+$/.test(publicKeyId)) {
+      reject(
+        new RazorpayError(
+          "Payments are not configured on this build. Please contact support.",
+          "payment_config_missing",
+        ),
+      );
+      return;
+    }
     const rzp = new RazorpayCtor({
-      key:
-        process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_SfFAsbYjbHfztd",
+      key: publicKeyId,
       order_id: order.id,
       amount: order.amount,
       currency: "INR",

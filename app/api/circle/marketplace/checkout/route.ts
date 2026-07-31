@@ -27,7 +27,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Public LIVE key id (safe in client code) — same source as every checkout.
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { razorpayKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — server env only (hotfix v621.2, RAZORPAY_KEY_ID);
+// the POST fails closed with payment_config_missing when absent/malformed.
+const PUBLIC_KEY_ID = razorpayKeyId();
 
 // The room must belong to a host-circle hotel open for pre-buy. Also returns the
 // optional M2 pre-buy window so the caller can gate the requested check-in.
@@ -61,6 +65,7 @@ async function loadPrebuyRoom(
 }
 
 export async function POST(req: NextRequest) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   const user = userFromReq(req);
   if (!user?.id) {
     return NextResponse.json({ error: "Please sign in to pre-buy this stay." }, { status: 401 });

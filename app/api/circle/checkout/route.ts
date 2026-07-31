@@ -12,7 +12,11 @@ import { resolveRevenueConfig } from "@/lib/circle/revenue-config-store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { razorpayKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — server env only (hotfix v621.2, RAZORPAY_KEY_ID);
+// the POST fails closed with payment_config_missing when absent/malformed.
+const PUBLIC_KEY_ID = razorpayKeyId();
 
 // POST /api/circle/checkout
 // Body: { items: [{roomTypeId, rooms}], plan, contact: {name, phone, email} }
@@ -22,6 +26,7 @@ const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
 // lib/circle/engine — the client NEVER sets an amount (same contract as the
 // host wizard + service-subscription + store checkouts).
 export async function POST(req: Request) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
 
