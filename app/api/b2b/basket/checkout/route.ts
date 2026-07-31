@@ -25,7 +25,13 @@ import { enumerateDates } from "@/lib/availability";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { checkoutKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — present ONLY when the COMPLETE server env pair
+// (RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET) is configured (hotfix v621.2); the
+// POST fails closed with payment_config_missing BEFORE any body parse / DB /
+// order work when either half is absent or malformed.
+const PUBLIC_KEY_ID = checkoutKeyId();
 const MAX_BASKET = 20;
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -42,6 +48,7 @@ function auth(req: NextRequest): { userId?: string; phone?: string; email?: stri
 type Pick = { listingId: string; from?: string; to?: string };
 
 export async function POST(req: NextRequest) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   const { userId, phone, email } = auth(req);
   if (!userId) return NextResponse.json({ error: "Please sign in to buy." }, { status: 401 });
 

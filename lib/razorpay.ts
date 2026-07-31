@@ -95,6 +95,16 @@ export interface OpenForOrderOptions {
 export async function openRazorpayForOrder(
   opts: OpenForOrderOptions,
 ): Promise<RazorpayPaymentResult> {
+  // v621.2 — the server-supplied key id must look like a real Razorpay key.
+  // Validate BEFORE loading the checkout script (the first side effect) so a
+  // misconfigured caller fails closed with a clear configuration error
+  // instead of an opaque SDK one.
+  if (!/^rzp_(live|test)_[A-Za-z0-9]+$/.test(opts.keyId || "")) {
+    throw new RazorpayError(
+      "Payments are not configured. Please contact support.",
+      "payment_config_missing",
+    );
+  }
   const loaded = await loadScript();
   if (!loaded) {
     throw new RazorpayError(
@@ -164,6 +174,16 @@ function loadScript(attempt = 0): Promise<boolean> {
 export async function openRazorpayCheckout(
   opts: OpenCheckoutOptions,
 ): Promise<RazorpayPaymentResult> {
+  // v621.2 — environment-only public key id (the old hardcoded fallback is
+  // removed). Validate BEFORE any side effect: no checkout script load and no
+  // /api/razorpay/order create may happen on a build without a valid key.
+  const publicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
+  if (!/^rzp_(live|test)_[A-Za-z0-9]+$/.test(publicKeyId)) {
+    throw new RazorpayError(
+      "Payments are not configured on this build. Please contact support.",
+      "payment_config_missing",
+    );
+  }
   const loaded = await loadScript();
   if (!loaded) {
     throw new RazorpayError(
@@ -218,8 +238,8 @@ export async function openRazorpayCheckout(
       return;
     }
     const rzp = new RazorpayCtor({
-      key:
-        process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_SfFAsbYjbHfztd",
+      // Validated at the top of openRazorpayCheckout, before any side effect.
+      key: publicKeyId,
       order_id: order.id,
       amount: order.amount,
       currency: "INR",

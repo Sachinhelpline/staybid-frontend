@@ -19,7 +19,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Public LIVE key id (safe in client code) — same source as the host checkout.
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { checkoutKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — present ONLY when the COMPLETE server env pair
+// (RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET) is configured (hotfix v621.2); the
+// POST fails closed with payment_config_missing BEFORE any body parse / DB /
+// order work when either half is absent or malformed.
+const PUBLIC_KEY_ID = checkoutKeyId();
 
 function auth(req: NextRequest): { userId?: string; phone?: string; email?: string } {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -28,6 +34,7 @@ function auth(req: NextRequest): { userId?: string; phone?: string; email?: stri
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   const { id } = await ctx.params;
   const blockId = String(id || "").trim();
   if (!blockId) return NextResponse.json({ error: "id required" }, { status: 400 });

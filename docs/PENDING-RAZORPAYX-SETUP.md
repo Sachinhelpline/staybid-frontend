@@ -11,7 +11,7 @@ Real money-OUT for Circle owners — the admin-triggered RazorpayX payout
 
 ## Key distinction (owner was confused here)
 - `RAZORPAY_KEY_ID` (no X) = **payments / money IN** (guests pay). Already set + working
-  (live key `rzp_live_SfFAsbYjbHfztd` is hardcoded fallback in the order/verify routes).
+  (environment-only since hotfix v621 — the former hardcoded key-id fallbacks were removed; v621.2 scrubbed the stale rotated Key ID from all runtime code and docs).
 - `RAZORPAYX_*` (with X) = **payouts / money OUT**. A SEPARATE Razorpay product (RazorpayX /
   Current Account). Requires banking KYC to go live. NOT set yet (confirmed via Vercel env
   screenshot — only `RAZORPAY_KEY_ID` / `RAZORPAY_WEBHOOK_SECRET` exist, no `RAZORPAYX_*`).

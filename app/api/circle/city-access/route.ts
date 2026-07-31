@@ -20,7 +20,13 @@ import { normalizeCity, cityAccessId, resolveActiveCities } from "@/lib/circle/c
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
+import { checkoutKeyId } from "@/lib/razorpay-server";
+
+// Public checkout key id — present ONLY when the COMPLETE server env pair
+// (RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET) is configured (hotfix v621.2); the
+// POST fails closed with payment_config_missing BEFORE any body parse / DB /
+// order work when either half is absent or malformed.
+const PUBLIC_KEY_ID = checkoutKeyId();
 
 export async function GET(req: NextRequest) {
   const user = userFromReq(req);
@@ -34,6 +40,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!PUBLIC_KEY_ID) return NextResponse.json({ error: "payment_config_missing" }, { status: 503 });
   const user = userFromReq(req);
   if (!user?.id) return NextResponse.json({ error: "Please sign in to unlock a city." }, { status: 401 });
 

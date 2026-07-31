@@ -1,7 +1,7 @@
 // v125 — End-to-end CTA self-diagnostic.
 //
 // Probes every external dependency the customer-facing CTAs rely on:
-//   • Razorpay   — public auth ping (cheaper than an order create)
+//   • Razorpay   — public auth ping (READ-ONLY — see the invariant below)
 //   • Supabase   — anon-readable table touch via REST
 //   • Railway    — backend health endpoint
 //
@@ -9,6 +9,12 @@
 // pass/fail + latency. The aggregate `ok` is true only when every probe
 // passes. Designed to be polled from /admin/health (future UI) or curled
 // from the command line during an outage drill.
+//
+// 🔒 NON-MUTATING INVARIANT (hotfix v621.2): this route is an
+// unauthenticated public GET, so it must NEVER create external state — no
+// Razorpay orders/payments, no bookings, no DB rows. (It previously created
+// a real ₹1 Razorpay order per refresh; that probe is REMOVED.) Read-only
+// authentication/connectivity probes only.
 
 import { NextResponse } from "next/server";
 
@@ -100,56 +106,29 @@ async function probeRazorpayOrderRoute(origin: string): Promise<Probe> {
     if (!res.ok) throw new Error(`Self HTTP ${res.status}`);
     const data = await res.json();
     if (!data?.ok) throw new Error("Order route reports not-ok");
-    return {
-      primaryKeyIdPrefix: data.primaryKeyIdPrefix,
-      hasSecret: data.hasSecret,
-      envKeyIdPrefix: data.envKeyIdPrefix,
-      envIsLive: data.envIsLive,
-      envIsTest: data.envIsTest,
-      candidates: data.candidates,
-    };
+    if (!data?.configured) throw new Error("Order route reports payment config missing");
+    return { configured: data.configured };
   });
 }
 
-// Live end-to-end probe: actually creates a real Razorpay order against
-// the self-healing route. If this passes, customer Pay-Full WILL work
-// right now. Uses a small ₹1 amount so the order is cheap to clean up.
-async function probeRazorpayOrderCreate(origin: string): Promise<Probe> {
-  return timed("self.razorpay-order-POST", async () => {
-    const res = await fetch(`${origin}/api/razorpay/order`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: 1,
-        receipt: `health_${Date.now()}`,
-        notes: { health: "true" },
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || `Self HTTP ${res.status}`);
-    if (!data?.id) throw new Error("No order id returned");
-    return {
-      orderId: data.id,
-      keysSource: data._keysSource || "unknown",
-      amount: data.amount,
-    };
-  });
-}
+// (v621.2) The former "self.razorpay-order-POST" probe — which created a real
+// ₹1 Razorpay order on every unauthenticated GET — is intentionally REMOVED.
+// The read-only auth ping above already proves the key pair is alive, and the
+// self-GET proves the order route is deployed and configured. Do NOT re-add an
+// order-creating probe to any public GET.
 
 export async function GET(req: Request) {
   const origin = new URL(req.url).origin;
 
-  const [razorpay, supabase, railway, selfOrderGet, selfOrderPost] =
+  const [razorpay, supabase, railway, selfOrderGet] =
     await Promise.all([
       probeRazorpay(),
       probeSupabase(),
       probeRailway(),
       probeRazorpayOrderRoute(origin),
-      probeRazorpayOrderCreate(origin),
     ]);
 
-  const probes = [razorpay, supabase, railway, selfOrderGet, selfOrderPost];
+  const probes = [razorpay, supabase, railway, selfOrderGet];
   const allOk = probes.every((p) => p.ok);
 
   return NextResponse.json(
@@ -169,9 +148,7 @@ export async function GET(req: Request) {
           if (p.name === "railway")
             return "Railway backend cold or down — wait 30s and retry, or check Railway logs.";
           if (p.name === "self.razorpay-order-GET")
-            return "Local route /api/razorpay/order failed — check Vercel build logs.";
-          if (p.name === "self.razorpay-order-POST")
-            return `End-to-end order creation failed: ${p.detail}. Customer Pay-Full will alert this.`;
+            return "Local route /api/razorpay/order failed or unconfigured — check Vercel env (RAZORPAY_KEY_ID/SECRET) and build logs.";
           return `${p.name}: ${p.detail}`;
         }),
     },
