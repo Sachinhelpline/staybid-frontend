@@ -935,7 +935,7 @@ function MyBidsPageInner() {
         @keyframes confettiFall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
         @keyframes goldSweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
         .gold-text { background: linear-gradient(90deg,#9caec0,#8198ae,#748da6,#8198ae,#9caec0); background-size:200% auto; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation: shine 6s linear infinite; }
-        .gold-btn { position:relative; overflow:hidden; background:linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; font-weight:800; letter-spacing:.03em; }
+        .gold-btn { position:relative; overflow:hidden; background:radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; font-weight:800; letter-spacing:.03em; }
         .gold-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%); transform:translateX(-120%); animation: goldSweep 2.8s ease-in-out infinite; }
         .mb-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
         .mb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
@@ -943,7 +943,7 @@ function MyBidsPageInner() {
         .mb-card-highlight { animation: mbHighlightRing 2.5s ease-out 1 both; }
         .mb-seg { background: var(--bg-pill); border:1px solid var(--border-soft); border-radius:999px; padding:4px; display:flex; gap:4px; }
         .mb-seg button { flex:1; border-radius:999px; padding:10px 12px; font-weight:700; font-size:.82rem; color: var(--text-soft); transition: all .2s ease; display:flex; align-items:center; justify-content:center; gap:6px; }
-        .mb-seg button.on { background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; box-shadow:0 4px 16px rgba(106,133,160,0.32); }
+        .mb-seg button.on { background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; box-shadow:0 4px 16px rgba(106,133,160,0.32); }
         .confetti-piece { position:absolute; top:-10px; width:8px; height:14px; border-radius:2px; animation: confettiFall linear forwards; }
       `}</style>
 

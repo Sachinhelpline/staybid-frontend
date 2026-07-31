@@ -434,7 +434,7 @@ export default function CircleMePage() {
                       <h2 className="sbc-h2" style={{ fontSize: "1.5rem", margin: 0 }}>B2B Exchange <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button onClick={() => bridgeToPartnerDashboard(user, "myrooms")}
-                          style={{ fontSize: ".72rem", fontWeight: 800, padding: "6px 13px", borderRadius: 999, border: 0, background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff", cursor: "pointer" }}>
+                          style={{ fontSize: ".72rem", fontWeight: 800, padding: "6px 13px", borderRadius: 999, border: 0, background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff", cursor: "pointer" }}>
                           ⇄ List on exchange
                         </button>
                         <button onClick={() => bridgeToPartnerDashboard(user, "agentauction")}

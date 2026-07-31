@@ -157,7 +157,7 @@ function PassportHub() {
               className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
               style={
                 tab === t.key
-                  ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff", boxShadow: "0 4px 12px -5px rgba(106,133,160,0.6)" }
+                  ? { background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff", boxShadow: "0 4px 12px -5px rgba(106,133,160,0.6)" }
                   : { color: "var(--text-muted)" }
               }
             >
@@ -218,7 +218,7 @@ function PassportHub() {
                   Complete a stay to mint your Explorer ID + first stamp.
                 </p>
                 <Link href="/hotels" className="inline-block mt-4 px-5 py-2.5 rounded-xl text-white font-bold text-sm sb-shimmer relative overflow-hidden"
-                  style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                  style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                   <span className="relative" style={{ zIndex: 2 }}>Browse hotels</span>
                 </Link>
               </div>
@@ -313,7 +313,7 @@ function WalletTab({
       <div className="grid grid-cols-2 gap-2.5">
         <button onClick={onGoRewards}
           className="rounded-2xl py-2.5 px-3 text-white font-bold text-xs relative overflow-hidden sb-card-lift sb-shimmer flex items-center justify-center gap-1.5"
-          style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+          style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
           <span className="relative" style={{ zIndex: 2 }}>✨ Redeem Points</span>
         </button>
         <button onClick={onGoCodes}
@@ -444,7 +444,7 @@ function RewardsTab({
             <button key={k} onClick={() => setFilter(k)}
               className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap sb-card-lift"
               style={filter === k
-                ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
+                ? { background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
                 : { background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
               {k === "all" ? "All" : `${kindIcon(k as any)} ${k.replace("_", " ")}`}
             </button>
@@ -485,7 +485,7 @@ function RewardsTab({
                   onClick={() => v.ok && setConfirm(r)}
                   disabled={!v.ok}
                   className="shrink-0 text-[0.72rem] font-bold px-3.5 py-2 rounded-xl text-white relative overflow-hidden disabled:opacity-50"
-                  style={{ background: v.ok ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "var(--bg-pill)" }}
+                  style={{ background: v.ok ? "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "var(--bg-pill)" }}
                   title={v.ok ? "Redeem" : (v as any).error}>
                   <span className="relative" style={{ zIndex: 2, color: v.ok ? "#fff" : "var(--text-muted)" }}>
                     {v.ok ? "Redeem" : "🔒"}
@@ -520,7 +520,7 @@ function RewardsTab({
               </button>
               <button onClick={doRedeem} disabled={busy}
                 className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white relative overflow-hidden sb-shimmer"
-                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                 <span className="relative" style={{ zIndex: 2 }}>{busy ? "Redeeming…" : "Confirm"}</span>
               </button>
             </div>
@@ -549,7 +549,7 @@ function RewardsTab({
               </button>
               <button onClick={() => { setSuccess(null); onGoCodes(); }}
                 className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white"
-                style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                 View in Codes
               </button>
             </div>
@@ -611,7 +611,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
           <button key={f} onClick={() => setFilter(f)}
             className="px-3 py-1.5 rounded-full text-xs font-bold capitalize sb-card-lift"
             style={filter === f
-              ? { background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
+              ? { background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#fff" }
               : { background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
             {f}
           </button>
@@ -665,7 +665,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
                   {st === "active" && (c.kind === "coupon" || c.kind === "voucher") && (
                     <button onClick={() => useAtCheckout(c)}
                       className="text-[0.66rem] font-bold px-3 py-1.5 rounded-lg text-white"
-                      style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                      style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                       {copied === `queued-${c.code}` ? "✓ Queued" : "Use at checkout"}
                     </button>
                   )}

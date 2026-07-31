@@ -2440,7 +2440,7 @@ body main textarea.input-luxury {
   }
   .sbh-btn-primary {
     color: #1a1208;
-    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
+    background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     box-shadow: 0 14px 34px -12px rgba(106,133,160, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
   .sbh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 44px -12px rgba(106,133,160, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
@@ -2616,7 +2616,7 @@ body main textarea.input-luxury {
   /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour */
   .sbh-chip-off {
     top: 11px; left: 11px; color: #ffffff;
-    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
+    background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
     box-shadow: 0 6px 16px -8px rgba(106, 133, 160, 0.75);
   }
@@ -2750,7 +2750,7 @@ body main textarea.input-luxury {
   .sbh-tk-accent {
     padding: 3px 10px; border-radius: 999px;
     font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #ffffff;
-    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
+    background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     box-shadow: 0 6px 14px -8px rgba(106, 133, 160, 0.8);
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -2801,7 +2801,7 @@ body main textarea.input-luxury {
     background-clip: padding-box;
   }
   html::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
+    background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     background-clip: padding-box;
   }
   [data-theme="dark"] html,

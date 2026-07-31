@@ -1163,7 +1163,7 @@ export function ProfilePhotoEditor({
             className="w-full rounded-2xl font-bold flex items-center justify-center gap-2"
             style={{
               padding: "12px", fontSize: "0.86rem", color: "#ffffff",
-              background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+              background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
               textShadow: "0 1px 1px rgba(20,30,44,0.35)",
               boxShadow: "0 8px 22px -8px rgba(45,62,82,0.55), inset 0 1px 0 rgba(255,255,255,0.4)",
             }}

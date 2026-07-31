@@ -163,7 +163,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             onClick={create}
             disabled={busy}
             className="px-5 py-2.5 rounded-xl text-white font-bold text-sm relative overflow-hidden sb-shimmer"
-            style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
+            style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}
           >
             <span className="relative" style={{ zIndex: 2 }}>{busy ? "Creating…" : "Start a Family Passport"}</span>
           </button>
@@ -270,7 +270,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
                 />
                 <button onClick={addMember} disabled={busy || !addId.trim()}
                   className="shrink-0 px-4 py-2 rounded-xl text-white font-bold text-sm disabled:opacity-50"
-                  style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+                  style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
                   Add
                 </button>
               </div>

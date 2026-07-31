@@ -218,7 +218,7 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
           style={{
             background: warning
               ? "linear-gradient(135deg,#a9b9c8,#f97316)"
-              : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+              : "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
             color: warning ? "#1c1208" : "#ffffff",
             textShadow: warning ? "none" : "0 1px 1px rgba(20,30,44,0.35)",
             boxShadow: warning ? "0 6px 18px rgba(249,115,22,0.4)" : "0 6px 16px -6px rgba(45,62,82,0.5), inset 0 1px 0 rgba(255,255,255,0.4)",

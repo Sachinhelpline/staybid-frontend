@@ -205,7 +205,7 @@ export default function CircleEarningsPage() {
                   <input value={acctForm.upiId} onChange={(e) => setAcctForm((f) => ({ ...f, upiId: e.target.value }))} placeholder="yourname@bank" style={acctInput} />
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={saveAcct} disabled={acctBusy} style={{ flex: 1, background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff", border: 0, borderRadius: 10, padding: "10px 0", fontWeight: 800, fontSize: ".85rem", cursor: "pointer" }}>{acctBusy ? "Saving…" : "Save payout account"}</button>
+                  <button onClick={saveAcct} disabled={acctBusy} style={{ flex: 1, background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff", border: 0, borderRadius: 10, padding: "10px 0", fontWeight: 800, fontSize: ".85rem", cursor: "pointer" }}>{acctBusy ? "Saving…" : "Save payout account"}</button>
                   {acct && <button onClick={() => { setAcctEditing(false); setAcctMsg(null); }} style={{ fontSize: ".8rem", fontWeight: 700, padding: "0 16px", borderRadius: 10, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>Cancel</button>}
                 </div>
               </div>

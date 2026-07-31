@@ -5129,7 +5129,7 @@ export default function HotelDetail() {
                       <button key={s.label} onClick={() => setNegAmt(amt)}
                         className={`neg-chip rounded-2xl p-2.5 text-center ${active?"active":""}`}
                         style={{
-                          background: active ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "rgba(255,255,255,0.04)",
+                          background: active ? "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "rgba(255,255,255,0.04)",
                           border: `1px solid ${active?"rgba(120,150,182,.6)":"rgba(255,255,255,.08)"}`,
                           boxShadow: active ? "0 6px 22px rgba(120,150,182,.35)" : "none",
                         }}>
@@ -5177,7 +5177,7 @@ export default function HotelDetail() {
                   style={{
                     background: isInstant
                       ? "linear-gradient(160deg,#d3dde7 0%,#aebdcf 50%,#8ba0b6 100%)"
-                      : "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
+                      : "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",
                     color: isInstant ? "#16222e" : "#ffffff",
                     textShadow: isInstant ? "0 1px 0 rgba(255,255,255,0.35)" : "0 1px 1px rgba(20,30,44,0.35)",
                     boxShadow: isInstant

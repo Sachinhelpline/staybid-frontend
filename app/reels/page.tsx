@@ -353,7 +353,7 @@ function ReelCard({
           <Link
             href={`/hotels/${hotel.id}`}
             className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl font-bold text-sm text-white shadow-lg"
-            style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+            style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
             🛎️ Book This Stay
           </Link>
         )}
@@ -511,7 +511,7 @@ function CommentDrawer({
             onClick={send}
             disabled={sending || !draft.trim()}
             className="px-4 py-2 rounded-full text-sm font-bold text-white disabled:opacity-40"
-            style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+            style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
             {sending ? "…" : "Post"}
           </button>
         </div>
@@ -606,7 +606,7 @@ function EmptyFeed() {
       <Link
         href="/influencer/upload"
         className="px-8 py-3 rounded-full font-bold text-black"
-        style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+        style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
         Upload Your First Reel
       </Link>
     </div>
@@ -695,7 +695,7 @@ export default function ReelsPage() {
             onClick={() => { setMode(m); setTag(null); }}
             className="px-4 py-1.5 rounded-full text-xs font-bold transition-all"
             style={{
-              background: mode === m ? "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "transparent",
+              background: mode === m ? "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "transparent",
               color: mode === m ? "#000" : "rgba(255,255,255,0.85)",
             }}>
             {m === "foryou" ? "For You" : "Following"}
@@ -754,7 +754,7 @@ export default function ReelsPage() {
             <p className="text-white/60 text-sm mb-6">Switch to <span className="font-bold text-gold-300">For You</span> and start following creators whose vibe you like.</p>
             <button onClick={() => setMode("foryou")}
               className="px-6 py-2.5 rounded-full font-bold text-black"
-              style={{ background: "linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
+              style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
               Browse For You
             </button>
           </div>
