@@ -650,9 +650,31 @@ function reqWith(headers) {
     const guard = authPage.indexOf("if (adminIntent)");
     const fallback = authPage.indexOf("login(idToken");
     const guardBlock = guard > -1 ? authPage.slice(guard, fallback > guard ? fallback : guard + 600) : "";
-    check("auth-page: failed admin exchange removes sb_admin_token", /removeItem\(["'`]sb_admin_token["'`]\)/.test(guardBlock));
-    check("auth-page: failed admin exchange removes sb_admin_user", /removeItem\(["'`]sb_admin_user["'`]\)/.test(guardBlock));
-    check("auth-page: failed admin exchange still stores NO sb_token / login()", !/login\(/.test(guardBlock) && !/setItem\(["'`]sb_token/.test(guardBlock));
+    check("auth-page: failed admin exchange clears admin session keys", /clearAdminSessionKeys\(\)/.test(guardBlock));
+    check("auth-page: failed admin exchange still stores NO sb_token / login()", !/login\(/.test(guardBlock) && !/setItem\(/.test(guardBlock));
+    // Blocker 6: the guard must NOT touch the customer session keys.
+    check("auth-page: failed admin exchange does NOT clear customer sb_token/sb_user", !/removeItem\(["'`]sb_token["'`]\)/.test(guardBlock) && !/removeItem\(["'`]sb_user["'`]\)/.test(guardBlock) && !/removeItem\(["'`]sb_token_type["'`]\)/.test(guardBlock));
+  }
+
+  // ===== Blocker 6 — behavioral: admin cleanup preserves the customer session
+  // clearAdminSessionKeys() must remove ONLY the admin keys and leave an
+  // existing customer session (sb_token/sb_user/sb_token_type) intact.
+  {
+    const store = {
+      sb_token: "cust-jwt", sb_user: '{"id":"c1"}', sb_token_type: "firebase",
+      sb_admin_token: "stale-admin", sb_admin_user: '{"id":"a1"}', sb_theme: "dark",
+    };
+    const fakeStorage = { removeItem: (k) => { delete store[k]; } };
+    authReturn.clearAdminSessionKeys(fakeStorage);
+    check("admin-cleanup: removes sb_admin_token", !("sb_admin_token" in store));
+    check("admin-cleanup: removes sb_admin_user", !("sb_admin_user" in store));
+    check("admin-cleanup: PRESERVES customer sb_token", store.sb_token === "cust-jwt");
+    check("admin-cleanup: PRESERVES customer sb_user", store.sb_user === '{"id":"c1"}');
+    check("admin-cleanup: PRESERVES customer sb_token_type", store.sb_token_type === "firebase");
+    check("admin-cleanup: PRESERVES device pref sb_theme", store.sb_theme === "dark");
+    check("admin-cleanup: ADMIN_SESSION_KEYS are admin-only", JSON.stringify(authReturn.ADMIN_SESSION_KEYS) === JSON.stringify(["sb_admin_token", "sb_admin_user"]));
+    // The failure message must NOT claim there is no session at all.
+    check("admin-cleanup: failure message scoped to ADMIN session", /admin session/i.test(authReturn.ADMIN_EXCHANGE_FAILED_MSG) && !/no session was created/i.test(authReturn.ADMIN_EXCHANGE_FAILED_MSG));
   }
 
   console.log(results.join("\n"));
