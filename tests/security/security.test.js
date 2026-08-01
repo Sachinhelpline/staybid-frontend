@@ -613,12 +613,14 @@ function reqWith(headers) {
   // Firebase fallback, and return without any login()/token write.
   {
     const backendLogin = authPage.indexOf('login(data.token, data.user, "backend")');
-    const guard = authPage.indexOf("if (isAdminIntentRoute(dest))");
+    const guard = authPage.indexOf("if (adminIntent)");
     const fallback = authPage.indexOf("login(idToken");
     check("auth-page: admin guard exists", guard > -1);
     check("auth-page: backend exchange precedes the admin guard", backendLogin > -1 && backendLogin < guard);
     check("auth-page: admin guard precedes the Firebase fallback", fallback > -1 && guard < fallback);
     const guardBlock = authPage.slice(guard, fallback);
+    // The failure path clears admin keys (removeItem) but stores NO session
+    // token: no login(), no setItem of a session/customer token.
     check("auth-page: admin-intent failure returns WITHOUT storing any token", /return;/.test(guardBlock) && !/login\(/.test(guardBlock) && !/setItem\(/.test(guardBlock));
     check("auth-page: admin-intent failure shows a clear error", guardBlock.includes("ADMIN_EXCHANGE_FAILED_MSG"));
   }
@@ -626,6 +628,32 @@ function reqWith(headers) {
   check("auth-page: Firebase fallback stays customer-tagged", /"firebase"\s*\)/.test(authPage) && /role:\s*"customer"/.test(authPage));
   // Canonical admin flow: /admin/login verifies via check-role then lands on /admin.
   check("admin-login[page]: successful verify lands on /admin", /router\.replace\(["']\/admin["']\)/.test(loginPage));
+
+  // ===== v622 review — claim minimization + select_account + admin key cleanup
+  // The social-login POST body carries ONLY idToken (claim minimization): a
+  // rollback to the old insecure backend must fail closed, not trust body
+  // identity. Assert the exact request body and the absence of the old fields.
+  {
+    const bodyMatch = authPage.match(/social-login[\s\S]{0,400}?body:\s*JSON\.stringify\(([^)]*)\)/);
+    check("auth-page: social-login present with a JSON body", !!bodyMatch);
+    const bodyArg = bodyMatch ? bodyMatch[1] : "";
+    check("auth-page: social-login body is idToken-only", /\{\s*idToken\s*\}/.test(bodyArg));
+    for (const f of ["uid", "email", "name", "phone", "provider"]) {
+      check(`auth-page: social-login body drops '${f}'`, !new RegExp(`\\b${f}\\s*:`).test(bodyArg));
+    }
+  }
+  // Admin intent forces the Google account chooser so a warm customer Google
+  // session cannot trap the owner on the wrong account.
+  check("auth-page: admin intent forces prompt=select_account", /prompt:\s*["']select_account["']/.test(authPage) && /isAdminIntentRoute\(returnRoute\(\)\)/.test(authPage));
+  // A failed admin exchange proactively clears any admin session keys.
+  {
+    const guard = authPage.indexOf("if (adminIntent)");
+    const fallback = authPage.indexOf("login(idToken");
+    const guardBlock = guard > -1 ? authPage.slice(guard, fallback > guard ? fallback : guard + 600) : "";
+    check("auth-page: failed admin exchange removes sb_admin_token", /removeItem\(["'`]sb_admin_token["'`]\)/.test(guardBlock));
+    check("auth-page: failed admin exchange removes sb_admin_user", /removeItem\(["'`]sb_admin_user["'`]\)/.test(guardBlock));
+    check("auth-page: failed admin exchange still stores NO sb_token / login()", !/login\(/.test(guardBlock) && !/setItem\(["'`]sb_token/.test(guardBlock));
+  }
 
   console.log(results.join("\n"));
   console.log(`\n${pass} passed, ${fail} failed`);
