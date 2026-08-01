@@ -130,7 +130,15 @@ function reqWith(headers) {
   const FALLBACK = "test-jwt-fallback"; // frontend JWT_SECRET
 
   // ===== ADMIN GATE (v622 Pass 9C — exact JWT_ACCESS_SECRET + fresh Supabase) =====
-  const sign = (claims, secret = ACCESS, opts = {}) => jwt.sign(claims, secret, { algorithm: "HS256", ...opts });
+  // 9C.1 — real Railway tokens always carry iat+exp, and the gate now REQUIRES
+  // both. Default a 30m expiry unless the test supplies its own exp (in claims
+  // or opts); pass `expiresIn: null` to deliberately mint a token WITHOUT exp.
+  const sign = (claims, secret = ACCESS, opts = {}) => {
+    const o = { algorithm: "HS256", ...opts };
+    if (o.expiresIn === undefined && claims.exp === undefined) o.expiresIn = "30m";
+    if (o.expiresIn === null) delete o.expiresIn;
+    return jwt.sign(claims, secret, o);
+  };
   // Canonical admin token shape: `sub` (+ compat `id`) = Supabase user id.
   const adminTok = (sub, extra = {}, secret = ACCESS, opts = {}) => sign({ sub, id: sub, ...extra }, secret, opts);
   const b64uA = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
@@ -196,6 +204,40 @@ function reqWith(headers) {
     (await at({ authorization: "Bearer " + adminTok("admin1", {}, ACCESS, { expiresIn: "2h" }) })) === null);
   const okShort = await at({ authorization: "Bearer " + adminTok("admin1", {}, ACCESS, { expiresIn: "1h" }) });
   check("admin: admin token lifetime ≤1h → verified", okShort && okShort.id === "admin1");
+
+  // -- 9C.1: iat/exp are MANDATORY, validated BEFORE the Supabase lookup --
+  // A counting store proves an invalid token performs ZERO store/network calls.
+  {
+    let storeCalls = 0;
+    const countingGate = adminV.makeRequireVerifiedAdmin({
+      secret: ACCESS,
+      findAdminById: async (id) => { storeCalls++; return fakeRows[id] ? { ...fakeRows[id] } : null; },
+    });
+    const cg = (h) => countingGate(reqWith(h));
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    const noExp = sign({ sub: "admin1", id: "admin1" }, ACCESS, { expiresIn: null });
+    check("admin(9C.1): token WITHOUT exp → null", (await cg({ authorization: "Bearer " + noExp })) === null);
+    const noIat = sign({ sub: "admin1", id: "admin1", exp: nowSec + 1800 }, ACCESS, { noTimestamp: true });
+    check("admin(9C.1): token WITHOUT iat → null", (await cg({ authorization: "Bearer " + noIat })) === null);
+    const futureIat = sign({ sub: "admin1", id: "admin1", iat: nowSec + 300, exp: nowSec + 1500 }, ACCESS);
+    check("admin(9C.1): future-dated iat (beyond skew) → null", (await cg({ authorization: "Bearer " + futureIat })) === null);
+    const expLeIat = sign({ sub: "admin1", id: "admin1", iat: nowSec + 50, exp: nowSec + 40 }, ACCESS);
+    check("admin(9C.1): exp <= iat (non-positive lifetime) → null", (await cg({ authorization: "Bearer " + expLeIat })) === null);
+    const idNonString = sign({ sub: "admin1", id: 123 }, ACCESS);
+    check("admin(9C.1): non-string id claim → null (id must exactly equal sub)", (await cg({ authorization: "Bearer " + idNonString })) === null);
+    const idMismatch = sign({ sub: "admin1", id: "admin1 " }, ACCESS);
+    check("admin(9C.1): id differing by whitespace → null (EXACT string equality)", (await cg({ authorization: "Bearer " + idMismatch })) === null);
+    check("admin(9C.1): ALL invalid tokens above performed ZERO store calls", storeCalls === 0);
+
+    // Positive controls: small clock skew tolerated; sub-only token (no id) is
+    // valid; both hit the store exactly once each.
+    const skewOk = await cg({ authorization: "Bearer " + sign({ sub: "admin1", id: "admin1", iat: nowSec + 30, exp: nowSec + 1830 }, ACCESS) });
+    check("admin(9C.1): iat within 60s skew + ≤1h lifetime → verified", skewOk && skewOk.id === "admin1");
+    const subOnly = await cg({ authorization: "Bearer " + sign({ sub: "admin1" }, ACCESS) });
+    check("admin(9C.1): sub-only token (no id claim) → verified", subOnly && subOnly.id === "admin1");
+    check("admin(9C.1): the two valid tokens performed exactly 2 store calls", storeCalls === 2);
+  }
 
   // -- fresh lookup EVERY request (no cache): demotion + blocking take effect now --
   const beforeDemote = await at({ authorization: "Bearer " + adminTok("admin1") });
@@ -445,6 +487,15 @@ function reqWith(headers) {
   check("admin-verify: JWT_SECRET compatibility fallback REMOVED (code)", !/JWT_SECRET/.test(verifyCode2));
   // Fresh canonical role/blocked lookup on every request via the Supabase store.
   check("admin-verify: fresh Supabase role/blocked lookup every request", verifyCode2.includes("findAdminById") && verifyCode2.includes("supabase-admin-store"));
+  // 9C.1 — temporal claims are mandatory and validated BEFORE the store lookup.
+  check("admin-verify(9C.1): iat/exp validation precedes the Supabase lookup",
+    verifyCode2.indexOf("exp <= iat") !== -1 && verifyCode2.indexOf("Number.isFinite(iat)") !== -1 &&
+    verifyCode2.indexOf("exp <= iat") < verifyCode2.indexOf("deps.findAdminById"));
+  // 9C.1 — both privileged admin modules carry an explicit server-only guard.
+  const storeSrc2 = fs.readFileSync(path.join(REPO, "lib/admin/supabase-admin-store.ts"), "utf8");
+  const soGuard = (s) => /typeof window !== "undefined"[\s\S]{0,80}throw new Error\("server_only_module"\)/.test(s);
+  check("admin-verify(9C.1): verify.ts has an explicit server-only guard", soGuard(verifySrc2));
+  check("admin-store(9C.1): supabase-admin-store.ts has an explicit server-only guard", soGuard(storeSrc2));
 
   // Tracked-tree scan: the Master-PIN / default-PIN material must exist NOWHERE
   // in the shipped tree (docs history is redacted; this test assembles the

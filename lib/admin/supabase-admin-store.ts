@@ -32,6 +32,12 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { SB_URL } from "@/lib/sb";
 
+// Explicit server-only guard (v622 Pass 9C.1) — this module holds the privileged
+// service-role client and must never execute in a browser.
+if (typeof window !== "undefined") {
+  throw new Error("server_only_module");
+}
+
 // Narrow allowlisted admin row — nothing else is read off the DB row.
 export type AdminRow = {
   id: string;

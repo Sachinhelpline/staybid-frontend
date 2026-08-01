@@ -17,7 +17,10 @@
 //      server-only privileged store — never the anon-fallback @/lib/sb helpers)
 //      and authorizes ONLY a current, non-blocked admin/super_admin. The token
 //      `role` (and phone/email/name) are NEVER trusted.
-//   4. Enforces the backend admin-token lifetime contract (≤ 1h + small skew).
+//   4. Enforces the backend admin-token temporal contract BEFORE any Supabase
+//      lookup (9C.1): `iat` + `exp` are mandatory finite numbers; future-dated
+//      `iat`, `exp <= iat`, and lifetimes over 1h (+ small skew) all reject —
+//      so an invalid token costs zero network calls.
 //
 // Fails CLOSED on: missing JWT_ACCESS_SECRET, missing/ambiguous token, verify
 // error, expired/wrong-alg (e.g. Firebase RS256) token, missing/mismatched
@@ -29,9 +32,18 @@
 import jwt from "jsonwebtoken";
 import { adminStore, type AdminRow } from "./supabase-admin-store";
 
+// Explicit server-only guard (v622 Pass 9C.1) — this module verifies admin
+// authority against a server secret and must never execute in a browser.
+if (typeof window !== "undefined") {
+  throw new Error("server_only_module");
+}
+
 // Backend mints admin/super_admin tokens with a ≤1h lifetime (staybid-Live
-// ADMIN_TOKEN_TTL). A token claiming an admin subject with a longer lifetime is
-// not a properly-scoped admin token and is rejected. Small skew for clock drift.
+// ADMIN_TOKEN_TTL). Every Railway token carries `iat` + `exp` (jsonwebtoken
+// stamps iat; both issuers set expiresIn), so a token MISSING either claim is
+// not a properly-scoped Railway admin token and is rejected — as is a
+// future-dated `iat`, a non-positive lifetime (`exp <= iat`), or a lifetime
+// over the 1h cap. Small skew for clock drift only.
 const ADMIN_TOKEN_MAX_LIFETIME_SEC = 3600;
 const ADMIN_TOKEN_CLOCK_SKEW_SEC = 60;
 
@@ -99,12 +111,24 @@ export function makeRequireVerifiedAdmin(deps: AdminVerifyDeps) {
     if (!claims || typeof claims !== "object") return null;
 
     // Subject from verified claims only. Require a valid string `sub`; a compat
-    // `id` claim, when present, MUST equal `sub`.
-    const sub = typeof claims.sub === "string" ? claims.sub.trim() : "";
+    // `id` claim, when PRESENT, must be the EXACT same string as `sub` (any
+    // other type/value is a malformed or spliced token → reject).
+    const sub = typeof claims.sub === "string" && claims.sub ? claims.sub : "";
     if (!sub) return null;
-    if (typeof claims.id === "string" && claims.id.trim() && claims.id.trim() !== sub) {
-      return null;
-    }
+    if (claims.id !== undefined && claims.id !== sub) return null;
+
+    // Temporal claims — validated BEFORE any Supabase lookup so an invalid
+    // token costs ZERO network calls (v622 Pass 9C.1). `iat` and `exp` are
+    // MANDATORY finite numbers; a future-dated `iat`, a non-positive lifetime
+    // (`exp <= iat`), or a lifetime over the backend's 1h admin cap all reject.
+    const nowSec = Math.floor(Date.now() / 1000);
+    const iat = claims.iat;
+    const exp = claims.exp;
+    if (typeof iat !== "number" || !Number.isFinite(iat)) return null;
+    if (typeof exp !== "number" || !Number.isFinite(exp)) return null;
+    if (iat > nowSec + ADMIN_TOKEN_CLOCK_SKEW_SEC) return null; // future-dated
+    if (exp <= iat) return null; // non-positive lifetime
+    if (exp - iat > ADMIN_TOKEN_MAX_LIFETIME_SEC + ADMIN_TOKEN_CLOCK_SKEW_SEC) return null; // over cap
 
     // Fresh canonical Supabase role/blocked lookup. A store/config error is a
     // fail-closed signal (never read as "not found"): deny.
@@ -119,14 +143,6 @@ export function makeRequireVerifiedAdmin(deps: AdminVerifyDeps) {
     if (row.isBlocked) return null; // blocked
     const role = normalizedAdminRole(row.role);
     if (!role) return null; // non-admin / demoted
-
-    // Admin-token lifetime cap (backend caps admin tokens at ≤1h). A longer-lived
-    // token for an admin subject is not a properly-scoped admin token → deny.
-    if (typeof claims.iat === "number" && typeof claims.exp === "number") {
-      if (claims.exp - claims.iat > ADMIN_TOKEN_MAX_LIFETIME_SEC + ADMIN_TOKEN_CLOCK_SKEW_SEC) {
-        return null;
-      }
-    }
 
     // Identity is built ONLY from the fresh Supabase row.
     return { id: String(row.id), phone: row.phone ?? null, name: row.name ?? null, role };
