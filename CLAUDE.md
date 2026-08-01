@@ -74,9 +74,12 @@ value in code or docs**; client checkout fails closed without it) ·
 `NEXT_PUBLIC_ENABLE_LOCATION_OTP` (default 0).
 Server-only: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` (**environment-only — hardcoded fallbacks are
 FORBIDDEN**; routes fail closed with `payment_config_missing` when unset) · `SUPABASE_SERVICE_ROLE_KEY`
-(auto-elevates RLS via `lib/sb-server.ts`) · `CRON_SECRET` · **`JWT_ACCESS_SECRET`** (Railway's
-authoritative HS256 access-token signing secret — the frontend verifies backend/admin/Gmail tokens against it) ·
-`JWT_SECRET` (**now only a compatibility FALLBACK** for token verification + the onboarding token) · optional
+(server-only privileged key — auto-elevates RLS via `lib/sb-server.ts`/`lib/sb.ts`, **and is REQUIRED by the
+dedicated admin store `lib/admin/supabase-admin-store.ts`; the ADMIN gate never falls back to the anon key
+and fails closed without it**) · `CRON_SECRET` · **`JWT_ACCESS_SECRET`** (Railway's authoritative HS256
+access-token signing secret — the ONLY secret the ADMIN gate verifies against; missing ⇒ admin fails closed) ·
+`JWT_SECRET` (**compatibility FALLBACK for CUSTOMER token verification + the onboarding token ONLY — the
+ADMIN gate no longer accepts it, v622 Pass 9C**) · optional
 `GEMINI_API_KEY` (free vision primary) / `ANTHROPIC_API_KEY` (paid backup) / `AI_VERIFY_PROVIDER` ·
 `BOOKING_COM_LIVE` (inert channel-manager scaffold).
 **🔒 Razorpay key contract (v621.2):** Key IDs AND Secrets are environment-only — **no Razorpay key id
@@ -122,9 +125,23 @@ provider. **Never document or commit secret VALUES anywhere — variable names +
     server-returned identity as `sb_admin_user` (never the local `sb_user` role). **There is NO PIN, NO default
     PIN, and NO token-issuance path** — supplying phone/pin can never mint an admin token, and `ADMIN_JWT_SECRET`
     is no longer used anywhere (the forge-your-own-admin-token surface is gone).
-  - **Admin tokens are verified against `JWT_ACCESS_SECRET`** (Railway's authoritative access-token secret —
-    the same secret Google sign-in tokens are signed with), then the DB role lookup; `JWT_SECRET` is tried only
-    as a compatibility fallback. A Firebase RS256 token fails the HS256 check → rejected. Railway tokens carry no
+  - **🔒 Admin gate v622 Pass 9C — exact secret + dedicated privileged Supabase re-check (LOCKED):**
+    Railway verifies the Firebase ID token and mints the admin HS256 token; the frontend gate
+    (`lib/admin/verify.ts`, `makeRequireVerifiedAdmin` factory) verifies it **with the EXACT
+    `JWT_ACCESS_SECRET` ONLY — the `JWT_SECRET` compatibility fallback is REMOVED for admin auth**
+    (customer verification + the onboarding token still use it elsewhere). HS256-only; a Firebase RS256
+    or `alg:none` token is rejected. Subject = verified `sub` (required string); a compat `id` claim, when
+    present, MUST equal `sub`. Two token transports only (`Authorization: Bearer` from check-role,
+    `x-admin-token` from the admin pages); **both present with DIFFERENT tokens ⇒ fail closed**. The
+    backend admin-token lifetime contract (≤1h) is enforced (small clock skew). Then a **fresh Supabase
+    `public.users` role + `isBlocked` lookup on EVERY request via the dedicated server-only privileged
+    store `lib/admin/supabase-admin-store.ts`** — `@supabase/supabase-js` with `SUPABASE_SERVICE_ROLE_KEY`
+    ONLY (never `SB_READ`/`SB_H`/`SB_ADMIN_KEY`/anon/`NEXT_PUBLIC_*`; URL = the non-secret `SB_URL`
+    contract), session flags all false, narrow select (`id,phone,name,role,isBlocked`, never `*`),
+    `no-store`, read-only, no cache. Missing `JWT_ACCESS_SECRET` or `SUPABASE_SERVICE_ROLE_KEY`, or any
+    Supabase lookup error ⇒ **fail closed** (zero network when unconfigured). A demoted/blocked/deleted
+    admin loses access on the NEXT request; the token `role` claim never authorizes; the returned
+    `VerifiedAdmin` is built only from the fresh Supabase row. Railway tokens carry no
     `iss`/`aud`/`token_use` — see the token-purpose follow-up below.
   - **Cron routes (`app/api/cron/*`) accept `CRON_SECRET` ONLY, via `Authorization: Bearer <CRON_SECRET>`** — the
     `?token=` query-string and `x-cron-secret` transports are REMOVED (no secrets in URLs); the `adm_` path is gone.
@@ -168,8 +185,18 @@ provider. **Never document or commit secret VALUES anywhere — variable names +
     so a browser already warm with a personal customer Google session cannot trap the owner on the
     wrong account.
   - Regression coverage: `npm run test:security` (return-route sanitizer, admin-intent fail-closed
-    ordering scan) + backend `apps/api && npm run test:security` in `staybid-Live` (verifier,
-    linking order, admin policy). Run BOTH on any auth change.
+    ordering scan, the Pass-9C admin gate — exact-secret/no-JWT_SECRET, lifetime cap, ambiguous-header
+    fail-closed, fresh demote/block denial, and the privileged store driven against a LOCAL loopback
+    PostgREST stub with the real `@supabase/supabase-js`) + backend `apps/api && npm run test:security`
+    in `staybid-Live` (verifier, linking order, admin policy). Run BOTH on any auth change.
+  - ⚠ **Honest status (v622 Pass 9C):** these are Draft-branch code/test corrections. **Production admin
+    login is NOT yet proven fixed** — backend PR #5/#6 are Draft/unmerged (stack unresolved), the Supabase
+    `auth_identities` SQL remains a review-only artifact (unapplied), hosted-Supabase/PostgREST
+    compatibility is unproven from this environment, and the Railway/Vercel env names
+    (`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` backend; `JWT_ACCESS_SECRET`/`SUPABASE_SERVICE_ROLE_KEY`
+    frontend) must be set by the owner before smoke-testing. The broad customer decoded-JWT (Class-C)
+    remediation is a SEPARATE later project — customer helpers (`userFromReq`/`decodeJwt` surfaces) were
+    deliberately not touched in this pass. Mobile OTP remains unavailable (backend 503).
 - **Sign-in-then-resume:** auth-gated CTAs use `redirectToSignIn(router,{route,action?,payload?})`
   (`lib/auth-intent.ts`, 30-min localStorage TTL) + `consumeMatchingIntent()` on the destination.
   `/auth` reads `?return=` (wrapped in `<Suspense>`).

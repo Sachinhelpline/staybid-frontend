@@ -35,6 +35,7 @@ fs.mkdirSync(path.join(SRC, "lib", "admin"), { recursive: true });
 fs.mkdirSync(path.join(SRC, "lib", "auth"), { recursive: true });
 fs.mkdirSync(path.join(SRC, "lib", "cron"), { recursive: true });
 fs.copyFileSync(path.join(REPO, "lib/admin/verify.ts"), path.join(SRC, "lib/admin/verify.ts"));
+fs.copyFileSync(path.join(REPO, "lib/admin/supabase-admin-store.ts"), path.join(SRC, "lib/admin/supabase-admin-store.ts"));
 fs.copyFileSync(path.join(REPO, "lib/auth/customer-verify.ts"), path.join(SRC, "lib/auth/customer-verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/cron/auth.ts"), path.join(SRC, "lib/cron/auth.ts"));
 fs.copyFileSync(path.join(REPO, "lib/razorpay-server.ts"), path.join(SRC, "lib/razorpay-server.ts"));
@@ -55,12 +56,13 @@ fs.writeFileSync(
 // non-zero — expected. We assert on the emitted files, not tsc's exit code.
 try { cp.execSync(`npx tsc -p "${path.join(SRC, "tsconfig.json")}"`, { cwd: REPO, stdio: "pipe" }); } catch (_) {}
 const adminJs = path.join(OUT, "lib/admin/verify.js");
+const storeJs = path.join(OUT, "lib/admin/supabase-admin-store.js");
 const custJs = path.join(OUT, "lib/auth/customer-verify.js");
 const cronJs = path.join(OUT, "lib/cron/auth.js");
 const rzpCfgJs = path.join(OUT, "lib/razorpay-server.js");
 const rzpClientJs = path.join(OUT, "lib/razorpay.js");
 const authReturnJs = path.join(OUT, "lib/auth-return.js");
-if (!fs.existsSync(adminJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
+if (!fs.existsSync(adminJs) || !fs.existsSync(storeJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
   console.error("COMPILE FAILED — helper JS not emitted");
   process.exit(2);
 }
@@ -70,7 +72,12 @@ if (!fs.existsSync(adminJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) 
 // session was removed (hotfix v621), so admin auth no longer depends on it.
 delete process.env.ADMIN_JWT_SECRET;
 process.env.JWT_ACCESS_SECRET = "test-railway-access"; // Railway's authoritative secret
-process.env.JWT_SECRET = "test-jwt-fallback"; // frontend fallback (DISTINCT value)
+process.env.JWT_SECRET = "test-jwt-fallback"; // frontend fallback (DISTINCT value — must NOT verify admin)
+// v622 Pass 9C — the privileged admin store needs SUPABASE_SERVICE_ROLE_KEY to be
+// configured() (URL comes from the @/lib/sb stub). A synthetic value only; the
+// real store is never driven over the network in positive tests (the gate is
+// exercised via the injected fake + a loopback stub).
+process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 process.env.RAZORPAY_KEY_SECRET = "test-rzp-secret";
 
 const jwt = require(path.join(REPO, "node_modules/jsonwebtoken"));
@@ -79,6 +86,7 @@ const USERS = {
   admin1: { id: "admin1", phone: "+919000000001", name: "Admin One", role: "super_admin" },
   cust1: { id: "cust1", phone: "+919000000002", name: "Cust One", role: "customer" },
 };
+const REAL_FETCH = global.fetch; // kept for the loopback-stub store test only
 global.fetch = async (url) => {
   const m = String(url).match(/id=eq\.([^&]+)/);
   const id = m ? decodeURIComponent(m[1]) : "";
@@ -100,6 +108,7 @@ Module._resolveFilename = function (request, ...rest) {
 };
 
 const adminV = require(adminJs);
+const adminStoreMod = require(storeJs);
 const custV = require(custJs);
 const cronV = require(cronJs);
 const rzpCfg = require(rzpCfgJs);
@@ -120,43 +129,175 @@ function reqWith(headers) {
   const ACCESS = "test-railway-access"; // Railway JWT_ACCESS_SECRET
   const FALLBACK = "test-jwt-fallback"; // frontend JWT_SECRET
 
-  // ===== ADMIN GATE (Gmail/Railway token ONLY — no Master-PIN) =====
-  check("admin: no token → null", (await adminV.requireVerifiedAdmin(reqWith({}))) === null);
-  check("admin: forged/wrong-secret → null",
-    (await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + jwt.sign({ id: "admin1" }, "WRONG", { algorithm: "HS256" }) }))) === null);
-  check("admin: expired → null",
-    (await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + jwt.sign({ id: "admin1" }, ACCESS, { algorithm: "HS256", expiresIn: -10 }) }))) === null);
-  check("admin: customer token (DB role=customer) → null",
-    (await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + jwt.sign({ id: "cust1" }, ACCESS, { algorithm: "HS256" }) }))) === null);
-  check("admin: x-admin-id only → null", (await adminV.requireVerifiedAdmin(reqWith({ "x-admin-id": "admin1" }))) === null);
-  check("admin: adm_ presence only → null", (await adminV.requireVerifiedAdmin(reqWith({ "x-admin-token": "adm_deadbeefdeadbeef" }))) === null);
-  // A client-asserted admin role in the token is IGNORED — a customer-subject
-  // token claiming role:super_admin still fails because the DB row is customer.
-  check("admin: client-claimed role in token cannot grant access (DB row=customer)",
-    (await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + jwt.sign({ id: "cust1", role: "super_admin" }, ACCESS, { algorithm: "HS256" }) }))) === null);
-  // A Firebase-style RS256 token (unsigned-for-us) fails the HS256 alg check.
+  // ===== ADMIN GATE (v622 Pass 9C — exact JWT_ACCESS_SECRET + fresh Supabase) =====
+  const sign = (claims, secret = ACCESS, opts = {}) => jwt.sign(claims, secret, { algorithm: "HS256", ...opts });
+  // Canonical admin token shape: `sub` (+ compat `id`) = Supabase user id.
+  const adminTok = (sub, extra = {}, secret = ACCESS, opts = {}) => sign({ sub, id: sub, ...extra }, secret, opts);
   const b64uA = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  const fakeRsAdmin = `${b64uA({ alg: "RS256", typ: "JWT" })}.${b64uA({ id: "admin1" })}.bogus`;
-  check("admin: Firebase-style RS256 token → null (fail closed)",
-    (await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + fakeRsAdmin }))) === null);
 
-  const railAccess = await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + jwt.sign({ id: "admin1" }, ACCESS, { algorithm: "HS256" }) }));
-  check("admin: valid Railway admin token (JWT_ACCESS_SECRET) + admin DB role → verified admin", railAccess && railAccess.id === "admin1" && railAccess.role === "super_admin");
-  const railFallback = await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + jwt.sign({ id: "admin1" }, FALLBACK, { algorithm: "HS256" }) }));
-  check("admin: valid Railway admin token (JWT_SECRET fallback) → verified admin", railFallback && railFallback.id === "admin1");
-  // Same verified token works via x-admin-token transport (admin pages use it).
-  const viaHeader = await adminV.requireVerifiedAdmin(reqWith({ "x-admin-token": jwt.sign({ id: "admin1" }, ACCESS, { algorithm: "HS256" }) }));
-  check("admin: verified token via x-admin-token transport → verified admin", viaHeader && viaHeader.id === "admin1");
+  // Injected fake privileged Supabase store — the gate is exercised hermetically.
+  const fakeRows = {
+    admin1: { id: "admin1", phone: "+919000000001", name: "Admin One", role: "super_admin", isBlocked: false },
+    admin2: { id: "admin2", phone: null, name: "Upper", role: "ADMIN", isBlocked: false },
+    cust1: { id: "cust1", phone: null, name: "Cust", role: "customer", isBlocked: false },
+    blk1: { id: "blk1", phone: null, name: "Blk", role: "admin", isBlocked: true },
+  };
+  let storeThrows = false;
+  const fakeFind = async (id) => { if (storeThrows) throw new Error("supabase down"); return fakeRows[id] ? { ...fakeRows[id] } : null; };
+  const gate = adminV.makeRequireVerifiedAdmin({ secret: ACCESS, findAdminById: fakeFind });
+  const at = (headers) => gate(reqWith(headers));
 
-  check("admin: role removed after issuance (unknown subject) → null",
-    (await adminV.requireVerifiedAdmin(reqWith({ authorization: "Bearer " + jwt.sign({ id: "ghost1" }, ACCESS, { algorithm: "HS256" }) }))) === null);
+  // -- real wired gate: fail closed before any store lookup --
+  check("admin: no token → null (real gate)", (await adminV.requireVerifiedAdmin(reqWith({}))) === null);
+  check("admin: x-admin-id only → null", (await at({ "x-admin-id": "admin1" })) === null);
+  check("admin: adm_ presence only → null", (await at({ "x-admin-token": "adm_deadbeefdeadbeef" })) === null);
+
+  // -- JWT verification (exact JWT_ACCESS_SECRET, HS256-only) --
+  const okAdmin = await at({ authorization: "Bearer " + adminTok("admin1") });
+  check("admin: valid HS256 admin token (JWT_ACCESS_SECRET) + admin row → verified", okAdmin && okAdmin.id === "admin1" && okAdmin.role === "super_admin");
+  const okUpper = await at({ authorization: "Bearer " + adminTok("admin2") });
+  check("admin: UPPERCASE role normalized → verified (admin)", okUpper && okUpper.role === "admin");
+  check("admin: JWT_SECRET-signed token is REJECTED (no compatibility fallback)",
+    (await at({ authorization: "Bearer " + adminTok("admin1", {}, FALLBACK) })) === null);
+  check("admin: wrong-secret forged → null", (await at({ authorization: "Bearer " + adminTok("admin1", {}, "WRONG") })) === null);
+  check("admin: expired → null", (await at({ authorization: "Bearer " + adminTok("admin1", {}, ACCESS, { expiresIn: -10 }) })) === null);
+  const rsAdmin = `${b64uA({ alg: "RS256", typ: "JWT" })}.${b64uA({ sub: "admin1", id: "admin1" })}.bogus`;
+  check("admin: Firebase-style RS256 token → null", (await at({ authorization: "Bearer " + rsAdmin })) === null);
+  const noneAdmin = `${b64uA({ alg: "none", typ: "JWT" })}.${b64uA({ sub: "admin1", id: "admin1" })}.`;
+  check("admin: alg:none token → null", (await at({ authorization: "Bearer " + noneAdmin })) === null);
+  check("admin: missing subject (no sub/id) → null", (await at({ authorization: "Bearer " + sign({ role: "super_admin" }) })) === null);
+  check("admin: sub present, compat id mismatched → null", (await at({ authorization: "Bearer " + sign({ sub: "admin1", id: "admin2" }) })) === null);
+  check("admin: id-only token (no sub) → null (sub required)", (await at({ authorization: "Bearer " + sign({ id: "admin1" }) })) === null);
+
+  // -- authorization is Supabase-canonical + fresh; token role never grants --
+  check("admin: customer row → null", (await at({ authorization: "Bearer " + adminTok("cust1") })) === null);
+  check("admin: client-claimed super_admin role in token, DB customer → null",
+    (await at({ authorization: "Bearer " + adminTok("cust1", { role: "super_admin" }) })) === null);
+  check("admin: blocked admin row → null", (await at({ authorization: "Bearer " + adminTok("blk1") })) === null);
+  check("admin: missing/deleted row → null", (await at({ authorization: "Bearer " + adminTok("ghost") })) === null);
+
+  // -- store outage / missing config fail closed --
+  storeThrows = true;
+  check("admin: Supabase lookup error → null (fail closed)", (await at({ authorization: "Bearer " + adminTok("admin1") })) === null);
+  storeThrows = false;
+  const gateNoSecret = adminV.makeRequireVerifiedAdmin({ secret: null, findAdminById: fakeFind });
+  check("admin: missing JWT_ACCESS_SECRET → null (fail closed)", (await gateNoSecret(reqWith({ authorization: "Bearer " + adminTok("admin1") }))) === null);
+
+  // -- both transports; ambiguity fails closed --
+  const viaHeader = await at({ "x-admin-token": adminTok("admin1") });
+  check("admin: verified via x-admin-token transport", viaHeader && viaHeader.id === "admin1");
+  const bothSame = await at({ authorization: "Bearer " + adminTok("admin1"), "x-admin-token": adminTok("admin1") });
+  check("admin: both headers, same token → verified", bothSame && bothSame.id === "admin1");
+  check("admin: both headers, DIFFERENT tokens → null (ambiguous, fail closed)",
+    (await at({ authorization: "Bearer " + adminTok("admin1"), "x-admin-token": adminTok("cust1") })) === null);
+
+  // -- admin-token lifetime cap (≤1h + skew) --
+  check("admin: admin token lifetime > 1h → null",
+    (await at({ authorization: "Bearer " + adminTok("admin1", {}, ACCESS, { expiresIn: "2h" }) })) === null);
+  const okShort = await at({ authorization: "Bearer " + adminTok("admin1", {}, ACCESS, { expiresIn: "1h" }) });
+  check("admin: admin token lifetime ≤1h → verified", okShort && okShort.id === "admin1");
+
+  // -- fresh lookup EVERY request (no cache): demotion + blocking take effect now --
+  const beforeDemote = await at({ authorization: "Bearer " + adminTok("admin1") });
+  fakeRows.admin1.role = "customer";
+  const afterDemote = await at({ authorization: "Bearer " + adminTok("admin1") });
+  check("admin: demotion between requests → immediately denied (fresh lookup)", beforeDemote && beforeDemote.id === "admin1" && afterDemote === null);
+  fakeRows.admin1.role = "super_admin";
+  const beforeBlock = await at({ authorization: "Bearer " + adminTok("admin1") });
+  fakeRows.admin1.isBlocked = true;
+  const afterBlock = await at({ authorization: "Bearer " + adminTok("admin1") });
+  check("admin: blocking between requests → immediately denied (fresh lookup)", beforeBlock && beforeBlock.id === "admin1" && afterBlock === null);
+  fakeRows.admin1.isBlocked = false;
+
+  // -- audit identity + removed forge helpers + configured() --
   check("admin: auditIdentity(null) → unknown", adminV.auditIdentity(null).id === "unknown");
-  check("admin: auditIdentity(admin) → verified id", adminV.auditIdentity(railAccess).id === "admin1");
-  // The Master-PIN issuance helper is GONE — no forge-your-own-admin-token path.
+  check("admin: auditIdentity(admin) → verified id", adminV.auditIdentity(okAdmin).id === "admin1");
   check("admin: signAdminSessionToken helper removed", typeof adminV.signAdminSessionToken === "undefined");
   check("admin: isAdminIssuanceConfigured helper removed", typeof adminV.isAdminIssuanceConfigured === "undefined");
-  // Admin auth no longer depends on ADMIN_JWT_SECRET (deleted in env above).
-  check("admin: gate configured on Railway secrets alone (no ADMIN_JWT_SECRET)", adminV.adminAuthConfigured() === true);
+  check("admin: adminAuthConfigured() true (JWT_ACCESS_SECRET + service-role store)", adminV.adminAuthConfigured() === true);
+
+  // ===== PRIVILEGED SUPABASE ADMIN STORE (real @supabase/supabase-js vs loopback) =====
+  {
+    // The real client needs the REAL fetch (the harness mock above returns a
+    // minimal fake Response). Loopback 127.0.0.1 only — never a real service.
+    const MOCK_FETCH = global.fetch;
+    global.fetch = REAL_FETCH;
+    const http = require("http");
+    const calls = [];
+    let scenario = () => ({ status: 200, body: [] });
+    const server = http.createServer((req, res) => {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        calls.push({ method: req.method, url: req.url, headers: req.headers });
+        const r = scenario({ method: req.method, url: req.url });
+        res.writeHead(r.status, { "Content-Type": "application/json" });
+        res.end(r.body == null ? "" : typeof r.body === "string" ? r.body : JSON.stringify(r.body));
+      });
+    });
+    await new Promise((rs) => server.listen(0, "127.0.0.1", rs));
+    const port = server.address().port;
+    const LOOP = `http://127.0.0.1:${port}`;
+    const dec = (u) => decodeURIComponent(u);
+    const store = adminStoreMod.createAdminStore({ SUPABASE_URL: LOOP, SUPABASE_SERVICE_ROLE_KEY: "sr-key-synthetic" });
+    check("store: configured() true with URL + service-role key", store.configured() === true);
+    scenario = () => ({ status: 200, body: { id: "admin1", phone: "+91", name: "A", role: "super_admin", isBlocked: false } });
+    const row = await store.findAdminById("admin1");
+    check("store: hit → shaped AdminRow", row && row.id === "admin1" && row.role === "super_admin" && row.isBlocked === false);
+    const g = [...calls].reverse().find((c) => c.method === "GET");
+    check("store: GET /rest/v1/users filter id, limit 1", g && g.url.startsWith("/rest/v1/users?") && dec(g.url).includes("id=eq.admin1") && g.url.includes("limit=1"));
+    check("store: narrow select (id,phone,name,role,isBlocked), never *", g && dec(g.url).includes("select=id,phone,name,role,isBlocked") && !g.url.includes("select=*"));
+    check("store: service-role key as apikey + Bearer (no anon)", g && g.headers["apikey"] === "sr-key-synthetic" && g.headers["authorization"] === "Bearer sr-key-synthetic");
+    scenario = () => ({ status: 200, body: [] });
+    check("store: 0 rows → null", (await store.findAdminById("ghost")) === null);
+    scenario = () => ({ status: 500, body: { message: "boom" } });
+    let threw = null; try { await store.findAdminById("x"); } catch (e) { threw = e; }
+    check("store: server error → AdminStoreUnavailableError", threw instanceof adminStoreMod.AdminStoreUnavailableError);
+    check("store: NEVER issued a mutating HTTP method (POST/PATCH/PUT/DELETE)", !calls.some((c) => ["POST", "PATCH", "PUT", "DELETE"].includes(c.method)));
+    const before = calls.length;
+    const bad = adminStoreMod.createAdminStore({ SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "" });
+    check("store: missing service-role key → configured() false", bad.configured() === false);
+    let e2 = null; try { await bad.findAdminById("admin1"); } catch (e) { e2 = e; }
+    check("store: unconfigured → AdminStoreUnavailableError, ZERO network", e2 instanceof adminStoreMod.AdminStoreUnavailableError && calls.length === before);
+    check("store: URL present but service-role key absent → not configured", adminStoreMod.createAdminStore({ SUPABASE_URL: LOOP }).configured() === false);
+    server.close();
+    global.fetch = MOCK_FETCH; // restore the harness mock for the remaining sections
+  }
+
+  // ===== static scans (Pass 9C) =====
+  const stripC = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  const verifySrc = fs.readFileSync(path.join(REPO, "lib/admin/verify.ts"), "utf8");
+  const storeSrc = fs.readFileSync(path.join(REPO, "lib/admin/supabase-admin-store.ts"), "utf8");
+  const verifyCode = stripC(verifySrc), storeCode = stripC(storeSrc);
+  check("scan[verify]: verifies with JWT_ACCESS_SECRET only (no JWT_SECRET fallback)", /JWT_ACCESS_SECRET/.test(verifyCode) && !/JWT_SECRET/.test(verifyCode));
+  check("scan[verify]: HS256-only algorithm", /algorithms:\s*\[\s*["']HS256["']\s*\]/.test(verifyCode));
+  check("scan[verify]: does NOT import the anon-fallback @/lib/sb helpers", !/@\/lib\/sb/.test(verifyCode));
+  check("scan[verify]: uses the dedicated privileged store", /supabase-admin-store/.test(verifyCode));
+  check("scan[store]: privileged key is SUPABASE_SERVICE_ROLE_KEY only", /SUPABASE_SERVICE_ROLE_KEY/.test(storeCode) && !/SB_READ|SB_H\b|SB_ADMIN_KEY|SB_KEY\b|NEXT_PUBLIC_|SUPABASE_JWT_ANON/.test(storeCode));
+  check("scan[store]: reuses SB_URL (non-secret) for the project URL", /SB_URL/.test(storeCode));
+  check("scan[store]: narrow users select, never select('*')", /id,phone,name,role,isBlocked/.test(storeCode) && !/select\(\s*["']\*["']\s*\)/.test(storeCode));
+  check("scan[store]: session flags all false", /persistSession:\s*false/.test(storeCode) && /autoRefreshToken:\s*false/.test(storeCode) && /detectSessionInUrl:\s*false/.test(storeCode));
+  check("scan[store]: no mutation/rpc/auth-session methods", !/\.(insert|update|upsert|delete|rpc|signIn|signUp|signOut)\(/.test(storeCode));
+  check("scan[store]: no hardcoded supabase key literal", !/eyJ[A-Za-z0-9_-]{20,}/.test(storeSrc));
+  check("scan[store]: key read via injected env defaulting to process.env, never a NEXT_PUBLIC name", /env\.SUPABASE_SERVICE_ROLE_KEY/.test(storeCode) && /process\.env\b/.test(storeCode) && !/NEXT_PUBLIC_SUPABASE/.test(storeCode));
+  // Shared-gate route scan: every admin route uses requireVerifiedAdmin; none
+  // trusts a legacy/decoded-only authority. No client component imports the store.
+  const adminRouteFiles = [];
+  (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (e.name === "route.ts") adminRouteFiles.push(p); } })(path.join(REPO, "app/api/admin"));
+  let allGated = adminRouteFiles.length > 0, anyLegacy = false;
+  for (const f of adminRouteFiles) {
+    const s = fs.readFileSync(f, "utf8"), sc = stripC(s);
+    if (!/requireVerifiedAdmin/.test(s)) allGated = false;
+    if (/adminFromReq|MASTER_PIN|ADMIN_JWT_SECRET|signAdminSessionToken/.test(sc)) anyLegacy = true;
+  }
+  check("scan[routes]: every app/api/admin/** route imports requireVerifiedAdmin", allGated);
+  check("scan[routes]: no admin route references a legacy auth authority", !anyLegacy);
+  let clientImportsStore = false;
+  for (const f of [path.join(REPO, "lib/admin/verify.ts"), path.join(REPO, "lib/admin/supabase-admin-store.ts")]) {
+    // neither file may be a client component
+    if (/^\s*["']use client["']/.test(fs.readFileSync(f, "utf8"))) clientImportsStore = true;
+  }
+  check("scan[bundle]: admin gate + store are server-only (no 'use client')", !clientImportsStore);
 
   // ===== CUSTOMER (notification) GATE =====
   check("customer: valid HS256 token (JWT_ACCESS_SECRET) → verified subject",
@@ -293,14 +434,17 @@ function reqWith(headers) {
   check("admin-login[page]: sends Bearer sb_token to check-role", /Authorization[`'"]?\s*:\s*[`'"]Bearer/.test(loginPage) && loginPage.includes("sb_token"));
   check("admin-login[page]: stores server-verified identity, never reads local sb_user role", loginPage.includes("sb_admin_user") && !/getItem\(["'`]sb_user["'`]\)/.test(loginPage));
 
-  const verifySrc = fs.readFileSync(path.join(REPO, "lib/admin/verify.ts"), "utf8");
+  const verifySrc2 = fs.readFileSync(path.join(REPO, "lib/admin/verify.ts"), "utf8");
+  const verifyCode2 = verifySrc2.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
   // No issuance/acceptance CODE remains (a comment may still name the removed
   // secret): no jwt.sign, no signAdminSessionToken export, no ADMIN_JWT_SECRET
   // env read, no verify against an admin-only secret.
-  check("admin-verify: Master-PIN issuance/acceptance removed", !/jwt\.sign\s*\(/.test(verifySrc) && !/signAdminSessionToken/.test(verifySrc) && !/process\.env\.ADMIN_JWT_SECRET/.test(verifySrc));
-  check("admin-verify: preserves Railway JWT_ACCESS_SECRET verification", verifySrc.includes("JWT_ACCESS_SECRET"));
-  check("admin-verify: preserves JWT_SECRET compatibility fallback", verifySrc.includes("JWT_SECRET"));
-  check("admin-verify: role lookup on every request", verifySrc.includes("lookupAdminRole"));
+  check("admin-verify: Master-PIN issuance/acceptance removed", !/jwt\.sign\s*\(/.test(verifySrc2) && !/signAdminSessionToken/.test(verifySrc2) && !/process\.env\.ADMIN_JWT_SECRET/.test(verifySrc2));
+  check("admin-verify: preserves Railway JWT_ACCESS_SECRET verification", verifySrc2.includes("JWT_ACCESS_SECRET"));
+  // v622 Pass 9C — the JWT_SECRET compatibility fallback is REMOVED for admin auth.
+  check("admin-verify: JWT_SECRET compatibility fallback REMOVED (code)", !/JWT_SECRET/.test(verifyCode2));
+  // Fresh canonical role/blocked lookup on every request via the Supabase store.
+  check("admin-verify: fresh Supabase role/blocked lookup every request", verifyCode2.includes("findAdminById") && verifyCode2.includes("supabase-admin-store"));
 
   // Tracked-tree scan: the Master-PIN / default-PIN material must exist NOWHERE
   // in the shipped tree (docs history is redacted; this test assembles the
