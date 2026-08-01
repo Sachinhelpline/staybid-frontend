@@ -7,6 +7,7 @@ import { peekPendingIntent } from "@/lib/auth-intent";
 import {
   safeReturnRoute,
   isAdminIntentRoute,
+  clearAdminSessionKeys,
   ADMIN_EXCHANGE_FAILED_MSG,
 } from "@/lib/auth-return";
 
@@ -153,13 +154,13 @@ function AuthPage() {
     } catch {}
 
     if (adminIntent) {
-      // Fail closed: no Firebase-token fallback for an admin sign-in intent.
-      // Also proactively clear any admin session keys so a failed exchange can
-      // never leave a stale sb_admin_token/sb_admin_user behind.
-      try {
-        localStorage.removeItem("sb_admin_token");
-        localStorage.removeItem("sb_admin_user");
-      } catch {}
+      // Fail closed: no Firebase-token fallback for an admin sign-in intent,
+      // and NO new session token is written. We proactively clear ONLY the
+      // admin-session keys (sb_admin_token / sb_admin_user) so a failed
+      // exchange can never leave a stale admin session behind. An existing
+      // CUSTOMER session (sb_token / sb_user / sb_token_type) is deliberately
+      // PRESERVED — a failed admin sign-in must not sign a customer out.
+      clearAdminSessionKeys();
       setError(ADMIN_EXCHANGE_FAILED_MSG);
       return;
     }

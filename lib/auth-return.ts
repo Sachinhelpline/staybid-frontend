@@ -52,6 +52,28 @@ export function isAdminIntentRoute(route: string): boolean {
 }
 
 // The user-facing message when an admin-intent sign-in cannot complete the
-// verified backend exchange. Deliberately non-sensitive.
+// verified backend exchange. Deliberately non-sensitive. It does NOT claim
+// "no session exists" — a prior CUSTOMER session may still be present and is
+// deliberately preserved; only the ADMIN session is refused.
 export const ADMIN_EXCHANGE_FAILED_MSG =
-  "Admin sign-in could not be verified with the StayBid server, so no session was created. Please try again in a moment.";
+  "Admin sign-in could not be verified with the StayBid server, so no admin session was created. Please try again in a moment.";
+
+// v622 — Admin-session key names. Kept SEPARATE from the customer session
+// (sb_token / sb_user / sb_token_type), which this module never touches.
+export const ADMIN_SESSION_KEYS = ["sb_admin_token", "sb_admin_user"] as const;
+
+// Clear ONLY the admin-session keys after a failed admin-intent exchange, so
+// no stale admin session can survive. The customer session keys are
+// deliberately left UNTOUCHED — a failed admin sign-in must not log a
+// customer out of their existing session. Storage is injected for testing.
+export function clearAdminSessionKeys(storage?: {
+  removeItem: (k: string) => void;
+}): void {
+  const s =
+    storage ??
+    (typeof localStorage !== "undefined" ? localStorage : undefined);
+  if (!s) return;
+  for (const k of ADMIN_SESSION_KEYS) {
+    try { s.removeItem(k); } catch {}
+  }
+}
