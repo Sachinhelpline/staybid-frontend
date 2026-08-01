@@ -4,6 +4,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { peekPendingIntent } from "@/lib/auth-intent";
+import {
+  safeReturnRoute,
+  isAdminIntentRoute,
+  ADMIN_EXCHANGE_FAILED_MSG,
+} from "@/lib/auth-return";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
 
@@ -78,12 +83,17 @@ function AuthPage() {
   // direct-to-/auth visits). Intent's `route` wins over ?return so the
   // saved deep-link with picker payload survives even if the URL got
   // sanitized along the way.
+  //
+  // v622 — the raw value is ALWAYS passed through safeReturnRoute() before
+  // navigation: external / protocol-relative / scheme'd ?return= values
+  // collapse to "/" (open-redirect guard), and the sanitized route is what
+  // decides admin sign-in intent below.
   const returnRoute = (() => {
     try {
       const fromQuery = searchParams?.get("return");
-      if (fromQuery) return fromQuery;
+      if (fromQuery) return safeReturnRoute(fromQuery);
       const intent = peekPendingIntent();
-      if (intent?.route) return intent.route;
+      if (intent?.route) return safeReturnRoute(intent.route);
     } catch {}
     return "/";
   });
@@ -105,13 +115,24 @@ function AuthPage() {
   }, []);
 
   // ── After Firebase auth: try backend sync, then fall back to Firebase user ─
+  // v622 — ADMIN INTENT FAILS CLOSED. When the (sanitized) return route is an
+  // admin destination, the verified backend exchange MUST succeed: on any
+  // failure we store NO token at all (neither sb_token nor sb_admin_token),
+  // show a clear error, and stay on /auth signed out of admin. A Firebase
+  // RS256 token can never pass /api/admin/check-role, and widening the
+  // customer fallback to admin flows would be an admin-session bypass.
+  // The customer fallback below is UNCHANGED for non-admin destinations.
   const syncAndLogin = async (firebaseUser: any, provider: string) => {
     const idToken = await firebaseUser.getIdToken();
+    const dest = returnRoute(); // already sanitized (safeReturnRoute)
     try {
       // Always use Vercel proxy — avoids ISP/Jio blocks on direct Railway URL
       const res = await fetch("/api/proxy/api/auth/social-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // v622 — the backend derives identity ONLY from the verified idToken;
+        // the extra fields remain for backward compatibility with older
+        // deployments and are ignored by the v622 backend.
         body: JSON.stringify({
           idToken,
           provider,
@@ -127,11 +148,17 @@ function AuthPage() {
           login(data.token, data.user, "backend");
           // v241.3 — return to the deep-link the user was on before
           // the auth gate, not the home page.
-          router.push(returnRoute());
+          router.push(dest);
           return;
         }
       }
     } catch {}
+
+    if (isAdminIntentRoute(dest)) {
+      // Fail closed: no Firebase-token fallback for an admin sign-in intent.
+      setError(ADMIN_EXCHANGE_FAILED_MSG);
+      return;
+    }
 
     // Fallback: store Firebase token — tagged "firebase" so booking actions show inline phone verify
     login(idToken, {
@@ -141,7 +168,7 @@ function AuthPage() {
       phone: firebaseUser.phoneNumber || "",
       role: "customer",
     }, "firebase");
-    router.push(returnRoute());
+    router.push(dest);
   };
 
   // ── v620 — Bulletproof provider sign-in ────────────────────────────────────
