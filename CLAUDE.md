@@ -153,12 +153,14 @@ provider. **Never document or commit secret VALUES anywhere — variable names +
   - Frontend `/auth` (`app/auth/page.tsx` + `lib/auth-return.ts`): the `?return=`/intent route is
     ALWAYS sanitized by `safeReturnRoute()` (external/`//`/backslash/scheme/encoded-slash → `/`,
     open-redirect closed). When the sanitized destination is an admin route (`isAdminIntentRoute`),
-    a failed backend exchange stores NO token at all (no `sb_token`, no `sb_admin_token`), also
-    proactively `removeItem`s `sb_admin_token`/`sb_admin_user`, shows `ADMIN_EXCHANGE_FAILED_MSG`,
-    and stays signed out of admin — the Firebase-token fallback remains ONLY for non-admin customer
-    destinations. Successful flow: Firebase Google login → verified backend exchange → Railway token
-    (`sb_token`, type `backend`) → `/admin/login` → `check-role` (DB role lookup) → same token reused
-    as `sb_admin_token` → `/admin`.
+    a failed backend exchange stores NO new token (no `sb_token`, no `sb_admin_token`) and calls
+    `clearAdminSessionKeys()` to remove ONLY `sb_admin_token`/`sb_admin_user`, shows
+    `ADMIN_EXCHANGE_FAILED_MSG`, and stays signed out of admin. **An existing CUSTOMER session
+    (`sb_token`/`sb_user`/`sb_token_type`) is deliberately PRESERVED** — a failed admin sign-in must
+    not log a customer out; the message says "no admin session was created", never "no session". The
+    Firebase-token fallback remains ONLY for non-admin customer destinations. Successful flow:
+    Firebase Google login → verified backend exchange → Railway token (`sb_token`, type `backend`) →
+    `/admin/login` → `check-role` (DB role lookup) → same token reused as `sb_admin_token` → `/admin`.
   - **Claim minimization:** the `social-login` POST body is `{ idToken }` ONLY — no
     `uid`/`email`/`name`/`phone`/`provider`. The backend derives identity from verified claims, and a
     rollback to the old insecure backend FAILS CLOSED (it required `uid`) instead of trusting
