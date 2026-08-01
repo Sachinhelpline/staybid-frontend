@@ -125,22 +125,20 @@ function AuthPage() {
   const syncAndLogin = async (firebaseUser: any, provider: string) => {
     const idToken = await firebaseUser.getIdToken();
     const dest = returnRoute(); // already sanitized (safeReturnRoute)
+    const adminIntent = isAdminIntentRoute(dest);
     try {
-      // Always use Vercel proxy — avoids ISP/Jio blocks on direct Railway URL
+      // Always use Vercel proxy — avoids ISP/Jio blocks on direct Railway URL.
+      // v622 — CLAIM MINIMIZATION: the body carries ONLY the verified idToken.
+      // The backend derives every identity fact from the token's verified
+      // claims; sending uid/email/name/phone/provider would be dead weight the
+      // server ignores, and — critically — a rollback to the old insecure
+      // backend that trusted those fields must FAIL CLOSED, not silently trust
+      // client-supplied identity. With only idToken present, the old backend
+      // rejects (it required `uid`) instead of minting a spoofable session.
       const res = await fetch("/api/proxy/api/auth/social-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // v622 — the backend derives identity ONLY from the verified idToken;
-        // the extra fields remain for backward compatibility with older
-        // deployments and are ignored by the v622 backend.
-        body: JSON.stringify({
-          idToken,
-          provider,
-          email: firebaseUser.email || null,
-          name: firebaseUser.displayName || firebaseUser.phoneNumber || "Guest",
-          phone: firebaseUser.phoneNumber || null,
-          uid: firebaseUser.uid,
-        }),
+        body: JSON.stringify({ idToken }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -154,8 +152,14 @@ function AuthPage() {
       }
     } catch {}
 
-    if (isAdminIntentRoute(dest)) {
+    if (adminIntent) {
       // Fail closed: no Firebase-token fallback for an admin sign-in intent.
+      // Also proactively clear any admin session keys so a failed exchange can
+      // never leave a stale sb_admin_token/sb_admin_user behind.
+      try {
+        localStorage.removeItem("sb_admin_token");
+        localStorage.removeItem("sb_admin_user");
+      } catch {}
       setError(ADMIN_EXCHANGE_FAILED_MSG);
       return;
     }
@@ -226,6 +230,15 @@ function AuthPage() {
       const { signInWithPopup, signInWithRedirect, GoogleAuthProvider, FacebookAuthProvider } =
         await import("firebase/auth");
       const provider = kind === "google" ? new GoogleAuthProvider() : new FacebookAuthProvider();
+
+      // v622 — For an ADMIN sign-in intent, force the Google account chooser
+      // (prompt=select_account). Otherwise a browser already warm with a
+      // personal customer Google session signs the owner straight back into
+      // the WRONG account with no chance to pick the admin one, and the admin
+      // exchange then fails. Google-only; ignored by Facebook.
+      if (kind === "google" && isAdminIntentRoute(returnRoute())) {
+        try { (provider as any).setCustomParameters?.({ prompt: "select_account" }); } catch {}
+      }
 
       const doRedirect = async () => {
         // Flag survives the round-trip so the mount effect knows to finish it.
