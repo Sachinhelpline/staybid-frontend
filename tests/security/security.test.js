@@ -39,6 +39,7 @@ fs.copyFileSync(path.join(REPO, "lib/auth/customer-verify.ts"), path.join(SRC, "
 fs.copyFileSync(path.join(REPO, "lib/cron/auth.ts"), path.join(SRC, "lib/cron/auth.ts"));
 fs.copyFileSync(path.join(REPO, "lib/razorpay-server.ts"), path.join(SRC, "lib/razorpay-server.ts"));
 fs.copyFileSync(path.join(REPO, "lib/razorpay.ts"), path.join(SRC, "lib/razorpay.ts"));
+fs.copyFileSync(path.join(REPO, "lib/auth-return.ts"), path.join(SRC, "lib/auth-return.ts"));
 fs.writeFileSync(
   path.join(SRC, "tsconfig.json"),
   JSON.stringify({
@@ -58,7 +59,8 @@ const custJs = path.join(OUT, "lib/auth/customer-verify.js");
 const cronJs = path.join(OUT, "lib/cron/auth.js");
 const rzpCfgJs = path.join(OUT, "lib/razorpay-server.js");
 const rzpClientJs = path.join(OUT, "lib/razorpay.js");
-if (!fs.existsSync(adminJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs)) {
+const authReturnJs = path.join(OUT, "lib/auth-return.js");
+if (!fs.existsSync(adminJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
   console.error("COMPILE FAILED — helper JS not emitted");
   process.exit(2);
 }
@@ -101,6 +103,7 @@ const adminV = require(adminJs);
 const custV = require(custJs);
 const cronV = require(cronJs);
 const rzpCfg = require(rzpCfgJs);
+const authReturn = require(authReturnJs);
 
 // ---- 3. assert framework ----------------------------------------------------
 let pass = 0, fail = 0;
@@ -563,6 +566,66 @@ function reqWith(headers) {
     check("health[razorpay-order]: POST full-pair guard precedes req.json()", postIdx > -1 && guardIdx > -1 && bodyIdx > -1 && guardIdx < bodyIdx);
     check("health[razorpay-order]: no work before the POST guard", !/req\.json\(\)|await fetch\(|resolve[A-Z]\w*Charge\(/.test(preGuard));
   }
+
+  // ===== v622 — Google admin sign-in: fail-closed intent + safe returns =====
+  // safeReturnRoute(): the ?return= target must be a rooted same-origin
+  // relative path — everything else collapses to "/" (open-redirect guard).
+  const SR = authReturn.safeReturnRoute;
+  check("return: canonical relative path kept", SR("/admin/login") === "/admin/login");
+  check("return: deep link with query kept", SR("/hotels/abc?x=1") === "/hotels/abc?x=1");
+  check("return: external https → /", SR("https://evil.example/x") === "/");
+  check("return: scheme-in-path → /", SR("/javascript:alert(1)") === "/");
+  check("return: javascript: → /", SR("javascript:alert(1)") === "/");
+  check("return: data: → /", SR("data:text/html,x") === "/");
+  check("return: protocol-relative // → /", SR("//evil.example") === "/");
+  check("return: triple-slash → /", SR("///evil.example") === "/");
+  check("return: backslash /\\ → /", SR("/\\evil.example") === "/");
+  check("return: encoded slash %2F → /", SR("/%2F%2Fevil.example") === "/");
+  check("return: encoded backslash %5C → /", SR("/%5Cevil.example") === "/");
+  check("return: internal whitespace → /", SR("/foo bar") === "/");
+  check("return: control char → /", SR("/foo\tbar") === "/");
+  check("return: non-string → /", SR(123) === "/");
+  check("return: null → /", SR(null) === "/");
+  check("return: empty → /", SR("") === "/");
+  check("return: excessively long → /", SR("/" + "a".repeat(600)) === "/");
+  check("return: not rooted → /", SR("admin/login") === "/");
+
+  // isAdminIntentRoute(): every admin destination (including /admin/login)
+  // is admin intent; lookalike prefixes are not.
+  const AI = authReturn.isAdminIntentRoute;
+  check("admin-intent: /admin", AI("/admin") === true);
+  check("admin-intent: /admin/login", AI("/admin/login") === true);
+  check("admin-intent: /admin?tab=x", AI("/admin?tab=x") === true);
+  check("admin-intent: /admin#x", AI("/admin#x") === true);
+  check("admin-intent: /administrator is NOT admin", AI("/administrator") === false);
+  check("admin-intent: / is not admin", AI("/") === false);
+  check("admin-intent: /hotels is not admin", AI("/hotels/1") === false);
+
+  // Static: /auth wires the sanitizer + the fail-closed admin branch.
+  const authPage = fs.readFileSync(path.join(REPO, "app/auth/page.tsx"), "utf8");
+  check("auth-page: imports safeReturnRoute + isAdminIntentRoute", authPage.includes("safeReturnRoute") && authPage.includes("isAdminIntentRoute") && authPage.includes('from "@/lib/auth-return"'));
+  check("auth-page: ?return= goes through safeReturnRoute", /safeReturnRoute\(fromQuery\)/.test(authPage));
+  check("auth-page: stored intent route goes through safeReturnRoute", /safeReturnRoute\(intent\.route\)/.test(authPage));
+  // Every navigation target flows from returnRoute(), whose BOTH branches
+  // sanitize via safeReturnRoute above — no raw searchParams push remains.
+  check("auth-page: no direct push of raw searchParams return", !/router\.push\(\s*searchParams/.test(authPage) && !/push\(\s*fromQuery/.test(authPage));
+  // The admin-intent guard must sit BETWEEN the backend exchange and the
+  // Firebase fallback, and return without any login()/token write.
+  {
+    const backendLogin = authPage.indexOf('login(data.token, data.user, "backend")');
+    const guard = authPage.indexOf("if (isAdminIntentRoute(dest))");
+    const fallback = authPage.indexOf("login(idToken");
+    check("auth-page: admin guard exists", guard > -1);
+    check("auth-page: backend exchange precedes the admin guard", backendLogin > -1 && backendLogin < guard);
+    check("auth-page: admin guard precedes the Firebase fallback", fallback > -1 && guard < fallback);
+    const guardBlock = authPage.slice(guard, fallback);
+    check("auth-page: admin-intent failure returns WITHOUT storing any token", /return;/.test(guardBlock) && !/login\(/.test(guardBlock) && !/setItem\(/.test(guardBlock));
+    check("auth-page: admin-intent failure shows a clear error", guardBlock.includes("ADMIN_EXCHANGE_FAILED_MSG"));
+  }
+  check("auth-page: never writes sb_admin_token itself", !/setItem\(["'`]sb_admin_token/.test(authPage));
+  check("auth-page: Firebase fallback stays customer-tagged", /"firebase"\s*\)/.test(authPage) && /role:\s*"customer"/.test(authPage));
+  // Canonical admin flow: /admin/login verifies via check-role then lands on /admin.
+  check("admin-login[page]: successful verify lands on /admin", /router\.replace\(["']\/admin["']\)/.test(loginPage));
 
   console.log(results.join("\n"));
   console.log(`\n${pass} passed, ${fail} failed`);
