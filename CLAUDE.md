@@ -139,6 +139,28 @@ provider. **Never document or commit secret VALUES anywhere — variable names +
   - ⚠ **Follow-up (Railway):** add an admin-scope claim (`token_use`/`aud`) minted only at admin login so the
     frontend can distinguish admin-context tokens; today any valid Railway token for an admin-role subject
     authorizes admin access (bounded to that admin principal; DB role is the guard).
+- **🔒 Google admin sign-in is a VERIFIED exchange + admin intent FAILS CLOSED (v622):**
+  - Railway `/api/auth/social-login` now REQUIRES the Firebase `idToken` and verifies it server-side
+    (signature/expiry/issuer/audience per https://firebase.google.com/docs/auth/admin/verify-id-tokens);
+    identity comes ONLY from verified claims — client-supplied `uid`/`email`/`name`/`phone`/`role` are
+    ignored. Canonical linking: durable `auth_identities` mapping → exact verified-email match →
+    single case-insensitive match → legacy `phone=email` rows → legacy `fb_<uid>` customer → create.
+    Ambiguous case-variant duplicates fail closed 409; admin/super_admin linking requires a VERIFIED
+    Google provider + `email_verified` and can never attach via a `fb_*`/phone path. **Never manually
+    promote a `fb_*` row to admin.** Railway env needs `FIREBASE_PROJECT_ID` + `JWT_ACCESS_SECRET`
+    (503 `auth_config_missing` without them — no dev fallback). Minted tokens carry the canonical
+    user id as `sub` (+ `id` compat).
+  - Frontend `/auth` (`app/auth/page.tsx` + `lib/auth-return.ts`): the `?return=`/intent route is
+    ALWAYS sanitized by `safeReturnRoute()` (external/`//`/backslash/scheme/encoded-slash → `/`,
+    open-redirect closed). When the sanitized destination is an admin route (`isAdminIntentRoute`),
+    a failed backend exchange stores NO token at all (no `sb_token`, no `sb_admin_token`), shows
+    `ADMIN_EXCHANGE_FAILED_MSG`, and stays signed out of admin — the Firebase-token fallback remains
+    ONLY for non-admin customer destinations. Successful flow: Firebase Google login → verified
+    backend exchange → Railway token (`sb_token`, type `backend`) → `/admin/login` → `check-role`
+    (DB role lookup) → same token reused as `sb_admin_token` → `/admin`.
+  - Regression coverage: `npm run test:security` (return-route sanitizer, admin-intent fail-closed
+    ordering scan) + backend `apps/api && npm run test:security` in `staybid-Live` (verifier,
+    linking order, admin policy). Run BOTH on any auth change.
 - **Sign-in-then-resume:** auth-gated CTAs use `redirectToSignIn(router,{route,action?,payload?})`
   (`lib/auth-intent.ts`, 30-min localStorage TTL) + `consumeMatchingIntent()` on the destination.
   `/auth` reads `?return=` (wrapped in `<Suspense>`).
