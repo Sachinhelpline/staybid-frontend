@@ -211,8 +211,13 @@ Files flagged for triage (user-facing strings only):
 ## F. Legacy-but-live routes (owner decision #8 — ALL stay in scope, upgrade everything)
 
 - `/circle/model3`, `/circle/model4` — pre-v346 prototype names, still routable, cross-link to Model 2. UPGRADE.
-- `/wallet`, `/points`, `/redeem`, `/my-codes` — redirect shells → `/passport?tab=`. Keep as redirects; no UI work needed beyond verifying redirect still works.
-- `/kiosk`, `/order/[outlet]` — offline kiosk + public QR food-ordering. UPGRADE.
+- `/wallet`, `/points`, `/points/redeem`, `/my-codes` — redirect shells → `/passport?tab=`. Keep as redirects; verify redirect still works. (NOTE: `/redeem` does NOT exist — corrected per gap G27.)
+- `/kiosk`, `/kiosk/book`, `/kiosk/display`, `/order/[outlet]` — offline kiosk + public QR food-ordering. UPGRADE (Phase 2, own-chrome surfaces).
+
+> ⚠ See `03-GAP-REMEDIATION.md` for the full corrected scope. `components/DialerNav.tsx`
+> is RETIRED (v80, mounted nowhere) — do NOT sweep it. The tutorial layer
+> (`lib/tutorial/tutorial-content.ts` — 20 Hinglish `hi:` blocks + `LanguageToggle`) is
+> an unresolved decision-#12 item (Decision Register D1).
 
 ## G. Out-of-scope (locked)
 

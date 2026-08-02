@@ -33,8 +33,12 @@
 - Owner locked all 14 decisions (see roadmap §2).
 - Hinglish confirmed real (partner dashboard :1801) — sweep scoped in inventory §E.
 - Created: 00-MASTER-ROADMAP, 01-INVENTORY (+gen script), 02-FOUNDATION-SPEC, this ledger.
-- NEXT: R3 double-verify → R4 owner sign-off → Phase 0 mood-boards (2-3 directions:
-  home + flash card + admin table, light+dark each) for owner to choose.
+- R3 double-verify DONE: adversarial roadmap review found 30 gaps → all folded into
+  `03-GAP-REMEDIATION.md` (coverage holes, global-chrome phase, dark-mode harness to build,
+  driver.js tour-selector invariant, PWA/TWA theme colours, Phase-0 split, factual fixes).
+  5 owner decisions parked in the Decision Register (D1-D5) — non-blocking.
+- Draft PR #536 opened + Vercel preview Ready (docs-only, clean).
+- NEXT: mood-boards v1 (3 directions × home + flash card + admin table, light+dark).
 
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)

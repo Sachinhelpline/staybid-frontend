@@ -54,6 +54,13 @@ Hard requirements (owner):
 | 13 | Logic | Money/payments/bids/security STRICTLY untouched — presentation only. |
 | 14 | Pace | Quality-first, phased, stop at phase boundaries for owner "continue". |
 
+> ⚠ **This §3 is amended by `03-GAP-REMEDIATION.md`** (30-gap adversarial review, 2026-08-02).
+> Key amendments: Phase 0 splits into 0a (invisible foundation) + 0b (intentional visible
+> fixes); NEW Phase 0.5 "Global Chrome"; customer scope is 39 pages (not ~25); the coverage
+> matrix (not prose) is the authority for "in scope"; dark-mode audit harness + visual-regression
+> baselines are Phase-0 work items to BUILD; §5 gains driver.js tour selectors, PWA theme
+> colours, TWA, and 10 more invariants. Read 03 alongside this.
+
 ## 3. Phase plan
 
 Every phase has: (a) entry criteria, (b) deliverables, (c) EXIT GATES that must all
