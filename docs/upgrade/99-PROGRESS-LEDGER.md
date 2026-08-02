@@ -113,6 +113,32 @@
 - NEXT: capture VR baselines on preview for these routes; next customer surface
   (recommend Reels overlay or Home flash duplication cleanup) — sample round first.
 
+### 2026-08-02 — Session 1 (Phase 1 — reels overlay, shipped)
+- Owner picked **Treatment A (Minimal)** for the reel overlay.
+- **`components/discover/InstagramHotelFeed.tsx` HotelCard restyled** (surgical,
+  presentation-only): right rail is now icon-only (removed the Share/Save/On-Off/More
+  text labels; like+comment keep counts); the 5–7 pill trust wall → ONE line
+  (`.ig-trust-line`: ★ rating · live StayBid score badge · views) with the star-count
+  pill, LIVE-BIDDING pill and the duplicate tagged-hotel score chip dropped; caption
+  clamps to 1 line (was 2); and the two EQUAL CTAs become **Book primary + a quiet
+  `.ig-cta-mini` Bid secondary**.
+- **Deliberately KEPT (functionality preserved):** the "Posted by @handle" creator
+  sub-chip (I removed it, then restored it — on creator/public reels the header shows
+  the TAGGED HOTEL and this chip is the ACTUAL poster + the only creator-open
+  affordance; not redundant there). All handlers, deep links and chains intact.
+- **No new styled-jsx block** (file already has 3 `<style jsx global>` and builds fine —
+  the SWC panic is about scoped/IIFE blocks, not 3 globals). New classes went to
+  globals.css.
+- Badge v625→**v626**, sw `HTML_CACHE` v422→**v423**.
+- **Gates GREEN:** tsc 0 · `npm run build` 0 (25s) · security 385/0 · geometry audit
+  `/discover` light+dark × mobile+laptop → 0 overflow / 0 errors / theme 100%.
+- **Load-bearing chains verified intact** (grep): 5-hop `_clientPostId` dedup (6),
+  tagged-hotel `intent=book/negotiate` deep links (4), starting-prices (15), handlers
+  (27), fullscreen/`--reel-vh` untouched, NO private-DM affordance added (the one "direct
+  message" hit is the anti-DM guard MESSAGE itself, v25).
+- NEXT: capture VR baselines on preview; next surface (Home flash-duplication cleanup
+  or Hotels list) — sample round first.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

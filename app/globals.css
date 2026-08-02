@@ -13294,3 +13294,32 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 
 /* ---- Icon (lucide wrapper) ---- */
 .sbui-icon { display: inline-block; vertical-align: middle; flex: 0 0 auto; color: currentColor; }
+
+/* ═══ v625 Reels overlay Treatment A (Clean) — reel is an always-dark surface ═══
+   New classes only (no existing .ig-* rule touched, no new styled-jsx block).
+   The reel restyle replaces the pill-wall trust row with one line and makes the
+   Bid CTA a quiet secondary beside the primary Book button. */
+.ig-trust-line {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.ig-trust-item {
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+}
+/* Quiet secondary CTA (Bid) beside the primary Book button. Book (.ig-cta-3d)
+   keeps flex:1 and stays prominent; this one is compact glass. */
+.ig-cta-mini {
+  display: inline-flex; align-items: center; gap: 5px;
+  flex: 0 0 auto;
+  padding: 10px 14px; border-radius: 12px;
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.01em;
+  color: #ffffff; cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: background 0.18s ease, transform 0.1s ease;
+}
+.ig-cta-mini:hover { background: rgba(255, 255, 255, 0.18); }
+.ig-cta-mini:active { transform: translateY(1px); }
