@@ -541,6 +541,42 @@
 - NEXT: owner device-check v639 → /bookings (same account cluster) or
   Phase 2 panels.
 
+### 2026-08-03 — Session 6 cont. (v640 — /bookings: 3D ticket cards + lucide chrome)
+- **Owner commission:** "bookings. go ahead." Presentation-only — hold/
+  pay-balance (HoldBanner → Razorpay → /api/holds/:id/balance), feedback
+  submit, and BookingChat logic all byte-identical.
+- **Card grammar:** `.bk-card` (booking tickets + empty-state disc)
+  re-skinned from 1px-border flat to the borderless 4-layer 3D grammar +
+  dark variant; hover deepen wrapped in `@media (hover:hover)`. The 3px
+  gradient ticket-top strip and the drawn `<Barcode/>` kept — they ARE the
+  ticket identity.
+- **Chrome emoji→lucide (~24 swaps):** room pills 🔑→KeyRound, pay-at-hotel
+  🏨→Building2, price-locked 🔒→Lock, hold-expired ⏰→AlarmClock, pay-balance
+  CTA ✅→Wallet (and ⏳ dropped from the loading label), feedback-thanks
+  ✅→Check, rate-stay ⭐→Star, StayPoints 🎁→Gift/⭐→Star (banners + program
+  card + hero chip), report 🚩→Flag, expand ▼→ChevronDown (rotate pattern
+  kept), InfoRow 📍📞✉️🛏🗓→MapPin/Phone/Mail/BedDouble/CalendarDays
+  (InfoRow `icon` prop widened string→ReactNode), action buttons 🗺📱💬→
+  Map/Phone/MessageCircle, hero chips 🎫🗓⭐→Ticket/CalendarDays/Star,
+  empty state 📋→ClipboardList. **Shared `components/BookingChat.tsx`**
+  (renders inside the card, customer + partner modes) — its two 💬 chrome
+  glyphs → MessageCircle; both modes get the same icon.
+- **KEEP list:** ★/☆ rating glyphs (rating vocabulary), 😊 smiley-composer
+  reference (the product IS the smiley feedback), 👋 in chat empty copy,
+  Razorpay description strings, brand-coloured action buttons (blue/
+  emerald/WhatsApp-green are deliberate brand-action colours).
+- Badge v639→**v640** (`SB_BUILD v640-bookings-3dcards-lucide`), sw
+  `HTML_CACHE` v436→**v437**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **11/11** via
+  route-intercepted fixtures (CONFIRMED + CHECKED_OUT bookings): 390w
+  light (borderless 4-layer + inset computed, emoji scan clean, room pill
+  + credited + rate-stay render, expand → info rows with 26 lucide svgs,
+  0 overflow), 1440w dark (black-cast 4-layer, 2-col grid, 0 overflow),
+  empty state clean. First audit run caught the leftover 💬 inside the
+  shared BookingChat — fixed at source, fresh server, re-audited green.
+- NEXT: owner device-check v639+v640 together (my-bids → bookings is one
+  journey) → /passport or Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

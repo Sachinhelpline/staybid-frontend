@@ -5,6 +5,7 @@
 // alignment.
 
 import { useEffect, useRef, useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { sanitizeText } from "@/lib/sanitize-text";
 
 export type ChatMessage = {
@@ -129,7 +130,7 @@ export default function BookingChat({
         className="mt-3 w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-gold-200 hover:border-gold-400 bg-gold-50/40 hover:bg-gold-50 transition text-left"
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-luxury-800">
-          💬 {mode === "customer" ? `Message ${hotelName}` : `Message ${customerName}`}
+          <MessageCircle size={15} strokeWidth={2.4} aria-hidden /> {mode === "customer" ? `Message ${hotelName}` : `Message ${customerName}`}
         </span>
         <span className="flex items-center gap-2">
           {unreadHint > 0 && (
@@ -149,8 +150,8 @@ export default function BookingChat({
     <div className="mt-3 rounded-2xl border border-luxury-200 bg-white overflow-hidden">
       {/* Header */}
       <div className="px-4 py-2.5 flex items-center justify-between bg-linear-to-r from-luxury-50 to-gold-50 border-b border-luxury-100">
-        <p className="text-xs font-bold text-luxury-700">
-          💬 Trip chat · {mode === "customer" ? hotelName : customerName}
+        <p className="text-xs font-bold text-luxury-700 flex items-center gap-1.5">
+          <MessageCircle size={13} strokeWidth={2.4} aria-hidden /> Trip chat · {mode === "customer" ? hotelName : customerName}
         </p>
         <button onClick={() => setCollapsed(true)} className="text-luxury-400 hover:text-luxury-800 text-xs">Close ✕</button>
       </div>
