@@ -1281,18 +1281,15 @@ export default function DesktopHome() {
         href: "/hotels",
       });
     }
-    deals.slice(0, 8).forEach((d, i) => {
-      if (!d.hotel?.name) return;
-      out.push({
-        k: `deal-${d.id || i}`,
-        icon: "⚡",
-        text: d.hotel.name,
-        accent: offPct(d.marketRate, d.aiPrice) > 0
-          ? `${offPct(d.marketRate, d.aiPrice)}% OFF`
-          : undefined,
-        // the deal's own hotel when we know it, else the deals surface
-        href: d.hotelId || d.hotel?.id ? `/hotels/${d.hotelId || d.hotel?.id}` : "/flash-deals",
-      });
+    // v628 — the ticker no longer repeats the Flash Deals rail. Flash now lives
+    // ONLY in the ⚡ Flash Deals rail below; the ticker carries season +
+    // real ZONE destination links (only zones that have live properties) +
+    // the inventory count — distinct, non-duplicative "what's live" facts.
+    const cityHasStay = (cities: string[]) =>
+      hotels.some((h) => cities.includes((h.city || "").toLowerCase()));
+    LAUNCH_ZONES.forEach((z) => {
+      if (!cityHasStay(z.cities)) return;
+      out.push({ k: `zone-${z.id}`, icon: "🧭", text: `Explore ${z.label}`, href: "/hotels" });
     });
     if (hotels.length) {
       out.push({
@@ -1303,7 +1300,7 @@ export default function DesktopHome() {
       });
     }
     return out;
-  }, [deals, hotels.length, demand]);
+  }, [hotels, demand]);
 
   // zone rails — reuse the launch curation grouping (same as /hotels).
   // v580 — rails are ordered by how reachable their best city is for THIS
@@ -1458,7 +1455,7 @@ export default function DesktopHome() {
         <div className="sbh-hero-inner">
           <p className="sbh-eyebrow">
             <span className="sbh-dot" aria-hidden />
-            {SEASON_ICON[demand.season] || "✦"} {demand.season} · In season now
+            {SEASON_ICON[demand.season] || "✦"} {demand.season} · {featured && demandTier(featured.city || "", effMonth) === "primary" ? "In season now" : "picked for you"}
             {fRank?.rank && fRank?.scopeLabel ? ` · #${fRank.rank} in ${fRank.scopeLabel}` : ""}
           </p>
           <h1 className="sbh-hero-title">{featured?.name || "Bid your stay. Save big."}</h1>
@@ -1621,40 +1618,13 @@ export default function DesktopHome() {
           </Rail>
         ) : null}
 
-        {/* v581 — "WHAT KIND OF TRIP?" — the deck's 6 trip formats as chips.
-            The traveller who doesn't know WHERE they want to go usually does
-            know WHAT KIND of trip they want — pick the trip, we match the
-            places (corridor + budget-band gated, reach-ordered). Selection
-            persists and feeds the audience-segment inference. */}
-        <section className="sbh-trip" ref={tripRef} aria-label="Plan by trip type">
-          <div className="sbh-trip-head">
-            <h2 className="sbh-rail-title">🧭 What kind of trip?</h2>
-            <p className="sbh-rail-sub">Not sure where to go? Pick the trip — we&apos;ll match the places.</p>
-          </div>
-          <div className="sbh-trip-chips" role="tablist" aria-label="Trip types">
-            {TRIP_FORMATS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                role="tab"
-                aria-selected={tripSel === f.id}
-                className={`sbh-trip-chip${tripSel === f.id ? " is-on" : ""}`}
-                onClick={() => pickTrip(f.id)}
-              >
-                <span aria-hidden>{f.emoji}</span> {f.label}
-              </button>
-            ))}
-          </div>
-        </section>
-        {tripRail.length ? (
-          <Rail
-            title={`${selFormat.emoji} ${selFormat.label} picks`}
-            sub={`${selFormat.blurb} · ${selFormat.nights}`}
-            href="/hotels"
-          >
-            {tripRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} why={whyFor(h.city)} />)}
-          </Rail>
-        ) : null}
+        {/* v628 — "What kind of trip?" chips + the format-picks rail were a
+            SECOND, parallel trip chooser alongside the Trip Finder above (which
+            already asks the trip type in its Who·Trip·Budget flow). Consolidated
+            to the one Trip Finder (owner decision 1A): the duplicate chips
+            section + its picks rail are removed. The same properties still
+            appear in the Trip Finder matches, the zone rails and Easy getaways —
+            nothing left the product, only the repetition. */}
 
         {/* v580 — the owner's fit-matrix strategy as a browse surface: the
             top properties this viewer can most easily reach, in one row, so

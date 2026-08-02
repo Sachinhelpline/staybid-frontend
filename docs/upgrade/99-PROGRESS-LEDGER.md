@@ -157,6 +157,32 @@
 - NEXT: capture VR baselines on preview; next surface (Home flash-duplication cleanup or
   hotel detail) — sample round first.
 
+### 2026-08-02 — Session 1 (Phase 1 — home "Stage" cleanup, shipped)
+- Owner: "hero ka rule mat badlo, sirf eyebrow bug fix karo; baaki meri
+  recommendation se" → implemented 1A + 2A + the eyebrow fix.
+- **Hero eyebrow bug fix** (`components/home/DesktopHome.tsx:1461`): the eyebrow
+  printed "· In season now" on EVERY rotating slide, even reach-fill out-of-season
+  properties. Now it says "In season now" ONLY when the current slide's city is
+  genuinely `primary` this month (`demandTier(featured.city, effMonth)`), else the
+  honest "picked for you" (matching what the dots already say). Hero rotation / pool
+  / rank / title UNCHANGED — only the label text logic.
+- **2A — ticker stops repeating flash** (`ticker` useMemo): removed the up-to-8
+  flash-deal items (they duplicated the ⚡ Flash Deals rail). The ticker now carries
+  season + real ZONE destination links (only `LAUNCH_ZONES` that have live properties)
+  + the inventory count — distinct, non-duplicative. Flash lives ONLY in the rail now.
+  Dep array `[deals,hotels.length,demand]` → `[hotels,demand]`.
+- **1A — trip choosers 3 → 1**: removed the standalone "🧭 What kind of trip?" chips
+  section + its format-picks rail (a second, parallel trip chooser). Trip Finder is the
+  one chooser. Same properties still appear in Trip Finder matches + zone rails + Easy
+  getaways — nothing left the product. (The now-unused trip-format state/memo are dead
+  but harmless — a later cleanup can prune `tripSel`/`pickTrip`/`tripRail`/`selFormat`.)
+- Badge v627→**v628**, sw `HTML_CACHE` v424→**v425**.
+- **Gates GREEN:** clean-`.next` build 0 (28.8s) · tsc 0 · security 385/0 · geometry
+  audit `/` light+dark × mobile+laptop → 0 overflow / 0 errors / theme 100%.
+- **Phase 1 customer core: flash card ✓ · reels ✓ · hotels list ✓ · home cleanup ✓.**
+- NEXT: capture VR baselines on preview; remaining customer surfaces (bid arena, hotel
+  detail, my-bids, bookings, auth) or the 7→5 bottom-nav (decision #5) — sample first.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
