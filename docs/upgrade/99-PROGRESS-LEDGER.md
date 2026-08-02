@@ -56,9 +56,23 @@
   test:security` 385/0. Baseline tsc confirmed clean BEFORE changes.
 - Design tokens exist but are consumed by nothing yet → zero visual change (verified by
   clean build parsing globals.css + no `.sbui-*`/`--fs-*` reference on any existing element).
-- NEXT (Phase 0a cont.): (1) make `responsive-audit/` dark-mode capable + add missing panel
-  route manifests (gaps G4/G5); (2) Playwright visual-regression config + pre-upgrade
-  baselines BEFORE any consumer swap (G6); (3) next/font infra. THEN Phase 1 adoption.
+- **Phase 0a cont. — dark-mode audit harness SHIPPED (gaps G4/G5):**
+  - `responsive-audit/audit.mjs`: `--theme light|dark|both` (default both). Forces the
+    theme by seeding `sb_theme` before first paint (verified real key: `app/layout.tsx:160`
+    no-FOUC bootstrap; the adversarial review's `lib/theme-store.tsx:42` line ref was
+    approximate). Records `themeApplied` (reads back `data-theme`) so a theme that didn't
+    apply is flagged. Screenshots + report gain a theme axis. Added a Chromium
+    `executablePath` resolver (managed runners pin a build number Playwright can't
+    auto-download; `playwright install` is blocked) — env override → `chromium` symlink →
+    `chromium-<n>` glob → default.
+  - `responsive-audit/routes.mjs`: added the 7 missing surfaces (circle 18 · host 11 ·
+    trade 4 · worker 2 · agent 4 · kiosk 3 · order 1) + missing customer routes (passport,
+    trust, privacy-policy, verification/record, hotel reviews/feedback, r/[code]). Now 12
+    surfaces / 125 route-entries (was 5 / ~50). `ALL_SURFACES` export added.
+  - **PROVEN:** smoke run `--only / --theme both` → home rendered in light AND dark,
+    `themeApplied` == requested for both, 0 overflow, 0 errors, chromium resolved.
+- NEXT (Phase 0a cont.): (1) Playwright visual-regression config + pre-upgrade baselines
+  BEFORE any consumer swap (G6); (2) next/font infra. THEN Phase 1 adoption.
 - Open owner Qs (non-blocking): flash "% OFF" steel vs gold; Decision Register D1-D5.
 
 <!-- Append new sessions ABOVE this line’s template:

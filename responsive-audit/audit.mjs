@@ -21,9 +21,32 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { DEVICES } from "./devices.mjs";
 import { SURFACES } from "./routes.mjs";
+
+// Resolve a Chromium executable. Managed/cloud runners pre-install a browser
+// under PLAYWRIGHT_BROWSERS_PATH whose build number often differs from the one
+// this Playwright version would download — and `playwright install` is blocked.
+// Prefer an explicit env override, then the stable `chromium` symlink, then any
+// `chromium-<build>/chrome-linux/chrome`, else fall back to Playwright's own
+// resolution (undefined).
+function resolveChromiumPath() {
+  const envPath = process.env.PLAYWRIGHT_EXECUTABLE_PATH || process.env.PLAYWRIGHT_CHROMIUM_PATH;
+  if (envPath && existsSync(envPath)) return envPath;
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
+  const symlink = path.join(root, "chromium");
+  if (existsSync(symlink)) return symlink;
+  try {
+    const dir = readdirSync(root).filter((d) => /^chromium-\d+$/.test(d)).sort().pop();
+    if (dir) {
+      const bin = path.join(root, dir, "chrome-linux", "chrome");
+      if (existsSync(bin)) return bin;
+    }
+  } catch { /* fall through */ }
+  return undefined;
+}
 
 const args = process.argv.slice(2);
 const getArg = (k, d) => {
@@ -36,6 +59,13 @@ const ONLY = getArg("only", "").split(",").filter(Boolean);
 const SHOTS = !args.includes("--no-shots");
 const AUTH = args.includes("--auth");
 const DEVICE_FILTER = getArg("devices", "").split(",").filter(Boolean);
+// --theme light|dark|both  (default: both — the upgrade requires BOTH modes
+// perfect on every surface, so a single-theme run is never the full gate).
+// Theme is forced by seeding localStorage `sb_theme` before first paint; the
+// no-FOUC bootstrap in app/layout.tsx then stamps <html data-theme> for us.
+const THEME_ARG = getArg("theme", "both");
+const THEMES = THEME_ARG === "light" ? ["light"] : THEME_ARG === "dark" ? ["dark"] : ["light", "dark"];
+const themeInitScript = (t) => `try{localStorage.setItem('sb_theme', ${JSON.stringify(t)});}catch(e){}`;
 
 const TOL = 2; // px tolerance for sub-pixel rounding
 
@@ -187,20 +217,26 @@ async function run() {
   );
   const devices = DEVICES.filter((d) => DEVICE_FILTER.length === 0 || DEVICE_FILTER.includes(d.id));
 
-  const browser = await chromium.launch();
+  const executablePath = resolveChromiumPath();
+  if (executablePath) process.stdout.write(`chromium: ${executablePath}\n`);
+  const browser = await chromium.launch(executablePath ? { executablePath } : {});
   const results = [];
   const t0 = Date.now();
 
   for (const device of devices) {
+   for (const theme of THEMES) {
     const context = await browser.newContext({
       viewport: { width: device.width, height: device.height },
       deviceScaleFactor: device.dpr,
       isMobile: device.isMobile,
       hasTouch: device.hasTouch,
       userAgent: device.ua,
+      colorScheme: theme, // aligns the UA prefers-color-scheme with the forced theme
     });
-    // Always suppress the first-run "Welcome to StayBid" intro carousel so
-    // screenshots capture real page content, not the onboarding splash.
+    // Force the theme (seed sb_theme before first paint) + suppress the
+    // first-run "Welcome to StayBid" intro carousel so screenshots capture real
+    // page content, not the onboarding splash.
+    await context.addInitScript(themeInitScript(theme));
     await context.addInitScript(`try{
       localStorage.setItem('sb_tutorial_disabled','1');
       localStorage.setItem('sb_tutorial_welcome_seen','1');
@@ -250,8 +286,14 @@ async function run() {
           findings.horizontalOverflowRaw = findings.horizontalOverflow;
           findings.horizontalOverflow = Math.min(findings.horizontalOverflow, settled);
         }
+        // Record the theme the page actually rendered in (proves the seed took).
+        if (findings) {
+          findings.themeApplied = await page
+            .evaluate(() => document.documentElement.getAttribute("data-theme"))
+            .catch(() => null);
+        }
         if (SHOTS) {
-          const dir = path.join("responsive-audit/artifacts", SURFACE, device.id);
+          const dir = path.join("responsive-audit/artifacts", SURFACE, device.id, theme);
           await mkdir(dir, { recursive: true });
           await page.screenshot({ path: path.join(dir, route.name + ".png"), fullPage: false });
         }
@@ -261,16 +303,18 @@ async function run() {
       const redirected = finalUrl.replace(BASE, "").split("?")[0] !== route.path;
       results.push({
         device: device.id, deviceClass: device.class, deviceLabel: device.label,
-        w: device.width, h: device.height,
+        w: device.width, h: device.height, theme,
         route: route.path, name: route.name, auth: !!route.auth,
         status, redirected, finalUrl: finalUrl.replace(BASE, ""),
         consoleErrors: consoleErrors.slice(0, 5), consoleErrorCount: consoleErrors.length,
         err, ...findings,
       });
       const flag = err ? "ERR " : (findings?.horizontalOverflow ? `OVF+${findings.horizontalOverflow} ` : "");
-      process.stdout.write(`  ${device.id} ${route.path} → ${status}${redirected ? " (→" + finalUrl.replace(BASE, "") + ")" : ""} ${flag}\n`);
+      const themeMismatch = findings && findings.themeApplied && findings.themeApplied !== theme ? ` THEME!=${findings.themeApplied}` : "";
+      process.stdout.write(`  ${device.id}/${theme} ${route.path} → ${status}${redirected ? " (→" + finalUrl.replace(BASE, "") + ")" : ""} ${flag}${themeMismatch}\n`);
     }
     await context.close();
+   }
   }
   await browser.close();
 
@@ -280,18 +324,19 @@ async function run() {
   // Markdown summary: group by route, show worst finding per device class.
   const byRoute = {};
   for (const r of results) (byRoute[r.route] ||= []).push(r);
-  let md = `# Responsive audit — ${SURFACE}\n\nBase: ${BASE} · ${devices.length} devices × ${routes.length} routes = ${results.length} checks · ${new Date().toISOString()}\n\n`;
+  let md = `# Responsive audit — ${SURFACE}\n\nBase: ${BASE} · ${devices.length} devices × ${THEMES.length} themes (${THEMES.join(", ")}) × ${routes.length} routes = ${results.length} checks · ${new Date().toISOString()}\n\n`;
   md += `Legend: **OVF** = horizontal overflow (content cut), **spill** = elements past viewport edge, **back** = back-affordance count (>1 = duplicate), **tap** = tap targets <44px, **err** = load/console errors.\n\n`;
-  md += `| Route | Device class | Status | OVF | spill | back | tap<44 | console err | notes |\n|---|---|---|---|---|---|---|---|---|\n`;
+  md += `| Route | Device class | Theme | Status | OVF | spill | back | tap<44 | console err | notes |\n|---|---|---|---|---|---|---|---|---|---|\n`;
   for (const [route, rows] of Object.entries(byRoute)) {
     for (const r of rows) {
       const notes = [];
       if (r.err) notes.push("LOAD ERR: " + r.err);
       else {
         if (r.redirected) notes.push("→ " + r.finalUrl);
+        if (r.themeApplied && r.themeApplied !== r.theme) notes.push("THEME NOT APPLIED (" + r.themeApplied + ")");
         if (r.spill?.length) notes.push("worst: " + r.spill[0].el + " (+" + r.spill[0].over + "px)");
       }
-      md += `| \`${route}\` | ${r.deviceLabel} | ${r.status || "-"} | ${r.horizontalOverflow || ""} | ${r.spillCount || ""} | ${r.backCount || ""} | ${r.smallTargets || ""} | ${r.consoleErrorCount || ""} | ${notes.join("; ").slice(0, 90)} |\n`;
+      md += `| \`${route}\` | ${r.deviceLabel} | ${r.theme || "-"} | ${r.status || "-"} | ${r.horizontalOverflow || ""} | ${r.spillCount || ""} | ${r.backCount || ""} | ${r.smallTargets || ""} | ${r.consoleErrorCount || ""} | ${notes.join("; ").slice(0, 90)} |\n`;
     }
   }
   await writeFile("responsive-audit/report.md", md);
@@ -300,8 +345,9 @@ async function run() {
   const ovf = results.filter((r) => r.horizontalOverflow).length;
   const errs = results.filter((r) => r.err).length;
   const dupBack = results.filter((r) => r.backCount > 1).length;
+  const themeMiss = results.filter((r) => r.themeApplied && r.themeApplied !== r.theme).length;
   console.log(`\n──────── SUMMARY ────────`);
-  console.log(`checks: ${results.length}  | horizontal-overflow: ${ovf}  | load-errors: ${errs}  | duplicate-back: ${dupBack}`);
+  console.log(`checks: ${results.length} (${THEMES.join("+")})  | horizontal-overflow: ${ovf}  | load-errors: ${errs}  | duplicate-back: ${dupBack}  | theme-not-applied: ${themeMiss}`);
   console.log(`reports: responsive-audit/report.md  +  report.json`);
 }
 
