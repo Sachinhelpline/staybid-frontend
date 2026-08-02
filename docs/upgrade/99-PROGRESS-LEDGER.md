@@ -614,6 +614,39 @@
 - NEXT: owner device-check v639-v641 → /auth (careful: admin-intent
   fail-closed logic) or Phase 2 panels.
 
+### 2026-08-03 — Session 6 cont. (v642 — /auth: 3D card shells + lucide chrome)
+- **Owner commission:** "auth". The most security-sensitive customer page
+  — v622 admin-intent fail-closed + claim minimization + v620 bulletproof
+  provider sign-in all live here. **Every handler, ordering, and auth
+  contract byte-identical**; the pass touched ONLY presentational
+  classNames/glyphs. Security suite (which scans this file's fail-closed
+  ordering) re-run green.
+- **Study finding (blind-build avoided):** initial "white cards in dark"
+  hunch was WRONG — the v458 `.auth-root` bridge in globals.css already
+  tokenizes the whole page for dark (bg-white→bg-card, borders, provider
+  tints, error box, text bridge). Dark was already correct at the cause,
+  so the pass narrowed to exactly two grammar deltas.
+- **Card grammar:** new `.auth-root .au-card` (globals, inside the v458
+  block) — borderless 4-layer + dark variant; the 5 card shells
+  (`bg-white rounded-3xl border border-luxury-100 shadow-luxury` ×
+  options/phone/phone-otp/whatsapp/whatsapp-otp) → `au-card rounded-3xl`.
+  The bridge keeps handling inputs/pills/tints/text underneath.
+- **Chrome swaps (2 only):** ⚠ ErrorBox → TriangleAlert; ← back buttons
+  (4×) → ArrowLeft. **KEEP:** Google/Facebook/WhatsApp/Phone SVGs (brand
+  marks, not emoji), the brand monogram/wordmark, • OTP placeholder dots.
+- Badge v641→**v642** (`SB_BUILD v642-auth-3dcards-lucide`), sw
+  `HTML_CACHE` v438→**v439**.
+- **Gates GREEN:** tsc 0 · build 0 · security **385/0** (auth ordering
+  scans pass) · audit **8/8**: 390w light (au-card 4-layer computed,
+  provider CTAs render, glyph scan clean, WhatsApp sub-screen opens with
+  ArrowLeft lucide + 4-layer card, 0 overflow) + 1440w dark (black-cast
+  4-layer, card surface rgb(27,33,42) ≠ white — bridge intact, 0
+  overflow).
+- **Customer core COMPLETE** (home/flash/hotel-detail/my-bids/bookings/
+  passport/auth all on the locked grammar). NEXT: owner device-check →
+  Phase 2 panels (partner → admin → circle → trade → host → onboard →
+  influencer → worker) or /bid climber deep polish.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
