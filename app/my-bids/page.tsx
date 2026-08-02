@@ -33,6 +33,10 @@ import { parseAddons } from "@/lib/counter-addons";
 // v141 — Phase-5 my-bids tour. 4 steps: card → status → actions →
 // auto-accept countdown.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v639 — UI-upgrade program: chrome emojis → lucide (celebration glyphs 🎉/🎊
+// and string contexts — notify titles, flowLabel, Razorpay descriptions —
+// deliberately KEPT; see docs/upgrade/99-PROGRESS-LEDGER.md).
+import { Target, Building2, Zap, KeyRound, Timer, Gift, Wallet, Crown, X } from "lucide-react";
 
 // v174 — cozy-theme status palette. Mid-tone colours that read on both the
 // cream (light) and walnut (dark) surfaces — no per-theme branching needed.
@@ -89,7 +93,7 @@ function PendingBidCountdown({ expiresAt, flow }: { expiresAt?: string; flow: "p
       className="mt-3 rounded-xl px-3 py-2 flex items-center gap-2"
       style={{ background: `${tone}14`, border: `1px solid ${tone}44` }}
     >
-      <span style={{ fontSize: 16 }}>⏱</span>
+      <Timer size={16} strokeWidth={2.4} aria-hidden style={{ color: tone, flexShrink: 0 }} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold" style={{ color: tone }}>{label}</p>
         <p className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
@@ -848,8 +852,8 @@ function MyBidsPageInner() {
   const unpaidAccepted = useMemo(() => sectionBids.filter((b) => b.status === "ACCEPTED" && !isPaid(b)).length, [sectionBids]);
 
   const sectionEmpty = section === "PLACE"
-    ? { icon: "🎯", title: "No place-bid offers yet", sub: "Bid your own price on /bid — hotels accept or counter, and your bids land here.", cta: "Place a Bid", href: "/bid" }
-    : { icon: "🏨", title: "No negotiate bids yet", sub: "Negotiate with a hotel directly — your single-hotel bids land here.", cta: "Browse Hotels", href: "/hotels" };
+    ? { Icon: Target, title: "No place-bid offers yet", sub: "Bid your own price on /bid — hotels accept or counter, and your bids land here.", cta: "Place a Bid", href: "/bid" }
+    : { Icon: Building2, title: "No negotiate bids yet", sub: "Negotiate with a hotel directly — your single-hotel bids land here.", cta: "Browse Hotels", href: "/hotels" };
 
   // v194 — auto-open BookingReview when the user lands here from the /bid
   // success screen's "Pay Now & Grab" CTA. Param: `?payNow=<bidId>`. Fires
@@ -937,10 +941,39 @@ function MyBidsPageInner() {
         .gold-text { background: linear-gradient(90deg,#9caec0,#8198ae,#748da6,#8198ae,#9caec0); background-size:200% auto; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation: shine 6s linear infinite; }
         .gold-btn { position:relative; overflow:hidden; background:radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; font-weight:800; letter-spacing:.03em; }
         .gold-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%); transform:translateX(-120%); animation: goldSweep 2.8s ease-in-out infinite; }
-        .mb-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
-        .mb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
+        /* v639 — borderless 4-layer 3D grammar (same family as .hx-room-card):
+           long cast + mid bloom + contact edge + inset top highlight. Accent
+           states stay box-shadow-only so geometry never shifts. */
+        .mb-card {
+          background: var(--bg-card); border:none; border-radius:22px;
+          box-shadow:
+            0 24px 42px -22px rgba(31, 26, 15, 0.32),
+            0 10px 20px -12px rgba(31, 26, 15, 0.18),
+            0 2px 6px -2px rgba(31, 26, 15, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.5);
+          transition: transform .2s ease, box-shadow .2s ease;
+        }
+        [data-theme="dark"] .mb-card {
+          box-shadow:
+            0 24px 42px -22px rgba(0, 0, 0, 0.7),
+            0 10px 20px -12px rgba(0, 0, 0, 0.48),
+            0 2px 6px -2px rgba(0, 0, 0, 0.38),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        @media (hover: hover) {
+          .mb-card:hover {
+            transform: translateY(-3px);
+            box-shadow:
+              0 30px 52px -24px rgba(106,133,160,0.4),
+              0 12px 24px -12px rgba(31, 26, 15, 0.2),
+              0 0 0 1px rgba(106,133,160,0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.55);
+          }
+        }
         @keyframes mbHighlightRing { 0% { box-shadow: 0 0 0 0 rgba(106,133,160,0.55), 0 0 22px rgba(106,133,160,0.42); } 70% { box-shadow: 0 0 0 14px rgba(106,133,160,0), 0 0 28px rgba(106,133,160,0.18); } 100% { box-shadow: 0 0 0 0 rgba(106,133,160,0), 0 0 0 rgba(106,133,160,0); } }
-        .mb-card-highlight { animation: mbHighlightRing 2.5s ease-out 1 both; }
+        /* v639 — fill mode dropped (was \`both\`): retaining the last keyframe
+           permanently zeroed the card's base shadow after the 2.5s ring. */
+        .mb-card-highlight { animation: mbHighlightRing 2.5s ease-out 1; }
         .mb-seg { background: var(--bg-pill); border:1px solid var(--border-soft); border-radius:999px; padding:4px; display:flex; gap:4px; }
         .mb-seg button { flex:1; border-radius:999px; padding:10px 12px; font-weight:700; font-size:.82rem; color: var(--text-soft); transition: all .2s ease; display:flex; align-items:center; justify-content:center; gap:6px; }
         .mb-seg button.on { background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; box-shadow:0 4px 16px rgba(106,133,160,0.32); }
@@ -976,11 +1009,11 @@ function MyBidsPageInner() {
           <div className="mb-seg max-w-md mx-auto mb-5" style={{ animation: "fadeUp 0.5s ease both" }}>
             <button className={section === "NEGOTIATE" ? "on" : ""}
               onClick={() => { setSection("NEGOTIATE"); setFilter("ALL"); }}>
-              🏨 Negotiate <span className="opacity-70">({negotiateCount})</span>
+              <Building2 size={15} strokeWidth={2.4} aria-hidden /> Negotiate <span className="opacity-70">({negotiateCount})</span>
             </button>
             <button className={section === "PLACE" ? "on" : ""}
               onClick={() => { setSection("PLACE"); setFilter("ALL"); }}>
-              🎯 Place Bid <span className="opacity-70">({placeBidCount})</span>
+              <Target size={15} strokeWidth={2.4} aria-hidden /> Place Bid <span className="opacity-70">({placeBidCount})</span>
             </button>
           </div>
         )}
@@ -1047,8 +1080,10 @@ function MyBidsPageInner() {
         {/* Empty — whole page (no bids at all) */}
         {!loading && bids.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-20 h-20 rounded-full mb-card flex items-center justify-center mx-auto mb-5 text-3xl"
-              style={{ animation: "floaty 3s ease-in-out infinite" }}>👑</div>
+            <div className="w-20 h-20 rounded-full mb-card flex items-center justify-center mx-auto mb-5"
+              style={{ animation: "floaty 3s ease-in-out infinite" }}>
+              <Crown size={30} strokeWidth={2} aria-hidden style={{ color: "#8198ae" }} />
+            </div>
             <p className="font-display text-xl font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bids placed yet</p>
             <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Browse hotels and place your first bid.</p>
             <Link href="/hotels" className="gold-btn px-6 py-3 rounded-2xl text-sm inline-block">Browse Hotels</Link>
@@ -1058,8 +1093,10 @@ function MyBidsPageInner() {
         {/* Empty — this section only */}
         {!loading && bids.length > 0 && sectionBids.length === 0 && (
           <div className="text-center py-14">
-            <div className="w-16 h-16 rounded-full mb-card flex items-center justify-center mx-auto mb-4 text-2xl"
-              style={{ animation: "floaty 3s ease-in-out infinite" }}>{sectionEmpty.icon}</div>
+            <div className="w-16 h-16 rounded-full mb-card flex items-center justify-center mx-auto mb-4"
+              style={{ animation: "floaty 3s ease-in-out infinite" }}>
+              <sectionEmpty.Icon size={26} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />
+            </div>
             <p className="text-base font-semibold mb-1" style={{ color: "var(--text-base)" }}>{sectionEmpty.title}</p>
             <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>{sectionEmpty.sub}</p>
             <Link href={sectionEmpty.href} className="gold-btn px-5 py-2.5 rounded-2xl text-sm inline-block">{sectionEmpty.cta}</Link>
@@ -1119,18 +1156,20 @@ function MyBidsPageInner() {
                     <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                       <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                         style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
-                        {b._isPlaceBid ? "🎯 Place Bid" : "🏨 Negotiate"}
+                        {b._isPlaceBid
+                          ? <><Target size={11} strokeWidth={2.4} aria-hidden /> Place Bid</>
+                          : <><Building2 size={11} strokeWidth={2.4} aria-hidden /> Negotiate</>}
                       </span>
                       {b._isFlash && (
                         <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                           style={{ background: "rgba(106,133,160,0.14)", border: "1px solid rgba(106,133,160,0.36)", color: "#8198ae" }}>
-                          ⚡ Flash
+                          <Zap size={11} strokeWidth={2.4} aria-hidden /> Flash
                         </span>
                       )}
                       {units[b.id]?.unitNumber && (
                         <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                           style={{ background: "rgba(106,133,160,0.12)", border: "1px solid rgba(106,133,160,0.34)", color: "#8198ae" }}>
-                          🔑 Room #{units[b.id].unitNumber}
+                          <KeyRound size={11} strokeWidth={2.4} aria-hidden /> Room #{units[b.id].unitNumber}
                         </span>
                       )}
                     </div>
@@ -1199,7 +1238,9 @@ function MyBidsPageInner() {
                         className="text-[0.7rem] font-semibold underline-offset-2 hover:underline disabled:opacity-40 transition"
                         style={{ color: STATUS_META.CANCELLED.color }}
                       >
-                        {actionLoading === b.id ? "Cancelling…" : "✕ Cancel bid"}
+                        {actionLoading === b.id
+                          ? "Cancelling…"
+                          : <><X size={11} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-1px", marginRight: 3 }} /> Cancel bid</>}
                       </button>
                     </div>
                   </>
@@ -1221,7 +1262,7 @@ function MyBidsPageInner() {
                       {addons.length > 0 && (
                         <div className="mb-2.5">
                           <p className="text-[0.58rem] font-bold uppercase tracking-widest mb-1.5" style={{ color: c }}>
-                            🎁 Complimentary included
+                            <Gift size={12} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} /> Complimentary included
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {addons.map((a) => (
@@ -1277,7 +1318,9 @@ function MyBidsPageInner() {
                         <button onClick={() => handlePayNow(b)} disabled={actionLoading === b.id}
                           className="w-full py-3.5 gold-btn rounded-xl text-base font-bold disabled:opacity-40 mt-3"
                           style={{ animation: "pulseGlow 2s infinite", letterSpacing: "0.02em" }}>
-                          {actionLoading === b.id ? "Opening Payment…" : `💰 Pay Now & Grab — ₹${total.toLocaleString("en-IN")} →`}
+                          {actionLoading === b.id
+                            ? "Opening Payment…"
+                            : <><Wallet size={17} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-3px", marginRight: 6 }} /> Pay Now & Grab — ₹{total.toLocaleString("en-IN")} →</>}
                         </button>
                         <p className="text-[0.62rem] text-center mt-2 tracking-wide" style={{ color: "var(--text-muted)" }}>
                           Secure payment via Razorpay · Instant confirmation

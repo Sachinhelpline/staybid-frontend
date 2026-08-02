@@ -509,6 +509,38 @@
 - NEXT: owner device-check v638 → next surface (recommend /my-bids — the Pay
   conversion path) or Phase 2 panels.
 
+### 2026-08-02 — Session 6 cont. (v639 — /my-bids: 3D cards + lucide chrome)
+- **Owner commission:** "my-bids page. go ahead." Presentation-only — every
+  bid/pay/counter/cancel handler byte-identical; the Pay conversion path
+  (BookingReview → Razorpay → /api/bids/:id/pay) untouched.
+- **Card grammar:** `.mb-card` (bid cards + summary chips + skeletons +
+  empty-state discs) re-skinned from 1px-border flat to the borderless
+  4-layer 3D grammar + `[data-theme="dark"]` variant; hover deepen now
+  wrapped in `@media (hover:hover)` (no sticky-hover on touch); accent
+  hover ring is box-shadow-only (geometry never shifts).
+- **Root-cause fix found during study:** the `#bid-<id>` highlight ring
+  (`mbHighlightRing … both`) retained its final all-zero keyframe forever,
+  permanently flattening the card's base shadow after the 2.5s ring. Fill
+  mode dropped — the ring plays, then the card returns to its 3D shadow.
+- **Chrome emoji→lucide:** section toggle (Building2/Target), flow pill,
+  ⚡ Flash pill→Zap, 🔑 room pill→KeyRound, ⏱ countdown→Timer (tone-
+  coloured), 🎁 perks→Gift, 💰 Pay CTA→Wallet, ✕ cancel→X, empty states
+  👑/🎯/🏨→Crown/Target/Building2. **KEEP list:** 🎉/🎊 celebration
+  vocabulary (overlay, accepted glyph, confetti), notify() title strings,
+  BookingReview flowLabel strings, Razorpay description strings.
+- Badge v638→**v639** (`SB_BUILD v639-mybids-3dcards-lucide`), sw
+  `HTML_CACHE` v435→**v436**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **12/12** with
+  REAL CARDS rendered via Playwright route-interception of `/api/bids/my`
+  (fake auth + PENDING/COUNTER/ACCEPTED fixtures): 390w light (borderless
+  + 4-layer + inset computed on a bid card, chrome-emoji scan clean, 14
+  lucide svgs, counter panel + room pill render, section flip → Pay CTA
+  carries the Wallet svg, 0 overflow), 1280w dark (black-cast 4-layer,
+  3-col grid, 0 overflow), empty state (Crown, no 👑). New audit
+  technique for auth-gated surfaces recorded here for reuse.
+- NEXT: owner device-check v639 → /bookings (same account cluster) or
+  Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
