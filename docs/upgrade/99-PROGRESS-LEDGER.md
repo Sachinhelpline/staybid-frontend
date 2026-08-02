@@ -217,6 +217,38 @@
 - NEXT: hero transition (if approved) → then bid arena / hotel detail / my-bids /
   bookings / auth — sample first, per standing rule.
 
+### 2026-08-02 — Session 6 cont. (v630 — dock shrink + You-chip collision fix)
+- **Owner real-device review of v629 found 4 issues** (screenshot on the reel page):
+  bar too tall · reel Book-Now rail buried · Deals "looked" off-centre · You chip
+  overlapping the feed's All/City filter pills.
+- **Root causes + fixes:**
+  1. Bar height: v629 grew ~40→~68px. Shrunk to **56px total** — paddings 3/4,
+     star 40→**34px** (icon 18), deal label 0.5rem, **sides icon-only ALWAYS**
+     (dropped the v629 active-only side label — TRUE Hotstar anatomy).
+  2. "Off-centre" was PERCEPTION: geometry was centred to the pixel; the
+     active-only label made one side visually heavier. Icon-only sides kills it.
+  3. Reel CTA rail: `InstagramHotelFeed` caption sits at a HARD-CODED
+     `bottom: calc(54px + safe)` (v87) — cleared the old 40px dock, buried under
+     68px. Rail moved 54→**58px** + dock ≤56 ⇒ clears. ⚠ Invariant: that offset,
+     the body reserve, and the `/bid` `.bgz-shell` carve are a COUPLED TRIPLE —
+     any future dock height change must touch all three.
+  4. You-chip collision: `.ig-filter-chip` is fixed at the SAME corner
+     (top safe+6 / right 10). Fix = the corner now BELONGS to the chip
+     (top safe+4 / right 10, 34px) and the filter pills moved `right: 10→54px`
+     — they read as ONE control row: [All · City] (You). Stage home has no
+     fixed top-right control (verified) — chip floats clean there.
+- Body reserve 64→**60px** + `.bgz-shell` 64→**60** (sync).
+- Badge v629→**v630**, sw `HTML_CACHE` v426→**v427**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · v630 audit **72/72**
+  (height 56.0 exact, 0 side labels, 44px targets, star mid=195.0 at 390w,
+  chip/pill gap 10px same-row, reel rail clearance ≥2px, chip absent on
+  Navbar pages, 0 overflow — light+dark × /, /discover, /hotels, /bid).
+- ⚠ Audit lesson: the first v630 run measured a STALE `next start` (old bundle,
+  styles unhydrated — nonsense numbers). Always restart the server after a
+  rebuild before trusting geometry.
+- NEXT: hero depth transition (owner demo delivered, awaiting "hero bhi karo") →
+  then bid arena / hotel detail / my-bids / bookings / auth — sample first.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

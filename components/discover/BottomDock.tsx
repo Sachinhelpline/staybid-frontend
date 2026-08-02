@@ -122,7 +122,7 @@ export function BottomDock() {
                 aria-current={active ? "page" : undefined}
               >
                 <span className="ig-deal-star" aria-hidden>
-                  <I size={20} strokeWidth={2.3} />
+                  <I size={18} strokeWidth={2.3} />
                 </span>
                 <span className="ig-deal-label">{it.label}</span>
               </Link>
@@ -137,18 +137,22 @@ export function BottomDock() {
               aria-label={it.label}
               aria-current={active ? "page" : undefined}
             >
-              <I className="ig-dock-ic" size={21} strokeWidth={active ? 2.4 : 1.9} aria-hidden />
-              {/* Hotstar anatomy: the side label appears only on the active item */}
-              {active && <span className="ig-dock-label">{it.label}</span>}
+              {/* v630 — sides are icon-only ALWAYS (true Hotstar anatomy; the
+                  v629 active-only label made the active side visually heavier,
+                  which read as "Deals is off-centre" on a real phone). Active
+                  state = colour + weight + pill only. aria-label carries the
+                  name for a11y. */}
+              <I className="ig-dock-ic" size={20} strokeWidth={active ? 2.5 : 1.9} aria-hidden />
             </Link>
           );
         })}
       </nav>
 
       <style jsx global>{`
-        /* v629 — Hotstar-style dock. Same theme skins as v90 (dark cocoa /
-           light frosted slate, same brand tones); the bar grew 52→~64px for
-           the centre star. */
+        /* v630 — Hotstar-style dock, SHRUNK after the owner's real-device
+           review (the v629 bar was too tall + buried the reel CTA rail):
+           tight paddings, 34px star, icon-only sides → total ≈ 50px, back
+           in the old bar's height class. */
         .ig-bottom-dock {
           position: fixed;
           left: 0;
@@ -160,8 +164,8 @@ export function BottomDock() {
           justify-content: space-around;
           gap: 2px;
           /* v618 EDGE-TO-EDGE (kept): background fills the gesture-bar
-             region; max(6px, safe-area) pads the icons above the pill. */
-          padding: 6px 6px max(6px, env(safe-area-inset-bottom, 0px));
+             region; max(4px, safe-area) pads the icons above the pill. */
+          padding: 3px 6px max(4px, env(safe-area-inset-bottom, 0px));
           background: rgba(19, 23, 28, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
@@ -200,7 +204,7 @@ export function BottomDock() {
           align-items: center;
           justify-content: center;
           gap: 2px;
-          padding: 6px 2px;
+          padding: 4px 2px;
           min-height: 44px; /* full-height tap target (WCAG 2.5.8) */
           overflow: hidden;
           color: rgba(197, 212, 228, 0.78);
@@ -233,30 +237,23 @@ export function BottomDock() {
           background: linear-gradient(180deg, rgba(79,109,138,0.16), rgba(79,109,138,0.04));
         }
         .ig-dock-ic { flex: 0 0 auto; }
-        .ig-dock-label {
-          font-size: 0.55rem;
-          font-weight: 700;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          white-space: nowrap;
-        }
 
         /* ── CENTRE: ⚡ Deals — the /flash-deals GOLD stamp gradient
               (one deal, one colour — matches .fd-disc-stamp). ── */
         .ig-dock-deal {
-          flex: 0 0 64px;
+          flex: 0 0 56px;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: flex-start;
-          gap: 3px;
+          gap: 2px;
           padding: 0 2px;
           text-decoration: none;
           position: relative;
         }
         .ig-deal-star {
-          width: 40px;
-          height: 40px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -271,7 +268,7 @@ export function BottomDock() {
           box-shadow: 0 0 0 2px rgba(242, 198, 80, 0.55), 0 4px 18px rgba(214, 154, 30, 0.6);
         }
         .ig-deal-label {
-          font-size: 0.55rem;
+          font-size: 0.5rem;
           font-weight: 800;
           letter-spacing: 0.05em;
           text-transform: uppercase;
@@ -285,8 +282,12 @@ export function BottomDock() {
               Desktop ≥1024 shows the Navbar everywhere → chip off. ── */
         .ig-you-chip {
           position: fixed;
-          top: calc(10px + env(safe-area-inset-top, 0px));
-          right: 12px;
+          /* v630 — aligned to the reel feed's own top-right control row
+             (.ig-filter-chip sits at safe+6px / right:54px since v630, so
+             the corner is RESERVED for this chip — they read as ONE row:
+             [All · City]  (You). See InstagramHotelFeed .ig-filter-chip. */
+          top: calc(4px + env(safe-area-inset-top, 0px));
+          right: 10px;
           z-index: 58;
           width: 34px;
           height: 34px;
@@ -317,10 +318,10 @@ export function BottomDock() {
         }
 
         /* Global bottom buffer so no content hides under the dock.
-           v629: 52px → 64px (taller centre star). The /bid .bgz-shell
-           carve in globals.css moved 52→64 in the same release — keep
-           the two values in sync. */
-        body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+           v630: 64px → 60px (bar shrunk back to ~50px total). The /bid
+           .bgz-shell carve in globals.css moved with it — keep the two
+           values in sync. */
+        body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
         body.is-reel-page { padding-bottom: 0; }
         /* Operator panels hide the dock — no dock-height reserve (kept). */
         body:has([data-route-admin]), body:has([data-route-partner]),

@@ -8248,11 +8248,11 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
      trapping gesture-nav phones (no OS nav bar) on /bid. Ending the shell
      one dock-height above the viewport bottom leaves the dock uncovered
      (the shell scrolls internally, and .bgz-cta-rail sticks just above it).
-     Matches the global `body { padding-bottom: calc(64px + safe-area) }`
-     dock reserve (v629 Hotstar dock — was 52px; keep in sync with
+     Matches the global `body { padding-bottom: calc(60px + safe-area) }`
+     dock reserve (v630 shrunk Hotstar dock; keep in sync with
      components/discover/BottomDock.tsx). Desktop keeps bottom:0 (dock is
      hidden ≥1024px anyway). */
-  .bgz-shell { top: 0; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .bgz-shell { top: 0; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* v238 — Desktop-only ALWAYS-VISIBLE scrollbar. Mobile users scroll via

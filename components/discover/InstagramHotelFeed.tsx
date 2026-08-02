@@ -2481,13 +2481,14 @@ const HotelCard = memo(function HotelCard({
       </div>
 
       {/* BOTTOM-LEFT: caption + price + equal CTAs. v87 — pushed above the
-          BottomDock (64px + safe-area) so Book Now / Bid buttons are no
-          longer clipped behind the dock. Was the root cause of screenshot 1's
-          "buttons neeche ho gaye" — they were never gone, the dock was sitting
-          on top of them. */}
+          BottomDock so Book Now / Bid buttons are no longer clipped behind
+          the dock. Was the root cause of screenshot 1's "buttons neeche ho
+          gaye" — they were never gone, the dock was sitting on top of them.
+          v630 — 54px → 58px: clears the Hotstar dock (~50px total; the v629
+          64px-tall bar buried this rail — owner's second screenshot). */}
       <div
         className="ig-reel-caption absolute left-3 right-[4.5rem] z-30"
-        style={{ bottom: "calc(54px + env(safe-area-inset-bottom, 0px))" }}
+        style={{ bottom: "calc(58px + env(safe-area-inset-bottom, 0px))" }}
       >
         {/* v625 Treatment A — ONE quiet trust line (rating · StayBid score ·
             views) replaces the 5–7 pill wall. Dropped from the card face: the
@@ -3953,7 +3954,12 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-filter-chip {
           position: fixed;
           top: calc(env(safe-area-inset-top, 0px) + 6px);  /* v87: clear notch */
-          right: 10px;
+          /* v630 — right 10px → 54px: the corner now belongs to the global
+             "You" avatar chip (.ig-you-chip in BottomDock, 34px @ right:10px).
+             Shifting the filter pills left makes the two read as ONE control
+             row — [All · City] (You) — instead of overlapping (owner's
+             real-device screenshot showed the chip sitting ON these pills). */
+          right: 54px;
           left: auto;
           z-index: 41;
           display: inline-flex;
