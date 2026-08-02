@@ -24,7 +24,13 @@ Dark mode: `[data-theme="dark"]` re-values semantic tokens ONLY. The
 
 ## 2. Type scale (kills the 100 ad-hoc sizes)
 
-`@theme` size tokens (fluid where marked):
+> ⚠ **Namespace correction (Phase 0a):** the scale is defined as `--fs-*` custom
+> properties in `:root`, **NOT** in Tailwind's `@theme` `--text-*` namespace — putting
+> sizes there would auto-generate `.text-*` utilities and override the defaults that 150
+> files already use. `--fs-*` generates nothing and collides with nothing. Shipped in
+> `app/globals.css` under the "UI UPGRADE — FOUNDATION LAYER" banner.
+
+`--fs-*` size tokens (fluid where marked):
 
 | Token | Size | Use |
 |---|---|---|

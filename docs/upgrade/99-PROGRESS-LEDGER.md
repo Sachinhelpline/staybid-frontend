@@ -40,6 +40,27 @@
 - Draft PR #536 opened + Vercel preview Ready (docs-only, clean).
 - NEXT: mood-boards v1 (3 directions × home + flash card + admin table, light+dark).
 
+### 2026-08-02 — Session 1 (Phase 0a — invisible foundation, shipped)
+- Owner locked **Direction A (Refined Pewter)** with the EXACT live palette (no colour
+  change) → `04-DIRECTION-LOCKED.md`. Round-2 home-screen board delivered + approved-to-proceed.
+- **Phase 0a foundation shipped (additive/invisible — no existing surface changed):**
+  - `app/globals.css`: appended "UI UPGRADE — FOUNDATION LAYER" — `--fs-*` type scale
+    (9 steps; `--fs-*` NOT `@theme --text-*` to avoid Tailwind utility collision),
+    radius/elevation tokens, `--sbui-btn-primary-bg` = exact live pewter gradient,
+    `--sbui-success/warning/danger` (light+dark), and `.sbui-*` primitive styles.
+  - `components/ui/`: `Button`, `Card`, `Badge`, `Skeleton`, `Icon` (+ `APP_ICONS` curated
+    map), `index.ts` barrel, `README.md`. All token-driven, light+dark, RSC-safe, UNUSED
+    (adoption is later phases).
+  - Installed `lucide-react` (owner-approved icon lib; verified genuine, React 19 peer).
+- **Gates GREEN:** `tsc --noEmit` 0 · `npm run build` 0 (full route tree) · `npm run
+  test:security` 385/0. Baseline tsc confirmed clean BEFORE changes.
+- Design tokens exist but are consumed by nothing yet → zero visual change (verified by
+  clean build parsing globals.css + no `.sbui-*`/`--fs-*` reference on any existing element).
+- NEXT (Phase 0a cont.): (1) make `responsive-audit/` dark-mode capable + add missing panel
+  route manifests (gaps G4/G5); (2) Playwright visual-regression config + pre-upgrade
+  baselines BEFORE any consumer swap (G6); (3) next/font infra. THEN Phase 1 adoption.
+- Open owner Qs (non-blocking): flash "% OFF" steel vs gold; Decision Register D1-D5.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

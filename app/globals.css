@@ -13167,3 +13167,129 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 /* season-preference chips (v583.1) base → dark-on-cream (is-on stays gold) */
 .sbh-tf-season:not(.is-on) { color: #5a4420 !important; background: rgba(106, 133, 160, 0.12) !important; border-color: rgba(106, 133, 160, 0.3) !important; }
 .sbh-tf-season.is-auto { color: rgba(74, 56, 32, 0.7) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI UPGRADE — FOUNDATION LAYER (Phase 0a, additive/invisible)
+   ───────────────────────────────────────────────────────────────────────────
+   A design-token + primitive layer for components/ui/*. NOTHING here changes an
+   existing surface — no current element uses a `.sbui-*` class or an `--fs-*`/
+   `--sbui-*` variable. Adoption happens per-surface in later phases.
+
+   Palette is the LIVE production palette, verbatim (owner-locked Direction A —
+   see docs/upgrade/04-DIRECTION-LOCKED.md). This block only READS the existing
+   semantic tokens (--accent, --bg-card, --text-*, --border-*) so light↔dark is
+   the existing flip; it never redefines a colour value.
+
+   Type scale uses the `--fs-*` namespace (NOT Tailwind's `--text-*`, which would
+   generate utility classes and collide with 150 files of existing usage).
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* type scale — the ONLY sizes new UI should use (9 steps, fluid where marked) */
+  --fs-display: clamp(2.1rem, 5vw, 3.4rem);
+  --fs-title: clamp(1.45rem, 3.4vw, 1.9rem);
+  --fs-heading: 1.2rem;
+  --fs-body: 1rem;
+  --fs-support: 0.875rem;
+  --fs-caption: 0.78rem;
+  --fs-micro: 0.68rem;          /* the floor — nothing smaller */
+  --fs-price-lg: clamp(1.6rem, 4vw, 2.4rem);
+  --fs-price: 1.15rem;
+  --lh-tight: 1.06;
+  --lh-snug: 1.28;
+  --lh-normal: 1.55;
+
+  /* radius + elevation scale */
+  --sbui-r-sm: 8px;
+  --sbui-r-md: 11px;
+  --sbui-r-lg: 14px;
+  --sbui-r-pill: 999px;
+  --sbui-elev-1: 0 6px 22px rgba(31, 26, 15, 0.10);   /* == live --shadow-card */
+  --sbui-elev-2: 0 14px 40px -22px rgba(31, 26, 15, 0.30);
+
+  /* primary CTA = the exact live brushed-pewter gradient (verbatim) */
+  --sbui-btn-primary-bg:
+    radial-gradient(88% 64% at 32% 4%, rgba(240, 247, 253, 0.24), transparent 58%),
+    linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 50%, #42566d 100%);
+  --sbui-btn-primary-ink: #ffffff;
+  --sbui-btn-primary-shadow: 0 10px 22px -12px rgba(66, 86, 109, 0.7);
+
+  /* semantic status (namespaced; separate from the --accent brand hue) */
+  --sbui-success: #2f8f5b;
+  --sbui-warning: #c07a1e;
+  --sbui-danger: #c0392b;
+}
+:root[data-theme="dark"] {
+  --sbui-elev-1: 0 8px 26px rgba(0, 0, 0, 0.5);
+  --sbui-elev-2: 0 16px 44px -20px rgba(0, 0, 0, 0.6);
+  --sbui-success: #4fbf82;
+  --sbui-warning: #dba24a;
+  --sbui-danger: #e5716a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sbui-elev-1: 0 8px 26px rgba(0, 0, 0, 0.5);
+    --sbui-elev-2: 0 16px 44px -20px rgba(0, 0, 0, 0.6);
+    --sbui-success: #4fbf82;
+    --sbui-warning: #dba24a;
+    --sbui-danger: #e5716a;
+  }
+}
+
+/* ---- Button ---- */
+.sbui-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5em;
+  font-family: var(--font-body); font-size: var(--fs-support); font-weight: 600;
+  line-height: 1; letter-spacing: 0.01em; white-space: nowrap;
+  border: 1px solid transparent; border-radius: var(--sbui-r-md);
+  padding: 0.7em 1.1em; min-height: 40px; cursor: pointer;
+  transition: filter 0.18s ease, border-color 0.18s ease, transform 0.1s ease, background 0.18s ease;
+  text-decoration: none;
+}
+.sbui-btn:active { transform: translateY(1px); }
+.sbui-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sbui-btn[disabled], .sbui-btn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; }
+.sbui-btn--primary { background: var(--sbui-btn-primary-bg); color: var(--sbui-btn-primary-ink); box-shadow: var(--sbui-btn-primary-shadow); }
+.sbui-btn--primary:hover { filter: brightness(1.05); }
+.sbui-btn--secondary { background: transparent; color: var(--text-base); border-color: var(--border-strong); }
+.sbui-btn--secondary:hover { border-color: var(--accent); color: var(--accent); }
+.sbui-btn--ghost { background: transparent; color: var(--text-soft); border-color: transparent; }
+.sbui-btn--ghost:hover { color: var(--text-base); background: var(--accent-soft); }
+.sbui-btn--danger { background: var(--sbui-danger); color: #fff; }
+.sbui-btn--danger:hover { filter: brightness(1.06); }
+.sbui-btn--success { background: var(--sbui-success); color: #fff; }
+.sbui-btn--success:hover { filter: brightness(1.06); }
+.sbui-btn--sm { font-size: var(--fs-caption); padding: 0.55em 0.85em; min-height: 34px; border-radius: var(--sbui-r-sm); }
+.sbui-btn--lg { font-size: var(--fs-body); padding: 0.85em 1.4em; min-height: 48px; }
+.sbui-btn--block { display: flex; width: 100%; }
+
+/* ---- Card ---- */
+.sbui-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: var(--sbui-r-lg); }
+.sbui-card--pad { padding: 18px; }
+.sbui-card--elevated { box-shadow: var(--sbui-elev-1); }
+.sbui-card--media { overflow: hidden; box-shadow: var(--sbui-elev-1); }
+
+/* ---- Badge / Chip ---- */
+.sbui-badge {
+  display: inline-flex; align-items: center; gap: 0.4em;
+  font-size: var(--fs-micro); font-weight: 700; line-height: 1;
+  border-radius: var(--sbui-r-sm); padding: 0.42em 0.66em; letter-spacing: 0.02em;
+}
+.sbui-badge--neutral { background: var(--accent-soft); color: var(--text-soft); }
+.sbui-badge--accent { background: var(--accent); color: #fff; }
+.sbui-badge--success { color: var(--sbui-success); background: color-mix(in srgb, var(--sbui-success) 15%, transparent); }
+.sbui-badge--warning { color: var(--sbui-warning); background: color-mix(in srgb, var(--sbui-warning) 15%, transparent); }
+.sbui-badge--danger { color: var(--sbui-danger); background: color-mix(in srgb, var(--sbui-danger) 15%, transparent); }
+.sbui-badge--pill { border-radius: var(--sbui-r-pill); }
+.sbui-badge--dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ---- Skeleton ---- */
+.sbui-skeleton {
+  display: block; border-radius: var(--sbui-r-sm);
+  background: linear-gradient(90deg, var(--border-soft) 25%, color-mix(in srgb, var(--border-soft) 40%, transparent) 50%, var(--border-soft) 75%);
+  background-size: 200% 100%; animation: sbuiShimmer 1.4s ease-in-out infinite;
+}
+@keyframes sbuiShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sbui-skeleton { animation: none; } }
+
+/* ---- Icon (lucide wrapper) ---- */
+.sbui-icon { display: inline-block; vertical-align: middle; flex: 0 0 auto; color: currentColor; }
