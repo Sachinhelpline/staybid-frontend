@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/sidebar";
 import AdminTopbar from "@/components/admin/topbar";
+import { installAdminFetchInterceptor } from "@/lib/admin/client-fetch";
 import "./admin.css";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isMobile, setIsMobile] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const isLogin = pathname === "/admin/login";
 
@@ -37,6 +39,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setAuthed(true);
     setChecking(false);
   }, [pathname, isLogin, router]);
+
+  useEffect(() => {
+    if (isLogin) {
+      setApiError(null);
+      return;
+    }
+
+    return installAdminFetchInterceptor({
+      onUnauthorized: () => {
+        setAuthed(false);
+        setChecking(false);
+        router.replace("/admin/login?reason=session_expired");
+      },
+      onFailure: ({ status }) => {
+        setApiError(
+          status >= 500
+            ? "The admin data service is temporarily unavailable. Data on this page may be incomplete."
+            : `An admin request failed (HTTP ${status}). Data on this page may be incomplete.`,
+        );
+      },
+    });
+  }, [isLogin, router]);
 
   useEffect(() => {
     // v122.1 — bump the "mobile" cutoff from 768 → 1024. At 768-1023 the
@@ -103,6 +127,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             padding: isMobile ? "76px 14px 24px 14px" : `80px 32px 32px ${sideW + 32}px`,
           }}
         >
+          {apiError && (
+            <div
+              role="alert"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 16,
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: "1px solid rgba(255,71,87,0.45)",
+                background: "rgba(255,71,87,0.1)",
+                color: "#ff9aa4",
+                fontSize: 13,
+              }}
+            >
+              <span>{apiError}</span>
+              <button
+                type="button"
+                aria-label="Dismiss admin data error"
+                onClick={() => setApiError(null)}
+                style={{ border: 0, background: "transparent", color: "#ff9aa4", cursor: "pointer", fontSize: 18 }}
+              >
+                ×
+              </button>
+            </div>
+          )}
           {children}
         </main>
       </div>

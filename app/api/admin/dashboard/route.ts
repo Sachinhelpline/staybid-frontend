@@ -7,16 +7,19 @@
 
 import { NextResponse } from "next/server";
 import { requireVerifiedAdmin } from "@/lib/admin/verify";
-import { SB_URL, SB_KEY } from "@/lib/sb";
+import { SB_URL, SB_ADMIN_READ } from "@/lib/sb";
 
 export const dynamic = "force-dynamic";
 
-const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
-
 async function sb(path: string) {
-  const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_H });
-  if (!res.ok) return [];
-  return res.json().catch(() => []);
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    headers: SB_ADMIN_READ,
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Supabase dashboard read failed (${res.status})`);
+  const body = await res.json();
+  if (!Array.isArray(body)) throw new Error("Supabase dashboard returned an invalid payload");
+  return body;
 }
 
 const ACCEPTED_STATUSES = ["ACCEPTED", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT"];
@@ -31,7 +34,7 @@ export async function GET(req: Request) {
       sb("users?select=id,createdAt"),
       sb("vp_requests?select=id,status,hotel_id,customer_id,tier,created_at&status=eq.pending"),
       sb("complaints?select=id,type,status,priority,createdAt"),
-      sb("hotel_videos?select=id,verification_status,uploadedAt&limit=500"),
+      sb("hotel_videos?select=id,verification_status,created_at&limit=500"),
       sb("bid_holds?select=bid_id,status,total_amount,hold_amount,expires_at&status=eq.active"),
     ]);
 
@@ -156,7 +159,8 @@ export async function GET(req: Request) {
         payouts: 0,
       },
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    console.error("Admin dashboard data load failed", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "dashboard_data_unavailable" }, { status: 503 });
   }
 }

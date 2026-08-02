@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   // v126.2 — "Today" toggle: when on, dashboard KPIs swap to today-only values
   const [todayOnly, setTodayOnly] = useState(false);
   // v97 — dashboard liveness has 3 honest states:
@@ -28,11 +29,20 @@ export default function AdminDashboard() {
   const [pulse, setPulse] = useState(0);
   const [lastRefresh, setLastRefresh] = useState<number>(0);
 
-  function load() {
-    fetch("/api/admin/dashboard")
-      .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); setLastRefresh(Date.now()); })
-      .catch(() => setLoading(false));
+  async function load() {
+    try {
+      const response = await fetch("/api/admin/dashboard", { cache: "no-store" });
+      if (!response.ok) throw new Error(`dashboard request failed (${response.status})`);
+      const next = await response.json();
+      if (!next?.kpi) throw new Error("dashboard payload is incomplete");
+      setData(next);
+      setError(null);
+      setLastRefresh(Date.now());
+    } catch {
+      setError("Dashboard data could not be loaded. No totals have been assumed; please retry.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -151,6 +161,30 @@ export default function AdminDashboard() {
     );
   }
 
+  if (!data) {
+    return (
+      <div style={{ fontFamily: "DM Sans, sans-serif" }}>
+        <h1 style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#E8EAF0", fontSize: 28, margin: 0 }}>
+          Dashboard
+        </h1>
+        <p style={{ color: "#8A8FA8", fontSize: 14, marginTop: 4, marginBottom: 24 }}>
+          Real-time overview of platform performance
+        </p>
+        {loading ? (
+          <Skel />
+        ) : (
+          <div role="alert" style={{ padding: 20, borderRadius: 14, border: "1px solid rgba(255,71,87,0.45)", background: "rgba(255,71,87,0.1)", color: "#ff9aa4" }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Dashboard data unavailable</div>
+            <div style={{ fontSize: 13, marginBottom: 14 }}>{error}</div>
+            <button type="button" onClick={load} style={{ border: "1px solid rgba(255,255,255,0.18)", borderRadius: 8, background: "#E8EAF0", color: "#11151b", padding: "8px 12px", cursor: "pointer", fontWeight: 700 }}>
+              Retry
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
       {/* Title */}
@@ -239,6 +273,11 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
+      {error && (
+        <div role="alert" style={{ marginBottom: 16, padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,71,87,0.45)", background: "rgba(255,71,87,0.1)", color: "#ff9aa4", fontSize: 13 }}>
+          {error} Previously loaded values remain visible.
+        </div>
+      )}
       <style jsx>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
