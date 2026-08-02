@@ -395,6 +395,32 @@
   whose height varies with data warm-up.
 - NEXT: owner verdict on v634 → next surface samples.
 
+### 2026-08-02 — Session 6 cont. (v635 — motion smoothness + flash 2-col compact)
+- **Owner round 7:** home swipe "atak raha" (janky) · flash card circled dead
+  space (band right of name/price + hole between price and rating) · same
+  compaction on desktop · card motion tuned to swipe speed.
+- **JANK ROOT CAUSE (found, control-proven):** the cover panel's per-frame
+  un-zoom scale re-rasterised the ENTIRE page subtree on every scroll frame.
+  Fix: the panel is now **STATIC** (⚠ never put a scroll-linked transform
+  back on `.sbh-rails` — rule comment in globals.css); the depth read
+  survives fully on the hero's own lag/shrink/dim (one small composited
+  layer: `translate3d` + `will-change: transform`, dim `::after`
+  `will-change: opacity`). **Control probe:** /hotels (no effect) 0-1 long
+  frames vs / (effect) 1-2 in 30 synthetic scroll frames — at baseline.
+- **Flash card 2-COLUMN body (kills the circled dead space structurally):**
+  right column (rank chip over Grab now) moved UP beside the text block —
+  left = name·loc·price·rating, right = rank/CTA centred, urgency line
+  spans. Works identically at 390w and 1440w (CTA beside text asserted at
+  both). Body height 169px mobile / 205 desktop (was ~200+ with holes).
+- **Swipe-speed reveal tune:** IO pre-triggers 15% below the fold
+  (threshold 0, rootMargin "0 0 15% 0") so fast swipes never land on empty
+  slots; settle 0.5s, rise 20px, 40ms column stagger.
+- Badge v634→**v635**, sw `HTML_CACHE` v431→**v432**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · v635 audit **19/19**
+  (static cover, GPU layers, jank probe ≤1 vs control, 2-col geometry both
+  breakpoints, rank/CTA stack, body heights, 0.5s settle, 0 overflow).
+- NEXT: owner verdict on v635 → next surface samples.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

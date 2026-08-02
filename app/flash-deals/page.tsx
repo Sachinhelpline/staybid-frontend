@@ -766,13 +766,16 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
   // it enters the viewport (house useReveal/IO pattern — same engine as the
   // hotel page sections). Replaces the mount-time fdFadeUp, which finished
   // before below-fold cards were ever seen. Stagger via transitionDelay.
-  const { ref: revealRef, visible: revealed } = useReveal<HTMLDivElement>({ threshold: 0.12 });
+  // v634.1 — tuned for SWIPE SPEED: rootMargin pre-triggers 15% below the
+  // fold (the card is already mid-rise when a fast swipe lands on it — no
+  // empty holes), and the CSS settle is 0.5s so it never feels floaty.
+  const { ref: revealRef, visible: revealed } = useReveal<HTMLDivElement>({ threshold: 0, rootMargin: "0px 0px 15% 0px" });
 
   return (
     <div
       ref={revealRef}
       className={`fd-card fd-card-a${revealed ? " is-in" : ""}`}
-      style={{ transitionDelay: revealed ? `${(idx % 3) * 0.05}s` : "0s" }}
+      style={{ transitionDelay: revealed ? `${(idx % 3) * 0.04}s` : "0s" }}
       onClick={openHotelTour}
     >
       {/* Image — one gold %OFF stamp (top-left), heart (top-right), and a
@@ -805,31 +808,33 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
         <div className="fd-ends">Ends in {endsLabel}</div>
       </div>
 
-      {/* Body — Level 1: name · location · price · one CTA. Level 2: a single
-          quiet meta line (rating + StayBid score) beside the button, then the
-          rooms-left urgency line right under it. */}
+      {/* Body — v634.1 TWO-COLUMN (owner's circled dead-space fix): the
+          right column (rank chip over Grab now) now sits BESIDE the text
+          block instead of below it, so the empty band right of the
+          name/price and the hole between price and rating are gone —
+          structurally, on every breakpoint. Left = name · location ·
+          price · rating; right = rank / Grab now; urgency line spans. */}
       <div className="fd-body">
-        <h3 className="fd-hotel-name" title={deal.hotel?.name || "Hotel"}>{deal.hotel?.name || "Hotel"}</h3>
-        <p className="fd-loc-line">{area ? `${area}, ${deal.city}` : deal.city || "—"}</p>
+        <div className="fd-cols">
+          <div className="fd-main">
+            <h3 className="fd-hotel-name" title={deal.hotel?.name || "Hotel"}>{deal.hotel?.name || "Hotel"}</h3>
+            <p className="fd-loc-line">{area ? `${area}, ${deal.city}` : deal.city || "—"}</p>
 
-        <div className="fd-price-line">
-          <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
-          {showOriginal > showAiPrice && (
-            <span className="fd-price-strike">{fmtINR(showOriginal)}</span>
-          )}
-          <span className="fd-price-unit">/night</span>
-        </div>
+            <div className="fd-price-line">
+              <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
+              {showOriginal > showAiPrice && (
+                <span className="fd-price-strike">{fmtINR(showOriginal)}</span>
+              )}
+              <span className="fd-price-unit">/night</span>
+            </div>
 
-        {/* v632 — the RANK chip moved OUT of the meta line into its own
-            right-column slot ABOVE Grab now (owner: it collided with the
-            button on desktop grid cards, and that spot was dead space on
-            mobile). Left = rating only; right = rank over the button. */}
-        <div className="fd-foot">
-          <span className="fd-metaline">
-            {ratingVal > 0 && (
-              <span className="fd-rating">★ {ratingVal.toFixed(1)}{reviewCnt > 0 ? <span className="fd-rating-cnt"> ({reviewCnt})</span> : null}</span>
-            )}
-          </span>
+            <span className="fd-metaline">
+              {ratingVal > 0 && (
+                <span className="fd-rating">★ {ratingVal.toFixed(1)}{reviewCnt > 0 ? <span className="fd-rating-cnt"> ({reviewCnt})</span> : null}</span>
+              )}
+            </span>
+          </div>
+
           <div className="fd-foot-right">
             {deal.hotelId ? (
               <span className="fd-score-inline" onClick={(e) => e.stopPropagation()}>
@@ -1310,10 +1315,10 @@ function FdStyles() {
         cursor: pointer;
         color: var(--text-base);
         opacity: 0;
-        transform: translateY(26px) scale(0.975);
+        transform: translateY(20px) scale(0.98);
         transition:
-          transform 0.6s cubic-bezier(.2,.7,.2,1),
-          opacity 0.6s cubic-bezier(.2,.7,.2,1),
+          transform 0.5s cubic-bezier(.2,.7,.2,1),
+          opacity 0.5s cubic-bezier(.2,.7,.2,1),
           box-shadow 0.3s ease;
         box-shadow:
           0 26px 44px -20px rgba(31, 26, 15, 0.34),
@@ -1458,7 +1463,7 @@ function FdStyles() {
       }
       /* Location, on the page under the name (not over the photo). */
       .fd-loc-line {
-        margin: 2px 0 11px; font-size: 0.78rem; color: var(--text-soft, #4a3820);
+        margin: 1px 0 6px; font-size: 0.78rem; color: var(--text-soft, #4a3820);
       }
       /* Price row is the hero: now (big) · was (strike) · /night. */
       .fd-card-a .fd-price-line { display: flex; align-items: baseline; gap: 9px; margin: 0; }
@@ -1466,21 +1471,24 @@ function FdStyles() {
       .fd-card-a .fd-price-strike { font-size: 0.86rem; }
       .fd-card-a .fd-price-unit { font-size: 0.72rem; color: var(--text-soft, #4a3820); }
       /* Foot — one quiet meta line + the CTA, baseline-aligned. */
-      .fd-foot {
-        display: flex; align-items: flex-end; justify-content: space-between;
-        gap: 10px; margin-top: 8px;
+      /* v634.1 — two-column body (owner's circled dead space): text block
+         left, rank+CTA right, centred against each other. No empty band
+         beside the name/price, no hole between price and rating. */
+      .fd-cols {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px;
       }
-      /* v632 — right column: RANK chip stacked ABOVE the Grab-now button
-         (was inline beside the rating, where it collided with the button
-         on desktop grid cards). */
+      .fd-main {
+        min-width: 0; display: flex; flex-direction: column; gap: 2px;
+      }
       .fd-foot-right {
         display: flex; flex-direction: column; align-items: flex-end;
-        gap: 6px; flex-shrink: 0;
+        justify-content: center; gap: 8px; flex-shrink: 0;
       }
       .fd-metaline {
         display: inline-flex; align-items: center; gap: 8px; min-width: 0;
         font-size: 0.74rem; color: var(--text-soft, #4a3820);
-        padding-bottom: 6px; /* optically centre the rating against the two-row right column */
+        margin-top: 2px;
       }
       .fd-metaline .fd-rating { white-space: nowrap; }
       .fd-onlyleft {

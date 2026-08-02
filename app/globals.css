@@ -13442,7 +13442,10 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
     position: relative;
     z-index: 0;
     transform-origin: 50% 0%;
-    transform: translateY(calc(var(--sbhp) * 22vh)) scale(calc(1 - var(--sbhp) * 0.06));
+    /* translate3d (not translateY) — forces the hero onto its own GPU
+       layer from frame one, so the per-frame var write only moves a
+       composited texture. */
+    transform: translate3d(0, calc(var(--sbhp) * 22vh), 0) scale(calc(1 - var(--sbhp) * 0.06));
     will-change: transform;
   }
   /* ① FOOT FADE — artwork melts into the page colour. z:1 keeps it above
@@ -13467,6 +13470,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
     z-index: 4;
     background: #0b0f14;
     opacity: calc(var(--sbhp) * 0.45);
+    will-change: opacity;
     pointer-events: none;
   }
 
@@ -13481,8 +13485,13 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
     margin-top: -24px;              /* panel edge rests INSIDE the faded zone */
     padding-top: 14px;              /* content breathes off the radius */
     box-shadow: 0 -10px 28px rgba(11, 15, 20, 0.20);
-    transform: scale(calc(0.985 + var(--sbhp) * 0.015));
-    transform-origin: 50% 0;
+    /* v634.1 — the cover's per-frame un-zoom is GONE (owner: "swipe atak
+       raha hai"). Scaling the panel meant re-rasterising the ENTIRE page
+       subtree on every scroll frame — the one guaranteed jank source on
+       mid-range phones. The depth read survives fully on the hero's own
+       lag/shrink/dim (all on one small composited layer); Hotstar's feed
+       doesn't continuously scale either. NEVER put a scroll-linked
+       transform back on this panel. */
   }
   [data-theme="dark"] .sbh-root > .sbh-rails {
     box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
@@ -13493,7 +13502,6 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   @media (prefers-reduced-motion: reduce) {
     .sbh-root > .sbh-hero { transform: none; }
     .sbh-root > .sbh-hero::after { display: none; }
-    .sbh-root > .sbh-rails { transform: none; }
   }
 }
 
