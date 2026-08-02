@@ -156,6 +156,10 @@ async function b2bMarkdownPass(startedAt: number): Promise<{ marked: number; sca
       if (Date.now() - startedAt > TIME_BUDGET_MS) break;
       scanned++;
       const meta = (b.metadata && typeof b.metadata === "object") ? b.metadata : {};
+      // v624 — a released WINDOW listing (v356, metadata.window=true) has
+      // date_from = the window START, not a stay start; buyers pick nights
+      // anywhere inside it, so "near check-in" markdown does not apply.
+      if (meta.window === true) continue;
       const nights = Math.max(1, round0(b.nights));
       // Frozen original — backfill from the current ask for pre-D4 listings.
       const original = round0(meta.listAskPerNight ?? b.ask_per_night);
@@ -197,19 +201,30 @@ async function b2bMarkdownPass(startedAt: number): Promise<{ marked: number; sca
 // It flips `draft|listed → expired`. The underlying `inventory_block` STAYS
 // `owned` (the seller keeps their pre-bought right — only the LISTING dies) and
 // NO room_blocks hold is touched (Pass 2 owns block expiry + hold release).
+//
+// v624 — released WINDOW listings (v356, metadata.window=true) are the
+// exception: their date_from is the window START, not a stay start — buyers
+// pick their own nights anywhere inside [date_from, date_to], so the listing
+// stays sellable until the WINDOW CLOSES. A window listing expires only when
+// date_to < today (reason `window_ended_unsold`). This was the bug that
+// silently expired the entire Model-2 inventory the night its Aug-1 window
+// opened.
 async function b2bExpiryPass(startedAt: number): Promise<{ expired: number }> {
   const today = isoDatePlus(0);
   let expired = 0;
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/b2b_listings?status=in.(draft,listed)&date_from=lt.${today}` +
-        `&select=id,metadata&order=date_from.asc&limit=${MAX_PER_PASS}`,
+        `&select=id,date_to,metadata&order=date_from.asc&limit=${MAX_PER_PASS}`,
       { headers: SB_H },
     );
     const rows: any[] = r.ok ? await r.json().catch(() => []) : [];
     for (const b of rows) {
       if (Date.now() - startedAt > TIME_BUDGET_MS) break;
       const meta = (b.metadata && typeof b.metadata === "object") ? b.metadata : {};
+      const isWindow = meta.window === true;
+      // A window listing is alive until its window closes.
+      if (isWindow && String(b.date_to || "") >= today) continue;
       try {
         const pr = await fetch(
           `${SB_URL}/rest/v1/b2b_listings?id=eq.${encodeURIComponent(String(b.id))}&status=in.(draft,listed)`,
@@ -218,7 +233,11 @@ async function b2bExpiryPass(startedAt: number): Promise<{ expired: number }> {
             headers: { ...SB_H, Prefer: "return=minimal" },
             body: JSON.stringify({
               status: "expired",
-              metadata: { ...meta, expiredAt: new Date().toISOString(), expiredReason: "stay_started_unsold" },
+              metadata: {
+                ...meta,
+                expiredAt: new Date().toISOString(),
+                expiredReason: isWindow ? "window_ended_unsold" : "stay_started_unsold",
+              },
               updated_at: new Date().toISOString(),
             }),
           },
