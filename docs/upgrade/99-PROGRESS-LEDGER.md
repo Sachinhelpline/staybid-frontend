@@ -86,6 +86,33 @@
   the cadence contract. Capture VR baselines on preview first.
 - Open owner Qs (non-blocking): flash "% OFF" steel vs gold; Decision Register D1-D5.
 
+### 2026-08-02 — Session 1 (Phase 1 — flash card, FIRST visible surface, shipped)
+- Owner picked **Treatment A (Clean) + GOLD stamp** from the round-1 sample board.
+- **`/flash-deals` DealCard redesigned to Treatment A** (`app/flash-deals/page.tsx`):
+  ~20 elements → the decision set. Level 1 = image · name · location · price · one
+  %OFF · CTA; Level 2 = one quiet meta line (★ rating + StayBid score) beside the
+  button + a rooms-left line right under it. Rank / amenities / other room types /
+  scarcity bar / LIVE pill / HH:MM:SS ring removed from the card face (they live on
+  the hotel detail page). Countdown is now human "Ends in 11h 26m". Gold %OFF coin
+  top-left, heart top-right, ends-pill bottom-left.
+- **Two pre-existing bugs fixed in the same change:** (1) the stamp no longer falls
+  back to `deal.discount` (the stale /api/flash/near field, can read 48% vs a real
+  20%); it is `discPct`, DERIVED from the two prices the card prints → can never
+  contradict them. (2) the old dual %OFF (image stamp vs price-panel) is gone — one
+  derived value.
+- **One-deal-one-colour honored:** home rail `.sbh-chip-off` + ticker `.sbh-tk-accent`
+  (globals.css + desktop.css) flipped from the drifted steel to the SAME deal-gold as
+  `.fd-disc-stamp` (dark ink for AA). CLAUDE.md's invariant is satisfied again.
+- Badge v624→**v625**, `SB_BUILD` v625-flash-card-clean-gold, sw `HTML_CACHE` v421→**v422**.
+- **Gates GREEN:** tsc 0 · `npm run build` 0 (compiled 27s) · security 385/0 · headless
+  geometry audit `/flash-deals` light+dark × mobile+laptop → 0 overflow, 0 errors,
+  theme-applied 100%.
+- ⚠ Note: primitives from Phase 0a were NOT adopted here yet (this was a targeted
+  in-place redesign of an existing large file to prove the treatment + fix the bugs);
+  broader primitive adoption continues on the next customer surfaces.
+- NEXT: capture VR baselines on preview for these routes; next customer surface
+  (recommend Reels overlay or Home flash duplication cleanup) — sample round first.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

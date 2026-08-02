@@ -2613,12 +2613,12 @@ body main textarea.input-luxury {
     background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
     box-shadow: 0 6px 16px -8px rgba(106, 133, 160, 0.9);
   }
-  /* the SAME gold as .fd-disc-stamp on /flash-deals — one deal, one colour */
+  /* v625 — the SAME deal-GOLD as .fd-disc-stamp on /flash-deals — one deal, one colour */
   .sbh-chip-off {
-    top: 11px; left: 11px; color: #ffffff;
-    background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-    box-shadow: 0 6px 16px -8px rgba(106, 133, 160, 0.75);
+    top: 11px; left: 11px; color: #2a1e06;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    text-shadow: none;
+    box-shadow: 0 6px 16px -9px rgba(130, 90, 12, 0.6);
   }
   .sbh-chip-live { top: 11px; right: 11px; color: #fff; background: rgba(20, 15, 9, 0.62); border: 1px solid rgba(255, 255, 255, 0.2); }
   .sbh-chip-price { top: 11px; right: 11px; color: #1d1608; background: rgba(176, 192, 209, 0.94); }   /* see globals.css */
@@ -2746,12 +2746,12 @@ body main textarea.input-luxury {
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 20px -10px rgba(74, 56, 32, 0.7);
   }
   .sbh-tk-ico { font-size: 0.92rem; line-height: 1; }
-  /* same gold as the flash-deal stamp — one deal, one colour */
+  /* v625 — same deal-GOLD as the flash-deal stamp — one deal, one colour */
   .sbh-tk-accent {
     padding: 3px 10px; border-radius: 999px;
-    font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #ffffff;
-    background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
-    box-shadow: 0 6px 14px -8px rgba(106, 133, 160, 0.8);
+    font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #2a1e06;
+    background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+    box-shadow: 0 6px 14px -9px rgba(130, 90, 12, 0.6);
   }
   @keyframes sbhTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 

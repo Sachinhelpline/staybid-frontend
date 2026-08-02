@@ -13044,18 +13044,19 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(28,38,52,0.28), 0 3px 8px -5px rgba(45,62,82,0.5) !important;
 }
 
-/* offer badges (home + reel) — satin gold, keep the one-deal-one-colour rule */
+/* offer badges (home + reel) — v625 deal-GOLD (owner pick), one-deal-one-colour:
+   matches the /flash-deals .fd-disc-stamp gold. Dark ink for AA on gold. */
 .sbh-chip-off {
-  background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 1px rgba(20,30,44,0.35) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 4px rgba(28,38,52,0.24), 0 4px 10px -6px rgba(40,55,72,0.4) !important;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%) !important;
+  color: #2a1e06 !important;
+  text-shadow: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 4px rgba(120,80,10,0.24), 0 4px 10px -6px rgba(130,90,12,0.4) !important;
 }
 .sbh-tk-accent {
-  background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 1px rgba(20,30,44,0.35) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 4px rgba(28,38,52,0.24), 0 4px 10px -6px rgba(40,55,72,0.4) !important;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%) !important;
+  color: #2a1e06 !important;
+  text-shadow: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 4px rgba(120,80,10,0.24), 0 4px 10px -6px rgba(130,90,12,0.4) !important;
 }
 
 /* ── refined matte WALNUT cards (warmer, richer, satin-gold hairline + sage) ── */
