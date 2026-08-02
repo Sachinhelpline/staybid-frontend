@@ -9,7 +9,10 @@
     "dev": "next dev",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build",
     "start": "next start",
-    "test:security": "node tests/security/security.test.js"
+    "test:security": "node tests/security/security.test.js",
+    "vr": "playwright test",
+    "vr:update": "playwright test --update-snapshots",
+    "audit:responsive": "bash responsive-audit/run.sh"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",

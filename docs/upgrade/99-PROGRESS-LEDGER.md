@@ -71,8 +71,19 @@
     surfaces / 125 route-entries (was 5 / ~50). `ALL_SURFACES` export added.
   - **PROVEN:** smoke run `--only / --theme both` → home rendered in light AND dark,
     `themeApplied` == requested for both, 0 overflow, 0 errors, chromium resolved.
-- NEXT (Phase 0a cont.): (1) Playwright visual-regression config + pre-upgrade baselines
-  BEFORE any consumer swap (G6); (2) next/font infra. THEN Phase 1 adoption.
+- **Phase 0a cont. — visual-regression scaffolding SHIPPED (gap G6):**
+  - `playwright.config.ts` + `e2e/visual.spec.ts` (uses the already-present `@playwright/test`
+    — no new dep). 20 baseline tests (5 customer routes × light/dark × mobile+desktop) via
+    `toHaveScreenshot`, each asserting `data-theme` applied before snapshot. Same Chromium
+    resolver. Scripts: `npm run vr` / `vr:update` / `audit:responsive`. `--list` = 20 tests, tsc 0.
+  - ⚠ Baselines NOT captured in-sandbox (image/video CDNs blocked → media-less shots). The
+    config documents: record authoritative baselines against a Vercel PREVIEW (`PW_BASE=…`)
+    BEFORE any Phase-1 consumer swap. `e2e/__baseline__` is committed once captured.
+- **Phase 0a is now COMPLETE except next/font** (deferred — it is the first consumer-affecting
+  change; per owner rule "show 2-3 samples before any change" it needs a sample pass, so it
+  rides with Phase 1's first sample round rather than shipping silently).
+- NEXT: Phase 1 adoption on the customer core — starts with a SAMPLE round (owner picks) per
+  the cadence contract. Capture VR baselines on preview first.
 - Open owner Qs (non-blocking): flash "% OFF" steel vs gold; Decision Register D1-D5.
 
 <!-- Append new sessions ABOVE this line’s template:
