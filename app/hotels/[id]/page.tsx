@@ -28,8 +28,11 @@ import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "
 import ModalCloseButton from "@/components/ModalCloseButton";
 import SbState from "@/components/SbState";
 import HotelHero from "@/components/hotel/HotelHero";
-import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
-import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+// v636 — HotelStatsRibbon + the direct HotelScoreBadge medal block retired
+// from THIS page (both merged into HotelTrustStrip, which embeds the badge
+// itself); the component files stay in the repo untouched.
+import HotelTrustStrip from "@/components/hotel/HotelTrustStrip";
+import { useReveal } from "@/lib/useReveal";
 import IndividualRoomsSection from "@/components/hotel/IndividualRoomsSection";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
 import BackToTopButton from "@/components/BackToTopButton";
@@ -312,6 +315,29 @@ function RoomSwipeMedia({
         </>
       )}
     </>
+  );
+}
+
+/* v636 — per-card scroll reveal for the room list (the v634 flash-card
+   engine). ⚠ v238 history: the SHARED `.hx-reveal-io` observer was removed
+   from this section because late-mounted children missed its observation
+   cycle and stayed opacity:0 — "the room list is way too important to gate
+   on a fragile animation hook". This wrapper is DIFFERENT on both counts:
+   ① each card owns its own IntersectionObserver (mount-time, no shared
+   dependency array to go stale), and ② the CSS carries a FAILSAFE keyframe
+   that forces the card visible 1.4s after mount even if the observer never
+   fires (see .hx-io in globals.css). The room list can never be lost to an
+   animation bug again — worst case it just fades in without the rise. */
+function RevealCard({ children, delay }: { children: React.ReactNode; delay?: string }) {
+  const { ref, visible } = useReveal<HTMLDivElement>({ threshold: 0, rootMargin: "0px 0px 15% 0px" });
+  return (
+    <div
+      ref={ref}
+      className={`hx-io${visible ? " is-in" : ""}`}
+      style={delay && visible ? { transitionDelay: delay } : undefined}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -2630,33 +2656,21 @@ export default function HotelDetail() {
           onOpenGallery={(i) => { setGalleryIdx(i); setGalleryOpen(true); }}
         />
 
-        {/* ── v133 — Live activity ticker pill ── */}
-        <div className="hx-live-pill-row hx-reveal">
-          <span className="hx-live-ticker" title="Live activity right now">
-            <span className="hx-live-ticker-dot" aria-hidden="true" />
-            <span>
-              <span className="hx-live-ticker-em">{liveStats.viewing}</span>
-              {" "}looking now
-            </span>
-            <span className="hx-live-ticker-sep" aria-hidden="true" />
-            <span>
-              <span className="hx-live-ticker-em">{liveStats.bookedToday}</span>
-              {" "}booked today
-            </span>
-          </span>
-        </div>
-
-        {/* ── v123 ANIMATED STATS RIBBON ── */}
-        <HotelStatsRibbon
+        {/* ── v636 TRUST STRIP (Treatment A) — the v133 live pill, the v123
+            stats ribbon and the v128.1 medal block merged into ONE compact
+            4-cell strip (Rating · SB Score · Rooms · vs OTA + a quiet live
+            caption). Three stacked bands → one; the room list rises above
+            the fold. The Score cell is HotelScoreBadge compact UNCHANGED,
+            so tap-for-breakdown behaviour survives. Presentation only. */}
+        <HotelTrustStrip
+          hotelId={String(id)}
+          hotelName={hotel?.name}
           avgRating={hotel.avgRating}
           totalReviews={hotel.totalReviews}
-          starRating={hotel.starRating}
           roomsAvailable={roomsAvail}
-          totalRooms={roomsAvail}
-          lowestPrice={lowestForRibbon}
           otaSavingsPct={otaSavingsBest}
-          trustBadge={!!hotel.trustBadge}
-          flashDealActive={!!(dealId && dealPrice)}
+          liveViewing={liveStats.viewing}
+          liveBookedToday={liveStats.bookedToday}
         />
 
         {/* v179 — Rule C cooldown notice. Shown when the customer has an
@@ -2691,51 +2705,9 @@ export default function HotelDetail() {
           );
         })()}
 
-        {/* ── v128.1 PERFORMANCE SCORECARD — 3D award medal w/ rank ribbon.
-            v159.9 — Tightened from marginTop:14 → 8 + gap 16 → 12 +
-            sub-text leading shrunk so the block hugs the stats ribbon
-            above + the description below. Halves the air around it. */}
-        <div
-          className="hx-reveal"
-          style={{
-            marginTop: 8,
-            display: "flex",
-            justifyContent: "flex-start",
-            flexWrap: "wrap",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
-          <HotelScoreBadge
-            hotelId={String(id)}
-            hotelName={hotel?.name}
-            variant="hero"
-          />
-          <div
-            style={{
-              flex: "1 1 200px",
-              minWidth: 0,
-              color: "var(--text-soft, #4a3820)",
-              fontSize: "0.74rem",
-              lineHeight: 1.35,
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--font-display, 'Cormorant Garamond'), serif",
-                fontStyle: "italic",
-                fontSize: "0.96rem",
-                color: "var(--text-base, #1f1a0f)",
-                fontWeight: 600,
-              }}
-            >
-              StayBid Performance Scorecard
-            </div>
-            <div style={{ marginTop: 2 }}>
-              Live score · 10 checkpoints · city rank. Tap medal for breakdown.
-            </div>
-          </div>
-        </div>
+        {/* v636 — the v128.1 standalone medal block merged into the trust
+            strip above (its HotelScoreBadge lives there as the Score cell,
+            same tap-for-breakdown modal). No band left behind. */}
 
         {/* ── Two-column page grid (sticky rail on desktop ≥1100px). v159.9
             — marginTop 22 → 10 so the About section follows the medal
@@ -3310,7 +3282,7 @@ export default function HotelDetail() {
           />
         )}
         <div className={`hx-room-list${hotel.individualRooms ? " is-hidden" : ""}${(hotel.rooms?.length || 0) <= 1 ? " is-single" : ""}`} style={{ marginBottom: "40px" }}>
-          {hotel.rooms?.map((r: any) => {
+          {hotel.rooms?.map((r: any, idx: number) => {
             const isHeadlineRoom = dealRoomId === r.id;
             // A room is available unless explicitly flagged otherwise.
             const roomAvailable = r.isAvailable !== false
@@ -3537,8 +3509,9 @@ export default function HotelDetail() {
             const roomAmenities: string[] = r.amenities?.length > 0 ? r.amenities : defaultAmenities;
 
             return (
-              <div key={r.id}
-                className={`hx-room-card hx-reveal ${isFlashRoom ? "is-flash" : ""} ${bidRoom?.id === r.id ? "is-selected" : ""}`}
+              <RevealCard key={r.id} delay={`${(idx % 2) * 0.05}s`}>
+              <div
+                className={`hx-room-card ${isFlashRoom ? "is-flash" : ""} ${bidRoom?.id === r.id ? "is-selected" : ""}`}
               >
                 <div className="hx-room-body">
 
@@ -4122,6 +4095,7 @@ export default function HotelDetail() {
                 </div>{/* /hx-room-content-wrap */}
                 </div>{/* /hx-room-body */}
               </div>
+              </RevealCard>
             );
           })}
         </div>

@@ -1683,6 +1683,12 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     var(--bg-page);
   min-height: 100dvh;
   position: relative;
+  /* v636 — PRE-EXISTING document-level horizontal overflow found by the
+     Treatment-A audit (88-125px at 390w): the ambient backdrop, hero-swipe
+     slides and mosaic peek-tiles all extend past the viewport. clip (not
+     hidden — no new scroll container) fences them at the page shell; the
+     internal swipe/scroll galleries keep scrolling inside their own boxes. */
+  overflow-x: clip;
 }
 /* v500 — dark mode: drop the opaque --bg-page fill (keep the gold radial) so the
    fixed <AmbientBackdrop> tints through from behind. The body still paints
@@ -2127,30 +2133,48 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 
 /* ─── Room showcase card ────────────────────────────────────────── */
+/* v636 — borderless 3D room card (the v634 flash-card depth grammar):
+   the hairline border is gone; depth = long cast + mid bloom + contact
+   edge + inset top highlight. Flash/selected keep their accent RING via
+   box-shadow (not border) so the geometry never shifts. */
 .hx-room-card {
   background: var(--bg-card);
-  border: 1px solid var(--border-soft);
+  border: none;
   border-radius: 24px;
   overflow: hidden;
   position: relative;
-  transition: transform 0.28s ease-out, box-shadow 0.3s ease, border-color 0.3s ease;
-  box-shadow: 0 10px 28px -16px rgba(31, 26, 15, 0.15);
+  transition: transform 0.28s ease-out, box-shadow 0.3s ease;
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   contain: layout style paint;
+}
+[data-theme="dark"] .hx-room-card {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 @media (hover: hover) {
   .hx-room-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 18px 40px -18px rgba(106, 133, 160, 0.28);
-    border-color: rgba(106, 133, 160, 0.45);
+    box-shadow:
+      0 30px 52px -24px rgba(106, 133, 160, 0.4),
+      0 12px 24px -12px rgba(31, 26, 15, 0.2),
+      0 0 0 1px rgba(106, 133, 160, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
   }
 }
-.hx-room-card.is-flash {
-  border-color: rgba(106, 133, 160, 0.55);
-  box-shadow: 0 16px 38px -14px rgba(106, 133, 160, 0.32);
-}
+.hx-room-card.is-flash,
 .hx-room-card.is-selected {
-  border-color: rgba(106, 133, 160, 0.55);
-  box-shadow: 0 16px 38px -14px rgba(106, 133, 160, 0.32);
+  box-shadow:
+    0 24px 42px -20px rgba(106, 133, 160, 0.38),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 0 0 1.5px rgba(106, 133, 160, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 /* Desktop: image LEFT, content RIGHT in a 5/7 split */
@@ -13528,4 +13552,112 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
     background: #0d0a05;
     pointer-events: none;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v636 — HOTEL DETAIL Treatment A (owner-picked): trust strip + room reveal.
+   .hx-* scope (this page only).
+   ═══════════════════════════════════════════════════════════════════════ */
+/* — Trust strip: Rating · SB Score · Rooms · vs OTA in ONE row (replaces
+     the live pill + stats ribbon + medal bands). Cells are content-aware. */
+.hx-trust-strip { margin-top: 10px; }
+.hx-ts-cells {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.hx-ts-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 9px 6px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  box-shadow:
+    0 10px 18px -12px rgba(31, 26, 15, 0.28),
+    0 2px 6px -3px rgba(31, 26, 15, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+[data-theme="dark"] .hx-ts-cell {
+  box-shadow:
+    0 10px 18px -12px rgba(0, 0, 0, 0.6),
+    0 2px 6px -3px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.hx-ts-cell > b {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-base);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.hx-ts-cell > span {
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #8a7f6f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+/* the Score cell hosts HotelScoreBadge compact (its own pill + modal) —
+   centre it and let the badge keep its identity. */
+.hx-ts-cell-score { padding: 6px 4px; }
+.hx-ts-cell-score .hsb { max-width: 100%; }
+/* quiet live-activity caption under the cells (the old v133 pill's data) */
+.hx-ts-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 7px 2px 0;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--text-soft, #4a3820);
+}
+.hx-ts-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cozy-sage, #7f9269);
+  animation: hx-pulse-soft 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.hx-ts-live-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+/* — Per-card scroll reveal with a FAILSAFE (see the v238 history note in
+     app/hotels/[id]/page.tsx RevealCard). If the observer never fires, the
+     keyframe forces the card visible 1.4s after mount — the room list can
+     never be lost to an animation bug. */
+.hx-io {
+  opacity: 0;
+  transform: translateY(20px) scale(0.985);
+  transition:
+    transform 0.5s cubic-bezier(.2,.7,.2,1),
+    opacity 0.5s cubic-bezier(.2,.7,.2,1);
+  animation: hxIoFailsafe 0.5s ease 1.4s forwards;
+}
+.hx-io.is-in {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+@keyframes hxIoFailsafe {
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-io { opacity: 1; transform: none; transition: none; animation: none; }
 }

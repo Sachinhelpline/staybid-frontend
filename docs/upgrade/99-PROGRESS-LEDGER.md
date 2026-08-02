@@ -421,6 +421,41 @@
   breakpoints, rank/CTA stack, body heights, 0.5s settle, 0 overflow).
 - NEXT: owner verdict on v635 → next surface samples.
 
+### 2026-08-02 — Session 6 cont. (v636 — HOTEL DETAIL Treatment A, phase 1 of the page)
+- **Owner picked A (booking-first) from the 3-treatment board.** Scope shipped:
+  the top-of-page band merge + room-card depth/reveal. Presentation only —
+  every bid/pay/negotiate path untouched.
+- **NEW `components/hotel/HotelTrustStrip.tsx`:** ONE 4-cell strip (Rating ·
+  SB Score · Rooms left · vs OTA + quiet live caption) replaces THREE stacked
+  bands — the v133 live pill, the v123 HotelStatsRibbon, the v128.1 medal
+  block. Content-aware cells (no data ⇒ no cell). **The Score cell embeds
+  `HotelScoreBadge variant="compact"` UNCHANGED** — its own fetch +
+  tap-for-breakdown modal survive the merge. `HotelStatsRibbon.tsx` stays in
+  the repo, just unused by this page.
+- **Room cards:** borderless 4-layer 3D shadow (v634 grammar; flash/selected
+  keep their accent as a box-shadow RING so geometry never shifts) + per-card
+  scroll reveal via `RevealCard` (useReveal). ⚠ **v238 history honoured:** the
+  old SHARED `.hx-reveal-io` observer was banned from this section (stale-dep
+  observer left late-mounted cards invisible). This wrapper differs on both
+  counts — per-card observer + a CSS **FAILSAFE keyframe** (`hxIoFailsafe`,
+  1.4s) that forces visibility even if IO never fires. Audit PROVES 0 cards
+  hidden after 2.3s. The room list can never be lost to an animation bug.
+- **Pre-existing bug found & fixed:** /hotels/[id] had 88-125px of
+  document-level horizontal overflow at 390w (ambient backdrop + hero-swipe
+  slides + mosaic peek tiles — v123/v159 era, never audited). Fix:
+  `overflow-x: clip` on `.hx-shell` (clip, NOT hidden — no new scroll
+  container; internal galleries keep scrolling in their own boxes).
+- Rooms rise: first card top now ~711px (< 1 viewport of scroll; was ~3 bands
+  deeper). Badge v635→**v636**, sw `HTML_CACHE` v432→**v433**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · v636 audit **20/20**
+  light+dark (strip cells content-aware, badge-in-cell, old bands absent,
+  borderless+4-layer+inset computed, failsafe armed + 0 hidden, overflow 0).
+- **Hotel-detail REMAINING (later passes, sample-first as needed):** emoji
+  chrome → lucide across the deep flows (status chips/pickers/drawer),
+  About/Reviews tab polish, sticky desktop rail re-skin, gallery/calendar
+  modals. This pass = the owner-picked top + cards core.
+- NEXT: owner device-check v636.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
