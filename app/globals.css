@@ -1900,6 +1900,18 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   background: var(--cozy-cream-200);
   cursor: pointer;
   height: 78px;
+  /* v637 — photos get the room-card 3D grammar (owner: "photos ko bhi 3D"):
+     raised layered shadow + top lit edge, both themes. */
+  box-shadow:
+    0 12px 20px -12px rgba(31, 26, 15, 0.35),
+    0 4px 8px -4px rgba(31, 26, 15, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+[data-theme="dark"] .hx-mosaic-strip-tile {
+  box-shadow:
+    0 12px 20px -12px rgba(0, 0, 0, 0.7),
+    0 4px 8px -4px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .hx-mosaic-strip-tile-1 { width: 110px; aspect-ratio: 4 / 3; }
 .hx-mosaic-strip-tile-2 { width: 78px;  aspect-ratio: 1 / 1; }
@@ -13608,10 +13620,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   text-overflow: ellipsis;
   max-width: 100%;
 }
-/* the Score cell hosts HotelScoreBadge compact (its own pill + modal) —
-   centre it and let the badge keep its identity. */
-.hx-ts-cell-score { padding: 6px 4px; }
-.hx-ts-cell-score .hsb { max-width: 100%; }
+/* v637 — the Score cell was removed (badge overflowed it; the medal block
+   is back in its original v128.1 spot below the strip). */
 /* quiet live-activity caption under the cells (the old v133 pill's data) */
 .hx-ts-live {
   display: flex;

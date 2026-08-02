@@ -1,22 +1,19 @@
 "use client";
 /*
- * v636 — HotelTrustStrip (Treatment A, owner-picked): ONE compact 4-cell
- * strip that replaces THREE stacked bands on /hotels/[id] — the v133 live
- * activity pill, the v123 HotelStatsRibbon, and the v128.1 scorecard medal
- * block. Cells: Rating · StayBid Score · Rooms left · vs-OTA saving, plus a
- * quiet live-activity caption. Content-aware like the old ribbon — a cell
- * with no data simply doesn't render.
+ * v636 — HotelTrustStrip (Treatment A, owner-picked): ONE compact strip
+ * that replaces the v133 live activity pill + the v123 HotelStatsRibbon on
+ * /hotels/[id]. Cells: Rating · Rooms left · vs-OTA saving, plus a quiet
+ * live-activity caption. Content-aware like the old ribbon — a cell with
+ * no data simply doesn't render.
  *
- * The Score cell embeds HotelScoreBadge variant="compact" UNCHANGED — it
- * owns its own fetch + tap-for-breakdown modal, so the medal block's
- * behaviour survives the merge (nothing re-implemented, nothing lost).
- * Presentation only: no data source invented, no logic touched.
+ * v637 — the Score cell was REMOVED after the owner's device review: the
+ * compact badge overflowed its cell ("91/100" spilling past the pill). The
+ * scorecard medal block is back in its ORIGINAL v128.1 form and position
+ * directly below this strip (see page.tsx) — do not re-embed the badge
+ * here. Presentation only: no data source invented, no logic touched.
  */
-import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 
 type Props = {
-  hotelId: string;
-  hotelName?: string;
   avgRating?: number;
   totalReviews?: number;
   roomsAvailable?: number;
@@ -26,8 +23,6 @@ type Props = {
 };
 
 export default function HotelTrustStrip({
-  hotelId,
-  hotelName,
   avgRating,
   totalReviews,
   roomsAvailable,
@@ -51,9 +46,6 @@ export default function HotelTrustStrip({
             <span>{reviews > 0 ? `${reviews} reviews` : "Rating"}</span>
           </div>
         ) : null}
-        <div className="hx-ts-cell hx-ts-cell-score">
-          <HotelScoreBadge hotelId={hotelId} hotelName={hotelName} variant="compact" />
-        </div>
         {rooms > 0 ? (
           <div className="hx-ts-cell">
             <b>{rooms}</b>

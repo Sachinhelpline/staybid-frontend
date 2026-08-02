@@ -28,9 +28,11 @@ import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "
 import ModalCloseButton from "@/components/ModalCloseButton";
 import SbState from "@/components/SbState";
 import HotelHero from "@/components/hotel/HotelHero";
-// v636 — HotelStatsRibbon + the direct HotelScoreBadge medal block retired
-// from THIS page (both merged into HotelTrustStrip, which embeds the badge
-// itself); the component files stay in the repo untouched.
+// v636 — HotelStatsRibbon retired from THIS page (merged into
+// HotelTrustStrip); the component file stays in the repo untouched.
+// v637 — HotelScoreBadge is BACK as the standalone v128.1 medal block
+// (owner: the compact badge overflowed the strip cell).
+import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelTrustStrip from "@/components/hotel/HotelTrustStrip";
 import { useReveal } from "@/lib/useReveal";
 import IndividualRoomsSection from "@/components/hotel/IndividualRoomsSection";
@@ -2663,8 +2665,6 @@ export default function HotelDetail() {
             the fold. The Score cell is HotelScoreBadge compact UNCHANGED,
             so tap-for-breakdown behaviour survives. Presentation only. */}
         <HotelTrustStrip
-          hotelId={String(id)}
-          hotelName={hotel?.name}
           avgRating={hotel.avgRating}
           totalReviews={hotel.totalReviews}
           roomsAvailable={roomsAvail}
@@ -2705,9 +2705,52 @@ export default function HotelDetail() {
           );
         })()}
 
-        {/* v636 — the v128.1 standalone medal block merged into the trust
-            strip above (its HotelScoreBadge lives there as the Score cell,
-            same tap-for-breakdown modal). No band left behind. */}
+        {/* ── v128.1 PERFORMANCE SCORECARD — restored VERBATIM in v637 at
+            its original position (owner: the compact badge overflowed the
+            v636 strip cell; "score card same waise hi, wahi jagah" —
+            identical on mobile AND desktop). 3D award medal w/ rank
+            ribbon; tap for breakdown. */}
+        <div
+          className="hx-reveal"
+          style={{
+            marginTop: 8,
+            display: "flex",
+            justifyContent: "flex-start",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
+          <HotelScoreBadge
+            hotelId={String(id)}
+            hotelName={hotel?.name}
+            variant="hero"
+          />
+          <div
+            style={{
+              flex: "1 1 200px",
+              minWidth: 0,
+              color: "var(--text-soft, #4a3820)",
+              fontSize: "0.74rem",
+              lineHeight: 1.35,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--font-display, 'Cormorant Garamond'), serif",
+                fontStyle: "italic",
+                fontSize: "0.96rem",
+                color: "var(--text-base, #1f1a0f)",
+                fontWeight: 600,
+              }}
+            >
+              StayBid Performance Scorecard
+            </div>
+            <div style={{ marginTop: 2 }}>
+              Live score · 10 checkpoints · city rank. Tap medal for breakdown.
+            </div>
+          </div>
+        </div>
 
         {/* ── Two-column page grid (sticky rail on desktop ≥1100px). v159.9
             — marginTop 22 → 10 so the About section follows the medal

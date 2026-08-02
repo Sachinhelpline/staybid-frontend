@@ -456,6 +456,23 @@
   modals. This pass = the owner-picked top + cards core.
 - NEXT: owner device-check v636.
 
+### 2026-08-02 — Session 6 cont. (v637 — medal restored + 3D photo tiles)
+- **Owner device review of v636:** the compact score badge OVERFLOWED its
+  strip cell ("91/100" spilling past the pill) — "scorecard same waise hi,
+  wahi jagah, mobile+desktop same". Plus: photos ko bhi room-card wala 3D.
+- **Scorecard:** the v128.1 medal block restored VERBATIM at its original
+  position (right below the strip), `HotelScoreBadge variant="hero"` + text
+  — identical mobile/desktop. The strip is now 3 content-aware cells
+  (Rating · Rooms left · vs OTA) with NO badge inside (dead `.hx-ts-cell-
+  score` CSS removed; a do-not-re-embed note added in the component).
+- **Photos 3D:** `.hx-mosaic-strip-tile` gets the room-card depth grammar —
+  raised layered shadow + inset top lit-edge, light + dark variants.
+- Badge v636→**v637**, sw `HTML_CACHE` v433→**v434**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **15/15** at
+  390w light+dark AND 1440w (3 cells + no badge in strip, no cell-content
+  overflow, hero medal present, tile shadows computed, 0 page overflow).
+- NEXT: owner verdict → hotel-detail later passes or next surface.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
