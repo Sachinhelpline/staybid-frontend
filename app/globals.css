@@ -2706,6 +2706,28 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     align-self: start;
   }
 }
+/* v641 — /passport generic cards join the borderless 4-layer 3D grammar
+   (same family as .hx-room-card / .mb-card / .bk-card). Used by the hub page
+   + FamilyPassport/HowItGrows section containers. The passport BOOK, medals,
+   member card and detail sheet keep their own custom depth — never flatten
+   them onto this class. */
+.ppx-card {
+  background: var(--bg-card);
+  border: none;
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .ppx-card {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 /* v638 — sticky rail joins the borderless 4-layer 3D grammar (same family as .hx-room-card) */
 .hx-sticky-card {
   background: var(--bg-card);

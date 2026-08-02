@@ -4,6 +4,7 @@
 // premium dashed placeholders. Tapping a stamp opens its detail (hotel · city ·
 // date · region). Empty slots explain how the next stamp lands.
 import { useState } from "react";
+import { Stamp } from "lucide-react";
 import { REGION_STYLE, regionForCity, type StampRow, type Region } from "@/lib/passport/engine";
 import { PassportMedal, stampFace } from "./PassportMedal";
 import { PassportDetailSheet, type DetailItem } from "./PassportDetailSheet";
@@ -23,8 +24,8 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
-          🛂 Your Stamps
+        <h3 className="font-display text-lg font-semibold flex items-center gap-2" style={{ color: "var(--text-base)" }}>
+          <Stamp size={17} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} /> Your Stamps
         </h3>
         <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-muted)" }}>
           {stamps.length} collected

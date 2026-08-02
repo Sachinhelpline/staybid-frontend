@@ -4,6 +4,7 @@
 // sees a combined stamp count + each member's rank. Members can leave; the
 // owner disbands.
 import { useEffect, useState } from "react";
+import { Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { CountUp } from "@/components/CountUp";
 import { PassportMedal, MEDAL_CHAMPAGNE, type MedalFace } from "@/components/passport/PassportMedal";
@@ -133,8 +134,8 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
         }
       `}</style>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
-          👨‍👩‍👧 Family Passport
+        <h3 className="font-display text-lg font-semibold flex items-center gap-2" style={{ color: "var(--text-base)" }}>
+          <Users size={17} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} /> Family Passport
         </h3>
         {family && (
           <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
@@ -151,8 +152,8 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
 
       {!family ? (
         // ── No family yet ──
-        <div className="rounded-3xl p-5 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
-          <p className="text-3xl mb-2">👨‍👩‍👧‍👦</p>
+        <div className="ppx-card rounded-3xl p-5 text-center">
+          <p className="mb-2"><Users size={28} strokeWidth={2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></p>
           <p className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>
             Travel as a family
           </p>
@@ -258,7 +259,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
 
           {/* Owner: add member */}
           {isOwner && (
-            <div className="rounded-[22px] p-3.5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+            <div className="ppx-card rounded-[22px] p-3.5">
               <p className="text-xs font-bold mb-2" style={{ color: "var(--text-base)" }}>Add a member</p>
               <div className="flex gap-2">
                 <input

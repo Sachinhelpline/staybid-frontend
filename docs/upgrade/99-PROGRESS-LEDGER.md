@@ -577,6 +577,43 @@
 - NEXT: owner device-check v639+v640 together (my-bids → bookings is one
   journey) → /passport or Phase 2 panels.
 
+### 2026-08-03 — Session 6 cont. (v641 — /passport hub: 3D cards + lucide chrome)
+- **Owner commission:** "passport". Presentation-only — redemption/wallet/
+  family APIs and the redeem money-flow untouched.
+- **Card grammar:** NEW shared `.ppx-card` in globals.css (borderless
+  4-layer + dark variant — the `.hx-*` placement pattern). Applied to the
+  hub's generic flat cards: rewards balance strip, reward catalog rows,
+  confirm/success modal panels, tx rows, wallet-credit strip, code cards,
+  empty-passport card — plus the two flat section shells in components
+  (`FamilyPassport` no-family card + add-member card, `HowItGrows`
+  container). **The passport BOOK, medals, member card, detail sheet and
+  the dark wallet balance card keep their own custom depth** — the class
+  comment forbids flattening them onto it. Tab bar stays a control
+  (border kept, like `.mb-seg`).
+- **Chrome emoji→lucide:** tab icons 🛂💳✨🎟️→BookUser/CreditCard/
+  Sparkles/Ticket (TABS array now carries components), 👤 profile→
+  UserRound (+aria-label), empty states 🛂💳✨🎟️→icons, ✨ Redeem/🎟️
+  Codes shortcut buttons, 🔒 locked-redeem→Lock, 💰 wallet credit→Wallet.
+  Section headings in components: 🛂 Your Stamps→Stamp, 🏅 Achievements→
+  Medal, 🎁 Stamp Rewards→Gift, 👨‍👩‍👧 Family Passport→Users (+ family
+  empty hero). **KEEP:** kindIcon()/rule.icon reward glyphs (data-driven
+  medal vocabulary in PassportMedal + modals), HowItGrows medal glyphs,
+  🎉 celebration, ✓ ticks, rank emoji, every glyph inside the book/stamps/
+  badges internals. Navbar's ✨ Creator item is GLOBAL chrome — out of
+  scope here, belongs to the global-chrome phase.
+- Badge v640→**v641** (`SB_BUILD v641-passport-3dcards-lucide`), sw
+  `HTML_CACHE` v437→**v438**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **15/15** via
+  full fixtures (passport profile + rank + wallet txns + active code +
+  family:null): all 4 tabs at 390w light (ppx-card 4-layer computed on
+  FamilyPassport/HowItGrows/tx-row/balance-strip/credit/code cards, 4
+  lucide tab icons, page-scoped emoji scan clean excluding medal nodes,
+  dark balance card identity intact, 0 overflow) + 1440w dark (black-cast
+  4-layer, 0 overflow). Audit gotcha recorded: page.evaluate drops JS
+  closures — pass the needle as an evaluate ARG, never a closure.
+- NEXT: owner device-check v639-v641 → /auth (careful: admin-intent
+  fail-closed logic) or Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
