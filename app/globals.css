@@ -2706,12 +2706,24 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     align-self: start;
   }
 }
+/* v638 — sticky rail joins the borderless 4-layer 3D grammar (same family as .hx-room-card) */
 .hx-sticky-card {
   background: var(--bg-card);
-  border: 1px solid var(--border-soft);
+  border: none;
   border-radius: 22px;
   padding: 22px 20px;
-  box-shadow: 0 20px 50px -22px rgba(31, 26, 15, 0.22);
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .hx-sticky-card {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .hx-sticky-rate-l {
   font-size: 0.62rem;

@@ -34,6 +34,9 @@ import HotelHero from "@/components/hotel/HotelHero";
 // (owner: the compact badge overflowed the strip cell).
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelTrustStrip from "@/components/hotel/HotelTrustStrip";
+// v638 — lucide chrome icons (deep-flow emoji sweep; amenity map, score
+// ladder labels and celebration copy deliberately KEEP their emojis).
+import { Zap, Lock, Hourglass, AlarmClock, Gem, Wallet, MapPin, Trophy, Calendar as CalIcon } from "lucide-react";
 import { useReveal } from "@/lib/useReveal";
 import IndividualRoomsSection from "@/components/hotel/IndividualRoomsSection";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
@@ -330,6 +333,11 @@ function RoomSwipeMedia({
    that forces the card visible 1.4s after mount even if the observer never
    fires (see .hx-io in globals.css). The room list can never be lost to an
    animation bug again — worst case it just fades in without the rise. */
+/* v638 — tiny inline-icon helper for text-embedded lucide glyphs. */
+function InIc({ I, size = 13 }: { I: React.ComponentType<any>; size?: number }) {
+  return <I size={size} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} />;
+}
+
 function RevealCard({ children, delay }: { children: React.ReactNode; delay?: string }) {
   const { ref, visible } = useReveal<HTMLDivElement>({ threshold: 0, rootMargin: "0px 0px 15% 0px" });
   return (
@@ -2610,7 +2618,7 @@ export default function HotelDetail() {
                 <p style={{
                   fontSize: "0.6rem", fontWeight: 800, color: "var(--cozy-rose)",
                   textTransform: "uppercase", letterSpacing: "0.16em", margin: 0,
-                }}>⚡ Flash Deal Active</p>
+                }}><InIc I={Zap} size={12} /> Flash Deal Active</p>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
                   {flashRoom?.name || "Room"} at{" "}
                   <span style={{ fontWeight: 800, color: "var(--text-base)", fontSize: "1.05rem" }}>₹{dealPrice}</span>
@@ -2687,7 +2695,7 @@ export default function HotelDetail() {
               border: "1px solid rgba(106,133,160,0.42)",
               display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
             }}>
-              <span style={{ fontSize: "1.05rem" }}>⏳</span>
+              <Hourglass size={17} strokeWidth={2.2} aria-hidden />
               <div style={{ flex: 1, minWidth: 220 }}>
                 <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-base)", margin: 0 }}>
                   {title} · try again in {wait}
@@ -2879,7 +2887,7 @@ export default function HotelDetail() {
                   <div className="absolute inset-0 bg-linear-to-br from-blue-50 to-green-50 opacity-60" />
                   <div className="relative text-center">
                     <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-2 shadow-lg">
-                      <span className="text-white text-lg">📍</span>
+                      <MapPin size={18} strokeWidth={2.2} aria-hidden className="text-white" />
                     </div>
                     <p className="text-xs font-semibold text-luxury-700">{hotel.city} Area</p>
                     <p className="text-[0.6rem] text-luxury-400">Exact pin shared post-booking</p>
@@ -2990,7 +2998,7 @@ export default function HotelDetail() {
                 ))}
                 <div className="flex items-center justify-between pt-2 border-t border-luxury-100 mt-2">
                   <div className="flex items-center gap-2">
-                    <span>🏆</span>
+                    <Trophy size={15} strokeWidth={2.2} aria-hidden style={{ color: "#b8860b" }} />
                     <span className="text-sm font-bold text-gold-600">StayBid</span>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Best Price Guaranteed</span>
@@ -3182,7 +3190,7 @@ export default function HotelDetail() {
                               {/* v241.14 — surface total amount on CTA so
                                   customer knows EXACTLY what they'll pay,
                                   not just per-room rate */}
-                              💰 Pay Now & Confirm Booking — ₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")} →
+                              <InIc I={Wallet} size={14} /> Pay Now & Confirm Booking — ₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")} →
                             </button>
                           )}
                         </div>
@@ -3432,7 +3440,7 @@ export default function HotelDetail() {
                   className="hx-cta hx-cta-primary"
                   style={{ width: "100%", background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                 >
-                  💰 Pay &amp; Confirm Booking — ₹{lockedAmount.toLocaleString("en-IN")}/night →
+                  <InIc I={Wallet} size={14} /> Pay &amp; Confirm Booking — ₹{lockedAmount.toLocaleString("en-IN")}/night →
                 </button>
               ) : myRoomCountered ? (
                 <button
@@ -3444,7 +3452,7 @@ export default function HotelDetail() {
                 </button>
               ) : myRoomPending ? (
                 <div className="hx-cta hx-cta-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.85, cursor: "default" }}>
-                  ⏳ Bid pending review — hotel will respond shortly
+                  <InIc I={Hourglass} /> Bid pending review — hotel will respond shortly
                 </div>
               ) : isOtherWhenLocked ? (
                 // v197 — when an ACCEPTED bid exists on a DIFFERENT room,
@@ -3496,7 +3504,7 @@ export default function HotelDetail() {
                     style={{ width: "100%", background: "linear-gradient(135deg,#748da6 0%,#8198ae 50%,#748da6 100%)", color: "#1a1205", padding: "12px 14px", lineHeight: 1.25 }}
                   >
                     <div style={{ fontSize: "0.85rem", fontWeight: 800 }}>
-                      💎 Upgrade to {r.name || r.type}
+                      <InIc I={Gem} /> Upgrade to {r.name || r.type}
                     </div>
                     <div style={{ fontSize: "0.7rem", fontWeight: 600, opacity: 0.85, marginTop: 2 }}>
                       ₹{anchorAmount.toLocaleString("en-IN")} {lockedBid ? "accepted" : "bid"} + ₹{lockUpgradeDelta.toLocaleString("en-IN")} extra = ₹{(anchorAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
@@ -3508,7 +3516,7 @@ export default function HotelDetail() {
                     className="hx-cta hx-cta-primary"
                     style={{ width: "100%", background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                   >
-                    💰 {lockedBid ? "Pay accepted" : "View active bid"} ₹{anchorAmount.toLocaleString("en-IN")}/night →
+                    <InIc I={Wallet} /> {lockedBid ? "Pay accepted" : "View active bid"} ₹{anchorAmount.toLocaleString("en-IN")}/night →
                   </button>
                 )
               ) : null;
@@ -3598,7 +3606,7 @@ export default function HotelDetail() {
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
                         boxShadow: "0 4px 12px rgba(127,146,105,0.38)",
-                      }}>🔒 Price Locked</span>
+                      }}><InIc I={Lock} size={11} /> Price Locked</span>
                     )}
                     {!isFlashRoom && !isLockedRoom && myRoomCountered && (
                       <span style={{
@@ -3617,7 +3625,7 @@ export default function HotelDetail() {
                         background: "rgba(106,133,160,0.94)", color: "#1a1205",
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
-                      }}>⏳ Bid Pending</span>
+                      }}><InIc I={Hourglass} size={11} /> Bid Pending</span>
                     )}
                     {!isFlashRoom && isOtherWhenLocked && lockUpgradeDelta > 0 && (
                       <span style={{
@@ -3626,7 +3634,7 @@ export default function HotelDetail() {
                         background: "rgba(106, 133, 160,0.94)", color: "#1a1205",
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
-                      }}>💎 +₹{lockUpgradeDelta.toLocaleString()} Upgrade</span>
+                      }}><InIc I={Gem} size={11} /> +₹{lockUpgradeDelta.toLocaleString()} Upgrade</span>
                     )}
                     {!isFlashRoom && ds && !isLockedRoom && !myRoomCountered && !myRoomPending && !isOtherWhenLocked && (
                       <span className={`hx-badge-demand ${aiPrice!.demandLevel === "Surge" ? "is-surge" : ""}`}>
@@ -3726,7 +3734,7 @@ export default function HotelDetail() {
                     const chipBg = lockedPayOpen ? "rgba(127,146,105,0.16)" : "rgba(180,83,9,0.10)";
                     const chipBorder = lockedPayOpen ? "rgba(127,146,105,0.42)" : "rgba(180,83,9,0.32)";
                     const chipTitle = lockedPayOpen ? "#5a6e44" : "#7c2d12";
-                    const chipIcon = lockedPayOpen ? "🔒" : "⏰";
+                    const chipIcon = lockedPayOpen ? <Lock size={17} strokeWidth={2.2} aria-hidden /> : <AlarmClock size={17} strokeWidth={2.2} aria-hidden />;
                     const chipSubtitle = lockedPayOpen
                       ? "Confirm payment before the hold window expires."
                       : "Hold window expired — place a new bid to reserve this room.";
@@ -3792,7 +3800,7 @@ export default function HotelDetail() {
                       border: "1px solid rgba(106,133,160,0.42)",
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: "1.05rem" }}>⏳</span>
+                      <Hourglass size={17} strokeWidth={2.2} aria-hidden />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a6a1f", margin: 0 }}>
                           Bid pending at ₹{(extractCustomerBidFromMessage(myRoomPending.message) ?? Number(myRoomPending.amount || 0)).toLocaleString("en-IN")}/night
@@ -3810,7 +3818,7 @@ export default function HotelDetail() {
                       border: "1px solid rgba(106, 133, 160,0.36)",
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: "1.05rem" }}>💎</span>
+                      <Gem size={17} strokeWidth={2.2} aria-hidden />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a5e10", margin: 0 }}>
                           Upgrade to ₹{(lockedAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
@@ -3832,7 +3840,7 @@ export default function HotelDetail() {
                         <div className="hx-price-row">
                           <div>
                             <p className="hx-price-label">
-                              {isHeadlineRoom ? "⚡ Flash Deal Price" : "⚡ Flash Deal · Upgrade"}
+                              <InIc I={Zap} size={12} />{isHeadlineRoom ? "Flash Deal Price" : "Flash Deal · Upgrade"}
                             </p>
                             <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
                               {roomWasPrice > roomFlashPrice && (
@@ -3870,7 +3878,7 @@ export default function HotelDetail() {
                           })}
                           className="hx-cta hx-cta-primary"
                         >
-                          {isHeadlineRoom ? "⚡ Book This Flash Deal" : "⚡ Upgrade & Book"}
+                          <InIc I={Zap} size={13} />{isHeadlineRoom ? "Book This Flash Deal" : "Upgrade & Book"}
                         </button>
                       </div>
                     </div>
@@ -3881,7 +3889,7 @@ export default function HotelDetail() {
                         /* ── No dates selected — teaser ── */
                         <div>
                           <div className="hx-teaser">
-                            <p className="hx-teaser-title">📅 Select dates to see live price</p>
+                            <p className="hx-teaser-title"><InIc I={CalIcon} size={12} /> Select dates to see live price</p>
                             <p className="hx-teaser-sub">AI pricing engine calculates the best rate for your travel dates</p>
                             <span className="hx-teaser-from">
                               <span className="hx-teaser-from-dot" />
@@ -3917,7 +3925,7 @@ export default function HotelDetail() {
                               <div className="mb-3 space-y-1.5">
                                 <div className="flex flex-wrap gap-1.5">
                                   <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
-                                    📅 {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {globalNights} night{globalNights > 1 ? "s" : ""}
+                                    <InIc I={CalIcon} size={11} /> {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {globalNights} night{globalNights > 1 ? "s" : ""}
                                   </span>
                                   <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
                                     👥 {globalAdults} adults{globalChildren > 0 ? ` · ${globalChildren} children` : ""}{globalKids > 0 ? ` · ${globalKids} kids` : ""}
@@ -4168,7 +4176,7 @@ export default function HotelDetail() {
               background: "linear-gradient(135deg, #f8f9fa 0%, #f1f4f6 100%)",
               borderColor: "rgba(106, 133, 160,0.30)",
             }}>
-              <span style={{ fontSize: "1.1rem" }}>🔒</span>
+              <Lock size={17} strokeWidth={2.2} aria-hidden />
               <div style={{ fontSize: "0.72rem", lineHeight: 1.35 }}>
                 <p style={{ fontWeight: 700, color: "#6e5430" }}>Dates locked to your accepted bid</p>
                 <p style={{ color: "#8a6f3a", marginTop: 2 }}>
@@ -4214,7 +4222,7 @@ export default function HotelDetail() {
               className="picker-tile block text-left"
               style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in {datesLocked && <span style={{ color: "#748da6" }}>· 🔒</span>}</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-in {datesLocked && <span style={{ color: "#748da6" }}>· <Lock size={10} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-1px" }} /></span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckIn
                   ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -4236,7 +4244,7 @@ export default function HotelDetail() {
               className="picker-tile block text-left"
               style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out {datesLocked && <span style={{ color: "#748da6" }}>· 🔒</span>}</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-out {datesLocked && <span style={{ color: "#748da6" }}>· <Lock size={10} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-1px" }} /></span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckOut
                   ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -4372,7 +4380,7 @@ export default function HotelDetail() {
                     border: "1px solid rgba(127,146,105,0.42)",
                     borderRadius: 12, display: "flex", alignItems: "center", gap: 8,
                   }}>
-                    <span style={{ fontSize: "1rem" }}>🔒</span>
+                    <Lock size={15} strokeWidth={2.2} aria-hidden />
                     <p style={{ fontSize: "0.74rem", color: "#5a6e44", margin: 0, lineHeight: 1.45 }}>
                       Bid accepted — confirm payment to lock this booking.
                     </p>
@@ -4383,7 +4391,7 @@ export default function HotelDetail() {
                     className="hx-cta hx-cta-primary"
                     style={{ width: "100%", marginBottom: 8, background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                   >
-                    💰 Pay &amp; Confirm Booking →
+                    <InIc I={Wallet} size={14} /> Pay &amp; Confirm Booking →
                   </button>
                 </>
               ) : pageCounteredBid ? (
@@ -4595,7 +4603,7 @@ export default function HotelDetail() {
             {/* Gold header */}
             <div className="bg-linear-to-r from-gold-600 to-gold-400 px-6 py-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-white/70 uppercase tracking-widest">⚡ Flash Deal Booking</p>
+                <p className="text-xs font-bold text-white/70 uppercase tracking-widest"><InIc I={Zap} size={12} /> Flash Deal Booking</p>
                 <p className="text-white font-semibold text-lg">{flashRoom?.name || "Room"}</p>
                 <p className="text-white/70 text-sm">{hotel.name}</p>
               </div>
@@ -4609,7 +4617,7 @@ export default function HotelDetail() {
                 <div>
                   <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in (Today)</label>
                   <div className="input-luxury text-sm bg-luxury-50 text-luxury-400 cursor-not-allowed flex items-center gap-2">
-                    🔒 {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    <InIc I={Lock} size={11} /> {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </div>
                 </div>
                 <div>
@@ -4646,7 +4654,7 @@ export default function HotelDetail() {
                         ? new Date(flashCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
                         : "Pick date"}
                     </span>
-                    <span className="text-gold-500 text-base">📅</span>
+                    <CalIcon size={16} strokeWidth={2.2} aria-hidden className="text-gold-500" />
                   </button>
                 </div>
               </div>
@@ -5168,7 +5176,7 @@ export default function HotelDetail() {
                 {/* StayPoints teaser */}
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-2.5"
                   style={{ background:"linear-gradient(90deg,rgba(120,150,182,0.16),rgba(120,150,182,0.04))", border:"1px solid rgba(120,150,182,0.30)" }}>
-                  <span className="text-lg">💎</span>
+                  <Gem size={18} strokeWidth={2.2} aria-hidden />
                   <div className="flex-1">
                     <p className="text-[0.7rem] font-semibold" style={{ color: "#bcd0e4" }}>Win this bid → earn <span className="font-extrabold">{stayPoints}</span> StayPoints</p>
                     <p className="text-[0.55rem] text-white/40">Redeemable as ₹{stayPoints} cashback on future stays</p>
@@ -5308,7 +5316,7 @@ export default function HotelDetail() {
                       ? new Date(checkIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
                       : "Pick date"}
                   </span>
-                  <span className="text-gold-500 text-base">📅</span>
+                  <CalIcon size={16} strokeWidth={2.2} aria-hidden className="text-gold-500" />
                 </button>
               </div>
               <div>
@@ -5327,7 +5335,7 @@ export default function HotelDetail() {
                       ? new Date(checkOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
                       : "Pick date"}
                   </span>
-                  <span className="text-gold-500 text-base">📅</span>
+                  <CalIcon size={16} strokeWidth={2.2} aria-hidden className="text-gold-500" />
                 </button>
               </div>
             </div>
@@ -5436,7 +5444,7 @@ export default function HotelDetail() {
             {/* Header */}
             <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2 border-b" style={{ borderColor: "rgba(106, 133, 160,0.15)" }}>
               <div>
-                <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#748da6" }}>💎 Upgrade your room</p>
+                <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#748da6" }}><InIc I={Gem} size={11} /> Upgrade your room</p>
                 <h3 className="text-lg font-black mt-1" style={{ fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.2 }}>
                   {upgradeModal.fromRoomName} → {upgradeModal.toRoom.name || upgradeModal.toRoom.type}
                 </h3>
@@ -5543,7 +5551,7 @@ export default function HotelDetail() {
                   })}
                   className="picker-tile block text-left"
                 >
-                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
+                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-in</p>
                   <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
                     {globalCheckIn
                       ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -5559,7 +5567,7 @@ export default function HotelDetail() {
                   })}
                   className="picker-tile block text-left"
                 >
-                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
+                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-out</p>
                   <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
                     {globalCheckOut
                       ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })

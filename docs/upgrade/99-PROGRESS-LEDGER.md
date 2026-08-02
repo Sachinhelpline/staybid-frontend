@@ -473,6 +473,42 @@
   overflow, hero medal present, tile shadows computed, 0 page overflow).
 - NEXT: owner verdict → hotel-detail later passes or next surface.
 
+### 2026-08-02 — Session 6 cont. (v638 — hotel-detail remaining passes: deep-flow lucide + rail 3D)
+- **Owner commission:** "Hotel-detail baaki passes: deep-flow emoji→lucide
+  (status chips, pickers, drawer), About/Reviews tab polish, desktop sticky
+  rail re-skin, gallery/calendar modals."
+- **Deep-flow emoji→lucide (~28 JSX-chrome swaps)** in `app/hotels/[id]/
+  page.tsx` via lucide imports + a small `InIc` inline-icon helper: flash
+  banner ⚡→Zap, cooldown/pending ⏳→Hourglass, 💎→Gem, 🔒→Lock, status chips
+  (Price Locked / Bid Pending / Upgrade — Lock/AlarmClock at 17px), Pay CTAs
+  💰→Wallet, reviews OTA-compare 🏆→Trophy, about-map 📍→MapPin, every picker/
+  teaser/dates 📅→Calendar icon, upgrade modal 💎→Gem.
+- **KEEP list (deliberate, documented honestly):** template-string labels that
+  flow through plain-text renderers (`🔒 Hold…`, `💰 Save Big` pick label,
+  `⏳ Submitting`, `💎 Upgrade & Pay` string forms), the amenity emoji map,
+  score-ladder rank glyphs (👑⭐✨), 🎉 celebration, and `glyph="🏨"` — these
+  are content vocabulary, not chrome, or live in string contexts where a JSX
+  node can't go.
+- **Desktop sticky rail re-skin:** `.hx-sticky-card` joins the v634 borderless
+  4-layer 3D grammar (long cast + mid bloom + contact edge + inset top
+  highlight) + `[data-theme="dark"]` variant — the 1px-border flat card was
+  the last hotel-detail surface off-grammar.
+- **About/Reviews polish:** Trophy/MapPin icon swaps (above); assessed the
+  tabs as otherwise consistent — no structural change needed.
+- **Gallery/calendar modals — assessed, deliberately untouched:** both are
+  self-contained dark-luxe surfaces (PhotoGallery lightbox is conventionally
+  dark in both themes with its own data-driven category-chip vocabulary; the
+  lux-cal sheet already matches the premium grammar). No change = the honest
+  call; re-skinning them would be churn, not polish.
+- Badge v637→**v638** (`SB_BUILD v638-detail-deepflow-lucide-rail3d`), sw
+  `HTML_CACHE` v434→**v435**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **11/11** —
+  1440w light (sticky borderless + 4-layer + inset, room-card grammar
+  intact, 9 lucide svgs, 0 overflow), 390w light (swapped-zone emoji scan
+  clean, 0 overflow), 1440w dark (sticky black-cast 4-layer variant applies).
+- NEXT: owner device-check v638 → next surface (recommend /my-bids — the Pay
+  conversion path) or Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
