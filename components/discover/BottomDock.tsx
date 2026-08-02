@@ -169,10 +169,16 @@ export function BottomDock() {
           /* v618 EDGE-TO-EDGE (kept): background fills the gesture-bar
              region; max(3px, safe-area) pads the icons above the pill. */
           padding: 2px 6px max(3px, env(safe-area-inset-bottom, 0px));
+          /* v633 — steeper fade: only the top ~18% is see-through; by the
+             icon zone the glass is ≥93% solid. v632's 38%-transparent top
+             put the icons' upper halves on raw page content — "buttons
+             sahi se visible nahi" (owner). The soft top edge (the actual
+             "melt into the page") is preserved. */
           background: linear-gradient(180deg,
             rgba(19, 23, 28, 0) 0%,
-            rgba(19, 23, 28, 0.55) 38%,
-            rgba(19, 23, 28, 0.94) 100%);
+            rgba(19, 23, 28, 0.72) 18%,
+            rgba(19, 23, 28, 0.93) 45%,
+            rgba(19, 23, 28, 0.96) 100%);
           backdrop-filter: blur(14px) saturate(1.3);
           -webkit-backdrop-filter: blur(14px) saturate(1.3);
           border-top: none;
@@ -183,8 +189,9 @@ export function BottomDock() {
         [data-theme="light"] .ig-bottom-dock {
           background: linear-gradient(180deg,
             rgba(176, 192, 209, 0) 0%,
-            rgba(176, 192, 209, 0.50) 38%,
-            rgba(176, 192, 209, 0.94) 100%);
+            rgba(176, 192, 209, 0.70) 18%,
+            rgba(176, 192, 209, 0.93) 45%,
+            rgba(176, 192, 209, 0.96) 100%);
           border-top: none;
           box-shadow: none;
         }
@@ -193,12 +200,13 @@ export function BottomDock() {
         body.sb-modal-open    .ig-bottom-dock { display: none !important; }
         body.sb-composer-open .ig-you-chip,
         body.sb-modal-open    .ig-you-chip { display: none !important; }
-        /* v610/v614 — /bid immersive skin (kept, now fade-glass too). */
+        /* v610/v614 — /bid immersive skin (kept, fade-glass, v633 stops). */
         body.sb-bid-immersive .ig-bottom-dock {
           background: linear-gradient(180deg,
             rgba(13, 10, 5, 0) 0%,
-            rgba(13, 10, 5, 0.60) 38%,
-            rgba(13, 10, 5, 0.95) 100%);
+            rgba(13, 10, 5, 0.72) 18%,
+            rgba(13, 10, 5, 0.93) 45%,
+            rgba(13, 10, 5, 0.96) 100%);
           border-top: none;
           box-shadow: none;
         }
@@ -228,13 +236,20 @@ export function BottomDock() {
             transform 0.14s cubic-bezier(.32,1.2,.36,1),
             background 0.18s ease;
         }
-        [data-theme="light"] .ig-dock-item { color: #3f5369; }
-        /* v408 — reel-page always-dark skin (kept, now fade-glass too). */
+        /* v633 — deeper ink + a faint theme-matched halo so glyphs stay
+           legible even over the fade's softer top edge. */
+        [data-theme="light"] .ig-dock-item { color: #33465c; }
+        .ig-dock-item .ig-dock-ic { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+        [data-theme="light"] .ig-dock-item .ig-dock-ic {
+          filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.55));
+        }
+        /* v408 — reel-page always-dark skin (kept, fade-glass, v633 stops). */
         body.is-reel-page .ig-bottom-dock {
           background: linear-gradient(180deg,
             rgba(10, 8, 5, 0) 0%,
-            rgba(10, 8, 5, 0.60) 38%,
-            rgba(10, 8, 5, 0.95) 100%);
+            rgba(10, 8, 5, 0.72) 18%,
+            rgba(10, 8, 5, 0.93) 45%,
+            rgba(10, 8, 5, 0.96) 100%);
           border-top: none;
           box-shadow: none;
         }

@@ -8754,41 +8754,52 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .bgz-boot-mock-guests > span { font-size: 0.66rem; padding: 3px 8px; }
 }
 
-/* v632 — the v243 tuning stopped at 760px, but the dock carve (54px) +
-   content growth meant even an 844px-class phone overflowed by ~100px
-   (owner: "PRESS START ke peeche content hide + abhi bhi scroll karna
-   pad raha hai"). Compress EVERYTHING under 920px height so the whole
-   boot — header + tracker + 5 steps + PRESS START — fits with NO scroll
-   on real phones. ⚠ This block must stay AFTER every base .bgz-boot-*
-   rule AND after the (max-width: 380px) block — equal specificity means
-   source order decides, and both used to silently win over these
-   overrides. Measured driver: each step row was EYEBROW-limited (46px
-   disc + 69px text = 121px); the real inner classes are
-   .bgz-boot-step-eye-title / .bgz-boot-step-eye-sub. */
+/* v633 — FLUID boot fit (replaces the v632 fixed micro-compression, which
+   over-shot: content shrank to ~640px in a 790px shell and place-items:
+   center split ~150px of dead space above AND below — owner screenshot 2).
+   Every vertical spender now breathes with the viewport via clamp(min,
+   svh, max): tall phones relax toward the original comfortable sizes,
+   short phones compress — the content column always ≈ fills the shell.
+   No scroll AND no dead-space bands, at any height. ⚠ This block must
+   stay AFTER every base .bgz-boot-* rule and after the (max-width:380px)
+   block — equal specificity means source order decides. Measured height
+   driver: the step EYEBROW (disc + .bgz-boot-step-eye-title/-eye-sub). */
 @media (max-height: 920px) {
-  .bgz-boot-content { padding: 8px 14px 10px 14px; }
-  .bgz-boot-header { margin-bottom: 6px; }
-  .bgz-boot-title { font-size: clamp(1rem, 4.2vw, 1.3rem); }
-  .bgz-boot-sub { font-size: 0.63rem; }
-  .bgz-boot-tracker { margin-bottom: 8px; }
-  .bgz-boot-track-sub { display: none; }
-  .bgz-boot-track-num { width: 18px; height: 18px; font-size: 0.62rem; }
-  .bgz-boot-journey { gap: 4px; margin-bottom: 6px; }
-  .bgz-boot-step { gap: 5px; }
-  .bgz-boot-step--right { grid-template-columns: minmax(0, 88px) minmax(0, 1fr); }
-  .bgz-boot-step--left  { grid-template-columns: minmax(0, 1fr) minmax(0, 88px); }
-  .bgz-boot-step-num { width: 32px; height: 32px; font-size: 1rem; }
-  .bgz-boot-step-eyebrow { gap: 2px; }
-  .bgz-boot-step-eye-title { font-size: 0.74rem; }
-  .bgz-boot-step-eye-sub { font-size: 0.58rem; line-height: 1.2; }
-  .bgz-boot-step-card { padding: 4px 10px; }
-  .bgz-boot-step-title { font-size: 0.7rem; margin-bottom: 3px; }
+  .bgz-boot-content { padding: clamp(6px, 1.2svh, 14px) 14px clamp(6px, 1.2svh, 14px) 14px; }
+  .bgz-boot-header { margin-bottom: clamp(4px, 0.9svh, 10px); }
+  .bgz-boot-title { font-size: clamp(1.05rem, 4.6vw, 1.45rem); }
+  .bgz-boot-sub { font-size: 0.66rem; }
+  .bgz-boot-tracker { margin-bottom: clamp(5px, 1svh, 12px); }
+  .bgz-boot-track-num { width: clamp(18px, 2.6svh, 22px); height: clamp(18px, 2.6svh, 22px); }
+  .bgz-boot-journey { gap: clamp(3px, 1svh, 9px); margin-bottom: clamp(5px, 1svh, 12px); }
+  .bgz-boot-step { gap: clamp(5px, 0.8svh, 8px); }
+  .bgz-boot-step--right { grid-template-columns: minmax(0, clamp(88px, 12svh, 110px)) minmax(0, 1fr); }
+  .bgz-boot-step--left  { grid-template-columns: minmax(0, 1fr) minmax(0, clamp(88px, 12svh, 110px)); }
+  .bgz-boot-step-num { width: clamp(30px, 5svh, 44px); height: clamp(30px, 5svh, 44px); font-size: clamp(1rem, 2svh, 1.35rem); }
+  .bgz-boot-step-eyebrow { gap: clamp(2px, 0.5svh, 5px); }
+  .bgz-boot-step-eye-title { font-size: clamp(0.72rem, 1.5svh, 0.95rem); }
+  .bgz-boot-step-eye-sub { font-size: clamp(0.56rem, 1.1svh, 0.72rem); line-height: 1.22; }
+  .bgz-boot-step-card { padding-top: clamp(3px, 0.9svh, 9px); padding-bottom: clamp(3px, 0.9svh, 9px); }
+  .bgz-boot-step-title { font-size: clamp(0.72rem, 1.3svh, 0.84rem); margin-bottom: clamp(3px, 0.6svh, 6px); }
   .bgz-boot-mock-pills > span,
-  .bgz-boot-mock-guests > span { padding: 3px 7px; font-size: 0.6rem; }
-  .bgz-boot-mock-dates > div:not(.sep) { padding: 2px 7px; }
-  .bgz-boot-mock-dates .val { font-size: 0.68rem; }
-  .bgz-boot-mock-price .mock-price-amt { font-size: 1rem; }
-  .bgz-boot-cta { padding: 11px 30px; font-size: 0.9rem; }
+  .bgz-boot-mock-guests > span { padding: clamp(3px, 0.5svh, 4px) 8px; font-size: clamp(0.62rem, 1.1svh, 0.68rem); }
+  .bgz-boot-mock-dates > div:not(.sep) { padding: clamp(2px, 0.5svh, 4px) 8px; }
+  .bgz-boot-mock-dates .val { font-size: clamp(0.66rem, 1.2svh, 0.74rem); }
+  .bgz-boot-mock-price .mock-price-amt { font-size: clamp(0.95rem, 1.8svh, 1.12rem); }
+  .bgz-boot-cta { padding: clamp(10px, 1.7svh, 15px) clamp(28px, 5svh, 36px); font-size: clamp(0.88rem, 1.6svh, 0.98rem); }
+}
+/* very short viewports only: the tracker sub-line duplicates the journey
+   card titles — dropping it buys three text rows without losing meaning. */
+@media (max-height: 800px) {
+  .bgz-boot-track-sub { display: none; }
+}
+/* ≤720px-height micro-step (600-700px class devices): the svh floors alone
+   land ~8px over — trim the tracker discs + pill chrome to close it. */
+@media (max-height: 720px) {
+  .bgz-boot-track-num { width: 16px; height: 16px; font-size: 0.58rem; }
+  .bgz-boot-title { font-size: clamp(0.95rem, 4.2vw, 1.15rem); }
+  .bgz-boot-mock-pills > span,
+  .bgz-boot-mock-guests > span { padding: 2px 7px; }
 }
 
 @keyframes bgzBootIn {
@@ -13387,70 +13398,121 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .ig-cta-mini:active { transform: translateY(1px); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   v631 — HERO DEPTH TRANSITION (Hotstar idiom) — mobile Stage ONLY.
-   Owner-approved from the live demo: as you scroll off the top, the PINNED
-   hero recedes (shrinks toward its upper third, sinks 14px, dims to 55%)
-   while the first surface below (ticker, or rails when the ticker is empty)
-   slides OVER it with a rounded top + upward shadow, un-zooming 96.5%→100%.
-   Driven by ONE custom property --sbhp (0→1 over the first half viewport),
-   written by an rAF-throttled passive scroll listener in DesktopHome.tsx —
-   transform/opacity only, GPU-composited, no layout thrash.
+   v633 — HERO DEPTH TRANSITION, rebuilt (Hotstar/Netflix/Disney+ grammar) —
+   mobile Stage ONLY.
+
+   WHY THE v631/v632 VERSIONS READ UGLY (owner review, root-caused):
+   the cover panel met the RAW hero photo at a hard tonal cliff. Every
+   streaming app that does this hides that seam with TONAL CONTINUITY —
+   the hero artwork's foot fades into the PAGE background colour, so the
+   panel emerges out of its own colour, never out of a photograph.
+
+   The grammar, in full:
+   ① FOOT FADE — .sbh-hero::before, the bottom 26% of the ARTWORK fades to
+     var(--bg-page). It sits at z:1 — above the photo + scrim, BELOW
+     .sbh-hero-inner (z:2) — so the hero's white text/CTAs stay crisp in
+     BOTH themes (a light-theme cream fade never touches the type).
+   ② PIN + RECEDE — hero sticky at z:0; scroll maps --sbhp 0→1 to
+     scale 1→0.94 (origin upper third), sink 10px, dim 0→0.45 (z:4).
+     Subtle beats theatrical: 6% shrink reads premium, 8% read cartoon.
+   ③ COVER — .sbh-rails is ONE continuous panel (ticker lives inside it):
+     24px top radius, 14px top padding (content never hugs the radius),
+     -24px tuck so at rest the panel edge sits INSIDE the faded zone —
+     the seam is soft at scroll 0 and stays soft at every frame after.
+     Background = the page's own layered gradient. Un-zoom 0.985→1.
+   Driven by ONE custom property --sbhp written by an rAF-throttled
+   passive scroll listener in DesktopHome.tsx — transform/opacity only,
+   GPU-composited, no layout thrash. Light + dark both verified: every
+   colour here is a theme token, never a literal page colour.
    UNLAYERED on purpose (the .sbh-* layer contract): desktop.css lives in
    layer(utilities) and must not fight this; ≥1024px is untouched anyway.
    ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1023px) {
   .sbh-root { --sbhp: 0; }
 
-  /* The hero PINS (sticky) — the page moves, the hero holds, so it reads
-     as "going back", not "going up". It keeps its in-flow height, so no
-     layout below changes. overflow:hidden + isolation already set. */
+  /* ② the hero PINS — the page moves, the hero holds, so it reads as
+     "going back", not "going up". In-flow height unchanged. */
   .sbh-root > .sbh-hero {
     position: sticky;
     top: 0;
     z-index: 0;
-    transform-origin: 50% 18%;
-    transform: translateY(calc(var(--sbhp) * 14px)) scale(calc(1 - var(--sbhp) * 0.08));
+    transform-origin: 50% 22%;
+    transform: translateY(calc(var(--sbhp) * 10px)) scale(calc(1 - var(--sbhp) * 0.06));
     will-change: transform;
   }
-  /* Dim overlay — the hero recedes into shadow as it is covered. Sits over
-     the artwork + inner content (z:4) but never blocks taps. */
+  /* ① FOOT FADE — artwork melts into the page colour. z:1 keeps it above
+     the photo/scrim and below the hero's own text (z:2). */
+  .sbh-root > .sbh-hero::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 26%;
+    z-index: 1;
+    background: linear-gradient(180deg,
+      transparent 0%,
+      color-mix(in srgb, var(--bg-page) 55%, transparent) 55%,
+      var(--bg-page) 96%);
+    pointer-events: none;
+  }
+  /* recede dim — above everything in the hero, never blocks taps. */
   .sbh-root > .sbh-hero::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 4;
     background: #0b0f14;
-    opacity: calc(var(--sbhp) * 0.55);
+    opacity: calc(var(--sbhp) * 0.45);
     pointer-events: none;
   }
 
-  /* v632 — the COVER is .sbh-rails ALONE (the ticker moved INSIDE it in
-     DesktopHome). v631 styled the ticker as a separate cover sibling and
-     it read as a floating white band over the hero with a see-through
-     margin gap under it (owner screenshot). One continuous panel now:
-     rounded top, upward shadow, un-zoom — the real Hotstar cover.
-     Background = the SAME layered gradient as .sbh-root (never a flat
-     var(--bg-page), which mismatched the page's radial accents). */
+  /* ③ the COVER — one continuous panel (the ticker is its first child). */
   .sbh-root > .sbh-rails {
     position: relative;
     z-index: 1;
     background:
       radial-gradient(1100px 560px at 18% -6%, var(--accent-soft), transparent 60%),
       var(--bg-page);
-    border-radius: 22px 22px 0 0;
-    margin-top: -18px;              /* tucks the cover over the hero's edge */
-    padding-top: 6px;
-    box-shadow: 0 -14px 32px rgba(11, 15, 20, 0.28);
+    border-radius: 24px 24px 0 0;
+    margin-top: -24px;              /* panel edge rests INSIDE the faded zone */
+    padding-top: 14px;              /* content breathes off the radius */
+    box-shadow: 0 -10px 28px rgba(11, 15, 20, 0.20);
     transform: scale(calc(0.985 + var(--sbhp) * 0.015));
     transform-origin: 50% 0;
   }
+  [data-theme="dark"] .sbh-root > .sbh-rails {
+    box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
+  }
 
   /* Reduced motion: no pin, no transforms, no dim — plain scrolling page.
-     (The JS writer also bails, so --sbhp stays 0; these rules kill the
-     resting scale + sticky too.) */
+     The foot fade STAYS (it is composition, not motion). */
   @media (prefers-reduced-motion: reduce) {
     .sbh-root > .sbh-hero { position: relative; transform: none; }
     .sbh-root > .sbh-hero::after { display: none; }
-    .sbh-root > .sbh-rails { transform: none; margin-top: 0; }
+    .sbh-root > .sbh-rails { transform: none; }
+  }
+}
+
+/* v633 — /bid dock underlay. ROOT CAUSE of the "second bar behind the nav"
+   (owner screenshot): the .bgz-shell is carved 54px above the viewport
+   bottom (v614, so the dock stays tappable under the z-1000 shell), and
+   that carve strip shows the UNDERLYING /bid page (cream in light theme)
+   through the fade-glass dock's transparent top. The old opaque dock hid
+   this by accident; the glass dock revealed it. Fix at the cause: a fixed
+   dark underlay that owns the strip — same #0d0a05 family as the shell's
+   CTA-rail gradient directly above it and the existing status-bar fill
+   (app/layout.tsx #sb-safe-top-fill), so rail → strip → glass dock read
+   as ONE continuous dark foot. z:59 = above page content, BELOW the z:60
+   dock (and the z-1000 shell), so it can never cover a control. Scoped to
+   the existing body.sb-bid-immersive class — /bid only, auto-removed on
+   route leave, desktop unaffected (shell reaches bottom:0 there). */
+@media (max-width: 1023px) {
+  body.sb-bid-immersive::after {
+    content: "";
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: calc(54px + env(safe-area-inset-bottom, 0px));
+    z-index: 59;
+    background: #0d0a05;
+    pointer-events: none;
   }
 }

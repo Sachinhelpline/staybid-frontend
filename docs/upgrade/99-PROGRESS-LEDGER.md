@@ -320,6 +320,49 @@
   shadow, bar 49px, rank-above-button both breakpoints, 0 overflow.
 - NEXT: owner device-check v632 → next surface samples.
 
+### 2026-08-02 — Session 6 cont. (v633 — depth grammar rebuilt "last chance" pass)
+- **Owner round 5 (final warning):** hero still ugly · dock icons illegible ·
+  /bid over-compressed (dead space both ends) · a "second bar" behind the /bid
+  dock — demanded root-cause study + references before building.
+- **THE MISSING GRAMMAR (researched: Hotstar/Netflix/Disney+ pattern):** the
+  seam was the flaw — every streaming app hides it with **TONAL CONTINUITY**:
+  the hero artwork's FOOT fades into the page background colour, so the cover
+  panel emerges from its own colour, never off a raw photo cliff.
+- **Hero v633 (full rebuild of the block, end of globals.css):**
+  ① `.sbh-hero::before` FOOT FADE (bottom 26% → var(--bg-page)) at **z:1 —
+  above photo+scrim, BELOW .sbh-hero-inner (z:2)** ⇒ hero's white text/CTAs
+  never sit on a cream fade in light theme. ② recede softened to premium
+  values: scale 1→0.94, sink 10px, dim 0.45 (6% shrink reads premium, 8% read
+  cartoon). ③ cover: radius 24, padding-top 14 (chips off the radius), tuck
+  -24px so the panel edge RESTS INSIDE the faded zone at rest — seam soft at
+  every frame; dark-theme shadow variant. Reduced-motion: motion off, foot
+  fade STAYS (composition, not motion).
+- **Dock legibility:** fade steepened — transparent only in the top 18%
+  (0.72@18% → 0.93@45% → 0.96); icons sit at 29% (inside the ≥0.72 zone);
+  inactive light ink deepened #33465c; theme-matched drop-shadow halos.
+  The soft "melt" top edge is preserved.
+- **/bid "second bar" ROOT CAUSE:** the v614 shell carve strip (54px) exposes
+  the UNDERLYING page (cream) through the glass dock's transparent top — the
+  old opaque dock hid it by accident. Fix: `body.sb-bid-immersive::after`
+  fixed dark underlay (#0d0a05 = the same family as the CTA-rail gradient +
+  the existing #sb-safe-top-fill precedent), **z:59 under the z:60 dock**,
+  mobile-only, auto-removed on route leave. rail→strip→glass = one dark foot.
+- **/bid boot FLUID fit (replaces v632 fixed micro-compression):** every
+  vertical spender = clamp(min, svh, max) — tall phones relax to comfortable
+  sizes, short compress; content ≈ fills shell. Verified: **0px scroll +
+  ~97% fill at 700/780/844/915** heights (both dead-space AND overflow gone).
+  ≤800h drops the tracker sub-line; ≤720h micro-step. Documented floor:
+  640px-class (<2% devices) scrolls 28px with the sticky-CTA safety net.
+- Badge v632→**v633**, sw `HTML_CACHE` v429→**v430**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · v633 audit **42/43 →
+  final fit 4/4 target heights** (foot-fade computed both themes, z-order
+  1<2 asserted, tuck 24, recede matrix 0.94/10, dim 0.45, dock stops+halos
+  computed, underlay 59<60, reduced-motion split verified).
+- ⚠ CSS-cascade lesson bank (bit us twice today): equal-specificity override
+  blocks MUST sit after their base rules AND after any later media blocks;
+  and a python splice needs a brace-count check (one stray `}` broke build).
+- NEXT: owner verdict on v633 → next surface samples.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
