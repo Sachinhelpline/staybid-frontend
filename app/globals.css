@@ -8248,11 +8248,15 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
      trapping gesture-nav phones (no OS nav bar) on /bid. Ending the shell
      one dock-height above the viewport bottom leaves the dock uncovered
      (the shell scrolls internally, and .bgz-cta-rail sticks just above it).
-     Matches the global `body { padding-bottom: calc(60px + safe-area) }`
-     dock reserve (v630 shrunk Hotstar dock; keep in sync with
-     components/discover/BottomDock.tsx). Desktop keeps bottom:0 (dock is
-     hidden ≥1024px anyway). */
-  .bgz-shell { top: 0; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+     Matches the global `body { padding-bottom: calc(54px + safe-area) }`
+     dock reserve (v631 blended 50px dock; keep in sync with
+     components/discover/BottomDock.tsx). ⚠ The boot screen (.bgz-boot) is
+     absolute inset:0 + overflow:hidden + centered — every px carved here
+     is a px of boot content CLIPPED WITHOUT SCROLL (the v630 60px carve
+     cut PRESS START in half on the owner's phone; the layout was tuned
+     against the original 52px). Keep this as small as the dock allows.
+     Desktop keeps bottom:0 (dock is hidden ≥1024px anyway). */
+  .bgz-shell { top: 0; bottom: calc(54px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* v238 — Desktop-only ALWAYS-VISIBLE scrollbar. Mobile users scroll via
@@ -8417,8 +8421,22 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 
 .bgz-boot-cta {
-  position: relative;
-  display: inline-flex;
+  /* v631 — STICKY at the bottom of the scrollable .bgz-boot-content, so
+     PRESS START is ALWAYS fully on screen no matter the device height —
+     the journey steps scroll UNDER it. (v243 tuned the content to "fit on
+     common phones", but the dock carve + content growth broke that on
+     844px-class viewports: the button rested half below the fold —
+     owner's screenshot 3.) Sticky in a scroller degrades gracefully:
+     short content = sits in flow exactly as before. */
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  /* block-level flex + auto margins: keeps the pill centred exactly as the
+     old inline-flex did, but sticky behaves reliably on a block box. */
+  display: flex;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
   align-items: center;
   justify-content: center;
   padding: 16px 38px;
@@ -13330,3 +13348,72 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .ig-cta-mini:hover { background: rgba(255, 255, 255, 0.18); }
 .ig-cta-mini:active { transform: translateY(1px); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v631 — HERO DEPTH TRANSITION (Hotstar idiom) — mobile Stage ONLY.
+   Owner-approved from the live demo: as you scroll off the top, the PINNED
+   hero recedes (shrinks toward its upper third, sinks 14px, dims to 55%)
+   while the first surface below (ticker, or rails when the ticker is empty)
+   slides OVER it with a rounded top + upward shadow, un-zooming 96.5%→100%.
+   Driven by ONE custom property --sbhp (0→1 over the first half viewport),
+   written by an rAF-throttled passive scroll listener in DesktopHome.tsx —
+   transform/opacity only, GPU-composited, no layout thrash.
+   UNLAYERED on purpose (the .sbh-* layer contract): desktop.css lives in
+   layer(utilities) and must not fight this; ≥1024px is untouched anyway.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  .sbh-root { --sbhp: 0; }
+
+  /* The hero PINS (sticky) — the page moves, the hero holds, so it reads
+     as "going back", not "going up". It keeps its in-flow height, so no
+     layout below changes. overflow:hidden + isolation already set. */
+  .sbh-root > .sbh-hero {
+    position: sticky;
+    top: 0;
+    z-index: 0;
+    transform-origin: 50% 18%;
+    transform: translateY(calc(var(--sbhp) * 14px)) scale(calc(1 - var(--sbhp) * 0.08));
+    will-change: transform;
+  }
+  /* Dim overlay — the hero recedes into shadow as it is covered. Sits over
+     the artwork + inner content (z:4) but never blocks taps. */
+  .sbh-root > .sbh-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    background: #0b0f14;
+    opacity: calc(var(--sbhp) * 0.55);
+    pointer-events: none;
+  }
+
+  /* Everything after the hero rides ABOVE it with an opaque page surface —
+     without this the pinned hero would ghost through the rails. */
+  .sbh-root > .sbh-ticker,
+  .sbh-root > .sbh-rails {
+    position: relative;
+    z-index: 1;
+    background: var(--bg-page);
+  }
+  /* The FIRST surface after the hero is the "cover": rounded top + upward
+     shadow + the un-zoom (96.5% → 100% as it arrives). Both selectors so
+     the rails take over when the ticker doesn't render. */
+  .sbh-root > .sbh-hero + .sbh-ticker,
+  .sbh-root > .sbh-hero + .sbh-rails {
+    border-radius: 22px 22px 0 0;
+    margin-top: -14px;              /* tucks the cover over the hero's edge */
+    box-shadow: 0 -14px 32px rgba(11, 15, 20, 0.28);
+    transform: scale(calc(0.965 + var(--sbhp) * 0.035));
+    transform-origin: 50% 0;
+  }
+
+  /* Reduced motion: no pin, no transforms, no dim — plain scrolling page.
+     (The JS writer also bails, so --sbhp stays 0; these rules kill the
+     resting 96.5% scale + sticky too.) */
+  @media (prefers-reduced-motion: reduce) {
+    .sbh-root > .sbh-hero { position: relative; transform: none; }
+    .sbh-root > .sbh-hero::after { display: none; }
+    .sbh-root > .sbh-hero + .sbh-ticker,
+    .sbh-root > .sbh-hero + .sbh-rails { transform: none; margin-top: 0; }
+  }
+}

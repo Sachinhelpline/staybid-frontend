@@ -1411,6 +1411,36 @@ export default function DesktopHome() {
       .map((x) => x.h);
   }, [hotels, selFormat, viewer]);
 
+  // v631 — Hotstar hero DEPTH transition (owner-approved from the live demo).
+  // Scroll-linked only: --sbhp runs 0→1 over the first half viewport of
+  // scroll; the mobile CSS block in globals.css maps it to the hero's
+  // recede (scale/sink/dim) + the cover surface's un-zoom. rAF-throttled
+  // passive listener writing ONE custom property — transform/opacity only,
+  // no layout reads besides scrollY. Desktop CSS ignores the var (≥1024px
+  // rules untouched); reduced-motion bails here AND is reset in CSS.
+  const depthRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    // Re-run when `on` flips: the first mount returns null (the `if (!on)`
+    // gate below), so the ref only attaches once the Stage actually renders.
+    const el = depthRef.current;
+    if (!on || !el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const tick = () => {
+      raf = 0;
+      const span = Math.max(window.innerHeight * 0.5, 1);
+      const p = Math.min(Math.max(window.scrollY / span, 0), 1);
+      el.style.setProperty("--sbhp", p.toFixed(4));
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    tick();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [on]);
+
   if (!on) return null;
 
   const fScore = featured ? scores[featured.id] : undefined;
@@ -1419,7 +1449,7 @@ export default function DesktopHome() {
   const fRank = fScore?.rank;
 
   return (
-    <div className="sbh-root">
+    <div className="sbh-root" ref={depthRef}>
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section
         className="sbh-hero"

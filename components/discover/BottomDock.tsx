@@ -122,7 +122,7 @@ export function BottomDock() {
                 aria-current={active ? "page" : undefined}
               >
                 <span className="ig-deal-star" aria-hidden>
-                  <I size={18} strokeWidth={2.3} />
+                  <I size={16} strokeWidth={2.3} />
                 </span>
                 <span className="ig-deal-label">{it.label}</span>
               </Link>
@@ -149,10 +149,10 @@ export function BottomDock() {
       </nav>
 
       <style jsx global>{`
-        /* v630 — Hotstar-style dock, SHRUNK after the owner's real-device
-           review (the v629 bar was too tall + buried the reel CTA rail):
-           tight paddings, 34px star, icon-only sides → total ≈ 50px, back
-           in the old bar's height class. */
+        /* v631 — dock BLENDS with the page (owner: the v630 slate bar read
+           as "a slab placed on top"). Light = frosted PAGE-CREAM glass, not
+           slate; dark = page-graphite glass with softer border/shadow. Also
+           shrunk again (owner: "aur chhota") → ~46px total. */
         .ig-bottom-dock {
           position: fixed;
           left: 0;
@@ -164,20 +164,22 @@ export function BottomDock() {
           justify-content: space-around;
           gap: 2px;
           /* v618 EDGE-TO-EDGE (kept): background fills the gesture-bar
-             region; max(4px, safe-area) pads the icons above the pill. */
-          padding: 3px 6px max(4px, env(safe-area-inset-bottom, 0px));
-          background: rgba(19, 23, 28, 0.94);
+             region; max(3px, safe-area) pads the icons above the pill. */
+          padding: 2px 6px max(3px, env(safe-area-inset-bottom, 0px));
+          background: rgba(19, 23, 28, 0.88);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
-          border-top: 1px solid rgba(176, 192, 209, 0.12);
-          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
+          border-top: 1px solid rgba(176, 192, 209, 0.08);
+          box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.30);
           /* Galaxy Fold 280px: clip transient horizontal spill (kept). */
           overflow-x: clip;
         }
         [data-theme="light"] .ig-bottom-dock {
-          background: rgba(176, 192, 209, 0.94);
-          border-top: 1px solid var(--border-soft);
-          box-shadow: 0 -4px 18px rgba(31, 26, 15, 0.08);
+          /* cream-page glass (page is #f3ede2-family) — the bar reads as
+             the page's own edge, not a separate slate object. */
+          background: rgba(243, 237, 226, 0.92);
+          border-top: 1px solid rgba(36, 29, 18, 0.08);
+          box-shadow: 0 -3px 12px rgba(31, 26, 15, 0.06);
         }
         /* v114 — hide while Composer/modal open (kept). */
         body.sb-composer-open .ig-bottom-dock,
@@ -193,7 +195,6 @@ export function BottomDock() {
         body.sb-bid-immersive .ig-dock-item { color: rgba(197, 212, 228, 0.82); }
         body.sb-bid-immersive .ig-dock-item.is-active {
           color: var(--cozy-champagne-light, #b4c1cf);
-          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
 
         .ig-dock-item {
@@ -204,8 +205,10 @@ export function BottomDock() {
           align-items: center;
           justify-content: center;
           gap: 2px;
-          padding: 4px 2px;
-          min-height: 44px; /* full-height tap target (WCAG 2.5.8) */
+          padding: 3px 2px;
+          /* v631 — 40px visual row (owner: thinner). Still comfortably over
+             the 24px WCAG 2.5.8 minimum; each slot is ~70px wide. */
+          min-height: 40px;
           overflow: hidden;
           color: rgba(197, 212, 228, 0.78);
           text-decoration: none;
@@ -225,23 +228,22 @@ export function BottomDock() {
         body.is-reel-page .ig-dock-item { color: rgba(176, 192, 209, 0.62); }
         body.is-reel-page .ig-dock-item.is-active {
           color: var(--cozy-champagne-light, #b4c1cf);
-          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
         .ig-dock-item:active { transform: scale(0.94); }
+        /* v631 — active = COLOUR + weight only, no pill background (the
+           background block read chunky on device and unbalanced the bar). */
         .ig-dock-item.is-active {
           color: var(--cozy-champagne-light, #b4c1cf);
-          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
         [data-theme="light"] .ig-dock-item.is-active {
           color: var(--accent);
-          background: linear-gradient(180deg, rgba(79,109,138,0.16), rgba(79,109,138,0.04));
         }
         .ig-dock-ic { flex: 0 0 auto; }
 
         /* ── CENTRE: ⚡ Deals — the /flash-deals GOLD stamp gradient
               (one deal, one colour — matches .fd-disc-stamp). ── */
         .ig-dock-deal {
-          flex: 0 0 56px;
+          flex: 0 0 50px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -252,8 +254,8 @@ export function BottomDock() {
           position: relative;
         }
         .ig-deal-star {
-          width: 34px;
-          height: 34px;
+          width: 30px;
+          height: 30px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -318,10 +320,10 @@ export function BottomDock() {
         }
 
         /* Global bottom buffer so no content hides under the dock.
-           v630: 64px → 60px (bar shrunk back to ~50px total). The /bid
-           .bgz-shell carve in globals.css moved with it — keep the two
-           values in sync. */
-        body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+           v631: 60px → 54px (bar is 50px total). The /bid .bgz-shell
+           carve in globals.css moved with it — keep the two values in
+           sync (and see the boot-screen clipping warning there). */
+        body { padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px)); }
         body.is-reel-page { padding-bottom: 0; }
         /* Operator panels hide the dock — no dock-height reserve (kept). */
         body:has([data-route-admin]), body:has([data-route-partner]),

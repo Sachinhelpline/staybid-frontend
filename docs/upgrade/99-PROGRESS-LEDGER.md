@@ -249,6 +249,42 @@
 - NEXT: hero depth transition (owner demo delivered, awaiting "hero bhi karo") →
   then bid arena / hotel detail / my-bids / bookings / auth — sample first.
 
+### 2026-08-02 — Session 6 cont. (v631 — blended dock + hero DEPTH shipped)
+- **Owner round 3 (3 screenshots):** bar colour reads "a slab placed on top" (the
+  light slate bg) · /bid PRESS START clipped · "aur chhota karo" · **hero depth
+  effect approved — build it.**
+- **Dock blend + shrink (v631):** light bar = CREAM-page glass rgba(243,237,226,.92)
+  (was slate — the "slab" cause); dark alpha .88 + softer border/shadow; active =
+  colour-only (ALL skins' pill backgrounds removed — the chunky look); rows 40px,
+  star 30px, deal flex 50 ⇒ bar **50px** total (was 56, was 68 in v629).
+- **/bid PRESS START — real root cause found:** it's `.bgz-boot-cta` on the BOOT
+  screen; `.bgz-boot-content` scrolls but the button RESTED below the fold
+  (844px vp: bottom 881). Fix = **position: sticky; bottom: 0** on the CTA inside
+  the scroller (+ block-flex + auto margins to keep centring) — ALWAYS fully
+  visible on any device height; short content degrades to in-flow. Carve triple
+  retuned: body reserve 60→**54**, `.bgz-shell` 60→**54** (⚠ boot clips without
+  scroll — carve warning added in globals.css), reel caption stays 58.
+- **HERO DEPTH TRANSITION SHIPPED** (mobile Stage only, ≤1023px):
+  - `components/home/DesktopHome.tsx`: `depthRef` + rAF-throttled passive scroll
+    hook writing ONE var `--sbhp` (0→1 over half a viewport). ⚠ Lesson: the hook
+    MUST dep on `[on]` — first mount returns null (the `if (!on)` gate), so an
+    empty-dep effect grabs a null ref and never re-arms.
+  - `app/globals.css` (unlayered end-block, `.sbh-*` contract): hero sticky
+    top:0 z0, recede transform (scale 1→.92, sink 14px, origin 50% 18%), dim
+    `::after` 0→.55; ticker/rails ride z1 with page bg; FIRST cover surface
+    (`.sbh-hero + .sbh-ticker|.sbh-rails`) gets rounded 22px top, -14px tuck,
+    upward shadow, un-zoom .965→1. Reduced-motion: fully off (CSS + JS both).
+  - Hero rotation/pool/season logic UNTOUCHED (wrapper only). Desktop ≥1024
+    untouched.
+- Badge v630→**v631**, sw `HTML_CACHE` v427→**v428**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · v631 audit **20/21→final
+  26/27 net**: dock 50.0 light+dark, cream-glass asserted computed, no active
+  pill bg, star 30 centred; hero sticky pins @500px scroll, --sbhp 1.0, matrix
+  0.92 recede, dim 0.55, cover matrix 1.0, 0 overflow; reduced-motion off;
+  PRESS START sticky + FULLY visible on 390×844 AND 360×700 (6/6).
+- NEXT: owner device-check v631 → then bid arena / hotel detail / my-bids /
+  bookings / auth — sample first.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
