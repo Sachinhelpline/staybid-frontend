@@ -363,6 +363,38 @@
   and a python splice needs a brace-count check (one stray `}` broke build).
 - NEXT: owner verdict on v633 → next surface samples.
 
+### 2026-08-02 — Session 6 cont. (v634 — hero LAG-EXIT + 3D flash cards)
+- **Owner round 6 (2 Hotstar reference screenshots + 1 flash-card ss):** the
+  real Hotstar hero motion is NOT a pin — the hero **exits INTO the top**
+  ("top se andar chala gaya") while the next surface overtakes it. Plus:
+  flash card dead space, bottom line, wants 3D raised shadow + scroll motion.
+- **Hero motion corrected (v633 sticky pin → v634 LAG-EXIT):** hero is
+  `position: relative` again and counter-translates +22vh over the
+  transition ⇒ it leaves at **~56% of scroll speed** (measured 168px per
+  300px scroll), shrinking toward the TOP edge (origin 50% 0%), dimming,
+  while the cover overtakes from below. A pinned hero "waits"; Hotstar's
+  hero "leaves" — that distinction was the missing feel. Foot fade, cover
+  panel, reduced-motion split all carried over.
+- **Flash card 3D (owner spec, `/flash-deals` DealCard):** border REMOVED
+  (the "bottom line"); depth = 4-layer ambient shadow (long cast + mid
+  bloom + contact edge + inset top highlight), light + dark variants.
+  Body/foot/urgency spacing tightened (~18px dead height shed) + image
+  158/174px. **Scroll-linked entrance** via the house `useReveal` IO hook
+  (NOT a new utility — the v134 pattern): cards start translateY(26px)
+  scale(.975) opacity 0 and rise+settle on viewport entry, 50ms column
+  stagger. ⚠ `.fd-card-skel` shares the class — forced visible or the
+  loading grid vanishes. Reduced-motion: hook + CSS both bail.
+- Badge v633→**v634**, sw `HTML_CACHE` v430→**v431**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · v634 audit **27/27**
+  (lag ratio 56% in-band both themes, origin top, dim mid-exit, cover owns
+  screen at 700px, borderless + 4 shadow layers computed, below-fold card
+  hidden→rises on entry, skeleton guard, reduced-motion).
+- ⚠ Audit lesson: computed styles normalise (`50%`→`195px`, shadow lists
+  reformat, transitions mid-flight) — assert against computed FORMS, and
+  prefer relational signals (cover position) over absolute rects on pages
+  whose height varies with data warm-up.
+- NEXT: owner verdict on v634 → next surface samples.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

@@ -13430,14 +13430,19 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 @media (max-width: 1023px) {
   .sbh-root { --sbhp: 0; }
 
-  /* ② the hero PINS — the page moves, the hero holds, so it reads as
-     "going back", not "going up". In-flow height unchanged. */
+  /* ② v634 — the hero EXITS INTO THE TOP (the actual JioHotstar motion,
+     from the owner's two reference screenshots): it is NOT pinned — it
+     scrolls up WITH the page but LAGS it (+22vh of counter-translate over
+     the transition ⇒ it leaves at ~56% of scroll speed), shrinking toward
+     the TOP edge (origin 50% 0%). The cover overtakes it from below, so
+     the hero reads as being swallowed into the top of the phone. v633's
+     sticky pin was the wrong idiom — a pinned hero "waits", Hotstar's
+     hero "leaves". */
   .sbh-root > .sbh-hero {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 0;
-    transform-origin: 50% 22%;
-    transform: translateY(calc(var(--sbhp) * 10px)) scale(calc(1 - var(--sbhp) * 0.06));
+    transform-origin: 50% 0%;
+    transform: translateY(calc(var(--sbhp) * 22vh)) scale(calc(1 - var(--sbhp) * 0.06));
     will-change: transform;
   }
   /* ① FOOT FADE — artwork melts into the page colour. z:1 keeps it above
@@ -13483,10 +13488,10 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
     box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
   }
 
-  /* Reduced motion: no pin, no transforms, no dim — plain scrolling page.
-     The foot fade STAYS (it is composition, not motion). */
+  /* Reduced motion: no lag-exit, no transforms, no dim — plain scrolling
+     page. The foot fade STAYS (it is composition, not motion). */
   @media (prefers-reduced-motion: reduce) {
-    .sbh-root > .sbh-hero { position: relative; transform: none; }
+    .sbh-root > .sbh-hero { transform: none; }
     .sbh-root > .sbh-hero::after { display: none; }
     .sbh-root > .sbh-rails { transform: none; }
   }

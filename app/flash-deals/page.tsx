@@ -9,6 +9,7 @@ import SbState from "@/components/SbState";
 // v129 — every flash-deal price is a ₹100 multiple. Same rule as the
 // Negotiate slider, /bid presets, and partner counter slider.
 import { snap100 } from "@/lib/price-snap";
+import { useReveal } from "@/lib/useReveal";
 // v139 — Phase-3 flash deals spotlight tour (3 steps: ticker → card → CTA).
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v143 — flash-drawer modal tour triggered on card tap.
@@ -761,10 +762,17 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
     router.push(url);
   };
 
+  // v634 — scroll-linked entrance: the card rises out of the background as
+  // it enters the viewport (house useReveal/IO pattern — same engine as the
+  // hotel page sections). Replaces the mount-time fdFadeUp, which finished
+  // before below-fold cards were ever seen. Stagger via transitionDelay.
+  const { ref: revealRef, visible: revealed } = useReveal<HTMLDivElement>({ threshold: 0.12 });
+
   return (
     <div
-      className="fd-card fd-card-a"
-      style={{ animationDelay: `${idx * 0.06}s` }}
+      ref={revealRef}
+      className={`fd-card fd-card-a${revealed ? " is-in" : ""}`}
+      style={{ transitionDelay: revealed ? `${(idx % 3) * 0.05}s` : "0s" }}
       onClick={openHotelTour}
     >
       {/* Image — one gold %OFF stamp (top-left), heart (top-right), and a
@@ -1286,35 +1294,57 @@ function FdStyles() {
          top of the theme-aware token shadow (works in both light + dark). */
       /* v521 — cozy 3D lift: warm layered resting shadow + champagne hairline
          + a soft top-inset highlight, and a deeper raise on hover. */
+      /* v634 — BORDER-LESS 3D card (owner: "bottom ki line hatao, shadow
+         aisi ho jaise card background se nikal ke 3D utha hua ho"). The
+         hairline border is gone; depth now comes from a LAYERED ambient
+         shadow — a long soft cast below, a mid bloom, a tight contact
+         edge, and a top inner highlight (the lit edge that sells "raised").
+         Entrance is scroll-linked (.is-in via useReveal in DealCard) —
+         each card rises + settles as it scrolls into view. */
       .fd-card {
         position: relative;
         background: var(--bg-card);
-        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #5f7c98) 22%, var(--border-soft));
+        border: none;
         border-radius: 24px;
         overflow: hidden;
         cursor: pointer;
         color: var(--text-base);
-        transition: transform 0.4s cubic-bezier(.4,.0,.2,1), border-color 0.3s, box-shadow 0.3s;
-        animation: fdFadeUp 0.55s cubic-bezier(.2,.7,.2,1) both;
+        opacity: 0;
+        transform: translateY(26px) scale(0.975);
+        transition:
+          transform 0.6s cubic-bezier(.2,.7,.2,1),
+          opacity 0.6s cubic-bezier(.2,.7,.2,1),
+          box-shadow 0.3s ease;
         box-shadow:
-          0 14px 30px -18px rgba(74, 56, 32, 0.5),
-          0 3px 10px -6px rgba(74, 56, 32, 0.3),
-          inset 0 1px 0 rgba(255,255,255,0.06);
+          0 26px 44px -20px rgba(31, 26, 15, 0.34),
+          0 10px 20px -10px rgba(31, 26, 15, 0.20),
+          0 2px 6px -2px rgba(31, 26, 15, 0.14),
+          inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      }
+      .fd-card.is-in { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .fd-card { opacity: 1; transform: none; transition: box-shadow 0.3s ease; }
       }
       .fd-card:hover {
         transform: translateY(-6px);
-        border-color: color-mix(in srgb, var(--accent) 62%, var(--border-soft));
         box-shadow:
-          0 26px 50px -20px rgba(74, 56, 32, 0.6),
-          0 8px 18px -8px rgba(120, 90, 40, 0.32),
+          0 34px 56px -22px rgba(31, 26, 15, 0.42),
+          0 12px 24px -10px rgba(31, 26, 15, 0.24),
           0 0 0 1px var(--accent-soft),
-          inset 0 1px 0 rgba(255,255,255,0.08);
+          inset 0 1px 0 rgba(255, 255, 255, 0.6);
       }
       [data-theme="dark"] .fd-card {
-        box-shadow: 0 16px 34px -18px rgba(0,0,0,0.7), 0 3px 10px -6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        box-shadow:
+          0 26px 44px -20px rgba(0, 0, 0, 0.72),
+          0 10px 20px -10px rgba(0, 0, 0, 0.5),
+          0 2px 6px -2px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.07);
       }
       [data-theme="dark"] .fd-card:hover {
-        box-shadow: 0 28px 54px -20px rgba(0,0,0,0.8), 0 0 0 1px var(--accent-soft), inset 0 1px 0 rgba(255,255,255,0.07);
+        box-shadow:
+          0 34px 58px -22px rgba(0, 0, 0, 0.82),
+          0 0 0 1px var(--accent-soft),
+          inset 0 1px 0 rgba(255, 255, 255, 0.09);
       }
       @keyframes fdFadeUp {
         from { opacity: 0; transform: translateY(22px); }
@@ -1323,9 +1353,9 @@ function FdStyles() {
       /* v159.3 — Image height responsive. Mobile is wider in 1-col grid so
          keep aspect-ratio shorter; tablet+ stays similar. */
       .fd-img-wrap {
-        position: relative; height: 168px; overflow: hidden; background: #0d0d1a;
+        position: relative; height: 158px; overflow: hidden; background: #0d0d1a;
       }
-      @media (min-width: 640px)  { .fd-img-wrap { height: 180px; } }
+      @media (min-width: 640px)  { .fd-img-wrap { height: 174px; } }
       /* v480 — taller, more premium imagery on desktop (was capped at 200px,
          which read letterboxed on a wide card). */
       @media (min-width: 1024px) { .fd-img-wrap { height: 210px; } }
@@ -1438,7 +1468,7 @@ function FdStyles() {
       /* Foot — one quiet meta line + the CTA, baseline-aligned. */
       .fd-foot {
         display: flex; align-items: flex-end; justify-content: space-between;
-        gap: 10px; margin-top: 13px;
+        gap: 10px; margin-top: 8px;
       }
       /* v632 — right column: RANK chip stacked ABOVE the Grab-now button
          (was inline beside the rating, where it collided with the button
@@ -1450,11 +1480,11 @@ function FdStyles() {
       .fd-metaline {
         display: inline-flex; align-items: center; gap: 8px; min-width: 0;
         font-size: 0.74rem; color: var(--text-soft, #4a3820);
-        padding-bottom: 8px; /* optically centre the rating against the two-row right column */
+        padding-bottom: 6px; /* optically centre the rating against the two-row right column */
       }
       .fd-metaline .fd-rating { white-space: nowrap; }
       .fd-onlyleft {
-        margin: 9px 0 0; font-size: 0.73rem; font-weight: 600;
+        margin: 6px 0 0; font-size: 0.73rem; font-weight: 600;
         color: var(--text-soft, #4a3820);
       }
       .fd-onlyleft.urgent { color: var(--warn, #c07a1e); }
@@ -1567,9 +1597,11 @@ function FdStyles() {
       }
 
       /* Body — v159.3 tighter on mobile. */
-      .fd-body { padding: 11px 13px 12px; }
-      @media (min-width: 640px)  { .fd-body { padding: 13px 14px 14px; } }
-      @media (min-width: 1024px) { .fd-body { padding: 14px 16px 16px; } }
+      /* v634 — tightened (owner: dead space): body padding + the foot/urgency
+         margins below shed ~18px of empty height per card on mobile. */
+      .fd-body { padding: 9px 12px 9px; }
+      @media (min-width: 640px)  { .fd-body { padding: 11px 13px 11px; } }
+      @media (min-width: 1024px) { .fd-body { padding: 12px 15px 13px; } }
       .fd-hotel-row {
         display: flex; align-items: flex-start; justify-content: space-between;
         gap: 8px; margin-bottom: 6px;
@@ -1950,7 +1982,9 @@ function FdStyles() {
       .fd-cta.sold::after { display: none; }
 
       /* v92 — Skeleton uses taupe shimmer so it's visible on cream cards too */
-      .fd-card-skel { cursor: default; pointer-events: none; }
+      /* v634 — skeletons share .fd-card but never get .is-in: force them
+         visible or the loading grid is invisible. */
+      .fd-card-skel { cursor: default; pointer-events: none; opacity: 1; transform: none; }
       .fd-card-skel:hover { transform: none; }
       .fd-skel-img {
         height: 200px;
