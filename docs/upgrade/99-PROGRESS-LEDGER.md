@@ -183,6 +183,40 @@
 - NEXT: capture VR baselines on preview; remaining customer surfaces (bid arena, hotel
   detail, my-bids, bookings, auth) or the 7→5 bottom-nav (decision #5) — sample first.
 
+### 2026-08-02 — Session 6 cont. (Phase 1 · Bottom nav 7→5, Hotstar style) — v629
+- **OWNER DECISIONS (this round, superseding the earlier A/B/C nav boards):**
+  1. Round 1 (A classic / B centre-FAB / C floating pill) → owner asked "what about
+     Deals? can You move elsewhere?" 2. Round 2 (Deals in bar + You → top-right avatar)
+     → owner uploaded a JioHotstar screenshot: **"bottom nav Hotstar ki tarah, Deals
+     centre"**. 3. Final lock: **Home · Hotels · ⚡Deals(centre) · Bid · Reels — 2 left,
+     2 right, everything else Hotstar-style.**
+- **Shipped `components/discover/BottomDock.tsx` full rewrite (7 slots → 5):**
+  - Hotstar anatomy: airy icon-only sides, label rendered ONLY under the ACTIVE side
+    item; centre ⚡Deals = 40px gold starburst (the `.fd-disc-stamp` flash gold —
+    one-deal-one-colour honoured) with permanent label + glow ring when active.
+  - lucide icons (Home/Search/Zap/IndianRupee/Clapperboard/User) replace the text
+    glyphs ⌂⌕⚡◎▷♡○ — first consumer of the Phase-0a icon system in global chrome.
+  - **"You" left the bar → `.ig-you-chip`** (34px avatar, fixed top-right, initial
+    from sb_user read post-mount) rendered ONLY on the Navbar-hidden reel routes
+    (`/`, /discover, /reels, /saved/posts), `display:none` ≥1024px (desktop Navbar
+    covers profile). Wishlist left the bar → hearts + the existing Saved row in /me.
+    `/saved` + `/me` routes stay fully live — bar slots only.
+  - Carried over UNCHANGED: operator hide list, composer/modal hide (+ chip),
+    reel-page dark skin, /bid immersive skin, light skin, safe-area, Fold clip.
+  - Body bottom reserve 52→**64px** AND the matching `/bid` `.bgz-shell` carve in
+    globals.css (~8253) moved with it — the two values must stay in sync.
+- Checked before shipping: no tutorial/driver selectors target dock slots; /me already
+  has the Saved quick-access row; desktop hides the dock entirely (desktop.css:58).
+- Badge v628→**v629**, sw `HTML_CACHE` v425→**v426**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · NEW dock geometry audit
+  **92/92** (structure, order, star centred ±0, computed gold gradient asserted,
+  Hotstar label rule, ≥44px targets, chip presence matrix, desktop hidden, 0 overflow).
+- **PENDING owner call:** the Hotstar hero "depth" scroll transition (sticky hero
+  shrink+dim, feed un-zoom over it) — live demo delivered
+  (`scratchpad/hotstar-nav-hero.html`); build on "hero bhi karo".
+- NEXT: hero transition (if approved) → then bid arena / hotel detail / my-bids /
+  bookings / auth — sample first, per standing rule.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
