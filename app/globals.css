@@ -8754,6 +8754,43 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .bgz-boot-mock-guests > span { font-size: 0.66rem; padding: 3px 8px; }
 }
 
+/* v632 — the v243 tuning stopped at 760px, but the dock carve (54px) +
+   content growth meant even an 844px-class phone overflowed by ~100px
+   (owner: "PRESS START ke peeche content hide + abhi bhi scroll karna
+   pad raha hai"). Compress EVERYTHING under 920px height so the whole
+   boot — header + tracker + 5 steps + PRESS START — fits with NO scroll
+   on real phones. ⚠ This block must stay AFTER every base .bgz-boot-*
+   rule AND after the (max-width: 380px) block — equal specificity means
+   source order decides, and both used to silently win over these
+   overrides. Measured driver: each step row was EYEBROW-limited (46px
+   disc + 69px text = 121px); the real inner classes are
+   .bgz-boot-step-eye-title / .bgz-boot-step-eye-sub. */
+@media (max-height: 920px) {
+  .bgz-boot-content { padding: 8px 14px 10px 14px; }
+  .bgz-boot-header { margin-bottom: 6px; }
+  .bgz-boot-title { font-size: clamp(1rem, 4.2vw, 1.3rem); }
+  .bgz-boot-sub { font-size: 0.63rem; }
+  .bgz-boot-tracker { margin-bottom: 8px; }
+  .bgz-boot-track-sub { display: none; }
+  .bgz-boot-track-num { width: 18px; height: 18px; font-size: 0.62rem; }
+  .bgz-boot-journey { gap: 4px; margin-bottom: 6px; }
+  .bgz-boot-step { gap: 5px; }
+  .bgz-boot-step--right { grid-template-columns: minmax(0, 88px) minmax(0, 1fr); }
+  .bgz-boot-step--left  { grid-template-columns: minmax(0, 1fr) minmax(0, 88px); }
+  .bgz-boot-step-num { width: 32px; height: 32px; font-size: 1rem; }
+  .bgz-boot-step-eyebrow { gap: 2px; }
+  .bgz-boot-step-eye-title { font-size: 0.74rem; }
+  .bgz-boot-step-eye-sub { font-size: 0.58rem; line-height: 1.2; }
+  .bgz-boot-step-card { padding: 4px 10px; }
+  .bgz-boot-step-title { font-size: 0.7rem; margin-bottom: 3px; }
+  .bgz-boot-mock-pills > span,
+  .bgz-boot-mock-guests > span { padding: 3px 7px; font-size: 0.6rem; }
+  .bgz-boot-mock-dates > div:not(.sep) { padding: 2px 7px; }
+  .bgz-boot-mock-dates .val { font-size: 0.68rem; }
+  .bgz-boot-mock-price .mock-price-amt { font-size: 1rem; }
+  .bgz-boot-cta { padding: 11px 30px; font-size: 0.9rem; }
+}
+
 @keyframes bgzBootIn {
   0% { opacity: 0; }
   100% { opacity: 1; }
@@ -13387,33 +13424,33 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
     pointer-events: none;
   }
 
-  /* Everything after the hero rides ABOVE it with an opaque page surface —
-     without this the pinned hero would ghost through the rails. */
-  .sbh-root > .sbh-ticker,
+  /* v632 — the COVER is .sbh-rails ALONE (the ticker moved INSIDE it in
+     DesktopHome). v631 styled the ticker as a separate cover sibling and
+     it read as a floating white band over the hero with a see-through
+     margin gap under it (owner screenshot). One continuous panel now:
+     rounded top, upward shadow, un-zoom — the real Hotstar cover.
+     Background = the SAME layered gradient as .sbh-root (never a flat
+     var(--bg-page), which mismatched the page's radial accents). */
   .sbh-root > .sbh-rails {
     position: relative;
     z-index: 1;
-    background: var(--bg-page);
-  }
-  /* The FIRST surface after the hero is the "cover": rounded top + upward
-     shadow + the un-zoom (96.5% → 100% as it arrives). Both selectors so
-     the rails take over when the ticker doesn't render. */
-  .sbh-root > .sbh-hero + .sbh-ticker,
-  .sbh-root > .sbh-hero + .sbh-rails {
+    background:
+      radial-gradient(1100px 560px at 18% -6%, var(--accent-soft), transparent 60%),
+      var(--bg-page);
     border-radius: 22px 22px 0 0;
-    margin-top: -14px;              /* tucks the cover over the hero's edge */
+    margin-top: -18px;              /* tucks the cover over the hero's edge */
+    padding-top: 6px;
     box-shadow: 0 -14px 32px rgba(11, 15, 20, 0.28);
-    transform: scale(calc(0.965 + var(--sbhp) * 0.035));
+    transform: scale(calc(0.985 + var(--sbhp) * 0.015));
     transform-origin: 50% 0;
   }
 
   /* Reduced motion: no pin, no transforms, no dim — plain scrolling page.
      (The JS writer also bails, so --sbhp stays 0; these rules kill the
-     resting 96.5% scale + sticky too.) */
+     resting scale + sticky too.) */
   @media (prefers-reduced-motion: reduce) {
     .sbh-root > .sbh-hero { position: relative; transform: none; }
     .sbh-root > .sbh-hero::after { display: none; }
-    .sbh-root > .sbh-hero + .sbh-ticker,
-    .sbh-root > .sbh-hero + .sbh-rails { transform: none; margin-top: 0; }
+    .sbh-root > .sbh-rails { transform: none; margin-top: 0; }
   }
 }

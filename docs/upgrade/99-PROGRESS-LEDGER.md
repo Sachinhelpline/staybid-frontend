@@ -285,6 +285,41 @@
 - NEXT: owner device-check v631 → then bid arena / hotel detail / my-bids /
   bookings / auth — sample first.
 
+### 2026-08-02 — Session 6 cont. (v632 — cover unified, fade-glass bar, boot fits)
+- **Owner round 4 (3 screenshots):** hero cover = ugly white ticker band + gap +
+  no curve · bar = "colour change nahi bola tha, TRANSLUCENT fade bolna tha" ·
+  /bid still scrolls + content hides behind sticky CTA · desktop flash rank chip
+  under Grab-now · home flash chip still old hh:mm:ss.
+- **Hero cover UNIFIED:** the v631 mistake was styling the TICKER as a separate
+  cover sibling (white band floating on the hero + see-through margin gap).
+  Ticker JSX moved INSIDE `.sbh-rails` (first child, markup unchanged) — the
+  cover is ONE continuous panel: 22px rounded top, -18px tuck, upward shadow,
+  bg = the root's layered gradient (never flat --bg-page). Un-zoom softened
+  0.965→**0.985** (0.965 on the full panel exposed page-bg side strips = the
+  "white background").
+- **Bar = FADE-GLASS:** original skin colours as a vertical gradient — bottom
+  solid → top fully transparent + blur; border-top/box-shadow REMOVED in all 4
+  skins (those hard lines were the "slab"). Light slate / dark graphite / reel
+  near-black / bid cocoa all fade now.
+- **/bid boot NO-SCROLL fit — two cascade traps found + fixed:**
+  1. The compression block sat BEFORE the base `.bgz-boot-*` rules AND before a
+     `(max-width:380px)` block — equal specificity ⇒ source order ⇒ silently
+     dead. Block MOVED to after everything (warning comment added).
+  2. Measured driver: step rows were EYEBROW-limited (46px disc + 69px text =
+     121px × 5); real classes `.bgz-boot-step-eye-title/-eye-sub` (not the
+     container). Disc 32px + type cuts + 88px column + card trims ⇒ boot fits
+     with **0px internal scroll at 844 / 780 / 700** heights, PRESS START in
+     flow (sticky now inert, kept as short-device safety).
+- **Flash cards:** `.fd-foot-right` column — RANK chip stacked ABOVE Grab now
+  (desktop overlap gone; fills the mobile dead space). Home FlashCard chip now
+  prints the SAME "Ends in Xh Ym" as /flash-deals (`endsLabelFromClock`).
+- Badge v631→**v632**, sw `HTML_CACHE` v428→**v429**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · v632 audit 28/30 → boot
+  fit rerun **3/3** (net all green): ticker-inside-rails, 22px curve, 0.985→1.0
+  cover, dim .55, fade-gradient asserted computed in both themes, no border/
+  shadow, bar 49px, rank-above-button both breakpoints, 0 overflow.
+- NEXT: owner device-check v632 → next surface samples.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

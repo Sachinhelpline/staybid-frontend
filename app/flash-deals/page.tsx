@@ -812,17 +812,22 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           <span className="fd-price-unit">/night</span>
         </div>
 
+        {/* v632 — the RANK chip moved OUT of the meta line into its own
+            right-column slot ABOVE Grab now (owner: it collided with the
+            button on desktop grid cards, and that spot was dead space on
+            mobile). Left = rating only; right = rank over the button. */}
         <div className="fd-foot">
           <span className="fd-metaline">
             {ratingVal > 0 && (
               <span className="fd-rating">★ {ratingVal.toFixed(1)}{reviewCnt > 0 ? <span className="fd-rating-cnt"> ({reviewCnt})</span> : null}</span>
             )}
+          </span>
+          <div className="fd-foot-right">
             {deal.hotelId ? (
               <span className="fd-score-inline" onClick={(e) => e.stopPropagation()}>
                 <HotelScoreBadge hotelId={deal.hotelId} hotelName={deal.hotel?.name} variant="compact" />
               </span>
             ) : null}
-          </span>
           <button
             className={`fd-cta ${sold ? "sold" : ""}`}
             disabled={sold}
@@ -836,6 +841,7 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           >
             {sold ? "Sold Out" : "Grab now"}
           </button>
+          </div>
         </div>
 
         {!sold && (
@@ -1431,12 +1437,20 @@ function FdStyles() {
       .fd-card-a .fd-price-unit { font-size: 0.72rem; color: var(--text-soft, #4a3820); }
       /* Foot — one quiet meta line + the CTA, baseline-aligned. */
       .fd-foot {
-        display: flex; align-items: center; justify-content: space-between;
+        display: flex; align-items: flex-end; justify-content: space-between;
         gap: 10px; margin-top: 13px;
+      }
+      /* v632 — right column: RANK chip stacked ABOVE the Grab-now button
+         (was inline beside the rating, where it collided with the button
+         on desktop grid cards). */
+      .fd-foot-right {
+        display: flex; flex-direction: column; align-items: flex-end;
+        gap: 6px; flex-shrink: 0;
       }
       .fd-metaline {
         display: inline-flex; align-items: center; gap: 8px; min-width: 0;
         font-size: 0.74rem; color: var(--text-soft, #4a3820);
+        padding-bottom: 8px; /* optically centre the rating against the two-row right column */
       }
       .fd-metaline .fd-rating { white-space: nowrap; }
       .fd-onlyleft {

@@ -430,6 +430,17 @@ function useNightlyCountdown(): string {
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 }
 
+/* v632 — same wording as the /flash-deals card pill ("Ends in 23h 7m"):
+   the home card used to print the raw hh:mm:ss ticker, so the two surfaces
+   described the same deadline in two different languages. */
+function endsLabelFromClock(left: string): string {
+  const m = /^(\d+):(\d+)/.exec(left || "");
+  if (!m) return "";
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  return `Ends in ${h}h ${min}m`;
+}
+
 function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecard }) {
   const h = d.hotel;
   const img = imgOf(h);
@@ -449,7 +460,7 @@ function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecar
             flex owns the spacing, so nothing can overlap at any card width */}
         <div className="sbh-fd-toprow">
           {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
-          {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">⏳ {left}</span> : null}
+          {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">{endsLabelFromClock(left)}</span> : null}
           {hid ? <SaveHeart kind="hotel" id={hid} target={{ name: h?.name, city: h?.city, star_rating: h?.starRating, images: img ? [img] : [] }} /> : null}
         </div>
         {score?.overall != null ? (
@@ -1567,44 +1578,49 @@ export default function DesktopHome() {
         ) : null}
       </section>
 
-      {/* ── LIVE TICKER ───────────────────────────────────────────────────
-          Every item is a link now, which changes what the motion is allowed
-          to do. On a POINTER the marquee runs and pauses on hover/focus, so
-          you can always stop a chip and click it (also WCAG 2.2.2's pause
-          requirement). On TOUCH it does not auto-move at all — it is a
-          swipeable row — because chasing a moving chip with a thumb is not a
-          real interaction. Only the FIRST group is in the a11y tree; the
-          second is the seamless-loop duplicate and is hidden + unfocusable,
-          otherwise every offer would be announced twice. */}
-      {ticker.length ? (
-        <nav className="sbh-ticker" aria-label="Live offers and season">
-          <div className="sbh-ticker-track">
-            {[0, 1].map((dup) => (
-              <div
-                className="sbh-ticker-group"
-                key={dup}
-                aria-hidden={dup === 1 ? true : undefined}
-              >
-                {ticker.map((t) => (
-                  <Link
-                    href={t.href}
-                    className="sbh-ticker-item"
-                    key={`${dup}-${t.k}`}
-                    tabIndex={dup === 1 ? -1 : undefined}
-                  >
-                    <span className="sbh-tk-ico" aria-hidden>{t.icon}</span>
-                    <span className="sbh-tk-text">{t.text}</span>
-                    {t.accent ? <span className="sbh-tk-accent">{t.accent}</span> : null}
-                  </Link>
-                ))}
-              </div>
-            ))}
-          </div>
-        </nav>
-      ) : null}
-
       {/* ── RAILS ────────────────────────────────────────────────────── */}
+      {/* v632 — the LIVE TICKER moved INSIDE .sbh-rails (first child). On
+          mobile the rails panel is the hero-depth COVER surface (sticky
+          hero slides under it) — when the ticker was a separate sibling it
+          became a floating white band over the hero with a see-through
+          margin gap beneath it (owner screenshot). One continuous cover =
+          the Hotstar look. Ticker markup + behaviour unchanged. */}
       <div className="sbh-rails">
+        {/* ── LIVE TICKER ─────────────────────────────────────────────
+            Every item is a link, which changes what the motion is allowed
+            to do. On a POINTER the marquee runs and pauses on hover/focus,
+            so you can always stop a chip and click it (also WCAG 2.2.2's
+            pause requirement). On TOUCH it does not auto-move at all — it
+            is a swipeable row — because chasing a moving chip with a thumb
+            is not a real interaction. Only the FIRST group is in the a11y
+            tree; the second is the seamless-loop duplicate and is hidden +
+            unfocusable, otherwise every offer would be announced twice. */}
+        {ticker.length ? (
+          <nav className="sbh-ticker" aria-label="Live offers and season">
+            <div className="sbh-ticker-track">
+              {[0, 1].map((dup) => (
+                <div
+                  className="sbh-ticker-group"
+                  key={dup}
+                  aria-hidden={dup === 1 ? true : undefined}
+                >
+                  {ticker.map((t) => (
+                    <Link
+                      href={t.href}
+                      className="sbh-ticker-item"
+                      key={`${dup}-${t.k}`}
+                      tabIndex={dup === 1 ? -1 : undefined}
+                    >
+                      <span className="sbh-tk-ico" aria-hidden>{t.icon}</span>
+                      <span className="sbh-tk-text">{t.text}</span>
+                      {t.accent ? <span className="sbh-tk-accent">{t.accent}</span> : null}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </nav>
+        ) : null}
         {/* v582 — TRIP FINDER: the first thing under the hero, because the
             most common visitor state is "I don't know where to go". Three
             taps → three destinations with reasons. Every number is real

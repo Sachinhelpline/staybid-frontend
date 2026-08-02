@@ -149,10 +149,13 @@ export function BottomDock() {
       </nav>
 
       <style jsx global>{`
-        /* v631 — dock BLENDS with the page (owner: the v630 slate bar read
-           as "a slab placed on top"). Light = frosted PAGE-CREAM glass, not
-           slate; dark = page-graphite glass with softer border/shadow. Also
-           shrunk again (owner: "aur chhota") → ~46px total. */
+        /* v632 — FADE-GLASS bar (owner: "colour change nahi — TRANSLUCENT;
+           bottom→top fade so it melts into whatever is behind"). The
+           ORIGINAL skin colours stay, but as a vertical gradient: solid at
+           the bottom edge → fully transparent at the top edge, over a
+           backdrop blur. NO border-top, NO shadow — those hard lines were
+           exactly what made every earlier version read as "a slab placed
+           on top". Same pattern in all four skins below. */
         .ig-bottom-dock {
           position: fixed;
           left: 0;
@@ -166,31 +169,38 @@ export function BottomDock() {
           /* v618 EDGE-TO-EDGE (kept): background fills the gesture-bar
              region; max(3px, safe-area) pads the icons above the pill. */
           padding: 2px 6px max(3px, env(safe-area-inset-bottom, 0px));
-          background: rgba(19, 23, 28, 0.88);
-          backdrop-filter: blur(18px) saturate(1.4);
-          -webkit-backdrop-filter: blur(18px) saturate(1.4);
-          border-top: 1px solid rgba(176, 192, 209, 0.08);
-          box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.30);
+          background: linear-gradient(180deg,
+            rgba(19, 23, 28, 0) 0%,
+            rgba(19, 23, 28, 0.55) 38%,
+            rgba(19, 23, 28, 0.94) 100%);
+          backdrop-filter: blur(14px) saturate(1.3);
+          -webkit-backdrop-filter: blur(14px) saturate(1.3);
+          border-top: none;
+          box-shadow: none;
           /* Galaxy Fold 280px: clip transient horizontal spill (kept). */
           overflow-x: clip;
         }
         [data-theme="light"] .ig-bottom-dock {
-          /* cream-page glass (page is #f3ede2-family) — the bar reads as
-             the page's own edge, not a separate slate object. */
-          background: rgba(243, 237, 226, 0.92);
-          border-top: 1px solid rgba(36, 29, 18, 0.08);
-          box-shadow: 0 -3px 12px rgba(31, 26, 15, 0.06);
+          background: linear-gradient(180deg,
+            rgba(176, 192, 209, 0) 0%,
+            rgba(176, 192, 209, 0.50) 38%,
+            rgba(176, 192, 209, 0.94) 100%);
+          border-top: none;
+          box-shadow: none;
         }
         /* v114 — hide while Composer/modal open (kept). */
         body.sb-composer-open .ig-bottom-dock,
         body.sb-modal-open    .ig-bottom-dock { display: none !important; }
         body.sb-composer-open .ig-you-chip,
         body.sb-modal-open    .ig-you-chip { display: none !important; }
-        /* v610/v614 — /bid immersive skin (kept). */
+        /* v610/v614 — /bid immersive skin (kept, now fade-glass too). */
         body.sb-bid-immersive .ig-bottom-dock {
-          background: rgba(13, 10, 5, 0.92);
-          border-top: 1px solid rgba(176, 192, 209, 0.14);
-          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.55);
+          background: linear-gradient(180deg,
+            rgba(13, 10, 5, 0) 0%,
+            rgba(13, 10, 5, 0.60) 38%,
+            rgba(13, 10, 5, 0.95) 100%);
+          border-top: none;
+          box-shadow: none;
         }
         body.sb-bid-immersive .ig-dock-item { color: rgba(197, 212, 228, 0.82); }
         body.sb-bid-immersive .ig-dock-item.is-active {
@@ -219,11 +229,14 @@ export function BottomDock() {
             background 0.18s ease;
         }
         [data-theme="light"] .ig-dock-item { color: #3f5369; }
-        /* v408 — reel-page always-dark skin (kept). */
+        /* v408 — reel-page always-dark skin (kept, now fade-glass too). */
         body.is-reel-page .ig-bottom-dock {
-          background: rgba(10, 8, 5, 0.92);
-          border-top: 1px solid rgba(176, 192, 209, 0.14);
-          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.55);
+          background: linear-gradient(180deg,
+            rgba(10, 8, 5, 0) 0%,
+            rgba(10, 8, 5, 0.60) 38%,
+            rgba(10, 8, 5, 0.95) 100%);
+          border-top: none;
+          box-shadow: none;
         }
         body.is-reel-page .ig-dock-item { color: rgba(176, 192, 209, 0.62); }
         body.is-reel-page .ig-dock-item.is-active {
