@@ -35,6 +35,7 @@ fs.mkdirSync(path.join(SRC, "lib", "admin"), { recursive: true });
 fs.mkdirSync(path.join(SRC, "lib", "auth"), { recursive: true });
 fs.mkdirSync(path.join(SRC, "lib", "cron"), { recursive: true });
 fs.copyFileSync(path.join(REPO, "lib/admin/verify.ts"), path.join(SRC, "lib/admin/verify.ts"));
+fs.copyFileSync(path.join(REPO, "lib/admin/client-fetch.ts"), path.join(SRC, "lib/admin/client-fetch.ts"));
 fs.copyFileSync(path.join(REPO, "lib/admin/supabase-admin-store.ts"), path.join(SRC, "lib/admin/supabase-admin-store.ts"));
 fs.copyFileSync(path.join(REPO, "lib/auth/customer-verify.ts"), path.join(SRC, "lib/auth/customer-verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/cron/auth.ts"), path.join(SRC, "lib/cron/auth.ts"));
@@ -56,13 +57,14 @@ fs.writeFileSync(
 // non-zero — expected. We assert on the emitted files, not tsc's exit code.
 try { cp.execSync(`npx tsc -p "${path.join(SRC, "tsconfig.json")}"`, { cwd: REPO, stdio: "pipe" }); } catch (_) {}
 const adminJs = path.join(OUT, "lib/admin/verify.js");
+const adminClientFetchJs = path.join(OUT, "lib/admin/client-fetch.js");
 const storeJs = path.join(OUT, "lib/admin/supabase-admin-store.js");
 const custJs = path.join(OUT, "lib/auth/customer-verify.js");
 const cronJs = path.join(OUT, "lib/cron/auth.js");
 const rzpCfgJs = path.join(OUT, "lib/razorpay-server.js");
 const rzpClientJs = path.join(OUT, "lib/razorpay.js");
 const authReturnJs = path.join(OUT, "lib/auth-return.js");
-if (!fs.existsSync(adminJs) || !fs.existsSync(storeJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
+if (!fs.existsSync(adminJs) || !fs.existsSync(adminClientFetchJs) || !fs.existsSync(storeJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
   console.error("COMPILE FAILED — helper JS not emitted");
   process.exit(2);
 }
@@ -108,6 +110,7 @@ Module._resolveFilename = function (request, ...rest) {
 };
 
 const adminV = require(adminJs);
+const adminClientFetch = require(adminClientFetchJs);
 const adminStoreMod = require(storeJs);
 const custV = require(custJs);
 const cronV = require(cronJs);
@@ -475,6 +478,89 @@ function reqWith(headers) {
   check("admin-login[page]: routes to /auth?return=/admin/login", loginPage.includes("/auth?return=/admin/login"));
   check("admin-login[page]: sends Bearer sb_token to check-role", /Authorization[`'"]?\s*:\s*[`'"]Bearer/.test(loginPage) && loginPage.includes("sb_token"));
   check("admin-login[page]: stores server-verified identity, never reads local sb_user role", loginPage.includes("sb_admin_user") && !/getItem\(["'`]sb_user["'`]\)/.test(loginPage));
+
+  // ===== v623 — every admin-page API call carries the verified admin token =====
+  // This is deliberately centralized in the authenticated layout rather than
+  // trusting dozens of individual pages to remember a header. The wrapper is
+  // tightly scoped: no token may leave the same-origin /api/admin boundary.
+  const adminLayoutSrc = fs.readFileSync(path.join(REPO, "app/admin/layout.tsx"), "utf8");
+  const adminClientFetchSrc = fs.readFileSync(path.join(REPO, "lib/admin/client-fetch.ts"), "utf8");
+  const dashboardRouteSrc = fs.readFileSync(path.join(REPO, "app/api/admin/dashboard/route.ts"), "utf8");
+  const dashboardPageSrc = fs.readFileSync(path.join(REPO, "app/admin/page.tsx"), "utf8");
+  check("admin-data: authenticated layout installs central admin fetch wrapper",
+    adminLayoutSrc.includes("installAdminFetchInterceptor") && adminLayoutSrc.includes("onUnauthorized"));
+  check("admin-data: wrapper reads only sb_admin_token",
+    adminClientFetchSrc.includes('getItem("sb_admin_token")') && !adminClientFetchSrc.includes('getItem("sb_token")'));
+  check("admin-data: dashboard server reads with privileged server-only headers",
+    dashboardRouteSrc.includes("SB_ADMIN_READ") && !/\bSB_KEY\b/.test(dashboardRouteSrc));
+  check("admin-data: dashboard uses real hotel_videos.created_at column",
+    dashboardRouteSrc.includes("hotel_videos?select=id,verification_status,created_at") && !dashboardRouteSrc.includes("uploadedAt"));
+  check("admin-data: dashboard rejects non-OK responses instead of displaying false zeroes",
+    dashboardPageSrc.includes("if (!response.ok)") && dashboardPageSrc.includes("Dashboard data unavailable") && dashboardPageSrc.includes('role="alert"'));
+
+  check("admin-fetch: relative /api/admin path accepted",
+    adminClientFetch.adminRequestPath("/api/admin/dashboard?today=1", "https://staybids.in") === "/api/admin/dashboard?today=1");
+  check("admin-fetch: same-origin absolute admin path accepted",
+    adminClientFetch.adminRequestPath("https://staybids.in/api/admin/users", "https://staybids.in") === "/api/admin/users");
+  check("admin-fetch: external admin-lookalike URL rejected",
+    adminClientFetch.adminRequestPath("https://evil.example/api/admin/users", "https://staybids.in") === null);
+  check("admin-fetch: /api/administrator lookalike rejected",
+    adminClientFetch.adminRequestPath("/api/administrator", "https://staybids.in") === null);
+
+  {
+    const savedWindow = global.window;
+    const values = {
+      sb_admin_token: "verified-admin-token",
+      sb_admin_user: '{"id":"a1"}',
+      sb_token: "customer-token",
+      sb_user: '{"id":"c1"}',
+      sb_theme: "dark",
+    };
+    const calls = [];
+    const localStorage = {
+      getItem: (key) => Object.prototype.hasOwnProperty.call(values, key) ? values[key] : null,
+      removeItem: (key) => { delete values[key]; },
+    };
+    global.window = {
+      location: { origin: "https://staybids.in" },
+      localStorage,
+      fetch: async (input, init) => {
+        calls.push({ input, init });
+        return { ok: true, status: 200 };
+      },
+    };
+
+    const cleanup = adminClientFetch.installAdminFetchInterceptor();
+    await global.window.fetch("/api/admin/dashboard", {
+      cache: "no-store",
+      headers: { "x-existing": "kept" },
+    });
+    const adminHeaders = new Headers(calls[0].init.headers);
+    check("admin-fetch: central wrapper attaches x-admin-token", adminHeaders.get("x-admin-token") === "verified-admin-token");
+    check("admin-fetch: central wrapper preserves caller headers/options",
+      adminHeaders.get("x-existing") === "kept" && calls[0].init.cache === "no-store");
+
+    await global.window.fetch("https://evil.example/api/admin/dashboard", { headers: { "x-existing": "external" } });
+    const externalHeaders = new Headers(calls[1].init.headers);
+    check("admin-fetch: NEVER forwards token to external origin", externalHeaders.get("x-admin-token") === null);
+    await global.window.fetch("/api/hotels", { headers: { "x-existing": "public" } });
+    const publicHeaders = new Headers(calls[2].init.headers);
+    check("admin-fetch: does not attach token to non-admin API", publicHeaders.get("x-admin-token") === null);
+    cleanup();
+
+    let unauthorizedCalls = 0;
+    global.window.fetch = async () => ({ ok: false, status: 401 });
+    const cleanup401 = adminClientFetch.installAdminFetchInterceptor({ onUnauthorized: () => { unauthorizedCalls++; } });
+    await global.window.fetch("/api/admin/dashboard");
+    await global.window.fetch("/api/admin/users");
+    check("admin-fetch: first 401 invokes unauthorized handling exactly once", unauthorizedCalls === 1);
+    check("admin-fetch: 401 clears stale admin token + identity",
+      !("sb_admin_token" in values) && !("sb_admin_user" in values));
+    check("admin-fetch: 401 preserves unrelated customer session + preferences",
+      values.sb_token === "customer-token" && values.sb_user === '{"id":"c1"}' && values.sb_theme === "dark");
+    cleanup401();
+    if (savedWindow === undefined) delete global.window; else global.window = savedWindow;
+  }
 
   const verifySrc2 = fs.readFileSync(path.join(REPO, "lib/admin/verify.ts"), "utf8");
   const verifyCode2 = verifySrc2.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");

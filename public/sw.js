@@ -627,7 +627,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // via display:contents) + fixed the 5-col strip bug.
 // v485 — bump (v295 -> v296). /saved (.lux-soft max-w-5xl) widened on desktop so
 // its lg:grid-cols-4 grid breathes.
-const HTML_CACHE = 'staybid-html-v420';
+// v623 — admin pages now attach their verified session token to every
+// same-origin /api/admin request and show honest failures instead of false 0s.
+const HTML_CACHE = 'staybid-html-v421';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
