@@ -139,6 +139,24 @@
 - NEXT: capture VR baselines on preview; next surface (Home flash-duplication cleanup
   or Hotels list) — sample round first.
 
+### 2026-08-02 — Session 1 (Phase 1 — hotels list card, shipped)
+- Owner picked **Treatment A (Refined)** for the hotels list card.
+- **`.hxr-badge-flash` steel → deal-GOLD** (globals.css), one-deal-one-colour: now matches
+  `.fd-disc-stamp` / `.sbh-chip-off` gold, dark ink for AA. Plus `.hxr-card-amount-flash`
+  → ink (was `var(--accent)`) so the price reads calm — the deal is signalled by the gold
+  badge + "below market" chip, not a coloured number. CSS-only, 2 rules; the card
+  structure / score badge / heart-save / flash logic / below-market / search-filters all
+  untouched.
+- Badge v626→**v627**, sw `HTML_CACHE` v423→**v424**.
+- **Gates GREEN:** clean `.next` build 0 (30.8s) · tsc 0 (fresh types) · security 385/0 ·
+  geometry audit `/hotels` light+dark × mobile+laptop → 0 overflow / 0 errors / theme 100%.
+  (Note: a transient tsc error came from a STALE `.next/dev/types` left by the audit dev
+  server — `rm -rf .next` + rebuild confirmed the source is clean.)
+- **Phase 1 so far: flash card ✓ · reels overlay ✓ · hotels list card ✓** — all preview-live,
+  all on the gold deal-colour.
+- NEXT: capture VR baselines on preview; next surface (Home flash-duplication cleanup or
+  hotel detail) — sample round first.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

@@ -6302,12 +6302,14 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 @media (min-width: 768px) {
   .hxr-badge { top: 10px; left: 10px; padding: 5px 10px; font-size: 0.7rem; }
 }
+/* v626 — deal-GOLD badge (Treatment A), one-deal-one-colour: matches the
+   /flash-deals .fd-disc-stamp + home .sbh-chip-off gold. Dark ink for AA. */
 .hxr-badge-flash {
-  background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369);
-  color: #ffffff;
-  text-shadow: 0 1px 1px rgba(20,30,44,0.35);
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  color: #2a1e06;
+  text-shadow: none;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 8px -4px rgba(40,55,72,0.4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 3px 8px -4px rgba(130,90,12,0.4);
 }
 .hxr-badge-fav {
   background: var(--bg-card);
@@ -6447,8 +6449,11 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   font-variant-numeric: tabular-nums;
 }
 @media (min-width: 1024px) { .hxr-card-amount { font-size: 1.12rem; } }
+/* v626 Treatment A — calmer price: the flash amount reads in ink like every
+   other card (the deal is signalled by the gold badge + "below market" chip,
+   not a coloured number). */
 .hxr-card-amount-flash {
-  color: var(--accent);
+  color: var(--text-base);
 }
 .hxr-card-per { color: var(--text-muted); font-size: 0.72rem; }
 .hxr-card-strike { color: var(--text-muted); font-size: 0.7rem; text-decoration: line-through; margin-right: 2px; }
