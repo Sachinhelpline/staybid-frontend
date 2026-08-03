@@ -30,7 +30,10 @@
 // identically on the dark admin canvas and the themeable customer surface.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+// v646 — panel tiles + close now lucide; panels.ts keeps its emoji strings as
+// fallback for any panel missing from this map.
+import { X, Luggage, Signpost, Building2, HandCoins, House, BedDouble, Sparkles, Wrench, Monitor, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useTier } from "@/lib/tier-store";
@@ -41,6 +44,20 @@ import {
   type PanelState,
   type SwitchCtx,
 } from "@/lib/panels";
+
+const PANEL_ICONS: Record<string, ReactNode> = {
+  travel:      <Luggage size={21} strokeWidth={2.1} aria-hidden />,
+  onboard:     <Signpost size={21} strokeWidth={2.1} aria-hidden />,
+  partner:     <Building2 size={21} strokeWidth={2.1} aria-hidden />,
+  circle:      <HandCoins size={21} strokeWidth={2.1} aria-hidden />,
+  circle_list: <House size={21} strokeWidth={2.1} aria-hidden />,
+  host:        <BedDouble size={21} strokeWidth={2.1} aria-hidden />,
+  creator:     <Sparkles size={21} strokeWidth={2.1} aria-hidden />,
+  worker:      <Wrench size={21} strokeWidth={2.1} aria-hidden />,
+  kiosk:       <Monitor size={21} strokeWidth={2.1} aria-hidden />,
+  admin:       <ShieldCheck size={21} strokeWidth={2.1} aria-hidden />,
+};
+const panelIcon = (p: Panel): ReactNode => PANEL_ICONS[p.key] ?? p.icon;
 
 function lsHas(key: string): boolean {
   if (typeof window === "undefined") return false;
@@ -138,7 +155,7 @@ export default function PanelSwitcher() {
                 className="sbps-close"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-              >✕</button>
+              ><X size={16} strokeWidth={2.4} aria-hidden /></button>
             </div>
 
             <div className="sbps-grid">
@@ -153,7 +170,7 @@ export default function PanelSwitcher() {
                     onClick={() => go(p, state)}
                     aria-current={state === "here" ? "true" : undefined}
                   >
-                    <span className="sbps-card-ic" aria-hidden>{p.icon}</span>
+                    <span className="sbps-card-ic" aria-hidden>{panelIcon(p)}</span>
                     <span className="sbps-card-body">
                       <b className="sbps-card-label">{p.label}</b>
                       <span className="sbps-card-sub">{p.tagline}</span>
@@ -180,7 +197,7 @@ export default function PanelSwitcher() {
       {switching && (
         <div className="sbps-splash" role="status" aria-live="polite">
           <div className="sbps-splash-ic" style={{ ["--sbps-accent" as string]: switching.accent }}>
-            {switching.icon}
+            {panelIcon(switching)}
           </div>
           <div className="sbps-splash-txt">Switching to {switching.label}…</div>
           <div className="sbps-splash-bar"><span /></div>
@@ -193,8 +210,11 @@ export default function PanelSwitcher() {
 function SwitcherStyles() {
   return (
     <style
-      // Fixed walnut/champagne palette — theme-independent so it reads on the
-      // dark admin canvas AND the light/dark customer surface identically.
+      // v646 — THEME-AWARE (owner order: "light and dark both"): the sheet now
+      // rides the app tokens (--bg-card/--bg-pill/--text-*/--border-soft), so it
+      // follows the customer theme; [data-theme="dark"] deepens the shadows. It
+      // remains an overlay with its own scrim, so it stays readable over the
+      // dark admin canvas too.
       dangerouslySetInnerHTML={{ __html: `
 .sbps-backdrop{
   position:fixed; inset:0; z-index:9998;
@@ -208,10 +228,13 @@ function SwitcherStyles() {
 
 .sbps-sheet{
   width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
-  background:linear-gradient(180deg,#241E12,#1A150C);
-  border:1px solid rgba(106,133,160,0.28);
+  background:var(--bg-card);
+  border:none;
   border-radius:26px 26px 0 0;
-  box-shadow:0 -18px 60px rgba(0,0,0,0.6);
+  box-shadow:
+    0 -24px 60px -20px rgba(31,26,15,0.45),
+    0 10px 20px -12px rgba(31,26,15,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.5);
   padding:6px 16px calc(20px + env(safe-area-inset-bottom,0px));
   animation:sbps-up .26s cubic-bezier(.32,1.15,.4,1) both;
 }
@@ -220,34 +243,34 @@ function SwitcherStyles() {
 @keyframes sbps-up{ from{transform:translateY(26px);opacity:.4} to{transform:translateY(0);opacity:1} }
 
 .sbps-grab{ width:42px; height:4px; border-radius:999px;
-  background:rgba(106,133,160,0.4); margin:10px auto 6px; }
+  background:var(--border-strong, rgba(106,133,160,0.4)); margin:10px auto 6px; }
 @media (min-width:600px){ .sbps-grab{ display:none; } }
 
 .sbps-head{ display:flex; align-items:flex-start; justify-content:space-between;
   gap:12px; padding:8px 4px 14px; }
 .sbps-eyebrow{ font-size:10.5px; font-weight:800; letter-spacing:.14em;
-  text-transform:uppercase; color:#5f7c98; margin-bottom:4px; }
+  text-transform:uppercase; color:var(--accent); margin-bottom:4px; }
 .sbps-title{ font-family:'Cormorant Garamond',Georgia,serif; font-style:italic;
-  font-size:26px; font-weight:700; color:#eaeef2; line-height:1; margin:0; }
+  font-size:26px; font-weight:700; color:var(--text-base); line-height:1; margin:0; }
 .sbps-close{ width:34px; height:34px; border-radius:999px; flex-shrink:0;
-  background:rgba(255,255,255,0.06); border:1px solid rgba(106,133,160,0.24);
-  color:#cfd8e1; font-size:14px; cursor:pointer; line-height:1;
+  background:var(--bg-pill); border:1px solid var(--border-soft);
+  color:var(--text-soft); font-size:14px; cursor:pointer; line-height:1;
   display:flex; align-items:center; justify-content:center; }
-.sbps-close:hover{ background:rgba(255,255,255,0.12); }
+.sbps-close:hover{ background:color-mix(in srgb, var(--accent) 14%, var(--bg-pill)); }
 
 .sbps-grid{ display:flex; flex-direction:column; gap:9px; }
 
 .sbps-card{
   display:flex; align-items:center; gap:13px; width:100%; text-align:left;
   padding:12px 13px; border-radius:18px; cursor:pointer;
-  background:rgba(255,255,255,0.035);
-  border:1px solid rgba(106,133,160,0.16);
+  background:var(--bg-pill);
+  border:1px solid var(--border-soft);
   transition:transform .14s ease, border-color .14s ease, background .14s ease;
   -webkit-tap-highlight-color:transparent;
 }
 .sbps-card:hover{ transform:translateY(-2px);
   border-color:color-mix(in srgb, var(--sbps-accent) 55%, transparent);
-  background:rgba(255,255,255,0.06); }
+  background:color-mix(in srgb, var(--sbps-accent) 8%, var(--bg-pill)); }
 .sbps-card:active{ transform:translateY(0) scale(.99); }
 .sbps-card-here{ cursor:default; border-color:color-mix(in srgb, var(--sbps-accent) 60%, transparent);
   background:color-mix(in srgb, var(--sbps-accent) 12%, transparent); }
@@ -255,47 +278,56 @@ function SwitcherStyles() {
 
 .sbps-card-ic{ width:44px; height:44px; flex-shrink:0; border-radius:13px;
   display:flex; align-items:center; justify-content:center; font-size:22px;
-  background:color-mix(in srgb, var(--sbps-accent) 20%, #1F1A0F);
+  color:var(--text-base);
+  background:color-mix(in srgb, var(--sbps-accent) 18%, var(--bg-card));
   border:1px solid color-mix(in srgb, var(--sbps-accent) 40%, transparent);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08); }
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.2); }
 .sbps-card-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-.sbps-card-label{ font-size:14.5px; font-weight:700; color:#e6eaef; line-height:1.15; }
-.sbps-card-sub{ font-size:11.5px; color:rgba(176, 192, 209,0.62); line-height:1.25; }
+.sbps-card-label{ font-size:14.5px; font-weight:700; color:var(--text-base); line-height:1.15; }
+.sbps-card-sub{ font-size:11.5px; color:var(--text-muted); line-height:1.25; }
 
 .sbps-chip{ flex-shrink:0; font-size:11px; font-weight:800; letter-spacing:.2px;
   padding:6px 11px; border-radius:999px; white-space:nowrap; }
-.sbps-chip-here{ color:#b4c1cf; background:transparent;
+.sbps-chip-here{ color:var(--text-soft); background:transparent;
   border:1px solid color-mix(in srgb, var(--sbps-accent) 50%, transparent); }
-.sbps-chip-joined{ color:#1F1A0F;
-  background:linear-gradient(135deg,#c8d2dc,#5f7c98);
+.sbps-chip-joined{ color:#ffffff;
+  background:radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   box-shadow:0 3px 10px rgba(106,133,160,0.3); }
-.sbps-chip-join{ color:#cfd8e1; background:rgba(255,255,255,0.06);
-  border:1px solid rgba(106,133,160,0.3); }
+.sbps-chip-join{ color:var(--text-soft); background:var(--bg-pill);
+  border:1px solid var(--border-soft); }
 
 .sbps-foot{ margin:14px 4px 2px; font-size:11px; line-height:1.45;
-  color:rgba(176, 192, 209,0.5); text-align:center; }
+  color:var(--text-muted); text-align:center; }
 
 .sbps-splash{
   position:fixed; inset:0; z-index:10000;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:18px; background:radial-gradient(120% 120% at 50% 40%,#241E12,#0E0B06);
+  gap:18px; background:radial-gradient(120% 120% at 50% 40%, color-mix(in srgb, var(--accent) 10%, var(--bg-page)), var(--bg-page));
   animation:sbps-fade .16s ease both;
 }
 .sbps-splash-ic{ width:88px; height:88px; border-radius:26px; font-size:44px;
-  display:flex; align-items:center; justify-content:center;
-  background:color-mix(in srgb, var(--sbps-accent) 22%, #1F1A0F);
+  display:flex; align-items:center; justify-content:center; color:var(--text-base);
+  background:color-mix(in srgb, var(--sbps-accent) 22%, var(--bg-card));
   border:1px solid color-mix(in srgb, var(--sbps-accent) 45%, transparent);
   box-shadow:0 18px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
   animation:sbps-pop .5s cubic-bezier(.34,1.56,.5,1) both; }
 @keyframes sbps-pop{ from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
 .sbps-splash-txt{ font-family:'Cormorant Garamond',Georgia,serif; font-style:italic;
-  font-size:22px; color:#eaeef2; letter-spacing:.3px; }
+  font-size:22px; color:var(--text-base); letter-spacing:.3px; }
 .sbps-splash-bar{ width:140px; height:4px; border-radius:999px;
   background:rgba(106,133,160,0.18); overflow:hidden; }
 .sbps-splash-bar span{ display:block; height:100%; width:40%; border-radius:999px;
   background:linear-gradient(90deg,#5f7c98,#c6d0da);
   animation:sbps-slide 1s ease-in-out infinite; }
 @keyframes sbps-slide{ 0%{transform:translateX(-120%)} 100%{transform:translateX(360%)} }
+
+[data-theme="dark"] .sbps-sheet{
+  box-shadow:
+    0 -24px 60px -18px rgba(0,0,0,0.75),
+    0 10px 20px -12px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .sbps-card-ic{ box-shadow:inset 0 1px 0 rgba(255,255,255,0.08); }
 
 @media (prefers-reduced-motion:reduce){
   .sbps-backdrop,.sbps-sheet,.sbps-splash,.sbps-splash-ic{ animation:none !important; }

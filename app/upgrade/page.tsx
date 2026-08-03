@@ -5,6 +5,7 @@
 // the creator application form — lives in <UpgradeSection /> which is
 // shared with /profile so both pages stay in sync.
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UpgradeSection } from "@/components/upgrade/UpgradeSection";
 // v139 — Phase-3 earn tour. 3 steps walk through Creator path + Hotel
@@ -34,7 +35,7 @@ export default function UpgradePage() {
     return (
       <div className="lux-bg upg-root min-h-screen px-4 py-10">
         <div className="max-w-md mx-auto card-luxury sb-card-lift sb-fade-in p-6 text-center">
-          <p className="text-3xl mb-2">🔒</p>
+          <p className="mb-2"><Lock size={28} strokeWidth={2.2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></p>
           <h1 className="font-display text-2xl font-bold text-luxury-900 mb-1">Sign in first</h1>
           <p className="text-luxury-500 text-sm mb-5">
             Upgrading your account starts with a verified phone number.

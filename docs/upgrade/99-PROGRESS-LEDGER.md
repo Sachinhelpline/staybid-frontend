@@ -754,6 +754,46 @@
   find a qualifying hotel before asserting presence.
 - NEXT: owner device-check v645 → Phase 2 panels.
 
+### 2026-08-03 — Session 6 cont. (v646 — menu drawer · panel switcher re-theme · /me chrome · /upgrade)
+- **Owner commission (4 screenshots):** ① /me profile, ② /upgrade, ③ the
+  Menu drawer + "kis-kis destination ko kar liya" status, ④ the Switch
+  experience sheet — "abhi bhi old theme, slate rebrand se bhi chhoot
+  gaya tha; light AND dark dono".
+- **PanelSwitcher FULL RE-THEME (the ss4 must-do):** the v322 fixed
+  walnut/champagne palette (#241E12/#1A150C hardcoded) → app tokens
+  (--bg-card/--bg-pill/--text-*/--border-soft/--accent) with
+  [data-theme="dark"] shadow deepening — measured light rgb(254,254,254)
+  / dark rgb(27,33,42), walnut gone. Joined-chip now the house pewter
+  gradient. Panel tiles + splash icon → lucide via a PANEL_ICONS map
+  keyed on panel.key (panels.ts untouched — emoji strings remain as
+  fallback), ✕→X. Still an overlay with its own scrim so it reads on the
+  dark admin canvas too.
+- **Menu drawer (+ Navbar dropdown, shared source):** lib/user-links
+  .ts→.tsx, `icon` → ReactNode with lucide (ClipboardList/Ticket/
+  Bookmark/Star/BookUser/Flag/BadgeCheck/Sparkles/Building2/Settings);
+  drawer-local rows ⇅/❓/🎧/↶/→ → ArrowUpDown/CircleHelp/Headphones/
+  LogOut/LogIn. Desktop Navbar dropdown inherits automatically.
+- **/me profile chrome:** tabs ▦/▶ → Grid3x3/Play, ☰ ×2 → Menu icon,
+  ↑ upgrade links ×2 → ArrowUp. Highlight-circle emojis KEPT (user
+  content categories, not chrome).
+- **/upgrade:** path-card tiles ✨/🏨 → Sparkles/Building2, feature-list
+  ✓ → Check, signed-out 🔒 → Lock. (UpgradeSection shared with /profile
+  — both get it.)
+- **📋 MENU DESTINATIONS STATUS (owner asked):** DONE on house grammar —
+  My Bids (v639) · Bookings (v640) · Passport & Wallet (v641) · the
+  switcher itself (v646). NOT yet upgraded (pending queue): **/saved,
+  /trust, /complaints, /verification, /profile (Account settings),
+  /influencer (Creator Hub)** — plus the /trust destination pages. These
+  are the next customer-surface batch before Phase 2 panels.
+- Badge v645→**v646** (`SB_BUILD v646-menu-switcher-me-upgrade`), sw
+  `HTML_CACHE` v442→**v443**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **7/7** —
+  /me light (2 tab svgs, drawer 12 lucide rows emoji-free, switcher
+  tokenized light + 9 lucide tiles + X, 0 overflow), /me dark (switcher
+  dark tokens), /upgrade signed-out (Lock, no emoji).
+- NEXT: owner device-check v646 → the pending menu-destination batch
+  (saved/trust/complaints/verification/profile) or Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

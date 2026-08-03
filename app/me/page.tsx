@@ -69,6 +69,8 @@ import {
   ACCOUNT_LINK as SHARED_ACCOUNT_LINK,
 } from "@/lib/user-links";
 import ModalCloseButton from "@/components/ModalCloseButton";
+// v646 — drawer/profile chrome → lucide (highlight emojis = user content, kept).
+import { ArrowUpDown, CircleHelp, Headphones, LogOut, LogIn, Grid3x3, Play, ArrowUp, Menu as MenuIc } from "lucide-react";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -373,7 +375,7 @@ export default function MePage() {
               className="me-top-icon"
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
-            >☰</button>
+            ><MenuIc size={20} strokeWidth={2.2} aria-hidden /></button>
           </div>
         </header>
 
@@ -601,13 +603,13 @@ export default function MePage() {
       <header className="me-top">
         <span className="me-top-handle">{handle}</span>
         <div className="me-top-actions">
-          <Link href="/upgrade" className="me-top-icon" aria-label="Upgrade your account">↑</Link>
+          <Link href="/upgrade" className="me-top-icon" aria-label="Upgrade your account"><ArrowUp size={17} strokeWidth={2.4} aria-hidden /></Link>
           <button
             type="button"
             className="me-top-icon"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-          >☰</button>
+          ><MenuIc size={20} strokeWidth={2.2} aria-hidden /></button>
         </div>
       </header>
 
@@ -692,7 +694,7 @@ export default function MePage() {
             else navigator.clipboard?.writeText(url).catch(() => {});
           }}
         >Share profile</button>
-        <Link href="/upgrade" className="me-action-btn me-action-icon" aria-label="Upgrade">↑</Link>
+        <Link href="/upgrade" className="me-action-btn me-action-icon" aria-label="Upgrade"><ArrowUp size={16} strokeWidth={2.4} aria-hidden /></Link>
       </section>
 
       {/* Highlights row — v112.1: tappable. Each tile filters the posts
@@ -745,14 +747,14 @@ export default function MePage() {
           aria-selected={tab === "posts"}
           className={`me-tab${tab === "posts" ? " is-active" : ""}`}
           onClick={() => setTab("posts")}
-        >▦</button>
+        ><Grid3x3 size={19} strokeWidth={2.2} aria-hidden /></button>
         <button
           type="button"
           role="tab"
           aria-selected={tab === "reels"}
           className={`me-tab${tab === "reels" ? " is-active" : ""}`}
           onClick={() => setTab("reels")}
-        >▶</button>
+        ><Play size={19} strokeWidth={2.2} aria-hidden /></button>
         <button
           type="button"
           role="tab"
@@ -1185,7 +1187,7 @@ function Stat({
 }
 
 // ─── Hamburger drawer ──────────────────────────────────────────────────
-type DrawerLink = { href: string; label: string; sub?: string; icon: string; external?: boolean };
+type DrawerLink = { href: string; label: string; sub?: string; icon: React.ReactNode; external?: boolean };
 
 // v125.3 — the drawer items, Creator/Hotel gates and Account row all live
 // in lib/user-links.ts so the desktop Navbar dropdown stays byte-identical.
@@ -1249,7 +1251,7 @@ function MoreDrawer({
               className="me-drawer-link"
               onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-switcher")); }}
             >
-              <DrawerRow icon="⇅" label="Switch experience" sub="Partner · Circle · Hosts · Creator" />
+              <DrawerRow icon={<ArrowUpDown size={18} strokeWidth={2.2} aria-hidden />} label="Switch experience" sub="Partner · Circle · Hosts · Creator" />
             </button>
           </li>
           {links.map((it) => (
@@ -1277,7 +1279,7 @@ function MoreDrawer({
               className="me-drawer-link"
               onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-tour")); }}
             >
-              <DrawerRow icon="❓" label="App Tour" sub="Replay any guided tour" />
+              <DrawerRow icon={<CircleHelp size={18} strokeWidth={2.2} aria-hidden />} label="App Tour" sub="Replay any guided tour" />
             </button>
           </li>
           <li>
@@ -1286,7 +1288,7 @@ function MoreDrawer({
               className="me-drawer-link"
               onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-support")); }}
             >
-              <DrawerRow icon="🎧" label="Help & Support" sub="Chat with our team" />
+              <DrawerRow icon={<Headphones size={18} strokeWidth={2.2} aria-hidden />} label="Help & Support" sub="Chat with our team" />
             </button>
           </li>
           <li>
@@ -1297,7 +1299,7 @@ function MoreDrawer({
                 "Log out" button when they're already logged out. */}
             <button type="button" className="me-drawer-link me-drawer-logout" onClick={onLogout}>
               <DrawerRow
-                icon={signedIn ? "↶" : "→"}
+                icon={signedIn ? <LogOut size={18} strokeWidth={2.2} aria-hidden /> : <LogIn size={18} strokeWidth={2.2} aria-hidden />}
                 label={signedIn ? "Log out" : "Sign in"}
                 sub={signedIn ? "Sign out of this device" : "Sign in to your account"}
               />
@@ -1421,7 +1423,7 @@ function MoreDrawer({
   );
 }
 
-function DrawerRow({ icon, label, sub, external }: { icon: string; label: string; sub?: string; external?: boolean }) {
+function DrawerRow({ icon, label, sub, external }: { icon: React.ReactNode; label: string; sub?: string; external?: boolean }) {
   return (
     <div className="me-drawer-row">
       <span className="me-drawer-icon">{icon}</span>
