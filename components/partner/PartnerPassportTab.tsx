@@ -4,6 +4,7 @@
 // property, with rank + stamps-here + lifetime stamps. Helps hosts recognise
 // and reward repeat / high-rank travellers at check-in.
 import { useEffect, useState } from "react";
+import { Stamp, RotateCw, Users, Building2 } from "lucide-react";
 
 type Guest = {
   userId: string;
@@ -66,11 +67,11 @@ export default function PartnerPassportTab() {
     <div className="space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="font-display text-xl font-semibold text-luxury-900">🛂 Passport Guests</h2>
+          <h2 className="font-display text-xl font-semibold text-luxury-900 inline-flex items-center gap-2"><Stamp size={19} strokeWidth={2.2} aria-hidden />Passport Guests</h2>
           <p className="text-xs text-luxury-500 mt-0.5">Explorer Passport holders who stamped at your property.</p>
         </div>
-        <button onClick={load} className="text-xs font-semibold text-luxury-500 border border-luxury-200 px-3 py-1.5 rounded-xl hover:border-gold-300">
-          ↻ Refresh
+        <button onClick={load} className="text-xs font-semibold text-luxury-500 border border-luxury-200 px-3 py-1.5 rounded-xl hover:border-gold-300 inline-flex items-center gap-1.5">
+          <RotateCw size={13} strokeWidth={2.3} aria-hidden />Refresh
         </button>
       </div>
 
@@ -78,13 +79,13 @@ export default function PartnerPassportTab() {
       {summary && (
         <div className="grid grid-cols-3 gap-2.5">
           {[
-            { label: "Passport guests", value: summary.guests, icon: "👥" },
-            { label: "Stamps here", value: summary.stamps, icon: "🛂" },
-            { label: "Properties", value: summary.hotels, icon: "🏨" },
+            { label: "Passport guests", value: summary.guests, Ic: Users },
+            { label: "Stamps here", value: summary.stamps, Ic: Stamp },
+            { label: "Properties", value: summary.hotels, Ic: Building2 },
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl p-3 text-center border border-gold-100" style={{ background: "linear-gradient(160deg,#fdfdfe,#f1f4f6)" }}>
-              <p className="text-lg">{s.icon}</p>
-              <p className="font-display text-xl font-bold text-luxury-900">{s.value}</p>
+            <div key={s.label} className="rounded-2xl p-3 text-center border border-gold-200 bg-gold-50">
+              <s.Ic size={18} strokeWidth={2.1} aria-hidden className="mx-auto text-gold-600" />
+              <p className="font-display text-xl font-bold text-luxury-900 mt-1">{s.value}</p>
               <p className="text-[0.58rem] uppercase tracking-widest font-bold text-gold-700">{s.label}</p>
             </div>
           ))}
@@ -97,7 +98,7 @@ export default function PartnerPassportTab() {
 
       {guests.length === 0 && !err ? (
         <div className="rounded-2xl p-8 text-center border border-luxury-100 bg-luxury-50">
-          <p className="text-3xl mb-2">🛂</p>
+          <Stamp className="mx-auto mb-2 text-luxury-300" size={30} strokeWidth={1.9} aria-hidden />
           <p className="font-semibold text-luxury-900">No passport guests yet</p>
           <p className="text-xs text-luxury-500 mt-1">
             When a guest completes a stay here, they collect a stamp and appear in this list.

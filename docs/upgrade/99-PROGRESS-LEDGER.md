@@ -1443,6 +1443,35 @@
   COMPLETE (3/3).** NEXT: PartnerContentTab / PartnerPassportTab → shared modals
   (ServiceLockModal / RoomEditorModal / SubscriptionBillingModal / …).
 
+### 2026-08-03 — Session 6 cont. (v666 — partner Content + Passport tabs pair)
+- **Two read-only partner tabs in one ship** (both English — emoji + dark only).
+  PartnerContentTab (345) = `content` tab (guest reels/photos + report-to-admin
+  modal); PartnerPassportTab (145) = `passport` tab (Explorer Passport guests).
+- **PartnerPassportTab:** 🛂 heading + 🛂 empty → lucide Stamp; ↻ → RotateCw; the
+  summary-strip icons 👥/🛂/🏨 → Users/Stamp/Building2. **KEPT the per-guest rank
+  medal `rankEmoji` (🥇/…) — content vocabulary.** The summary card's near-white
+  inline gradient (`#fdfdfe,#f1f4f6`, wouldn't flip) → `bg-gold-50 border-gold-200`
+  (both flip; keeps a subtle gold tint in light). Rank-gradient avatars/pills are
+  data-driven brand colours — kept.
+- **PartnerContentTab:** ↻ → RotateCw; 📸 empty → Camera; the verification labels
+  🎫/📍 → Ticket/MapPin (restructured the string into `{Ic,text}`); the "● Live on
+  feed" glyph → a CSS emerald dot span; 🚩 Report to admin → Flag. The report
+  modal's bare `<textarea>` got `bg-white text-luxury-900` (flip via bridge) so it
+  isn't a white field in dark; the red-gradient Report CTA + the media-overlay
+  black badges are semantic/media — kept.
+- Badge v665→**v666** (`SB_BUILD v666-partner-content-passport`), sw `HTML_CACHE`
+  v462→**v463**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **75/75** —
+  both tabs @ 320/360/390/768/1280 × LIGHT/DARK, zero h-overflow, chrome emoji
+  gone (rank medal kept), dark card avg=34; the Content report modal opens dark
+  with a dark-bg textarea.
+- **14 rules honoured:** presentation-only (no fetch/report/load logic touched),
+  light+dark perfect, strict responsive to 320px, measured verify, kept content
+  emoji (rank medal). **ALL partner-panel tab components COMPLETE.** NEXT: shared
+  partner modals (ServiceLockModal / RoomEditorModal / SubscriptionBillingModal /
+  ServiceRenewBanner / CodeScanner), then Phase 2 remaining panels (admin → circle
+  → trade → host → onboard → worker).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
