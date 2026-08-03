@@ -197,6 +197,10 @@ for (const cfg of ROUTES) {
         const RE=/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}✅✔✖]/gu;
         const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n;
         while((n=walk.nextNode())){ const t=n.textContent||''; const el=n.parentElement; if(!el||el.closest('script,style'))continue;
+          // Skip elements hidden by an ANCESTOR's display:none — getComputedStyle(el).display
+          // still returns 'inline' for them (display:none doesn't cascade to computed style),
+          // so the desktop nav measured at mobile widths (and vice versa) produced false fails.
+          if(el.getClientRects().length===0)continue;
           const cs=getComputedStyle(el); const fs=parseFloat(cs.fontSize)||16;
           if(cs.position==='fixed'&&cs.pointerEvents==='none')continue; // fixed dev-version chip
           const bad=[...(t.match(RE)||[])].filter(ch=>!KEEP.has(ch));
@@ -209,6 +213,7 @@ for (const cfg of ROUTES) {
         for(const el of els){ if(!el.childNodes)continue; if(el.tagName==='OPTION'||el.tagName==='SELECT')continue;
           const direct=Array.from(el.childNodes).some(c=>c.nodeType===3&&c.textContent.trim().length>0); if(!direct)continue;
           const cs=getComputedStyle(el); if(cs.visibility==='hidden'||cs.display==='none'||parseFloat(cs.opacity)===0)continue;
+          if(el.getClientRects().length===0)continue; // ancestor display:none (not caught by cs.display)
           if(cs.position==='fixed'&&cs.pointerEvents==='none')continue;
           // A gradient OR a backdrop-filter (frosted glass) ancestor cannot be flat-composited,
           // so a computed contrast number would be wrong — skip those (documented limitation).
@@ -226,6 +231,7 @@ for (const cfg of ROUTES) {
         // so an icon on a faint same-hue tint reads against the real card, not the tint.
         const L=(c)=>{const f=(v)=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b);};
         const ifails=[]; root.querySelectorAll('svg').forEach(svg=>{
+          if(svg.getClientRects().length===0)return; // ancestor display:none
           const col=P(getComputedStyle(svg).color); if(!col)return;
           const stk=[]; let cur=svg.parentElement, grad=false;
           while(cur){const s=getComputedStyle(cur); if(s.backgroundImage&&s.backgroundImage!=='none')grad=true; if((s.backdropFilter&&s.backdropFilter!=='none')||(s.webkitBackdropFilter&&s.webkitBackdropFilter!=='none'))grad=true; stk.push(s.backgroundColor); cur=cur.parentElement;}
