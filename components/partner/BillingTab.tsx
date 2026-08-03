@@ -13,6 +13,11 @@
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { modalPortal } from "@/lib/partner/modal-portal";
+import {
+  Plus, TriangleAlert, Search, ReceiptText, Globe, Footprints, X, Printer,
+  Check, RotateCcw, Lock, Wallet, Trash2, BedDouble, UtensilsCrossed, Shirt,
+  ConciergeBell, ArrowLeft,
+} from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -27,6 +32,10 @@ function nights(a?: string, b?: string) {
   if (!a || !b) return 1;
   return Math.max(1, Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
 }
+// Small inline lucide renderer (baseline-aligned with adjacent text).
+function BIc({ I, size = 13, className = "" }: { I: any; size?: number; className?: string }) {
+  return <I size={size} strokeWidth={2.3} aria-hidden className={className} style={{ display: "inline-block", verticalAlign: "-2px" }} />;
+}
 // Standard Indian GST slabs — partner picks one, no free value.
 const GST_SLABS = [
   { v: 0,  label: "0% — exempt" },
@@ -36,13 +45,13 @@ const GST_SLABS = [
   { v: 28, label: "28%" },
 ];
 
-const KIND: Record<string, { label: string; icon: string }> = {
-  room:    { label: "Room",            icon: "🛏" },
-  food:    { label: "Food & Beverage", icon: "🍽" },
-  laundry: { label: "Laundry",         icon: "🧺" },
-  service: { label: "Room Service",    icon: "🛎" },
-  misc:    { label: "Other",           icon: "➕" },
-  payment: { label: "Payment",         icon: "💰" },
+const KIND: Record<string, { label: string; Ic: any }> = {
+  room:    { label: "Room",            Ic: BedDouble },
+  food:    { label: "Food & Beverage", Ic: UtensilsCrossed },
+  laundry: { label: "Laundry",         Ic: Shirt },
+  service: { label: "Room Service",    Ic: ConciergeBell },
+  misc:    { label: "Other",           Ic: Plus },
+  payment: { label: "Payment",         Ic: Wallet },
 };
 const EXTRA_KINDS = ["food", "laundry", "service", "misc"];
 
@@ -112,7 +121,7 @@ export default function BillingTab({
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) {
-      if (r.status === 412) { setProvisioned(false); throw new Error("Billing table abhi setup nahi hua — migration apply karni hai."); }
+      if (r.status === 412) { setProvisioned(false); throw new Error("Billing storage isn't set up yet — the migration needs to be applied."); }
       throw new Error(d.error || "Request failed");
     }
     return d;
@@ -130,7 +139,7 @@ export default function BillingTab({
     catch (e: any) { alert("❌ " + e.message); load(); }
   }
   async function delFolio(id: string) {
-    if (!confirm("Pura folio delete karein?")) return;
+    if (!confirm("Delete this entire folio?")) return;
     try { await api(`/api/partner/folios?id=${encodeURIComponent(id)}`, "DELETE"); setSelId(null); await load(); }
     catch (e: any) { alert("❌ " + e.message); }
   }
@@ -182,16 +191,20 @@ export default function BillingTab({
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h2 className="sec-title text-xl">Billing &amp; Folios</h2>
-          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Online booking ya walk-in — guest ka bill, GST &amp; invoice.</p>
+          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Online booking or walk-in — guest bill, GST &amp; invoice.</p>
         </div>
-        <button onClick={() => setNewOpen(true)} className="btn-gold">➕ New Folio</button>
+        <button onClick={() => setNewOpen(true)} className="btn-gold inline-flex items-center gap-1.5">
+          <Plus size={14} strokeWidth={2.4} aria-hidden />New Folio
+        </button>
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
-          <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Billing storage abhi setup nahi hua</p>
+        <div className="card-p card-tight mb-3 border-amber-200">
+          <p className="text-[0.74rem] text-amber-700 font-semibold inline-flex items-center gap-1.5">
+            <TriangleAlert size={13} strokeWidth={2.4} aria-hidden />Billing storage isn&apos;t set up yet
+          </p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
-            <span className="font-mono">migrations/2026-05-21-guest-folios.sql</span> + <span className="font-mono">folio-gst-mode.sql</span> apply karni hai.
+            <span className="font-mono">migrations/2026-05-21-guest-folios.sql</span> + <span className="font-mono">folio-gst-mode.sql</span> need to be applied.
           </p>
         </div>
       )}
@@ -210,22 +223,27 @@ export default function BillingTab({
             </button>
           );
         })}
-        <input value={q} onChange={(e) => setQ(e.target.value)}
-          placeholder="🔍 Guest name / phone" className="inp-p flex-1 min-w-[150px]" />
+        <div className="relative flex-1 min-w-[150px]">
+          <Search size={14} strokeWidth={2.2} aria-hidden className="absolute left-2.5 top-1/2 -translate-y-1/2 text-luxury-400 pointer-events-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="Guest name / phone" className="inp-p w-full pl-8" />
+        </div>
       </div>
 
       {loading ? (
         <div className="card-p text-center py-10 text-luxury-400 text-sm">Loading…</div>
       ) : filtered.length === 0 ? (
         <div className="card-p text-center py-10">
-          <p className="text-3xl mb-2">🧾</p>
+          <ReceiptText className="mx-auto mb-2 text-luxury-300" size={30} strokeWidth={1.7} aria-hidden />
           <p className="text-luxury-600 font-semibold text-sm">
-            {folios.length === 0 ? "Abhi koi folio nahi hai" : "Is filter me kuch nahi"}
+            {folios.length === 0 ? "No folios yet" : "Nothing in this filter"}
           </p>
           {folios.length === 0 && (
             <>
-              <p className="text-luxury-400 text-xs mt-0.5 mb-3">Guest ka bill banane ke liye naya folio kholo.</p>
-              <button onClick={() => setNewOpen(true)} className="btn-gold">➕ New Folio</button>
+              <p className="text-luxury-400 text-xs mt-0.5 mb-3">Open a new folio to start a guest bill.</p>
+              <button onClick={() => setNewOpen(true)} className="btn-gold inline-flex items-center gap-1.5">
+                <Plus size={14} strokeWidth={2.4} aria-hidden />New Folio
+              </button>
             </>
           )}
         </div>
@@ -243,12 +261,13 @@ export default function BillingTab({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{f.guest_name}</p>
-                    <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                      style={online ? { background: "#dbeafe", color: "#1d4ed8" } : { background: "#eceff3", color: "#78716c" }}>
-                      {online ? "🌐 Online" : "🚶 Walk-in"}
+                    <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                      online ? "bg-blue-100 text-blue-700" : "bg-luxury-100 text-luxury-500"}`}>
+                      {online ? <Globe size={9} strokeWidth={2.6} aria-hidden /> : <Footprints size={9} strokeWidth={2.6} aria-hidden />}
+                      {online ? "Online" : "Walk-in"}
                     </span>
-                    <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                      style={f.status === "settled" ? { background: "#dcfce7", color: "#15803d" } : { background: "#f0f3f5", color: "#b45309" }}>
+                    <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
+                      f.status === "settled" ? "bg-emerald-100 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
                       {f.status}
                     </span>
                   </div>
@@ -258,7 +277,7 @@ export default function BillingTab({
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[0.8rem] font-bold text-luxury-900">{fmtCur(t.total)}</p>
-                  <p className="text-[0.6rem] font-semibold" style={{ color: t.balance > 0 ? "#b91c1c" : "#15803d" }}>
+                  <p className={`text-[0.6rem] font-semibold ${t.balance > 0 ? "text-red-700" : "text-emerald-700"}`}>
                     {t.balance > 0 ? `${fmtCur(t.balance)} due` : "Paid"}
                   </p>
                 </div>
@@ -326,7 +345,7 @@ function NewFolioModal({
     setErr("");
     if (mode === "online") {
       const b = acceptedBids.find((x) => x.id === pickBidId);
-      if (!b) { setErr("Ek online booking select karo."); return; }
+      if (!b) { setErr("Select an online booking."); return; }
       const n = nights(b.checkIn, b.checkOut);
       const perNight = Number(b.counterAmount || b.amount || 0);
       setSaving(true);
@@ -343,7 +362,7 @@ function NewFolioModal({
         });
       } catch (e: any) { setErr(e?.message || "Failed"); setSaving(false); }
     } else {
-      if (!f.guestName.trim()) { setErr("Guest ka naam daalo."); return; }
+      if (!f.guestName.trim()) { setErr("Enter the guest's name."); return; }
       setSaving(true);
       try {
         await onCreate({
@@ -363,18 +382,20 @@ function NewFolioModal({
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>New Folio</p>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center">
+            <X size={16} strokeWidth={2.4} aria-hidden />
+          </button>
         </div>
 
         {/* mode toggle */}
         <div className="flex gap-1.5 px-4 pt-3 shrink-0">
-          {([["online", "🌐 Online booking"], ["offline", "🚶 Walk-in / Offline"]] as const).map(([id, label]) => (
+          {([["online", Globe, "Online booking"], ["offline", Footprints, "Walk-in / Offline"]] as const).map(([id, Icn, label]) => (
             <button key={id} onClick={() => { setMode(id); setErr(""); }}
-              className={`flex-1 text-[0.74rem] font-bold py-1.5 rounded-lg border transition-all ${
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 text-[0.74rem] font-bold py-1.5 rounded-lg border transition-all ${
                 mode === id ? "text-white border-transparent" : "bg-white text-luxury-500 border-luxury-200"
               }`}
               style={mode === id ? { background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" } : undefined}>
-              {label}
+              <Icn size={13} strokeWidth={2.4} aria-hidden />{label}
             </button>
           ))}
         </div>
@@ -383,12 +404,15 @@ function NewFolioModal({
           {mode === "online" ? (
             <>
               <p className="text-[0.66rem] text-luxury-500">
-                Customer ki online booking select karo — room category &amp; booked amount auto-fetch ho jayega (locked).
+                Select the customer&apos;s online booking — room category &amp; booked amount are fetched automatically (locked).
               </p>
-              <input value={bq} onChange={(e) => setBq(e.target.value)}
-                placeholder="🔍 Guest name / phone se dhoondo" className="inp-p" autoFocus />
+              <div className="relative">
+                <Search size={14} strokeWidth={2.2} aria-hidden className="absolute left-2.5 top-1/2 -translate-y-1/2 text-luxury-400 pointer-events-none" />
+                <input value={bq} onChange={(e) => setBq(e.target.value)}
+                  placeholder="Search by guest name / phone" className="inp-p w-full pl-8" autoFocus />
+              </div>
               {bidList.length === 0 ? (
-                <p className="text-xs text-luxury-400 py-3 text-center">Koi confirmed online booking nahi mili.</p>
+                <p className="text-xs text-luxury-400 py-3 text-center">No confirmed online booking found.</p>
               ) : (
                 <div className="space-y-1.5">
                   {bidList.map((b) => {
@@ -397,8 +421,8 @@ function NewFolioModal({
                     const n = nights(b.checkIn, b.checkOut);
                     return (
                       <button key={b.id} onClick={() => setPickBidId(b.id)}
-                        className="w-full text-left rounded-xl p-2.5 transition-all"
-                        style={{ background: on ? "#f7f8fa" : "#fff", border: `1.5px solid ${on ? "#8198ae" : "#d7dee6"}` }}>
+                        className={`w-full text-left rounded-xl p-2.5 transition-all border ${on ? "bg-luxury-50 border-transparent" : "bg-white border-luxury-200"}`}
+                        style={on ? { boxShadow: "0 0 0 1.5px #8198ae" } : undefined}>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[0.8rem] font-bold text-luxury-900">{b.guestName || `Guest …${String(b.customerId || "").slice(-4)}`}</span>
                           {isToday && <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">TODAY CHECK-IN</span>}
@@ -435,7 +459,7 @@ function NewFolioModal({
                 <div><label className={lbl}>Check-out</label>
                   <input type="date" value={f.checkOut} onChange={(e) => set("checkOut", e.target.value)} className="inp-p" /></div>
               </div>
-              <p className="text-[0.62rem] text-luxury-400">Walk-in bill flexible hai — room charge category se pick karke price edit kar sakte ho.</p>
+              <p className="text-[0.62rem] text-luxury-400">Walk-in bills are flexible — pick a room charge from the category and edit the price.</p>
             </>
           )}
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
@@ -543,23 +567,26 @@ function FolioDetail({
       <script>window.onload=function(){window.print()}</script></body></html>`;
     const w = window.open("", "_blank", "width=760,height=900");
     if (w) { w.document.write(html); w.document.close(); }
-    else alert("Invoice window block ho gaya — popup allow karo.");
+    else alert("The invoice window was blocked — please allow pop-ups.");
   }
 
   return (
     <div className="fade-up">
-      <button onClick={onBack} className="text-[0.74rem] font-bold text-gold-600 mb-2.5">← All folios</button>
+      <button onClick={onBack} className="text-[0.74rem] font-bold text-gold-600 mb-2.5 inline-flex items-center gap-1">
+        <ArrowLeft size={14} strokeWidth={2.4} aria-hidden />All folios
+      </button>
 
       <div className="card-p card-tight mb-3 flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>{folio.guest_name}</p>
-            <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-              style={online ? { background: "#dbeafe", color: "#1d4ed8" } : { background: "#eceff3", color: "#78716c" }}>
-              {online ? "🌐 Online booking" : "🚶 Walk-in"}
+            <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
+              online ? "bg-blue-100 text-blue-700" : "bg-luxury-100 text-luxury-500"}`}>
+              {online ? <Globe size={9} strokeWidth={2.6} aria-hidden /> : <Footprints size={9} strokeWidth={2.6} aria-hidden />}
+              {online ? "Online booking" : "Walk-in"}
             </span>
-            <span className="text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-              style={folio.status === "settled" ? { background: "#dcfce7", color: "#15803d" } : { background: "#f0f3f5", color: "#b45309" }}>
+            <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
+              folio.status === "settled" ? "bg-emerald-100 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
               {folio.status}
             </span>
           </div>
@@ -569,11 +596,17 @@ function FolioDetail({
           </p>
         </div>
         <div className="flex gap-1.5">
-          <button onClick={printInvoice} className="btn-ghost">🖨 Invoice</button>
+          <button onClick={printInvoice} className="btn-ghost inline-flex items-center gap-1.5">
+            <Printer size={13} strokeWidth={2.3} aria-hidden />Invoice
+          </button>
           {folio.status === "open" ? (
-            <button onClick={() => onPatch({ status: "settled" })} className="btn-gold">✓ Settle</button>
+            <button onClick={() => onPatch({ status: "settled" })} className="btn-gold inline-flex items-center gap-1.5">
+              <Check size={13} strokeWidth={2.6} aria-hidden />Settle
+            </button>
           ) : (
-            <button onClick={() => onPatch({ status: "open" })} className="btn-ghost">↺ Reopen</button>
+            <button onClick={() => onPatch({ status: "open" })} className="btn-ghost inline-flex items-center gap-1.5">
+              <RotateCcw size={13} strokeWidth={2.3} aria-hidden />Reopen
+            </button>
           )}
         </div>
       </div>
@@ -582,24 +615,24 @@ function FolioDetail({
       <div className="card-p mb-3">
         <p className="text-[0.78rem] font-bold text-luxury-900 mb-2">Charges</p>
         {t.mine.filter((x) => x.kind !== "payment").length === 0 ? (
-          <p className="text-xs text-luxury-400 py-2">Abhi koi charge nahi.</p>
+          <p className="text-xs text-luxury-400 py-2">No charges yet.</p>
         ) : (
           <div className="space-y-1 mb-2">
             {t.mine.filter((x) => x.kind !== "payment").map((x) => {
               const lockedRoom = online && x.kind === "room";
               return (
                 <div key={x.id} className="flex items-center gap-2 text-[0.76rem] py-1 border-b border-luxury-50 last:border-0">
-                  <span>{KIND[x.kind]?.icon || "➕"}</span>
+                  <BIc I={KIND[x.kind]?.Ic || Plus} className="text-luxury-500 shrink-0" />
                   <span className="flex-1 min-w-0 truncate text-luxury-800">
                     {x.label}
                     <span className="text-luxury-400"> · {x.qty}×{fmtCur(x.unit_price)}</span>
-                    {lockedRoom && <span className="text-[0.58rem] text-blue-600 font-bold"> · 🔒 booked</span>}
+                    {lockedRoom && <span className="text-[0.58rem] text-blue-600 font-bold"> · <Lock size={9} strokeWidth={2.6} aria-hidden className="inline align-[-1px]" /> booked</span>}
                   </span>
                   <span className="font-bold text-luxury-900">{fmtCur(x.amount)}</span>
                   {lockedRoom ? (
-                    <span className="text-luxury-300 text-sm leading-none w-3 text-center">🔒</span>
+                    <span className="text-luxury-300 w-3 flex items-center justify-center"><Lock size={12} strokeWidth={2.2} aria-hidden /></span>
                   ) : (
-                    <button onClick={() => onDelCharge(x.id)} className="text-red-400 hover:text-red-600 text-sm leading-none">×</button>
+                    <button onClick={() => onDelCharge(x.id)} className="text-red-400 hover:text-red-600 flex items-center"><X size={14} strokeWidth={2.4} aria-hidden /></button>
                   )}
                 </div>
               );
@@ -608,8 +641,9 @@ function FolioDetail({
         )}
 
         {online && (
-          <p className="text-[0.62rem] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 mb-2">
-            🌐 Online booking — room category &amp; booked amount locked hai. Sirf extra charges (food, laundry…) add kar sakte ho.
+          <p className="text-[0.62rem] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 mb-2 flex items-start gap-1.5">
+            <Globe size={12} strokeWidth={2.4} aria-hidden className="mt-0.5 shrink-0" />
+            <span>Online booking — room category &amp; booked amount are locked. You can only add extra charges (food, laundry…).</span>
           </p>
         )}
 
@@ -618,7 +652,7 @@ function FolioDetail({
           <select value={c.kind} onChange={(e) => setC({ kind: e.target.value, label: "", qty: "1", unitPrice: "", roomId: "" })}
             className="inp-p py-1.5! text-[0.74rem]">
             {kindOptions.map((k) => (
-              <option key={k} value={k}>{KIND[k].icon} {KIND[k].label}</option>
+              <option key={k} value={k}>{KIND[k].label}</option>
             ))}
           </select>
           {c.kind === "room" ? (
@@ -639,7 +673,7 @@ function FolioDetail({
           <button onClick={addItem} className="btn-gold px-3! py-1.5!">Add</button>
         </div>
         {c.kind === "room" && !online && (
-          <p className="text-[0.6rem] text-luxury-400 mt-1">Room category pick karo — price auto aayega, walk-in bill me edit bhi kar sakte ho (flexible).</p>
+          <p className="text-[0.6rem] text-luxury-400 mt-1">Pick a room category — the price auto-fills, and you can still edit it on a walk-in bill (flexible).</p>
         )}
       </div>
 
@@ -697,8 +731,8 @@ function FolioDetail({
           </div>
           <Row k="Paid" v={fmtCur(t.paid)} />
           <div className="flex items-center justify-between">
-            <span className="font-bold" style={{ color: t.balance > 0 ? "#b91c1c" : "#15803d" }}>Balance due</span>
-            <span className="font-extrabold text-base" style={{ color: t.balance > 0 ? "#b91c1c" : "#15803d" }}>{fmtCur(t.balance)}</span>
+            <span className={`font-bold ${t.balance > 0 ? "text-red-700" : "text-emerald-700"}`}>Balance due</span>
+            <span className={`font-extrabold text-base ${t.balance > 0 ? "text-red-700" : "text-emerald-700"}`}>{fmtCur(t.balance)}</span>
           </div>
         </div>
       </div>
@@ -710,10 +744,10 @@ function FolioDetail({
           <div className="space-y-1 mb-2">
             {t.mine.filter((x) => x.kind === "payment").map((x) => (
               <div key={x.id} className="flex items-center gap-2 text-[0.76rem] py-1 border-b border-luxury-50 last:border-0">
-                <span>💰</span>
+                <BIc I={Wallet} className="text-emerald-700 shrink-0" />
                 <span className="flex-1 text-luxury-800">{x.label}</span>
                 <span className="font-bold text-emerald-700">{fmtCur(x.amount)}</span>
-                <button onClick={() => onDelCharge(x.id)} className="text-red-400 hover:text-red-600 text-sm leading-none">×</button>
+                <button onClick={() => onDelCharge(x.id)} className="text-red-400 hover:text-red-600 flex items-center"><X size={14} strokeWidth={2.4} aria-hidden /></button>
               </div>
             ))}
           </div>
@@ -729,7 +763,9 @@ function FolioDetail({
         </div>
       </div>
 
-      <button onClick={onDelete} className="text-[0.7rem] font-bold text-red-500 hover:text-red-700">🗑 Delete this folio</button>
+      <button onClick={onDelete} className="text-[0.7rem] font-bold text-red-500 hover:text-red-700 inline-flex items-center gap-1">
+        <Trash2 size={13} strokeWidth={2.3} aria-hidden />Delete this folio
+      </button>
     </div>
   );
 }

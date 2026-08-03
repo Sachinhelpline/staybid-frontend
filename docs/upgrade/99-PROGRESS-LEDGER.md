@@ -1253,6 +1253,43 @@
   → AgentAuctionTab → Circle tabs → Content/Passport → shared modals. Then admin
   → circle → trade → host → onboard → worker.
 
+### 2026-08-03 — Session 6 cont. (v660 — partner BillingTab, the largest/most hex)
+- **BillingTab (748 lines) — guest folio / GST invoicing (Billing tab, a
+  SUBSCRIPTION_SERVICE so the audit fixture unlocks all subs).** Charge-category
+  `KIND` map swapped from emoji glyphs to lucide components (🛏→BedDouble,
+  🍽→UtensilsCrossed, 🧺→Shirt, 🛎→ConciergeBell, ➕→Plus, 💰→Wallet) via a new
+  inline `BIc` renderer; the category `<select>` options show label-only (SVG
+  can't render inside `<option>`). Chrome swapped: ➕ New Folio → Plus, ⚠ →
+  TriangleAlert, 🔍 search → inline Search-icon inputs (list + modal), 🧾 empty →
+  ReceiptText, 🌐/🚶 Online/Walk-in badges → Globe/Footprints (list + detail +
+  modal mode-toggle), × close/delete → X, 🖨→Printer, ✓ Settle → Check, ↺ →
+  RotateCcw, 🔒 booked/locked → Lock, ← All folios → ArrowLeft, 🗑 → Trash2.
+- **Status badges tokenized** (were inline hex): online `#dbeafe/#1d4ed8` →
+  `bg-blue-100 text-blue-700`, walk-in `#eceff3/#78716c` → `bg-luxury-100
+  text-luxury-500`, settled `#dcfce7/#15803d` → `bg-emerald-100 text-emerald-700`,
+  open `#f0f3f5/#b45309` → `bg-amber-50 text-amber-700`; balance-due `#b91c1c`/
+  `#15803d` → `text-red-700`/`text-emerald-700` — all flip via the `.pdash-root`
+  dark bridge. Bid-picker row inline hex → `bg-white`/`bg-luxury-50` + a pewter
+  `#8198ae` selected ring via boxShadow (brand, readable both themes). The pewter
+  active-gradient on the filter/mode/GST toggles is KEPT (panel-wide brand state).
+- **KEEP (deliberate):** the entire `printInvoice` HTML-string hex — it renders a
+  PRINTED white document, never dark-tokenized. Toast `❌`/`✓` strings, folio-row
+  math `×` (`{qty}×₹rate`), and date `→` arrows kept.
+- **Hinglish → English** (13 strings): headers, empty states, the 412 provision
+  error, the confirm(), the online/walk-in helper copy, both search placeholders,
+  the online-locked notice, the room-category hint, the popup-blocked alert.
+- Badge v659→**v660** (`SB_BUILD v660-partner-billing`), sw `HTML_CACHE`
+  v456→**v457**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **60/60** —
+  Billing tab + New Folio modal + folio-detail responsive @ 320/360/390/768/1280 ×
+  LIGHT/DARK all zero h-overflow; chrome emoji + Hinglish gone; dark card/modal bg
+  avg=34; locked-room + Settle verified in the online-folio detail.
+- **14 rules honoured:** presentation-only (no folio/GST/money logic touched —
+  totalsOf / printInvoice math byte-identical, security 385/0), light+dark perfect,
+  strict responsive to 320px, measured headless verify, lucide + kept content
+  emoji, additive-only. NEXT: MenuBuilderTab/FnbOrdersTab → ReportsTab →
+  AgentAuctionTab → Circle tabs → Content/Passport → shared modals.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
