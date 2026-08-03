@@ -29,8 +29,8 @@ const FONT_FLOOR = 10;   // px — flag genuinely-tiny text (< floor). 10px micr
                          // sit at the design's --fs-micro floor and pass.
 
 // brand/content glyphs intentionally kept program-wide (hybrid rule)
-const KEEP = new Set(['←','→','↗','↘','↩','⇅','›','‹','·','–','—','✓','✕','×','★','☆','♥','♡',
-  '👋','✨','🔥','🏠','🔑','🏷','🏔','◎','📍','📱','●','○','▶','◀','🥇','🥈','🥉','😊','😐','😞']);
+const KEEP = new Set(['←','→','↗','↘','↩','⇅','⇄','↔','›','‹','·','–','—','✓','✕','×','★','☆','♥','♡',
+  '👋','✨','🔥','🏠','🔑','🏷','🏔','🏨','◎','📍','📱','🎉','🛏','●','○','▶','◀','🥇','🥈','🥉','😊','😐','😞']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
@@ -49,6 +49,10 @@ const ROUTES = [
     fixtures:{ 'admin':{ kpis:{}, ledger:[], payouts:[], bookings:[], holds:[], hotels:[], topCreators:[], codes:[], complaints:[], feedback:[], flags:[], users:[], creators:[] } } },
   { route:'/admin/rls', scope:'body', admin:true,
     fixtures:{ 'admin/rls':{ serviceRole:true, tables:[{table:'users',rls_enabled:true,policy_count:2,policies:[]},{table:'bookings',rls_enabled:true,policy_count:1,policies:[]},{table:'otp_codes',rls_enabled:false,policy_count:0,policies:[]}] } } },
+  { route:'/circle/model3', scope:'.sbc-home',
+    fixtures:{ 'circle/marketplace': { hotels:[{id:'h1',name:'Cave View Resort',city:'Dehradun',state:'UK',starRating:4,image:null,fromWholesale:2100,rooms:[{id:'r1',name:'Deluxe',type:'deluxe',image:null,capacity:2,fromWholesale:2100}]}] } } },
+  { route:'/circle/model4', scope:'.sbc-home',
+    fixtures:{ 'b2b/marketplace': { listings:[{id:'l1',hotel_name:'Cave View',hotel_city:'Dehradun',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,ask_total:9000}] } } },
   { route:'/admin/host', scope:'body', admin:true,
     fixtures:{ 'admin/host':{ kpis:{leads:3,leadsNew:1,portfolios:2,portfoliosActive:1,portfolioRevenue:1000,propertySubmissions:2,propertySubmissionsPending:1,inquiries:1,inquiriesNew:1,projects:1,orders:1,storeGmv:1,jobs:1,jobsActive:1,workforceRevenue:1,channels:1,channelsNew:1}, leads:[], portfolios:[], propertySubmissions:[], inquiries:[], projects:[], orders:[], jobs:[], channels:[] } } },
 ];

@@ -1,4 +1,4 @@
-# Responsive Coverage Matrix — full device matrix (program memory) — 139 routes · ICON 44/139 · RESP 5/139
+# Responsive Coverage Matrix — full device matrix (program memory) — 139 routes · ICON 44/139 · RESP 7/139
 
 > **The anti-memory-loss ledger for the responsive/fluid retrofit.** Every route in the app is
 > listed here. A route is **RESP ✓** only after it PASSES the reusable harness
@@ -105,8 +105,8 @@ Legend: **ICON** = lucide/emoji-hybrid sweep done · **RESP** = full-matrix resp
 | `/circle/model2/browse` | — | ⏳ |
 | `/circle/model2/review` | — | ⏳ |
 | `/circle/model2/selling` | — | ⏳ |
-| `/circle/model3` | — | ⏳ |
-| `/circle/model4` | — | ⏳ |
+| `/circle/model3` | ✓ | ✓ v686 |
+| `/circle/model4` | ✓ | ✓ v686 |
 | `/circle/onboard` | — | ⏳ |
 | `/circle/profile` | — | ⏳ |
 | `/circle/support` | — | ⏳ |

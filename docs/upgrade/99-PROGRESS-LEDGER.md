@@ -2003,6 +2003,17 @@
   (contrast+icon+overflow+font-floor), fluid auto-size (clamp) per owner's "auto-size everything" ask.
   NEXT: sweep the remaining 134 routes through the matrix in batches; global-first fixes where shared.
 
+### 2026-08-03 — Session 6 cont. (v686 — Responsive matrix: model3 + model4 verified, no code change)
+- **Circle model3 + model4 marketplace pages** run through the full device matrix. Both were already
+  Hybrid-compliant (every glyph is keep-set: 🔑/⇄ empty-state, 🏨 placeholder, ★ rating, 📍 pin, ✓,
+  ←/→, 🎉 celebration — no utilitarian nav/action emoji) AND inherit the global circle font-floor fix
+  (v685) + the already-clean `CircleStepShell`.
+- **MEASURED, 13 widths × 2 themes: BOTH CLEAN, zero code change** — the payoff of the
+  architecture-first font-floor fix: fixing shared `circle-premium.css` made these pass for free.
+- Harness: added model3/model4 to `responsive-audit.mjs` ROUTES + keep-set glyphs (⇄/↔/🏨/🎉/🛏).
+- Matrix: RESP **7/139** (no `SB_BUILD`/cache bump — docs/tooling only, no UI change).
+- NEXT: continue the circle vertical (model2 flow, build, me, discover) then the customer core.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
