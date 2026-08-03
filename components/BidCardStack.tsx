@@ -26,7 +26,8 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 export interface BidCard {
   key: string;
-  icon: string;
+  /** v644 — ReactNode so lucide icons slot in (string emojis still work). */
+  icon: ReactNode;
   title: string;
   hint?: string;
   /** Returns true when the user has filled this card sufficiently. */
@@ -43,7 +44,7 @@ export interface BidCard {
   /** v211 — optional override for the Done CTA on this card's bottom sheet.
    *  Used by the 5th "Price" milestone in /bid to render "🚀 Launch Bid"
    *  and call submit() directly instead of closing the sheet. */
-  doneLabel?: string;
+  doneLabel?: ReactNode;
   onDoneClick?: () => void;
 }
 

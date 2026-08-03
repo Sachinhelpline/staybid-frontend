@@ -689,6 +689,41 @@
   probes to `.lux-cal-backdrop`.
 - NEXT: owner device-check on the CURRENT preview (v643) → Phase 2 panels.
 
+### 2026-08-03 — Session 6 cont. (v644 — /bid climber: step sheets + map discs lucide)
+- **Owner commission (7 screenshots, "rule sabhi wahi — 14 locked"):** the
+  climber's 7 step sheets (city, property, calendar, guests, price,
+  review, pay). Screenshots again showed v624 — calendar sheet chrome was
+  already fixed in v643 (shared LuxuryCalendar). Presentation-only; bid
+  submit/pay/conflict logic byte-identical.
+- **Type widening:** `BidCard.icon`/`doneLabel` string→ReactNode
+  (components/BidCardStack.tsx) so lucide slots into the sheet header AND
+  the map milestone discs from ONE field.
+- **ClimberMilestoneMap:** node/peak 🔒→Lock, 🚩→Flag, sheet ✕→X, default
+  "✓ Done"→Check+Done. Map disc glyphs now render the cards' lucide icons
+  (Globe/Building2/CalendarDays/Users/Wallet/Search/CreditCard).
+- **Step sheets (app/bid/page.tsx, ~30 swaps):** city search 🔎→Search +
+  ✕→X + show-all ▾▴→Chevrons + 🤖 AI Insight→Bot + summary 📍 dropped;
+  property tally ✓→Check; date buttons 📅→CalendarDays; guests auto-fit
+  notes ✨/⚠️→Sparkles/TriangleAlert + 🏨 concierge→Building2; price
+  presets 💰⭐⚡→Wallet/Star/Zap (icon field →ReactNode) + 🤖 presets
+  label→Bot + doneLabel "🚀 Launch Bid"→Rocket+text ("⏳"dropped);
+  review heroes 🎯/⚠️/⏳→Target/TriangleAlert/Hourglass + 👀→Eye +
+  🔄→RotateCw + notes ✓/💳→Check/CreditCard; pay sheet 💳→CreditCard;
+  LiveBidCard 💰 Pay Now & Grab→Wallet. `finalCtaLabel` de-emoji'd.
+- **KEEP (game/content vocabulary):** boot storyboard mock pills + ⚡
+  brand bolt + ▶ PRESS START (owner-approved v632 boot untouched),
+  `emojiForCount` morphing character counters (THE gaming feature),
+  property-type disc glyphs (data vocabulary), city avatars, node ✓ done
+  badge, climber map art.
+- Badge v643→**v644** (`SB_BUILD v644-bid-stepsheets-lucide`), sw
+  `HTML_CACHE` v440→**v441**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **6/6** via
+  the real game chain at 390w: boot (bolt+start kept) → PRESS START →
+  map (7 discs, 7 lucide glyphs, 0 emoji) → city sheet (header/close/
+  search svgs, emoji-free) → city pick → property sheet (Done carries
+  Check svg, type discs kept) → 0 overflow.
+- NEXT: owner device-check v644 → Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
