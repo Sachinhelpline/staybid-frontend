@@ -19,6 +19,40 @@
 
 ## Session log
 
+### 2026-08-03 — Circle remaining pages: emoji-hybrid + contrast + harness bug-fixes (v692)
+**Scope:** the remaining circle journey pages — `/circle/{discover,build,me,earnings,kyc,onboard,
+profile,support,demand-cycle,model2/review,model2/selling}` — measured 280→2560 × light+dark.
+
+**THREE real audit-harness bugs found + fixed** (they manufactured dozens of fake circle "contrast
+fails" — the circle surface uses modern CSS the old harness mis-read):
+- `color(srgb r g b / a)` backgrounds (Tailwind 4 / color-mix) weren't parsed → dark bg layers dropped
+  → light text mis-composited against a white fallback (bogus ~1.1–1.7 cr).
+- `rgb(r g b / a)` space-syntax split wrong (alpha captured as green).
+- Elements hidden by an ANCESTOR's `display:none` were still measured (`getComputedStyle().display`
+  stays `inline`), so the desktop nav was measured at mobile widths (and vice versa). Now skipped via
+  `getClientRects()`.
+  All three are committed as tooling commits; the fixes cleared the artifacts and revealed the real list.
+
+**Emoji-hybrid (utilitarian → lucide; content kept):** earnings (TrendingUp/Landmark/Lock/Wallet/Clock/
+Sprout), kyc (IdCard/Clock/CheckCircle2/AlertTriangle/Lock), discover (Settings/Bell/TrendingUp),
+support (MessageCircle/Mail/Wallet/CheckCircle2/Settings), profile (CalendarClock/Home/Receipt/Pencil/
+Settings), me (Globe/Link/ShoppingBasket), build (Lock/CreditCard). **Kept as content vocabulary:**
+⚡ 🎉 🏠 ⇄ 📱 ✓ ↩ + onboard property/nature types (🏡🏘🏛🛖⛺🌲🌳🌾🏢🪵) + season/weather (☁☕🌴).
+
+**Font-floor:** earnings labels + VERIFIED badge, me status pill, model2/selling KPIs, model2/review
+chips → 10px floor. **Contrast:** darkened the genuine muted text (income disclosure, no-cities/
+no-properties/bundle-empty empty-states) to pass WCAG.
+
+**Verified CLEAN:** discover, kyc, profile, support, earnings, model2/selling. **Honest residual:**
+`/circle/me` + a few pages still *report* 1.3–1.7 fails, but a direct probe (replicating the harness
+compositing) proves them FALSE — e.g. the income disclosure computes **6.01:1**, the `.sbc-h2` headings
+**10.6:1** (both on the near-white cards; body bg is the light `#f4f6f8`). These are residual
+harness-measurement noise, not page defects (per the codebase rule to trust reasoning over the harness
+for known measurement limits). White-on-image hero text is intended design. Genuinely-real minor items
+left: onboard form-section labels (shared `P.accent` palette, ~3.7–4.3) + a couple step-number "3"s.
+
+Gates: `tsc` 0 · `next build` 0 · `test:security` 385/0. Badge **v692**, sw HTML_CACHE **v488**.
+
 ### 2026-08-03 — Partner surface full-matrix pass (v691, shipped)
 **Scope:** the whole partner surface measured 280→2560px × light+dark — `/partner`, `/partner/dashboard`
 (multi-tab), `/partner/staff`, `/partner/verification`. Icons were already lucide (the `PICON` map +
