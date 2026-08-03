@@ -8,14 +8,20 @@
 // admin page so finance, ops, and partner-relations leads can pull every
 // kind of report from one place.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  Files, BarChart3, Banknote, TrendingUp, Gift, ClipboardList, Timer,
+  Building2, Sparkles, Ticket, Siren, Star, ShieldAlert, User, Clapperboard,
+  Eye, FileSpreadsheet, FileText, Share2, Smartphone, MessageCircle, Mail,
+  Send, Link2,
+} from "lucide-react";
 import { exportRows, exportPDF, shareRows, shareLinks } from "@/lib/admin/export";
 
 type Report = {
   id: string;
   label: string;
   description: string;
-  icon: string;
+  icon: ReactNode;
   category: "Finance" | "Bookings" | "Commission" | "Loyalty" | "Operations" | "Customers";
   // fetcher returns { rows, columns }
   fetch: (ctx: { from?: string; to?: string }) => Promise<{ rows: any[]; columns: { key: string; label: string; map?: any }[] }>;
@@ -36,7 +42,7 @@ const REPORTS: Report[] = [
     id: "commission-ledger",
     label: "Commission Ledger (by hotel)",
     description: "Per-hotel GMV, commission %, commission earned, net payout.",
-    icon: "📊",
+    icon: <BarChart3 size={18} strokeWidth={2} aria-hidden />,
     category: "Finance",
     async fetch() {
       const r = await fetch("/api/admin/finance/commissions").then((x) => x.json());
@@ -58,7 +64,7 @@ const REPORTS: Report[] = [
     id: "payouts",
     label: "Payout Queue",
     description: "All payouts (pending + paid) with txn references.",
-    icon: "💸",
+    icon: <Banknote size={18} strokeWidth={2} aria-hidden />,
     category: "Finance",
     async fetch() {
       const r = await fetch("/api/admin/finance/payout").then((x) => x.json());
@@ -81,7 +87,7 @@ const REPORTS: Report[] = [
     id: "revenue-snapshot",
     label: "Platform Revenue Snapshot",
     description: "Gross all-time, gross 30d, points outstanding, redemption cost.",
-    icon: "💹",
+    icon: <TrendingUp size={18} strokeWidth={2} aria-hidden />,
     category: "Finance",
     async fetch() {
       const r = await fetch("/api/admin/revenue").then((x) => x.json());
@@ -107,7 +113,7 @@ const REPORTS: Report[] = [
     id: "redemption-cost",
     label: "Redemption Cost (last 30d)",
     description: "₹ cost of used codes + wallet credit debited + liability still active.",
-    icon: "🎁",
+    icon: <Gift size={18} strokeWidth={2} aria-hidden />,
     category: "Finance",
     async fetch() {
       const r = await fetch("/api/admin/analytics/redemption?days=30", { headers: adminHeaders() }).then((x) =>
@@ -132,7 +138,7 @@ const REPORTS: Report[] = [
     id: "bookings-all",
     label: "All Bids & Bookings",
     description: "Every bid with status, paid amount, source attribution.",
-    icon: "📋",
+    icon: <ClipboardList size={18} strokeWidth={2} aria-hidden />,
     category: "Bookings",
     async fetch() {
       const r = await fetch("/api/admin/bookings").then((x) => x.json());
@@ -157,7 +163,7 @@ const REPORTS: Report[] = [
     id: "active-holds",
     label: "Active Holds",
     description: "All 24h price-hold reservations with expiry + balance due.",
-    icon: "⏱",
+    icon: <Timer size={18} strokeWidth={2} aria-hidden />,
     category: "Bookings",
     async fetch() {
       const r = await fetch("/api/admin/holds?status=active", { headers: adminHeaders() }).then((x) => x.json());
@@ -182,7 +188,7 @@ const REPORTS: Report[] = [
     id: "hotel-commission-rules",
     label: "Hotel Commission Rules",
     description: "Every hotel's effective commission % (override or default).",
-    icon: "🏨",
+    icon: <Building2 size={18} strokeWidth={2} aria-hidden />,
     category: "Commission",
     async fetch() {
       const r = await fetch("/api/admin/hotel-commission-rules", { headers: adminHeaders() }).then((x) => x.json());
@@ -211,7 +217,7 @@ const REPORTS: Report[] = [
     id: "creator-commissions",
     label: "Creator Commission History",
     description: "Per-creator monthly slab + loyalty bonus + GMV + commission.",
-    icon: "✨",
+    icon: <Sparkles size={18} strokeWidth={2} aria-hidden />,
     category: "Commission",
     async fetch() {
       // Reuse the bid attributions API to pull creator-attributed bookings
@@ -241,7 +247,7 @@ const REPORTS: Report[] = [
     id: "redemption-codes",
     label: "Issued Redemption Codes",
     description: "Every code issued from /points/redeem with status + value.",
-    icon: "🎟️",
+    icon: <Ticket size={18} strokeWidth={2} aria-hidden />,
     category: "Loyalty",
     async fetch() {
       const r = await fetch("/api/admin/redemption-codes?limit=500", { headers: adminHeaders() }).then((x) =>
@@ -272,7 +278,7 @@ const REPORTS: Report[] = [
     id: "complaints",
     label: "Complaints",
     description: "All customer complaints with status, priority, and resolution.",
-    icon: "🚨",
+    icon: <Siren size={18} strokeWidth={2} aria-hidden />,
     category: "Operations",
     async fetch() {
       const r = await fetch("/api/admin/complaints").then((x) => x.json());
@@ -295,7 +301,7 @@ const REPORTS: Report[] = [
     id: "feedback",
     label: "Customer Feedback",
     description: "Post-stay ratings + comments earned via /bookings.",
-    icon: "⭐",
+    icon: <Star size={18} strokeWidth={2} aria-hidden />,
     category: "Operations",
     async fetch() {
       const r = await fetch("/api/admin/feedback").then((x) => x.json());
@@ -315,7 +321,7 @@ const REPORTS: Report[] = [
     id: "fraud-flags",
     label: "Fraud & Security Flags",
     description: "Open fraud signals across users, bids, and payments.",
-    icon: "🛡️",
+    icon: <ShieldAlert size={18} strokeWidth={2} aria-hidden />,
     category: "Operations",
     async fetch() {
       const r = await fetch("/api/admin/fraud/flags").then((x) => x.json());
@@ -338,7 +344,7 @@ const REPORTS: Report[] = [
     id: "users",
     label: "Users",
     description: "All registered customers with tier, lifetime spend, points.",
-    icon: "👤",
+    icon: <User size={18} strokeWidth={2} aria-hidden />,
     category: "Customers",
     async fetch() {
       const r = await fetch("/api/admin/users").then((x) => x.json());
@@ -359,7 +365,7 @@ const REPORTS: Report[] = [
     id: "creators",
     label: "Creator Applications",
     description: "All influencer applications with KYC + bank details.",
-    icon: "🎬",
+    icon: <Clapperboard size={18} strokeWidth={2} aria-hidden />,
     category: "Customers",
     async fetch() {
       const r = await fetch("/api/admin/creators?status=all").then((x) => x.json());
@@ -490,8 +496,8 @@ export default function AdminReportsPage() {
     <div style={{ padding: 0, fontFamily: "DM Sans, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div>
-          <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0 }}>
-            📑 Reports Center
+          <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <Files size={21} strokeWidth={2} aria-hidden />Reports Center
           </h1>
           <p style={{ fontSize: 11, color: "#8A8FA8", marginTop: 4 }}>
             One CTA per dataset. Preview the first 20 rows or export the full CSV.
@@ -535,7 +541,7 @@ export default function AdminReportsPage() {
           }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 8, fontSize: 18,
+                width: 36, height: 36, borderRadius: 8, color: "#c2cfdb",
                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                 background: "linear-gradient(135deg, rgba(140, 160, 182,0.16), rgba(140, 160, 182,0.04))",
               }}>{rep.icon}</div>
@@ -546,25 +552,25 @@ export default function AdminReportsPage() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
-              <span style={{ fontSize: 10, color: "#5C627A", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span style={{ fontSize: 10, color: "#808698", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 {rep.category} · {counts[rep.id] != null ? `${counts[rep.id].toLocaleString("en-IN")} rows` : "…"}
               </span>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 <button onClick={() => showPreview(rep)} disabled={!!busy} title="Preview first 20 rows"
-                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "transparent", color: "#8A8FA8", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}>
-                  👁 Preview
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "transparent", color: "#8A8FA8", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <Eye size={12} strokeWidth={2.2} aria-hidden />Preview
                 </button>
                 <button onClick={() => runExport(rep)} disabled={!!busy} title="Download as CSV"
-                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(140, 160, 182,0.16)", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.36)", cursor: "pointer" }}>
-                  📄 CSV
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(140, 160, 182,0.16)", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.36)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <FileSpreadsheet size={12} strokeWidth={2.2} aria-hidden />CSV
                 </button>
                 <button onClick={() => runPDF(rep)} disabled={!!busy} title="Download as PDF"
-                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(255,71,87,0.12)", color: "#FF8C42", border: "1px solid rgba(255,140,66,0.32)", cursor: "pointer" }}>
-                  📕 PDF
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(255,71,87,0.12)", color: "#FF8C42", border: "1px solid rgba(255,140,66,0.32)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <FileText size={12} strokeWidth={2.2} aria-hidden />PDF
                 </button>
                 <button onClick={() => openShare(rep)} disabled={!!busy} title="Share via WhatsApp / email / system share"
-                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(61,156,245,0.12)", color: "#3D9CF5", border: "1px solid rgba(61,156,245,0.32)", cursor: "pointer" }}>
-                  📲 Share
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(61,156,245,0.12)", color: "#3D9CF5", border: "1px solid rgba(61,156,245,0.32)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <Share2 size={12} strokeWidth={2.2} aria-hidden />Share
                 </button>
               </div>
             </div>
@@ -629,7 +635,7 @@ export default function AdminReportsPage() {
       {shareOpen && (
         <div onClick={() => setShareOpen(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#0F1117", borderRadius: 16, width: "100%", maxWidth: 460, padding: 18, border: "1px solid rgba(255,255,255,0.1)" }}>
-            <h2 style={{ color: "#9fb1c2", fontFamily: "Syne, sans-serif", margin: 0, fontSize: 16, marginBottom: 6 }}>📲 Share {shareOpen.rep.label}</h2>
+            <h2 style={{ color: "#9fb1c2", fontFamily: "Syne, sans-serif", margin: 0, fontSize: 16, marginBottom: 6, display: "inline-flex", alignItems: "center", gap: 8 }}><Share2 size={16} strokeWidth={2} aria-hidden />Share {shareOpen.rep.label}</h2>
             <p style={{ color: "#8A8FA8", fontSize: 11, margin: "0 0 14px" }}>
               {shareOpen.rows.length.toLocaleString("en-IN")} rows · pick a destination
             </p>
@@ -648,7 +654,7 @@ export default function AdminReportsPage() {
                   showToast(r.ok ? `Shared (${r.via})` : "Share cancelled");
                   setShareOpen(null);
                 }} style={shareBtn("#2ECC71")}>
-                  📱 System share
+                  <Smartphone size={13} strokeWidth={2.2} aria-hidden />System share
                 </button>
               )}
               {(() => {
@@ -659,13 +665,13 @@ export default function AdminReportsPage() {
                 return (
                   <>
                     <a href={links.whatsapp} target="_blank" rel="noopener noreferrer" style={shareLink("#25D366")}>
-                      💬 WhatsApp
+                      <MessageCircle size={13} strokeWidth={2.2} aria-hidden />WhatsApp
                     </a>
                     <a href={links.email} style={shareLink("#3D9CF5")}>
-                      ✉️ Email
+                      <Mail size={13} strokeWidth={2.2} aria-hidden />Email
                     </a>
                     <a href={links.telegram} target="_blank" rel="noopener noreferrer" style={shareLink("#2AABEE")}>
-                      ✈️ Telegram
+                      <Send size={13} strokeWidth={2.2} aria-hidden />Telegram
                     </a>
                     <button onClick={async () => {
                       try {
@@ -674,26 +680,26 @@ export default function AdminReportsPage() {
                       } catch {
                         showToast("Copy failed");
                       }
-                    }} style={shareBtn("#A855F7")}>
-                      🔗 Copy text
+                    }} style={shareBtn("#D8B4FE")}>
+                      <Link2 size={13} strokeWidth={2.2} aria-hidden />Copy text
                     </button>
                     <button onClick={() => {
                       exportRows(shareOpen.rep.id, shareOpen.rows, shareOpen.columns);
                       showToast("CSV downloaded — attach in your app");
                     }} style={shareBtn("#9fb1c2")}>
-                      📄 Download CSV first
+                      <FileSpreadsheet size={13} strokeWidth={2.2} aria-hidden />Download CSV first
                     </button>
                     <button onClick={() => {
                       exportPDF(shareOpen.rep.id, shareOpen.rep.label, shareOpen.rows, shareOpen.columns);
                       showToast("PDF preview opened — Save then share");
                     }} style={shareBtn("#FF8C42")}>
-                      📕 Download PDF first
+                      <FileText size={13} strokeWidth={2.2} aria-hidden />Download PDF first
                     </button>
                   </>
                 );
               })()}
             </div>
-            <p style={{ color: "#5C627A", fontSize: 10, marginTop: 12, lineHeight: 1.5 }}>
+            <p style={{ color: "#808698", fontSize: 10, marginTop: 12, lineHeight: 1.5 }}>
               The data leaves the platform once shared. Confidential — internal use only.
             </p>
             <div style={{ marginTop: 12, textAlign: "right" }}>
@@ -724,6 +730,10 @@ const shareBtn = (color: string): React.CSSProperties => ({
   border: `1px solid ${color}55`,
   cursor: "pointer",
   textAlign: "center",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
 });
 const shareLink = (color: string): React.CSSProperties => ({
   ...shareBtn(color),
