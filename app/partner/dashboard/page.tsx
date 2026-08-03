@@ -2049,7 +2049,7 @@ export default function PartnerDashboard() {
 
             {/* Create deal */}
             <div className="card-p border-2 border-gold-200 bg-linear-to-br from-gold-50/30 to-white">
-              <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-4">⚡ Create New Flash Deal</p>
+              <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-4"><DIc I={Zap} size={11} /> Create New Flash Deal</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                 <div>
                   <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Room</label>
@@ -2093,7 +2093,7 @@ export default function PartnerDashboard() {
                 </div>
                 <div className="flex items-end">
                   <button onClick={createFlashDeal} disabled={dealLoading} className="btn-gold w-full py-2.5 text-sm">
-                    {dealLoading ? "Creating…" : "⚡ Launch Deal"}
+                    {dealLoading ? "Creating…" : <><DIc I={Zap} size={14} /> Launch Deal</>}
                   </button>
                 </div>
               </div>
@@ -2116,7 +2116,7 @@ export default function PartnerDashboard() {
                     return (
                       <div key={d.id} className={`card-p flex items-center justify-between gap-4 ${active ? "border-gold-200" : "opacity-60"}`}>
                         <div className="flex items-center gap-3">
-                          <span className={`text-lg ${active ? "" : "grayscale"}`}>⚡</span>
+                          <Zap size={18} strokeWidth={2.2} aria-hidden className={active ? "text-gold-600" : "text-luxury-300"} />
                           <div>
                             <p className="font-semibold text-luxury-900">{room?.name || room?.type || "Room"}</p>
                             <p className="text-xs text-luxury-400">

@@ -1011,6 +1011,35 @@
   Fnb/Reports). Then admin → circle → trade → host → onboard → worker +
   Hinglish sweep. Each ship now carries the multi-width responsive gate.
 
+### 2026-08-03 — Session 6 cont. (v652 — partner Flash Deals sweep)
+- **Flash Deals tab → lucide:** ⚡ Create-New header → Zap, ⚡ Launch-Deal CTA
+  → Zap, the per-deal ⚡ card icon → Zap (coloured gold/muted by active-state
+  instead of the old `grayscale` filter). KEEP: the `dealMsg` "✓ …" string +
+  its `.startsWith("✓")` success-branch logic (string vocabulary).
+- **Audit-fixture lesson (documented so the next tabs reuse it):** `flash` is a
+  SUBSCRIPTION_SERVICE, so an empty-entitlements fixture LOCKS the tab —
+  clicking it opens `ServiceLockModal` instead of the tab (that's why an earlier
+  run "found ⚡" — the modal's "⚡ Activate", not the flash tab). Fixture now
+  returns `entitlements` with every SUBSCRIPTION_SERVICE unlocked
+  (flash/reservations/housekeeping/billing/menu/fnbqr/guests/reports/redeem/
+  channels/staff/verification) so the real tab renders.
+- **Surfaced for the standalone-component sweep:** `components/partner/
+  ServiceLockModal.tsx` needs a FULL pass — emoji chrome (⚡ Activate / 💰 Show
+  charges), Hinglish copy ("ek subscription service hai… choose karo… unlock
+  karo… request bhejo"), AND hardcoded hex (#f7f8fa/#c1ccd7/#d7dee6, no dark).
+  Deferred as one unit (emoji + Hinglish + dark-tokenize together), not a
+  drive-by ⚡ swap.
+- Badge v651→**v652** (`SB_BUILD v652-partner-flash`), sw `HTML_CACHE`
+  v448→**v449**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **12/12** —
+  Flash tab (28 lucide, genuine — not the overview 82) chrome emoji gone +
+  responsive @ 320/360/390/768/1280 × LIGHT/DARK all zero h-overflow.
+- NEXT (partner sweeps): Bookings/Reservations/Availability inline (walk-in +
+  OTA chrome) → the standalone tab components (Channel/Billing/Guests/Staff/
+  Circle/AgentAuction/Content/Housekeeping/Menu/Fnb/Reports + ServiceLockModal +
+  RoomEditorModal). Then admin → circle → trade → host → onboard → worker +
+  Hinglish sweep. Multi-width responsive gate on every ship.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
