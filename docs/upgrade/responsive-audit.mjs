@@ -30,7 +30,7 @@ const FONT_FLOOR = 10;   // px — flag genuinely-tiny text (< floor). 10px micr
 
 // brand/content glyphs intentionally kept program-wide (hybrid rule)
 const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔','›','‹','·','–','—','✓','✕','×','★','☆','♥','♡',
-  '👋','✨','🔥','🏠','🔑','🏷','🏔','🏨','◎','📍','📱','🎉','🛏','●','○','▶','◀','🥇','🥈','🥉','😊','😐','😞',
+  '👋','✨','🔥','🏠','🔑','🏷','🏔','🏨','◎','📍','📱','🎉','🛏','●','○','▶','◀','🥇','🥈','🥉','🏆','😊','😐','😞',
   // home "The Stage" brand/content/season glyphs (hybrid keep)
   '❄️','🌸','☀️','🌧️','🍂','🛕','⚡','🎬','💎','✦','🧭','🌟','💚','✈️','🚗','❄','🌧','💫','🎯','🛂','◆',
   // reel/profile content-vocabulary: story-highlight covers + nav menu glyph (hybrid keep)
@@ -141,6 +141,28 @@ const ROUTES = [
   { route:'/partner/verification', scope:'body',
     ls:{sb_partner_token:'t', sb_partner_user:'{"id":"p1","name":"Cave View Owner","hotelId":"h1","hotel":{"id":"h1","name":"Cave View Resort","city":"Dehradun"}}'},
     fixtures:{ 'partner/hotel':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', ownerId:'p1', rooms:[], isOperator:false, ownedUnits:[] }, bookings:[] } } },
+
+  // ── Trade (Model 3 travel-agent auction) ─────────────────────────────────
+  { route:'/trade', scope:'body',
+    fixtures:{ 'trade/lots':{ ok:true, cities:['Dehradun','Mussoorie'], lots:[
+      { id:'lot1', hotel_id:'h1', room_id:'r1', category:'Deluxe Valley', city:'Dehradun', month_key:'2026-09', num_rooms:6, min_bid_per_room_night:2300, window_close_at:'2026-09-30', sale_mode:'live', image:'x', metadata:{ hotel_name:'Cave View Resort' } },
+      { id:'lot2', hotel_id:'h2', room_id:'r2', category:'Ridge Suite', city:'Mussoorie', month_key:'2026-10', num_rooms:4, min_bid_per_room_night:3100, window_close_at:'2026-10-31', sale_mode:'sealed', image:'x', metadata:{ hotel_name:'Ridge Retreat' } },
+    ] } } },
+  { route:'/trade/lot1', scope:'body',
+    fixtures:{ 'trade/lots/lot1':{ ok:true, depositPct:10, buyerPremiumPct:5, roomsAvailable:6, live:{ autopilot:'hybrid' }, segments:[{ type:'full', label:'Full month' },{ type:'week', label:'A week' },{ type:'weekend', label:'Weekends' }], market:{ rack:4900, adr:2867, low:2400, high:3400 },
+      lot:{ id:'lot1', hotel_id:'h1', room_id:'r1', category:'Deluxe Valley', city:'Dehradun', month_key:'2026-09', num_rooms:6, min_bid_per_room_night:2300, window_close_at:'2026-09-30', sale_mode:'live', metadata:{} },
+      hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', star:4, description:'A serene hillside retreat with valley views.', images:['x','x','x'] },
+      room:{ id:'r1', name:'Deluxe Valley', images:['x'], capacity:2 } } } },
+  { route:'/trade/my-bids', scope:'body',
+    ls:{ sb_trade_token:'t', sb_trade_user:'{"uid":"ag1","name":"Ravi Agent","email":"ravi@example.com"}' },
+    fixtures:{
+      'trade/awards/mine':{ ok:true, awards:[{ id:'aw1', bid_id:'bd1', hotel_id:'h1', city:'Dehradun', month_key:'2026-09', segment_label:'Full month', rooms_awarded:2, base_total:9600, buyer_fee:480, amount_due:10080, deposit_applied:0, status:'awarded', voucher_code:null, night_dates:[], metadata:{ hotel_name:'Cave View Resort' } }] },
+      'trade/bids/mine':{ ok:true, bids:[{ id:'bd2', lot_id:'lot2', status:'active', segment_label:'Weekends', per_room_per_night:3100, rooms_wanted:2, deposit_amount:1240, counter_per_room_per_night:null, lot:{ city:'Mussoorie', month_key:'2026-10', metadata:{ hotel_name:'Ridge Retreat' } }, metadata:{} }] },
+    } },
+  { route:'/trade/review', scope:'body',
+    ls:{ sb_trade_token:'t', sb_trade_user:'{"uid":"ag1","name":"Ravi Agent"}', sb_trade_bidbasket_v1:'[{"lotId":"lot1","segmentType":"full","weekIndex":null,"perRoomPerNight":2300,"roomsWanted":2,"segmentLabel":"Full month · Sep 2026","hotelName":"Cave View Resort","city":"Dehradun"}]' },
+    fixtures:{ 'trade/lots/lot1':{ ok:true, depositPct:10, buyerPremiumPct:5, lot:{ id:'lot1', city:'Dehradun', month_key:'2026-09', min_bid_per_room_night:2300, sale_mode:'live' }, hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun' }, room:{ id:'r1', name:'Deluxe Valley' } } } },
+
   // ── Customer frontend (the main app) ─────────────────────────────────────
   { route:'/hotels', scope:'body',
     fixtures:{ 'hotels/scorecards':{ok:true,scores:{h1:{overall:8.6,tier:'gold'},h2:{overall:9.1,tier:'platinum'},h3:{overall:7.4,tier:'silver'}}}, 'hotels':{ok:true,hotels:HOTELS} } },

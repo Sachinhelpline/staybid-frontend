@@ -19,6 +19,29 @@
 
 ## Session log
 
+### 2026-08-03 — Trade surface full-matrix + admin/bookings contrast close-out (v694)
+**Scope:** the Model-3 travel-agent auction — `/trade` (browse), `/trade/[id]` (property tour +
+LiveBidBox coach), `/trade/my-bids`, `/trade/review` — measured 280→2560 × light+dark. Plus the last
+open admin route.
+- **`/admin/bookings` (closes admin surface):** the inactive source-filter chip count used `#666876`
+  (3.4:1 on the dark panel) → aligned to the chip's own label colour `#8A8FA8` (passes). Admin now
+  fully CLEAN → the whole admin surface (dark-only) is done.
+- **`/trade/[id]` font-floor:** the `.sbt-metric` labels (ROOM BOOKING PRICE / ROOMS AVAILABLE /
+  AUCTION MONTH / LOCATION) + `.sbt-mkt-cell` labels were `.54rem` (8.6px) → `.63rem` (10px); nudged
+  their muted alphas up (.55→.75 steel, .5→.72 walnut) so the captions read cleanly.
+- **`/trade` emoji-hybrid:** `🔒 Sealed` (filter chip + card badge) → lucide `Lock` (utilitarian glyph,
+  matches the circle 🔒→lucide precedent). `⚡ Live` stays (owner-kept brand). Harness KEEP set gained
+  `🏆` (trophy — same medal family as the kept 🥇🥈🥉; used for "🏆 Won allotments" on my-bids).
+- **Un-flagged glyphs left as-is** (per "fix only what's measured / no blind changes", decisions 4–5):
+  the LiveBidBox picks `💰 Save Big / ⭐ Smart / ⚡ Max` and my-bids `🔗 Your channel link` only render
+  for a signed-in approved agent (not reproducible in the harness fixture); `🔗` already ships kept in
+  `InstagramHotelFeed`, and `⚡`/`⭐`-family are content vocabulary.
+- **RESULT (MEASURED, 13 widths × 2 themes):** `/trade`, `/trade/[id]`, `/trade/my-bids`,
+  `/trade/review`, `/admin/bookings` — **all CLEAN**. Added trade routes + fixtures to the harness.
+- **🔒 NO money/bid/auth logic touched** — pure presentation. `test:security` stays 385/0.
+- Badge v693→**v694** (`SB_BUILD v694-trade-fullmatrix`), sw `HTML_CACHE` v489→**v490**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+
 ### 2026-08-03 — Desktop split-screen sign-in for ALL user types (v693, presentation-only)
 **Owner ask:** on desktop every sign-in surface (customer, admin, property-owner/partner, worker)
 punched its form into a lonely centred column with ⅔–¾ empty sides. Confirmed REAL by measurement

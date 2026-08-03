@@ -296,7 +296,7 @@ export default function AdminBookings() {
                 display: "inline-flex", gap: 6, alignItems: "center",
               }}>
               <span>{meta.icon}</span><span>{meta.label}</span>
-              <span style={{ color: isActive ? meta.color : "#666876", fontSize: 11 }}>· {count}</span>
+              <span style={{ color: isActive ? meta.color : "#8A8FA8", fontSize: 11 }}>· {count}</span>
             </button>
           );
         })}
