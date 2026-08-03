@@ -2014,6 +2014,25 @@
 - Matrix: RESP **7/139** (no `SB_BUILD`/cache bump — docs/tooling only, no UI change).
 - NEXT: continue the circle vertical (model2 flow, build, me, discover) then the customer core.
 
+### 2026-08-03 — Session 6 cont. (v687 — Circle Model-2 flow emoji-hybrid + a key chrome finding)
+- **Model-2 flow, emoji-hybrid pass (4 pages):** browse (🔓→LockOpen, 🗝️→KeyRound, 📈→TrendingUp,
+  per-city 🔓→LockOpen); [id] (2× 📈→TrendingUp market notes); review (✏️→Pencil, 🗓→CalendarDays,
+  📈→TrendingUp); selling (channel row unified to lucide Home/Link2/Tag/Globe + ⧉→Copy). Kept
+  content/brand glyphs (📍 ★ ✓ ← → ‹ › ▾ 🛏 🎉). All 4 build-verified (tsc 0 · build 0 · security 385/0).
+- **⚠ KEY FINDING (honest):** responsive-verifying browse with a whole-`body` scope surfaced that the
+  **shared `CircleChrome` (topbar + footer)** — rendered on circle pages via the circle layout — has
+  real full-matrix defects my earlier PAGE-SCOPED circle audits never measured:
+  - **280px overflow** (~426px footer grid) on every circle page that shows the footer.
+  - **Ultra-wide line-stretch**: the footer disclosure bar ("Income figures are…") spans the full
+    1536/1920/2560 width — the FIRST real ultra-wide stretch (validates the owner's 2560 concern).
+  - Topbar brand-sub at 9px + topbar nav contrast flags (need real-vs-glass-artifact confirm).
+- **Consequence:** the earlier circle RESP ✓ (hub/dashboard/model3/model4) were scoped to the page
+  CONTAINER and did NOT include the shared chrome. The chrome is the next, high-leverage fix (one fix →
+  every circle page). Model-2 pages stay RESP-pending until the chrome is fixed + a state-fixtured verify.
+- Badge v685→**v687** (`SB_BUILD v687-circle-model2-flow`), sw `HTML_CACHE` v482→**v483**.
+- NEXT: fix the shared `CircleChrome` (topbar + footer) at the full matrix — footer container max-width
+  + narrow-grid + line-length cap + topbar contrast/font — then re-verify the circle pages WITH chrome.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

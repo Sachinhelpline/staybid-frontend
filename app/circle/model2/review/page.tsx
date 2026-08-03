@@ -7,6 +7,7 @@
 // property tour). Tamper-safe: the server re-prices every picked room-night.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pencil, CalendarDays, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -129,7 +130,7 @@ export default function Model2ReviewPage() {
           Your bundle is empty. <Link href="/circle/model2/browse" style={{ color: "var(--sbc-gold-deep)", fontWeight: 700 }}>Browse inventory →</Link>
         </div>
       ) : (<>
-        <div className="sbc2r-sech"><span>YOUR BUNDLE</span><Link href="/circle/model2/browse" className="sbc2r-edit">✏️ Add more</Link></div>
+        <div className="sbc2r-sech"><span>YOUR BUNDLE</span><Link href="/circle/model2/browse" className="sbc2r-edit" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Pencil size={12} strokeWidth={2.2} aria-hidden />Add more</Link></div>
 
         {Object.entries(byCity).map(([c, its]) => (
           <div key={c} className="sbc2r-city">
@@ -140,7 +141,7 @@ export default function Model2ReviewPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="sbc2r-itile">{it.title}</div>
                   <div className="sbc2r-isub">{it.room} · {it.nights} night{it.nights === 1 ? "" : "s"}</div>
-                  <div className="sbc2r-idates">{fmtDates(it.dates).map((g, i) => <span key={i} className="sbc2r-dchip">🗓 {g.label}</span>)}</div>
+                  <div className="sbc2r-idates">{fmtDates(it.dates).map((g, i) => <span key={i} className="sbc2r-dchip" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><CalendarDays size={11} strokeWidth={2.2} aria-hidden />{g.label}</span>)}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <b style={{ color: "var(--sbc-coffee)" }}>{inr(it.buyerPays)}</b>
@@ -160,7 +161,7 @@ export default function Model2ReviewPage() {
           {marketTotal > 0 && (
             <div className="sbc2r-value">
               <div className="sbc2r-vrow"><span>Total market value (ADR)</span><b>{inr(marketTotal)}</b></div>
-              {upside > 0 && <div className="sbc2r-vrow up"><span>📈 Your resale upside</span><b>{inr(upside)}</b></div>}
+              {upside > 0 && <div className="sbc2r-vrow up"><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><TrendingUp size={12} strokeWidth={2.2} aria-hidden />Your resale upside</span><b>{inr(upside)}</b></div>}
             </div>
           )}
         </div>

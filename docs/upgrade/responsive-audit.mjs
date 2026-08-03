@@ -49,6 +49,8 @@ const ROUTES = [
     fixtures:{ 'admin':{ kpis:{}, ledger:[], payouts:[], bookings:[], holds:[], hotels:[], topCreators:[], codes:[], complaints:[], feedback:[], flags:[], users:[], creators:[] } } },
   { route:'/admin/rls', scope:'body', admin:true,
     fixtures:{ 'admin/rls':{ serviceRole:true, tables:[{table:'users',rls_enabled:true,policy_count:2,policies:[]},{table:'bookings',rls_enabled:true,policy_count:1,policies:[]},{table:'otp_codes',rls_enabled:false,policy_count:0,policies:[]}] } } },
+  { route:'/circle/model2/browse', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
+    fixtures:{ 'city-access':{ activeCities:[], cityAccessPrice:999 }, 'b2b/marketplace':{ listings:[{id:'l1',listing_id:'l1',hotel_id:'h1',hotel_name:'Cave View',hotel_city:'Dehradun',city:'Dehradun',room_name:'Deluxe',buy_per_night:2000,market:{adr:2800,low:2400,high:3200}}] } } },
   { route:'/circle/model3', scope:'.sbc-home',
     fixtures:{ 'circle/marketplace': { hotels:[{id:'h1',name:'Cave View Resort',city:'Dehradun',state:'UK',starRating:4,image:null,fromWholesale:2100,rooms:[{id:'r1',name:'Deluxe',type:'deluxe',image:null,capacity:2,fromWholesale:2100}]}] } } },
   { route:'/circle/model4', scope:'.sbc-home',

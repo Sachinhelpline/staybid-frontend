@@ -7,6 +7,7 @@
 // bottom step-dock (Browse → Tour → Pay) + the basket bar read it.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { LockOpen, KeyRound, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -104,16 +105,16 @@ export default function Model2BrowsePage() {
           ].map((s) => (<div key={s.n} className="sbc2b-step"><span className="sbc2b-step-n">{s.n}</span><div><div className="sbc2b-step-t">{s.t}</div><div className="sbc2b-step-d">{s.d}</div></div></div>))}
         </div>
         <div className="sbc2b-kpis">
-          <span className="sbc2b-kpi">🔓 Full inventory — no pre-unlock</span>
-          <span className="sbc2b-kpi">🗝️ ₹{accessPrice}/city · one-time</span>
-          <span className="sbc2b-kpi sbc2b-kpi-gold">📈 See market rate before you buy</span>
+          <span className="sbc2b-kpi" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><LockOpen size={13} strokeWidth={2.2} aria-hidden />Full inventory — no pre-unlock</span>
+          <span className="sbc2b-kpi" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><KeyRound size={13} strokeWidth={2.2} aria-hidden />₹{accessPrice}/city · one-time</span>
+          <span className="sbc2b-kpi sbc2b-kpi-gold" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><TrendingUp size={13} strokeWidth={2.2} aria-hidden />See market rate before you buy</span>
         </div>
 
         <div className="sbc2b-chips">
           <button onClick={() => setCity(ALL)} className={`sbc2b-chip${city === ALL ? " on" : ""}`}>All Cities <span className="sbc2b-chip-ct">{new Set(all.map((l) => norm(fc(l).city))).size}</span></button>
           {supplyCities.map((c) => {
             const ct = new Set(all.filter((l) => norm(fc(l).city) === c).map((l) => l.hotel_id)).size;
-            return <button key={c} onClick={() => setCity(c)} className={`sbc2b-chip${norm(city) === c ? " on" : ""}`}>{cap(c)}{isUnlocked(c) ? " 🔓" : ""} <span className="sbc2b-chip-ct">{ct}</span></button>;
+            return <button key={c} onClick={() => setCity(c)} className={`sbc2b-chip${norm(city) === c ? " on" : ""}`} style={isUnlocked(c) ? { display: "inline-flex", alignItems: "center", gap: 4 } : undefined}>{cap(c)}{isUnlocked(c) ? <LockOpen size={11} strokeWidth={2.2} aria-hidden /> : null} <span className="sbc2b-chip-ct">{ct}</span></button>;
           })}
         </div>
 
