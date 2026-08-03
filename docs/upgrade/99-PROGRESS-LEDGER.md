@@ -1109,6 +1109,36 @@
   ServiceRenewBanner/CodeScanner). Then admin → circle → trade → host → onboard
   → worker.
 
+### 2026-08-03 — Session 6 cont. (v655 — partner HousekeepingTab)
+- **HousekeepingTab — all 4 dimensions.** The status board keyed 4 states
+  (clean/dirty/inspected/out_of_order) off an inline-hex `META` map (bg/color/
+  border via `style={{}}`) with emoji icons — zero dark support.
+  ① **status system tokenized:** `META` now carries Tailwind tint class pairs
+  (emerald/amber/blue/red-50 + -200 border + -700 text) so the v650 dark tint
+  layer flips every tile in dark; a saturated `ring` hex per state is the ONLY
+  remaining inline color, used just for the active/selected outline (reads on
+  both themes). Icons: ✨→Sparkles, 🧹→SprayCan, ✅→CircleCheck, 🚫→Ban.
+  (Design note: "dirty" moved from a neutral #fafbfc bg to a soft amber tint —
+  more meaningful "needs attention" + dark-capable.)
+  ② other emoji → lucide: 🛏️ empty → BedDouble, 👤 assignee → UserRound, ↺ show-
+  all → RotateCcw, modal ×→X, the not-provisioned ⚠ → TriangleAlert (+ its card
+  moved off inline #fafbfc to bg-amber-50). ③ Hinglish → English across the
+  subhead, the not-provisioned notice, both empty states, the filter-empty line,
+  the staff-name placeholder, and the save-failure alert. ④ responsive verified.
+- Every partner modal (incl. this UnitPicker) is now dark via the v654
+  modalPortal scope — confirmed here.
+- Badge v654→**v655** (`SB_BUILD v655-partner-housekeeping`), sw `HTML_CACHE`
+  v451→**v452**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **21/21** —
+  Housekeeping tab + the opened UnitPicker modal responsive @ 320/360/390/768/
+  1280 × LIGHT/DARK all zero h-overflow; dark status tint on a dirty unit tile =
+  `rgba(245,158,11,0.13)`; modal dark `rgb(27,33,42)`; chrome emoji gone;
+  Hinglish gone; lucide (36).
+- NEXT (standalone components): GuestsTab → StaffTab → ChannelManagerTab/
+  OtaFeedManager → BillingTab → MenuBuilderTab/FnbOrdersTab → ReportsTab →
+  AgentAuctionTab → Circle tabs → Content/Passport → the shared modals. Then
+  admin → circle → trade → host → onboard → worker.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
