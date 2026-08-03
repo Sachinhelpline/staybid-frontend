@@ -724,6 +724,36 @@
   Check svg, type discs kept) → 0 overflow.
 - NEXT: owner device-check v644 → Phase 2 panels.
 
+### 2026-08-03 — Session 6 cont. (v645 — flash drawer chrome + GuestFavourite verified & 3D)
+- **Owner commission (2 screenshots):** ① the flash-deal drawer, ② "Guest
+  Favourite — check it's still where it was, we didn't remove it, and
+  upgrade it."
+- **✅ GuestFavourite POSITION VERIFIED UNTOUCHED:** still exactly where
+  v509 put it — directly AFTER the Amenities section in the hotel-detail
+  About column (`app/hotels/[id]/page.tsx` ~4349). No pass ever moved or
+  removed it; measured in DOM order on a qualifying hotel
+  (hco-seed-goa — the badge is exclusivity-gated: top ~10% city
+  percentile + overall ≥85, so it only renders on genuinely top-tier
+  stays; the jaipur audit fixture doesn't qualify, which is correct
+  behaviour, not a regression).
+- **GuestFavourite upgrade:** card shell → borderless 4-layer 3D + dark
+  variant (styled-jsx `:global([data-theme="dark"]) .gf`). The laurel
+  identity (🌿 + serif number) untouched — it IS the badge.
+- **Flash drawer (`app/flash-deals/page.tsx` DealDrawer):** rules list
+  🕒🛏️🚫💳↩️→Clock/BedDouble/Ban/CreditCard/Undo2, 🏨 View hotel→
+  Building2 (+ img fallback), ⚡ Grab this stay→Zap. Room picker rows
+  untouched (selectable-control grammar with accent ring — correct as-is).
+- Badge v644→**v645** (`SB_BUILD v645-flashdrawer-guestfav`), sw
+  `HTML_CACHE` v441→**v442**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **9/9** —
+  flash drawer opened via a real Grab-now tap (5 rule svgs, emoji-free,
+  both CTAs carry lucide, rooms intact, 0 overflow) + GuestFavourite
+  measured on a QUALIFYING hotel in light AND dark (after-Amenities DOM
+  position, laurels kept, 4-layer/black-cast computed). Audit note: the
+  qualification gate means fixture choice matters — probe scorecards to
+  find a qualifying hotel before asserting presence.
+- NEXT: owner device-check v645 → Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

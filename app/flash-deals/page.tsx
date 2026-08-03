@@ -12,6 +12,8 @@ import { snap100 } from "@/lib/price-snap";
 import { useReveal } from "@/lib/useReveal";
 // v139 — Phase-3 flash deals spotlight tour (3 steps: ticker → card → CTA).
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v645 — flash drawer chrome → lucide (rules list, view-hotel, grab CTA).
+import { Clock, BedDouble, Ban, CreditCard, Undo2, Building2, Zap } from "lucide-react";
 // v143 — flash-drawer modal tour triggered on card tap.
 import { useTutorial } from "@/lib/tutorial/tutorial-store";
 // v160 — shared globe picker for the unified control bar.
@@ -904,7 +906,7 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
 
         {/* Hero image */}
         <div className="fd-drawer-img">
-          {img ? <img src={img} alt={deal.hotel?.name} /> : <div className="fd-drawer-img-fallback">🏨</div>}
+          {img ? <img src={img} alt={deal.hotel?.name} /> : <div className="fd-drawer-img-fallback"><Building2 size={34} strokeWidth={2} aria-hidden /></div>}
           <div className="fd-drawer-img-shade" />
           <div className="fd-drawer-img-head">
             <div className="fd-drawer-eyebrow">
@@ -980,11 +982,11 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
           <div className="fd-drawer-rules">
             <div className="fd-drawer-section-title">How this deal works</div>
             <ul>
-              <li><span>🕒</span><span>Expires at midnight tonight · auto-refreshes next day.</span></li>
-              <li><span>🛏️</span><span>One headline price per hotel — pick from available rooms above.</span></li>
-              <li><span>🚫</span><span>Sold rooms are hidden in real time. No double-booking.</span></li>
-              <li><span>💳</span><span>Instant confirmation · pay only the headline / upgrade price.</span></li>
-              <li><span>↩️</span><span>Free cancellation up to 4 hours before check-in.</span></li>
+              <li><span><Clock size={15} strokeWidth={2.2} aria-hidden /></span><span>Expires at midnight tonight · auto-refreshes next day.</span></li>
+              <li><span><BedDouble size={15} strokeWidth={2.2} aria-hidden /></span><span>One headline price per hotel — pick from available rooms above.</span></li>
+              <li><span><Ban size={15} strokeWidth={2.2} aria-hidden /></span><span>Sold rooms are hidden in real time. No double-booking.</span></li>
+              <li><span><CreditCard size={15} strokeWidth={2.2} aria-hidden /></span><span>Instant confirmation · pay only the headline / upgrade price.</span></li>
+              <li><span><Undo2 size={15} strokeWidth={2.2} aria-hidden /></span><span>Free cancellation up to 4 hours before check-in.</span></li>
             </ul>
           </div>
         </div>
@@ -999,7 +1001,7 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
             className="fd-drawer-viewhotel"
             onClick={() => onViewHotel(pickedRoomId)}
           >
-            <span>🏨 View hotel &amp; full tour</span>
+            <span><Building2 size={14} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> View hotel &amp; full tour</span>
             <span className="fd-drawer-viewhotel-arrow" aria-hidden="true">→</span>
           </button>
           <div className="fd-drawer-cta-row">
@@ -1008,7 +1010,7 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
               <div className="fd-drawer-cta-price">{fmtINR(showAiPrice)}<span>/night</span></div>
             </div>
             <button className="fd-drawer-cta" onClick={() => onBook(pickedRoomId)}>
-              ⚡ Grab this stay
+              <Zap size={15} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> Grab this stay
             </button>
           </div>
         </div>

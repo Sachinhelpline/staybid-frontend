@@ -82,6 +82,8 @@ export default function GuestFavourite({ hotelId, city, avgRating, totalReviews,
       ) : null}
 
       <style jsx>{`
+        /* v645 — borderless 4-layer 3D grammar (same family as .hx-room-card);
+           the laurel identity (🌿 + serif number) is untouched. */
         .gf {
           text-align: center;
           margin: 6px auto 30px;
@@ -91,8 +93,19 @@ export default function GuestFavourite({ hotelId, city, avgRating, totalReviews,
           background:
             radial-gradient(120% 90% at 50% 0%, rgba(106, 133, 160, 0.12), transparent 70%),
             var(--bg-card);
-          border: 1px solid var(--border-soft);
-          box-shadow: 0 16px 44px -26px rgba(106, 133, 160, 0.5);
+          border: none;
+          box-shadow:
+            0 24px 42px -22px rgba(31, 26, 15, 0.32),
+            0 10px 20px -12px rgba(31, 26, 15, 0.18),
+            0 2px 6px -2px rgba(31, 26, 15, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+        :global([data-theme="dark"]) .gf {
+          box-shadow:
+            0 24px 42px -22px rgba(0, 0, 0, 0.7),
+            0 10px 20px -12px rgba(0, 0, 0, 0.48),
+            0 2px 6px -2px rgba(0, 0, 0, 0.38),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
         .gf-inner { display: flex; align-items: center; justify-content: center; gap: 6px; }
         .gf-laurel { font-size: 2.6rem; line-height: 1; filter: saturate(1.1) drop-shadow(0 2px 4px rgba(106, 133, 160,0.35)); }
