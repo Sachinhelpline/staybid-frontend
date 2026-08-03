@@ -38,7 +38,7 @@ const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔
   // partner empty-state illustrations (36px, centred) + reload glyph (matches ↺) (hybrid keep)
   '📭','🛟','↻',
   // circle content vocabulary: property/destination types + season/weather glyphs (hybrid keep)
-  '🏡','🏘','🏛','🛖','🌴','☁️','☁','☕','⬆']);
+  '🏡','🏘','🏛','🛖','🌴','☁️','☁','☕','⬆','⛺','🌲','🌳','🌾','🏢','🪵']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}

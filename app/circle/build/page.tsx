@@ -340,7 +340,7 @@ export default function CircleBuildPage() {
             ) : grouped.length === 0 ? (
               <div className="sbc-panel" style={{ padding: 32, textAlign: "center" }}>
                 <div style={{ fontSize: 34 }}>🏔️</div>
-                <p style={{ marginTop: 8, color: "rgba(74,56,32,.7)" }}>
+                <p style={{ marginTop: 8, color: "rgba(74,56,32,.82)" }}>
                   Your bundle is empty. Go to Discover and choose a property + rooms.
                 </p>
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>

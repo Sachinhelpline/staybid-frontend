@@ -227,7 +227,7 @@ export default function CircleMePage() {
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: ".85rem", color: "rgba(74,56,32,.6)", marginBottom: 12 }}>No cities unlocked yet.</div>
+                  <div style={{ fontSize: ".85rem", color: "rgba(74,56,32,.8)", marginBottom: 12 }}>No cities unlocked yet.</div>
                 )}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                   <input value={newCity} onChange={(e) => setNewCity(e.target.value)} placeholder="City to unlock (e.g. Manali)"
@@ -291,11 +291,11 @@ export default function CircleMePage() {
             {/* -------- payouts (live revenue-share ledger) -------- */}
             <div>
               <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>{CIRCLE_PAYOUTS_LABEL}</h2>
-              <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>
+              <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.8)", margin: "4px 0 0" }}>
                 {CIRCLE_INCOME_DISCLOSURE}
               </p>
               {payouts.length === 0 ? (
-                <div className="sbc-panel" style={{ padding: 24, color: "rgba(74,56,32,.65)", fontSize: ".88rem" }}>
+                <div className="sbc-panel" style={{ padding: 24, color: "rgba(74,56,32,.8)", fontSize: ".88rem" }}>
                   Pehla payout aapke bundle ke pehle complete month ke baad yahan dikhega.
                 </div>
               ) : (

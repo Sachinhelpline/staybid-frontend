@@ -14,7 +14,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { fmtINR } from "@/lib/circle/engine";
-import { TrendingUp, Landmark, Lock, Wallet, Clock } from "lucide-react";
+import { TrendingUp, Landmark, Lock, Wallet, Clock, Sprout } from "lucide-react";
 
 type Payout = {
   id: string;
@@ -174,7 +174,7 @@ export default function CircleEarningsPage() {
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}><Landmark size={15} style={{display:"inline",verticalAlign:"-2px",marginRight:5}} aria-hidden />Payout account <span style={{ fontSize: ".7rem", fontWeight: 500, color: "rgba(74,56,32,.55)" }}>· where you get paid</span></div>
               {acct && !acctEditing && (
-                <span style={{ fontSize: ".62rem", fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: acct.status === "verified" ? "#ecfdf5" : "rgba(106,133,160,.16)", color: acct.status === "verified" ? "#047857" : "#65819c" }}>{String(acct.status || "pending").toUpperCase()}</span>
+                <span style={{ fontSize: ".63rem", fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: acct.status === "verified" ? "#ecfdf5" : "rgba(106,133,160,.16)", color: acct.status === "verified" ? "#047857" : "#65819c" }}>{String(acct.status || "pending").toUpperCase()}</span>
               )}
             </div>
 
@@ -229,7 +229,7 @@ export default function CircleEarningsPage() {
               <div className="sbc-earn-empty"><span className="sbc-earn-empty-ic">⌛</span><b>Loading…</b></div>
             ) : payouts.length === 0 ? (
               <div className="sbc-earn-empty">
-                <span className="sbc-earn-empty-ic">🌱</span>
+                <span className="sbc-earn-empty-ic"><Sprout size={26} aria-hidden /></span>
                 <b>No payouts yet</b>
                 <span>Once your locked properties start earning, monthly payouts appear here.</span>
               </div>
