@@ -8,6 +8,11 @@
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { modalPortal } from "@/lib/partner/modal-portal";
+import {
+  Plus, TriangleAlert, QrCode, Printer, Pencil, Play, Pause, Trash2, Lightbulb,
+  X, ConciergeBell, Utensils, ClipboardList, MapPin, StickyNote, Check, FilePlus,
+  CircleDot, Circle, ChevronDown, ChevronRight,
+} from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -18,10 +23,10 @@ function fmtTime(s: string) {
   return new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-const OUTLET_TYPE: Record<string, { label: string; icon: string; desc: string }> = {
-  room_service: { label: "Room Service", icon: "🛎", desc: "Har room me QR — guest room se order kare" },
-  restaurant:   { label: "Restaurant",   icon: "🍴", desc: "Restaurant tables ke liye QR" },
-  other:        { label: "Other",        icon: "📋", desc: "Pool bar, lounge — koi bhi outlet" },
+const OUTLET_TYPE: Record<string, { label: string; Ic: any; desc: string }> = {
+  room_service: { label: "Room Service", Ic: ConciergeBell, desc: "A QR in every room — guests order from their room" },
+  restaurant:   { label: "Restaurant",   Ic: Utensils,      desc: "QR codes for restaurant tables" },
+  other:        { label: "Other",        Ic: ClipboardList, desc: "Pool bar, lounge — any outlet" },
 };
 
 // qrserver.com — same QR provider used across the app (stable, ~1KB).
@@ -81,7 +86,7 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
   function showToast(m: string) { setToast(m); setTimeout(() => setToast(""), 2200); }
 
   async function rejectOrder(id: string) {
-    if (!confirm("Yeh order reject karein?")) return;
+    if (!confirm("Reject this order?")) return;
     setOrders((p) => p.map((o) => (o.id === id ? { ...o, status: "rejected" } : o)));
     try {
       await fetch("/api/partner/orders", {
@@ -104,7 +109,7 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
     } catch { load(); }
   }
   async function removeOutlet(id: string) {
-    if (!confirm("Yeh outlet aur uska QR hata dein? Purane QR kaam karna band kar denge.")) return;
+    if (!confirm("Remove this outlet and its QR? Existing QR codes will stop working.")) return;
     try {
       await fetch(`/api/partner/outlets?id=${encodeURIComponent(id)}`, {
         method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` },
@@ -130,7 +135,7 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
       <script>window.onload=function(){window.print()}</script></body></html>`;
     const w = window.open("", "_blank", "width=520,height=720");
     if (w) { w.document.write(html); w.document.close(); }
-    else alert("Print window block ho gaya — popup allow karo.");
+    else alert("The print window was blocked — please allow pop-ups.");
   }
 
   return (
@@ -138,16 +143,20 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h2 className="sec-title text-xl">F&amp;B Ordering &amp; QR</h2>
-          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Outlets banao, QR generate karo — guest scan karke order kare.</p>
+          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Create outlets, generate QR codes — guests scan to order.</p>
         </div>
-        <button onClick={() => setEditor({ mode: "create" })} className="btn-gold">➕ Add Outlet</button>
+        <button onClick={() => setEditor({ mode: "create" })} className="btn-gold inline-flex items-center gap-1.5">
+          <Plus size={14} strokeWidth={2.4} aria-hidden />Add Outlet
+        </button>
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
-          <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Ordering storage abhi setup nahi hua</p>
+        <div className="card-p card-tight mb-3 border-amber-200">
+          <p className="text-[0.74rem] text-amber-700 font-semibold inline-flex items-center gap-1.5">
+            <TriangleAlert size={13} strokeWidth={2.4} aria-hidden />Ordering storage isn&apos;t set up yet
+          </p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
-            <span className="font-mono">migrations/2026-05-21-fnb-ordering.sql</span> apply karni hai.
+            <span className="font-mono">migrations/2026-05-21-fnb-ordering.sql</span> needs to be applied.
           </p>
         </div>
       )}
@@ -161,10 +170,12 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
         <div className="card-p text-center py-10 text-luxury-400 text-sm">Loading…</div>
       ) : outlets.length === 0 ? (
         <div className="card-p text-center py-10">
-          <p className="text-3xl mb-2">📱</p>
-          <p className="text-luxury-600 font-semibold text-sm">Abhi koi ordering outlet nahi hai</p>
-          <p className="text-luxury-400 text-xs mt-0.5 mb-3">"Room Service" outlet banao — har room me uska QR lagao.</p>
-          <button onClick={() => setEditor({ mode: "create" })} className="btn-gold">➕ Add Outlet</button>
+          <QrCode className="mx-auto mb-2 text-luxury-300" size={30} strokeWidth={1.7} aria-hidden />
+          <p className="text-luxury-600 font-semibold text-sm">No ordering outlets yet</p>
+          <p className="text-luxury-400 text-xs mt-0.5 mb-3">Create a &quot;Room Service&quot; outlet — put its QR in every room.</p>
+          <button onClick={() => setEditor({ mode: "create" })} className="btn-gold inline-flex items-center gap-1.5">
+            <Plus size={14} strokeWidth={2.4} aria-hidden />Add Outlet
+          </button>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
@@ -182,18 +193,18 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
                       <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{o.name}</p>
                       {!o.active && <span className="text-[0.52rem] font-bold px-1.5 py-0.5 rounded-full bg-luxury-100 text-luxury-500">OFF</span>}
                     </div>
-                    <p className="text-[0.62rem] text-luxury-500">{meta.icon} {meta.label}</p>
+                    <p className="text-[0.62rem] text-luxury-500 inline-flex items-center gap-1"><meta.Ic size={11} strokeWidth={2.3} aria-hidden />{meta.label}</p>
                     <code className="block mt-1.5 text-[0.56rem] bg-luxury-50 rounded-md px-1.5 py-1 text-luxury-500 truncate">{url}</code>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
-                  <button onClick={() => printQR(o)} className="btn-gold px-2.5! py-1! text-[0.7rem]">🖨 Print QR</button>
+                  <button onClick={() => printQR(o)} className="btn-gold px-2.5! py-1! text-[0.7rem] inline-flex items-center gap-1"><Printer size={12} strokeWidth={2.3} aria-hidden />Print QR</button>
                   <button onClick={() => { navigator.clipboard?.writeText(url); showToast("Link copied ✓"); }}
                     className="btn-ghost px-2.5! py-1! text-[0.7rem]">Copy link</button>
                   <a href={url} target="_blank" rel="noreferrer" className="btn-ghost px-2.5! py-1! text-[0.7rem] no-underline">Preview</a>
-                  <button onClick={() => setEditor({ mode: "edit", outlet: o })} className="btn-ghost px-2.5! py-1! text-[0.7rem]">✏️</button>
-                  <button onClick={() => toggleOutlet(o)} className="btn-ghost px-2.5! py-1! text-[0.7rem]">{o.active ? "⏸" : "▶"}</button>
-                  <button onClick={() => removeOutlet(o.id)} className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300!">🗑</button>
+                  <button onClick={() => setEditor({ mode: "edit", outlet: o })} aria-label="Edit outlet" className="btn-ghost px-2.5! py-1! text-[0.7rem] flex items-center"><Pencil size={12} strokeWidth={2.3} aria-hidden /></button>
+                  <button onClick={() => toggleOutlet(o)} aria-label={o.active ? "Pause outlet" : "Activate outlet"} className="btn-ghost px-2.5! py-1! text-[0.7rem] flex items-center">{o.active ? <Pause size={12} strokeWidth={2.3} aria-hidden /> : <Play size={12} strokeWidth={2.3} aria-hidden />}</button>
+                  <button onClick={() => removeOutlet(o.id)} aria-label="Remove outlet" className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300! flex items-center"><Trash2 size={12} strokeWidth={2.3} aria-hidden /></button>
                 </div>
               </div>
             );
@@ -201,9 +212,10 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
         </div>
       )}
 
-      <div className="card-p card-tight mt-3" style={{ background: "#eff2f5" }}>
-        <p className="text-[0.7rem] text-luxury-600 leading-relaxed">
-          💡 <b>Print QR</b> → har room / table par chipka do. Guest scan karega → aapke hotel ke naam se digital menu khulega → order karega. Order yahan verify ke liye aayega (Phase 3) aur billing folio me add ho jayega.
+      <div className="card-p card-tight mt-3 bg-luxury-50">
+        <p className="text-[0.7rem] text-luxury-600 leading-relaxed flex items-start gap-1.5">
+          <Lightbulb size={13} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0 text-gold-600" />
+          <span><b>Print QR</b> → stick it in every room / on every table. A guest scans it → your hotel&apos;s digital menu opens → they order. The order arrives here to verify (Phase 3) and gets added to the billing folio.</span>
         </p>
       </div>
 
@@ -234,7 +246,7 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
   const [err, setErr] = useState("");
 
   async function save() {
-    if (!name.trim()) { setErr("Outlet ka naam daalo."); return; }
+    if (!name.trim()) { setErr("Enter the outlet name."); return; }
     setSaving(true); setErr("");
     try {
       const r = await fetch("/api/partner/outlets", {
@@ -260,7 +272,9 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
             {mode === "create" ? "New Outlet" : "Edit Outlet"}
           </p>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center">
+            <X size={16} strokeWidth={2.4} aria-hidden />
+          </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           <div>
@@ -275,9 +289,12 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
                 const on = type === k;
                 return (
                   <button key={k} type="button" onClick={() => setType(k)}
-                    className="w-full text-left rounded-xl p-2.5 transition-all"
-                    style={{ background: on ? "#f7f8fa" : "#fff", border: `1.5px solid ${on ? "#8198ae" : "#d7dee6"}` }}>
-                    <p className="text-[0.78rem] font-bold text-luxury-900">{on ? "● " : "○ "}{m.icon} {m.label}</p>
+                    className={`w-full text-left rounded-xl p-2.5 transition-all border ${on ? "bg-luxury-50 border-transparent" : "bg-white border-luxury-200"}`}
+                    style={on ? { boxShadow: "0 0 0 1.5px #8198ae" } : undefined}>
+                    <p className="text-[0.78rem] font-bold text-luxury-900 inline-flex items-center gap-1.5">
+                      {on ? <CircleDot size={13} strokeWidth={2.4} aria-hidden /> : <Circle size={13} strokeWidth={2.2} aria-hidden />}
+                      <m.Ic size={13} strokeWidth={2.3} aria-hidden />{m.label}
+                    </p>
                     <p className="text-[0.62rem] text-luxury-500 mt-0.5">{m.desc}</p>
                   </button>
                 );
@@ -312,7 +329,7 @@ function OrdersSection({ orders, onVerify, onReject }: any) {
         )}
       </div>
       {pending.length === 0 ? (
-        <p className="text-xs text-luxury-400 py-2">Koi naya order nahi — QR se order aate hi yahan dikhega.</p>
+        <p className="text-xs text-luxury-400 py-2">No new orders — they&apos;ll appear here as guests order via QR.</p>
       ) : (
         <div className="space-y-2">
           {pending.map((o: any) => (
@@ -322,8 +339,9 @@ function OrdersSection({ orders, onVerify, onReject }: any) {
       )}
       {recent.length > 0 && (
         <>
-          <button onClick={() => setShowRecent((s) => !s)} className="text-[0.68rem] font-bold text-gold-600 mt-2">
-            {showRecent ? "▾ Hide" : "▸ Show"} recent orders ({recent.length})
+          <button onClick={() => setShowRecent((s) => !s)} className="text-[0.68rem] font-bold text-gold-600 mt-2 inline-flex items-center gap-1">
+            {showRecent ? <ChevronDown size={13} strokeWidth={2.4} aria-hidden /> : <ChevronRight size={13} strokeWidth={2.4} aria-hidden />}
+            {showRecent ? "Hide" : "Show"} recent orders ({recent.length})
           </button>
           {showRecent && (
             <div className="space-y-1.5 mt-1.5">
@@ -338,16 +356,16 @@ function OrdersSection({ orders, onVerify, onReject }: any) {
 
 function OrderCard({ o, pending, onVerify, onReject }: any) {
   const items: any[] = Array.isArray(o.items) ? o.items : [];
-  const st = o.status === "added_to_folio" ? { label: "Billed", bg: "#dcfce7", c: "#15803d" }
-    : o.status === "rejected" ? { label: "Rejected", bg: "#fee2e2", c: "#b91c1c" }
-    : { label: "Pending", bg: "#f0f3f5", c: "#b45309" };
+  const st = o.status === "added_to_folio" ? { label: "Billed", cls: "bg-emerald-100 text-emerald-700" }
+    : o.status === "rejected" ? { label: "Rejected", cls: "bg-red-100 text-red-700" }
+    : { label: "Pending", cls: "bg-amber-50 text-amber-700" };
   return (
-    <div className="rounded-xl border border-luxury-100 p-2.5" style={{ background: pending ? "#fdfdfd" : "#fff" }}>
+    <div className="rounded-xl border border-luxury-100 p-2.5 bg-white">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-[0.82rem] font-bold text-luxury-900">📍 {o.location || "—"}</p>
-            <span className="text-[0.52rem] font-bold px-1.5 py-0.5 rounded-full" style={{ background: st.bg, color: st.c }}>{st.label}</span>
+            <p className="text-[0.82rem] font-bold text-luxury-900 inline-flex items-center gap-1"><MapPin size={12} strokeWidth={2.4} aria-hidden />{o.location || "—"}</p>
+            <span className={`text-[0.52rem] font-bold px-1.5 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
           </div>
           <p className="text-[0.62rem] text-luxury-500">
             {o.outlet_name || "Menu"} · {fmtTime(o.created_at)}{o.guest_name ? ` · ${o.guest_name}` : ""}{o.guest_phone ? ` · ${o.guest_phone}` : ""}
@@ -362,10 +380,10 @@ function OrderCard({ o, pending, onVerify, onReject }: any) {
           </p>
         ))}
       </div>
-      {o.note && <p className="text-[0.62rem] text-blue-600 italic mt-1">📝 {o.note}</p>}
+      {o.note && <p className="text-[0.62rem] text-blue-600 italic mt-1 inline-flex items-start gap-1"><StickyNote size={11} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" />{o.note}</p>}
       {pending && (
         <div className="flex gap-1.5 mt-2">
-          <button onClick={() => onVerify(o)} className="btn-gold px-3! py-1.5! text-[0.72rem] flex-1">✓ Verify &amp; Bill</button>
+          <button onClick={() => onVerify(o)} className="btn-gold px-3! py-1.5! text-[0.72rem] flex-1 inline-flex items-center justify-center gap-1"><Check size={13} strokeWidth={2.6} aria-hidden />Verify &amp; Bill</button>
           <button onClick={() => onReject(o.id)}
             className="btn-ghost px-3! py-1.5! text-[0.72rem] text-red-600! hover:border-red-300!">Reject</button>
         </div>
@@ -400,7 +418,7 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.error || "Verify failed");
-      onDone(`✓ ${d.charges || 0} item${d.charges === 1 ? "" : "s"} folio me add ho gaye`);
+      onDone(`✓ ${d.charges || 0} item${d.charges === 1 ? "" : "s"} added to the folio`);
     } catch (e: any) { setErr(e?.message || "Verify failed"); setSaving(false); }
   }
 
@@ -412,12 +430,14 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>Verify &amp; Bill</p>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center">
+            <X size={16} strokeWidth={2.4} aria-hidden />
+          </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           {/* order recap */}
           <div className="rounded-xl bg-luxury-50 p-2.5">
-            <p className="text-[0.74rem] font-bold text-luxury-900">📍 {order.location || "—"} · {fmtCur(order.items_total)}</p>
+            <p className="text-[0.74rem] font-bold text-luxury-900 inline-flex items-center gap-1"><MapPin size={12} strokeWidth={2.4} aria-hidden />{order.location || "—"} · {fmtCur(order.items_total)}</p>
             {items.map((it: any) => (
               <p key={it.id} className="text-[0.66rem] text-luxury-600">{it.qty}× {it.item_name}{it.portion ? ` (${it.portion})` : ""}</p>
             ))}
@@ -427,22 +447,28 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
           <div className="space-y-1.5">
             {/* new folio option */}
             <button type="button" onClick={() => setTarget("")}
-              className="w-full text-left rounded-xl p-2.5 transition-all"
-              style={{ background: target === "" ? "#f7f8fa" : "#fff", border: `1.5px solid ${target === "" ? "#8198ae" : "#d7dee6"}` }}>
-              <p className="text-[0.78rem] font-bold text-luxury-900">{target === "" ? "● " : "○ "}🆕 New folio</p>
+              className={`w-full text-left rounded-xl p-2.5 transition-all border ${target === "" ? "bg-luxury-50 border-transparent" : "bg-white border-luxury-200"}`}
+              style={target === "" ? { boxShadow: "0 0 0 1.5px #8198ae" } : undefined}>
+              <p className="text-[0.78rem] font-bold text-luxury-900 inline-flex items-center gap-1.5">
+                {target === "" ? <CircleDot size={13} strokeWidth={2.4} aria-hidden /> : <Circle size={13} strokeWidth={2.2} aria-hidden />}
+                <FilePlus size={13} strokeWidth={2.3} aria-hidden />New folio
+              </p>
               <p className="text-[0.62rem] text-luxury-500 mt-0.5">
-                {order.guest_name || `Room ${order.location || "—"}`} ke naam se naya bill khulega
+                A new bill opens for {order.guest_name || `Room ${order.location || "—"}`}
               </p>
             </button>
-            {sorted.map((f: any, i: number) => {
+            {sorted.map((f: any) => {
               const on = target === f.id;
               const suggested = loc && `${f.room_label || ""} ${f.guest_name || ""}`.toLowerCase().includes(loc);
               return (
                 <button key={f.id} type="button" onClick={() => setTarget(f.id)}
-                  className="w-full text-left rounded-xl p-2.5 transition-all"
-                  style={{ background: on ? "#f7f8fa" : "#fff", border: `1.5px solid ${on ? "#8198ae" : "#d7dee6"}` }}>
+                  className={`w-full text-left rounded-xl p-2.5 transition-all border ${on ? "bg-luxury-50 border-transparent" : "bg-white border-luxury-200"}`}
+                  style={on ? { boxShadow: "0 0 0 1.5px #8198ae" } : undefined}>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-[0.78rem] font-bold text-luxury-900">{on ? "● " : "○ "}{f.guest_name || "Guest"}</p>
+                    <p className="text-[0.78rem] font-bold text-luxury-900 inline-flex items-center gap-1.5">
+                      {on ? <CircleDot size={13} strokeWidth={2.4} aria-hidden /> : <Circle size={13} strokeWidth={2.2} aria-hidden />}
+                      {f.guest_name || "Guest"}
+                    </p>
                     {suggested && <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">MATCH</span>}
                   </div>
                   <p className="text-[0.62rem] text-luxury-500 mt-0.5">{f.room_label || "—"}{f.guest_phone ? ` · ${f.guest_phone}` : ""}</p>
@@ -454,8 +480,8 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
         </div>
         <div className="flex gap-2 px-4 py-3 border-t border-luxury-100 shrink-0">
           <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
-          <button onClick={go} disabled={saving} className="btn-gold flex-1">
-            {saving ? "Billing…" : "✓ Verify & Add to Folio"}
+          <button onClick={go} disabled={saving} className="btn-gold flex-1 inline-flex items-center justify-center gap-1">
+            {saving ? "Billing…" : <><Check size={14} strokeWidth={2.6} aria-hidden />Verify &amp; Add to Folio</>}
           </button>
         </div>
       </div>

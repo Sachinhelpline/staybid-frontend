@@ -1290,6 +1290,42 @@
   emoji, additive-only. NEXT: MenuBuilderTab/FnbOrdersTab → ReportsTab →
   AgentAuctionTab → Circle tabs → Content/Passport → shared modals.
 
+### 2026-08-03 — Session 6 cont. (v661 — partner F&B pair: MenuBuilderTab + FnbOrdersTab)
+- **Two paired tabs in one ship** (menu tab + fnbqr tab, both SUBSCRIPTION_SERVICES).
+- **MenuBuilderTab (427 lines):** emoji chrome → lucide (➕→Plus, ⚠→TriangleAlert,
+  🍽️ empty + no-image placeholder → UtensilsCrossed, ✏️→Pencil, 🗑→Trash2, ×→X on
+  every close/delete/remove-portion/remove-photo). The **FSSAI veg/non-veg square
+  `FoodMark` KEPT** (regulatory content vocabulary; its green/red/amber inline
+  colours are semantic). The food-type toggle is now dark-safe: off state uses
+  `bg-white text-luxury-500 border-luxury-200` classes (flip via bridge), the ON
+  state keeps the semantic FOOD colour via inline style. ON/OFF availability chip
+  already class-paired. Hinglish → English across headers/empty/confirm/errors/
+  the "Available" checkbox label.
+- **FnbOrdersTab (468 lines):** `OUTLET_TYPE` icon glyphs (🛎/🍴/📋) → lucide
+  components (ConciergeBell/Utensils/ClipboardList) rendered inline; chrome →
+  lucide (➕→Plus, ⚠→TriangleAlert, 📱 empty → QrCode, 🖨→Printer, ✏️→Pencil,
+  ⏸/▶→Pause/Play, 🗑→Trash2, 💡→Lightbulb, ×→X, ●/○ radios → CircleDot/Circle,
+  ▾/▸→ChevronDown/ChevronRight, 📍→MapPin, 📝→StickyNote, ✓→Check, 🆕→FilePlus).
+  OrderCard status badges tokenized from inline hex (billed→emerald, rejected→red,
+  pending→amber) to class pairs; the outlet-type + folio radios → `bg-luxury-50`/
+  `bg-white` + pewter `#8198ae` boxShadow ring; the tip card + order-row inline
+  bg → `bg-luxury-50`/`bg-white`. Hinglish → English throughout (outlet descs,
+  confirms, empty states, the tip, the verify toast).
+- **KEEP (deliberate):** the printed QR-poster HTML in `printQR` (📷 + its hex —
+  it's a printed white poster, never dark-tokenized), the "Link copied ✓" toast
+  tick, the QR image's own white bg (a QR must stay light to scan), the FSSAI mark.
+- Badge v660→**v661** (`SB_BUILD v661-partner-fnb`), sw `HTML_CACHE` v457→**v458**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **120/120** —
+  both tabs @ 320/360/390/768/1280 × LIGHT/DARK, zero h-overflow, chrome/Hinglish
+  gone, dark card avg=34; the Category + Dish + Verify-&-Bill + Add-Outlet modals
+  all open, dark, emoji/Hinglish-free; pending order card + FoodMark verified.
+  (Harness note: `.max-w-7xl` matches BOTH the nav and the content wrapper — target
+  `.max-w-7xl.py-6` for the tab content, else scans read the nav.)
+- **14 rules honoured:** presentation-only (no menu/order/verify/save logic touched),
+  light+dark perfect, strict responsive to 320px, measured verify, lucide + kept
+  content (FSSAI mark, printed poster). NEXT: ReportsTab → AgentAuctionTab → Circle
+  tabs → Content/Passport → shared modals.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

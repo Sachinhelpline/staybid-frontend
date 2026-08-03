@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { modalPortal } from "@/lib/partner/modal-portal";
+import { Plus, TriangleAlert, UtensilsCrossed, Pencil, Trash2, X } from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -58,7 +59,7 @@ export default function MenuBuilderTab({ hotelId }: { hotelId: string }) {
   useEffect(() => { load(); }, [load]);
 
   async function delCategory(id: string) {
-    if (!confirm("Category aur uske saare items delete ho jayenge. Pakka?")) return;
+    if (!confirm("This category and all its dishes will be deleted. Sure?")) return;
     try {
       await fetch(`/api/partner/menu?id=${encodeURIComponent(id)}`, {
         method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` },
@@ -68,7 +69,7 @@ export default function MenuBuilderTab({ hotelId }: { hotelId: string }) {
     } catch { load(); }
   }
   async function delItem(id: string) {
-    if (!confirm("Yeh dish delete karein?")) return;
+    if (!confirm("Delete this dish?")) return;
     setItems((p) => p.filter((i) => i.id !== id));
     try {
       await fetch(`/api/partner/menu/items?id=${encodeURIComponent(id)}`, {
@@ -98,16 +99,20 @@ export default function MenuBuilderTab({ hotelId }: { hotelId: string }) {
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h2 className="sec-title text-xl">F&amp;B Digital Menu</h2>
-          <p className="text-[0.7rem] text-luxury-500 mt-0.5">{categories.length} categories · {items.length} dishes — apna restaurant menu khud design karo.</p>
+          <p className="text-[0.7rem] text-luxury-500 mt-0.5">{categories.length} categories · {items.length} dishes — design your own restaurant menu.</p>
         </div>
-        <button onClick={() => setCatEditor({ mode: "create" })} className="btn-gold">➕ Add Category</button>
+        <button onClick={() => setCatEditor({ mode: "create" })} className="btn-gold inline-flex items-center gap-1.5">
+          <Plus size={14} strokeWidth={2.4} aria-hidden />Add Category
+        </button>
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
-          <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Menu storage abhi setup nahi hua</p>
+        <div className="card-p card-tight mb-3 border-amber-200">
+          <p className="text-[0.74rem] text-amber-700 font-semibold inline-flex items-center gap-1.5">
+            <TriangleAlert size={13} strokeWidth={2.4} aria-hidden />Menu storage isn&apos;t set up yet
+          </p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
-            <span className="font-mono">migrations/2026-05-21-fnb-menu.sql</span> Supabase me apply karni hai.
+            <span className="font-mono">migrations/2026-05-21-fnb-menu.sql</span> needs to be applied in Supabase.
           </p>
         </div>
       )}
@@ -116,10 +121,12 @@ export default function MenuBuilderTab({ hotelId }: { hotelId: string }) {
         <div className="card-p text-center py-10 text-luxury-400 text-sm">Loading menu…</div>
       ) : categories.length === 0 && items.length === 0 ? (
         <div className="card-p text-center py-10">
-          <p className="text-3xl mb-2">🍽️</p>
-          <p className="text-luxury-600 font-semibold text-sm">Abhi menu khali hai</p>
-          <p className="text-luxury-400 text-xs mt-0.5 mb-3">Pehle category banao (Starters, Main Course…), phir dishes add karo.</p>
-          <button onClick={() => setCatEditor({ mode: "create" })} className="btn-gold">➕ Add Category</button>
+          <UtensilsCrossed className="mx-auto mb-2 text-luxury-300" size={30} strokeWidth={1.7} aria-hidden />
+          <p className="text-luxury-600 font-semibold text-sm">Your menu is empty</p>
+          <p className="text-luxury-400 text-xs mt-0.5 mb-3">First create a category (Starters, Main Course…), then add dishes.</p>
+          <button onClick={() => setCatEditor({ mode: "create" })} className="btn-gold inline-flex items-center gap-1.5">
+            <Plus size={14} strokeWidth={2.4} aria-hidden />Add Category
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -133,15 +140,15 @@ export default function MenuBuilderTab({ hotelId }: { hotelId: string }) {
                   </p>
                   <div className="flex gap-1.5">
                     <button onClick={() => setItemEditor({ mode: "create", categoryId: cat.id })}
-                      className="btn-gold px-2.5! py-1! text-[0.7rem]">➕ Dish</button>
-                    <button onClick={() => setCatEditor({ mode: "edit", cat })}
-                      className="btn-ghost px-2.5! py-1! text-[0.7rem]">✏️</button>
-                    <button onClick={() => delCategory(cat.id)}
-                      className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300!">🗑</button>
+                      className="btn-gold px-2.5! py-1! text-[0.7rem] inline-flex items-center gap-1"><Plus size={12} strokeWidth={2.6} aria-hidden />Dish</button>
+                    <button onClick={() => setCatEditor({ mode: "edit", cat })} aria-label="Edit category"
+                      className="btn-ghost px-2.5! py-1! text-[0.7rem] flex items-center"><Pencil size={12} strokeWidth={2.3} aria-hidden /></button>
+                    <button onClick={() => delCategory(cat.id)} aria-label="Delete category"
+                      className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300! flex items-center"><Trash2 size={12} strokeWidth={2.3} aria-hidden /></button>
                   </div>
                 </div>
                 {list.length === 0 ? (
-                  <p className="text-[0.7rem] text-luxury-400 py-1">Koi dish nahi — "➕ Dish" se add karo.</p>
+                  <p className="text-[0.7rem] text-luxury-400 py-1">No dishes yet — use &quot;Dish&quot; to add one.</p>
                 ) : (
                   <div className="space-y-1.5">
                     {list.map((it) => (
@@ -196,7 +203,9 @@ function MenuItemRow({ it, onEdit, onDelete, onToggle }: any) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={it.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
       ) : (
-        <div className="w-10 h-10 rounded-lg bg-luxury-50 flex items-center justify-center text-sm shrink-0">🍽️</div>
+        <div className="w-10 h-10 rounded-lg bg-luxury-50 flex items-center justify-center shrink-0">
+          <UtensilsCrossed className="text-luxury-300" size={16} strokeWidth={1.8} aria-hidden />
+        </div>
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
@@ -216,8 +225,8 @@ function MenuItemRow({ it, onEdit, onDelete, onToggle }: any) {
         }`}>
         {it.available ? "ON" : "OFF"}
       </button>
-      <button onClick={onEdit} className="text-luxury-400 hover:text-luxury-700 text-sm shrink-0">✏️</button>
-      <button onClick={onDelete} className="text-red-400 hover:text-red-600 text-sm shrink-0">×</button>
+      <button onClick={onEdit} aria-label="Edit dish" className="text-luxury-400 hover:text-luxury-700 shrink-0 flex items-center"><Pencil size={14} strokeWidth={2.2} aria-hidden /></button>
+      <button onClick={onDelete} aria-label="Delete dish" className="text-red-400 hover:text-red-600 shrink-0 flex items-center"><X size={15} strokeWidth={2.4} aria-hidden /></button>
     </div>
   );
 }
@@ -229,7 +238,7 @@ function CategoryEditor({ mode, cat, hotelId, onClose, onSaved }: any) {
   const [err, setErr] = useState("");
 
   async function save() {
-    if (!name.trim()) { setErr("Category ka naam daalo."); return; }
+    if (!name.trim()) { setErr("Enter the category name."); return; }
     setSaving(true); setErr("");
     try {
       const r = await fetch("/api/partner/menu", {
@@ -253,7 +262,9 @@ function CategoryEditor({ mode, cat, hotelId, onClose, onSaved }: any) {
             {mode === "create" ? "New Category" : "Edit Category"}
           </p>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center">
+            <X size={16} strokeWidth={2.4} aria-hidden />
+          </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
           <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Category name</label>
@@ -296,11 +307,11 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
   }
 
   async function save() {
-    if (!f.name.trim()) { setErr("Dish ka naam daalo."); return; }
+    if (!f.name.trim()) { setErr("Enter the dish name."); return; }
     const cleaned = portions
       .map((p) => ({ label: p.label.trim(), price: Number(p.price) || 0 }))
       .filter((p) => p.price > 0);
-    if (!cleaned.length) { setErr("Kam se kam ek portion ka price daalo."); return; }
+    if (!cleaned.length) { setErr("Enter a price for at least one portion."); return; }
     setSaving(true); setErr("");
     try {
       const r = await fetch("/api/partner/menu/items", {
@@ -329,7 +340,9 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
             {mode === "create" ? "New Dish" : "Edit Dish"}
           </p>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center">
+            <X size={16} strokeWidth={2.4} aria-hidden />
+          </button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
@@ -353,8 +366,8 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
                   const on = f.foodType === t;
                   return (
                     <button key={t} type="button" onClick={() => set("foodType", t)}
-                      className="flex-1 rounded-lg py-1.5 text-[0.62rem] font-bold transition-all"
-                      style={{ border: `1.5px solid ${on ? FOOD[t].c : "#d7dee6"}`, color: on ? FOOD[t].c : "#768fa7", background: on ? FOOD[t].c + "14" : "#fff" }}>
+                      className={`flex-1 rounded-lg py-1.5 text-[0.62rem] font-bold transition-all border ${on ? "" : "bg-white text-luxury-500 border-luxury-200"}`}
+                      style={on ? { borderColor: FOOD[t].c, color: FOOD[t].c, background: FOOD[t].c + "14" } : undefined}>
                       {FOOD[t].label}
                     </button>
                   );
@@ -383,7 +396,8 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
                   </div>
                   {portions.length > 1 && (
                     <button type="button" onClick={() => setPortions((pp) => pp.filter((_, j) => j !== i))}
-                      className="text-red-400 hover:text-red-600 text-lg leading-none w-6 shrink-0">×</button>
+                      aria-label="Remove portion"
+                      className="text-red-400 hover:text-red-600 w-6 shrink-0 flex items-center justify-center"><X size={16} strokeWidth={2.4} aria-hidden /></button>
                   )}
                 </div>
               ))}
@@ -399,8 +413,8 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
               <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-luxury-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={image} alt="" className="w-full h-full object-cover" />
-                <button type="button" onClick={() => setImage("")}
-                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs leading-none">×</button>
+                <button type="button" onClick={() => setImage("")} aria-label="Remove photo"
+                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"><X size={12} strokeWidth={2.6} aria-hidden /></button>
               </div>
             ) : (
               <ImageUpload folder="menu" onUpload={(url) => setImage(url)} />
@@ -409,7 +423,7 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
 
           <label className="flex items-center gap-2 text-[0.74rem] font-semibold text-luxury-700">
             <input type="checkbox" checked={f.available} onChange={(e) => set("available", e.target.checked)} />
-            Available (guests order kar sakte hain)
+            Available (guests can order this)
           </label>
 
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
