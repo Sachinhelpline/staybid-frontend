@@ -7,6 +7,7 @@
 // raise it. Reads/writes /api/trade/owner/* (partner-scoped server-side).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Tag, Zap, Lock, Info } from "lucide-react";
 import { LIVE_AUTOPILOT_LABEL, LIVE_AUTOPILOT_DESC, type LiveAutopilotMode } from "@/lib/trade/live-auction";
 
 function getToken() {
@@ -26,12 +27,12 @@ type Lot = {
   sale_mode?: string; autopilot_mode?: string;
 };
 
-const STATUS_STYLE: Record<string, { bg: string; c: string; label: string }> = {
-  open:      { bg: "#ecfdf5", c: "#047857", label: "Live" },
-  draft:     { bg: "#eff6ff", c: "#1d4ed8", label: "Scheduled" },
-  closed:    { bg: "#f5f3ff", c: "#6d28d9", label: "Closed" },
-  awarded:   { bg: "#f5f6f8", c: "#a16207", label: "Awarded" },
-  cancelled: { bg: "#f3f4f6", c: "#6b7280", label: "Cancelled" },
+const STATUS_STYLE: Record<string, { cls: string; label: string }> = {
+  open:      { cls: "bg-emerald-50 text-emerald-700", label: "Live" },
+  draft:     { cls: "bg-blue-50 text-blue-700",       label: "Scheduled" },
+  closed:    { cls: "bg-purple-50 text-purple-700",   label: "Closed" },
+  awarded:   { cls: "bg-amber-50 text-amber-700",     label: "Awarded" },
+  cancelled: { cls: "bg-luxury-100 text-luxury-500",  label: "Cancelled" },
 };
 
 export default function AgentAuctionTab({
@@ -207,7 +208,7 @@ export default function AgentAuctionTab({
     <div className="space-y-5">
       {/* Intro */}
       <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
-        <div className="text-lg font-bold" style={{ color: "#d5dce4" }}>🏷️ Sell to Travel Agents</div>
+        <div className="text-lg font-bold inline-flex items-center gap-2" style={{ color: "#d5dce4" }}><Tag size={18} strokeWidth={2.3} aria-hidden />Sell to Travel Agents</div>
         <p className="text-sm mt-1 opacity-90">
           Offer your spare inventory to travel agents by the <b>month</b>. StayBid computes the minimum price from your
           cost (never sells below it); you can only raise it. Choose <b>Live</b> — always-open bidding your autopilot
@@ -222,13 +223,13 @@ export default function AgentAuctionTab({
         {/* Sale mode toggle */}
         <div className="grid grid-cols-2 gap-2">
           {([
-            { k: "live", t: "⚡ Live (always open)", d: "Agents bid anytime — no deposit. Your autopilot accepts." },
-            { k: "sealed", t: "🔒 Sealed month-end", d: "Agents bid with a deposit; highest bids win at close." },
+            { k: "live", Ic: Zap, t: "Live (always open)", d: "Agents bid anytime — no deposit. Your autopilot accepts." },
+            { k: "sealed", Ic: Lock, t: "Sealed month-end", d: "Agents bid with a deposit; highest bids win at close." },
           ] as const).map((o) => (
             <button key={o.k} type="button" onClick={() => setSaleMode(o.k)}
-              className="text-left rounded-xl border-2 px-3 py-2.5 transition"
-              style={{ borderColor: saleMode === o.k ? "#8198ae" : "#dbe1e8", background: saleMode === o.k ? "#fafbfc" : "#fff" }}>
-              <div className="text-sm font-bold text-luxury-900">{o.t}</div>
+              className={`text-left rounded-xl border px-3 py-2.5 transition ${saleMode === o.k ? "bg-luxury-50 border-transparent" : "bg-white border-luxury-200"}`}
+              style={saleMode === o.k ? { boxShadow: "0 0 0 1.5px #8198ae" } : undefined}>
+              <div className="text-sm font-bold text-luxury-900 inline-flex items-center gap-1.5"><o.Ic size={14} strokeWidth={2.4} aria-hidden />{o.t}</div>
               <div className="text-[0.72rem] text-luxury-500 mt-0.5">{o.d}</div>
             </button>
           ))}
@@ -241,8 +242,8 @@ export default function AgentAuctionTab({
             <div className="mt-1 grid sm:grid-cols-3 gap-2">
               {(["hybrid", "auto", "manual"] as LiveAutopilotMode[]).map((m) => (
                 <button key={m} type="button" onClick={() => setAutopilotMode(m)}
-                  className="text-left rounded-lg border-2 px-2.5 py-2 transition"
-                  style={{ borderColor: autopilotMode === m ? "#8198ae" : "#dbe1e8", background: autopilotMode === m ? "#fafbfc" : "#fff" }}>
+                  className={`text-left rounded-lg border px-2.5 py-2 transition ${autopilotMode === m ? "bg-luxury-50 border-transparent" : "bg-white border-luxury-200"}`}
+                  style={autopilotMode === m ? { boxShadow: "0 0 0 1.5px #8198ae" } : undefined}>
                   <div className="text-[0.8rem] font-bold text-luxury-900">{LIVE_AUTOPILOT_LABEL[m]}</div>
                   <div className="text-[0.68rem] text-luxury-500 mt-0.5 leading-snug">{LIVE_AUTOPILOT_DESC[m]}</div>
                 </button>
@@ -311,7 +312,7 @@ export default function AgentAuctionTab({
 
         {/* Property owner: wholesale discount control + live floor breakdown */}
         {!circleOwner && roomId && retailFloor != null && (
-          <div className="rounded-xl border border-luxury-200 bg-luxury-50/60 p-3">
+          <div className="rounded-xl border border-luxury-200 bg-luxury-50 p-3">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-sm font-semibold text-luxury-700">Wholesale discount</span>
               <span className="text-sm font-bold text-gold-700">{wholesaleDiscount}% off</span>
@@ -343,9 +344,10 @@ export default function AgentAuctionTab({
 
         {saleMode === "live" ? (
           monthKey && (
-            <div className="text-[0.78rem] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
-              ⚡ <b>Always open</b> — agents can bid now through <b>{monthLabel(monthKey)}</b>. <b>No deposit.</b>{" "}
-              Accepted agents pay within {cfg ? "the pay window" : "24h"} from their dashboard, then get the inventory.
+            <div className="text-[0.78rem] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 flex items-start gap-1.5">
+              <Zap size={13} strokeWidth={2.4} aria-hidden className="mt-0.5 shrink-0" />
+              <span><b>Always open</b> — agents can bid now through <b>{monthLabel(monthKey)}</b>. <b>No deposit.</b>{" "}
+              Accepted agents pay within {cfg ? "the pay window" : "24h"} from their dashboard, then get the inventory.</span>
             </div>
           )
         ) : win ? (
@@ -357,13 +359,14 @@ export default function AgentAuctionTab({
         ) : null}
 
         {conflict && (
-          <div className="text-[0.8rem] rounded-lg px-3 py-2 bg-blue-50 text-blue-800 border border-blue-200">
-            ℹ️ This room is also listed on <b>Model 2</b> — that's fine. Both channels <b>run together</b>; availability is shared (a unit sold on one channel is automatically blocked on the other — no clash).
+          <div className="text-[0.8rem] rounded-lg px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 flex items-start gap-1.5">
+            <Info size={14} strokeWidth={2.4} aria-hidden className="mt-0.5 shrink-0" />
+            <span>This room is also listed on <b>Model 2</b> — that's fine. Both channels <b>run together</b>; availability is shared (a unit sold on one channel is automatically blocked on the other — no clash).</span>
           </div>
         )}
 
         {msg && (
-          <div className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div>
+          <div className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div>
         )}
 
         <button onClick={publish} disabled={!roomId || !monthKey || !effFloor || publishing}
@@ -375,8 +378,8 @@ export default function AgentAuctionTab({
 
       {/* Pending LIVE bids to review (manual + hybrid-at-floor) */}
       {pending.length > 0 && (
-        <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-5">
-          <div className="font-bold text-luxury-900 mb-1">⚡ Live bids to review</div>
+        <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-5">
+          <div className="font-bold text-luxury-900 mb-1 inline-flex items-center gap-1.5"><Zap size={16} strokeWidth={2.4} aria-hidden />Live bids to review</div>
           <p className="text-[0.78rem] text-luxury-500 mb-3">Agents bidding on your always-open lots. Accept to lock the sale (they pay next), decline, or counter with a different price.</p>
           <div className="space-y-2">
             {pending.map((b) => {
@@ -437,12 +440,12 @@ export default function AgentAuctionTab({
                     <div className="text-[0.75rem] text-luxury-500">
                       {l.num_rooms} rooms · min {inr(l.min_bid_per_room_night)}/night · {l.bid_count || 0} bids
                       {l.sale_mode === "live" && (
-                        <> · <span className="font-semibold text-emerald-700">⚡ Live · {LIVE_AUTOPILOT_LABEL[(l.autopilot_mode as LiveAutopilotMode) || "hybrid"]}</span></>
+                        <> · <span className="font-semibold text-emerald-700 inline-flex items-center gap-1"><Zap size={11} strokeWidth={2.5} aria-hidden />Live · {LIVE_AUTOPILOT_LABEL[(l.autopilot_mode as LiveAutopilotMode) || "hybrid"]}</span></>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[0.7rem] font-bold px-2 py-1 rounded-full" style={{ background: st.bg, color: st.c }}>{st.label}</span>
+                    <span className={`text-[0.7rem] font-bold px-2 py-1 rounded-full ${st.cls}`}>{st.label}</span>
                     {["draft", "open"].includes(l.status) && (l.bid_count || 0) === 0 && (
                       <button onClick={() => cancelLot(l.id)} className="text-[0.72rem] text-red-500 hover:text-red-600 font-semibold">Cancel</button>
                     )}

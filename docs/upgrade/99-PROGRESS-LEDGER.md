@@ -1351,6 +1351,38 @@
   light+dark perfect, strict responsive to 320px, measured verify. NEXT:
   AgentAuctionTab → Circle tabs → Content/Passport → shared modals.
 
+### 2026-08-03 — Session 6 cont. (v663 — partner AgentAuctionTab)
+- **AgentAuctionTab (458 lines) — Model-3 "Sell to Agents" owner supply tab.**
+  Already ENGLISH (owner moved Trade to English in v369) — so NO Hinglish work;
+  the sweep is emoji → lucide + dark-mode tokenization.
+- **Emoji → lucide:** 🏷️ hero → Tag; the sale-mode option labels ⚡/🔒 → Zap/Lock
+  (restructured the option objects to carry an `Ic` component); the "Always open"
+  notice ⚡ → Zap; the Model-2 conflict ℹ️ → Info; the "Live bids to review" ⚡ →
+  Zap; the per-lot "⚡ Live" label → Zap.
+- **Dark tokenization:** `STATUS_STYLE` lot badges converted from inline hex
+  (`{bg,c}`) to Tailwind class pairs (open→emerald, draft→blue, closed→purple,
+  awarded→amber, cancelled→luxury). Sale-mode + autopilot radios: inline
+  `borderColor/background` hex → `bg-luxury-50`/`bg-white` + pewter `#8198ae`
+  boxShadow ring (matches billing/fnb radios). Non-flipping opacity variants
+  fixed: `bg-luxury-50/60`→`bg-luxury-50`, `bg-amber-50/40`→`bg-amber-50`. Off-bridge
+  colours corrected: conflict `text-blue-800`→`text-blue-700`, success msg
+  `bg-green-50 text-green-700`→`bg-emerald-50 text-emerald-700` (green isn't in the
+  bridge; emerald is).
+- **KEEP (deliberate):** the dark-walnut→gold **brand hero gradient** (permanently
+  dark on both themes — matches the Circle deck panels), the pewter selected-ring +
+  publish-CTA gradient (brand), and the semantic Accept (green) / Counter (purple)
+  CTA gradients — all readable on both themes.
+- Badge v662→**v663** (`SB_BUILD v663-partner-agentauction`), sw `HTML_CACHE`
+  v459→**v460**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **61/61** —
+  publish form + pending-bids + lots @ 320/360/390/768/1280 × LIGHT/DARK, zero
+  h-overflow (incl. after selecting a room → the wholesale-floor breakdown opens),
+  chrome emoji gone, status badges + Live label present, white card bg dark avg=34.
+- **14 rules honoured:** presentation-only (no quote/publish/bid-action/floor math
+  touched), light+dark perfect, strict responsive to 320px, measured verify. NEXT:
+  Circle tabs (PartnerCircleTab / CircleUnitsTab / CircleInventoryTab) →
+  Content/Passport → shared modals.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
