@@ -191,7 +191,7 @@ for (const cfg of ROUTES) {
           // The old rgb-only regex dropped these layers → mis-composited light text onto a white fallback.
           const cs=str.match(/color\(srgb\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)(?:\s*\/\s*([0-9.]+))?\)/);
           if(cs){ return {r:parseFloat(cs[1])*255, g:parseFloat(cs[2])*255, b:parseFloat(cs[3])*255, a:cs[4]===undefined?1:parseFloat(cs[4])}; }
-          const m=str.match(/rgba?\(([^)]+)\)/); if(!m)return null; const p=m[1].split(/[,\/]/).map(x=>parseFloat(x.trim())); return {r:p[0],g:p[1],b:p[2],a:p[3]===undefined?1:p[3]}; };
+          const m=str.match(/rgba?\(([^)]+)\)/); if(!m)return null; const p=m[1].split(/[\s,\/]+/).map(x=>x.trim()).filter(Boolean).map(parseFloat); return {r:p[0],g:p[1],b:p[2],a:p[3]===undefined?1:p[3]}; };
         const bodyBg = P(getComputedStyle(document.body).backgroundColor) || {r:255,g:255,b:255,a:1};
         const emoji=[], tooWide=[], tiny=[];
         const RE=/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}✅✔✖]/gu;
