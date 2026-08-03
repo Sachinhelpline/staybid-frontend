@@ -1412,6 +1412,37 @@
   strict responsive to 320px, measured verify. NEXT: **CircleInventoryTab (901
   lines — its own ship)** → PartnerContentTab/PartnerPassportTab → shared modals.
 
+### 2026-08-03 — Session 6 cont. (v665 — partner CircleInventoryTab, the big one)
+- **CircleInventoryTab (901 lines) — Model-2 pre-buy inventory + B2B exchange
+  (list/buy/trade room-nights).** Notable: this component is **already
+  token-themed** for dark — it styles with `var(--text-base)`/`--bg-card`/
+  `--accent`/`--border-soft`/… inline, so the theme flips for free. So the sweep
+  was light: emoji → lucide + the handful of Tailwind colour classes NOT covered
+  by the pdash bridge. English already (no Hinglish).
+- **Emoji → lucide:** 🧾 Pre-buy Inventory → ReceiptText; ⚠ resale-risk note →
+  TriangleAlert; ⇄ (On exchange / List on exchange / B2B Exchange / Exchange
+  trades) → ArrowLeftRight; ➕ List your own inventory → Plus; 🛒 Buy from the
+  exchange → ShoppingCart.
+- **Off-bridge colours fixed:** `STATUS_STYLE` used `slate`/`rose` (neither in the
+  pdash bridge) → `slate`→`luxury`, `rose`→`red` (both flip); added a
+  `STATUS_FALLBACK` const to replace the two inline `bg-slate-100` fallbacks; the
+  auto-markdown badges `bg-rose-100/50`→`bg-red-100/50`; the empty-state
+  `text-slate-500`→`text-luxury-500`. Indigo/emerald/amber/blue badges already
+  bridge-covered — untouched.
+- **KEEP:** the "Sold ✓" status ticks + the copied/acquired/listed toast ticks
+  (content), and every `var(--accent)` CTA button (token-themed, both modes).
+- Badge v664→**v665** (`SB_BUILD v665-partner-circle-inventory`), sw `HTML_CACHE`
+  v461→**v462**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **55/55** —
+  all four B2B panels (inventory blocks · exchange listings · buy-from-exchange ·
+  exchange trades) + own-inventory form @ 320/360/390/768/1280 × LIGHT/DARK, zero
+  h-overflow, chrome emoji gone, status badges present, token card bg dark avg=34.
+- **14 rules honoured:** presentation-only (no quote/buy/list/withdraw/trade money
+  logic touched — every Razorpay path byte-identical, security 385/0), light+dark
+  perfect, strict responsive to 320px, measured verify. **Circle partner tabs
+  COMPLETE (3/3).** NEXT: PartnerContentTab / PartnerPassportTab → shared modals
+  (ServiceLockModal / RoomEditorModal / SubscriptionBillingModal / …).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
