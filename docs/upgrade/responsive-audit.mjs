@@ -51,6 +51,8 @@ const HOTELS = [
   {id:'h2',name:'Ridge Retreat',city:'Mussoorie',state:'UK',starRating:5,images:['x'],image:'x',fromPrice:3200,cheapestPrice:3200,rooms:[{id:'r2',name:'Suite'}]},
   {id:'h3',name:'Riverside Camp',city:'Rishikesh',state:'UK',starRating:3,images:['x'],image:'x',fromPrice:1800,cheapestPrice:1800,rooms:[{id:'r3',name:'Tent'}]},
 ];
+const CIRCLE_PROPS = { cities:['Dehradun'], properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',locationLabel:'Rajpur, Dehradun',images:[],monthlyRate:30000,roiMin:15,roiMax:28,occupancyLabel:'High',badges:['Trending'],operationModel:'managed',status:'open',roomTypes:[{id:'r1',name:'Deluxe',monthlyRate:30000,availableUnits:3}]}] };
+const CIRCLE_PORTFOLIO = { ownedBlocks:2, activeListings:1, inventoryValue:60000, b2bNetEarned:12000, payoutsReceived:4400, blocks:[{id:'b1',hotel_name:'Cave View',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,status:'owned'}], listings:[], trades:[], operatedHotels:[{id:'h1',name:'Cave View Resort'}] };
 const ROUTES = [
   { route:'/', scope:'body',
     fixtures:{
@@ -80,6 +82,30 @@ const ROUTES = [
     fixtures:{ 'b2b/marketplace': { listings:[{id:'l1',hotel_name:'Cave View',hotel_city:'Dehradun',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,ask_total:9000}] } } },
   { route:'/admin/host', scope:'body', admin:true,
     fixtures:{ 'admin/host':{ kpis:{leads:3,leadsNew:1,portfolios:2,portfoliosActive:1,portfolioRevenue:1000,propertySubmissions:2,propertySubmissionsPending:1,inquiries:1,inquiriesNew:1,projects:1,orders:1,storeGmv:1,jobs:1,jobsActive:1,workforceRevenue:1,channels:1,channelsNew:1}, leads:[], portfolios:[], propertySubmissions:[], inquiries:[], projects:[], orders:[], jobs:[], channels:[] } } },
+
+  // ── Circle remaining pages (signed-in investor) ──────────────────────────
+  { route:'/circle/discover', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS, 'circle/locks':{locks:[{property_id:'p1'}]} } },
+  { route:'/circle/build', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}',sb_circle_build_v1:'{"propertyId":"p1","rooms":[{"roomTypeId":"r1","qty":1}]}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS, 'circle/revenue-config':{ config:{ occupancyPct:70, adr:4200 } } } },
+  { route:'/circle/me', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/me':{ bundles:[], payouts:[], locks:[] }, 'circle/portfolio':CIRCLE_PORTFOLIO, 'circle/city-access':{ activeCities:['Dehradun'], cityAccessPrice:999 }, 'circle/revenue-config':{ config:{occupancyPct:70,adr:4200} } } },
+  { route:'/circle/earnings', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/me':{ bundles:[], payouts:[{id:'py1',amount:4400,status:'paid',month:'2026-07'}], locks:[] }, 'circle/payout-account':{ account:{type:'upi',upi:'asha@okhdfc',status:'verified'} }, 'circle/projected-earnings':{ projectedNetOwed:5600, projectedGross:6400, bookingCount:2, nightsCount:5, feePct:12, items:[] } } },
+  { route:'/circle/kyc', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/kyc':{ status:'pending', kyc:null } } },
+  { route:'/circle/onboard', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/onboard':{ ok:true, application:null } } },
+  { route:'/circle/profile', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678","email":"asha@example.com"}'}, fixtures:{} },
+  { route:'/circle/support', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'}, fixtures:{} },
+  { route:'/circle/demand-cycle', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS } },
+  { route:'/circle/model2', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS } },
+  { route:'/circle/model2/review', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}',sb_m2_basket_v1:'[{"listingId":"l1","hotelName":"Cave View","roomName":"Deluxe","city":"Dehradun","dates":["2026-08-01","2026-08-02"],"buyPerNight":2000}]'},
+    fixtures:{ 'circle/city-access':{ activeCities:['Dehradun'], cityAccessPrice:999 }, 'b2b/market-quote':{ window:true, blocked:[], ownPerNight:1000, buyPerNight:2000, buyerFeePct:5, market:{adr:2800,low:2400,high:3200} } } },
+  { route:'/circle/model2/selling', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/portfolio':CIRCLE_PORTFOLIO } },
 
   // ── Partner surface ──────────────────────────────────────────────────────
   { route:'/partner', scope:'body', fixtures:{} },
@@ -160,7 +186,12 @@ for (const cfg of ROUTES) {
         const de = document.documentElement;
         const overflow = de.scrollWidth > de.clientWidth + 1 ? { s:de.scrollWidth, c:de.clientWidth } : null;
         // helpers
-        const P=(str)=>{ if(!str)return null; const m=String(str).match(/rgba?\(([^)]+)\)/); if(!m)return null; const p=m[1].split(',').map(x=>parseFloat(x.trim())); return {r:p[0],g:p[1],b:p[2],a:p[3]===undefined?1:p[3]}; };
+        const P=(str)=>{ if(!str)return null; str=String(str);
+          // modern CSS color(srgb r g b / a) — values 0..1, space-separated (Tailwind 4 / color-mix output).
+          // The old rgb-only regex dropped these layers → mis-composited light text onto a white fallback.
+          const cs=str.match(/color\(srgb\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)(?:\s*\/\s*([0-9.]+))?\)/);
+          if(cs){ return {r:parseFloat(cs[1])*255, g:parseFloat(cs[2])*255, b:parseFloat(cs[3])*255, a:cs[4]===undefined?1:parseFloat(cs[4])}; }
+          const m=str.match(/rgba?\(([^)]+)\)/); if(!m)return null; const p=m[1].split(/[,\/]/).map(x=>parseFloat(x.trim())); return {r:p[0],g:p[1],b:p[2],a:p[3]===undefined?1:p[3]}; };
         const bodyBg = P(getComputedStyle(document.body).backgroundColor) || {r:255,g:255,b:255,a:1};
         const emoji=[], tooWide=[], tiny=[];
         const RE=/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}✅✔✖]/gu;
