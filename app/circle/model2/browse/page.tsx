@@ -162,11 +162,11 @@ export default function Model2BrowsePage() {
 
       <style jsx global>{`
         .sbc2b { padding-bottom: 96px; }
-        .sbc2b-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0 12px; }
+        .sbc2b-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(126px, 45%), 1fr)); gap: 8px; margin: 16px 0 12px; }
         .sbc2b-step { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid rgba(139,105,20,.16); border-radius: 12px; padding: 9px 10px; }
         .sbc2b-step-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--sbc-gold-deep); color: #fff; font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
         .sbc2b-step-t { font-size: .78rem; font-weight: 800; color: var(--sbc-coffee); line-height: 1.1; }
-        .sbc2b-step-d { font-size: .62rem; color: rgba(74,56,32,.6); }
+        .sbc2b-step-d { font-size: .64rem; color: rgba(74,56,32,.72); }
         .sbc2b-kpis { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 8px; }
         .sbc2b-kpi { font-size: .7rem; font-weight: 700; color: rgba(74,56,32,.8); background: rgba(139,105,20,.08); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 5px 11px; }
         .sbc2b-kpi-gold { color: #fff; background: var(--sbc-gold-deep); border-color: var(--sbc-gold-deep); }

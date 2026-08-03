@@ -2033,6 +2033,29 @@
 - NEXT: fix the shared `CircleChrome` (topbar + footer) at the full matrix — footer container max-width
   + narrow-grid + line-length cap + topbar contrast/font — then re-verify the circle pages WITH chrome.
 
+### 2026-08-03 — Session 6 cont. (v688 — Circle shared-chrome dark-fix + honest scope correction)
+- **Real dark-mode bug fixed:** on NON-dark circle routes the cream `.sbc-topbar` bg flips DARK in dark
+  theme (existing rule) but its nav text stayed dark-walnut → **invisible (~1.5:1)**. Added
+  `[data-theme=dark] .sbc-topbar:not(--dark)` light text for nav links / brand name+em / brand-sub /
+  brand-mark / CTA. Affects every non-dark circle route's topbar in dark mode.
+- **Footer ultra-wide:** `.sbc-footer-bar` had no cap → the disclosure line spanned 1536–2560px.
+  Added `max-width:80rem; margin:0 auto` + bumped its colour .45→.62 alpha (contrast).
+- **Fonts:** `.sbc-brand-sub` 9px→.66rem (+alpha .6→.72); browse's own styled-jsx `.sbc2b-step-d`
+  .62rem→.64rem (+alpha) and the 4-col `.sbc2b-steps` strip → `repeat(auto-fit,minmax(min(126px,45%),1fr))`
+  (fixed the 426px 280-overflow).
+- **VERIFIED (MEASURED, body-scope so shared chrome is included):** OVERFLOW and ultra-wide line-stretch
+  (WIDE) are now GONE on all circle pages. ✓
+- **⚠ HONEST SCOPE CORRECTION:** switching the harness to `body` scope (so it never misses shared chrome)
+  surfaced the **bottom `CircleDock`** — labels rendered at **7.4–7.7px** (a `.46rem` override) with
+  **1.78 contrast** — which my earlier PAGE-SCOPED circle audits never measured. So the earlier
+  RESP ✓ for `/circle`, `/circle/dashboard`, `/circle/model3`, `/circle/model4` were scope-incomplete;
+  **downgraded them to ⏳ (dock)**. Matrix now **RESP 3/139** (admin only — honest).
+- Badge v687→**v688** (`SB_BUILD v688-circle-chrome-darkfix`), sw `HTML_CACHE` v483→**v484**.
+- **Gates:** tsc 0 · build 0 · security 385/0. Circle overflow/stretch fixed + verified; dock is the
+  last shared-chrome blocker.
+- NEXT: fix the shared `CircleDock` (mobile bottom nav) — label font ≥10px within the 5-item 280px
+  constraint + inactive-label/icon contrast — then re-verify all circle pages green (with chrome+dock).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

@@ -41,9 +41,9 @@ function comp(fg,bg){const a=fg.a;return {r:fg.r*a+bg.r*(1-a),g:fg.g*a+bg.g*(1-a
 // { route, scope (CSS root of the surface), auth?, ls?, fixtures: {urlSubstr: json} }
 const GENERIC = { ok:true, config:null, locks:[], properties:[], tables:[], creators:[], users:[], bookings:[], rows:[] };
 const ROUTES = [
-  { route:'/circle', scope:'.sbc-home', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
+  { route:'/circle', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
     fixtures:{ 'circle/properties': { cities:['Dehradun'], properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',locationLabel:'Rajpur, Dehradun',images:[],monthlyRate:30000,roiMin:15,roiMax:28,occupancyLabel:'High',badges:['Trending'],operationModel:'managed',status:'open',roomTypes:[{id:'r1',name:'Deluxe',monthlyRate:30000,availableUnits:3}]}] } } },
-  { route:'/circle/dashboard', scope:'.sbc-dash', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}',sb_circle_locks_v1:'["p1"]'},
+  { route:'/circle/dashboard', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}',sb_circle_locks_v1:'["p1"]'},
     fixtures:{ 'circle/properties':{properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',images:[],monthlyRate:30000,roiMin:15,roiMax:28,status:'open',roomTypes:[{id:'r1',monthlyRate:30000}]}]}, 'owned-summary':{ownsUnits:true,unitCount:2,hotelCount:1}, 'locks':{locks:[{property_id:'p1'}]} } },
   { route:'/admin/reports', scope:'body', admin:true,
     fixtures:{ 'admin':{ kpis:{}, ledger:[], payouts:[], bookings:[], holds:[], hotels:[], topCreators:[], codes:[], complaints:[], feedback:[], flags:[], users:[], creators:[] } } },
@@ -51,9 +51,9 @@ const ROUTES = [
     fixtures:{ 'admin/rls':{ serviceRole:true, tables:[{table:'users',rls_enabled:true,policy_count:2,policies:[]},{table:'bookings',rls_enabled:true,policy_count:1,policies:[]},{table:'otp_codes',rls_enabled:false,policy_count:0,policies:[]}] } } },
   { route:'/circle/model2/browse', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
     fixtures:{ 'city-access':{ activeCities:[], cityAccessPrice:999 }, 'b2b/marketplace':{ listings:[{id:'l1',listing_id:'l1',hotel_id:'h1',hotel_name:'Cave View',hotel_city:'Dehradun',city:'Dehradun',room_name:'Deluxe',buy_per_night:2000,market:{adr:2800,low:2400,high:3200}}] } } },
-  { route:'/circle/model3', scope:'.sbc-home',
+  { route:'/circle/model3', scope:'body',
     fixtures:{ 'circle/marketplace': { hotels:[{id:'h1',name:'Cave View Resort',city:'Dehradun',state:'UK',starRating:4,image:null,fromWholesale:2100,rooms:[{id:'r1',name:'Deluxe',type:'deluxe',image:null,capacity:2,fromWholesale:2100}]}] } } },
-  { route:'/circle/model4', scope:'.sbc-home',
+  { route:'/circle/model4', scope:'body',
     fixtures:{ 'b2b/marketplace': { listings:[{id:'l1',hotel_name:'Cave View',hotel_city:'Dehradun',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,ask_total:9000}] } } },
   { route:'/admin/host', scope:'body', admin:true,
     fixtures:{ 'admin/host':{ kpis:{leads:3,leadsNew:1,portfolios:2,portfoliosActive:1,portfolioRevenue:1000,propertySubmissions:2,propertySubmissionsPending:1,inquiries:1,inquiriesNew:1,projects:1,orders:1,storeGmv:1,jobs:1,jobsActive:1,workforceRevenue:1,channels:1,channelsNew:1}, leads:[], portfolios:[], propertySubmissions:[], inquiries:[], projects:[], orders:[], jobs:[], channels:[] } } },

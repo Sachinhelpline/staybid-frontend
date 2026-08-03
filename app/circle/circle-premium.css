@@ -73,8 +73,8 @@
 }
 .sbc-brand-name em { font-style: italic; color: var(--sbc-gold-deep); }
 .sbc-brand-sub {
-  display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .22em;
-  color: rgba(74, 56, 32, 0.6);
+  display: block; font-size: .66rem; text-transform: uppercase; letter-spacing: .22em;
+  color: rgba(74, 56, 32, 0.72);
 }
 .sbc-topnav { display: flex; align-items: center; gap: 4px; font-size: .85rem; }
 .sbc-topnav-link {
@@ -435,8 +435,9 @@
 .sbc-footer a { color: rgba(176, 192, 209,.75); text-decoration: none; }
 .sbc-footer a:hover { color: #dfe5ea; }
 .sbc-footer-bar {
+  max-width: 80rem; margin: 0 auto;
   border-top: 1px solid rgba(176, 192, 209,.12); padding: 14px 20px; text-align: center;
-  font-size: .72rem; color: rgba(176, 192, 209,.45);
+  font-size: .72rem; color: rgba(176, 192, 209,.62);
 }
 
 /* ---------- reduced motion ---------- */
@@ -2780,6 +2781,17 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   background: color-mix(in srgb, var(--sbc-c-bg) 84%, transparent);
   border-bottom-color: var(--sbc-c-line);
 }
+/* v688 — the CREAM topbar's bg flips DARK in dark theme (rule above), so its
+   text (dark walnut by default) became invisible. Flip the text light too.
+   The explicit .sbc-topbar--dark variant already handles its own colours. */
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-link { color: rgba(198, 210, 224, 0.85); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-link:hover,
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-link.on { background: rgba(106, 133, 160, 0.28); color: #f5f7f9; }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-name { color: #f1f4f6; }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-name em { color: var(--sbc-gold-2); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-sub { color: rgba(198, 210, 224, 0.68); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-mark { color: var(--sbc-gold-2); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-cta { color: var(--sbc-walnut); }
 /* Bottom step-nav dock (v294.15 re-skinned it to cream rgba(176, 192, 209,.92)). */
 [data-theme="dark"] .sbc .sbc-dock {
   background: color-mix(in srgb, var(--sbc-c-bg) 90%, transparent);
