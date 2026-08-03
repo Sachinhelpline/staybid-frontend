@@ -1807,6 +1807,26 @@
   2 real fixes**, lucide, content ticks/dots kept. NEXT: admin pages — content / creators /
   host / rls / reports (the large remaining ones), 1–2 per batch.
 
+### 2026-08-03 — Session 6 cont. (v678 — admin page: Content Reviews)
+- **Admin pages sweep, batch 9** — the Content Reviews moderation page (707 lines),
+  dark-only.
+- **Content (`app/admin/content`):** 🖼️→Images heading; ↻→RotateCw; the verification
+  badges 🎫/📍 → lucide Ticket/MapPin rendered by `verification_method` (label strings
+  stripped to plain text); 🏨→Building2 hotel marker; ⚠ Escalated → TriangleAlert; the four
+  action buttons ✓/✕/🚩/🗑 → Check/X/Flag/Trash2 (inline-flex).
+- **Contrast fixes** — `COLORS.textMuted` `#5A6175` (≈3:1 — the Delete-button text + dim
+  metadata) → `#808698`; `COLORS.red` `#FF4757` (Reject on its red tint, ~4.3:1) → `#FF6B7A`.
+  Min now **4.89:1**.
+- **CONTRAST + EMOJI (owner ask — MEASURED, 5 widths, gradient-aware + emoji-in-DOM scan):**
+  every text clears WCAG AA — min **4.89:1**; **zero emoji glyphs** in the rendered DOM;
+  zero overflow to 320px.
+- Badge v677→**v678** (`SB_BUILD v678-admin-page-content`), sw `HTML_CACHE` v474→**v475**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **5/5**.
+- **14 rules honoured:** presentation-only (no content-moderation/verdict logic touched —
+  security 385/0), dark-only, strict responsive to 320px, measured verify **incl. contrast +
+  2 real fixes**, lucide, content ticks kept. NEXT: admin pages — creators / host / rls /
+  reports (the remaining large ones), 1 per batch.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
