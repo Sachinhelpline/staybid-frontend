@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ShoppingBasket, Link as LinkIcon, Globe } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
@@ -244,7 +245,7 @@ export default function CircleMePage() {
               <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Investment Bundles</h2>
               {bundles.length === 0 ? (
                 <div className="sbc-panel" style={{ padding: 30, textAlign: "center" }}>
-                  <div style={{ fontSize: 30 }}>🧺</div>
+                  <div style={{ fontSize: 30, lineHeight: 0 }}><ShoppingBasket size={30} aria-hidden /></div>
                   <p style={{ marginTop: 6, color: "rgba(74,56,32,.7)" }}>No bundles yet — build your first bundle and start earning.</p>
                   <Link href="/circle/build" className="sbc-btn-gold" style={{ marginTop: 14 }}>Build Your First Bundle →</Link>
                 </div>
@@ -295,7 +296,7 @@ export default function CircleMePage() {
               </p>
               {payouts.length === 0 ? (
                 <div className="sbc-panel" style={{ padding: 24, color: "rgba(74,56,32,.65)", fontSize: ".88rem" }}>
-                  Pehla payout aapke bundle ke pehle complete month ke baad yahan dikhega. 💰
+                  Pehla payout aapke bundle ke pehle complete month ke baad yahan dikhega.
                 </div>
               ) : (
                 <div className="sbc-panel" style={{ padding: 8, marginTop: 12 }}>
@@ -378,7 +379,7 @@ export default function CircleMePage() {
                   <div>
                     <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>My Selling Inventory <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
                     <p style={{ fontSize: ".72rem", lineHeight: 1.5, color: "rgba(74,56,32,.6)", margin: "4px 0 0" }}>
-                      The room-nights you own — sell them <b>your way</b>: 🏠 on the StayBid guest feed, ⇄ on the B2B exchange, 🌐 through your own OTA listings (Channel Manager), or 🔗 a direct booking link you share.
+                      The room-nights you own — sell them <b>your way</b>: 🏠 on the StayBid guest feed, ⇄ on the B2B exchange, <Globe size={13} aria-hidden style={{display:"inline",verticalAlign:"-2px"}} /> through your own OTA listings (Channel Manager), or <LinkIcon size={13} aria-hidden style={{display:"inline",verticalAlign:"-2px"}} /> a direct booking link you share.
                     </p>
                     <p style={{ fontSize: ".66rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "2px 0 0" }}>{CIRCLE_RESALE_RISK_NOTE}</p>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
@@ -404,7 +405,7 @@ export default function CircleMePage() {
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
                                 <button onClick={() => copyDirect(b)}
                                   style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
-                                  {copiedId === b.id ? "🔗 Copied!" : "🔗 Direct link"}
+                                  {copiedId === b.id ? <><LinkIcon size={13} aria-hidden style={{verticalAlign:"-2px",marginRight:3}} />Copied!</> : <><LinkIcon size={13} aria-hidden style={{verticalAlign:"-2px",marginRight:3}} />Direct link</>}
                                 </button>
                                 <button onClick={() => bridgeToPartnerDashboard(user, "myrooms")}
                                   style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
@@ -416,7 +417,7 @@ export default function CircleMePage() {
                                 </button>
                                 <button onClick={() => bridgeToPartnerDashboard(user, "channels")}
                                   style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
-                                  🌐 Your OTA (Channel Manager)
+                                  <Globe size={14} aria-hidden style={{verticalAlign:"-2px",marginRight:4}} />Your OTA (Channel Manager)
                                 </button>
                               </div>
                             )}

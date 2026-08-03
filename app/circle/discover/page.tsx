@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { useReelFullscreen } from "@/lib/useReelFullscreen";
 import RoomTourBody from "@/components/circle/RoomTourBody";
+import { Settings, TrendingUp, Bell } from "lucide-react";
 import { fmtINR } from "@/lib/circle/engine";
 
 type RoomType = {
@@ -256,7 +257,7 @@ export default function CircleDiscoverPage() {
       {/* floating filter chip */}
       {!loading && (
         <button className="sbc-rfilter-chip" onClick={() => setFilterOpen(true)}>
-          <span>⚙</span>{filterLabel}<span style={{ opacity: .6 }}>▾</span>
+          <Settings size={13} aria-hidden style={{marginRight:3}} />{filterLabel}<span style={{ opacity: .6 }}>▾</span>
         </button>
       )}
 
@@ -330,7 +331,7 @@ export default function CircleDiscoverPage() {
             </div>
 
             <div className="sbc-sheet-grp">
-              <div className="sbc-sheet-grp-t">⚙ Operating model</div>
+              <div className="sbc-sheet-grp-t"><Settings size={13} aria-hidden style={{display:"inline",verticalAlign:"-2px",marginRight:3}} />Operating model</div>
               <div className="sbc-fbar-chips">
                 {MODELS.map((m) => (
                   <button key={m.key} className={`sbc-fbar-chip ${model === m.key ? "on" : ""}`} onClick={() => setModel(m.key)}>{m.label}</button>
@@ -507,9 +508,9 @@ function FullReel({
         <div className="sbc-rfull-bottom" onClick={(e) => e.stopPropagation()}>
           <div className="sbc-rfull-info">
             <div className="sbc-rfull-badges">
-              <span className="sbc-rfull-badge roi">📈 up to {p.roiMax}% ROI</span>
+              <span className="sbc-rfull-badge roi"><TrendingUp size={12} aria-hidden style={{display:"inline",verticalAlign:"-2px",marginRight:3}} />up to {p.roiMax}% ROI</span>
               {p.occupancyLabel && <span className="sbc-rfull-badge">🔥 {p.occupancyLabel}</span>}
-              <span className="sbc-rfull-badge">🛎 {p.operationModel === "managed" ? "Fully Managed" : MODEL_LABEL[p.operationModel] || p.operationModel}</span>
+              <span className="sbc-rfull-badge"><Bell size={12} aria-hidden style={{display:"inline",verticalAlign:"-2px",marginRight:3}} />{p.operationModel === "managed" ? "Fully Managed" : MODEL_LABEL[p.operationModel] || p.operationModel}</span>
             </div>
             <div className="sbc-rfull-title">{p.title}</div>
             <div className="sbc-rfull-sub">{p.roomsLabel || p.viewLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</div>
@@ -654,7 +655,7 @@ function RoomSelectSheet({
                   </button>
                   <div className="sbc-rsel-pinfo">
                     <b onClick={() => onOpenProperty(p.id)}>{p.title}</b>
-                    <span>📍 {p.city}{p.state ? `, ${p.state}` : ""} · 📈 {p.roiMin}–{p.roiMax}% ROI</span>
+                    <span>📍 {p.city}{p.state ? `, ${p.state}` : ""} · <TrendingUp size={12} aria-hidden style={{display:"inline",verticalAlign:"-2px",margin:"0 2px"}} />{p.roiMin}–{p.roiMax}% ROI</span>
                     {picked > 0 && <em>✓ {picked} room{picked > 1 ? "s" : ""} selected</em>}
                   </div>
                   <div className="sbc-rsel-pactions">
@@ -691,7 +692,7 @@ function RoomSelectSheet({
                           <button className="sbc-rsel-rthumb" onClick={() => toggleExpand(rt.id)} aria-label={`View ${rt.name} tour`}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={img} alt={rt.name} loading="lazy" />
-                            <span className="sbc-rsel-roi">📈 {roi}</span>
+                            <span className="sbc-rsel-roi"><TrendingUp size={12} aria-hidden style={{display:"inline",verticalAlign:"-2px",marginRight:3}} />{roi}</span>
                           </button>
                           <div className="sbc-rsel-rinfo">
                             <b>{rt.name}</b>

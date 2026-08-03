@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { MessageCircle, Mail, Wallet, CheckCircle2, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 
@@ -65,12 +66,12 @@ export default function CircleSupportPage() {
       {/* contact cards */}
       <div className="sbc-help-contacts">
         <a className="sbc-help-contact" href={wa("Hi StayCircle, I need help with my investment.")} target="_blank" rel="noopener noreferrer">
-          <span className="sbc-help-contact-ic">💬</span>
+          <span className="sbc-help-contact-ic"><MessageCircle size={18} aria-hidden /></span>
           <b>WhatsApp us</b>
           <span>Fastest — chat with the team</span>
         </a>
         <a className="sbc-help-contact" href="mailto:support@staybid.in?subject=StayCircle%20support">
-          <span className="sbc-help-contact-ic">✉️</span>
+          <span className="sbc-help-contact-ic"><Mail size={18} aria-hidden /></span>
           <b>Email us</b>
           <span>support@staybid.in</span>
         </a>
@@ -95,9 +96,9 @@ export default function CircleSupportPage() {
       <section className="sbc-dash-sec">
         <div className="sbc-dash-sec-h">Manage your account</div>
         <div className="sbc-dash-links">
-          <Link href="/circle/earnings" className="sbc-dash-link"><span>💰</span>Earnings &amp; payouts<em>›</em></Link>
-          <Link href="/circle/kyc" className="sbc-dash-link"><span>✅</span>KYC &amp; verification<em>›</em></Link>
-          <Link href="/circle/profile" className="sbc-dash-link"><span>⚙</span>Profile &amp; settings<em>›</em></Link>
+          <Link href="/circle/earnings" className="sbc-dash-link"><span><Wallet size={15} aria-hidden /></span>Earnings &amp; payouts<em>›</em></Link>
+          <Link href="/circle/kyc" className="sbc-dash-link"><span><CheckCircle2 size={15} aria-hidden /></span>KYC &amp; verification<em>›</em></Link>
+          <Link href="/circle/profile" className="sbc-dash-link"><span><Settings size={15} aria-hidden /></span>Profile &amp; settings<em>›</em></Link>
         </div>
       </section>
 
