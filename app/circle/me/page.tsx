@@ -389,7 +389,7 @@ export default function CircleMePage() {
                           <div key={b.id} className="sbc-panel" style={{ padding: 14 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                               <div style={{ minWidth: 0 }}>
-                                <span style={{ fontSize: ".62rem", fontWeight: 800, letterSpacing: ".06em", padding: "3px 9px", borderRadius: 999, background: t.bg, color: t.fg, textTransform: "uppercase" }}>{String(b.status).replace(/_/g, " ")}</span>
+                                <span style={{ fontSize: ".63rem", fontWeight: 800, letterSpacing: ".06em", padding: "3px 9px", borderRadius: 999, background: t.bg, color: t.fg, textTransform: "uppercase" }}>{String(b.status).replace(/_/g, " ")}</span>
                                 <div style={{ marginTop: 6, fontWeight: 700, color: "var(--sbc-coffee)", fontSize: ".9rem" }}>
                                   {b.hotel_name || "Property"} {b.unit_number ? `· #${b.unit_number}` : ""}
                                 </div>

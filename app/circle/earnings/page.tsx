@@ -147,12 +147,12 @@ export default function CircleEarningsPage() {
             <section style={{ marginTop: 14, border: "1px solid rgba(139,105,20,.22)", borderRadius: 16, overflow: "hidden", background: "linear-gradient(160deg,#fdfdfd,#f3f5f7)" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "13px 15px 0" }}>
                 <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}>📈 Projected from your live bookings</div>
-                <span style={{ fontSize: ".62rem", fontWeight: 800, color: "#65819c", background: "rgba(106,133,160,.16)", padding: "3px 9px", borderRadius: 999 }}>PREVIEW</span>
+                <span style={{ fontSize: ".63rem", fontWeight: 800, color: "#65819c", background: "rgba(106,133,160,.16)", padding: "3px 9px", borderRadius: 999 }}>PREVIEW</span>
               </div>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "8px 15px 4px" }}>
-                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>PROJECTED NET</div><b style={{ fontSize: "1.35rem", color: "#047857", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(projected.projectedNetOwed) || 0)}</b></div>
-                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>GROSS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(projected.projectedGross) || 0)}</b></div>
-                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>BOOKINGS · NIGHTS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)", fontVariantNumeric: "tabular-nums" }}>{Number(projected.bookingCount) || 0} · {Number(projected.nightsCount) || 0}</b></div>
+                <div><div style={{ fontSize: ".63rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>PROJECTED NET</div><b style={{ fontSize: "1.35rem", color: "#047857", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(projected.projectedNetOwed) || 0)}</b></div>
+                <div><div style={{ fontSize: ".63rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>GROSS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Number(projected.projectedGross) || 0)}</b></div>
+                <div><div style={{ fontSize: ".63rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>BOOKINGS · NIGHTS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)", fontVariantNumeric: "tabular-nums" }}>{Number(projected.bookingCount) || 0} · {Number(projected.nightsCount) || 0}</b></div>
               </div>
               <div style={{ display: "grid", gap: 6, padding: "6px 15px 4px" }}>
                 {(projected.items || []).slice(0, 6).map((it: any) => (
