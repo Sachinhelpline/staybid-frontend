@@ -34,7 +34,9 @@ const KEEP = new Set(['←','→','↗','↘','↩','⇅','⇄','↔','›','‹
   // home "The Stage" brand/content/season glyphs (hybrid keep)
   '❄️','🌸','☀️','🌧️','🍂','🛕','⚡','🎬','💎','✦','🧭','🌟','💚','✈️','🚗','❄','🌧','💫','🎯','🛂','◆',
   // reel/profile content-vocabulary: story-highlight covers + nav menu glyph (hybrid keep)
-  '🌄','🏖','🍜','🎒','☰','↺']);
+  '🌄','🏖','🍜','🎒','☰','↺',
+  // partner empty-state illustrations (36px, centred) + reload glyph (matches ↺) (hybrid keep)
+  '📭','🛟','↻']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
@@ -79,6 +81,25 @@ const ROUTES = [
   { route:'/admin/host', scope:'body', admin:true,
     fixtures:{ 'admin/host':{ kpis:{leads:3,leadsNew:1,portfolios:2,portfoliosActive:1,portfolioRevenue:1000,propertySubmissions:2,propertySubmissionsPending:1,inquiries:1,inquiriesNew:1,projects:1,orders:1,storeGmv:1,jobs:1,jobsActive:1,workforceRevenue:1,channels:1,channelsNew:1}, leads:[], portfolios:[], propertySubmissions:[], inquiries:[], projects:[], orders:[], jobs:[], channels:[] } } },
 
+  // ── Partner surface ──────────────────────────────────────────────────────
+  { route:'/partner', scope:'body', fixtures:{} },
+  { route:'/partner/dashboard', scope:'body',
+    ls:{sb_partner_token:'t', sb_partner_user:'{"id":"p1","name":"Cave View Owner","hotelId":"h1","hotel":{"id":"h1","name":"Cave View Resort","city":"Dehradun"}}', sb_partner_active_hotel:'h1'},
+    fixtures:{
+      'partner/hotel':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', state:'UK', starRating:4, ownerId:'p1', account_type:'hotel_owner', images:['x'], amenities:['Wi-Fi','Pool'], approval_status:'approved', rooms:[{id:'r1',name:'Deluxe',floorPrice:2400,basePrice:3200,capacity:2,totalRooms:6}], isOperator:false, ownedUnits:[] }, bookings:[{id:'bk1',status:'CONFIRMED',guestName:'Asha',roomName:'Deluxe',checkIn:'2026-09-10',checkOut:'2026-09-12',totalAmount:4800,numRooms:1}] },
+      'partner/hotels':{ hotels:[{id:'h1',name:'Cave View Resort',city:'Dehradun'}], count:1 },
+      'partner/bids':{ bids:[{id:'b1',status:'PENDING',guestName:'Rin',roomName:'Deluxe',bidAmount:2400,checkIn:'2026-09-10',checkOut:'2026-09-12',numRooms:1,createdAt:'2026-08-03 10:00:00'}] },
+      'partner/services':{ services:[{service_key:'bids',status:'active'},{service_key:'rooms',status:'active'}] },
+      'partner/calendar':{ ok:true, days:[] }, 'partner/room-units':{ units:[] }, 'partner/room-pricing':{ ok:true, config:{} },
+      'partner/complaints':{ complaints:[] }, 'partner/flash-deals':{ deals:[] }, 'partner/ota-feeds':{ feeds:[] },
+      'partner/content/pending':{ posts:[] }, 'partner/autopilot':{ mode:'hybrid' }, 'partner/walk-in':{ ok:true },
+    } },
+  { route:'/partner/staff', scope:'body',
+    ls:{sb_partner_token:'t', sb_partner_user:'{"id":"p1","name":"Cave View Owner","hotelId":"h1","hotel":{"id":"h1","name":"Cave View Resort","city":"Dehradun"}}'},
+    fixtures:{ 'partner/hotel':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', ownerId:'p1', rooms:[], isOperator:false, ownedUnits:[] }, bookings:[] } } },
+  { route:'/partner/verification', scope:'body',
+    ls:{sb_partner_token:'t', sb_partner_user:'{"id":"p1","name":"Cave View Owner","hotelId":"h1","hotel":{"id":"h1","name":"Cave View Resort","city":"Dehradun"}}'},
+    fixtures:{ 'partner/hotel':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', ownerId:'p1', rooms:[], isOperator:false, ownedUnits:[] }, bookings:[] } } },
   // ── Customer frontend (the main app) ─────────────────────────────────────
   { route:'/hotels', scope:'body',
     fixtures:{ 'hotels/scorecards':{ok:true,scores:{h1:{overall:8.6,tier:'gold'},h2:{overall:9.1,tier:'platinum'},h3:{overall:7.4,tier:'silver'}}}, 'hotels':{ok:true,hotels:HOTELS} } },
@@ -187,7 +208,7 @@ for (const cfg of ROUTES) {
       };
       const measure = async () => {
         await page.evaluate((th)=>document.documentElement.setAttribute('data-theme',th), theme);
-        await page.waitForTimeout(900);
+        await page.waitForTimeout(2000);
         return page.evaluate(EVAL_FN, { scope: cfg.scope, KEEParr:[...KEEP], MAX_LINE, FONT_FLOOR });
       };
       let r;

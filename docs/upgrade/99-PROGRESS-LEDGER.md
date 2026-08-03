@@ -19,6 +19,39 @@
 
 ## Session log
 
+### 2026-08-03 — Partner surface full-matrix pass (v691, shipped)
+**Scope:** the whole partner surface measured 280→2560px × light+dark — `/partner`, `/partner/dashboard`
+(multi-tab), `/partner/staff`, `/partner/verification`. Icons were already lucide (the `PICON` map +
+`pIcon()` render the quick-launch hub, KPI cards use lucide directly), so this was a responsive + contrast
+pass. All four routes now CLEAN.
+
+**Defects found (all MEASURED) + fixed:**
+- **Font-floor:** every sub-0.63rem label across the partner surface (`text-[0.50–0.62rem]`, ~15 files —
+  dashboard + all tab components) bumped to the 10px floor (`text-[0.63rem]`+). CA avatar initials 9.9px→10.56.
+- **Light-theme muted-text contrast (root cause):** the `text-luxury-*` remap was scoped to `.lux-bg`/`.fd-root`
+  only, so on `.pdash-root` the raw `#9caec0`/`#8a7e68` rendered and failed WCAG (empty-states 2.28, KPI labels
+  3.85, chevrons 1.5, loading 3.78). Extended the remap to `.pdash-root` (both themes; the dark
+  `[data-theme=dark] .pdash-root` rules keep higher specificity in dark). Wrapped the loading + verification
+  early-return screens in `.pdash-root` so the remap reaches them.
+- **Dark-theme card contrast:** the Overview KPI values/icons carry inline semantic colours tuned for the light
+  card → below WCAG on the dark card bg. Forced KPI value→`--text-base` / icon→`--text-soft` in dark (label +
+  icon-chip keep the meaning). Hub-tile hints (inline `h.c`) dropped to the remapped `text-luxury-600` at source
+  (guaranteed, no CSS-override battle) — readable in both themes.
+- Redeem tile pewter `#8198ae`→`#4a6076` (icon-contrast 2.83→pass); "View all →" gold-600→gold-700 (4.18→pass);
+  stray 📷 dropped from the redeem hint.
+- Verification emoji: the empty-state illustrations (📭/🎬/🛟, 36px centred) + the `↻` reload glyph KEPT as
+  content/illustration vocabulary (consistent with the already-kept 🎬/✨/↺) rather than half-converting.
+
+**Harness:** settle wait 900→2000ms (data-heavy dashboards were measured mid-load); partner routes + fixtures
+added (fixture carries `.hotel` so verification renders its real UI, not the no-hotel state); KEEP set grew the
+partner empty-state glyphs. Same NAVERR-retry hardening from v690.
+
+**Env note (again):** CSS/Tailwind-JIT hot-reload proved unreliable across this pass — several "fix not applying"
+rounds were stale-CSS, resolved by restarting `next dev`. Source-level fixes (dropping inline colours) were
+preferred where a CSS override kept losing.
+
+Gates: `tsc` 0 · `next build` 0 · `test:security` 385/0. Badge **v691**, sw HTML_CACHE **v487**.
+
 ### 2026-08-03 — Customer frontend full-matrix pass (v690, shipped)
 **Scope:** the whole customer frontend measured across the full device matrix (280→2560px ×
 light+dark) with `docs/upgrade/responsive-audit.mjs` — home `/`, `/hotels`, `/hotels/[id]`,

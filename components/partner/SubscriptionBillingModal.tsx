@@ -117,7 +117,7 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <div>
             <p className="font-display text-lg text-luxury-900 inline-flex items-center gap-1.5" style={{ fontWeight: 500 }}><ReceiptText size={17} strokeWidth={2.2} aria-hidden />Subscription Billing</p>
-            <p className="text-[0.62rem] text-luxury-500">Your service payments and receipts</p>
+            <p className="text-[0.66rem] text-luxury-500">Your service payments and receipts</p>
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center"><X size={16} strokeWidth={2.4} aria-hidden /></button>
@@ -152,12 +152,12 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
                           <p className="text-[0.8rem] font-bold text-luxury-900 truncate">
                             {payTitle(p)} <span className="text-luxury-500 font-medium">· {PLAN_LABEL[p.plan] || p.plan}</span>
                           </p>
-                          <p className="text-[0.6rem] text-luxury-500 truncate">{payServices(p)}</p>
-                          <p className="text-[0.6rem] text-luxury-400 mt-0.5">{fmtDate(p.paid_at || p.created_at)}</p>
+                          <p className="text-[0.63rem] text-luxury-500 truncate">{payServices(p)}</p>
+                          <p className="text-[0.63rem] text-luxury-400 mt-0.5">{fmtDate(p.paid_at || p.created_at)}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-[0.86rem] font-bold text-gold-700">{fmtCur(p.amount)}</p>
-                          <span className={`text-[0.55rem] font-bold px-1.5 py-0.5 rounded-full ${
+                          <span className={`text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full ${
                             paid ? "bg-emerald-50 text-emerald-700" : p.status === "failed" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
                             {paid ? "PAID" : String(p.status || "").toUpperCase()}
                           </span>

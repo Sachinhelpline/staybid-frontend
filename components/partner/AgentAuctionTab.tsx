@@ -322,15 +322,15 @@ export default function AgentAuctionTab({
               className="w-full accent-gold-500" />
             <div className="grid grid-cols-3 gap-2 mt-2 text-center">
               <div className="rounded-lg bg-white border border-luxury-100 px-2 py-1.5">
-                <div className="text-[0.56rem] font-bold text-luxury-400 tracking-wide">{floorMode === "dynamic" && spineAdr ? "MARKET ADR (LIVE)" : "RETAIL FLOOR"}</div>
+                <div className="text-[0.63rem] font-bold text-luxury-400 tracking-wide">{floorMode === "dynamic" && spineAdr ? "MARKET ADR (LIVE)" : "RETAIL FLOOR"}</div>
                 <div className="text-[0.9rem] font-extrabold text-luxury-900">{inr(floorMode === "dynamic" && spineAdr ? spineAdr : retailFloor)}</div>
               </div>
               <div className="rounded-lg bg-white border border-gold-200 px-2 py-1.5">
-                <div className="text-[0.56rem] font-bold text-luxury-400 tracking-wide">YOUR FLOOR</div>
+                <div className="text-[0.63rem] font-bold text-luxury-400 tracking-wide">YOUR FLOOR</div>
                 <div className="text-[0.9rem] font-extrabold text-gold-700">{effFloor != null ? inr(effFloor) : "—"}</div>
               </div>
               <div className="rounded-lg bg-white border border-luxury-100 px-2 py-1.5">
-                <div className="text-[0.56rem] font-bold text-luxury-400 tracking-wide">SAFETY ANCHOR</div>
+                <div className="text-[0.63rem] font-bold text-luxury-400 tracking-wide">SAFETY ANCHOR</div>
                 <div className="text-[0.9rem] font-extrabold text-luxury-900">{inr(ceil100(retailFloor * minFloorFraction))}</div>
               </div>
             </div>

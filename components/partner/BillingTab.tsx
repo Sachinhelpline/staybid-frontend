@@ -261,12 +261,12 @@ export default function BillingTab({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{f.guest_name}</p>
-                    <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                    <span className={`text-[0.63rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
                       online ? "bg-blue-100 text-blue-700" : "bg-luxury-100 text-luxury-500"}`}>
                       {online ? <Globe size={9} strokeWidth={2.6} aria-hidden /> : <Footprints size={9} strokeWidth={2.6} aria-hidden />}
                       {online ? "Online" : "Walk-in"}
                     </span>
-                    <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
+                    <span className={`text-[0.63rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
                       f.status === "settled" ? "bg-emerald-100 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
                       {f.status}
                     </span>
@@ -277,7 +277,7 @@ export default function BillingTab({
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[0.8rem] font-bold text-luxury-900">{fmtCur(t.total)}</p>
-                  <p className={`text-[0.6rem] font-semibold ${t.balance > 0 ? "text-red-700" : "text-emerald-700"}`}>
+                  <p className={`text-[0.63rem] font-semibold ${t.balance > 0 ? "text-red-700" : "text-emerald-700"}`}>
                     {t.balance > 0 ? `${fmtCur(t.balance)} due` : "Paid"}
                   </p>
                 </div>
@@ -339,7 +339,7 @@ function NewFolioModal({
     checkIn: todayISO(), checkOut: "",
   });
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
-  const lbl = "text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
+  const lbl = "text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
 
   async function go() {
     setErr("");
@@ -425,7 +425,7 @@ function NewFolioModal({
                         style={on ? { boxShadow: "0 0 0 1.5px #8198ae" } : undefined}>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[0.8rem] font-bold text-luxury-900">{b.guestName || `Guest …${String(b.customerId || "").slice(-4)}`}</span>
-                          {isToday && <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">TODAY CHECK-IN</span>}
+                          {isToday && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">TODAY CHECK-IN</span>}
                         </div>
                         <p className="text-[0.64rem] text-luxury-500">
                           {b.room?.name || b.room?.type || "Room"} · {fmtD(b.checkIn)} → {fmtD(b.checkOut)} · {n} night{n > 1 ? "s" : ""}
@@ -459,7 +459,7 @@ function NewFolioModal({
                 <div><label className={lbl}>Check-out</label>
                   <input type="date" value={f.checkOut} onChange={(e) => set("checkOut", e.target.value)} className="inp-p" /></div>
               </div>
-              <p className="text-[0.62rem] text-luxury-400">Walk-in bills are flexible — pick a room charge from the category and edit the price.</p>
+              <p className="text-[0.63rem] text-luxury-400">Walk-in bills are flexible — pick a room charge from the category and edit the price.</p>
             </>
           )}
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
@@ -580,12 +580,12 @@ function FolioDetail({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>{folio.guest_name}</p>
-            <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
+            <span className={`text-[0.63rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
               online ? "bg-blue-100 text-blue-700" : "bg-luxury-100 text-luxury-500"}`}>
               {online ? <Globe size={9} strokeWidth={2.6} aria-hidden /> : <Footprints size={9} strokeWidth={2.6} aria-hidden />}
               {online ? "Online booking" : "Walk-in"}
             </span>
-            <span className={`text-[0.52rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
+            <span className={`text-[0.63rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
               folio.status === "settled" ? "bg-emerald-100 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
               {folio.status}
             </span>
@@ -626,7 +626,7 @@ function FolioDetail({
                   <span className="flex-1 min-w-0 truncate text-luxury-800">
                     {x.label}
                     <span className="text-luxury-400"> · {x.qty}×{fmtCur(x.unit_price)}</span>
-                    {lockedRoom && <span className="text-[0.58rem] text-blue-600 font-bold"> · <Lock size={9} strokeWidth={2.6} aria-hidden className="inline align-[-1px]" /> booked</span>}
+                    {lockedRoom && <span className="text-[0.63rem] text-blue-600 font-bold"> · <Lock size={9} strokeWidth={2.6} aria-hidden className="inline align-[-1px]" /> booked</span>}
                   </span>
                   <span className="font-bold text-luxury-900">{fmtCur(x.amount)}</span>
                   {lockedRoom ? (
@@ -641,7 +641,7 @@ function FolioDetail({
         )}
 
         {online && (
-          <p className="text-[0.62rem] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 mb-2 flex items-start gap-1.5">
+          <p className="text-[0.63rem] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 mb-2 flex items-start gap-1.5">
             <Globe size={12} strokeWidth={2.4} aria-hidden className="mt-0.5 shrink-0" />
             <span>Online booking — room category &amp; booked amount are locked. You can only add extra charges (food, laundry…).</span>
           </p>
@@ -673,7 +673,7 @@ function FolioDetail({
           <button onClick={addItem} className="btn-gold px-3! py-1.5!">Add</button>
         </div>
         {c.kind === "room" && !online && (
-          <p className="text-[0.6rem] text-luxury-400 mt-1">Pick a room category — the price auto-fills, and you can still edit it on a walk-in bill (flexible).</p>
+          <p className="text-[0.63rem] text-luxury-400 mt-1">Pick a room category — the price auto-fills, and you can still edit it on a walk-in bill (flexible).</p>
         )}
       </div>
 
@@ -713,7 +713,7 @@ function FolioDetail({
                 className="inp-p py-0.5! px-1.5! text-[0.72rem]" style={{ width: "auto" }}>
                 {GST_SLABS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
               </select>
-              {t.inclusive && <span className="text-[0.62rem] text-luxury-400">incl.</span>}
+              {t.inclusive && <span className="text-[0.63rem] text-luxury-400">incl.</span>}
             </span>
             <span className="font-semibold text-luxury-900">{fmtCur(t.tax)}</span>
           </div>
@@ -726,7 +726,7 @@ function FolioDetail({
             <span className="font-semibold text-red-600">− {fmtCur(t.discount)}</span>
           </div>
           <div className="flex items-center justify-between pt-1.5 border-t border-luxury-100">
-            <span className="font-bold text-luxury-900">Total {t.inclusive && <span className="text-[0.6rem] text-luxury-400 font-normal">(GST inside)</span>}</span>
+            <span className="font-bold text-luxury-900">Total {t.inclusive && <span className="text-[0.63rem] text-luxury-400 font-normal">(GST inside)</span>}</span>
             <span className="font-extrabold text-luxury-900 text-base">{fmtCur(t.total)}</span>
           </div>
           <Row k="Paid" v={fmtCur(t.paid)} />

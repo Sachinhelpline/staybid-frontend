@@ -191,10 +191,10 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{o.name}</p>
-                      {!o.active && <span className="text-[0.52rem] font-bold px-1.5 py-0.5 rounded-full bg-luxury-100 text-luxury-500">OFF</span>}
+                      {!o.active && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-luxury-100 text-luxury-500">OFF</span>}
                     </div>
-                    <p className="text-[0.62rem] text-luxury-500 inline-flex items-center gap-1"><meta.Ic size={11} strokeWidth={2.3} aria-hidden />{meta.label}</p>
-                    <code className="block mt-1.5 text-[0.56rem] bg-luxury-50 rounded-md px-1.5 py-1 text-luxury-500 truncate">{url}</code>
+                    <p className="text-[0.63rem] text-luxury-500 inline-flex items-center gap-1"><meta.Ic size={11} strokeWidth={2.3} aria-hidden />{meta.label}</p>
+                    <code className="block mt-1.5 text-[0.63rem] bg-luxury-50 rounded-md px-1.5 py-1 text-luxury-500 truncate">{url}</code>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
@@ -278,12 +278,12 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           <div>
-            <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Outlet name</label>
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Outlet name</label>
             <input value={name} onChange={(e) => setName(e.target.value)} autoFocus
               placeholder="e.g. Room Service · Rooftop Restaurant" className="inp-p" />
           </div>
           <div>
-            <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Type</label>
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Type</label>
             <div className="space-y-1.5">
               {Object.entries(OUTLET_TYPE).map(([k, m]) => {
                 const on = type === k;
@@ -295,7 +295,7 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
                       {on ? <CircleDot size={13} strokeWidth={2.4} aria-hidden /> : <Circle size={13} strokeWidth={2.2} aria-hidden />}
                       <m.Ic size={13} strokeWidth={2.3} aria-hidden />{m.label}
                     </p>
-                    <p className="text-[0.62rem] text-luxury-500 mt-0.5">{m.desc}</p>
+                    <p className="text-[0.63rem] text-luxury-500 mt-0.5">{m.desc}</p>
                   </button>
                 );
               })}
@@ -323,7 +323,7 @@ function OrdersSection({ orders, onVerify, onReject }: any) {
       <div className="flex items-center justify-between mb-2">
         <p className="text-[0.78rem] font-bold text-luxury-900">Incoming Food Orders</p>
         {pending.length > 0 && (
-          <span className="text-[0.6rem] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse">
+          <span className="text-[0.63rem] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse">
             {pending.length} pending
           </span>
         )}
@@ -365,9 +365,9 @@ function OrderCard({ o, pending, onVerify, onReject }: any) {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-[0.82rem] font-bold text-luxury-900 inline-flex items-center gap-1"><MapPin size={12} strokeWidth={2.4} aria-hidden />{o.location || "—"}</p>
-            <span className={`text-[0.52rem] font-bold px-1.5 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+            <span className={`text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
           </div>
-          <p className="text-[0.62rem] text-luxury-500">
+          <p className="text-[0.63rem] text-luxury-500">
             {o.outlet_name || "Menu"} · {fmtTime(o.created_at)}{o.guest_name ? ` · ${o.guest_name}` : ""}{o.guest_phone ? ` · ${o.guest_phone}` : ""}
           </p>
         </div>
@@ -380,7 +380,7 @@ function OrderCard({ o, pending, onVerify, onReject }: any) {
           </p>
         ))}
       </div>
-      {o.note && <p className="text-[0.62rem] text-blue-600 italic mt-1 inline-flex items-start gap-1"><StickyNote size={11} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" />{o.note}</p>}
+      {o.note && <p className="text-[0.63rem] text-blue-600 italic mt-1 inline-flex items-start gap-1"><StickyNote size={11} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" />{o.note}</p>}
       {pending && (
         <div className="flex gap-1.5 mt-2">
           <button onClick={() => onVerify(o)} className="btn-gold px-3! py-1.5! text-[0.72rem] flex-1 inline-flex items-center justify-center gap-1"><Check size={13} strokeWidth={2.6} aria-hidden />Verify &amp; Bill</button>
@@ -443,7 +443,7 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
             ))}
           </div>
 
-          <p className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest">Bill in folio</p>
+          <p className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest">Bill in folio</p>
           <div className="space-y-1.5">
             {/* new folio option */}
             <button type="button" onClick={() => setTarget("")}
@@ -453,7 +453,7 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
                 {target === "" ? <CircleDot size={13} strokeWidth={2.4} aria-hidden /> : <Circle size={13} strokeWidth={2.2} aria-hidden />}
                 <FilePlus size={13} strokeWidth={2.3} aria-hidden />New folio
               </p>
-              <p className="text-[0.62rem] text-luxury-500 mt-0.5">
+              <p className="text-[0.63rem] text-luxury-500 mt-0.5">
                 A new bill opens for {order.guest_name || `Room ${order.location || "—"}`}
               </p>
             </button>
@@ -469,9 +469,9 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
                       {on ? <CircleDot size={13} strokeWidth={2.4} aria-hidden /> : <Circle size={13} strokeWidth={2.2} aria-hidden />}
                       {f.guest_name || "Guest"}
                     </p>
-                    {suggested && <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">MATCH</span>}
+                    {suggested && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">MATCH</span>}
                   </div>
-                  <p className="text-[0.62rem] text-luxury-500 mt-0.5">{f.room_label || "—"}{f.guest_phone ? ` · ${f.guest_phone}` : ""}</p>
+                  <p className="text-[0.63rem] text-luxury-500 mt-0.5">{f.room_label || "—"}{f.guest_phone ? ` · ${f.guest_phone}` : ""}</p>
                 </button>
               );
             })}

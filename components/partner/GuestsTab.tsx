@@ -244,8 +244,8 @@ export default function GuestsTab({ bids, hotelId }: { bids: any[]; hotelId: str
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{g.name || "Guest"}</p>
-                  {g.vip && <span className="text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">★ VIP</span>}
-                  {g.repeat && <span className="text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Repeat</span>}
+                  {g.vip && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">★ VIP</span>}
+                  {g.repeat && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Repeat</span>}
                 </div>
                 <p className="text-[0.66rem] text-luxury-500 truncate">
                   {g.phone || "no phone"} · {g.stays} stay{g.stays !== 1 ? "s" : ""} · last {fmtD(g.last)}
@@ -283,8 +283,8 @@ function GuestDetail({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>{g.name || "Guest"}</p>
-              {g.vip && <span className="text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">★ VIP</span>}
-              {g.repeat && <span className="text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Repeat guest</span>}
+              {g.vip && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">★ VIP</span>}
+              {g.repeat && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Repeat guest</span>}
             </div>
             <p className="text-[0.7rem] text-luxury-500">{g.phone || "no phone"}{g.email ? ` · ${g.email}` : ""}</p>
           </div>
@@ -296,7 +296,7 @@ function GuestDetail({
             { k: "First seen", v: fmtD(g.first) },
           ].map((s) => (
             <div key={s.k} className="bg-luxury-50 rounded-lg px-2.5 py-1.5">
-              <p className="text-[0.56rem] text-luxury-400 uppercase tracking-wider font-bold">{s.k}</p>
+              <p className="text-[0.63rem] text-luxury-400 uppercase tracking-wider font-bold">{s.k}</p>
               <p className="text-[0.78rem] font-bold text-luxury-900 truncate">{s.v}</p>
             </div>
           ))}
@@ -351,10 +351,10 @@ function GuestDetail({
           <div className="space-y-1.5">
             {g.history.map((h: any, i: number) => (
               <div key={i} className="flex items-center gap-2.5 py-1 border-b border-luxury-50 last:border-0">
-                <span className="text-[0.56rem] font-bold px-1.5 py-0.5 rounded-sm bg-luxury-100 text-luxury-600 shrink-0">{h.kind}</span>
+                <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-sm bg-luxury-100 text-luxury-600 shrink-0">{h.kind}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[0.74rem] font-semibold text-luxury-800 truncate">{h.label}</p>
-                  <p className="text-[0.6rem] text-luxury-400">{fmtD(h.date)}</p>
+                  <p className="text-[0.63rem] text-luxury-400">{fmtD(h.date)}</p>
                 </div>
                 <p className="text-[0.76rem] font-bold text-luxury-900 shrink-0">{fmtCur(h.spend)}</p>
               </div>

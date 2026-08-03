@@ -178,7 +178,7 @@ function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle
   const s = SOURCE_STYLE[source || "direct"] || SOURCE_STYLE.direct;
   const label = source === "creator" && creatorHandle ? `via @${creatorHandle}` : s.label;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.62rem] font-bold ${s.bg} ${s.text}`} title={`Booking source: ${s.label}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.66rem] font-bold ${s.bg} ${s.text}`} title={`Booking source: ${s.label}`}>
       <s.Ic size={11} strokeWidth={2.2} aria-hidden />
       <span className="truncate max-w-[100px]">{label}</span>
     </span>
@@ -967,7 +967,7 @@ export default function PartnerDashboard() {
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-luxury-50 flex items-center justify-center">
+    <div className="min-h-screen bg-luxury-50 pdash-root flex items-center justify-center">
       <div className="text-center">
         <div className="w-12 h-12 rounded-full border-2 border-gold-400 border-t-transparent animate-spin mx-auto mb-4" />
         <p className="text-luxury-500 text-sm">Loading your dashboard…</p>
@@ -1126,7 +1126,7 @@ export default function PartnerDashboard() {
               style={{background:"radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)",boxShadow:"0 2px 8px rgba(106, 133, 160,0.4)"}}>S</div>
             <div className="min-w-0">
               <span className="font-display text-base text-white tracking-wide">StayBid</span>
-              <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
+              <span className="ml-1.5 text-[0.63rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
@@ -1152,7 +1152,7 @@ export default function PartnerDashboard() {
                     <div className="fixed inset-0 z-40" onClick={() => setSwitcherOpen(false)} />
                     <div className="absolute right-0 mt-1.5 z-50 w-64 rounded-xl overflow-hidden shadow-2xl"
                       style={{ background: "#1c140a", border: "1px solid rgba(140, 160, 182,0.22)" }}>
-                      <div className="px-3 py-2 text-[0.58rem] font-bold text-amber-400/70 uppercase tracking-[0.16em] border-b border-white/8">
+                      <div className="px-3 py-2 text-[0.63rem] font-bold text-amber-400/70 uppercase tracking-[0.16em] border-b border-white/8">
                         Your properties · {hotelList.length}
                       </div>
                       <div className="max-h-[60vh] overflow-y-auto py-1">
@@ -1172,7 +1172,7 @@ export default function PartnerDashboard() {
                               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${on ? "bg-amber-400" : "bg-white/25"}`} />
                               <span className="min-w-0 flex-1">
                                 <span className="block text-[0.8rem] font-semibold text-white truncate">{h.name}</span>
-                                <span className="block text-[0.62rem] text-white/45 truncate">
+                                <span className="block text-[0.66rem] text-white/45 truncate">
                                   {h.city || "—"}{isCircle ? " · Circle" : ""}
                                 </span>
                               </span>
@@ -1190,13 +1190,13 @@ export default function PartnerDashboard() {
                 partner reaches it via unit-ownership (isOperator), not ownerId,
                 so it's visibly distinct from a classic owner-run hotel. */}
             {hotel?.isOperator && (
-              <span className="hidden sm:flex items-center gap-1 text-[0.58rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap"
+              <span className="hidden sm:flex items-center gap-1 text-[0.63rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap"
                 title="This property is operated by StayBid — you manage your own rooms here">
                 <Hotel size={11} strokeWidth={2.4} aria-hidden /> Operated by StayBid
               </span>
             )}
             {pUser?.staffRole && (
-              <span className="text-[0.58rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-1 rounded-full uppercase tracking-wide">
+              <span className="text-[0.63rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-1 rounded-full uppercase tracking-wide">
                 {pUser.staffRole === "front_desk" ? "Front Desk" : pUser.staffRole === "housekeeping" ? "Housekeeping" : "Manager"}
               </span>
             )}
@@ -1209,7 +1209,7 @@ export default function PartnerDashboard() {
                 onClick={() => setAcctOpen((o) => !o)}
                 aria-label="Account menu"
                 title="Account"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0 border border-amber-400/40 hover:border-amber-300/70 transition-all"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[0.66rem] font-bold shrink-0 border border-amber-400/40 hover:border-amber-300/70 transition-all"
                 style={{background:"radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)"}}>
                 {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
               </button>
@@ -1223,16 +1223,16 @@ export default function PartnerDashboard() {
                         {pUser?.name || "Partner"}
                       </div>
                       {pUser?.phone && (
-                        <div className="text-[0.62rem] text-white/45 truncate">{pUser.phone}</div>
+                        <div className="text-[0.66rem] text-white/45 truncate">{pUser.phone}</div>
                       )}
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {hotel?.isOperator && (
-                          <span className="inline-flex items-center gap-1 text-[0.5rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                          <span className="inline-flex items-center gap-1 text-[0.63rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
                             <Hotel size={9} strokeWidth={2.6} aria-hidden /> Operated
                           </span>
                         )}
                         {pUser?.staffRole && (
-                          <span className="text-[0.5rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                          <span className="text-[0.63rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
                             {pUser.staffRole === "front_desk" ? "Front Desk" : pUser.staffRole === "housekeeping" ? "Housekeeping" : "Manager"}
                           </span>
                         )}
@@ -1414,7 +1414,7 @@ export default function PartnerDashboard() {
                     <PlaneLanding size={13} strokeWidth={2.3} aria-hidden /> Arriving Today
                   </p>
                   {checkInsToday.length === 0 ? (
-                    <p className="text-sm text-luxury-400 italic">No arrivals today</p>
+                    <p className="text-sm text-luxury-600 italic">No arrivals today</p>
                   ) : (
                     <div className="space-y-2">
                       {checkInsToday.map(b => (
@@ -1447,7 +1447,7 @@ export default function PartnerDashboard() {
                     <PlaneTakeoff size={13} strokeWidth={2.3} aria-hidden /> Departing Today
                   </p>
                   {checkOutsToday.length === 0 ? (
-                    <p className="text-sm text-luxury-400 italic">No departures today</p>
+                    <p className="text-sm text-luxury-600 italic">No departures today</p>
                   ) : (
                     <div className="space-y-2">
                       {checkOutsToday.map(b => (
@@ -1480,7 +1480,7 @@ export default function PartnerDashboard() {
                     <BedDouble size={13} strokeWidth={2.3} aria-hidden /> Staying Now
                   </p>
                   {inHouseToday.length === 0 ? (
-                    <p className="text-sm text-luxury-400 italic">No in-house guests</p>
+                    <p className="text-sm text-luxury-600 italic">No in-house guests</p>
                   ) : (
                     <div className="space-y-2">
                       {inHouseToday.slice(0,5).map(b => (
@@ -1519,7 +1519,7 @@ export default function PartnerDashboard() {
                   style={{ background:s.bg, borderColor:s.border }}>
                   <div className="flex items-center justify-between">
                     <s.Ic size={16} strokeWidth={2.2} aria-hidden style={{ color: s.color }} />
-                    <span className="text-luxury-300 text-sm">›</span>
+                    <span className="text-luxury-600 text-sm">›</span>
                   </div>
                   <p className="text-xl font-bold mt-1.5" style={{ color:s.color }}>{s.value}</p>
                   <p className="text-[0.68rem] text-luxury-500 font-semibold mt-0.5">{s.label}</p>
@@ -1545,7 +1545,7 @@ export default function PartnerDashboard() {
                   { id:"guests",      icon:"👥", label:"Guests",          hint:"CRM · stay history",                                          c:"#7c3aed", bg:"#ede9fe" },
                   { id:"reports",     icon:"📈", label:"Reports",         hint:"Revenue · ADR · occupancy",                                   c:"#15803d", bg:"#ecfdf5" },
                   { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
-                  { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"📷 Scan at check-in",                                          c:"#8198ae", bg:"#f8f9fa" },
+                  { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"Scan at check-in",                                             c:"#4a6076", bg:"#eef1f4" },
                   { id:"content",     icon:"🖼️", label:"Guest Content",   hint:"Reels & photos guests posted",                                c:"#0891b2", bg:"#cffafe" },
                   { id:"verification",icon:"🎬", label:"Verification",    hint:"Video proofs",        href:"/partner/verification",            c:"#4f46e5", bg:"#e0e7ff" },
                   { id:"profile",     icon:"⚙️", label:"Profile",         hint:"Hotel & autopilot",                                            c:"#525252", bg:"#f5f5f4" },
@@ -1564,7 +1564,7 @@ export default function PartnerDashboard() {
                     <p className="text-[0.78rem] font-bold text-luxury-900 leading-tight">
                       {h.label}{locked && <Lock size={11} strokeWidth={2.4} aria-hidden className="ml-1 inline align-[-1px]" />}
                     </p>
-                    <p className="text-[0.62rem] font-semibold leading-tight" style={{ color: locked ? "#768fa7" : h.c }}>
+                    <p className="text-[0.66rem] font-semibold leading-tight text-luxury-600">
                       {locked ? "Tap to unlock" : h.hint}
                     </p>
                   </button>
@@ -1596,7 +1596,7 @@ export default function PartnerDashboard() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="font-semibold text-luxury-900">Recent Bids</p>
-                <button onClick={() => setTab("bids")} className="text-xs text-gold-600 font-semibold hover:text-gold-700">View all →</button>
+                <button onClick={() => setTab("bids")} className="text-xs text-gold-700 font-semibold hover:text-gold-800">View all →</button>
               </div>
               {bids.length === 0 ? (
                 <div className="card-p text-center py-8 text-luxury-400 text-sm">No bids received yet.</div>
@@ -1651,7 +1651,7 @@ export default function PartnerDashboard() {
                       // "Accepted (24)" with only 6 cards because 18
                       // ACCEPTED-unpaid rows had crossed the 15-min payment
                       // window and were dropped by filterActiveBids.
-                      <span className="ml-1 text-[0.6rem]">({activeBidsForInbox.filter(b=>b.status===f).length})</span>
+                      <span className="ml-1 text-[0.63rem]">({activeBidsForInbox.filter(b=>b.status===f).length})</span>
                     )}
                   </button>
                 ))}
@@ -1732,7 +1732,7 @@ export default function PartnerDashboard() {
                                 } catch {}
                               }}
                               title={`Bid ID: ${b.id} (tap to copy)`}
-                              className="mt-1 text-[0.6rem] font-mono px-1.5 py-0.5 rounded-sm bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
+                              className="mt-1 text-[0.63rem] font-mono px-1.5 py-0.5 rounded-sm bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
                             >
                               <Copy size={11} strokeWidth={2.2} aria-hidden />
                               <span>BID-…{String(b.id || "").slice(-6)}</span>
@@ -1756,7 +1756,7 @@ export default function PartnerDashboard() {
                                 <p className="font-bold text-luxury-900 text-lg">{fmtCur(guestBid)}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
                                 {(nights > 1 || nr > 1) && <p className="text-xs text-emerald-600 font-semibold">{fmtCur(guestBid * nights * nr)} total{nr > 1 ? ` (${nr} rooms × ${nights}n)` : ""}</p>}
                                 {isBelowFloor && (
-                                  <p className="text-[0.6rem] text-amber-600 mt-0.5 font-semibold" title="System floor — Railway stored the bid at floor; the guest's real wish is the price above.">
+                                  <p className="text-[0.63rem] text-amber-600 mt-0.5 font-semibold" title="System floor — Railway stored the bid at floor; the guest's real wish is the price above.">
                                     Floor: {fmtCur(floor)}
                                   </p>
                                 )}
@@ -1821,7 +1821,7 @@ export default function PartnerDashboard() {
             <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
               <div>
                 <h2 className="sec-title text-xl">Rooms &amp; Pricing</h2>
-                <div className="flex items-center gap-1.5 text-[0.58rem] text-luxury-400 font-bold uppercase tracking-widest mt-0.5">
+                <div className="flex items-center gap-1.5 text-[0.63rem] text-luxury-400 font-bold uppercase tracking-widest mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />AI Live Engine
                 </div>
               </div>
@@ -1854,16 +1854,16 @@ export default function PartnerDashboard() {
                         <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                         <div className="absolute top-2.5 left-2.5 flex gap-1.5">
                           <button onClick={() => setRoomEditor({ mode: "edit", room: r })}
-                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition inline-flex items-center gap-1">
+                            className="text-[0.63rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition inline-flex items-center gap-1">
                             <Pencil size={11} strokeWidth={2.4} aria-hidden /> Edit
                           </button>
                           <button onClick={() => deleteRoomCategory(r.id)} aria-label="Delete room category"
-                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-red-600 hover:bg-white backdrop-blur-md transition inline-flex items-center">
+                            className="text-[0.63rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-red-600 hover:bg-white backdrop-blur-md transition inline-flex items-center">
                             <Trash2 size={12} strokeWidth={2.2} aria-hidden />
                           </button>
                         </div>
                         {ai && ds && (
-                          <span className={`absolute top-3 right-3 text-[0.6rem] font-bold px-2.5 py-1 rounded-full border backdrop-blur-md bg-white/80 ${ds.text} ${ds.border}`}>
+                          <span className={`absolute top-3 right-3 text-[0.63rem] font-bold px-2.5 py-1 rounded-full border backdrop-blur-md bg-white/80 ${ds.text} ${ds.border}`}>
                             <span className={`inline-block w-1.5 h-1.5 rounded-full ${ds.dot} mr-1.5 ${ai.demandLevel==="Surge"?"animate-ping":""}`} />
                             {ai.demandLevel} Demand
                           </span>
@@ -1879,14 +1879,14 @@ export default function PartnerDashboard() {
                         {ai && (
                           <div className={`flex items-center justify-between mb-4 p-3 rounded-2xl border ${ds?.bg} ${ds?.border}`}>
                             <div>
-                              <p className="text-[0.55rem] font-bold uppercase tracking-widest text-luxury-400 mb-0.5">AI Suggested Price</p>
+                              <p className="text-[0.63rem] font-bold uppercase tracking-widest text-luxury-400 mb-0.5">AI Suggested Price</p>
                               <p className={`text-xl font-bold ${ds?.text}`}>{fmtCur(ai.price)}<span className="text-xs font-normal text-luxury-400">/night</span></p>
                             </div>
                             <div className="text-right">
                               <div className="h-1.5 w-24 bg-white/60 rounded-full overflow-hidden mb-1">
                                 <div className="h-full rounded-full" style={{width:`${ai.demandScore}%`, background: ds?.dot.replace("bg-","").includes("-") ? "#8198ae" : "#10b981"}} />
                               </div>
-                              <p className={`text-[0.6rem] ${ds?.text}`}>{ai.factors[0]}</p>
+                              <p className={`text-[0.63rem] ${ds?.text}`}>{ai.factors[0]}</p>
                             </div>
                           </div>
                         )}
@@ -1907,7 +1907,7 @@ export default function PartnerDashboard() {
                                 className="inp-p pl-7"
                               />
                             </div>
-                            <p className="text-[0.55rem] text-luxury-400 mt-1">Current: {fmtCur(r.floorPrice || 0)}</p>
+                            <p className="text-[0.63rem] text-luxury-400 mt-1">Current: {fmtCur(r.floorPrice || 0)}</p>
                           </div>
                           <div>
                             <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">
@@ -1923,7 +1923,7 @@ export default function PartnerDashboard() {
                                 className="inp-p pl-7"
                               />
                             </div>
-                            <p className="text-[0.55rem] text-luxury-400 mt-1">Current: {fmtCur(r.flashFloorPrice || r.floorPrice || 0)}</p>
+                            <p className="text-[0.63rem] text-luxury-400 mt-1">Current: {fmtCur(r.flashFloorPrice || r.floorPrice || 0)}</p>
                           </div>
                         </div>
 
@@ -1953,7 +1953,7 @@ export default function PartnerDashboard() {
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Camera} size={11} /> Room Photos ({(r.images || []).length})
                             </p>
-                            <span className="text-[0.6rem] text-luxury-400">Shown to guests on booking</span>
+                            <span className="text-[0.63rem] text-luxury-400">Shown to guests on booking</span>
                           </div>
 
                           {(r.images || []).length > 0 && (
@@ -1976,7 +1976,7 @@ export default function PartnerDashboard() {
                             folder={`rooms/${r.id}`}
                             onUpload={(url) => saveRoomImages(r.id, [...(r.images || []), url])}
                           />
-                          <p className="text-[0.55rem] text-luxury-400 mt-1">
+                          <p className="text-[0.63rem] text-luxury-400 mt-1">
                             Upload high-quality photos (JPG/PNG). First photo shows as the cover.
                           </p>
                         </div>
@@ -1988,7 +1988,7 @@ export default function PartnerDashboard() {
                             <div className="mt-4 pt-4 border-t border-luxury-100">
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Hash} size={11} /> Physical Rooms ({units.length})</p>
-                                <span className="text-[0.6rem] text-luxury-400">Individual room numbers</span>
+                                <span className="text-[0.63rem] text-luxury-400">Individual room numbers</span>
                               </div>
 
                               {units.length > 0 && (
@@ -2030,7 +2030,7 @@ export default function PartnerDashboard() {
                                   {unitSaving === r.id ? "…" : "+ Add"}
                                 </button>
                               </div>
-                              <p className="text-[0.55rem] text-luxury-400 mt-1">Comma separate or use ranges (e.g. 201-205)</p>
+                              <p className="text-[0.63rem] text-luxury-400 mt-1">Comma separate or use ranges (e.g. 201-205)</p>
                             </div>
                           );
                         })()}
@@ -2349,16 +2349,16 @@ export default function PartnerDashboard() {
               <div className="p-6 space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-in</label>
+                    <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Check-in</label>
                     <input type="date" className="inp-p" value={walkIn.fromDate} onChange={e=>setWalkIn(p=>({...p, fromDate:e.target.value}))} />
                   </div>
                   <div>
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-out</label>
+                    <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Check-out</label>
                     <input type="date" className="inp-p" value={walkIn.toDate} onChange={e=>setWalkIn(p=>({...p, toDate:e.target.value}))} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Guest Name</label>
+                  <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Guest Name</label>
                   <input className="inp-p" value={walkIn.guestName} onChange={e=>setWalkIn(p=>({...p, guestName:e.target.value}))} placeholder="Walk-in guest"/>
                 </div>
                 {/* Room number picker */}
@@ -2367,7 +2367,7 @@ export default function PartnerDashboard() {
                   const allForRoom = roomUnits.filter(u => u.roomId === walkInOpen.roomId);
                   return (
                     <div>
-                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
+                      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
                       {allForRoom.length === 0 ? (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
                           No room numbers set for this category. Add them in <b>Rooms</b> tab.
@@ -2395,16 +2395,16 @@ export default function PartnerDashboard() {
                 })()}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Phone</label>
+                    <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Phone</label>
                     <input className="inp-p" value={walkIn.guestPhone} onChange={e=>setWalkIn(p=>({...p, guestPhone:e.target.value}))} placeholder="Optional"/>
                   </div>
                   <div>
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Amount (₹)</label>
+                    <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Amount (₹)</label>
                     <input type="number" className="inp-p" value={walkIn.amount} onChange={e=>setWalkIn(p=>({...p, amount:e.target.value}))} placeholder="Per night"/>
                   </div>
                 </div>
                 <div>
-                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Note</label>
+                  <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Note</label>
                   <textarea rows={2} className="inp-p resize-none" value={walkIn.note} onChange={e=>setWalkIn(p=>({...p, note:e.target.value}))} placeholder="ID proof, notes, etc."/>
                 </div>
                 <button onClick={submitWalkIn} disabled={walkInSaving} className="btn-gold w-full py-3 text-sm">
@@ -2440,12 +2440,12 @@ export default function PartnerDashboard() {
                   {/* Dates */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-in</label>
+                      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Check-in</label>
                       <input type="date" className="inp-p" value={walkIn.fromDate} min={qToday}
                         onChange={e=>setWalkIn(p=>({...p, fromDate:e.target.value}))} />
                     </div>
                     <div>
-                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-out</label>
+                      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Check-out</label>
                       <input type="date" className="inp-p" value={walkIn.toDate} min={walkIn.fromDate || qToday}
                         onChange={e=>setWalkIn(p=>({...p, toDate:e.target.value}))} />
                     </div>
@@ -2453,7 +2453,7 @@ export default function PartnerDashboard() {
 
                   {/* Room category selector — with live availability count */}
                   <div>
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={BedDouble} size={11} /> Room Category</label>
+                    <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={BedDouble} size={11} /> Room Category</label>
                     <div className="grid grid-cols-1 gap-2">
                       {rooms.map(r => {
                         const free = freeUnitsForRoom(r.id, walkIn.fromDate, walkIn.toDate);
@@ -2471,15 +2471,15 @@ export default function PartnerDashboard() {
                             <div className="flex items-center justify-between gap-2">
                               <div>
                                 <p className="font-semibold text-luxury-900 text-sm">{r.type || r.name}</p>
-                                <p className="text-[0.6rem] text-luxury-500">₹{r.floorPrice || 0}/night · up to {r.capacity || 2} guests</p>
+                                <p className="text-[0.63rem] text-luxury-500">₹{r.floorPrice || 0}/night · up to {r.capacity || 2} guests</p>
                               </div>
                               <div className="text-right">
                                 {total === 0 ? (
-                                  <span className="text-[0.55rem] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">No room #s set</span>
+                                  <span className="text-[0.63rem] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">No room #s set</span>
                                 ) : (
                                   <>
                                     <p className={`text-lg font-bold ${free.length === 0 ? "text-red-600" : "text-emerald-600"}`}>{free.length}/{total}</p>
-                                    <p className="text-[0.55rem] text-luxury-400">free</p>
+                                    <p className="text-[0.63rem] text-luxury-400">free</p>
                                   </>
                                 )}
                               </div>
@@ -2510,7 +2510,7 @@ export default function PartnerDashboard() {
                     }
                     return (
                       <div>
-                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
+                        <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
                         <div className="grid grid-cols-4 gap-1.5">
                           {free.map((u: any) => (
                             <button key={u.id}
@@ -2531,21 +2531,21 @@ export default function PartnerDashboard() {
                   {/* Guest details */}
                   <div className="pt-3 border-t border-luxury-100 space-y-2">
                     <div>
-                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Guest Name</label>
+                      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Guest Name</label>
                       <input className="inp-p" value={walkIn.guestName} onChange={e=>setWalkIn(p=>({...p, guestName:e.target.value}))} placeholder="Walk-in guest"/>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Phone</label>
+                        <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Phone</label>
                         <input className="inp-p" value={walkIn.guestPhone} onChange={e=>setWalkIn(p=>({...p, guestPhone:e.target.value}))} placeholder="Optional"/>
                       </div>
                       <div>
-                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Rate/night ₹</label>
+                        <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Rate/night ₹</label>
                         <input type="number" className="inp-p" value={walkIn.amount} onChange={e=>setWalkIn(p=>({...p, amount:e.target.value}))}/>
                       </div>
                     </div>
                     <div>
-                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Note</label>
+                      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">Note</label>
                       <input className="inp-p" value={walkIn.note} onChange={e=>setWalkIn(p=>({...p, note:e.target.value}))} placeholder="ID proof, notes, etc."/>
                     </div>
                   </div>
@@ -2584,7 +2584,7 @@ export default function PartnerDashboard() {
                 { label: "Video / Verification", value: complaintStats.video || 0, color: "purple", border: "border-purple-200", bg: "bg-purple-50", text: "text-purple-800" },
               ].map((s, i) => (
                 <div key={i} className={`rounded-2xl px-4 py-3 border ${s.border} ${s.bg}`}>
-                  <div className="text-[0.6rem] font-bold uppercase tracking-widest text-luxury-400">{s.label}</div>
+                  <div className="text-[0.63rem] font-bold uppercase tracking-widest text-luxury-400">{s.label}</div>
                   <div className={`mt-1 text-2xl font-bold ${s.text}`}>{s.value}</div>
                 </div>
               ))}
@@ -2608,8 +2608,8 @@ export default function PartnerDashboard() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="text-xs font-bold text-luxury-500 uppercase tracking-wider">{c.type || "general"}</span>
-                              {c.priority === "high" && <span className="text-[0.6rem] font-bold uppercase px-2 py-0.5 rounded-full bg-red-500 text-white">Urgent</span>}
-                              <span className={`text-[0.6rem] font-bold uppercase px-2 py-0.5 rounded-full ${isResolved ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                              {c.priority === "high" && <span className="text-[0.63rem] font-bold uppercase px-2 py-0.5 rounded-full bg-red-500 text-white">Urgent</span>}
+                              <span className={`text-[0.63rem] font-bold uppercase px-2 py-0.5 rounded-full ${isResolved ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
                                 {c.status || "open"}
                               </span>
                             </div>
@@ -2637,7 +2637,7 @@ export default function PartnerDashboard() {
                         {c.feedbackType === "stay_feedback" && c.feedback && (
                           <div className="mt-2 px-3 py-2 rounded-lg bg-gold-50 border border-gold-200">
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[0.6rem] font-bold text-gold-800 uppercase tracking-wider">
+                              <span className="text-[0.63rem] font-bold text-gold-800 uppercase tracking-wider">
                                 Stay feedback {c.feedbackAutoFilled && <span className="ml-1 opacity-60">· auto-marked positive</span>}
                               </span>
                             </div>
@@ -2667,7 +2667,7 @@ export default function PartnerDashboard() {
                         )}
                         {(c.adminNotes || c.adminNote) && (
                           <div className="mt-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
-                            <div className="text-[0.6rem] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">Admin reply</div>
+                            <div className="text-[0.63rem] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">Admin reply</div>
                             <p className="text-xs text-emerald-900">{c.adminNotes || c.adminNote}</p>
                           </div>
                         )}
@@ -2690,7 +2690,7 @@ export default function PartnerDashboard() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">{c.category || "evidence"}</span>
-                            <span className={`text-[0.6rem] font-bold uppercase px-2 py-0.5 rounded-full ${c.status === "resolved" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                            <span className={`text-[0.63rem] font-bold uppercase px-2 py-0.5 rounded-full ${c.status === "resolved" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
                               {c.status || "open"}
                             </span>
                           </div>
@@ -2773,7 +2773,7 @@ export default function PartnerDashboard() {
               <div className="flex items-center gap-2">
                 <span className="text-xl">🤖</span>
                 <h3 className="font-bold text-luxury-900 text-base">Autopilot Mode</h3>
-                <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.55rem] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-300">
+                <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.63rem] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-300">
                   {AUTOPILOT_MODE_LABEL[autopilotMode]}
                 </span>
               </div>
@@ -2800,7 +2800,7 @@ export default function PartnerDashboard() {
                       <div className="flex items-start gap-2">
                         <span
                           aria-hidden
-                          className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center text-[0.5rem] font-bold ${
+                          className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center text-[0.63rem] font-bold ${
                             on ? "bg-amber-500 border-amber-500 text-white" : "border-luxury-300 text-transparent"
                           }`}
                         >
@@ -3091,7 +3091,7 @@ export default function PartnerDashboard() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Zap} size={11} /> Counter Pricing Arena</p>
-                        <p className="text-[0.6rem] text-luxury-500 mt-0.5">Drag the gold dot · steps of ₹{PRICE_STEP}</p>
+                        <p className="text-[0.63rem] text-luxury-500 mt-0.5">Drag the gold dot · steps of ₹{PRICE_STEP}</p>
                       </div>
                       <div className={`flex items-center gap-1.5 text-[0.65rem] font-bold px-2.5 py-1 rounded-full border ${probColor.bg} ${probColor.text} ${probColor.border}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${probColor.dot} animate-pulse`} />
@@ -3103,7 +3103,7 @@ export default function PartnerDashboard() {
                     <div className="rounded-2xl p-4 mb-4 bg-linear-to-br from-amber-50 via-luxury-50 to-white border border-amber-200 shadow-xs">
                       <div className="flex items-end justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Your counter</p>
+                          <p className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Your counter</p>
                           <p className="text-3xl font-extrabold text-luxury-900 leading-none">
                             {fmtCur(currentVal)}<span className="text-xs font-medium text-luxury-400 ml-1">/night</span>
                           </p>
@@ -3114,10 +3114,10 @@ export default function PartnerDashboard() {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest">Guest bid</p>
+                          <p className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest">Guest bid</p>
                           <p className="text-base font-bold text-luxury-700">{fmtCur(guestBid)}</p>
                           {floor !== guestBid && (
-                            <p className="text-[0.55rem] text-amber-600 mt-0.5">Floor {fmtCur(floor)}</p>
+                            <p className="text-[0.63rem] text-amber-600 mt-0.5">Floor {fmtCur(floor)}</p>
                           )}
                         </div>
                       </div>
@@ -3153,13 +3153,13 @@ export default function PartnerDashboard() {
                         {floor > minCt && floor < maxCt && (
                           <div className="absolute -top-4 -translate-x-1/2 pointer-events-none" style={{ left: `${floorPct}%` }}>
                             <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-[5px] border-t-amber-600 mx-auto" />
-                            <p className="text-[0.5rem] font-bold text-amber-700 -mt-0.5 whitespace-nowrap text-center">Floor</p>
+                            <p className="text-[0.63rem] font-bold text-amber-700 -mt-0.5 whitespace-nowrap text-center">Floor</p>
                           </div>
                         )}
                         {/* AI suggestion marker. */}
                         {aiSuggest > minCt && aiSuggest < maxCt && (
                           <div className="absolute -bottom-5 -translate-x-1/2 pointer-events-none" style={{ left: `${pct(aiSuggest)}%` }}>
-                            <p className="text-[0.5rem] font-bold text-emerald-700 whitespace-nowrap text-center">◆ AI</p>
+                            <p className="text-[0.63rem] font-bold text-emerald-700 whitespace-nowrap text-center">◆ AI</p>
                           </div>
                         )}
                         {/* The actual draggable range input — transparent, sits on top. */}
@@ -3177,7 +3177,7 @@ export default function PartnerDashboard() {
                           aria-valuenow={currentVal}
                         />
                       </div>
-                      <div className="flex justify-between mt-4 text-[0.55rem] text-luxury-400 font-mono">
+                      <div className="flex justify-between mt-4 text-[0.63rem] text-luxury-400 font-mono">
                         <span>{fmtCur(minCt)}</span>
                         <span>{fmtCur(maxCt)}</span>
                       </div>
@@ -3199,9 +3199,9 @@ export default function PartnerDashboard() {
                                 : "bg-white border-luxury-200 hover:border-amber-300 hover:scale-[1.01]"
                             }`}
                           >
-                            <p className={`text-[0.62rem] font-bold inline-flex items-center gap-1 ${active ? "text-amber-700" : "text-luxury-600"}`}><c.Ic size={11} strokeWidth={2.3} aria-hidden /> {c.label}</p>
+                            <p className={`text-[0.66rem] font-bold inline-flex items-center gap-1 ${active ? "text-amber-700" : "text-luxury-600"}`}><c.Ic size={11} strokeWidth={2.3} aria-hidden /> {c.label}</p>
                             <p className={`text-sm font-extrabold mt-0.5 ${active ? "text-amber-900" : "text-luxury-800"}`}>{fmtCur(amt)}</p>
-                            <p className={`text-[0.5rem] mt-0.5 ${active ? "text-amber-600" : "text-luxury-400"}`}>{c.sub}</p>
+                            <p className={`text-[0.63rem] mt-0.5 ${active ? "text-amber-600" : "text-luxury-400"}`}>{c.sub}</p>
                           </button>
                         );
                       })}
@@ -3239,9 +3239,9 @@ export default function PartnerDashboard() {
                         <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">
                           Include complimentary
                         </label>
-                        <span className="text-[0.55rem] text-luxury-400">{counterAddons.length} selected</span>
+                        <span className="text-[0.63rem] text-luxury-400">{counterAddons.length} selected</span>
                       </div>
-                      <p className="text-[0.62rem] text-luxury-500 leading-relaxed mb-2">
+                      <p className="text-[0.66rem] text-luxury-500 leading-relaxed mb-2">
                         Tap to attach perks to your counter. Guest sees these as chips next to your price — no typed messages allowed.
                       </p>
                       <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-1">
@@ -3268,13 +3268,13 @@ export default function PartnerDashboard() {
                                 <span className={`block text-[0.7rem] font-bold leading-tight ${on ? "text-amber-800" : "text-luxury-800"}`}>
                                   {a.label}
                                 </span>
-                                <span className={`block text-[0.55rem] mt-0.5 ${on ? "text-amber-600" : "text-luxury-400"}`}>
+                                <span className={`block text-[0.63rem] mt-0.5 ${on ? "text-amber-600" : "text-luxury-400"}`}>
                                   {a.desc}
                                 </span>
                               </span>
                               <span
                                 aria-hidden
-                                className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center text-[0.5rem] font-bold ${
+                                className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center text-[0.63rem] font-bold ${
                                   on ? "bg-amber-500 border-amber-500 text-white" : "border-luxury-300 text-transparent"
                                 }`}
                               >
@@ -3356,7 +3356,7 @@ export default function PartnerDashboard() {
               <div className="relative bg-linear-to-br from-luxury-900 via-luxury-800 to-black px-6 py-5">
                 <button onClick={() => setSelectedBooking(null)}
                   className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"><X size={16} strokeWidth={2.4} aria-hidden /></button>
-                <p className="text-[0.6rem] font-bold text-gold-400 uppercase tracking-[0.25em]">Booking Details</p>
+                <p className="text-[0.63rem] font-bold text-gold-400 uppercase tracking-[0.25em]">Booking Details</p>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="w-12 h-12 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold">{guestInitials}</div>
                   <div>
@@ -3374,12 +3374,12 @@ export default function PartnerDashboard() {
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <p className="text-[0.6rem] font-bold text-emerald-600 uppercase tracking-widest"><DIc I={PlaneLanding} size={11} /> Check-in</p>
+                    <p className="text-[0.63rem] font-bold text-emerald-600 uppercase tracking-widest"><DIc I={PlaneLanding} size={11} /> Check-in</p>
                     <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkIn)}</p>
                     <p className="text-[0.65rem] text-luxury-500">{b.checkIn && new Date(b.checkIn).toLocaleDateString("en-IN",{weekday:"long"})}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                    <p className="text-[0.6rem] font-bold text-amber-600 uppercase tracking-widest"><DIc I={PlaneTakeoff} size={11} /> Check-out</p>
+                    <p className="text-[0.63rem] font-bold text-amber-600 uppercase tracking-widest"><DIc I={PlaneTakeoff} size={11} /> Check-out</p>
                     <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkOut)}</p>
                     <p className="text-[0.65rem] text-luxury-500">{b.checkOut && new Date(b.checkOut).toLocaleDateString("en-IN",{weekday:"long"})}</p>
                   </div>
@@ -3398,7 +3398,7 @@ export default function PartnerDashboard() {
                   const freeForAssign = freeUnitsForRoom(b.roomId, b.checkIn || "", b.checkOut || "");
                   return (
                     <div className="p-4 rounded-2xl bg-luxury-50 border border-luxury-200">
-                      <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2"><DIc I={BedDouble} size={11} /> Room</p>
+                      <p className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest mb-2"><DIc I={BedDouble} size={11} /> Room</p>
                       <div className="flex items-baseline justify-between gap-3 flex-wrap">
                         <div>
                           <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "—"}</p>
@@ -3407,12 +3407,12 @@ export default function PartnerDashboard() {
                         </div>
                         {assignedNumber ? (
                           <div className="text-right">
-                            <p className="text-[0.55rem] font-bold text-gold-600 uppercase tracking-widest">Allocated Room</p>
+                            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest">Allocated Room</p>
                             <p className="text-2xl font-bold text-gold-700">#{assignedNumber}</p>
                           </div>
                         ) : (
                           <div className="w-full mt-2">
-                            <p className="text-[0.6rem] font-bold text-amber-600 uppercase mb-1"><DIc I={TriangleAlert} size={11} /> No room # assigned</p>
+                            <p className="text-[0.63rem] font-bold text-amber-600 uppercase mb-1"><DIc I={TriangleAlert} size={11} /> No room # assigned</p>
                             {freeForAssign.length === 0 ? (
                               <p className="text-xs text-luxury-400">No free rooms in this category.</p>
                             ) : (
@@ -3444,7 +3444,7 @@ export default function PartnerDashboard() {
 
                 {/* Guest contact */}
                 <div className="p-4 rounded-2xl bg-white border border-luxury-200 space-y-2">
-                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={UserRound} size={11} /> Guest Contact</p>
+                  <p className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={UserRound} size={11} /> Guest Contact</p>
                   {(b.guestPhone || b.user?.phone) && (
                     <a href={`tel:${b.guestPhone || b.user?.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
                       <span className="text-luxury-600 inline-flex items-center gap-1.5"><Phone size={12} strokeWidth={2.2} aria-hidden /> Phone</span>
@@ -3464,7 +3464,7 @@ export default function PartnerDashboard() {
 
                 {/* Payment */}
                 <div className="p-4 rounded-2xl bg-linear-to-br from-gold-50 to-amber-50 border border-gold-200">
-                  <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-widest mb-2"><DIc I={Wallet} size={11} /> Payment</p>
+                  <p className="text-[0.63rem] font-bold text-gold-700 uppercase tracking-widest mb-2"><DIc I={Wallet} size={11} /> Payment</p>
                   <div className="flex justify-between text-sm py-1">
                     <span className="text-luxury-600">Rate per night</span>
                     <span className="font-semibold text-luxury-900">{fmtCur(pricePerNight)}</span>
@@ -3486,7 +3486,7 @@ export default function PartnerDashboard() {
                 {/* Notes / source */}
                 {b.message && (
                   <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
-                    <p className="text-[0.6rem] font-bold text-blue-600 uppercase tracking-widest mb-1"><DIc I={FileText} size={11} /> Guest Message</p>
+                    <p className="text-[0.63rem] font-bold text-blue-600 uppercase tracking-widest mb-1"><DIc I={FileText} size={11} /> Guest Message</p>
                     <p className="text-xs text-luxury-700">{b.message}</p>
                   </div>
                 )}
@@ -3659,7 +3659,7 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
 
         <div className="flex items-center gap-2 my-2">
           <div className="h-px flex-1 bg-luxury-200" />
-          <span className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest">or enter manually</span>
+          <span className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest">or enter manually</span>
           <div className="h-px flex-1 bg-luxury-200" />
         </div>
 
@@ -3694,7 +3694,7 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
               <p className="font-bold text-luxury-900 text-[0.92rem] leading-tight">{validated.code.title || validated.code.code}</p>
               <p className="font-mono text-[0.7rem] text-luxury-600 mt-1">{validated.code.code}</p>
             </div>
-            <span className={`text-[0.55rem] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
+            <span className={`text-[0.63rem] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
               validated.code.status === "active" ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
               : "bg-red-100 text-red-700 border border-red-300"
             }`}>{validated.code.status}</span>
@@ -3707,7 +3707,7 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
               { k:"Expires", v: validated.code.expires_at ? new Date(validated.code.expires_at).toLocaleDateString("en-IN") : "—" },
             ].map((d) => (
               <div key={d.k} className="bg-luxury-50 rounded-lg px-2.5 py-1.5">
-                <p className="text-[0.58rem] text-luxury-400 uppercase tracking-wider font-bold">{d.k}</p>
+                <p className="text-[0.63rem] text-luxury-400 uppercase tracking-wider font-bold">{d.k}</p>
                 <p className="text-[0.78rem] font-semibold text-luxury-900 capitalize truncate">{d.v}</p>
               </div>
             ))}
@@ -3734,10 +3734,10 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
                   <span className="text-sm">✓</span>
                   <div className="min-w-0">
                     <p className="font-mono text-[0.7rem] font-bold text-emerald-800 truncate">{r.code.code}</p>
-                    <p className="text-[0.62rem] text-emerald-700 truncate">{r.code.title || r.code.kind} · {r.customer?.name || "Guest"}</p>
+                    <p className="text-[0.66rem] text-emerald-700 truncate">{r.code.title || r.code.kind} · {r.customer?.name || "Guest"}</p>
                   </div>
                 </div>
-                <p className="text-[0.58rem] text-emerald-600 shrink-0">{new Date(r.fulfilledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
+                <p className="text-[0.63rem] text-emerald-600 shrink-0">{new Date(r.fulfilledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
               </div>
             ))}
           </div>

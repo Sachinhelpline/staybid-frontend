@@ -92,7 +92,7 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
 
   const numField = (label: string, key: keyof typeof f, opts?: { prefix?: string; placeholder?: string }) => (
     <div>
-      <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">{label}</label>
+      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">{label}</label>
       <div className="relative">
         {opts?.prefix && (
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 text-sm">{opts.prefix}</span>
@@ -138,20 +138,20 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
           {/* Basics */}
           <div className="space-y-2.5">
             <div>
-              <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Category name *</label>
+              <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Category name *</label>
               <input value={f.name} onChange={(e) => set("name", e.target.value)}
                 placeholder="e.g. Deluxe Mountain View" className="inp-p" autoFocus />
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Room type</label>
+                <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Room type</label>
                 <input value={f.type} onChange={(e) => set("type", e.target.value)}
                   placeholder="Deluxe / Suite / Cottage" className="inp-p" />
               </div>
               {numField("Size (sq.ft)", "size_sqft", { placeholder: "optional" })}
             </div>
             <div>
-              <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Description</label>
+              <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Description</label>
               <textarea value={f.description} onChange={(e) => set("description", e.target.value)}
                 rows={2} placeholder="Short description guests will see"
                 className="inp-p resize-none" />
@@ -160,18 +160,18 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
 
           {/* Pricing */}
           <div>
-            <p className="text-[0.62rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Pricing</p>
+            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Pricing</p>
             <div className="grid grid-cols-3 gap-2.5">
               {numField("Rack rate (MRP)", "mrp", { prefix: "₹", placeholder: "4999" })}
               {numField("Bid floor", "floorPrice", { prefix: "₹", placeholder: "auto" })}
               {numField("Flash floor", "flashFloorPrice", { prefix: "₹", placeholder: "optional" })}
             </div>
-            <p className="text-[0.6rem] text-luxury-400 mt-1">Leave the bid floor blank and ~78% of MRP is set automatically.</p>
+            <p className="text-[0.63rem] text-luxury-400 mt-1">Leave the bid floor blank and ~78% of MRP is set automatically.</p>
           </div>
 
           {/* Capacity */}
           <div>
-            <p className="text-[0.62rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Capacity &amp; inventory</p>
+            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Capacity &amp; inventory</p>
             <div className="grid grid-cols-4 gap-2.5">
               {numField("Max guests", "capacity")}
               {numField("Bedrooms", "bedrooms")}
@@ -182,7 +182,7 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
 
           {/* Amenities */}
           <div>
-            <p className="text-[0.62rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Amenities</p>
+            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Amenities</p>
             <div className="flex flex-wrap gap-1.5">
               {AMENITY_OPTIONS.map((a) => {
                 const on = amenities.includes(a);
@@ -201,7 +201,7 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
 
           {/* Photos */}
           <div>
-            <p className="text-[0.62rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Photos</p>
+            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest mb-1.5">Photos</p>
             {images.length > 0 && (
               <div className="grid grid-cols-4 gap-2 mb-2">
                 {images.map((url, i) => (

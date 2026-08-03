@@ -59,7 +59,7 @@ export default function StaffLogin() {
               style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 3px 12px rgba(106, 133, 160,0.4)" }}>S</div>
             <div>
               <p className="font-display text-xl text-white tracking-wide leading-none">StayBid</p>
-              <p className="text-[0.6rem] text-amber-400/80 tracking-[0.2em] uppercase font-medium">Staff Sign-in</p>
+              <p className="text-[0.63rem] text-amber-400/80 tracking-[0.2em] uppercase font-medium">Staff Sign-in</p>
             </div>
           </div>
           <h1 className="font-display text-2xl font-light text-white mb-0.5">Staff Login</h1>
@@ -69,7 +69,7 @@ export default function StaffLogin() {
         <div className="bg-white/6 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
           <div className="space-y-4">
             <div>
-              <label className="text-[0.62rem] font-bold text-white/40 uppercase tracking-widest block mb-2">Login Code</label>
+              <label className="text-[0.63rem] font-bold text-white/40 uppercase tracking-widest block mb-2">Login Code</label>
               <input
                 type="text"
                 value={code}
@@ -81,7 +81,7 @@ export default function StaffLogin() {
               />
             </div>
             <div>
-              <label className="text-[0.62rem] font-bold text-white/40 uppercase tracking-widest block mb-2">PIN</label>
+              <label className="text-[0.63rem] font-bold text-white/40 uppercase tracking-widest block mb-2">PIN</label>
               <input
                 type="password"
                 inputMode="numeric"

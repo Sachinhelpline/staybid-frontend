@@ -178,9 +178,9 @@ export default function HousekeepingTab({
                             <span className="text-[0.86rem] font-extrabold text-luxury-900">#{u.roomNumber}</span>
                             <m.Ic size={13} strokeWidth={2.2} aria-hidden className={m.text} />
                           </div>
-                          <p className={`text-[0.58rem] font-bold mt-0.5 ${m.text}`}>{m.label}</p>
+                          <p className={`text-[0.63rem] font-bold mt-0.5 ${m.text}`}>{m.label}</p>
                           {meta?.assignedTo && (
-                            <p className="text-[0.54rem] text-luxury-500 truncate mt-0.5 inline-flex items-center gap-1"><UserRound size={9} strokeWidth={2.4} aria-hidden /> {meta.assignedTo}</p>
+                            <p className="text-[0.63rem] text-luxury-500 truncate mt-0.5 inline-flex items-center gap-1"><UserRound size={9} strokeWidth={2.4} aria-hidden /> {meta.assignedTo}</p>
                           )}
                         </button>
                       );
@@ -240,7 +240,7 @@ function UnitPicker({
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           <div>
-            <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Status</label>
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Status</label>
             <div className="grid grid-cols-2 gap-2">
               {ORDER.map((s) => {
                 const m = META[s];
@@ -257,12 +257,12 @@ function UnitPicker({
             </div>
           </div>
           <div>
-            <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Assigned to</label>
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Assigned to</label>
             <input value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}
               placeholder="Staff name (optional)" className="inp-p" />
           </div>
           <div>
-            <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Note</label>
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Note</label>
             <input value={note} onChange={(e) => setNote(e.target.value)}
               placeholder="optional" className="inp-p" />
           </div>

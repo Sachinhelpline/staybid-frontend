@@ -73,11 +73,11 @@ export default function PartnerVerification() {
   const submitted = useMemo(() => requests.filter((r) => r.status === "uploaded" || r.status === "verified" || r.status === "rejected"), [requests]);
   const openComplaints = useMemo(() => complaints.filter((c) => c.status === "open").length, [complaints]);
 
-  if (loading) return <div className="p-12 text-center text-luxury-500">Loading…</div>;
-  if (!partner?.hotel) return <div className="p-12 text-center text-luxury-500">No hotel found.</div>;
+  if (loading) return <div className="pdash-root p-12 text-center text-luxury-500">Loading…</div>;
+  if (!partner?.hotel) return <div className="pdash-root p-12 text-center text-luxury-500">No hotel found.</div>;
 
   return (
-    <div className="bg-luxury-50 min-h-screen">
+    <div className="bg-luxury-50 min-h-screen pdash-root">
       {/* premium dark navbar — matches the partner dashboard */}
       <nav className="sticky top-0 z-40" style={{ background: "linear-gradient(180deg,#1c140a,#13100a)", borderBottom: "1px solid rgba(140, 160, 182,0.16)" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-5 flex items-center justify-between" style={{ height: "56px" }}>
@@ -86,7 +86,7 @@ export default function PartnerVerification() {
               style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 2px 8px rgba(106, 133, 160,0.4)" }}>S</div>
             <div className="min-w-0">
               <span className="font-display text-base text-white tracking-wide">StayBid</span>
-              <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
+              <span className="ml-1.5 text-[0.63rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
             </div>
           </Link>
           <div className="flex items-center gap-2">
@@ -115,7 +115,7 @@ export default function PartnerVerification() {
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-2"
                    style={{ background: "rgba(140, 160, 182,0.14)", border: "1px solid rgba(140, 160, 182,0.3)" }}>
                 <span className="sb-pulse-dot" style={{ background: "#a9b9c8" }} />
-                <span className="text-[0.6rem] font-bold tracking-[0.18em] uppercase text-amber-200">Verification &amp; Complaints</span>
+                <span className="text-[0.63rem] font-bold tracking-[0.18em] uppercase text-amber-200">Verification &amp; Complaints</span>
               </div>
               <h1 className="font-display text-2xl text-white leading-tight truncate">{partner.hotel.name}</h1>
               <p className="text-[0.78rem] text-white/50 mt-0.5">{partner.hotel.id}</p>
@@ -132,7 +132,7 @@ export default function PartnerVerification() {
                 <div className="text-xl font-bold" style={{ color: s.c, fontVariantNumeric: "tabular-nums" }}>
                   <CountUp value={s.value} duration={850} />
                 </div>
-                <div className="text-[0.58rem] uppercase tracking-wider mt-0.5 text-white/45">{s.label}</div>
+                <div className="text-[0.63rem] uppercase tracking-wider mt-0.5 text-white/45">{s.label}</div>
               </div>
             ))}
           </div>
@@ -182,9 +182,9 @@ function PendingList({ items }: { items: any[] }) {
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[0.6rem] uppercase tracking-widest text-gold-700 font-bold px-2 py-0.5 rounded-full bg-gold-50 border border-gold-200">{r.tier} · {r.required_secs}s</span>
+                  <span className="text-[0.63rem] uppercase tracking-widest text-gold-700 font-bold px-2 py-0.5 rounded-full bg-gold-50 border border-gold-200">{r.tier} · {r.required_secs}s</span>
                   {hrsLeft != null && (
-                    <span className={`text-[0.6rem] font-bold px-2 py-0.5 rounded-full ${urgent ? "bg-red-100 text-red-700" : "bg-amber-50 text-amber-700"}`}>
+                    <span className={`text-[0.63rem] font-bold px-2 py-0.5 rounded-full ${urgent ? "bg-red-100 text-red-700" : "bg-amber-50 text-amber-700"}`}>
                       ⏳ {hrsLeft}h left
                     </span>
                   )}
@@ -223,7 +223,7 @@ function SubmittedRow({ r }: { r: any }) {
     <div className="card-luxury sb-card-lift p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <span className="text-[0.6rem] uppercase tracking-widest text-gold-700 font-bold px-2 py-0.5 rounded-full bg-gold-50 border border-gold-200">{r.tier}</span>
+          <span className="text-[0.63rem] uppercase tracking-widest text-gold-700 font-bold px-2 py-0.5 rounded-full bg-gold-50 border border-gold-200">{r.tier}</span>
           <div className="font-semibold text-luxury-900 mt-1.5">Booking {String(r.booking_id).slice(0, 14)}…</div>
           <div className="text-xs text-luxury-500 mt-0.5">Status: {r.status}</div>
         </div>
@@ -300,7 +300,7 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
     <div className="card-luxury sb-card-lift p-4">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <div className="text-[0.6rem] uppercase tracking-widest text-red-700 font-bold">{c.category || "complaint"} · {c.status}</div>
+          <div className="text-[0.63rem] uppercase tracking-widest text-red-700 font-bold">{c.category || "complaint"} · {c.status}</div>
           <div className="font-semibold text-luxury-900 mt-0.5">Booking {String(c.booking_id).slice(0, 14)}…</div>
           <div className="text-xs text-luxury-500 mt-1 max-w-xl">{c.description}</div>
         </div>
@@ -353,7 +353,7 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
 function SideVideo({ title, video }: { title: string; video: any }) {
   return (
     <div>
-      <div className="text-[0.6rem] uppercase tracking-widest text-luxury-500 mb-1.5 font-bold">{title}</div>
+      <div className="text-[0.63rem] uppercase tracking-widest text-luxury-500 mb-1.5 font-bold">{title}</div>
       {video ? (
         <div className="rounded-xl overflow-hidden border border-luxury-100 bg-black/5">
           <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
