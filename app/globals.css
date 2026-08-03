@@ -956,6 +956,10 @@
 [data-theme="dark"] .pdash-root .border-purple-200 { border-color: rgba(168,85,247,0.34) !important; }
 [data-theme="dark"] .pdash-root .text-purple-600,
 [data-theme="dark"] .pdash-root .text-purple-700 { color: #d8b4fe !important; }
+[data-theme="dark"] .pdash-root .bg-indigo-50 { background: rgba(99,102,241,0.13) !important; }
+[data-theme="dark"] .pdash-root .border-indigo-200 { border-color: rgba(99,102,241,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-indigo-600,
+[data-theme="dark"] .pdash-root .text-indigo-700 { color: #a5b4fc !important; }
 [data-theme="dark"] .pdash-root .bg-gold-50,
 [data-theme="dark"] .pdash-root .bg-gold-100 { background: var(--bg-pill) !important; }
 [data-theme="dark"] .pdash-root .border-gold-200,

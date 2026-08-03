@@ -1040,6 +1040,36 @@
   RoomEditorModal). Then admin → circle → trade → host → onboard → worker +
   Hinglish sweep. Multi-width responsive gate on every ship.
 
+### 2026-08-03 — Session 6 cont. (v653 — partner Bookings + walk-in modals + availability OTA)
+- **Bookings tab → lucide:** empty 📅 → CalendarDays, per-booking 🎫 → Ticket.
+  The "→" date-range separator kept (data string). Status badges already ride
+  the v650 tint layer (purple/blue/emerald).
+- **Availability tab (inline):** 🌐 OTA Channel Sync → Globe. "Full Channel
+  Manager →" arrow kept. (The 📅🛏️📊📌 view legend at L2267-2273 is inside a JSX
+  COMMENT — not rendered, left as-is. The AvailabilityCalendar + OtaFeedManager
+  components are the later standalone sweep.)
+- **Both walk-in modals → lucide:** calendar-driven modal (✕→X, 🔢 Allocate →
+  Hash, ✓ Confirm → Check) + the overview quick-walk-in modal (🏨 Front Desk →
+  Hotel, ✕→X, 🏨 Room Category → BedDouble, ⚠️ no-rooms → TriangleAlert, 🛑
+  occupied → OctagonX, 🔢 Allocate → Hash, ✓ Check-in/Confirm → Check). Complaints
+  tab ↻ Refresh → RotateCw. Icon-only buttons got aria-labels.
+- **Status-tint layer extended: INDIGO** — the quick-walk-in selected room
+  category uses `bg-indigo-50`/`text-indigo` (not in the v650 set); added
+  indigo-50/border/text dark overrides to the `.pdash-root` layer (verified the
+  selected category flips to `rgba(99,102,241,0.13)` in dark).
+- Badge v652→**v653** (`SB_BUILD v653-partner-bookings-walkin`), sw `HTML_CACHE`
+  v449→**v450**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **22/22** —
+  Bookings tab AND the OPENED quick-walk-in modal responsive @ 320/360/390/768/
+  1280 × LIGHT/DARK all zero h-overflow (modal at 320px too), chrome emoji gone,
+  walk-in modal lucide (65), dark indigo tint confirmed.
+- NEXT: the standalone partner tab COMPONENTS — Reservations/Housekeeping/Guests/
+  Reports/Billing/Menu/Fnb/Channel/Staff/Circle/AgentAuction/Content + the
+  modals (ServiceLockModal/RoomEditorModal/SubscriptionBillingModal) +
+  AvailabilityCalendar/OtaFeedManager (each: emoji→lucide + dark-tokenize any
+  hardcoded hex + English-ize Hinglish where present + responsive gate). Then
+  admin → circle → trade → host → onboard → worker.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

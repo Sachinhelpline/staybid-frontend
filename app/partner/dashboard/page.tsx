@@ -77,6 +77,7 @@ import {
   TriangleAlert, Copy, MessageCircle, Phone, Mail, Moon, UserRound,
   FileText, Heart, Star, X, Ban, Sparkles, Link2, RefreshCw, Bot, PartyPopper,
   Pencil, Trash2, Camera, Hash, Wrench, RotateCw,
+  Globe, Grid3x3, Pin, CalendarDays, OctagonX,
 } from "lucide-react";
 
 // Inline shell-chrome icon helper (partner dashboard) — matches BIc/InIc pattern.
@@ -2151,7 +2152,7 @@ export default function PartnerDashboard() {
             <h2 className="sec-title text-xl mb-5">Confirmed Bookings</h2>
             {bookings.length === 0 ? (
               <div className="card-p text-center py-12 text-luxury-400">
-                <p className="text-4xl mb-3">📅</p>
+                <CalendarDays size={34} strokeWidth={1.8} aria-hidden className="mx-auto mb-3 text-luxury-400" />
                 <p className="font-semibold text-luxury-600">No confirmed bookings yet</p>
               </div>
             ) : (
@@ -2167,7 +2168,7 @@ export default function PartnerDashboard() {
                     <button key={b.id} onClick={() => setSelectedBooking(b)}
                       className="card-p flex items-start justify-between gap-4 w-full text-left hover:shadow-lg hover:border-gold-300 transition-all cursor-pointer">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-base shrink-0">🎫</div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-700"><Ticket size={18} strokeWidth={2.2} aria-hidden /></div>
                         <div className="min-w-0">
                           <p className="font-semibold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"} · {b.room?.type || b.roomId || "Room"}</p>
                           <p className="text-xs text-luxury-500">
@@ -2318,7 +2319,7 @@ export default function PartnerDashboard() {
                 Manager console lives in the Channels tab. */}
             <div className="card-p">
               <div className="flex items-start justify-between gap-3 mb-1">
-                <h3 className="font-display text-xl text-luxury-900">🌐 OTA Channel Sync</h3>
+                <h3 className="font-display text-xl text-luxury-900 flex items-center gap-2"><Globe size={19} strokeWidth={2} aria-hidden className="text-luxury-500" /> OTA Channel Sync</h3>
                 {tabAllowed(role, "channels") && (
                   <button onClick={() => setTab("channels")} className="btn-ghost text-xs px-2.5! py-1! shrink-0">
                     Full Channel Manager →
@@ -2343,7 +2344,7 @@ export default function PartnerDashboard() {
                   <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest">Walk-in Booking</p>
                   <p className="text-white font-semibold text-lg">{rooms.find(r=>r.id===walkInOpen.roomId)?.type || "Room"}</p>
                 </div>
-                <button onClick={()=>setWalkInOpen(null)} className="text-white/70 hover:text-white text-2xl">✕</button>
+                <button onClick={()=>setWalkInOpen(null)} aria-label="Close" className="text-white/70 hover:text-white flex items-center"><X size={20} strokeWidth={2.2} aria-hidden /></button>
               </div>
               <div className="p-6 space-y-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -2366,7 +2367,7 @@ export default function PartnerDashboard() {
                   const allForRoom = roomUnits.filter(u => u.roomId === walkInOpen.roomId);
                   return (
                     <div>
-                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🔢 Allocate Room Number</label>
+                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
                       {allForRoom.length === 0 ? (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
                           No room numbers set for this category. Add them in <b>Rooms</b> tab.
@@ -2407,7 +2408,7 @@ export default function PartnerDashboard() {
                   <textarea rows={2} className="inp-p resize-none" value={walkIn.note} onChange={e=>setWalkIn(p=>({...p, note:e.target.value}))} placeholder="ID proof, notes, etc."/>
                 </div>
                 <button onClick={submitWalkIn} disabled={walkInSaving} className="btn-gold w-full py-3 text-sm">
-                  {walkInSaving ? "Saving…" : "✓ Confirm Walk-in"}
+                  {walkInSaving ? "Saving…" : <><DIc I={Check} size={14} /> Confirm Walk-in</>}
                 </button>
               </div>
             </div>
@@ -2428,11 +2429,11 @@ export default function PartnerDashboard() {
                 onClick={e => e.stopPropagation()}>
                 <div className="bg-linear-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-6 py-4 flex items-center justify-between">
                   <div>
-                    <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest">🏨 Front Desk</p>
+                    <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest"><DIc I={Hotel} size={11} /> Front Desk</p>
                     <p className="text-white font-display text-xl font-light">Walk-in Booking</p>
                   </div>
-                  <button onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }}
-                    className="text-white/70 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">✕</button>
+                  <button onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }} aria-label="Close"
+                    className="text-white/70 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><X size={16} strokeWidth={2.2} aria-hidden /></button>
                 </div>
 
                 <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
@@ -2452,7 +2453,7 @@ export default function PartnerDashboard() {
 
                   {/* Room category selector — with live availability count */}
                   <div>
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🏨 Room Category</label>
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={BedDouble} size={11} /> Room Category</label>
                     <div className="grid grid-cols-1 gap-2">
                       {rooms.map(r => {
                         const free = freeUnitsForRoom(r.id, walkIn.fromDate, walkIn.toDate);
@@ -2496,20 +2497,20 @@ export default function PartnerDashboard() {
                     if (total === 0) {
                       return (
                         <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                          ⚠️ No physical room numbers set for this category. Go to <b>Rooms</b> tab and add room numbers (e.g. 101, 102) for this category first.
+                          <DIc I={TriangleAlert} size={12} /> No physical room numbers set for this category. Go to <b>Rooms</b> tab and add room numbers (e.g. 101, 102) for this category first.
                         </div>
                       );
                     }
                     if (free.length === 0) {
                       return (
                         <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
-                          🛑 All rooms of this category are occupied on these dates.
+                          <DIc I={OctagonX} size={12} /> All rooms of this category are occupied on these dates.
                         </div>
                       );
                     }
                     return (
                       <div>
-                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🔢 Allocate Room Number</label>
+                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
                         <div className="grid grid-cols-4 gap-1.5">
                           {free.map((u: any) => (
                             <button key={u.id}
@@ -2552,7 +2553,7 @@ export default function PartnerDashboard() {
                   <button onClick={async () => { await submitWalkIn(); setQuickWalkInOpen(false); }}
                     disabled={walkInSaving || !walkInOpen?.roomId || !walkIn.fromDate || !walkIn.toDate}
                     className="w-full py-3 rounded-xl bg-linear-to-r from-gold-400 to-amber-400 text-luxury-900 font-bold text-sm hover:shadow-xl transition-all disabled:opacity-40">
-                    {walkInSaving ? "Saving…" : walkIn.assignedUnitNumber ? `✓ Check-in · Room #${walkIn.assignedUnitNumber}` : "✓ Confirm Walk-in (auto-assign)"}
+                    {walkInSaving ? "Saving…" : walkIn.assignedUnitNumber ? <><DIc I={Check} size={14} /> Check-in · Room #{walkIn.assignedUnitNumber}</> : <><DIc I={Check} size={14} /> Confirm Walk-in (auto-assign)</>}
                   </button>
                 </div>
               </div>
@@ -2565,8 +2566,8 @@ export default function PartnerDashboard() {
           <div className="fade-up space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <h2 className="sec-title text-xl">Guest Complaints</h2>
-              <button onClick={loadComplaints} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-luxury-200 text-luxury-700 hover:bg-luxury-50">
-                ↻ Refresh
+              <button onClick={loadComplaints} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-luxury-200 text-luxury-700 hover:bg-luxury-50 inline-flex items-center gap-1.5">
+                <RotateCw size={12} strokeWidth={2.3} aria-hidden /> Refresh
               </button>
             </div>
             <p className="text-sm text-luxury-500 -mt-3">
