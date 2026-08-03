@@ -9,6 +9,7 @@
 // /api/partner/guests).
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search, Users, ArrowLeft, TriangleAlert } from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -164,7 +165,7 @@ export default function GuestsTab({ bids, hotelId }: { bids: any[]; hotelId: str
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) {
-        if (r.status === 412) { setProvisioned(false); alert("⚠ Guest CRM table abhi setup nahi hua — migration apply karni hai."); }
+        if (r.status === 412) { setProvisioned(false); alert("Guest CRM isn't set up in the DB yet — apply the migration first."); }
         else alert("❌ " + (d.error || "Save failed"));
         loadProfiles();
       }
@@ -191,10 +192,10 @@ export default function GuestsTab({ bids, hotelId }: { bids: any[]; hotelId: str
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
-          <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Guest CRM storage abhi setup nahi hua</p>
+        <div className="card-p card-tight mb-3 bg-amber-50 border-amber-200">
+          <p className="text-[0.74rem] text-amber-800 font-semibold inline-flex items-center gap-1.5"><TriangleAlert size={13} strokeWidth={2.3} aria-hidden /> Guest CRM storage isn't set up yet</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
-            <span className="font-mono">migrations/2026-05-21-guest-profiles.sql</span> apply karni hai — tab tak tags/notes save nahi honge.
+            Apply <span className="font-mono">migrations/2026-05-21-guest-profiles.sql</span> — until then tags/notes won't save.
           </p>
         </div>
       )}
@@ -215,18 +216,21 @@ export default function GuestsTab({ bids, hotelId }: { bids: any[]; hotelId: str
           }`}>
           ★ VIP only
         </button>
-        <input value={q} onChange={(e) => setQ(e.target.value)}
-          placeholder="🔍 Name / phone" className="inp-p flex-1 min-w-[150px]" />
+        <div className="relative flex-1 min-w-[150px]">
+          <Search size={13} strokeWidth={2.4} aria-hidden className="absolute left-2.5 top-1/2 -translate-y-1/2 text-luxury-400 pointer-events-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="Name / phone" className="inp-p w-full pl-7" />
+        </div>
       </div>
 
       {list.length === 0 ? (
         <div className="card-p text-center py-10">
-          <p className="text-3xl mb-2">👥</p>
+          <Users size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />
           <p className="text-luxury-600 font-semibold text-sm">
-            {merged.length === 0 ? "Abhi koi guest record nahi hai" : "Is filter me kuch nahi mila"}
+            {merged.length === 0 ? "No guest records yet" : "Nothing matches this filter"}
           </p>
           {merged.length === 0 && (
-            <p className="text-luxury-400 text-xs mt-0.5">Booking ya reservation aane par guest yahan apne aap aa jayenge.</p>
+            <p className="text-luxury-400 text-xs mt-0.5">Guests appear here automatically as bookings and reservations come in.</p>
           )}
         </div>
       ) : (
@@ -269,7 +273,7 @@ function GuestDetail({
 
   return (
     <div className="fade-up">
-      <button onClick={onBack} className="text-[0.74rem] font-bold text-gold-600 mb-2.5">← All guests</button>
+      <button onClick={onBack} className="text-[0.74rem] font-bold text-gold-600 mb-2.5 inline-flex items-center gap-1"><ArrowLeft size={13} strokeWidth={2.4} aria-hidden /> All guests</button>
 
       <div className="card-p mb-3">
         <div className="flex items-start gap-3">
@@ -342,7 +346,7 @@ function GuestDetail({
       <div className="card-p">
         <p className="text-[0.78rem] font-bold text-luxury-900 mb-2">Stay history</p>
         {g.history.length === 0 ? (
-          <p className="text-xs text-luxury-400 py-2">Koi stay record nahi.</p>
+          <p className="text-xs text-luxury-400 py-2">No stay records.</p>
         ) : (
           <div className="space-y-1.5">
             {g.history.map((h: any, i: number) => (

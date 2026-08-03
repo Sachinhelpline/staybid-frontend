@@ -1139,6 +1139,32 @@
   AgentAuctionTab → Circle tabs → Content/Passport → the shared modals. Then
   admin → circle → trade → host → onboard → worker.
 
+### 2026-08-03 — Session 6 cont. (v656 — partner GuestsTab / Guest CRM)
+- **GuestsTab (list + in-place detail view; no modal).** ① emoji → lucide: 🔍
+  placeholder → an inline Search icon, 👥 empty → Users, ← back → ArrowLeft, the
+  not-provisioned ⚠ → TriangleAlert. ② the not-provisioned card moved off inline
+  `#fafbfc` to `bg-amber-50` (dark-capable). ③ Hinglish → English across the two
+  not-provisioned notices, both empty states + the "guests appear automatically"
+  hint, and the "No stay records" line (+ the setup alert). ④ responsive
+  verified (list + detail). **KEEP (rule-honoring):** the ★ VIP stars (filter
+  toggle, badges, Mark-VIP button) and the ✓ selected-tag ticks — rating/tick
+  content vocabulary per the locked icon policy — plus the `alert("❌ …")`
+  native-alert strings.
+- Badge v655→**v656** (`SB_BUILD v656-partner-guests`), sw `HTML_CACHE`
+  v452→**v453**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **22/22** —
+  Guest list + the opened detail view responsive @ 320/360/390/768/1280 ×
+  LIGHT/DARK all zero h-overflow; chrome emoji gone; Hinglish gone; lucide (25);
+  ★ VIP vocabulary confirmed kept.
+- **14-rules adherence (owner asked):** every ship = presentation-only
+  (security 385/0), light+dark measured, responsive gate @5 widths, no blind
+  builds, computed-value verification, palette-locked tokens only, English copy,
+  content-vocab emoji kept, additive-only + full ship checklist + ledger.
+- NEXT (standalone components): StaffTab → ChannelManagerTab/OtaFeedManager →
+  BillingTab → MenuBuilderTab/FnbOrdersTab → ReportsTab → AgentAuctionTab →
+  Circle tabs → Content/Passport → the shared modals. Then admin → circle →
+  trade → host → onboard → worker.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
