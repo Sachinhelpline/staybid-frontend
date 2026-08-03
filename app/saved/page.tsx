@@ -1,4 +1,5 @@
 "use client";
+import { Bookmark, Clapperboard, Building2, Sparkles, Zap, CircleHelp, X, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,12 +10,12 @@ import SbState from "@/components/SbState";
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 type Tab = "all" | "video" | "hotel" | "influencer" | "deal";
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "all",        label: "All",        icon: "🔖" },
-  { id: "video",      label: "Reels",      icon: "🎬" },
-  { id: "hotel",      label: "Hotels",     icon: "🏨" },
-  { id: "influencer", label: "Creators",   icon: "✨" },
-  { id: "deal",       label: "Flash Deals",icon: "⚡" },
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "all",        label: "All",        icon: <Bookmark size={13} strokeWidth={2.4} aria-hidden /> },
+  { id: "video",      label: "Reels",      icon: <Clapperboard size={13} strokeWidth={2.4} aria-hidden /> },
+  { id: "hotel",      label: "Hotels",     icon: <Building2 size={13} strokeWidth={2.4} aria-hidden /> },
+  { id: "influencer", label: "Creators",   icon: <Sparkles size={13} strokeWidth={2.4} aria-hidden /> },
+  { id: "deal",       label: "Flash Deals",icon: <Zap size={13} strokeWidth={2.4} aria-hidden /> },
 ];
 
 const TOKEN  = () => typeof window !== "undefined" ? localStorage.getItem("sb_token") || "" : "";
@@ -120,7 +121,7 @@ export default function SavedPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-2 sb-fade-in">
-          <span className="text-3xl">🔖</span>
+          <Bookmark size={26} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />
           <div>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-luxury-900 leading-none">Saved</h1>
             <p className="text-luxury-500 text-sm mt-1">Your collection of reels, hotels & deals</p>
@@ -218,12 +219,12 @@ function SaveCard({
             ? <img src={t.thumbnail_url} alt={t.title || ""} className="w-full h-full object-cover" />
             : t.s3_url
               ? <video src={t.s3_url} className="w-full h-full object-cover" muted playsInline />
-              : <div className="w-full h-full flex items-center justify-center text-4xl">🎬</div>}
+              : <div className="w-full h-full flex items-center justify-center"><Clapperboard size={30} strokeWidth={2} aria-hidden style={{ color: "#8198ae" }} /></div>}
           <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 text-white text-[0.7rem] font-bold drop-shadow-sm line-clamp-2">
             {t.title || "Reel"}
           </div>
-          <div className="absolute top-2 left-2 text-white text-[0.6rem] font-bold drop-shadow-sm tabular-nums">▶ {fmtNum(t.views_count || 0)}</div>
+          <div className="absolute top-2 left-2 text-white text-[0.6rem] font-bold drop-shadow-sm tabular-nums"><Play size={10} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-1px", marginRight: 3 }} /> {fmtNum(t.views_count || 0)}</div>
         </div>
       </ClickWrap>
     );
@@ -235,7 +236,7 @@ function SaveCard({
         <div className="relative aspect-4/3 bg-luxury-100">
           {t.images?.[0]
             ? <img src={sbImage(t.images[0], SB_IMG_CARD)} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center text-3xl">🏨</div>}
+            : <div className="w-full h-full flex items-center justify-center"><Building2 size={26} strokeWidth={2} aria-hidden style={{ color: "#8198ae" }} /></div>}
           <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 text-white">
             <p className="font-display text-base font-bold drop-shadow-sm line-clamp-2" title={t.name}>{t.name}</p>
@@ -267,7 +268,7 @@ function SaveCard({
       <Wrap href={`/flash-deals`} onUnsave={() => onUnsave(s)}>
         <div className="aspect-4/3 bg-linear-to-br from-amber-100 to-amber-200 p-4 flex flex-col justify-between">
           <div>
-            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-amber-700">⚡ Flash Deal</p>
+            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-amber-700"><Zap size={11} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 3 }} /> Flash Deal</p>
             <p className="font-bold text-luxury-900 text-sm mt-1 line-clamp-2">{t.title || "Deal"}</p>
           </div>
           {t.price && <p className="font-display text-xl font-bold text-amber-800 tabular-nums">₹{Number(t.price).toLocaleString("en-IN")}</p>}
@@ -279,7 +280,7 @@ function SaveCard({
   // Fallback for missing target (deleted hotel/video etc.)
   return (
     <div className="card-luxury p-4 text-center">
-      <p className="text-3xl mb-1">❓</p>
+      <p className="mb-1"><CircleHelp size={26} strokeWidth={2.2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></p>
       <p className="text-xs text-luxury-500">Item no longer available</p>
       <button onClick={() => onUnsave(s)} className="mt-2 text-[0.65rem] font-bold text-red-600">Remove</button>
     </div>
@@ -296,7 +297,7 @@ function ClickWrap({ onClick, onUnsave, children }: { onClick: () => void; onUns
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUnsave(); }}
         className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center shadow-md active:scale-90 transition-transform"
         title="Remove from wishlist" aria-label="Remove from wishlist">
-        ✕
+        <X size={13} strokeWidth={2.6} aria-hidden />
       </button>
     </div>
   );
@@ -310,7 +311,7 @@ function Wrap({ href, onUnsave, children }: { href: string; onUnsave: () => void
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUnsave(); }}
         className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center shadow-md active:scale-90 transition-transform"
         title="Remove from wishlist" aria-label="Remove from wishlist">
-        ✕
+        <X size={13} strokeWidth={2.6} aria-hidden />
       </button>
     </div>
   );

@@ -10,6 +10,7 @@
 // (b) a "New complaint" composer with type/priority + optional booking
 // context, and (c) a status timeline per item.
 
+import { CalendarDays, CreditCard, Banknote, Building2, Target, Video, FileText } from "lucide-react";
 import { useActionState, useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -39,15 +40,15 @@ type Complaint = {
   updatedAt?: string;
 };
 
-const TYPE_LABEL: Record<string, { label: string; icon: string }> = {
-  booking:  { label: "Booking issue",   icon: "📅" },
-  payment:  { label: "Payment / refund", icon: "💳" },
-  refund:   { label: "Refund",           icon: "💸" },
-  service:  { label: "Hotel service",   icon: "🏨" },
-  bid:      { label: "Bid",              icon: "🎯" },
-  video:    { label: "Video / verification", icon: "🎥" },
-  general:  { label: "General",          icon: "📝" },
-  other:    { label: "Other",            icon: "📝" },
+const TYPE_LABEL: Record<string, { label: string; icon: React.ReactNode }> = {
+  booking:  { label: "Booking issue",   icon: <CalendarDays size={14} strokeWidth={2.2} aria-hidden /> },
+  payment:  { label: "Payment / refund", icon: <CreditCard size={14} strokeWidth={2.2} aria-hidden /> },
+  refund:   { label: "Refund",           icon: <Banknote size={14} strokeWidth={2.2} aria-hidden /> },
+  service:  { label: "Hotel service",   icon: <Building2 size={14} strokeWidth={2.2} aria-hidden /> },
+  bid:      { label: "Bid",              icon: <Target size={14} strokeWidth={2.2} aria-hidden /> },
+  video:    { label: "Video / verification", icon: <Video size={14} strokeWidth={2.2} aria-hidden /> },
+  general:  { label: "General",          icon: <FileText size={14} strokeWidth={2.2} aria-hidden /> },
+  other:    { label: "Other",            icon: <FileText size={14} strokeWidth={2.2} aria-hidden /> },
 };
 
 const PRIORITY_STYLE: Record<string, { bg: string; color: string; label: string }> = {
@@ -146,9 +147,9 @@ function ComplaintsInner() {
             Faster routes
           </div>
           <div className="grid sm:grid-cols-3 gap-2 text-sm sb-stagger">
-            <Link href="/my-bids"   className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition">🎯 Issue with a bid? Check <span className="font-semibold">My Bids</span> first</Link>
-            <Link href="/bookings"  className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition">📅 Booking trouble? Open the booking in <span className="font-semibold">My Bookings</span></Link>
-            <Link href="/verification" className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition">🎥 Room mismatch? <span className="font-semibold">Record video evidence</span></Link>
+            <Link href="/my-bids"   className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition"><Target size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Issue with a bid? Check <span className="font-semibold">My Bids</span> first</Link>
+            <Link href="/bookings"  className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition"><CalendarDays size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Booking trouble? Open the booking in <span className="font-semibold">My Bookings</span></Link>
+            <Link href="/verification" className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition"><Video size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Room mismatch? <span className="font-semibold">Record video evidence</span></Link>
           </div>
         </div>
 
@@ -214,12 +215,12 @@ function Card({ c }: { c: Complaint }) {
         <div className="flex gap-2 mt-3 flex-wrap text-xs">
           {c.bookingId && (
             <span className="bg-luxury-100 text-luxury-700 px-2 py-1 rounded-full">
-              📅 Booking {c.bookingId.slice(0, 10)}
+              <CalendarDays size={11} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Booking {c.bookingId.slice(0, 10)}
             </span>
           )}
           {c.bidId && (
             <span className="bg-luxury-100 text-luxury-700 px-2 py-1 rounded-full">
-              🎯 Bid {c.bidId.slice(0, 10)}
+              <Target size={11} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Bid {c.bidId.slice(0, 10)}
             </span>
           )}
         </div>
@@ -231,7 +232,7 @@ function Card({ c }: { c: Complaint }) {
           <p className="text-sm text-emerald-900 leading-relaxed whitespace-pre-wrap">{adminMsg}</p>
           {Number(c.refundAmount) > 0 && (
             <div className="mt-2 text-xs font-semibold text-emerald-800 tabular-nums">
-              💸 Refund ₹{Number(c.refundAmount).toLocaleString("en-IN")} processed
+              <Banknote size={12} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Refund ₹{Number(c.refundAmount).toLocaleString("en-IN")} processed
             </div>
           )}
         </div>

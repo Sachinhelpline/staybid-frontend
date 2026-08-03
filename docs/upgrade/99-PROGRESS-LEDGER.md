@@ -794,6 +794,48 @@
 - NEXT: owner device-check v646 → the pending menu-destination batch
   (saved/trust/complaints/verification/profile) or Phase 2 panels.
 
+### 2026-08-03 — Session 6 cont. (v647 — menu-destination batch: saved · trust · complaints · verification · profile)
+- **Owner commission:** "pending menu-destination batch
+  (saved/trust/complaints/verification/profile)" — the five customer
+  surfaces the v646 status report flagged as NOT-yet-upgraded. House
+  grammar (borderless 4-layer 3D card, lucide chrome, light AND dark).
+- **CARD GRAMMAR via scoped .card-luxury override** (new block in
+  globals.css, before the v641 .ppx-card marker): `.lux-soft .card-luxury,
+  .trust-root .card-luxury, .verif-root .card-luxury, .upg-root
+  .card-luxury` → `border:none` + the house 4-layer light shadow, with a
+  `[data-theme="dark"]` deepen (rgba(0,0,0,0.7/0.48/0.38) + inset). Scopes:
+  /saved + /complaints already carry `.lux-soft`; /trust `.trust-root`,
+  /verification `.verif-root`; /upgrade `.upg-root` (root added). Measured
+  4 shadow layers + borderless in BOTH themes on every page.
+- **/saved:** TABS icon type → ReactNode, Bookmark/Clapperboard/Building2/
+  Sparkles/Zap; header Bookmark; ❓→CircleHelp; media fallbacks 🎬/🏨→
+  Clapperboard/Building2; ▶ views→Play; ⚡ Flash label→Zap; the two remove
+  buttons ✕→X (lucide).
+- **/trust:** value-card glyphs → BadgeCheck(#7F9269)/Trophy(#c9a24a)/
+  Star(#8198ae). NOTE: 🏆 still appears in-page but it is the
+  HotelScoreBadge compact RANK glyph (`hsb-cp-icon`, score-ladder KEEP
+  vocabulary) on the hotel rows — NOT chrome; deliberately kept.
+- **/complaints:** TYPE_LABEL 8 icons → CalendarDays/CreditCard/Banknote/
+  Building2/Target/Video/FileText (type widened `icon: string`→ReactNode);
+  quick-link + ref-chip glyphs 🎯/📅/🎥/💸 → Target/CalendarDays/Video/
+  Banknote.
+- **/verification:** ↻→RotateCw, 🎬→Clapperboard. Tier-ladder medals
+  🥈🥇💎 KEPT (content vocabulary).
+- **/profile:** 💎→Gem, ✏️→Pencil, ✨→Sparkles, 🔒→Lock, 🎯 Reward
+  Milestones→Target. KEPT: 🥈🥇💎 TIERS medals, MILESTONES reward icons
+  (🥇⭐💎🏨🎁✈), glyph="📭"/"🙌" SbState, ★ rating, ✓ ticks.
+- Badge v646→**v647** (`SB_BUILD v647-menu-destinations-lucide`), sw
+  `HTML_CACHE` v443→**v444**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit
+  **23/23** — every page: scoped .card-luxury 4-layer borderless in LIGHT
+  and DARK (injected-probe node for the empty-state pages so the same
+  scoped rule is measured), lucide svgs present, page-root-scoped chrome
+  emoji scan clean (KEEP vocabulary excluded), 0 horizontal overflow.
+- NEXT: /influencer (Creator Hub) — the last pending menu destination —
+  then Phase 2 panels (partner → admin → circle → trade → host → onboard →
+  worker) + the Hinglish sweep. Deferred (owner approval): lux-cal/picker
+  dark-mode deep pass; global-chrome phase (Navbar ✨).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
