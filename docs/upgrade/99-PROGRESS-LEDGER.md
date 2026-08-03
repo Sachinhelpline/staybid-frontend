@@ -836,6 +836,54 @@
   worker) + the Hinglish sweep. Deferred (owner approval): lux-cal/picker
   dark-mode deep pass; global-chrome phase (Navbar ✨).
 
+### 2026-08-03 — Session 6 cont. (v648 — /influencer Creator Hub → lucide + house cards)
+- **SCOPE:** the LAST pending menu destination — the whole Creator Hub surface
+  (`/influencer`: layout + dashboard/upload/bookings/referrals/earnings/profile
+  + `public/[id]`). Owner ask: "influencer (Creator Hub)". Presentation-only.
+- **STUDY FIRST (no blind build):** `.inf-root` ALREADY carries a full
+  dark-mode token bridge from an earlier era (globals.css ~L807: `.inf-root
+  .card-luxury`/`.bg-white`/`.bg-luxury-*`/`.border-luxury-*` remap +
+  `[data-theme="dark"]` handling). So the hub was already theme-aware — it only
+  lacked the house borderless 4-layer 3D card grammar. A parallel Explore-agent
+  chrome inventory + a python emoji scan mapped every glyph across all 9 files.
+- **CARD GRAMMAR:** added `.inf-root .card-luxury` to the v647 scoped 4-layer
+  block (globals.css, light + `[data-theme="dark"]` deepen). One CSS edit covers
+  every hub `.card-luxury` (dashboard hero/KPIs/KYC/commissions, upload
+  form/tips, referrals, earnings, profile, AND `public/[id]` — which renders its
+  OWN `.lux-bg inf-root` root, so it's covered too). Measured 4 layers +
+  borderless in BOTH themes on dashboard, upload, and public.
+- **layout.tsx:** 6 nav-tab emoji (📊🎬📋🔗💸👤) → LayoutDashboard/Clapperboard/
+  ClipboardList/Link2/Wallet/UserRound (TABS type widened `icon:ReactNode`);
+  header ✨ → Sparkles.
+- **dashboard:** KYC chips ✅/⏳ → CircleCheck/Hourglass.
+- **upload:** header 🎬→Clapperboard, dropzone 📹→Video, thumb 🖼️→ImageIcon,
+  CTA 🚀→Rocket, likes ❤️→Heart. KEEP: the 5 "Tips for great reels" string
+  emoji (🌅📱🎵🏷️💬) — editorial marketing copy, same precedent as the KEPT
+  hotel-page aiTips ticker strings; and the ✅ inside the success-status string.
+- **public/[id]:** not-found 🔍→Search, section 🎬→Clapperboard, views ▶→Play,
+  likes ❤→Heart, Follow button ✓/+ → Check/UserPlus. KEEP: ★ rating, inline
+  "Open feed →" link arrow.
+- **KEEP — referrals page untouched (deliberate):** the share-message TEMPLATES
+  (🏨👇👆👉) are content strings; the "Link copied ✓"/"Shared ✓" toasts are tick
+  vocabulary; and the 📲💬📸✈️𝕏🔗 share buttons are BRAND-channel identifiers
+  (WhatsApp/Instagram/Telegram/X) — lucide ships no brand icons, and mixing
+  lucide+emoji in one button row would look worse than a consistent emoji set.
+  `ShareBtn icon:string` left as-is (no lucide passed). earnings 🎉/✓/∞ and the
+  bookings `•` list bullets + `→` date separator also KEPT (celebration / tick /
+  data value / neutral typography).
+- Badge v647→**v648** (`SB_BUILD v648-creator-hub-lucide`), sw `HTML_CACHE`
+  v444→**v445**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **21/21** —
+  dashboard/upload/public each: `.inf-root .card-luxury` 4-layer borderless in
+  LIGHT and DARK (dark verified via a FRESH load with `sb_theme=dark` in the
+  no-FOUC init script — a post-load `setAttribute` was reset by the theme-store
+  on the standalone public page, so the fresh-load approach is the reliable one),
+  `.inf-root`-scoped lucide svgs present, swapped chrome emoji absent (KEEP
+  vocabulary excluded), 0 horizontal overflow.
+- NEXT: menu destinations COMPLETE. Phase 2 panels (partner → admin → circle →
+  trade → host → onboard → worker) + the Hinglish sweep. Deferred (owner
+  approval): lux-cal/picker dark-mode deep pass; global-chrome phase (Navbar ✨).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

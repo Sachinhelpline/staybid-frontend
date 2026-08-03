@@ -4,14 +4,17 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { LayoutDashboard, Clapperboard, ClipboardList, Link2, Wallet, UserRound, Sparkles } from "lucide-react";
 
-const TABS = [
-  { href: "/influencer/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/influencer/upload",    label: "Upload",    icon: "🎬" },
-  { href: "/influencer/bookings",  label: "Bookings",  icon: "📋" },
-  { href: "/influencer/referrals", label: "Referrals", icon: "🔗" },
-  { href: "/influencer/earnings",  label: "Earnings",  icon: "💸" },
-  { href: "/influencer/profile",   label: "Profile",   icon: "👤" },
+const tabIc = (I: any) => <I size={15} strokeWidth={2.2} aria-hidden style={{ display: "inline-block", verticalAlign: "-3px", marginRight: 6 }} />;
+
+const TABS: { href: string; label: string; icon: React.ReactNode }[] = [
+  { href: "/influencer/dashboard", label: "Dashboard", icon: tabIc(LayoutDashboard) },
+  { href: "/influencer/upload",    label: "Upload",    icon: tabIc(Clapperboard) },
+  { href: "/influencer/bookings",  label: "Bookings",  icon: tabIc(ClipboardList) },
+  { href: "/influencer/referrals", label: "Referrals", icon: tabIc(Link2) },
+  { href: "/influencer/earnings",  label: "Earnings",  icon: tabIc(Wallet) },
+  { href: "/influencer/profile",   label: "Profile",   icon: tabIc(UserRound) },
 ];
 
 export default function InfluencerLayout({ children }: { children: React.ReactNode }) {
@@ -74,7 +77,7 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
     <div className="lux-bg inf-root min-h-screen">
       <div className="max-w-6xl mx-auto px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-2">
-          <span className="text-3xl">✨</span>
+          <Sparkles size={30} strokeWidth={2} aria-hidden style={{ color: "#c9a24a" }} />
           <div>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-luxury-900 leading-none">
               Creator Hub
@@ -93,7 +96,7 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
                     ? "bg-gold-500 text-white border-gold-600 shadow-gold"
                     : "bg-white text-luxury-700 border-luxury-200 hover:border-gold-400"
                 }`}>
-                <span className="mr-1.5">{t.icon}</span>{t.label}
+                {t.icon}{t.label}
               </Link>
             ))}
           </div>

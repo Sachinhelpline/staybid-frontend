@@ -2728,14 +2728,15 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     align-self: start;
   }
 }
-/* v647 — legacy `card-luxury` shells on the menu-destination pages join the
-   borderless 4-layer 3D grammar, scoped to their theme roots (the v460/v462
-   bridges keep handling bg/text underneath). Global .card-luxury elsewhere is
-   untouched. */
+/* v647/v648 — legacy `card-luxury` shells on the menu-destination pages +
+   the Creator Hub (`.inf-root`) join the borderless 4-layer 3D grammar,
+   scoped to their theme roots (the v460/v462 + `.inf-root` bridges keep
+   handling bg/text underneath). Global .card-luxury elsewhere is untouched. */
 .lux-soft .card-luxury,
 .trust-root .card-luxury,
 .verif-root .card-luxury,
-.upg-root .card-luxury {
+.upg-root .card-luxury,
+.inf-root .card-luxury {
   border: none !important;
   box-shadow:
     0 24px 42px -22px rgba(31, 26, 15, 0.32),
@@ -2746,7 +2747,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 [data-theme="dark"] .lux-soft .card-luxury,
 [data-theme="dark"] .trust-root .card-luxury,
 [data-theme="dark"] .verif-root .card-luxury,
-[data-theme="dark"] .upg-root .card-luxury {
+[data-theme="dark"] .upg-root .card-luxury,
+[data-theme="dark"] .inf-root .card-luxury {
   box-shadow:
     0 24px 42px -22px rgba(0, 0, 0, 0.7),
     0 10px 20px -12px rgba(0, 0, 0, 0.48),

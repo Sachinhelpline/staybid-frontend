@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { CountUp } from "@/components/CountUp";
+import { CircleCheck, Hourglass } from "lucide-react";
 // v142 — Phase-6 creator hub tour. 4 steps: tier → KPIs → KYC → commissions.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 
@@ -144,7 +145,9 @@ function KPI({ label, rawValue, prefix = "", sub }: { label: string; rawValue: n
 function KycChip({ label, done }: { label: string; done: boolean }) {
   return (
     <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border sb-card-lift ${done ? "bg-emerald-50 border-emerald-200" : "bg-luxury-50 border-luxury-200"}`}>
-      <span className="text-lg">{done ? "✅" : "⏳"}</span>
+      {done
+        ? <CircleCheck size={19} strokeWidth={2.2} aria-hidden style={{ color: "#7F9269", flexShrink: 0 }} />
+        : <Hourglass size={17} strokeWidth={2.2} aria-hidden style={{ color: "#b08d57", flexShrink: 0 }} />}
       <div>
         <p className="text-sm font-bold text-luxury-800">{label}</p>
         <p className="text-[0.65rem] uppercase tracking-wider font-bold text-luxury-500">

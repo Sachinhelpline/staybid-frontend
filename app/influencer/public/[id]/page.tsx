@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Search, Clapperboard, Play, Heart, Check, UserPlus } from "lucide-react";
 
 const TIER: Record<number, { label: string; color: string }> = {
   1: { label: "Starter",  color: "#94a3b8" },
@@ -76,7 +77,7 @@ export default function PublicInfluencerPage() {
     return (
       <div className="lux-bg inf-root min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-2xl">🔍</p>
+          <Search size={26} strokeWidth={2} aria-hidden className="mx-auto text-luxury-400" />
           <p className="text-luxury-700 text-lg font-semibold mt-2">Creator not found</p>
           <p className="text-luxury-500 text-sm mt-1">{error}</p>
         </div>
@@ -124,7 +125,9 @@ export default function PublicInfluencerPage() {
                 : "text-white shadow-gold hover:shadow-lg"
             } disabled:opacity-50`}
             style={following ? {} : { background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
-            {following ? "✓ Following" : "+ Follow"}
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {following ? <><Check size={15} strokeWidth={2.6} aria-hidden /> Following</> : <><UserPlus size={15} strokeWidth={2.4} aria-hidden /> Follow</>}
+            </span>
           </button>
         </div>
 
@@ -151,7 +154,7 @@ export default function PublicInfluencerPage() {
         {/* Reels grid */}
         <div className="card-luxury p-5 mt-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-luxury-900 flex items-center gap-2">🎬 Reels <span className="text-xs font-semibold text-luxury-500">({videos.length})</span></h2>
+            <h2 className="font-bold text-luxury-900 flex items-center gap-2"><Clapperboard size={18} strokeWidth={2.2} aria-hidden style={{ color: "#c9a24a" }} /> Reels <span className="text-xs font-semibold text-luxury-500">({videos.length})</span></h2>
             {videos.length > 0 && (
               <Link href="/reels" className="text-xs font-bold text-gold-700 hover:text-gold-800">Open feed →</Link>
             )}
@@ -167,8 +170,8 @@ export default function PublicInfluencerPage() {
                     : <video src={v.s3_url} className="w-full h-full object-cover" muted playsInline />}
                   <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                   <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between text-white text-[0.65rem] font-bold drop-shadow-sm">
-                    <span>▶ {fmtNum(v.views_count || 0)}</span>
-                    <span>❤ {fmtNum(v.likes_count || 0)}</span>
+                    <span className="inline-flex items-center gap-1"><Play size={11} strokeWidth={2.4} aria-hidden fill="currentColor" /> {fmtNum(v.views_count || 0)}</span>
+                    <span className="inline-flex items-center gap-1"><Heart size={11} strokeWidth={2.4} aria-hidden /> {fmtNum(v.likes_count || 0)}</span>
                   </div>
                 </Link>
               ))}
