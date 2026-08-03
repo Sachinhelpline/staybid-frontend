@@ -1753,6 +1753,35 @@
   pages — content / creators / host / analytics / rls / services / reports / redemption-codes
   / redemption-rules / settings / login / kpi(done) / … onward.
 
+### 2026-08-03 — Session 6 cont. (v676 — admin pages: Redemption-Codes + Redemption-Rules + Services)
+- **Admin pages sweep, batch 7** (rewards/services cluster), dark-only.
+- **Redemption-Codes:** the `KIND_LABEL` emoji map → plain text + a `KindLabel` lucide
+  component (Ticket/Wallet/Building2/Gift) used in the table cell + detail row; 🎟️→Ticket
+  heading; ⛔ Revoke → Ban (+ red #FF4757→#FF6B7A for contrast); ⏰ Extend → Clock.
+  **Contrast fixes** — dim barcode `#5C627A` (2.94:1) → `#8A8FA8`; the ₹-Cost KPI purple
+  `#A855F7` (4.48:1 at its responsive size) → `#D8B4FE`.
+- **Redemption-Rules:** 🎁→Gift heading; `KIND_LABEL` emoji → plain text; the reward-list
+  avatar now renders a **lucide-by-kind icon** (Ticket/Wallet/Building2/Gift) instead of the
+  stored `icon` emoji — the `icon` data field + its admin editor + customer-facing display
+  are UNTOUCHED (admin list just shows a consistent lucide). Amenities KPI + platinum tier
+  purple `#A855F7` → `#D8B4FE`.
+- **Services:** the 3 ⚠ migration-warning chips → TriangleAlert; the 3 🏨 hotel markers →
+  Building2; ❌ stripped from `alert()` strings. **English (rule 8):** 4 Hinglish strings
+  translated — "…apply karein."→"Apply ….", "Koi payment nahi."→"No payments yet.", "Koi
+  pending request nahi."→"No pending requests.", "Abhi koi service grant nahi ki."→"No
+  services granted yet.", + the subtitle "…manage karein."→"Manage …".
+- **CONTRAST + EMOJI (owner ask — MEASURED, 3 pages × 5 widths, gradient-aware +
+  emoji-in-DOM scan):** every measurable text clears WCAG AA — min **4.49:1** (a tinted
+  "USED" status pill, at the AA line) / **4.81** / **5.56**; the real misses (barcode 2.94,
+  purple KPI 4.48) fixed. **Zero emoji glyphs** in the rendered DOM.
+- Badge v675→**v676** (`SB_BUILD v676-admin-pages-redemption-services`), sw `HTML_CACHE`
+  v472→**v473**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **15/15**.
+- **14 rules honoured:** presentation-only (no redemption/service-grant/pricing logic
+  touched — security 385/0), dark-only, strict responsive to 320px, measured verify **incl.
+  contrast + 3 real fixes**, lucide, Hinglish→English, content ticks kept. NEXT: admin pages —
+  content / creators / host / analytics / rls / reports / settings / login / … onward.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
