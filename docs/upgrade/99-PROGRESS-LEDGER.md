@@ -1193,6 +1193,41 @@
   Content/Passport → the shared modals. Then admin → circle → trade → host →
   onboard → worker.
 
+### 2026-08-03 — Session 6 cont. (v658 — partner ChannelManagerTab, the big one)
+- **ChannelManagerTab (747 lines) — all 4 dimensions.** ① emoji → lucide:
+  ↻ refresh → RotateCw, ⚠ overbook/not-provisioned/PIN → TriangleAlert, 🗑 (×2,
+  connection + mapping) → Trash2, readiness ✅/⚠️ → CircleCheck/TriangleAlert,
+  the "● mapped" dot → a small Check, the ↓/↑ import/export hints → ArrowDown/
+  ArrowUp, modal ×→X, 💡→Lightbulb, 📍→MapPin. ② hardcoded hex tokenized where
+  it broke dark: the health-rollup `Stat` was refactored from an inline hex
+  `color` prop to a Tailwind `cls` (the "Channels" number was #0f172a — invisible
+  on dark, now light text), the overbook card (#fef2f2/#fecaca → bg-red-50
+  border-red-200), the not-provisioned card (#fafbfc → bg-amber-50), the
+  readiness badge + the two modal info cards (#f0e9ff → bg-purple-50, #eff2f5 →
+  bg-luxury-50); added `.bg-white/70` to the dark bridge for the overbook chips.
+  ③ Hinglish → English across ~14 strings (subhead, readiness hints, overbook
+  copy, both import/export descriptions, reservations-inbox copy, mapping empty +
+  subhead, both "add a room category" lines, the API-modal tips, validation, and
+  placeholders). ④ responsive verified.
+- **KEEP (rule-honoring):** the OTA_META brand icons (🅱️ Booking / ✈️ MMT / 🏠
+  Airbnb / 🏨 Agoda / 🧳 Goibibo / 🌐 Expedia / 🔗 Other + the 🔗 fallback) —
+  channel-brand identifiers with no lucide equivalents (same call as the
+  referrals brand icons); the toast "✓" strings; and the `×` in the "live price
+  × (1 + markup%)" formula (mathematical multiply). A few saturated inline status
+  text colours (otaState dot, reservation status labels, the teal OTA-price)
+  were left as-is — readable on both themes.
+- Badge v657→**v658** (`SB_BUILD v658-partner-channel-manager`), sw `HTML_CACHE`
+  v454→**v455**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **22/22** —
+  Channel Manager tab + the opened ChannelEditor modal responsive @ 320/360/390/
+  768/1280 × LIGHT/DARK all zero h-overflow; dark Stat number now light
+  `rgb(219,227,234)`; modal dark `rgb(27,33,42)`; chrome emoji + Hinglish gone;
+  lucide (35); OTA brand icons confirmed kept.
+- NEXT (standalone components): OtaFeedManager (the sibling, 38 emoji) →
+  BillingTab → MenuBuilderTab/FnbOrdersTab → ReportsTab → AgentAuctionTab →
+  Circle tabs → Content/Passport → shared modals. Then admin → circle → trade →
+  host → onboard → worker.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

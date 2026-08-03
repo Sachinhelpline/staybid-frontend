@@ -896,6 +896,7 @@
 /* Neutral Tailwind luxury/white utilities used across shell + tabs */
 [data-theme="dark"] .pdash-root .bg-white { background: var(--bg-card) !important; }
 [data-theme="dark"] .pdash-root .bg-white\/95 { background: color-mix(in srgb, var(--bg-card) 95%, transparent) !important; }
+[data-theme="dark"] .pdash-root .bg-white\/70 { background: color-mix(in srgb, var(--bg-card) 70%, transparent) !important; }
 /* The 4 overview KPI cards carry an inline light tint (byte-identical light);
    this class-scoped !important flips only their dark surface. */
 [data-theme="dark"] .pdash-root .pdash-kpi { background: var(--bg-card) !important; border-color: var(--border-soft) !important; }

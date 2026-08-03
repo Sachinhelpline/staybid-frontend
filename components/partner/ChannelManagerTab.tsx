@@ -15,6 +15,7 @@
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { modalPortal } from "@/lib/partner/modal-portal";
+import { RotateCw, TriangleAlert, Trash2, CircleCheck, Check, ArrowDown, ArrowUp, X, Lightbulb, MapPin } from "lucide-react";
 import OtaFeedManager, {
   partnerToken, OTA_INSTRUCTIONS,
 } from "@/components/partner/OtaFeedManager";
@@ -26,7 +27,7 @@ const OTA_META: Record<string, { label: string; icon: string; hint: string }> = 
   agoda:    { label: "Agoda",       icon: "🏨", hint: "Agoda YCS → Property → Connectivity" },
   goibibo:  { label: "Goibibo",     icon: "🧳", hint: "Goibibo / Ingommt extranet → Channel settings" },
   expedia:  { label: "Expedia",     icon: "🌐", hint: "Expedia Partner Central → Connectivity settings" },
-  other:    { label: "Other OTA",   icon: "🔗", hint: "Apne OTA ke extranet → API / Connectivity section" },
+  other:    { label: "Other OTA",   icon: "🔗", hint: "Your OTA's extranet → API / Connectivity section" },
 };
 const OTA_KEYS = ["booking", "mmt", "airbnb", "agoda", "goibibo", "expedia", "other"];
 
@@ -127,7 +128,7 @@ export default function ChannelManagerTab({
   function showToast(m: string) { setToast(m); setTimeout(() => setToast(""), 2200); }
   function copy(text: string, label: string) {
     try { navigator.clipboard.writeText(text); showToast(`${label} copied ✓`); }
-    catch { showToast("Copy failed — manually select karo"); }
+    catch { showToast("Copy failed — please select it manually"); }
   }
   async function removeConnection(id: string) {
     if (!confirm("Yeh OTA connection hata dein? (Import feeds alag se rahenge.)")) return;
@@ -182,11 +183,11 @@ export default function ChannelManagerTab({
     const withPrice = rooms.filter((r) => Number(r.floorPrice) > 0).length;
     const withImg = rooms.filter((r) => Array.isArray(r.images) && r.images.length > 0).length;
     return [
-      { ok: rooms.length > 0, label: "Room categories defined", hint: "Rooms tab me kam se kam ek category banao" },
-      { ok: rooms.length > 0 && withPrice === rooms.length, label: "Pricing set on every room", hint: `${withPrice}/${rooms.length} rooms par price` },
-      { ok: roomUnits.length > 0, label: "Room numbers / inventory added", hint: "Rooms tab me room numbers add karo" },
-      { ok: rooms.length > 0 && withImg === rooms.length, label: "Photos on every room", hint: `${withImg}/${rooms.length} rooms par photo` },
-      { ok: feeds.length > 0, label: "At least one OTA feed connected", hint: "Neeche apne OTA ka iCal link add karo" },
+      { ok: rooms.length > 0, label: "Room categories defined", hint: "Add at least one category in the Rooms tab" },
+      { ok: rooms.length > 0 && withPrice === rooms.length, label: "Pricing set on every room", hint: `${withPrice}/${rooms.length} rooms priced` },
+      { ok: roomUnits.length > 0, label: "Room numbers / inventory added", hint: "Add room numbers in the Rooms tab" },
+      { ok: rooms.length > 0 && withImg === rooms.length, label: "Photos on every room", hint: `${withImg}/${rooms.length} rooms with photos` },
+      { ok: feeds.length > 0, label: "At least one OTA feed connected", hint: "Add your OTA's iCal link below" },
       { ok: true, label: "Live availability calendar", hint: "" },
       { ok: true, label: "Calendar export feed (iCal)", hint: "" },
     ];
@@ -199,30 +200,30 @@ export default function ChannelManagerTab({
         <div>
           <h2 className="sec-title text-xl">Channel Manager</h2>
           <p className="text-[0.7rem] text-luxury-500 mt-0.5">
-            Apne OTAs (Booking.com, MMT, Airbnb…) ko StayBid se jodo — ek jagah se availability sync karo.
+            Connect your OTAs (Booking.com, MMT, Airbnb…) to StayBid — sync availability from one place.
           </p>
         </div>
-        <button onClick={refreshAll} className="btn-ghost px-2.5! py-1! text-[0.7rem] shrink-0" title="Refresh">↻</button>
+        <button onClick={refreshAll} aria-label="Refresh" className="btn-ghost px-2.5! py-1! text-[0.7rem] shrink-0 inline-flex items-center" title="Refresh"><RotateCw size={13} strokeWidth={2.3} aria-hidden /></button>
       </div>
 
       {/* ── health rollup ── */}
       <div className="card-p card-tight mb-3.5">
         <div className="grid grid-cols-4 gap-2 text-center">
-          <Stat n={health.activeOtas} label="Channels" color="#0f172a" />
-          <Stat n={health.ok} label="Synced" color="#15803d" />
-          <Stat n={health.error} label="Errors" color={health.error ? "#dc2626" : "#9ca3af"} />
-          <Stat n={health.paused} label="Paused" color={health.paused ? "#b45309" : "#9ca3af"} />
+          <Stat n={health.activeOtas} label="Channels" cls="text-luxury-900" />
+          <Stat n={health.ok} label="Synced" cls="text-emerald-600" />
+          <Stat n={health.error} label="Errors" cls={health.error ? "text-red-600" : "text-luxury-400"} />
+          <Stat n={health.paused} label="Paused" cls={health.paused ? "text-amber-600" : "text-luxury-400"} />
         </div>
       </div>
 
       {/* ── overbooking alerts (urgent — sits high) ── */}
       {overbook.length > 0 && (
-        <div className="card-p card-tight mb-3.5" style={{ background: "#fef2f2", borderColor: "#fecaca" }}>
-          <p className="text-[0.78rem] font-bold text-red-700 mb-1.5">
-            ⚠ Overbooking risk — {overbook.length} conflict{overbook.length > 1 ? "s" : ""}
+        <div className="card-p card-tight mb-3.5 bg-red-50 border-red-200">
+          <p className="text-[0.78rem] font-bold text-red-700 mb-1.5 inline-flex items-center gap-1.5">
+            <TriangleAlert size={13} strokeWidth={2.3} aria-hidden /> Overbooking risk — {overbook.length} conflict{overbook.length > 1 ? "s" : ""}
           </p>
           <p className="text-[0.64rem] text-red-500 mb-2">
-            In dates par ek OTA booking room ki capacity se zyada ho gayi hai. Turant check karke ek taraf cancel karo.
+            On these dates an OTA booking pushed a room over its capacity. Check now and cancel one side.
           </p>
           <div className="space-y-1.5">
             {overbook.slice(0, 6).map((c, i) => (
@@ -234,7 +235,7 @@ export default function ChannelManagerTab({
               </div>
             ))}
             {overbook.length > 6 && (
-              <p className="text-[0.62rem] text-red-400">…aur {overbook.length - 6} aur</p>
+              <p className="text-[0.62rem] text-red-400">…and {overbook.length - 6} more</p>
             )}
           </div>
         </div>
@@ -268,8 +269,8 @@ export default function ChannelManagerTab({
                     {conn && conn.mode === "api" ? "Edit" : "API"}
                   </button>
                   {conn && (
-                    <button onClick={() => removeConnection(conn.id)}
-                      className="btn-ghost px-2! py-1! text-[0.7rem] text-red-600! hover:border-red-300!">🗑</button>
+                    <button onClick={() => removeConnection(conn.id)} aria-label="Remove connection"
+                      className="btn-ghost px-2! py-1! text-[0.7rem] text-red-600! hover:border-red-300! inline-flex items-center"><Trash2 size={12} strokeWidth={2.2} aria-hidden /></button>
                   )}
                 </div>
               </div>
@@ -280,9 +281,9 @@ export default function ChannelManagerTab({
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3.5 border-amber-200" style={{ background: "#fafbfc" }}>
-          <p className="text-[0.7rem] text-amber-700">
-            ⚠ API-credential storage abhi setup nahi hua — <span className="font-mono">migrations/2026-07-11-v315-channel-manager-phase1.sql</span> apply karo. (iCal import + export neeche phir bhi chalega.)
+        <div className="card-p card-tight mb-3.5 bg-amber-50 border-amber-200">
+          <p className="text-[0.7rem] text-amber-700 inline-flex items-start gap-1.5">
+            <TriangleAlert size={12} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" /> <span>API-credential storage isn't set up yet — apply <span className="font-mono">migrations/2026-07-11-v315-channel-manager-phase1.sql</span>. (iCal import + export below still works.)</span>
           </p>
         </div>
       )}
@@ -296,7 +297,7 @@ export default function ChannelManagerTab({
       {/* ── OTA import feeds (shared component) ── */}
       <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">OTA → StayBid · import bookings</p>
       <p className="text-[0.66rem] text-luxury-500 mb-2.5">
-        Har OTA se uska <b>Export calendar</b> (.ics) link copy karke yahan add karo — us OTA par booking hote hi StayBid par woh dates block ho jayengi (aur cancel hone par khud release).
+        Copy each OTA's <b>Export calendar</b> (.ics) link and add it here — as soon as a booking happens on that OTA, those dates block on StayBid (and release automatically on cancel).
       </p>
       <div className="card-p mb-4">
         <OtaFeedManager hotelId={hotelId} rooms={rooms} onChanged={refreshAll} />
@@ -312,7 +313,7 @@ export default function ChannelManagerTab({
             </span>
           </div>
           <p className="text-[0.66rem] text-luxury-500 mb-2.5">
-            Aapke connected OTAs se import hui bookings. Cancel hone par apne aap gayab ho jati hain.
+            Bookings imported from your connected OTAs. They disappear automatically when cancelled.
           </p>
           <div className="card-p card-tight mb-4">
             {/* per-channel production chips */}
@@ -361,12 +362,12 @@ export default function ChannelManagerTab({
       {/* ── iCal export ── */}
       <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">StayBid → OTA · export availability</p>
       <p className="text-[0.66rem] text-luxury-500 mb-2.5">
-        Ye link apne OTA extranet ke <b>Import calendar</b> me paste karo — StayBid ki booking us OTA par bhi dates block kar degi.
+        Paste this link into your OTA extranet's <b>Import calendar</b> — a StayBid booking will then block those dates on that OTA too.
       </p>
       {loading ? (
         <div className="card-p text-center py-6 text-luxury-400 text-sm">Loading…</div>
       ) : icalExports.length === 0 ? (
-        <div className="card-p text-center py-6 text-luxury-400 text-sm">Pehle Rooms tab me room category banao.</div>
+        <div className="card-p text-center py-6 text-luxury-400 text-sm">First add a room category in the Rooms tab.</div>
       ) : (
         <div className="space-y-2 mb-4">
           {icalExports.map((x) => (
@@ -410,15 +411,14 @@ export default function ChannelManagerTab({
       <div className="card-p card-tight mb-2">
         <div className="flex items-center justify-between mb-2.5">
           <p className="text-[0.78rem] font-bold text-luxury-900">Integration readiness</p>
-          <span className="text-[0.66rem] font-bold px-2 py-0.5 rounded-full"
-            style={ready === checks.length ? { background: "#dcfce7", color: "#15803d" } : { background: "#f0f3f5", color: "#b45309" }}>
+          <span className={`text-[0.66rem] font-bold px-2 py-0.5 rounded-full ${ready === checks.length ? "bg-emerald-100 text-emerald-700" : "bg-luxury-100 text-amber-700"}`}>
             {ready}/{checks.length} ready
           </span>
         </div>
         <div className="grid sm:grid-cols-2 gap-1.5">
           {checks.map((c) => (
             <div key={c.label} className="flex items-start gap-2">
-              <span className="text-sm leading-none mt-0.5">{c.ok ? "✅" : "⚠️"}</span>
+              <span className="leading-none mt-0.5">{c.ok ? <CircleCheck size={14} strokeWidth={2.2} aria-hidden className="text-emerald-600" /> : <TriangleAlert size={14} strokeWidth={2.2} aria-hidden className="text-amber-600" />}</span>
               <div className="min-w-0">
                 <p className="text-[0.74rem] font-semibold text-luxury-800 leading-tight">{c.label}</p>
                 {!c.ok && c.hint && <p className="text-[0.6rem] text-amber-600 leading-tight">{c.hint}</p>}
@@ -542,7 +542,7 @@ function RoomMappingSection({
       <div className="mb-4">
         <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">Room mapping &amp; channel rates</p>
         <div className="card-p card-tight text-[0.7rem] text-luxury-500">
-          Pehle koi OTA channel connect karo — neeche apna iCal feed add karo (connection khud ban jayega) ya upar “API” se credentials daalo. Uske baad har room ko OTA room se map karke channel-wise markup laga sakte ho.
+          First connect an OTA channel — add your iCal feed below (the connection is created automatically) or add credentials via “API” above. After that you can map each room to its OTA room and set a channel-wise markup.
         </div>
       </div>
     );
@@ -563,11 +563,11 @@ function RoomMappingSection({
         </select>
       </div>
       <p className="text-[0.66rem] text-luxury-500 mb-2.5">
-        Har room ka OTA room ID + markup% set karo. Channel rate = StayBid live price × (1 + markup%). Preview live update hota hai.
+        Set each room's OTA room ID + markup%. Channel rate = StayBid live price × (1 + markup%). The preview updates live.
       </p>
       <div className="card-p card-tight">
         {rooms.length === 0 ? (
-          <p className="text-[0.7rem] text-luxury-400 text-center py-3">Pehle Rooms tab me room category banao.</p>
+          <p className="text-[0.7rem] text-luxury-400 text-center py-3">First add a room category in the Rooms tab.</p>
         ) : loading ? (
           <p className="text-[0.7rem] text-luxury-400 text-center py-3">Loading rates…</p>
         ) : (
@@ -586,7 +586,7 @@ function RoomMappingSection({
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <p className="text-[0.76rem] font-bold text-luxury-900 truncate">
                       {rm.name || rm.type || rm.id}
-                      {mapped && <span className="ml-1.5 text-[0.58rem] font-semibold text-emerald-600">● mapped</span>}
+                      {mapped && <span className="ml-1.5 text-[0.58rem] font-semibold text-emerald-600 inline-flex items-center gap-0.5"><Check size={10} strokeWidth={2.6} aria-hidden /> mapped</span>}
                     </p>
                     <p className="text-[0.66rem] text-luxury-500 shrink-0">
                       StayBid <b className="text-luxury-800">{live > 0 ? `₹${live.toLocaleString("en-IN")}` : "—"}</b>
@@ -616,8 +616,8 @@ function RoomMappingSection({
                     </button>
                     {mapped && (
                       <button
-                        onClick={() => clearRoom(rm.id)} disabled={savingRoom === rm.id}
-                        className="btn-ghost px-2! py-1.5! text-[0.68rem] text-red-600! shrink-0" title="Remove mapping">🗑</button>
+                        onClick={() => clearRoom(rm.id)} disabled={savingRoom === rm.id} aria-label="Remove mapping"
+                        className="btn-ghost px-2! py-1.5! text-[0.68rem] text-red-600! shrink-0 inline-flex items-center" title="Remove mapping"><Trash2 size={12} strokeWidth={2.2} aria-hidden /></button>
                     )}
                   </div>
                 </div>
@@ -630,10 +630,10 @@ function RoomMappingSection({
   );
 }
 
-function Stat({ n, label, color }: { n: number; label: string; color: string }) {
+function Stat({ n, label, cls }: { n: number; label: string; cls: string }) {
   return (
     <div>
-      <p className="text-lg font-bold leading-none" style={{ color }}>{n}</p>
+      <p className={`text-lg font-bold leading-none ${cls}`}>{n}</p>
       <p className="text-[0.58rem] font-semibold text-luxury-400 uppercase tracking-wide mt-0.5">{label}</p>
     </div>
   );
@@ -644,13 +644,13 @@ function Instructions({ ota }: { ota: string }) {
   return (
     <div className="mt-2.5 pt-2.5 border-t border-luxury-100 grid sm:grid-cols-2 gap-2.5">
       <div>
-        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase mb-1">Import their bookings ↓</p>
+        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase mb-1 inline-flex items-center gap-1">Import their bookings <ArrowDown size={10} strokeWidth={2.6} aria-hidden /></p>
         <ol className="list-decimal list-inside space-y-0.5">
           {info.export.map((s, i) => <li key={i} className="text-[0.66rem] text-luxury-600 leading-snug">{s}</li>)}
         </ol>
       </div>
       <div>
-        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase mb-1">Send them StayBid dates ↑</p>
+        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase mb-1 inline-flex items-center gap-1">Send them StayBid dates <ArrowUp size={10} strokeWidth={2.6} aria-hidden /></p>
         <ol className="list-decimal list-inside space-y-0.5">
           {info.import.map((s, i) => <li key={i} className="text-[0.66rem] text-luxury-600 leading-snug">{s}</li>)}
         </ol>
@@ -681,7 +681,7 @@ function ChannelEditor({
 
   async function save() {
     if (!f.propertyId.trim() && !f.apiKey.trim() && !f.endpointUrl.trim()) {
-      setErr("Kam se kam Property ID ya API key ya URL daalo."); return;
+      setErr("Enter at least a Property ID, API key or URL."); return;
     }
     setSaving(true); setErr("");
     try {
@@ -708,22 +708,21 @@ function ChannelEditor({
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
-          <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>{m.icon} Connect {m.label} (API)</p>
-          <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+          <p className="font-display text-lg text-luxury-900 inline-flex items-center gap-1.5" style={{ fontWeight: 500 }}><span aria-hidden>{m.icon}</span> Connect {m.label} (API)</p>
+          <button onClick={onClose} aria-label="Close"
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center"><X size={16} strokeWidth={2.2} aria-hidden /></button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
-          <div className="rounded-xl p-2.5" style={{ background: "#f0e9ff" }}>
-            <p className="text-[0.66rem] text-purple-800">
-              💡 Simplest option: iCal feed use karo (neeche list me) — koi API key nahi chahiye, turant chalta hai.
-              API credentials tab chahiye jab is OTA ka certified live connector activate ho.
+          <div className="rounded-xl p-2.5 bg-purple-50">
+            <p className="text-[0.66rem] text-purple-800 inline-flex items-start gap-1.5">
+              <Lightbulb size={13} strokeWidth={2.2} aria-hidden className="mt-0.5 shrink-0" /> <span>Simplest option: use an iCal feed (in the list below) — no API key needed, works instantly. You only need API credentials once this OTA's certified live connector is active.</span>
             </p>
           </div>
-          <div className="rounded-xl p-2.5" style={{ background: "#eff2f5" }}>
-            <p className="text-[0.66rem] text-luxury-600">📍 Ye details kahan se lein: <b>{m.hint}</b></p>
+          <div className="rounded-xl p-2.5 bg-luxury-50">
+            <p className="text-[0.66rem] text-luxury-600 inline-flex items-start gap-1.5"><MapPin size={12} strokeWidth={2.2} aria-hidden className="mt-0.5 shrink-0" /> <span>Where to find these details: <b>{m.hint}</b></span></p>
           </div>
           <div><label className={lbl}>Property / Hotel ID</label>
-            <input value={f.propertyId} onChange={(e) => set("propertyId", e.target.value)} placeholder="OTA par aapki property ka ID" className="inp-p" autoFocus /></div>
+            <input value={f.propertyId} onChange={(e) => set("propertyId", e.target.value)} placeholder="Your property's ID on the OTA" className="inp-p" autoFocus /></div>
           <div><label className={lbl}>API Key</label>
             <input value={f.apiKey} onChange={(e) => set("apiKey", e.target.value)} placeholder="API key / username" className="inp-p" /></div>
           <div><label className={lbl}>API Secret / Password</label>
@@ -733,7 +732,7 @@ function ChannelEditor({
           <div><label className={lbl}>Label / note (optional)</label>
             <input value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="e.g. main property account" className="inp-p" /></div>
           <p className="text-[0.62rem] text-luxury-400 leading-relaxed">
-            Credentials securely save ho jayenge. Jaise hi is OTA ka live connector activate hoga, aapki yahi details use hongi — dobara kuch nahi karna padega.
+            Credentials are saved securely. As soon as this OTA's live connector is activated, these same details are used — you won't have to do anything again.
           </p>
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
         </div>
