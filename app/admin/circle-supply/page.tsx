@@ -10,6 +10,7 @@
 // gate, v336). This surface governs Model-3 supply visibility + the window
 // only — never the customer-feed gate.
 import { useCallback, useEffect, useState } from "react";
+import { Building2, RotateCw } from "lucide-react";
 
 function adminId(): string {
   if (typeof window === "undefined") return "";
@@ -105,12 +106,12 @@ export default function AdminCircleSupply() {
     <div style={{ padding: "0 4px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div>
-          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif" }}>🏢 Circle Supply</h1>
+          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 9 }}><Building2 size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Circle Supply</h1>
           <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Mark operated properties available for Model-3 pre-buy + set the check-in window</div>
         </div>
         <button onClick={load} disabled={loading}
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
-          {loading ? "…" : "↻ Refresh"}
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {loading ? "…" : <><RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh</>}
         </button>
       </div>
 

@@ -5,6 +5,7 @@
 // /admin/circle-inventory. All calls carry x-admin-token.
 
 import { useCallback, useEffect, useState } from "react";
+import { Tag, Settings, Zap, Luggage, Package, Trophy, Banknote } from "lucide-react";
 
 const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
 function hdr() {
@@ -66,12 +67,12 @@ export default function AdminAuctionPage() {
   const card: React.CSSProperties = { background: "#161A2B", border: "1px solid #2A3050", borderRadius: 14, padding: 16, marginBottom: 16 };
   const th: React.CSSProperties = { textAlign: "left", padding: "6px 8px", color: "#8A8FA8", fontSize: 11, fontWeight: 700, textTransform: "uppercase" };
   const td: React.CSSProperties = { padding: "6px 8px", fontSize: 13, borderTop: "1px solid #232842" };
-  const btn = (bg: string): React.CSSProperties => ({ background: bg, color: "#fff", border: 0, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" });
+  const btn = (bg: string): React.CSSProperties => ({ background: bg, color: "#0E1120", border: 0, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" });
 
   return (
     <div style={{ minHeight: "100vh", background: "#0E1120", color: "#E6E8F0", padding: "20px 16px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#a9b9c8" }}>🏷️ Model 3 — Travel-Agent Auction</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#a9b9c8", display: "inline-flex", alignItems: "center", gap: 9 }}><Tag size={20} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Model 3 — Travel-Agent Auction</h1>
         <p style={{ color: "#8A8FA8", fontSize: 13, marginTop: 2 }}>Agent approvals · auction config · lots · awards · EMD refunds</p>
         {flash && <div style={{ marginTop: 10, background: "#12351f", color: "#5EE29B", padding: "8px 12px", borderRadius: 8, fontSize: 13 }}>{flash}</div>}
 
@@ -80,15 +81,15 @@ export default function AdminAuctionPage() {
             {/* Config */}
             {cfg && (
               <div style={card}>
-                <div style={{ fontWeight: 700, marginBottom: 10 }}>⚙️ Auction config</div>
+                <div style={{ fontWeight: 700, marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 7 }}><Settings size={16} strokeWidth={2} aria-hidden />Auction config</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10 }}>
                   {[["buyerPremiumPct", "Buyer premium %"], ["sellerFeePct", "Seller fee %"], ["depositPct", "EMD deposit % (sealed)"], ["windowOpenDay", "Window open day (sealed)"], ["payWindowHours", "Pay window hrs (sealed)"], ["circleFloorMultiplier", "Circle floor ×"], ["wholesaleDiscountPct", "Wholesale discount %"], ["minFloorFraction", "Dyn. floor anchor ×"], ["belowFloorMinRatio", "Below-floor min ×"], ["livePayWindowHours", "⚡ Live pay window hrs"], ["liveOfferTtlHours", "⚡ Live offer TTL hrs"], ["liveHybridAcceptRatio", "⚡ Live instant-lock ×"]].map(([k, label]) => (
-                    <label key={k} style={{ fontSize: 12, color: "#8A8FA8" }}>{label}
+                    <label key={k} style={{ fontSize: 12, color: "#8A8FA8" }}>{String(label).startsWith("⚡ ") ? <><Zap size={11} strokeWidth={2.4} aria-hidden style={{ verticalAlign: "-1px", marginRight: 3 }} />{String(label).slice(2)}</> : label}
                       <input type="number" step={["liveHybridAcceptRatio", "circleFloorMultiplier", "minFloorFraction", "belowFloorMinRatio"].includes(k as string) ? "0.05" : "1"} value={cfg[k as string] ?? 0} onChange={(e) => setCfg({ ...cfg, [k as string]: Number(e.target.value) })}
                         style={{ width: "100%", marginTop: 4, background: "#0E1120", border: "1px solid #2A3050", borderRadius: 8, color: "#fff", padding: "6px 8px", fontSize: 13 }} />
                     </label>
                   ))}
-                  <label style={{ fontSize: 12, color: "#8A8FA8" }}>⚡ Live default autopilot
+                  <label style={{ fontSize: 12, color: "#8A8FA8" }}><Zap size={11} strokeWidth={2.4} aria-hidden style={{ verticalAlign: "-1px", marginRight: 3 }} />Live default autopilot
                     <select value={cfg.liveDefaultAutopilot ?? "hybrid"} onChange={(e) => setCfg({ ...cfg, liveDefaultAutopilot: e.target.value })}
                       style={{ width: "100%", marginTop: 4, background: "#0E1120", border: "1px solid #2A3050", borderRadius: 8, color: "#fff", padding: "6px 8px", fontSize: 13 }}>
                       <option value="auto">auto</option>
@@ -104,14 +105,14 @@ export default function AdminAuctionPage() {
                     </select>
                   </label>
                 </div>
-                <div style={{ fontSize: 11, color: "#6b7280", marginTop: 8 }}>⚡ Live = the always-open no-EMD auction. Hybrid × = a bid ≥ floor × this ratio auto-confirms (at-floor waits). Sealed knobs (EMD / window / pay window) apply only to the month-end sealed auction.</div>
+                <div style={{ fontSize: 11, color: "#8A8FA8", marginTop: 8 }}><Zap size={11} strokeWidth={2.4} aria-hidden style={{ verticalAlign: "-1px", marginRight: 3 }} />Live = the always-open no-EMD auction. Hybrid × = a bid ≥ floor × this ratio auto-confirms (at-floor waits). Sealed knobs (EMD / window / pay window) apply only to the month-end sealed auction.</div>
                 <button onClick={saveCfg} disabled={busy === "cfg"} style={{ ...btn("#a9b9c8"), color: "#161A2B", marginTop: 10 }}>Save config</button>
               </div>
             )}
 
             {/* Agents */}
             <div style={card}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>🧳 Travel agents ({data.agents.length})</div>
+              <div style={{ fontWeight: 700, marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 7 }}><Luggage size={16} strokeWidth={2} aria-hidden />Travel agents ({data.agents.length})</div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
                   <thead><tr><th style={th}>Agency</th><th style={th}>Email</th><th style={th}>City</th><th style={th}>Status</th><th style={th}>Actions</th></tr></thead>
@@ -138,7 +139,7 @@ export default function AdminAuctionPage() {
 
             {/* Lots */}
             <div style={card}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>📦 Lots ({data.lots.length})</div>
+              <div style={{ fontWeight: 700, marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 7 }}><Package size={16} strokeWidth={2} aria-hidden />Lots ({data.lots.length})</div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
                   <thead><tr><th style={th}>Room · City</th><th style={th}>Month</th><th style={th}>Rooms</th><th style={th}>Min bid</th><th style={th}>Status</th><th style={th}>Action</th></tr></thead>
@@ -160,7 +161,7 @@ export default function AdminAuctionPage() {
 
             {/* Awards */}
             <div style={card}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>🏆 Awards ({data.awards.length})</div>
+              <div style={{ fontWeight: 700, marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 7 }}><Trophy size={16} strokeWidth={2} aria-hidden />Awards ({data.awards.length})</div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
                   <thead><tr><th style={th}>Room · City</th><th style={th}>Month</th><th style={th}>Rooms</th><th style={th}>Due</th><th style={th}>Status</th><th style={th}>Voucher</th></tr></thead>
@@ -182,7 +183,7 @@ export default function AdminAuctionPage() {
 
             {/* Refunds owed */}
             <div style={card}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>💸 EMD refunds owed ({data.refundsOwed.length})</div>
+              <div style={{ fontWeight: 700, marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 7 }}><Banknote size={16} strokeWidth={2} aria-hidden />EMD refunds owed ({data.refundsOwed.length})</div>
               {data.refundsOwed.length === 0 ? <div style={{ color: "#8A8FA8", fontSize: 13 }}>No refunds pending.</div> : (
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>

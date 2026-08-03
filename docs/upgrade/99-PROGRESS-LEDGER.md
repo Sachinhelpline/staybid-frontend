@@ -1665,6 +1665,35 @@
   **incl. contrast + a real fix**, lucide, content smileys/ticks kept. NEXT: admin pages —
   content / circle-inventory / auction / creators / host / analytics / notifications / …
 
+### 2026-08-03 — Session 6 cont. (v673 — admin pages: Auction + Circle-Supply + Circle-Inventory)
+- **Admin pages sweep, batch 4** (auction/circle money cluster), dark-only.
+- **Auction (`app/admin/auction`):** 🏷️→Tag, ⚙️→Settings, 🧳→Luggage, 📦→Package,
+  🏆→Trophy, 💸→Banknote section headers; the config-panel ⚡ Live-field markers →
+  inline lucide Zap (the array label strings keep a `⚡ ` sentinel that the render
+  ternary detects and replaces with a `<Zap/>` node — the DOM shows the icon, never a
+  glyph). **Contrast fixes** — the solid action buttons used white text on saturated
+  fills (Approve 2.10:1, Reject 3.34:1 — fail AA); the `btn()` helper text → dark
+  `#0E1120` (Approve 10:1, Reject 5.4:1, all buttons now clear AA); the config note
+  `#6b7280` → `#8A8FA8`.
+- **Circle-Supply (`app/admin/circle-supply`):** 🏢→Building2 heading; ↻ Refresh →
+  RotateCw. ✓ live/Saved content ticks kept.
+- **Circle-Inventory (`app/admin/circle-inventory`):** 🧾→ReceiptText heading; ↻→RotateCw;
+  the three ⇄ section headers → ArrowLeftRight; 💸 (×2)→Banknote; 🏠→Home; 📦→Package;
+  the inline ⚠ "not added" → TriangleAlert; the 🛡 "on" buyback status → Shield.
+  **Contrast fix** — the brand purple `#A855F7` as tinted-pill text failed AA (Buyback
+  button 3.88:1, active purple filter 4.38:1); brightened to `#D8B4FE` across the page
+  (same hue, legible on its tint — now 4.61:1; large KPI numerals still read purple).
+- **CONTRAST (owner ask — MEASURED, 3 pages × 5 widths, gradient-aware + emoji-in-DOM
+  scan):** every measurable text clears WCAG AA — min **4.74:1** (auction) / **4.61:1**
+  (circle-supply + circle-inventory); zero emoji glyphs left in the rendered DOM.
+- Badge v672→**v673** (`SB_BUILD v673-admin-pages-auction-circle-supply-inventory`), sw
+  `HTML_CACHE` v469→**v470**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **15/15**.
+- **14 rules honoured:** presentation-only (no auction/trade-agent/circle-settlement/
+  b2b-fee logic touched — security 385/0), dark-only, strict responsive to 320px, measured
+  verify **incl. contrast + 3 real fixes**, lucide, content ticks kept. NEXT: admin pages —
+  content / creators / host / analytics / notifications / rls / services / … onward.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
