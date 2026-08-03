@@ -2,6 +2,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, type Socket } from "socket.io-client";
+import {
+  Sparkles, Clapperboard, Star, Bookmark, Bell, Wallet, ClipboardList,
+  BarChart3, Video, ShieldAlert, Users, RotateCw, Activity, Siren,
+} from "lucide-react";
 import KpiCard from "@/components/admin/kpi-card";
 import AdminLineChart from "@/components/admin/charts/line-chart";
 import AdminBarChart from "@/components/admin/charts/bar-chart";
@@ -128,16 +132,16 @@ export default function AdminDashboard() {
       return () => { alive = false; clearInterval(slow); if (debounce) clearTimeout(debounce); unsub?.(); };
     }, []);
     if (!w) return null;
-    const widgets: { title: string; value: any; icon: string; color: string; sub: string; href: string }[] = [
+    const widgets: { title: string; value: any; icon: React.ReactNode; color: string; sub: string; href: string }[] = [
       // v126.2 — Influencer = Creator. Same `influencers` table backs both
       // the legacy "influencer" naming AND the customer-facing "Creator"
       // surface. Show the more familiar word + split the active/total
       // visually so admins don't read "3/3" as "33".
-      { title: "Creators",           value: `${w.influencersActive} · ${w.influencersTotal}`, icon: "✨", color: "#A855F7", sub: `${w.influencersActive} active of ${w.influencersTotal}`, href: "/admin/creators" },
-      { title: "Videos Pending",     value: w.videosPending,                                  icon: "🎬", color: "#9fb1c2", sub: `${w.videosApproved} approved`, href: "/admin/videos" },
-      { title: "Points Wallets",     value: w.pointWallets,                                   icon: "⭐", color: "#c6d0da", sub: "earning users",                href: "/admin/revenue" },
-      { title: "Saves",              value: w.savesTotal,                                     icon: "🔖", color: "#3D9CF5", sub: "across all targets",           href: "/admin" },
-      { title: "Notifications Queue",value: w.notifPending,                                   icon: "📨", color: "#2ECC71", sub: "pending dispatch",             href: "/admin" },
+      { title: "Creators",           value: `${w.influencersActive} · ${w.influencersTotal}`, icon: <Sparkles size={18} strokeWidth={2} aria-hidden />,   color: "#A855F7", sub: `${w.influencersActive} active of ${w.influencersTotal}`, href: "/admin/creators" },
+      { title: "Videos Pending",     value: w.videosPending,                                  icon: <Clapperboard size={18} strokeWidth={2} aria-hidden />, color: "#9fb1c2", sub: `${w.videosApproved} approved`, href: "/admin/videos" },
+      { title: "Points Wallets",     value: w.pointWallets,                                   icon: <Star size={18} strokeWidth={2} aria-hidden />,        color: "#c6d0da", sub: "earning users",                href: "/admin/revenue" },
+      { title: "Saves",              value: w.savesTotal,                                     icon: <Bookmark size={18} strokeWidth={2} aria-hidden />,    color: "#3D9CF5", sub: "across all targets",           href: "/admin" },
+      { title: "Notifications Queue",value: w.notifPending,                                   icon: <Bell size={18} strokeWidth={2} aria-hidden />,        color: "#2ECC71", sub: "pending dispatch",             href: "/admin" },
     ];
     return (
       <div style={{ marginBottom: 24 }}>
@@ -267,9 +271,12 @@ export default function AdminDashboard() {
               fontWeight: 600,
               cursor: "pointer",
               fontFamily: "DM Sans, sans-serif",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            ↻ Refresh
+            <RotateCw size={13} strokeWidth={2.3} aria-hidden />Refresh
           </button>
         </div>
       </div>
@@ -304,14 +311,14 @@ export default function AdminDashboard() {
           title="Total GMV"
           value={(todayOnly ? data?.today?.gmv : k.gmv) || 0}
           format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
-          icon="💰" color="#9fb1c2" sub={todayOnly ? "today" : "all time"} live
+          icon={<Wallet size={18} strokeWidth={2} aria-hidden />} color="#9fb1c2" sub={todayOnly ? "today" : "all time"} live
           sparkline={(data?.revenueTrend || []).map((p: any) => p.value)}
           onClick={() => router.push("/admin/finance")}
         />
         <KpiCard
           title={todayOnly ? "Today's Bookings" : "Active Bookings"}
           value={(todayOnly ? data?.today?.accepted : k.activeBookings) || 0}
-          icon="📋" color="#2ECC71"
+          icon={<ClipboardList size={18} strokeWidth={2} aria-hidden />} color="#2ECC71"
           sub={todayOnly ? `${data?.today?.bids || 0} bids placed` : `of ${k.totalBookings || 0} total`} live
           sparkline={(data?.bookingTrend || []).map((p: any) => p.value)}
           onClick={() => router.push("/admin/bookings")}
@@ -320,26 +327,26 @@ export default function AdminDashboard() {
           title="Revenue (5%)"
           value={(todayOnly ? data?.today?.revenue : k.revenue) || 0}
           format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
-          icon="📊" color="#3D9CF5" sub={todayOnly ? "today's commission" : "commission earned"} live
+          icon={<BarChart3 size={18} strokeWidth={2} aria-hidden />} color="#3D9CF5" sub={todayOnly ? "today's commission" : "commission earned"} live
           sparkline={(data?.revenueTrend || []).map((p: any) => p.value)}
           onClick={() => router.push("/admin/revenue")}
         />
         <KpiCard
           title="Pending Verifications"
           value={k.pendingVerif || 0}
-          icon="🎥" color="#A855F7" sub="awaiting review" live
+          icon={<Video size={18} strokeWidth={2} aria-hidden />} color="#A855F7" sub="awaiting review" live
           onClick={() => router.push("/admin/verification")}
         />
         <KpiCard
           title="Fraud Flags"
           value={k.fraud || 0}
-          icon="🛡️" color="#FF4757" sub="needs attention" live
+          icon={<ShieldAlert size={18} strokeWidth={2} aria-hidden />} color="#FF4757" sub="needs attention" live
           onClick={() => router.push("/admin/fraud")}
         />
         <KpiCard
           title={todayOnly ? "New Users Today" : "New Users (7d)"}
           value={(todayOnly ? data?.today?.newUsers : k.newUsers) || 0}
-          icon="👤" color="#c6d0da" sub={`of ${k.totalUsers || 0} total`} live
+          icon={<Users size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" sub={`of ${k.totalUsers || 0} total`} live
           onClick={() => router.push("/admin/users")}
         />
       </div>
@@ -362,7 +369,7 @@ export default function AdminDashboard() {
 
       {/* Live ticker + queues */}
       <div className="admin-queues-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-        <Card title="🔴 Live Bid Ticker" subtitle={`${data?.recentBids?.length || 0} latest bids`}>
+        <Card title={<span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Activity size={15} strokeWidth={2.2} aria-hidden style={{ color: "#FF4757" }} />Live Bid Ticker</span>} subtitle={`${data?.recentBids?.length || 0} latest bids`}>
           {(data?.recentBids || []).slice(0, 7).map((b: any, i: number) => (
             <div
               key={i}
@@ -389,7 +396,7 @@ export default function AdminDashboard() {
           {!data?.recentBids?.length && <Empty msg="No bids yet" />}
         </Card>
 
-        <Card title="🎥 Verification Queue" subtitle={`${data?.verifQueue?.length || 0} pending`}>
+        <Card title={<span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Video size={15} strokeWidth={2.2} aria-hidden />Verification Queue</span>} subtitle={`${data?.verifQueue?.length || 0} pending`}>
           {(data?.verifQueue || []).map((v: any, i: number) => (
             <div
               key={i}
@@ -425,7 +432,7 @@ export default function AdminDashboard() {
           {!data?.verifQueue?.length && <Empty msg="No pending verifications" />}
         </Card>
 
-        <Card title="🚨 Recent Complaints" subtitle={`${data?.recentComplaints?.length || 0} latest`}>
+        <Card title={<span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Siren size={15} strokeWidth={2.2} aria-hidden />Recent Complaints</span>} subtitle={`${data?.recentComplaints?.length || 0} latest`}>
           {(data?.recentComplaints || []).map((c: any, i: number) => (
             <div
               key={i}
@@ -450,7 +457,7 @@ export default function AdminDashboard() {
   );
 }
 
-function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Card({ title, subtitle, children }: { title: React.ReactNode; subtitle?: string; children: React.ReactNode }) {
   return (
     <div
       style={{

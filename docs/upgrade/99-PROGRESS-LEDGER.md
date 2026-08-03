@@ -1544,6 +1544,32 @@
   measured verify, lucide. NEXT: admin shared components (kpi-card / data-table /
   modal / live-ticker / stub-page / charts) → then the 43 admin pages.
 
+### 2026-08-03 — Session 6 cont. (v669 — admin shared components + Dashboard page)
+- **Admin shared components (enablers) + the Dashboard landing page**, dark-only.
+- **Shared components:** `KpiCard` + `StubPage` `icon` prop widened `string` →
+  `ReactNode` (so pages can pass lucide nodes; backward-compatible) — KpiCard's icon
+  badge now sets `color` so a lucide node inherits the card's accent. `DataTable`
+  pagination `← Prev`/`Next →` → lucide ChevronLeft/ChevronRight. `modal` /
+  `live-ticker` / `charts` were already clean (no change).
+- **Dashboard (`app/admin/page.tsx`):** all KpiCard emoji icons → lucide nodes —
+  main grid (💰→Wallet, 📋→ClipboardList, 📊→BarChart3, 🎥→Video, 🛡️→ShieldAlert,
+  👤→Users) + Platform-Systems widgets (✨→Sparkles, 🎬→Clapperboard, ⭐→Star,
+  🔖→Bookmark, 📨→Bell); the three queue-card titles 🔴/🎥/🚨 → Activity(red)/Video/
+  Siren (Card `title` widened to ReactNode); ↻ Refresh → RotateCw. The live/polling
+  status chip + Today toggle + socket logic untouched.
+- **CONTRAST (owner ask — measured, not eyeballed):** admin muted label `#8A8FA8`
+  on the `#151820` card = **5.56:1** (passes WCAG AA 4.5 for normal text); KPI value
+  `#E8EAF0` = **13.68:1** (passes AAA). Fonts (Syne/DM Sans) render crisp; no
+  low-contrast text found on this surface.
+- Badge v668→**v669** (`SB_BUILD v669-admin-shell-dashboard`), sw `HTML_CACHE`
+  v465→**v466**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **18/18** —
+  `/admin` dashboard @ 320/390/768/1280 (dark): renders, 6 KPI lucide icons +
+  sparklines, no chrome emoji, zero h-overflow, + the two measured contrast ratios.
+- **14 rules honoured:** presentation-only (no dashboard fetch/socket/KPI logic
+  touched), dark-only, strict responsive, measured verify **incl. contrast**, lucide.
+  NEXT: admin pages — users / hotels / bookings / verification / … (43 total).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

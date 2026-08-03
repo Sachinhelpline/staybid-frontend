@@ -1,4 +1,4 @@
-export default function StubPage({ title, description, icon }: { title: string; description: string; icon: string }) {
+export default function StubPage({ title, description, icon }: { title: string; description: string; icon: React.ReactNode }) {
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
       <h1 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
