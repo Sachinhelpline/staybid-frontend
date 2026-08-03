@@ -1846,6 +1846,32 @@
   a real fix**, lucide, content ticks/dots kept. NEXT: admin pages — host / rls / reports
   (the last three large ones), 1 per batch.
 
+### 2026-08-03 — Session 6 cont. (v680 — admin page: StayBid for Hosts)
+- **Admin pages sweep, batch 11** — the Host vertical hub (716 lines), dark-only.
+- **Host (`app/admin/host`):** the 8 tab-array icons went `icon:string` → `Ic:LucideIcon`
+  (Inbox/Briefcase/Home/Search/Palette/Sofa/Wrench/Link2), rendered `<t.Ic size={14}/>`; the
+  heading 🏠→Home; header links 🗂→FolderOpen, 🧮→Calculator, ↻→RotateCw; payment labels
+  🔒→Lock, 💳→CreditCard; the property row 🎬→Clapperboard + ↗→ExternalLink, 🏨 Provisioned
+  →Building2, ✓ Live on StayBid →Check, 🚀 Go Live →Rocket, ↻ Re-sync →RotateCw, ✓ Approve
+  →Check, ✕ Reject →X, 🏨 Approve + Provision →Building2, ⚡ Set up sync →Zap, ✓ Connected
+  →Check; the three `paid ✓` data ticks →Check. The order `name×qty` × (multiplication) kept
+  as content (rule 11).
+- **Shared admin shell:** the topbar `All clear ✓` (rendered on every admin page) → lucide
+  Check, so the whole desktop shell is emoji-clean.
+- **Contrast + responsive fixes (MEASURED)** — the header button group had no `flexWrap` and
+  overflowed the page 13px at 320px → `flexWrap:wrap`. The "Channel requests" KPI `#2563EB`
+  (3.43:1) → `#5B8DEF` (**5.49:1** on card / 6.20 on ground). Verified the `statusColor`
+  palette (incl. `#EF4444`) all clears AA on the near-black select bg (worst 4.72:1).
+- **CONTRAST + EMOJI + OVERFLOW (owner ask — MEASURED, 5 widths 320–1280, every tab clicked +
+  detail rows open, option-popup false-positives excluded, emoji-in-DOM scan):** ALL WIDTHS
+  CLEAN — zero contrast fails, zero decorative emoji, zero horizontal overflow to 320px.
+- Badge v679→**v680** (`SB_BUILD v680-admin-page-host`), sw `HTML_CACHE` v476→**v477**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **5/5**.
+- **14 rules honoured:** presentation-only (no lead/provision/go-live/status logic touched —
+  security 385/0), dark-only, strict responsive to 320px (real overflow fix), measured verify
+  **incl. contrast + a real fix**, lucide, content ticks/× multiplication kept. NEXT: admin
+  pages — rls / reports (the last two large ones), 1 per batch.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

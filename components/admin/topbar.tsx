@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Menu, Zap, Bell, LogOut } from "lucide-react";
+import { Menu, Zap, Bell, LogOut, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 interface Props {
@@ -130,7 +130,7 @@ export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }
               </span>
             ) : null
           )}
-          {totalBadge === 0 && <span style={{ color: "#8A8FA8", fontSize: 13 }}>All clear ✓</span>}
+          {totalBadge === 0 && <span style={{ color: "#8A8FA8", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}>All clear<Check size={13} strokeWidth={2.4} aria-hidden /></span>}
         </div>
       )}
 
