@@ -1605,6 +1605,40 @@
   admin pages — verification (done) → finance / pricing / content / circle-inventory /
   auction / … onward.
 
+### 2026-08-03 — Session 6 cont. (v671 — admin pages: Finance + Pricing + Revenue + KPI)
+- **Admin pages sweep, batch 2** (finance/pricing cluster), dark-only.
+- **Finance (`app/admin/finance`):** the 🎁 Redemption-Cost header → lucide Gift
+  (inline-flex). Tokenized `lib/admin/styles` KPICards + payout/ledger logic untouched.
+- **Pricing (`app/admin/pricing`):** the "Run AI recalc now" button ⚡/⏳ →
+  lucide Zap / Loader2 (Loader2 spins via the global `sb-halo-spin` keyframe); the
+  cron toast ⏳ string → plain text. ✓/✗ status ticks in the toast KEPT (content
+  vocabulary). Cron-trigger/override/flash logic untouched.
+- **Revenue (`app/admin/revenue`):** all 7 KPI emoji → lucide (💰→Wallet, 📈→TrendingUp,
+  🗓️→CalendarDays, 🎯→Target, ✅→CircleCheck, ⏳→Hourglass, ⭐→Star). Line chart untouched.
+- **KPI Scorecard (`app/admin/kpi`):** 📊 heading → lucide BarChart3. **Contrast fix on
+  the walnut deck theme** — the on-ground muted texts (subtitle, "Window…", Loading,
+  footer) + card note/label were `rgba(176,192,209, 0.45–0.65)` which measured below /
+  borderline AA on the dark ground; bumped to 0.74–0.82 so every text clears 4.5:1.
+- **CONTRAST (owner ask — MEASURED, 4 pages × 5 widths, composited alpha + gradient-aware
+  harness):** every measurable solid-bg text clears WCAG AA — min **5.56:1** (muted KPI
+  labels) / **5.91:1** (kpi sidebar) / **5.15:1** (Logout chip); no text below 4.5.
+- **Audit-harness corrections (documented so the next batch reuses them):** Playwright
+  applies the LAST-registered route first — register the `**/api/**` catch-all BEFORE the
+  specific fixtures so the specific ones win (else every page silently gets `{ok:true}`
+  and data-driven pages render empty / a guard-less page like KPI throws on
+  `data.totals`). Scope contrast sampling to `<main>` (not the sidebar/topbar chrome),
+  composite stacked-alpha backgrounds down to the `#07080C` ground, and SKIP
+  gradient-backed text (computed style can't read a gradient bg → false lows). Also: after
+  a mid-audit rebuild, kill ALL `next-server` procs before restarting — a stale server
+  serving deleted chunk hashes shows as "Failed to load chunk", not a code defect.
+- Badge v670→**v671** (`SB_BUILD v671-admin-pages-finance-pricing-revenue-kpi`), sw
+  `HTML_CACHE` v467→**v468**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **20/20**.
+- **14 rules honoured:** presentation-only (no finance/pricing/cron/revenue logic touched
+  — security 385/0), dark-only, strict responsive to 320px, measured verify **incl.
+  contrast + a real fix**, lucide, content ticks kept. NEXT: admin pages — content /
+  circle-inventory / auction / creators / host / analytics / … onward.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

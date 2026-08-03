@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Zap, Loader2 } from "lucide-react";
 import DataTable from "@/components/admin/data-table";
 import Modal from "@/components/admin/modal";
 import KPICard from "@/components/admin/kpi-card";
@@ -137,7 +138,7 @@ export default function AdminPricing() {
   const [cronToast, setCronToast] = useState("");
   async function runPricingCronNow() {
     setCronBusy(true);
-    setCronToast("⏳ Running cron — scraping + recalculating…");
+    setCronToast("Running cron — scraping + recalculating…");
     try {
       const r = await fetch("/api/cron/pricing?token=staybid-cron-dev", { method: "GET" });
       const d = await r.json();
@@ -171,7 +172,11 @@ export default function AdminPricing() {
               display: "inline-flex", alignItems: "center", gap: 6,
             }}
             title="Recalculates AI prices for all rooms + flash deals + scrapes competitor prices. Same endpoint the daily cron hits.">
-            {cronBusy ? "⏳ Running…" : "⚡ Run AI recalc now"}
+            {cronBusy ? (
+              <><Loader2 size={13} strokeWidth={2.4} aria-hidden style={{ animation: "sb-halo-spin 0.9s linear infinite" }} />Running…</>
+            ) : (
+              <><Zap size={13} strokeWidth={2.4} aria-hidden />Run AI recalc now</>
+            )}
           </button>
         )}
         {cronToast && (
