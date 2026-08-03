@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Headphones } from "lucide-react";
 import { api } from "@/lib/api";
 
 // Agent panel login. Phone OTP via Railway (WhatsApp).
@@ -105,7 +106,7 @@ export default function AgentLogin() {
       />
       <div style={styles.card}>
         <div style={styles.brand}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🎧</div>
+          <div style={{ marginBottom: 12, display: "flex", justifyContent: "center", color: "#9fb1c2" }}><Headphones size={40} strokeWidth={2} aria-hidden /></div>
           <div style={styles.title}>StayBid Support</div>
           <div style={styles.subtitle}>Agent control panel</div>
         </div>

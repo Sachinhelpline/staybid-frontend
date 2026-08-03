@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Inbox, BarChart3, Headphones } from "lucide-react";
 
-const NAV = [
-  { href: "/agent", label: "Inbox", icon: "💬" },
-  { href: "/agent/metrics", label: "Metrics", icon: "📊" },
+const navIc = (I: any) => <I size={16} strokeWidth={2} aria-hidden />;
+const NAV: { href: string; label: string; icon: React.ReactNode }[] = [
+  { href: "/agent", label: "Inbox", icon: navIc(Inbox) },
+  { href: "/agent/metrics", label: "Metrics", icon: navIc(BarChart3) },
 ];
 
 export function AgentSidebar() {
@@ -14,7 +16,7 @@ export function AgentSidebar() {
   return (
     <aside style={styles.sidebar}>
       <div style={styles.brand}>
-        <div style={styles.brandEmoji}>🎧</div>
+        <div style={styles.brandEmoji}><Headphones size={26} strokeWidth={2} aria-hidden style={{ color: "#9fb1c2" }} /></div>
         <div>
           <div style={styles.brandTitle}>Support</div>
           <div style={styles.brandSub}>Agent panel</div>

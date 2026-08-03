@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Building2, Images, BedDouble, IdCard, Landmark, FileText, Eye, Rocket, Search } from "lucide-react";
 import { loadOnboardSession, onbFetch, clearOnboardSession } from "@/lib/onboard/client";
 import LocationPicker, { type PickedLocation } from "@/components/onboard/LocationPicker";
 
@@ -27,15 +28,16 @@ type Listing = {
 };
 type SectionId = "basics" | "images" | "rooms" | "kyc" | "bank" | "legal" | "preview" | "publish";
 
-const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
-  { id: "basics",  label: "Property",      icon: "🏨" },
-  { id: "images",  label: "Photos",        icon: "📸" },
-  { id: "rooms",   label: "Rooms",         icon: "🛏️" },
-  { id: "kyc",     label: "KYC",           icon: "🪪" },
-  { id: "bank",    label: "Bank",          icon: "🏦" },
-  { id: "legal",   label: "Agreement",     icon: "📄" },
-  { id: "preview", label: "Preview",       icon: "👀" },
-  { id: "publish", label: "Publish",       icon: "🚀" },
+const stIc = (I: any) => <I size={18} strokeWidth={2} aria-hidden />;
+const SECTIONS: { id: SectionId; label: string; icon: React.ReactNode }[] = [
+  { id: "basics",  label: "Property",      icon: stIc(Building2) },
+  { id: "images",  label: "Photos",        icon: stIc(Images) },
+  { id: "rooms",   label: "Rooms",         icon: stIc(BedDouble) },
+  { id: "kyc",     label: "KYC",           icon: stIc(IdCard) },
+  { id: "bank",    label: "Bank",          icon: stIc(Landmark) },
+  { id: "legal",   label: "Agreement",     icon: stIc(FileText) },
+  { id: "preview", label: "Preview",       icon: stIc(Eye) },
+  { id: "publish", label: "Publish",       icon: stIc(Rocket) },
 ];
 
 // ============================================================================
@@ -115,7 +117,7 @@ function Sidebar({ listing, active, setActive }: { listing: Listing | null; acti
                     active === s.id ? "bg-linear-to-r from-gold-500 to-gold-600 text-white shadow-gold"
                                     : "hover:bg-luxury-50 text-luxury-800"
                   }`}>
-            <span className="text-lg">{s.icon}</span>
+            <span className="inline-flex items-center justify-center w-5">{s.icon}</span>
             <span className="flex-1 font-medium">{s.label}</span>
             {map[s.id]
               ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">✓</span>
@@ -324,8 +326,8 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
         <div className="mt-3 space-y-2">
           <input className="input-luxury w-full" placeholder="Hotel name — e.g. The Mountain Grand" value={xName} onChange={(e) => setXName(e.target.value)} disabled={xBusy} />
           <LocationPicker value={xLoc} onPick={onPickLocation} onClear={() => { setXLoc(null); setXCity(""); }} disabled={xBusy} />
-          <button type="button" onClick={runSearch} disabled={xBusy || !xName.trim() || !xCity.trim()} className="btn-luxury w-full disabled:opacity-50 whitespace-nowrap">
-            {xBusy ? "Searching…" : "🔎 Find my hotel"}
+          <button type="button" onClick={runSearch} disabled={xBusy || !xName.trim() || !xCity.trim()} className="btn-luxury w-full disabled:opacity-50 whitespace-nowrap inline-flex items-center justify-center gap-1.5">
+            {xBusy ? "Searching…" : <><Search size={15} strokeWidth={2.4} aria-hidden /> Find my hotel</>}
           </button>
         </div>
         {xMsg && <div className="mt-3 text-sm text-luxury-700 bg-white/70 border border-gold-200 rounded-lg px-3 py-2">{xMsg}</div>}

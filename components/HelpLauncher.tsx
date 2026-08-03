@@ -9,6 +9,9 @@
 // exactly the same pattern as <SwitchExperienceButton> + the panel switcher.
 //
 import type { CSSProperties, ReactNode } from "react";
+import { HelpCircle, Headphones } from "lucide-react";
+
+const helpIc = (I: any) => <I size={15} strokeWidth={2.2} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px" }} />;
 
 export function openAppTour() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:open-tour"));
@@ -38,7 +41,7 @@ export function AppTourButton({ className, style, label = "App Tour", title = "O
       title={title}
       aria-label={title}
     >
-      {children ?? (<><span aria-hidden>❓</span> {label}</>)}
+      {children ?? (<>{helpIc(HelpCircle)} {label}</>)}
     </button>
   );
 }
@@ -54,7 +57,7 @@ export function HelpSupportButton({ className, style, label = "Help & Support", 
       title={title}
       aria-label={title}
     >
-      {children ?? (<><span aria-hidden>🎧</span> {label}</>)}
+      {children ?? (<>{helpIc(Headphones)} {label}</>)}
     </button>
   );
 }

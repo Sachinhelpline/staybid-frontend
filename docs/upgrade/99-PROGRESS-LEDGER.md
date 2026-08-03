@@ -19,6 +19,32 @@
 
 ## Session log
 
+### 2026-08-03 — Onboard + agent + support emoji-hybrid + global HelpLauncher (v695)
+**Scope:** started the remaining non-customer surfaces (host held back by owner). Onboard wizard,
+agent support panel, complaints, plus a global shared-chrome fix.
+- **Global `components/HelpLauncher.tsx`** (`AppTourButton` ❓ + `HelpSupportButton` 🎧 default children)
+  → lucide `HelpCircle` / `Headphones`. These render in every panel's menu, so this one fix cleared the
+  `❓`/`🎧` EMOJI flags that appeared across ALL onboard pages at ≥768px (and improves the same buttons
+  wherever they're used app-wide).
+- **`/onboard/wizard`:** the 8 step-nav icons (🏨📸🛏🪪🏦📄👀🚀) → lucide (Building2/Images/BedDouble/
+  IdCard/Landmark/FileText/Eye/Rocket); the "🔎 Find my hotel" button → lucide `Search`.
+- **Agent panel:** `components/agent/sidebar.tsx` nav (💬 Inbox / 📊 Metrics) → lucide `Inbox`/`BarChart3`,
+  brand 🎧 → `Headphones`; `/agent/login` hero 🎧 → `Headphones` (matches the other login heroes).
+- **Emoji KEPT (content/brand vocabulary, per decision 11):** influencer share-channel + caption glyphs
+  (💬📸📲🌅🎵👆👉👇 — lucide has no brand marks) and the `🙌` empty-state added to the harness KEEP set.
+- **MEASURED CLEAN (13 widths × 2 themes):** `/onboard/signin`, `/onboard/signup`, `/onboard/verify`,
+  `/onboard/wizard`, `/complaints`, `/admin/complaints`. Added onboard/agent/complaints harness routes.
+- ⚠ **Honest sandbox limit:** `/agent/*` pages flood SSL-handshake failures to external hosts (Firebase/
+  Railway) that this sandbox blocks, which crashes/empties the headless run — the SAME class of limitation
+  already documented for the image/video/font CDNs. Agent fixes are therefore source-verified + tsc/build
+  clean, not headless-confirmed. Influencer sub-pages are auth-gated (redirect to `/upgrade` without a
+  registered-creator backend), so their chrome (already lucide from a prior pass) + content-emoji KEEP
+  decisions are source-level; full headless measurement of the influencer hub remains open.
+- **🔒 NO money/bid/auth logic touched** — pure presentation. `test:security` stays 385/0.
+- Badge v694→**v695** (`SB_BUILD v695-onboard-agent-emoji`), sw `HTML_CACHE` v490→**v491**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- NEXT: influencer hub headless measurement (needs creator-backend fixtures) + host vertical (owner-held).
+
 ### 2026-08-03 — Trade surface full-matrix + admin/bookings contrast close-out (v694)
 **Scope:** the Model-3 travel-agent auction — `/trade` (browse), `/trade/[id]` (property tour +
 LiveBidBox coach), `/trade/my-bids`, `/trade/review` — measured 280→2560 × light+dark. Plus the last

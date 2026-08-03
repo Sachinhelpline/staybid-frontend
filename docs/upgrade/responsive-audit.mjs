@@ -36,7 +36,9 @@ const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔
   // reel/profile content-vocabulary: story-highlight covers + nav menu glyph (hybrid keep)
   '🌄','🏖','🍜','🎒','☰','↺',
   // partner empty-state illustrations (36px, centred) + reload glyph (matches ↺) (hybrid keep)
-  '📭','🛟','↻',
+  '📭','🛟','↻','🙌',
+  // creator/referral share-channel + caption glyphs (brand vocabulary; lucide has no brand marks) (hybrid keep)
+  '💬','📸','📲','🌅','🎵','👆','👉','👇',
   // circle content vocabulary: property/destination types + season/weather glyphs (hybrid keep)
   '🏡','🏘','🏛','🛖','🌴','☁️','☁','☕','⬆','⛺','🌲','🌳','🌾','🏢','🪵']);
 
@@ -162,6 +164,22 @@ const ROUTES = [
   { route:'/trade/review', scope:'body',
     ls:{ sb_trade_token:'t', sb_trade_user:'{"uid":"ag1","name":"Ravi Agent"}', sb_trade_bidbasket_v1:'[{"lotId":"lot1","segmentType":"full","weekIndex":null,"perRoomPerNight":2300,"roomsWanted":2,"segmentLabel":"Full month · Sep 2026","hotelName":"Cave View Resort","city":"Dehradun"}]' },
     fixtures:{ 'trade/lots/lot1':{ ok:true, depositPct:10, buyerPremiumPct:5, lot:{ id:'lot1', city:'Dehradun', month_key:'2026-09', min_bid_per_room_night:2300, sale_mode:'live' }, hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun' }, room:{ id:'r1', name:'Deluxe Valley' } } } },
+
+  // ── Onboard (hotel self-signup wizard) ───────────────────────────────────
+  { route:'/onboard', scope:'body', fixtures:{} },
+  { route:'/onboard/signin', scope:'body', fixtures:{} },
+  { route:'/onboard/signup', scope:'body', fixtures:{} },
+  { route:'/onboard/verify', scope:'body', ls:{ sb_onboard_token:'t', sb_onboard_user:'{"id":"o1","name":"New Owner","phone":"+919812345678"}' }, fixtures:{} },
+  { route:'/onboard/wizard', scope:'body',
+    ls:{ sb_onboard_token:'t', sb_onboard_user:'{"id":"o1","name":"New Owner","phone":"+919812345678"}', sb_onboard_draft:'{"basics":{"name":"Cave View Resort","city":"Dehradun"}}' }, fixtures:{} },
+
+  // ── Agent (customer-support panel) ───────────────────────────────────────
+  { route:'/agent/login', scope:'body', fixtures:{} },
+  { route:'/agent/metrics', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' }, fixtures:{} },
+
+  // ── Complaints (customer support) ────────────────────────────────────────
+  { route:'/complaints', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'complaints':{ complaints:[{ id:'c1', subject:'AC not working', status:'OPEN', createdAt:'2026-08-01 10:00:00', hotelName:'Cave View Resort' }] }, 'complaints/mine':{ complaints:[] } } },
 
   // ── Customer frontend (the main app) ─────────────────────────────────────
   { route:'/hotels', scope:'body',
