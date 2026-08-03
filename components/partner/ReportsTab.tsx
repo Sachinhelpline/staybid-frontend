@@ -13,6 +13,7 @@
 //   • CSV export
 //
 import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -169,11 +170,11 @@ export default function ReportsTab({
 
   const maxBar = Math.max(1, ...m.buckets.map((b) => b.rev));
   const KPIS = [
-    { label: "Revenue",     value: fmtCur(m.revenue),               c: "#a16207", bg: "#fafbfc" },
-    { label: "Bookings",    value: String(m.bookings),              c: "#0d9488", bg: "#ccfbf1" },
-    { label: "Room-nights", value: String(m.roomNights),            c: "#2563eb", bg: "#dbeafe" },
-    { label: "ADR",         value: fmtCur(m.adr),                   c: "#7c3aed", bg: "#f3e8ff" },
-    { label: "Occupancy",   value: m.occupancy.toFixed(0) + "%",    c: "#15803d", bg: "#ecfdf5" },
+    { label: "Revenue",     value: fmtCur(m.revenue),               text: "text-amber-700",   bg: "bg-amber-50" },
+    { label: "Bookings",    value: String(m.bookings),              text: "text-teal-700",    bg: "bg-teal-50" },
+    { label: "Room-nights", value: String(m.roomNights),            text: "text-blue-700",    bg: "bg-blue-50" },
+    { label: "ADR",         value: fmtCur(m.adr),                   text: "text-purple-700",  bg: "bg-purple-50" },
+    { label: "Occupancy",   value: m.occupancy.toFixed(0) + "%",    text: "text-emerald-700", bg: "bg-emerald-50" },
   ];
 
   return (
@@ -193,15 +194,17 @@ export default function ReportsTab({
               {lbl}
             </button>
           ))}
-          <button onClick={exportCSV} className="btn-ghost">⬇ CSV</button>
+          <button onClick={exportCSV} className="btn-ghost inline-flex items-center gap-1.5">
+            <Download size={13} strokeWidth={2.3} aria-hidden />CSV
+          </button>
         </div>
       </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-4">
         {KPIS.map((k) => (
-          <div key={k.label} className="card-p card-tight" style={{ background: k.bg }}>
-            <p className="text-lg font-bold" style={{ color: k.c }}>{k.value}</p>
+          <div key={k.label} className={`card-p card-tight ${k.bg}`}>
+            <p className={`text-lg font-bold ${k.text}`}>{k.value}</p>
             <p className="text-[0.62rem] text-luxury-500 font-semibold mt-0.5">{k.label}</p>
           </div>
         ))}
@@ -211,7 +214,7 @@ export default function ReportsTab({
       <div className="card-p mb-4">
         <p className="text-[0.78rem] font-bold text-luxury-900 mb-3">Revenue trend</p>
         {m.buckets.every((b) => b.rev === 0) ? (
-          <p className="text-xs text-luxury-400 py-6 text-center">Is period me koi revenue nahi.</p>
+          <p className="text-xs text-luxury-400 py-6 text-center">No revenue in this period.</p>
         ) : (
           <div className="flex items-end gap-1 h-32">
             {m.buckets.map((b, i) => (
@@ -233,7 +236,7 @@ export default function ReportsTab({
         <div className="card-p">
           <p className="text-[0.78rem] font-bold text-luxury-900 mb-3">Booking source</p>
           {Object.keys(m.bySrc).length === 0 ? (
-            <p className="text-xs text-luxury-400 py-4 text-center">Koi data nahi.</p>
+            <p className="text-xs text-luxury-400 py-4 text-center">No data.</p>
           ) : (
             <div className="space-y-2">
               {Object.entries(m.bySrc).sort((a, b) => b[1].rev - a[1].rev).map(([k, v]) => {
@@ -259,7 +262,7 @@ export default function ReportsTab({
         <div className="card-p">
           <p className="text-[0.78rem] font-bold text-luxury-900 mb-3">Top room categories</p>
           {m.topRooms.length === 0 ? (
-            <p className="text-xs text-luxury-400 py-4 text-center">Koi data nahi.</p>
+            <p className="text-xs text-luxury-400 py-4 text-center">No data.</p>
           ) : (
             <div className="space-y-1.5">
               {m.topRooms.map((r, i) => (

@@ -1326,6 +1326,31 @@
   content (FSSAI mark, printed poster). NEXT: ReportsTab → AgentAuctionTab → Circle
   tabs → Content/Passport → shared modals.
 
+### 2026-08-03 — Session 6 cont. (v662 — partner ReportsTab)
+- **ReportsTab (281 lines) — read-only analytics (KPIs, revenue trend, source mix,
+  top rooms, CSV export).** Small, clean sweep.
+- **KPI cards de-hexed:** the 5 KPI cards carried inline pastel `bg` + saturated
+  `c` text hex (Revenue/Bookings/Room-nights/ADR/Occupancy) that never flipped in
+  dark. Now each carries a Tailwind class pair — `bg-amber-50 text-amber-700` /
+  `bg-teal-50 text-teal-700` / `bg-blue-50 text-blue-700` / `bg-purple-50
+  text-purple-700` / `bg-emerald-50 text-emerald-700` — all flip via the
+  `.pdash-root` bridge.
+- **Chrome:** `⬇ CSV` → lucide Download + text.
+- **Hinglish → English:** the trend empty state ("No revenue in this period."),
+  and both "No data." empty states (source mix + top rooms).
+- **KEEP (deliberate):** the `SRC` booking-source bar colours (per-source data-viz
+  palette) + the pewter revenue-trend bar gradient — chart colours, saturated and
+  readable on both themes, on tracks/cards that already flip; the CSV file text
+  (a downloaded data artifact, not UI).
+- Badge v661→**v662** (`SB_BUILD v662-partner-reports`), sw `HTML_CACHE` v458→**v459**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **66/66** —
+  populated + empty-data views @ 320/360/390/768/1280 × LIGHT/DARK, zero
+  h-overflow, chrome/Hinglish gone, plain card bg dark avg=34, KPIs + all three
+  sections present. (No modals in this tab.)
+- **14 rules honoured:** presentation-only (KPI/trend/CSV math byte-identical),
+  light+dark perfect, strict responsive to 320px, measured verify. NEXT:
+  AgentAuctionTab → Circle tabs → Content/Passport → shared modals.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
