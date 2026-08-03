@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { X, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { calculateDynamicPrice } from "@/lib/ai-pricing";
 
 type Mode = "checkIn" | "checkOut";
@@ -251,7 +252,7 @@ export default function LuxuryCalendar({
               </p>
               <h3 className="lux-cal-title">Select your stay</h3>
             </div>
-            {!inline && <button onClick={onClose} aria-label="Close" className="lux-cal-close">✕</button>}
+            {!inline && <button onClick={onClose} aria-label="Close" className="lux-cal-close"><X size={16} strokeWidth={2.4} aria-hidden /></button>}
           </div>
 
           {/* Selected range chips */}
@@ -270,7 +271,7 @@ export default function LuxuryCalendar({
                   : "Add date"}
               </span>
             </button>
-            <span className="lux-cal-arrow">→</span>
+            <span className="lux-cal-arrow"><ArrowRight size={14} strokeWidth={2.4} aria-hidden /></span>
             <button
               type="button"
               onClick={() => setPicking("checkOut")}
@@ -316,7 +317,7 @@ export default function LuxuryCalendar({
             onClick={() => setCursor(addMonths(cursor, -1))}
             className="lux-cal-navbtn"
             aria-label="Previous month"
-          >‹</button>
+          ><ChevronLeft size={17} strokeWidth={2.4} aria-hidden /></button>
           <div className="lux-cal-monthlabel">
             {MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
           </div>
@@ -325,7 +326,7 @@ export default function LuxuryCalendar({
             onClick={() => setCursor(addMonths(cursor, 1))}
             className="lux-cal-navbtn"
             aria-label="Next month"
-          >›</button>
+          ><ChevronRight size={17} strokeWidth={2.4} aria-hidden /></button>
         </div>
 
         {/* Weekday header */}

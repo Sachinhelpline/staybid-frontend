@@ -647,6 +647,48 @@
   Phase 2 panels (partner → admin → circle → trade → host → onboard →
   influencer → worker) or /bid climber deep polish.
 
+### 2026-08-03 — Session 6 cont. (v643 — hotel-detail flow sheets: picker · calendar · arena · book-now)
+- **Owner commission (4 screenshots):** the picker sheet ("Pick dates to
+  Negotiate"), the LuxuryCalendar ("Select your stay"), the AI Bidding
+  Arena, and the Instant Booking modal. ⚠ Screenshots showed badge v624 —
+  owner's device was on an old preview; the 📅 red-calendar emojis in ss1
+  were ALREADY fixed in v638. This pass took the still-live items.
+- **Picker sheet:** 🔍 disc→Search, 👤/👦/🧒 guest labels→UserRound/
+  PersonStanding/Baby, "Pick dates above ↑"→ArrowUp.
+- **LuxuryCalendar (shared component):** ✕→X, leg →→ArrowRight, month
+  ‹/›→ChevronLeft/Right; `.lux-cal-close`/`.lux-cal-navbtn` given flex
+  centering for the svg (they centered text glyphs before). Benefits every
+  consumer (/bid, flash-deals, hotel page modal + desktop inline).
+- **Bidding Arena:** ⚡ header/CTA→Zap, 👥 guests→Users, ⏱→Timer, 🤖 Live
+  AI→Bot, quick chips restructured to carry {Ic,label} (Wallet/Star/Zap),
+  ⏳ loading label de-emoji'd, submit-success ✅→Check (🎉 auto-confirm
+  KEPT). Flash modal's "⚡ Confirm Booking"→Zap. Room-card 👥 dates-chip
+  →Users (v638 miss caught by the audit's over-wide first scan). **KEEP:**
+  `aiTips` LIVE-AI ticker strings (🔥👀📈⭐ — rotating content vocabulary).
+- **Instant Booking modal:** assessed already consistent (SecIcon check/
+  building since earlier passes; tiles fine) — untouched, verified.
+- **⚠ Honest follow-up flagged (NOT built):** `.picker-*` and `.lux-cal-*`
+  have NO dark-mode variants at all (hardcoded light surfaces even in dark
+  theme, ~100 rules). Full dark conversion of the calendar/picker system
+  is a separate owner-approved deep pass — too much regression surface on
+  a booking-critical component to sneak into a chrome pass.
+- Badge v642→**v643** (`SB_BUILD v643-hotel-flowsheets-lucide`), sw
+  `HTML_CACHE` v439→**v440**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · audit **10/10** via
+  a REAL interaction chain at 390w (deep-link `?intent=negotiate` →
+  picker probe → Check-in tile → calendar probe (backdrop-scoped) → 2
+  dates + Apply → Continue → arena probe (innermost-match, ticker
+  excluded) → fresh `?intent=book` chain → Instant Booking probe; 0
+  overflow) + 1440w dark (inline calendar carries lucide nav, 0 overflow).
+- **Audit technique notes:** ①`?intent=negotiate|book` deep links open the
+  picker WITHOUT the auth-gated CTA click (withBackendAuth needs a real
+  session; a fake token 401s the hotel fetch itself — signed-out deep link
+  is the deterministic path). ②Ancestor-text `find()` grabs the OUTERMOST
+  match — take the LAST match for the innermost container. ③The hidden
+  desktop-inline calendar's buttons exist in mobile DOM — scope modal
+  probes to `.lux-cal-backdrop`.
+- NEXT: owner device-check on the CURRENT preview (v643) → Phase 2 panels.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

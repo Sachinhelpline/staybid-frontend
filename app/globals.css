@@ -1384,6 +1384,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   width: 36px; height: 36px; border-radius: 999px; border: 1px solid rgba(106,133,160,0.3);
   background: linear-gradient(180deg, #fff 0%, #e8ecf0 100%);
   color: #6b5018; font-weight: 800; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; /* v643 — centre the lucide svg */
   box-shadow: 0 2px 0 rgba(106,133,160,0.35), 0 4px 10px rgba(106,133,160,0.18);
   transition: transform 0.15s ease;
 }
@@ -1460,6 +1461,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   border: 1px solid rgba(106,133,160,0.28);
   background: linear-gradient(180deg, #fff 0%, #e8ecf0 100%);
   color: #6b5018; font-size: 1.3rem; font-weight: 800; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; /* v643 — centre the lucide svg */
   box-shadow: 0 2px 0 rgba(106,133,160,0.35), 0 4px 10px rgba(106,133,160,0.18);
   transition: transform 0.15s ease, opacity 0.15s ease;
 }

@@ -36,7 +36,7 @@ import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelTrustStrip from "@/components/hotel/HotelTrustStrip";
 // v638 — lucide chrome icons (deep-flow emoji sweep; amenity map, score
 // ladder labels and celebration copy deliberately KEEP their emojis).
-import { Zap, Lock, Hourglass, AlarmClock, Gem, Wallet, MapPin, Trophy, Calendar as CalIcon } from "lucide-react";
+import { Zap, Lock, Hourglass, AlarmClock, Gem, Wallet, MapPin, Trophy, Calendar as CalIcon, Search, Users, Timer, Bot, Star, ArrowUp, UserRound, PersonStanding, Baby, Check } from "lucide-react";
 import { useReveal } from "@/lib/useReveal";
 import IndividualRoomsSection from "@/components/hotel/IndividualRoomsSection";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
@@ -3928,7 +3928,7 @@ export default function HotelDetail() {
                                     <InIc I={CalIcon} size={11} /> {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {globalNights} night{globalNights > 1 ? "s" : ""}
                                   </span>
                                   <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
-                                    👥 {globalAdults} adults{globalChildren > 0 ? ` · ${globalChildren} children` : ""}{globalKids > 0 ? ` · ${globalKids} kids` : ""}
+                                    <InIc I={Users} size={11} /> {globalAdults} adults{globalChildren > 0 ? ` · ${globalChildren} children` : ""}{globalKids > 0 ? ` · ${globalKids} kids` : ""}
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between px-3 py-2 bg-luxury-50 rounded-xl border border-luxury-100">
@@ -4779,7 +4779,7 @@ export default function HotelDetail() {
                   disabled={bookLoading}
                   className="btn-3d btn-3d-gold btn-3d-lg w-full"
                 >
-                  {bookLoading ? "Confirming…" : `⚡ Confirm Booking · ₹${flashGrandTotal.toLocaleString()}`}
+                  {bookLoading ? "Confirming…" : <><Zap size={15} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> Confirm Booking · ₹{flashGrandTotal.toLocaleString()}</>}
                 </button>
                 <button
                   onClick={() => {
@@ -5006,7 +5006,7 @@ export default function HotelDetail() {
                     LIVE
                   </span>
                   <div>
-                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(157,184,210,0.85)" }}>⚡ AI Bidding Arena</p>
+                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(157,184,210,0.85)" }}><InIc I={Zap} size={11} /> AI Bidding Arena</p>
                     <p className="text-white font-semibold text-base leading-tight">{negRoom.name||negRoom.type}</p>
                   </div>
                 </div>
@@ -5037,7 +5037,7 @@ export default function HotelDetail() {
                 </div>
                 <div className="flex items-center justify-between rounded-2xl px-3 py-2 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(120,150,182,0.16)" }}>
                   <p className="text-xs text-white/70">
-                    👥 {globalAdults} adult{globalAdults>1?"s":""}
+                    <InIc I={Users} size={12} /> {globalAdults} adult{globalAdults>1?"s":""}
                     {globalChildren>0?` · ${globalChildren} child`:""}
                     {globalKids>0?` · ${globalKids} kid`:""}
                     {nrNeg>1?` · ${nrNeg} rooms`:""}
@@ -5066,7 +5066,7 @@ export default function HotelDetail() {
                     <p className="text-[0.6rem] font-bold uppercase tracking-[0.25em] neg-gold-text">AI Smart Pricing</p>
                     <span className="text-[0.6rem] font-semibold px-2 py-0.5 rounded-full"
                       style={{ background:`${prob.track}1f`, color:prob.track, border:`1px solid ${prob.track}55` }}>
-                      ⏱ {prob.responseTime}
+                      <InIc I={Timer} size={11} /> {prob.responseTime}
                     </span>
                   </div>
 
@@ -5125,7 +5125,7 @@ export default function HotelDetail() {
                   <div data-tour="neg-info" className="mt-4 px-3 py-2 rounded-xl border"
                     style={{ background:"rgba(0,0,0,0.35)", borderColor:"rgba(120,150,182,0.24)" }}>
                     <div className="flex items-center gap-2">
-                      <span className="text-[0.55rem] font-bold tracking-widest uppercase neg-gold-text shrink-0">🤖 Live AI</span>
+                      <span className="text-[0.55rem] font-bold tracking-widest uppercase neg-gold-text shrink-0"><InIc I={Bot} size={12} /> Live AI</span>
                       <div className="neg-ticker-wrap flex-1 text-[0.7rem] text-white/80">
                         <div className="neg-ticker">
                           {aiTips.concat(aiTips[0]).map((t,i)=>(
@@ -5140,9 +5140,9 @@ export default function HotelDetail() {
                 {/* Quick chips */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "💰 Save Big",   pct: 0.82, sub: "Hotel reviews" },
-                    { label: "⭐ Smart",      pct: 0.90, sub: "Recommended"   },
-                    { label: "⚡ Instant",    pct: 1.00, sub: "Auto-confirms" },
+                    { Ic: Wallet, label: "Save Big",   pct: 0.82, sub: "Hotel reviews" },
+                    { Ic: Star,   label: "Smart",      pct: 0.90, sub: "Recommended"   },
+                    { Ic: Zap,    label: "Instant",    pct: 1.00, sub: "Auto-confirms" },
                   ].map(s => {
                     // v129 — every quick-pick is a ₹100 multiple. The slider's
                     // step is also 100, so a chip-tap always lands on a stop
@@ -5157,7 +5157,7 @@ export default function HotelDetail() {
                           border: `1px solid ${active?"rgba(120,150,182,.6)":"rgba(255,255,255,.08)"}`,
                           boxShadow: active ? "0 6px 22px rgba(120,150,182,.35)" : "none",
                         }}>
-                        <p className={`text-[0.62rem] font-bold leading-tight ${active?"text-luxury-900":"text-white/90"}`}>{s.label}</p>
+                        <p className={`text-[0.62rem] font-bold leading-tight ${active?"text-luxury-900":"text-white/90"}`}><InIc I={s.Ic} size={11} /> {s.label}</p>
                         <p className={`text-sm font-extrabold mt-0.5 ${active?"text-luxury-900":"text-white"}`}>₹{amt.toLocaleString()}</p>
                         <p className={`text-[0.5rem] mt-0.5 ${active?"text-luxury-800":"text-white/40"}`}>{s.sub}</p>
                       </button>
@@ -5209,9 +5209,9 @@ export default function HotelDetail() {
                       : "0 12px 32px -8px rgba(45,62,82,0.5), inset 0 1px 0 rgba(255,255,255,0.4)",
                   }}>
                   {negLoading
-                    ? "⏳ Submitting your bid…"
+                    ? "Submitting your bid…"
                     : isInstant
-                      ? `⚡ Instant Confirm · ₹${totalBid.toLocaleString()}`
+                      ? <><Zap size={16} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-3px", marginRight: 6 }} /> Instant Confirm · ₹{totalBid.toLocaleString()}</>
                       : (nrNeg > 1 || nights > 1)
                         ? `Submit Negotiation · ₹${negAmt.toLocaleString()}/night · ₹${totalBid.toLocaleString()} total`
                         : `Submit Negotiation · ₹${negAmt.toLocaleString()}/night`}
@@ -5227,7 +5227,9 @@ export default function HotelDetail() {
       {negSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setNegRoom(null)}>
           <div className="hx-modal max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
-            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">{negAuto ? "🎉" : "✅"}</span></div>
+            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5">
+              {negAuto ? <span className="text-3xl">🎉</span> : <Check size={30} strokeWidth={2.6} aria-hidden style={{ color: "#7F9269" }} />}
+            </div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">{negAuto ? "Booking Confirmed!" : "Bid Submitted!"}</h3>
             <p className="text-luxury-400 text-sm mb-6">{negAuto ? "The hotel confirmed your bid. Check My Bookings." : "The hotel will review your offer and respond soon. You'll be notified."}</p>
             {/* v241.6 — InspirationBanner ONLY when bid auto-confirmed
@@ -5526,8 +5528,8 @@ export default function HotelDetail() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3 mb-4 relative z-2">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-10 h-10 rounded-full bg-linear-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center text-base shadow-gold"
-                        style={{ animation: "lux-floaty 3s ease-in-out infinite" }}>🔍</span>
+                  <span className="w-10 h-10 rounded-full bg-linear-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center shadow-gold"
+                        style={{ animation: "lux-floaty 3s ease-in-out infinite" }}><Search size={17} strokeWidth={2.6} aria-hidden /></span>
                   <div>
                     <h3 className="font-bold text-luxury-900 text-[1rem] tracking-tight leading-tight">
                       {pickerModal.intent === "book" ? "Pick dates to Book Now" : "Pick dates to Negotiate"}
@@ -5579,7 +5581,7 @@ export default function HotelDetail() {
               {/* Guests */}
               <div className="grid grid-cols-3 gap-3 mb-4 relative z-2">
                 <div className="picker-tile">
-                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👤 Adults</p>
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2"><InIc I={UserRound} size={11} /> Adults</p>
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setGlobalAdults(Math.max(1, globalAdults - 1))} className="picker-step">−</button>
                     <span className="font-black text-luxury-900 text-lg">{globalAdults}</span>
@@ -5587,7 +5589,7 @@ export default function HotelDetail() {
                   </div>
                 </div>
                 <div className="picker-tile">
-                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👦 Children</p>
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2"><InIc I={PersonStanding} size={11} /> Children</p>
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setGlobalChildren(Math.max(0, globalChildren - 1))} className="picker-step">−</button>
                     <span className="font-black text-luxury-900 text-lg">{globalChildren}</span>
@@ -5595,7 +5597,7 @@ export default function HotelDetail() {
                   </div>
                 </div>
                 <div className="picker-tile">
-                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">🧒 Kids</p>
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2"><InIc I={Baby} size={11} /> Kids</p>
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setGlobalKids(Math.max(0, globalKids - 1))} className="picker-step">−</button>
                     <span className="font-black text-luxury-900 text-lg">{globalKids}</span>
@@ -5611,7 +5613,7 @@ export default function HotelDetail() {
                   className="btn-3d btn-3d-gold w-full"
                 >
                   {(!globalCheckIn || !globalCheckOut)
-                    ? "Pick dates above ↑"
+                    ? <>Pick dates above <ArrowUp size={14} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px" }} /></>
                     : pickerModal.intent === "book" ? "Continue to Book Now →" : "Continue to Negotiate →"}
                 </button>
                 <p className="text-center text-[0.6rem] text-luxury-500 mt-2 tracking-wide">
