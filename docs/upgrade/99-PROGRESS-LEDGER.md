@@ -1228,6 +1228,31 @@
   Circle tabs → Content/Passport → shared modals. Then admin → circle → trade →
   host → onboard → worker.
 
+### 2026-08-03 — Session 6 cont. (v659 — partner OtaFeedManager)
+- **OtaFeedManager (414 lines; the Channel-Manager sibling, also mounted in the
+  Availability tab).** Of its 38 glyphs, ~20 are OTA brand icons (the
+  `OTA_PROVIDERS` list + the `OTA_INSTRUCTIONS` map) and the rest are `→`
+  navigation arrows INSIDE instruction data-strings ("Extranet → Rates &
+  Availability → Calendar") — all KEPT (brand vocabulary / content). Real chrome
+  swapped: the per-feed 🔑 unit chip + the unit-picker 🔑 → Key, the room-picker
+  🛏️ → BedDouble, ↻ Sync → RotateCw, ▶/⏸ auto-sync toggle → Play/Pause, 🗑 →
+  Trash2 (icon-only buttons got aria-labels). No Hinglish in this file.
+- **KEEP:** the OTA brand icons, the `→` instruction arrows, the "✓" active-chip
+  ticks, and the toast "✓/❌" strings. The status-dot inline hex
+  (#a1a1aa/#ef4444/#22c55e/#a4b5c5) + the amber "selected" gradient chips were
+  left as-is — saturated/readable on both themes (the amber chip is a deliberate
+  bright selection highlight).
+- Badge v658→**v659** (`SB_BUILD v659-partner-ota-feeds`), sw `HTML_CACHE`
+  v455→**v456**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **13/13** —
+  the Channels tab with OtaFeedManager mounted (feed card + room picker + a
+  stress-long iCal URL) responsive @ 320/360/390/768/1280 × LIGHT/DARK all zero
+  h-overflow; ota-feeds chrome emoji gone; lucide (36); OTA brand icons kept.
+- **Channel Manager + OtaFeedManager pair COMPLETE.** NEXT (standalone
+  components): BillingTab (748 lines) → MenuBuilderTab/FnbOrdersTab → ReportsTab
+  → AgentAuctionTab → Circle tabs → Content/Passport → shared modals. Then admin
+  → circle → trade → host → onboard → worker.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

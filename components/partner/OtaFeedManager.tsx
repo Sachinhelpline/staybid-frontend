@@ -8,6 +8,7 @@
 // Channel Manager console — one component, one source of truth, no drift.
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Key, RotateCw, Play, Pause, Trash2, BedDouble } from "lucide-react";
 
 export function partnerToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -211,8 +212,8 @@ export default function OtaFeedManager({
                       {PROVIDER_LABEL[f.provider] || f.provider}
                     </span>
                     {f.unitId && (
-                      <span className="text-[0.62rem] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm">
-                        🔑 {unitChip(f.unitId)}
+                      <span className="text-[0.62rem] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm inline-flex items-center gap-1">
+                        <Key size={10} strokeWidth={2.4} aria-hidden /> {unitChip(f.unitId)}
                       </span>
                     )}
                     <span className="font-semibold text-luxury-800 text-sm truncate">{f.label || roomName(f.roomId)}</span>
@@ -230,15 +231,15 @@ export default function OtaFeedManager({
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button onClick={() => syncNow(f.id)} disabled={acting} className="btn-gold text-xs px-3 py-1.5 disabled:opacity-50">
-                    {acting ? "…" : "↻ Sync"}
+                  <button onClick={() => syncNow(f.id)} disabled={acting} className="btn-gold text-xs px-3 py-1.5 disabled:opacity-50 inline-flex items-center gap-1">
+                    {acting ? "…" : <><RotateCw size={12} strokeWidth={2.4} aria-hidden /> Sync</>}
                   </button>
-                  <button onClick={() => patchFeed(f.id, { autoSync: paused })} disabled={acting}
-                    className="btn-ghost text-xs px-2.5! py-1.5! disabled:opacity-50" title={paused ? "Resume auto-sync" : "Pause auto-sync"}>
-                    {paused ? "▶" : "⏸"}
+                  <button onClick={() => patchFeed(f.id, { autoSync: paused })} disabled={acting} aria-label={paused ? "Resume auto-sync" : "Pause auto-sync"}
+                    className="btn-ghost text-xs px-2.5! py-1.5! disabled:opacity-50 inline-flex items-center" title={paused ? "Resume auto-sync" : "Pause auto-sync"}>
+                    {paused ? <Play size={12} strokeWidth={2.4} aria-hidden /> : <Pause size={12} strokeWidth={2.4} aria-hidden />}
                   </button>
-                  <button onClick={() => removeFeed(f.id)} disabled={acting}
-                    className="text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-sm text-sm disabled:opacity-50">🗑</button>
+                  <button onClick={() => removeFeed(f.id)} disabled={acting} aria-label="Remove feed"
+                    className="text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-sm disabled:opacity-50 inline-flex items-center"><Trash2 size={14} strokeWidth={2.2} aria-hidden /></button>
                 </div>
               </div>
             </div>
@@ -266,7 +267,7 @@ export default function OtaFeedManager({
                       active ? "bg-linear-to-br from-amber-100 to-amber-200 border-amber-400 shadow-xs"
                              : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"}`}
                     aria-pressed={active}>
-                    <span className="text-base leading-none">🔑</span>
+                    <Key size={15} strokeWidth={2.2} aria-hidden className={active ? "text-amber-700" : "text-luxury-500"} />
                     <span className="flex flex-col items-start leading-tight">
                       <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{roomName(u.roomId)}</span>
                       {u.roomNumber && <span className="text-[0.6rem] text-luxury-500">Unit #{u.roomNumber}</span>}
@@ -293,7 +294,7 @@ export default function OtaFeedManager({
                       active ? "bg-linear-to-br from-amber-100 to-amber-200 border-amber-400 shadow-xs"
                              : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"}`}
                     aria-pressed={active}>
-                    <span className="text-base leading-none">🛏️</span>
+                    <BedDouble size={15} strokeWidth={2.2} aria-hidden className={active ? "text-amber-700" : "text-luxury-500"} />
                     <span className="flex flex-col items-start leading-tight">
                       <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{r.type || r.name || "Room"}</span>
                       {r.capacity != null && <span className="text-[0.6rem] text-luxury-500">cap {r.capacity}</span>}
