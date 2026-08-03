@@ -5,6 +5,7 @@
 // entirely or override individual tiers.
 
 import { useEffect, useState } from "react";
+import { Lock, X, Check, Clock } from "lucide-react";
 
 const GLOBAL = "_global_defaults";
 
@@ -82,8 +83,8 @@ export default function AdminHoldConfig() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, color: "#E8EAF0", margin: 0 }}>
-            🔒 Hold Payment Config
+          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, color: "#E8EAF0", margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <Lock size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Hold Payment Config
           </h1>
           <p style={{ color: "#8A8FA8", fontSize: 13, margin: "6px 0 0" }}>
             Tiered hold amounts (₹99-499) by total booking value · per-hotel overrides · acceptance window
@@ -191,8 +192,8 @@ function ConfigCard({ config, onEdit, onChanged }: { config: Config; onEdit: () 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         <Pill label="Hold" on={config.hold_enabled} />
         <Pill label="Pay at hotel" on={config.pay_at_hotel_enabled} />
-        <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "rgba(61,156,245,0.12)", color: "#3D9CF5", border: "1px solid rgba(61,156,245,0.3)" }}>
-          ⏱ Acceptance: {Math.max(30, config.acceptance_window_min || 30)} min
+        <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "rgba(61,156,245,0.12)", color: "#3D9CF5", border: "1px solid rgba(61,156,245,0.3)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Clock size={12} strokeWidth={2.4} aria-hidden />Acceptance: {Math.max(30, config.acceptance_window_min || 30)} min
         </span>
       </div>
 
@@ -219,7 +220,7 @@ function ConfigCard({ config, onEdit, onChanged }: { config: Config; onEdit: () 
       )}
 
       {/* Last updated */}
-      <p style={{ color: "#666876", fontSize: 11, margin: "12px 0 0" }}>
+      <p style={{ color: "#8A8FA8", fontSize: 11, margin: "12px 0 0" }}>
         Last updated {new Date(config.updated_at).toLocaleString("en-IN")}
       </p>
     </div>
@@ -301,7 +302,7 @@ function EditModal({ config, onClose, onSaved }: { config: Config; onClose: () =
               {isGlobal ? "Global Hold Config" : config.hotel?.name || config.hotel_id}
             </p>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#8A8FA8", cursor: "pointer", fontSize: 22 }}>✕</button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "#8A8FA8", cursor: "pointer", display: "inline-flex", alignItems: "center" }}><X size={22} strokeWidth={2} aria-hidden /></button>
         </div>
         {/* Body */}
         <div style={{ padding: "18px 22px", overflowY: "auto", flex: 1 }}>
@@ -348,7 +349,7 @@ function EditModal({ config, onClose, onSaved }: { config: Config; onClose: () =
                 );
               })}
               {tiers.length === 0 && (
-                <p style={{ color: "#666876", fontSize: 12, textAlign: "center", padding: 18 }}>No tiers — hotel uses platform defaults. Click "Add tier" or "Reset to default".</p>
+                <p style={{ color: "#8A8FA8", fontSize: 12, textAlign: "center", padding: 18 }}>No tiers — hotel uses platform defaults. Click "Add tier" or "Reset to default".</p>
               )}
             </div>
           </div>
@@ -374,8 +375,9 @@ function Pill({ label, on }: { label: string; on: boolean }) {
       background: on ? "rgba(46,204,113,0.12)" : "rgba(255,71,87,0.12)",
       color: on ? "#2ECC71" : "#FF6B7A",
       border: `1px solid ${on ? "rgba(46,204,113,0.35)" : "rgba(255,71,87,0.35)"}`,
+      display: "inline-flex", alignItems: "center", gap: 4,
     }}>
-      {on ? "✓" : "✕"} {label}
+      {on ? <Check size={12} strokeWidth={2.6} aria-hidden /> : <X size={12} strokeWidth={2.6} aria-hidden />} {label}
     </span>
   );
 }

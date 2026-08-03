@@ -1725,6 +1725,34 @@
   content ticks/dots/rank-emoji kept. NEXT: admin pages — content / creators / host /
   analytics / rls / services / reports / holds / redemption / commission-rules / … onward.
 
+### 2026-08-03 — Session 6 cont. (v675 — admin pages: Commission-Rules + Hotel-Commission-Rules + Hold-Config + Holds)
+- **Admin pages sweep, batch 6** (rules/holds config cluster), dark-only.
+- **Commission-Rules:** 💰→BadgePercent heading; ✨ creator marker → Sparkles; the 3 ✕
+  remove/close buttons → X. **Fixes** — the creator `<p>` I'd made inline-flex (for the
+  Sparkles icon) stopped shrinking → override card overflowed 76px @320; changed to
+  flex+wrap+minWidth:0 (+ card `flexWrap`), overflow → 0. The "Deactivate" danger button
+  `#FF4757` on its red tint measured 4.34:1 → brightened to `#FF6B7A` (5.16:1). Dim note
+  `#666876` → `#8A8FA8`.
+- **Hotel-Commission-Rules:** 🏨→Building2 heading; ✕ remove-slab → X.
+- **Hold-Config:** 🔒→Lock heading; ✕ modal close → X; the on/off status Pill `✓`/`✕`
+  → lucide Check/X; a **missed `⏱` Acceptance chip → lucide Clock** (my earlier regex
+  didn't cover U+23F1 — now caught by the audit's DOM emoji scan); dim `#666876` (×2) →
+  `#8A8FA8`.
+- **Holds:** 🔒→Lock heading; ⚡ Run-cron + ⚡ Pending-auto-accepts → Zap; ↻ Refresh →
+  RotateCw; the force ✓/⏰/✕ action buttons → Check/Clock/X (with titles + aria-labels).
+- **CONTRAST + EMOJI (owner ask — MEASURED, 4 pages × 5 widths, gradient-aware +
+  emoji-in-DOM scan):** every text clears WCAG AA — min **5.16:1** (commission/hotel/
+  hold-config) / **5.56:1** (holds); **zero emoji glyphs** in the rendered DOM (the DOM
+  scan caught the ⏱ that the source regex missed — the scan is now the backstop).
+- Badge v674→**v675** (`SB_BUILD v675-admin-pages-commission-holds-rules`), sw
+  `HTML_CACHE` v471→**v472**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **20/20**.
+- **14 rules honoured:** presentation-only (no commission/hold/cron logic touched —
+  security 385/0), dark-only, strict responsive to 320px **(1 real overflow fix)**, measured
+  verify **incl. contrast + 2 real fixes**, lucide, content ticks/dots kept. NEXT: admin
+  pages — content / creators / host / analytics / rls / services / reports / redemption-codes
+  / redemption-rules / settings / login / kpi(done) / … onward.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

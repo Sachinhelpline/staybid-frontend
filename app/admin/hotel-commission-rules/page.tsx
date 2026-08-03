@@ -4,6 +4,7 @@
 // Admin can set a flat % OR slab-based commission per hotel.
 
 import { useEffect, useMemo, useState } from "react";
+import { Building2, X } from "lucide-react";
 
 type Slab = { minBookings: number; maxBookings: number; pct: number };
 type Rule = {
@@ -130,8 +131,8 @@ export default function AdminHotelCommissionRulesPage() {
   return (
     <div style={{ padding: 0, fontFamily: "DM Sans, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-        <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0 }}>
-          🏨 Hotel Commission Rules
+        <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}>
+          <Building2 size={20} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Hotel Commission Rules
         </h1>
         {globalDefault && (
           <span style={{ fontSize: 11, color: "#8A8FA8" }}>
@@ -236,7 +237,7 @@ export default function AdminHotelCommissionRulesPage() {
                     <input type="number" min="0" value={s.minBookings} onChange={(e) => setSlabs(slabs.map((x, j) => j === i ? { ...x, minBookings: Number(e.target.value) } : x))} style={inp} placeholder="Min" />
                     <input type="number" min="0" value={s.maxBookings} onChange={(e) => setSlabs(slabs.map((x, j) => j === i ? { ...x, maxBookings: Number(e.target.value) } : x))} style={inp} placeholder="Max" />
                     <input type="number" step="0.5" min="0" max="50" value={s.pct} onChange={(e) => setSlabs(slabs.map((x, j) => j === i ? { ...x, pct: Number(e.target.value) } : x))} style={inp} placeholder="%" />
-                    <button onClick={() => setSlabs(slabs.filter((_, j) => j !== i))} disabled={slabs.length === 1} style={{ ...btnGhost, padding: "5px 8px", opacity: slabs.length === 1 ? 0.4 : 1 }}>✕</button>
+                    <button onClick={() => setSlabs(slabs.filter((_, j) => j !== i))} disabled={slabs.length === 1} aria-label="Remove" style={{ ...btnGhost, padding: "5px 8px", opacity: slabs.length === 1 ? 0.4 : 1, display: "inline-flex", alignItems: "center" }}><X size={14} strokeWidth={2.4} aria-hidden /></button>
                   </div>
                 ))}
                 <button onClick={() => setSlabs([...slabs, { minBookings: (slabs[slabs.length - 1]?.maxBookings || 0) + 1, maxBookings: (slabs[slabs.length - 1]?.maxBookings || 0) + 50, pct: 5 }])} style={btnGhost}>+ Add slab</button>
