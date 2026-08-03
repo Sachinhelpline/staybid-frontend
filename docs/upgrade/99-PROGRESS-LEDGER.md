@@ -1639,6 +1639,32 @@
   contrast + a real fix**, lucide, content ticks kept. NEXT: admin pages — content /
   circle-inventory / auction / creators / host / analytics / … onward.
 
+### 2026-08-03 — Session 6 cont. (v672 — admin pages: Moderation + Channels + Videos)
+- **Admin pages sweep, batch 3** (ops/moderation cluster), dark-only.
+- **Moderation (`app/admin/moderation`):** 4 KPI emoji → lucide (🚩→Flag,
+  🛡️→ShieldAlert, 📑→ClipboardList, 💬→MessageSquare); the two tab buttons
+  (🚩 Reported reels / 🛡️ Blocked-contact comments) → inline lucide + gap.
+- **Channels (`app/admin/channels`):** 📡 heading → lucide Radio; ↻ Refresh +
+  per-feed ↻ Re-sync → RotateCw (inline-flex). Sync-engine/resync logic untouched.
+- **Videos (`app/admin/videos`):** the empty-thumbnail 🎬 placeholder → lucide Film.
+  **Contrast fix** — the card upload-date `#5A5F70` on `#151820` measured **2.79:1**
+  (well below AA); bumped to the standard muted `#8A8FA8` (**5.56:1**), hierarchy kept
+  via the smaller 11px size. Approve/reject queue logic untouched.
+- **Complaints audited → INTENTIONALLY UNCHANGED:** its only emoji are the
+  😊/😐/😞 stay-feedback smiley RATINGS (`SMILEY_GLYPH`) — that is content vocabulary
+  (the customer's chosen sentiment, exactly like ★ ratings), kept per owner rule 11.
+- **CONTRAST (owner ask — MEASURED, 3 pages × 5 widths):** every measurable text clears
+  WCAG AA — min **4.61:1** (moderation "Spam/scam" pill) / **4.81:1** (channels "Sync
+  error" pill) / **5.56:1** (videos, post-fix). No text below 4.5.
+- Badge v671→**v672** (`SB_BUILD v672-admin-pages-moderation-channels-videos`), sw
+  `HTML_CACHE` v468→**v469**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **15/15** (zero
+  h-overflow to 320px, lucide svg present, + measured contrast).
+- **14 rules honoured:** presentation-only (no moderation/channel-sync/video-verdict
+  logic touched — security 385/0), dark-only, strict responsive to 320px, measured verify
+  **incl. contrast + a real fix**, lucide, content smileys/ticks kept. NEXT: admin pages —
+  content / circle-inventory / auction / creators / host / analytics / notifications / …
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

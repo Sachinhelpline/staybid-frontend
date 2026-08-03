@@ -3,6 +3,7 @@
 // Every OTA feed + connection across all hotels, with a health rollup + a
 // per-feed "Re-sync" through the shared engine (lib/channels/sync.ts).
 import { useCallback, useEffect, useState } from "react";
+import { Radio, RotateCw } from "lucide-react";
 
 const HEALTH: Record<string, { color: string; label: string }> = {
   ok: { color: "#2ECC71", label: "Healthy" },
@@ -93,12 +94,12 @@ export default function AdminChannels() {
     <div style={{ padding: "0 4px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div>
-          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif" }}>📡 Channel Health</h1>
+          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 9 }}><Radio size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Channel Health</h1>
           <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Every OTA feed across all hotels · unified Channel Manager</div>
         </div>
         <button onClick={load} disabled={loading}
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
-          {loading ? "…" : "↻ Refresh"}
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {loading ? "…" : <><RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh</>}
         </button>
       </div>
 
@@ -158,8 +159,8 @@ export default function AdminChannels() {
                       <td style={{ padding: "12px 14px", color: f.consecutiveFailures > 0 ? "#FF4757" : "#8A8FA8", fontSize: 12, fontWeight: f.consecutiveFailures > 0 ? 700 : 400 }}>{f.consecutiveFailures ?? 0}</td>
                       <td style={{ padding: "12px 14px" }}>
                         <button disabled={busy === f.id} onClick={() => resync(f.id)}
-                          style={{ background: "rgba(61,156,245,0.14)", border: "1px solid rgba(61,156,245,0.35)", color: "#3D9CF5", borderRadius: 8, padding: "5px 11px", fontSize: 12, fontWeight: 600, cursor: busy === f.id ? "wait" : "pointer", fontFamily: "inherit" }}>
-                          {busy === f.id ? "…" : "↻ Re-sync"}
+                          style={{ background: "rgba(61,156,245,0.14)", border: "1px solid rgba(61,156,245,0.35)", color: "#3D9CF5", borderRadius: 8, padding: "5px 11px", fontSize: 12, fontWeight: 600, cursor: busy === f.id ? "wait" : "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          {busy === f.id ? "…" : <><RotateCw size={13} strokeWidth={2.2} aria-hidden />Re-sync</>}
                         </button>
                       </td>
                     </tr>

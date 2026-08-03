@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Film } from "lucide-react";
 
 type Tab = "pending" | "approved" | "rejected";
 
@@ -89,7 +90,7 @@ export default function AdminVideosPage() {
                 {v.thumbnail_url ? (
                   <img src={v.thumbnail_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>🎬</div>
+                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#5A5F70" }}><Film size={32} strokeWidth={1.6} aria-hidden /></div>
                 )}
                 <span style={{
                   position: "absolute", top: 8, right: 8, padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em",
@@ -109,7 +110,7 @@ export default function AdminVideosPage() {
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8A8FA8" }}>
                   {v.room_type || v.title || "—"} · {v.hotel?.city || ""}
                 </p>
-                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#5A5F70" }}>
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#8A8FA8" }}>
                   Uploaded {new Date(v.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                 </p>
               </div>
