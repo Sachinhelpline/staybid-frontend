@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Gift } from "lucide-react";
 import KPICard from "@/components/admin/kpi-card";
 import DataTable from "@/components/admin/data-table";
 import Modal from "@/components/admin/modal";
@@ -146,8 +147,8 @@ export default function AdminFinance() {
           borderRadius: 12, padding: 16, marginBottom: 24,
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-            <p style={{ fontSize: 11, color: C.gold, textTransform: "uppercase", letterSpacing: "0.15em", margin: 0, fontWeight: 700 }}>
-              🎁 Redemption Cost (last 30d)
+            <p style={{ fontSize: 11, color: C.gold, textTransform: "uppercase", letterSpacing: "0.15em", margin: 0, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Gift size={14} strokeWidth={2} aria-hidden /> Redemption Cost (last 30d)
             </p>
             <Link href="/admin/redemption-codes" style={{ color: C.gold, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>View ledger →</Link>
           </div>

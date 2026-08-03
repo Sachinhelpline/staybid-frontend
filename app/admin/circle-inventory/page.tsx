@@ -5,13 +5,14 @@
 // force-expire / buyback / mark-payout-paid / mark-settlement-paid actions.
 // Dark-luxury, mirrors /admin/channels.
 import { useCallback, useEffect, useState } from "react";
+import { ReceiptText, RotateCw, ArrowLeftRight, Banknote, Home, Package, TriangleAlert, Shield } from "lucide-react";
 
 const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
 
 const STATUS_COLOR: Record<string, string> = {
   draft: "#8A8FA8", quoted: "#8A8FA8", pending_payment: "#a9b9c8",
   owned: "#3D9CF5", listed: "#2ECC71", sold: "#2ECC71",
-  expired: "#8A8FA8", cancelled: "#FF4757", refunded: "#A855F7",
+  expired: "#8A8FA8", cancelled: "#FF4757", refunded: "#D8B4FE",
 };
 
 function adminId(): string {
@@ -134,19 +135,19 @@ export default function AdminCircleInventory() {
     <div style={{ padding: "0 4px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div>
-          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif" }}>🧾 Circle Inventory</h1>
+          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 9 }}><ReceiptText size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Circle Inventory</h1>
           <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Model 2 pre-buy blocks + resale settlement · exchange payouts</div>
         </div>
         <button onClick={load} disabled={loading}
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
-          {loading ? "…" : "↻ Refresh"}
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {loading ? "…" : <><RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh</>}
         </button>
       </div>
 
       {/* v347 — dual B2B commission control (5% buyer + 5% seller default). */}
       <div style={{ background: "rgba(61,156,245,0.06)", border: "1px solid rgba(61,156,245,0.22)", borderRadius: 12, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14 }}>
         <div style={{ minWidth: 190 }}>
-          <div style={{ color: "#E8EAF0", fontSize: 14, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>⇄ B2B exchange commission</div>
+          <div style={{ color: "#E8EAF0", fontSize: 14, fontWeight: 700, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 7 }}><ArrowLeftRight size={15} strokeWidth={2} aria-hidden />B2B exchange commission</div>
           <div style={{ color: "#8A8FA8", fontSize: 11.5, marginTop: 2 }}>Resale price = owner&apos;s own price/night × multiplier (2 = double). Buyer pays ask + buyer %; seller receives ask − seller %. NEW listings only.</div>
         </div>
         <label style={{ color: "#8A8FA8", fontSize: 12, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -196,10 +197,10 @@ export default function AdminCircleInventory() {
           { v: inr(k.platformFees), label: "Platform fees", color: "#9fb1c2" },
           { v: inr(k.gmv), label: "Resale GMV", color: "#3D9CF5" },
           { v: String(k.totalBlocks || 0), label: "Total blocks", color: "#E8EAF0" },
-          { v: String(k.buybackOwed || 0), label: "Buyback owed", color: "#A855F7" },
+          { v: String(k.buybackOwed || 0), label: "Buyback owed", color: "#D8B4FE" },
           { v: inr(k.b2bOwed), label: "Exchange seller owed", color: "#a9b9c8" },
           { v: inr(k.b2bPaid), label: "Exchange settled", color: "#2ECC71" },
-          { v: String(k.b2bListingsActive || 0), label: "Exchange live listings", color: "#A855F7" },
+          { v: String(k.b2bListingsActive || 0), label: "Exchange live listings", color: "#D8B4FE" },
           { v: inr(k.b2bListedGmv), label: "Exchange listed GMV", color: "#3D9CF5" },
         ].map((c, i) => (
           <div key={i} style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
@@ -211,7 +212,7 @@ export default function AdminCircleInventory() {
 
       {/* Payouts owed (settlement) */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>💸 Payouts owed to investors</div>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 7 }}><Banknote size={16} strokeWidth={2} aria-hidden />Payouts owed to investors</div>
         <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
           {owedSales.length === 0 ? (
             <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No outstanding investor payouts."}</div>
@@ -247,7 +248,7 @@ export default function AdminCircleInventory() {
 
       {/* v333 — D3: Model 4 B2B exchange settlements owed to sellers */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>⇄ Exchange payouts owed to sellers <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 2</span></div>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 7 }}><ArrowLeftRight size={16} strokeWidth={2} aria-hidden />Exchange payouts owed to sellers <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 2</span></div>
         <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
           {owedSettlements.length === 0 ? (
             <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No outstanding exchange payouts."}</div>
@@ -286,7 +287,7 @@ export default function AdminCircleInventory() {
 
       {/* v390 — per-owner payout batches (group owed guest-booking rows per owner) */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>💸 Payout batches <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· owed grouped per owner</span> <span style={{ fontSize: 11, fontWeight: 700, color: rxConfigured ? "#2ECC71" : "#8A8FA8" }}>{rxConfigured ? "· RazorpayX live" : "· RazorpayX not configured (manual only)"}</span></div>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}><Banknote size={16} strokeWidth={2} aria-hidden />Payout batches <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· owed grouped per owner</span> <span style={{ fontSize: 11, fontWeight: 700, color: rxConfigured ? "#2ECC71" : "#8A8FA8" }}>{rxConfigured ? "· RazorpayX live" : "· RazorpayX not configured (manual only)"}</span></div>
         <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
           {payoutBatches.length === 0 ? (
             <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No owners with outstanding payouts."}</div>
@@ -305,7 +306,7 @@ export default function AdminCircleInventory() {
                       <td style={td}>
                         {b.hasAccount
                           ? <span style={{ color: b.accountStatus === "verified" ? "#2ECC71" : "#a9b9c8", fontSize: 12 }}>{b.accountMethod === "upi" ? "UPI" : "Bank"} · {b.accountStatus}</span>
-                          : <span style={{ color: "#E0684E", fontSize: 12 }}>⚠ not added</span>}
+                          : <span style={{ color: "#E0684E", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 3 }}><TriangleAlert size={12} strokeWidth={2.2} aria-hidden />not added</span>}
                       </td>
                       <td style={{ ...td, display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {rxConfigured && b.hasAccount && (
@@ -328,7 +329,7 @@ export default function AdminCircleInventory() {
 
       {/* S2 — guest-booking owner settlements owed to Circle owners */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>🏠 Guest-booking payouts owed to owners <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· {inr(k.gbOwed || 0)} owed · fee {inr(k.gbFees || 0)}</span></div>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}><Home size={16} strokeWidth={2} aria-hidden />Guest-booking payouts owed to owners <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· {inr(k.gbOwed || 0)} owed · fee {inr(k.gbFees || 0)}</span></div>
         <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
           {gbOwedList.length === 0 ? (
             <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No outstanding guest-booking payouts. (Recorded by the settlement reconciler as bookings confirm.)"}</div>
@@ -365,11 +366,11 @@ export default function AdminCircleInventory() {
       {/* v334 — D4: Model 4 B2B exchange listings oversight */}
       <div style={{ marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>⇄ Exchange listings <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 2 · seller-to-seller</span></div>
+          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}><ArrowLeftRight size={16} strokeWidth={2} aria-hidden />Exchange listings <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 2 · seller-to-seller</span></div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
             {B2B_FILTERS.map((f) => (
               <button key={f} onClick={() => setB2bFilter(f)}
-                style={{ background: b2bFilter === f ? "rgba(168,85,247,0.16)" : "rgba(255,255,255,0.04)", border: `1px solid ${b2bFilter === f ? "rgba(168,85,247,0.4)" : "rgba(255,255,255,0.1)"}`, color: b2bFilter === f ? "#A855F7" : "#8A8FA8", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
+                style={{ background: b2bFilter === f ? "rgba(168,85,247,0.16)" : "rgba(255,255,255,0.04)", border: `1px solid ${b2bFilter === f ? "rgba(168,85,247,0.4)" : "rgba(255,255,255,0.1)"}`, color: b2bFilter === f ? "#D8B4FE" : "#8A8FA8", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
                 {f}{f !== "all" && k.b2bListingsByStatus?.[f] != null ? ` ${k.b2bListingsByStatus[f]}` : ""}
               </button>
             ))}
@@ -447,7 +448,7 @@ export default function AdminCircleInventory() {
       {/* Blocks */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>📦 Inventory blocks</div>
+          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 7 }}><Package size={16} strokeWidth={2} aria-hidden />Inventory blocks</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
             {FILTERS.map((f) => (
               <button key={f} onClick={() => setFilter(f)}
@@ -490,7 +491,7 @@ export default function AdminCircleInventory() {
                         </td>
                         <td style={td}>
                           {b.buyback_enabled
-                            ? <span style={{ color: bbStatus === "owed" ? "#a9b9c8" : bbStatus === "paid" ? "#2ECC71" : "#A855F7", fontSize: 11.5, fontWeight: 700 }}>{bbStatus === "owed" ? "owed" : bbStatus === "paid" ? "paid" : "🛡 on"}</span>
+                            ? <span style={{ color: bbStatus === "owed" ? "#a9b9c8" : bbStatus === "paid" ? "#2ECC71" : "#D8B4FE", fontSize: 11.5, fontWeight: 700 }}>{bbStatus === "owed" ? "owed" : bbStatus === "paid" ? "paid" : <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Shield size={11} strokeWidth={2.2} aria-hidden />on</span>}</span>
                             : <span style={{ color: "#8A8FA8" }}>—</span>}
                         </td>
                         <td style={td}>
@@ -499,7 +500,7 @@ export default function AdminCircleInventory() {
                               <button disabled={busy === b.id} onClick={() => act({ action: "force_expire", blockId: b.id }, b.id, "Force-expire this block + release its hold?")} style={btn("#8A8FA8")}>{busy === b.id ? "…" : "Expire"}</button>
                             )}
                             {b.buyback_enabled && bbStatus !== "owed" && bbStatus !== "paid" && ["owned", "listed", "expired"].includes(b.status) && (
-                              <button disabled={busy === b.id} onClick={() => act({ action: "buyback", blockId: b.id }, b.id, `Buy back ${inr(b.buy_total)} of unsold nights? StayBid takes the loss.`)} style={btn("#A855F7")}>{busy === b.id ? "…" : "Buyback"}</button>
+                              <button disabled={busy === b.id} onClick={() => act({ action: "buyback", blockId: b.id }, b.id, `Buy back ${inr(b.buy_total)} of unsold nights? StayBid takes the loss.`)} style={btn("#D8B4FE")}>{busy === b.id ? "…" : "Buyback"}</button>
                             )}
                             {b.status === "refunded" && bbStatus === "owed" && (
                               <button disabled={busy === b.id} onClick={() => act({ action: "mark_buyback_paid", blockId: b.id }, b.id, `Mark ${inr(b?.metadata?.buyback?.amount)} buyback paid to investor?`)} style={btn("#2ECC71")}>{busy === b.id ? "…" : "Mark paid"}</button>

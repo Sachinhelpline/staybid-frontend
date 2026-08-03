@@ -1,5 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  ClipboardList, CircleCheck, Hourglass, MessageSquare, Wallet,
+  Link2, Sparkles, Building2, Zap, HelpCircle, Globe, BedDouble, TriangleAlert,
+} from "lucide-react";
 import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
 import { LivePill, LiveCountdown, useAutoPoll } from "@/components/admin/live-ticker";
@@ -9,12 +13,12 @@ import { filterActiveBids } from "@/lib/bid-expiry";
 
 // v94 — source style map (mirror of lib/attribution SOURCE_*) — kept local
 // because the admin panel doesn't import from the customer-side lib.
-const SOURCE_STYLE: Record<string, { icon: string; label: string; color: string }> = {
-  direct:        { icon: "🔗", label: "Direct",      color: "#3D9CF5" },
-  creator:       { icon: "✨", label: "Creator",     color: "#A855F7" },
-  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#9fb1c2" },
-  flash:         { icon: "⚡", label: "Flash deal",  color: "#FF4757" },
-  unknown:       { icon: "•",  label: "Unknown",     color: "#8A8FA8" },
+const SOURCE_STYLE: Record<string, { icon: ReactNode; label: string; color: string }> = {
+  direct:        { icon: <Link2 size={13} strokeWidth={2} aria-hidden />,      label: "Direct",      color: "#3D9CF5" },
+  creator:       { icon: <Sparkles size={13} strokeWidth={2} aria-hidden />,   label: "Creator",     color: "#A855F7" },
+  "hotel-feed":  { icon: <Building2 size={13} strokeWidth={2} aria-hidden />,  label: "Hotel reel",  color: "#9fb1c2" },
+  flash:         { icon: <Zap size={13} strokeWidth={2} aria-hidden />,        label: "Flash deal",  color: "#FF4757" },
+  unknown:       { icon: <HelpCircle size={13} strokeWidth={2} aria-hidden />, label: "Unknown",     color: "#8A8FA8" },
 };
 
 export default function AdminBookings() {
@@ -110,7 +114,7 @@ export default function AdminBookings() {
               border: mismatch ? "1px solid rgba(176, 192, 209,0.35)" : "1px solid transparent",
             }}
           >
-            🛏️ {n}{mismatch ? " ⚠" : ""}
+            <BedDouble size={13} strokeWidth={2} aria-hidden /> {n}{mismatch ? <TriangleAlert size={12} strokeWidth={2.4} aria-hidden style={{ marginLeft: 2 }} /> : ""}
           </span>
         );
       },
@@ -241,11 +245,11 @@ export default function AdminBookings() {
       </div>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Bids"   value={stats.total}     icon="📋" color="#9fb1c2" live onClick={() => setStatus("all")} />
-        <KpiCard title="Accepted+"    value={stats.accepted}  icon="✅" color="#2ECC71" live sub="confirmed → checked-out" onClick={() => setStatus("ACCEPTED")} />
-        <KpiCard title="Pending"      value={stats.pending}   icon="⏳" color="#c6d0da" live onClick={() => setStatus("PENDING")} />
-        <KpiCard title="Countered"    value={stats.countered} icon="💬" color="#FF8C42" live onClick={() => setStatus("COUNTER")} />
-        <KpiCard title="Gross Paid"   value={stats.gross}     format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
+        <KpiCard title="Total Bids"   value={stats.total}     icon={<ClipboardList size={18} strokeWidth={2} aria-hidden />} color="#9fb1c2" live onClick={() => setStatus("all")} />
+        <KpiCard title="Accepted+"    value={stats.accepted}  icon={<CircleCheck size={18} strokeWidth={2} aria-hidden />} color="#2ECC71" live sub="confirmed → checked-out" onClick={() => setStatus("ACCEPTED")} />
+        <KpiCard title="Pending"      value={stats.pending}   icon={<Hourglass size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" live onClick={() => setStatus("PENDING")} />
+        <KpiCard title="Countered"    value={stats.countered} icon={<MessageSquare size={18} strokeWidth={2} aria-hidden />} color="#FF8C42" live onClick={() => setStatus("COUNTER")} />
+        <KpiCard title="Gross Paid"   value={stats.gross}     format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon={<Wallet size={18} strokeWidth={2} aria-hidden />} color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
       </div>
 
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
@@ -278,7 +282,7 @@ export default function AdminBookings() {
           Source:
         </span>
         {(["all", "direct", "creator", "hotel-feed", "flash"] as const).map((s) => {
-          const meta = s === "all" ? { icon: "🌐", label: "All", color: "#9fb1c2" } : SOURCE_STYLE[s];
+          const meta = s === "all" ? { icon: <Globe size={13} strokeWidth={2} aria-hidden />, label: "All", color: "#9fb1c2" } : SOURCE_STYLE[s];
           const isActive = source === s;
           const count = s === "all" ? activeBookings.length : (sourceCounts[s] || 0);
           return (

@@ -9,14 +9,14 @@
 //   format?: (n) => string  custom number formatter
 //   onClick?: () => void    makes the card tappable
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 interface KpiCardProps {
   title: string;
   value: string | number;
   sub?: string;
   color?: string;
-  icon?: string;
+  icon?: ReactNode;
   trend?: number;
   sparkline?: number[];
   sparkColor?: string;
@@ -143,6 +143,7 @@ export default function KpiCard({
               alignItems: "center",
               justifyContent: "center",
               fontSize: 17,
+              color,
               flexShrink: 0,
             }}
           >

@@ -28,8 +28,16 @@ import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "
 import ModalCloseButton from "@/components/ModalCloseButton";
 import SbState from "@/components/SbState";
 import HotelHero from "@/components/hotel/HotelHero";
-import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
+// v636 — HotelStatsRibbon retired from THIS page (merged into
+// HotelTrustStrip); the component file stays in the repo untouched.
+// v637 — HotelScoreBadge is BACK as the standalone v128.1 medal block
+// (owner: the compact badge overflowed the strip cell).
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+import HotelTrustStrip from "@/components/hotel/HotelTrustStrip";
+// v638 — lucide chrome icons (deep-flow emoji sweep; amenity map, score
+// ladder labels and celebration copy deliberately KEEP their emojis).
+import { Zap, Lock, Hourglass, AlarmClock, Gem, Wallet, MapPin, Trophy, Calendar as CalIcon, Search, Users, Timer, Bot, Star, ArrowUp, UserRound, PersonStanding, Baby, Check } from "lucide-react";
+import { useReveal } from "@/lib/useReveal";
 import IndividualRoomsSection from "@/components/hotel/IndividualRoomsSection";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
 import BackToTopButton from "@/components/BackToTopButton";
@@ -312,6 +320,34 @@ function RoomSwipeMedia({
         </>
       )}
     </>
+  );
+}
+
+/* v636 — per-card scroll reveal for the room list (the v634 flash-card
+   engine). ⚠ v238 history: the SHARED `.hx-reveal-io` observer was removed
+   from this section because late-mounted children missed its observation
+   cycle and stayed opacity:0 — "the room list is way too important to gate
+   on a fragile animation hook". This wrapper is DIFFERENT on both counts:
+   ① each card owns its own IntersectionObserver (mount-time, no shared
+   dependency array to go stale), and ② the CSS carries a FAILSAFE keyframe
+   that forces the card visible 1.4s after mount even if the observer never
+   fires (see .hx-io in globals.css). The room list can never be lost to an
+   animation bug again — worst case it just fades in without the rise. */
+/* v638 — tiny inline-icon helper for text-embedded lucide glyphs. */
+function InIc({ I, size = 13 }: { I: React.ComponentType<any>; size?: number }) {
+  return <I size={size} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} />;
+}
+
+function RevealCard({ children, delay }: { children: React.ReactNode; delay?: string }) {
+  const { ref, visible } = useReveal<HTMLDivElement>({ threshold: 0, rootMargin: "0px 0px 15% 0px" });
+  return (
+    <div
+      ref={ref}
+      className={`hx-io${visible ? " is-in" : ""}`}
+      style={delay && visible ? { transitionDelay: delay } : undefined}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -2582,7 +2618,7 @@ export default function HotelDetail() {
                 <p style={{
                   fontSize: "0.6rem", fontWeight: 800, color: "var(--cozy-rose)",
                   textTransform: "uppercase", letterSpacing: "0.16em", margin: 0,
-                }}>⚡ Flash Deal Active</p>
+                }}><InIc I={Zap} size={12} /> Flash Deal Active</p>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
                   {flashRoom?.name || "Room"} at{" "}
                   <span style={{ fontWeight: 800, color: "var(--text-base)", fontSize: "1.05rem" }}>₹{dealPrice}</span>
@@ -2630,33 +2666,19 @@ export default function HotelDetail() {
           onOpenGallery={(i) => { setGalleryIdx(i); setGalleryOpen(true); }}
         />
 
-        {/* ── v133 — Live activity ticker pill ── */}
-        <div className="hx-live-pill-row hx-reveal">
-          <span className="hx-live-ticker" title="Live activity right now">
-            <span className="hx-live-ticker-dot" aria-hidden="true" />
-            <span>
-              <span className="hx-live-ticker-em">{liveStats.viewing}</span>
-              {" "}looking now
-            </span>
-            <span className="hx-live-ticker-sep" aria-hidden="true" />
-            <span>
-              <span className="hx-live-ticker-em">{liveStats.bookedToday}</span>
-              {" "}booked today
-            </span>
-          </span>
-        </div>
-
-        {/* ── v123 ANIMATED STATS RIBBON ── */}
-        <HotelStatsRibbon
+        {/* ── v636 TRUST STRIP (Treatment A) — the v133 live pill, the v123
+            stats ribbon and the v128.1 medal block merged into ONE compact
+            4-cell strip (Rating · SB Score · Rooms · vs OTA + a quiet live
+            caption). Three stacked bands → one; the room list rises above
+            the fold. The Score cell is HotelScoreBadge compact UNCHANGED,
+            so tap-for-breakdown behaviour survives. Presentation only. */}
+        <HotelTrustStrip
           avgRating={hotel.avgRating}
           totalReviews={hotel.totalReviews}
-          starRating={hotel.starRating}
           roomsAvailable={roomsAvail}
-          totalRooms={roomsAvail}
-          lowestPrice={lowestForRibbon}
           otaSavingsPct={otaSavingsBest}
-          trustBadge={!!hotel.trustBadge}
-          flashDealActive={!!(dealId && dealPrice)}
+          liveViewing={liveStats.viewing}
+          liveBookedToday={liveStats.bookedToday}
         />
 
         {/* v179 — Rule C cooldown notice. Shown when the customer has an
@@ -2673,7 +2695,7 @@ export default function HotelDetail() {
               border: "1px solid rgba(106,133,160,0.42)",
               display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
             }}>
-              <span style={{ fontSize: "1.05rem" }}>⏳</span>
+              <Hourglass size={17} strokeWidth={2.2} aria-hidden />
               <div style={{ flex: 1, minWidth: 220 }}>
                 <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-base)", margin: 0 }}>
                   {title} · try again in {wait}
@@ -2691,10 +2713,11 @@ export default function HotelDetail() {
           );
         })()}
 
-        {/* ── v128.1 PERFORMANCE SCORECARD — 3D award medal w/ rank ribbon.
-            v159.9 — Tightened from marginTop:14 → 8 + gap 16 → 12 +
-            sub-text leading shrunk so the block hugs the stats ribbon
-            above + the description below. Halves the air around it. */}
+        {/* ── v128.1 PERFORMANCE SCORECARD — restored VERBATIM in v637 at
+            its original position (owner: the compact badge overflowed the
+            v636 strip cell; "score card same waise hi, wahi jagah" —
+            identical on mobile AND desktop). 3D award medal w/ rank
+            ribbon; tap for breakdown. */}
         <div
           className="hx-reveal"
           style={{
@@ -2864,7 +2887,7 @@ export default function HotelDetail() {
                   <div className="absolute inset-0 bg-linear-to-br from-blue-50 to-green-50 opacity-60" />
                   <div className="relative text-center">
                     <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-2 shadow-lg">
-                      <span className="text-white text-lg">📍</span>
+                      <MapPin size={18} strokeWidth={2.2} aria-hidden className="text-white" />
                     </div>
                     <p className="text-xs font-semibold text-luxury-700">{hotel.city} Area</p>
                     <p className="text-[0.6rem] text-luxury-400">Exact pin shared post-booking</p>
@@ -2975,7 +2998,7 @@ export default function HotelDetail() {
                 ))}
                 <div className="flex items-center justify-between pt-2 border-t border-luxury-100 mt-2">
                   <div className="flex items-center gap-2">
-                    <span>🏆</span>
+                    <Trophy size={15} strokeWidth={2.2} aria-hidden style={{ color: "#b8860b" }} />
                     <span className="text-sm font-bold text-gold-600">StayBid</span>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Best Price Guaranteed</span>
@@ -3167,7 +3190,7 @@ export default function HotelDetail() {
                               {/* v241.14 — surface total amount on CTA so
                                   customer knows EXACTLY what they'll pay,
                                   not just per-room rate */}
-                              💰 Pay Now & Confirm Booking — ₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")} →
+                              <InIc I={Wallet} size={14} /> Pay Now & Confirm Booking — ₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")} →
                             </button>
                           )}
                         </div>
@@ -3310,7 +3333,7 @@ export default function HotelDetail() {
           />
         )}
         <div className={`hx-room-list${hotel.individualRooms ? " is-hidden" : ""}${(hotel.rooms?.length || 0) <= 1 ? " is-single" : ""}`} style={{ marginBottom: "40px" }}>
-          {hotel.rooms?.map((r: any) => {
+          {hotel.rooms?.map((r: any, idx: number) => {
             const isHeadlineRoom = dealRoomId === r.id;
             // A room is available unless explicitly flagged otherwise.
             const roomAvailable = r.isAvailable !== false
@@ -3417,7 +3440,7 @@ export default function HotelDetail() {
                   className="hx-cta hx-cta-primary"
                   style={{ width: "100%", background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                 >
-                  💰 Pay &amp; Confirm Booking — ₹{lockedAmount.toLocaleString("en-IN")}/night →
+                  <InIc I={Wallet} size={14} /> Pay &amp; Confirm Booking — ₹{lockedAmount.toLocaleString("en-IN")}/night →
                 </button>
               ) : myRoomCountered ? (
                 <button
@@ -3429,7 +3452,7 @@ export default function HotelDetail() {
                 </button>
               ) : myRoomPending ? (
                 <div className="hx-cta hx-cta-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.85, cursor: "default" }}>
-                  ⏳ Bid pending review — hotel will respond shortly
+                  <InIc I={Hourglass} /> Bid pending review — hotel will respond shortly
                 </div>
               ) : isOtherWhenLocked ? (
                 // v197 — when an ACCEPTED bid exists on a DIFFERENT room,
@@ -3481,7 +3504,7 @@ export default function HotelDetail() {
                     style={{ width: "100%", background: "linear-gradient(135deg,#748da6 0%,#8198ae 50%,#748da6 100%)", color: "#1a1205", padding: "12px 14px", lineHeight: 1.25 }}
                   >
                     <div style={{ fontSize: "0.85rem", fontWeight: 800 }}>
-                      💎 Upgrade to {r.name || r.type}
+                      <InIc I={Gem} /> Upgrade to {r.name || r.type}
                     </div>
                     <div style={{ fontSize: "0.7rem", fontWeight: 600, opacity: 0.85, marginTop: 2 }}>
                       ₹{anchorAmount.toLocaleString("en-IN")} {lockedBid ? "accepted" : "bid"} + ₹{lockUpgradeDelta.toLocaleString("en-IN")} extra = ₹{(anchorAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
@@ -3493,7 +3516,7 @@ export default function HotelDetail() {
                     className="hx-cta hx-cta-primary"
                     style={{ width: "100%", background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                   >
-                    💰 {lockedBid ? "Pay accepted" : "View active bid"} ₹{anchorAmount.toLocaleString("en-IN")}/night →
+                    <InIc I={Wallet} /> {lockedBid ? "Pay accepted" : "View active bid"} ₹{anchorAmount.toLocaleString("en-IN")}/night →
                   </button>
                 )
               ) : null;
@@ -3537,8 +3560,9 @@ export default function HotelDetail() {
             const roomAmenities: string[] = r.amenities?.length > 0 ? r.amenities : defaultAmenities;
 
             return (
-              <div key={r.id}
-                className={`hx-room-card hx-reveal ${isFlashRoom ? "is-flash" : ""} ${bidRoom?.id === r.id ? "is-selected" : ""}`}
+              <RevealCard key={r.id} delay={`${(idx % 2) * 0.05}s`}>
+              <div
+                className={`hx-room-card ${isFlashRoom ? "is-flash" : ""} ${bidRoom?.id === r.id ? "is-selected" : ""}`}
               >
                 <div className="hx-room-body">
 
@@ -3582,7 +3606,7 @@ export default function HotelDetail() {
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
                         boxShadow: "0 4px 12px rgba(127,146,105,0.38)",
-                      }}>🔒 Price Locked</span>
+                      }}><InIc I={Lock} size={11} /> Price Locked</span>
                     )}
                     {!isFlashRoom && !isLockedRoom && myRoomCountered && (
                       <span style={{
@@ -3601,7 +3625,7 @@ export default function HotelDetail() {
                         background: "rgba(106,133,160,0.94)", color: "#1a1205",
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
-                      }}>⏳ Bid Pending</span>
+                      }}><InIc I={Hourglass} size={11} /> Bid Pending</span>
                     )}
                     {!isFlashRoom && isOtherWhenLocked && lockUpgradeDelta > 0 && (
                       <span style={{
@@ -3610,7 +3634,7 @@ export default function HotelDetail() {
                         background: "rgba(106, 133, 160,0.94)", color: "#1a1205",
                         fontSize: "0.58rem", fontWeight: 800,
                         letterSpacing: "0.12em", textTransform: "uppercase",
-                      }}>💎 +₹{lockUpgradeDelta.toLocaleString()} Upgrade</span>
+                      }}><InIc I={Gem} size={11} /> +₹{lockUpgradeDelta.toLocaleString()} Upgrade</span>
                     )}
                     {!isFlashRoom && ds && !isLockedRoom && !myRoomCountered && !myRoomPending && !isOtherWhenLocked && (
                       <span className={`hx-badge-demand ${aiPrice!.demandLevel === "Surge" ? "is-surge" : ""}`}>
@@ -3710,7 +3734,7 @@ export default function HotelDetail() {
                     const chipBg = lockedPayOpen ? "rgba(127,146,105,0.16)" : "rgba(180,83,9,0.10)";
                     const chipBorder = lockedPayOpen ? "rgba(127,146,105,0.42)" : "rgba(180,83,9,0.32)";
                     const chipTitle = lockedPayOpen ? "#5a6e44" : "#7c2d12";
-                    const chipIcon = lockedPayOpen ? "🔒" : "⏰";
+                    const chipIcon = lockedPayOpen ? <Lock size={17} strokeWidth={2.2} aria-hidden /> : <AlarmClock size={17} strokeWidth={2.2} aria-hidden />;
                     const chipSubtitle = lockedPayOpen
                       ? "Confirm payment before the hold window expires."
                       : "Hold window expired — place a new bid to reserve this room.";
@@ -3776,7 +3800,7 @@ export default function HotelDetail() {
                       border: "1px solid rgba(106,133,160,0.42)",
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: "1.05rem" }}>⏳</span>
+                      <Hourglass size={17} strokeWidth={2.2} aria-hidden />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a6a1f", margin: 0 }}>
                           Bid pending at ₹{(extractCustomerBidFromMessage(myRoomPending.message) ?? Number(myRoomPending.amount || 0)).toLocaleString("en-IN")}/night
@@ -3794,7 +3818,7 @@ export default function HotelDetail() {
                       border: "1px solid rgba(106, 133, 160,0.36)",
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: "1.05rem" }}>💎</span>
+                      <Gem size={17} strokeWidth={2.2} aria-hidden />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a5e10", margin: 0 }}>
                           Upgrade to ₹{(lockedAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
@@ -3816,7 +3840,7 @@ export default function HotelDetail() {
                         <div className="hx-price-row">
                           <div>
                             <p className="hx-price-label">
-                              {isHeadlineRoom ? "⚡ Flash Deal Price" : "⚡ Flash Deal · Upgrade"}
+                              <InIc I={Zap} size={12} />{isHeadlineRoom ? "Flash Deal Price" : "Flash Deal · Upgrade"}
                             </p>
                             <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
                               {roomWasPrice > roomFlashPrice && (
@@ -3854,7 +3878,7 @@ export default function HotelDetail() {
                           })}
                           className="hx-cta hx-cta-primary"
                         >
-                          {isHeadlineRoom ? "⚡ Book This Flash Deal" : "⚡ Upgrade & Book"}
+                          <InIc I={Zap} size={13} />{isHeadlineRoom ? "Book This Flash Deal" : "Upgrade & Book"}
                         </button>
                       </div>
                     </div>
@@ -3865,7 +3889,7 @@ export default function HotelDetail() {
                         /* ── No dates selected — teaser ── */
                         <div>
                           <div className="hx-teaser">
-                            <p className="hx-teaser-title">📅 Select dates to see live price</p>
+                            <p className="hx-teaser-title"><InIc I={CalIcon} size={12} /> Select dates to see live price</p>
                             <p className="hx-teaser-sub">AI pricing engine calculates the best rate for your travel dates</p>
                             <span className="hx-teaser-from">
                               <span className="hx-teaser-from-dot" />
@@ -3901,10 +3925,10 @@ export default function HotelDetail() {
                               <div className="mb-3 space-y-1.5">
                                 <div className="flex flex-wrap gap-1.5">
                                   <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
-                                    📅 {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {globalNights} night{globalNights > 1 ? "s" : ""}
+                                    <InIc I={CalIcon} size={11} /> {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {globalNights} night{globalNights > 1 ? "s" : ""}
                                   </span>
                                   <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
-                                    👥 {globalAdults} adults{globalChildren > 0 ? ` · ${globalChildren} children` : ""}{globalKids > 0 ? ` · ${globalKids} kids` : ""}
+                                    <InIc I={Users} size={11} /> {globalAdults} adults{globalChildren > 0 ? ` · ${globalChildren} children` : ""}{globalKids > 0 ? ` · ${globalKids} kids` : ""}
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between px-3 py-2 bg-luxury-50 rounded-xl border border-luxury-100">
@@ -4122,6 +4146,7 @@ export default function HotelDetail() {
                 </div>{/* /hx-room-content-wrap */}
                 </div>{/* /hx-room-body */}
               </div>
+              </RevealCard>
             );
           })}
         </div>
@@ -4151,7 +4176,7 @@ export default function HotelDetail() {
               background: "linear-gradient(135deg, #f8f9fa 0%, #f1f4f6 100%)",
               borderColor: "rgba(106, 133, 160,0.30)",
             }}>
-              <span style={{ fontSize: "1.1rem" }}>🔒</span>
+              <Lock size={17} strokeWidth={2.2} aria-hidden />
               <div style={{ fontSize: "0.72rem", lineHeight: 1.35 }}>
                 <p style={{ fontWeight: 700, color: "#6e5430" }}>Dates locked to your accepted bid</p>
                 <p style={{ color: "#8a6f3a", marginTop: 2 }}>
@@ -4197,7 +4222,7 @@ export default function HotelDetail() {
               className="picker-tile block text-left"
               style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in {datesLocked && <span style={{ color: "#748da6" }}>· 🔒</span>}</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-in {datesLocked && <span style={{ color: "#748da6" }}>· <Lock size={10} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-1px" }} /></span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckIn
                   ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -4219,7 +4244,7 @@ export default function HotelDetail() {
               className="picker-tile block text-left"
               style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out {datesLocked && <span style={{ color: "#748da6" }}>· 🔒</span>}</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-out {datesLocked && <span style={{ color: "#748da6" }}>· <Lock size={10} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-1px" }} /></span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckOut
                   ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -4355,7 +4380,7 @@ export default function HotelDetail() {
                     border: "1px solid rgba(127,146,105,0.42)",
                     borderRadius: 12, display: "flex", alignItems: "center", gap: 8,
                   }}>
-                    <span style={{ fontSize: "1rem" }}>🔒</span>
+                    <Lock size={15} strokeWidth={2.2} aria-hidden />
                     <p style={{ fontSize: "0.74rem", color: "#5a6e44", margin: 0, lineHeight: 1.45 }}>
                       Bid accepted — confirm payment to lock this booking.
                     </p>
@@ -4366,7 +4391,7 @@ export default function HotelDetail() {
                     className="hx-cta hx-cta-primary"
                     style={{ width: "100%", marginBottom: 8, background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                   >
-                    💰 Pay &amp; Confirm Booking →
+                    <InIc I={Wallet} size={14} /> Pay &amp; Confirm Booking →
                   </button>
                 </>
               ) : pageCounteredBid ? (
@@ -4578,7 +4603,7 @@ export default function HotelDetail() {
             {/* Gold header */}
             <div className="bg-linear-to-r from-gold-600 to-gold-400 px-6 py-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-white/70 uppercase tracking-widest">⚡ Flash Deal Booking</p>
+                <p className="text-xs font-bold text-white/70 uppercase tracking-widest"><InIc I={Zap} size={12} /> Flash Deal Booking</p>
                 <p className="text-white font-semibold text-lg">{flashRoom?.name || "Room"}</p>
                 <p className="text-white/70 text-sm">{hotel.name}</p>
               </div>
@@ -4592,7 +4617,7 @@ export default function HotelDetail() {
                 <div>
                   <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in (Today)</label>
                   <div className="input-luxury text-sm bg-luxury-50 text-luxury-400 cursor-not-allowed flex items-center gap-2">
-                    🔒 {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    <InIc I={Lock} size={11} /> {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </div>
                 </div>
                 <div>
@@ -4629,7 +4654,7 @@ export default function HotelDetail() {
                         ? new Date(flashCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
                         : "Pick date"}
                     </span>
-                    <span className="text-gold-500 text-base">📅</span>
+                    <CalIcon size={16} strokeWidth={2.2} aria-hidden className="text-gold-500" />
                   </button>
                 </div>
               </div>
@@ -4754,7 +4779,7 @@ export default function HotelDetail() {
                   disabled={bookLoading}
                   className="btn-3d btn-3d-gold btn-3d-lg w-full"
                 >
-                  {bookLoading ? "Confirming…" : `⚡ Confirm Booking · ₹${flashGrandTotal.toLocaleString()}`}
+                  {bookLoading ? "Confirming…" : <><Zap size={15} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> Confirm Booking · ₹{flashGrandTotal.toLocaleString()}</>}
                 </button>
                 <button
                   onClick={() => {
@@ -4981,7 +5006,7 @@ export default function HotelDetail() {
                     LIVE
                   </span>
                   <div>
-                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(157,184,210,0.85)" }}>⚡ AI Bidding Arena</p>
+                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(157,184,210,0.85)" }}><InIc I={Zap} size={11} /> AI Bidding Arena</p>
                     <p className="text-white font-semibold text-base leading-tight">{negRoom.name||negRoom.type}</p>
                   </div>
                 </div>
@@ -5012,7 +5037,7 @@ export default function HotelDetail() {
                 </div>
                 <div className="flex items-center justify-between rounded-2xl px-3 py-2 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(120,150,182,0.16)" }}>
                   <p className="text-xs text-white/70">
-                    👥 {globalAdults} adult{globalAdults>1?"s":""}
+                    <InIc I={Users} size={12} /> {globalAdults} adult{globalAdults>1?"s":""}
                     {globalChildren>0?` · ${globalChildren} child`:""}
                     {globalKids>0?` · ${globalKids} kid`:""}
                     {nrNeg>1?` · ${nrNeg} rooms`:""}
@@ -5041,7 +5066,7 @@ export default function HotelDetail() {
                     <p className="text-[0.6rem] font-bold uppercase tracking-[0.25em] neg-gold-text">AI Smart Pricing</p>
                     <span className="text-[0.6rem] font-semibold px-2 py-0.5 rounded-full"
                       style={{ background:`${prob.track}1f`, color:prob.track, border:`1px solid ${prob.track}55` }}>
-                      ⏱ {prob.responseTime}
+                      <InIc I={Timer} size={11} /> {prob.responseTime}
                     </span>
                   </div>
 
@@ -5100,7 +5125,7 @@ export default function HotelDetail() {
                   <div data-tour="neg-info" className="mt-4 px-3 py-2 rounded-xl border"
                     style={{ background:"rgba(0,0,0,0.35)", borderColor:"rgba(120,150,182,0.24)" }}>
                     <div className="flex items-center gap-2">
-                      <span className="text-[0.55rem] font-bold tracking-widest uppercase neg-gold-text shrink-0">🤖 Live AI</span>
+                      <span className="text-[0.55rem] font-bold tracking-widest uppercase neg-gold-text shrink-0"><InIc I={Bot} size={12} /> Live AI</span>
                       <div className="neg-ticker-wrap flex-1 text-[0.7rem] text-white/80">
                         <div className="neg-ticker">
                           {aiTips.concat(aiTips[0]).map((t,i)=>(
@@ -5115,9 +5140,9 @@ export default function HotelDetail() {
                 {/* Quick chips */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "💰 Save Big",   pct: 0.82, sub: "Hotel reviews" },
-                    { label: "⭐ Smart",      pct: 0.90, sub: "Recommended"   },
-                    { label: "⚡ Instant",    pct: 1.00, sub: "Auto-confirms" },
+                    { Ic: Wallet, label: "Save Big",   pct: 0.82, sub: "Hotel reviews" },
+                    { Ic: Star,   label: "Smart",      pct: 0.90, sub: "Recommended"   },
+                    { Ic: Zap,    label: "Instant",    pct: 1.00, sub: "Auto-confirms" },
                   ].map(s => {
                     // v129 — every quick-pick is a ₹100 multiple. The slider's
                     // step is also 100, so a chip-tap always lands on a stop
@@ -5132,7 +5157,7 @@ export default function HotelDetail() {
                           border: `1px solid ${active?"rgba(120,150,182,.6)":"rgba(255,255,255,.08)"}`,
                           boxShadow: active ? "0 6px 22px rgba(120,150,182,.35)" : "none",
                         }}>
-                        <p className={`text-[0.62rem] font-bold leading-tight ${active?"text-luxury-900":"text-white/90"}`}>{s.label}</p>
+                        <p className={`text-[0.62rem] font-bold leading-tight ${active?"text-luxury-900":"text-white/90"}`}><InIc I={s.Ic} size={11} /> {s.label}</p>
                         <p className={`text-sm font-extrabold mt-0.5 ${active?"text-luxury-900":"text-white"}`}>₹{amt.toLocaleString()}</p>
                         <p className={`text-[0.5rem] mt-0.5 ${active?"text-luxury-800":"text-white/40"}`}>{s.sub}</p>
                       </button>
@@ -5151,7 +5176,7 @@ export default function HotelDetail() {
                 {/* StayPoints teaser */}
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-2.5"
                   style={{ background:"linear-gradient(90deg,rgba(120,150,182,0.16),rgba(120,150,182,0.04))", border:"1px solid rgba(120,150,182,0.30)" }}>
-                  <span className="text-lg">💎</span>
+                  <Gem size={18} strokeWidth={2.2} aria-hidden />
                   <div className="flex-1">
                     <p className="text-[0.7rem] font-semibold" style={{ color: "#bcd0e4" }}>Win this bid → earn <span className="font-extrabold">{stayPoints}</span> StayPoints</p>
                     <p className="text-[0.55rem] text-white/40">Redeemable as ₹{stayPoints} cashback on future stays</p>
@@ -5184,9 +5209,9 @@ export default function HotelDetail() {
                       : "0 12px 32px -8px rgba(45,62,82,0.5), inset 0 1px 0 rgba(255,255,255,0.4)",
                   }}>
                   {negLoading
-                    ? "⏳ Submitting your bid…"
+                    ? "Submitting your bid…"
                     : isInstant
-                      ? `⚡ Instant Confirm · ₹${totalBid.toLocaleString()}`
+                      ? <><Zap size={16} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-3px", marginRight: 6 }} /> Instant Confirm · ₹{totalBid.toLocaleString()}</>
                       : (nrNeg > 1 || nights > 1)
                         ? `Submit Negotiation · ₹${negAmt.toLocaleString()}/night · ₹${totalBid.toLocaleString()} total`
                         : `Submit Negotiation · ₹${negAmt.toLocaleString()}/night`}
@@ -5202,7 +5227,9 @@ export default function HotelDetail() {
       {negSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setNegRoom(null)}>
           <div className="hx-modal max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
-            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">{negAuto ? "🎉" : "✅"}</span></div>
+            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5">
+              {negAuto ? <span className="text-3xl">🎉</span> : <Check size={30} strokeWidth={2.6} aria-hidden style={{ color: "#7F9269" }} />}
+            </div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">{negAuto ? "Booking Confirmed!" : "Bid Submitted!"}</h3>
             <p className="text-luxury-400 text-sm mb-6">{negAuto ? "The hotel confirmed your bid. Check My Bookings." : "The hotel will review your offer and respond soon. You'll be notified."}</p>
             {/* v241.6 — InspirationBanner ONLY when bid auto-confirmed
@@ -5291,7 +5318,7 @@ export default function HotelDetail() {
                       ? new Date(checkIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
                       : "Pick date"}
                   </span>
-                  <span className="text-gold-500 text-base">📅</span>
+                  <CalIcon size={16} strokeWidth={2.2} aria-hidden className="text-gold-500" />
                 </button>
               </div>
               <div>
@@ -5310,7 +5337,7 @@ export default function HotelDetail() {
                       ? new Date(checkOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
                       : "Pick date"}
                   </span>
-                  <span className="text-gold-500 text-base">📅</span>
+                  <CalIcon size={16} strokeWidth={2.2} aria-hidden className="text-gold-500" />
                 </button>
               </div>
             </div>
@@ -5419,7 +5446,7 @@ export default function HotelDetail() {
             {/* Header */}
             <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2 border-b" style={{ borderColor: "rgba(106, 133, 160,0.15)" }}>
               <div>
-                <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#748da6" }}>💎 Upgrade your room</p>
+                <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#748da6" }}><InIc I={Gem} size={11} /> Upgrade your room</p>
                 <h3 className="text-lg font-black mt-1" style={{ fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.2 }}>
                   {upgradeModal.fromRoomName} → {upgradeModal.toRoom.name || upgradeModal.toRoom.type}
                 </h3>
@@ -5501,8 +5528,8 @@ export default function HotelDetail() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3 mb-4 relative z-2">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-10 h-10 rounded-full bg-linear-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center text-base shadow-gold"
-                        style={{ animation: "lux-floaty 3s ease-in-out infinite" }}>🔍</span>
+                  <span className="w-10 h-10 rounded-full bg-linear-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center shadow-gold"
+                        style={{ animation: "lux-floaty 3s ease-in-out infinite" }}><Search size={17} strokeWidth={2.6} aria-hidden /></span>
                   <div>
                     <h3 className="font-bold text-luxury-900 text-[1rem] tracking-tight leading-tight">
                       {pickerModal.intent === "book" ? "Pick dates to Book Now" : "Pick dates to Negotiate"}
@@ -5526,7 +5553,7 @@ export default function HotelDetail() {
                   })}
                   className="picker-tile block text-left"
                 >
-                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
+                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-in</p>
                   <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
                     {globalCheckIn
                       ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -5542,7 +5569,7 @@ export default function HotelDetail() {
                   })}
                   className="picker-tile block text-left"
                 >
-                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
+                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1"><InIc I={CalIcon} size={11} /> Check-out</p>
                   <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
                     {globalCheckOut
                       ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -5554,7 +5581,7 @@ export default function HotelDetail() {
               {/* Guests */}
               <div className="grid grid-cols-3 gap-3 mb-4 relative z-2">
                 <div className="picker-tile">
-                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👤 Adults</p>
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2"><InIc I={UserRound} size={11} /> Adults</p>
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setGlobalAdults(Math.max(1, globalAdults - 1))} className="picker-step">−</button>
                     <span className="font-black text-luxury-900 text-lg">{globalAdults}</span>
@@ -5562,7 +5589,7 @@ export default function HotelDetail() {
                   </div>
                 </div>
                 <div className="picker-tile">
-                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👦 Children</p>
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2"><InIc I={PersonStanding} size={11} /> Children</p>
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setGlobalChildren(Math.max(0, globalChildren - 1))} className="picker-step">−</button>
                     <span className="font-black text-luxury-900 text-lg">{globalChildren}</span>
@@ -5570,7 +5597,7 @@ export default function HotelDetail() {
                   </div>
                 </div>
                 <div className="picker-tile">
-                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">🧒 Kids</p>
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2"><InIc I={Baby} size={11} /> Kids</p>
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setGlobalKids(Math.max(0, globalKids - 1))} className="picker-step">−</button>
                     <span className="font-black text-luxury-900 text-lg">{globalKids}</span>
@@ -5586,7 +5613,7 @@ export default function HotelDetail() {
                   className="btn-3d btn-3d-gold w-full"
                 >
                   {(!globalCheckIn || !globalCheckOut)
-                    ? "Pick dates above ↑"
+                    ? <>Pick dates above <ArrowUp size={14} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px" }} /></>
                     : pickerModal.intent === "book" ? "Continue to Book Now →" : "Continue to Negotiate →"}
                 </button>
                 <p className="text-center text-[0.6rem] text-luxury-500 mt-2 tracking-wide">

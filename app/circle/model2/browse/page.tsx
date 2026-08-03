@@ -7,6 +7,7 @@
 // bottom step-dock (Browse → Tour → Pay) + the basket bar read it.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { LockOpen, KeyRound, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -104,16 +105,16 @@ export default function Model2BrowsePage() {
           ].map((s) => (<div key={s.n} className="sbc2b-step"><span className="sbc2b-step-n">{s.n}</span><div><div className="sbc2b-step-t">{s.t}</div><div className="sbc2b-step-d">{s.d}</div></div></div>))}
         </div>
         <div className="sbc2b-kpis">
-          <span className="sbc2b-kpi">🔓 Full inventory — no pre-unlock</span>
-          <span className="sbc2b-kpi">🗝️ ₹{accessPrice}/city · one-time</span>
-          <span className="sbc2b-kpi sbc2b-kpi-gold">📈 See market rate before you buy</span>
+          <span className="sbc2b-kpi" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><LockOpen size={13} strokeWidth={2.2} aria-hidden />Full inventory — no pre-unlock</span>
+          <span className="sbc2b-kpi" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><KeyRound size={13} strokeWidth={2.2} aria-hidden />₹{accessPrice}/city · one-time</span>
+          <span className="sbc2b-kpi sbc2b-kpi-gold" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><TrendingUp size={13} strokeWidth={2.2} aria-hidden />See market rate before you buy</span>
         </div>
 
         <div className="sbc2b-chips">
           <button onClick={() => setCity(ALL)} className={`sbc2b-chip${city === ALL ? " on" : ""}`}>All Cities <span className="sbc2b-chip-ct">{new Set(all.map((l) => norm(fc(l).city))).size}</span></button>
           {supplyCities.map((c) => {
             const ct = new Set(all.filter((l) => norm(fc(l).city) === c).map((l) => l.hotel_id)).size;
-            return <button key={c} onClick={() => setCity(c)} className={`sbc2b-chip${norm(city) === c ? " on" : ""}`}>{cap(c)}{isUnlocked(c) ? " 🔓" : ""} <span className="sbc2b-chip-ct">{ct}</span></button>;
+            return <button key={c} onClick={() => setCity(c)} className={`sbc2b-chip${norm(city) === c ? " on" : ""}`} style={isUnlocked(c) ? { display: "inline-flex", alignItems: "center", gap: 4 } : undefined}>{cap(c)}{isUnlocked(c) ? <LockOpen size={11} strokeWidth={2.2} aria-hidden /> : null} <span className="sbc2b-chip-ct">{ct}</span></button>;
           })}
         </div>
 
@@ -161,11 +162,11 @@ export default function Model2BrowsePage() {
 
       <style jsx global>{`
         .sbc2b { padding-bottom: 96px; }
-        .sbc2b-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0 12px; }
+        .sbc2b-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(126px, 45%), 1fr)); gap: 8px; margin: 16px 0 12px; }
         .sbc2b-step { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid rgba(139,105,20,.16); border-radius: 12px; padding: 9px 10px; }
         .sbc2b-step-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--sbc-gold-deep); color: #fff; font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
         .sbc2b-step-t { font-size: .78rem; font-weight: 800; color: var(--sbc-coffee); line-height: 1.1; }
-        .sbc2b-step-d { font-size: .62rem; color: rgba(74,56,32,.6); }
+        .sbc2b-step-d { font-size: .64rem; color: rgba(74,56,32,.72); }
         .sbc2b-kpis { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 8px; }
         .sbc2b-kpi { font-size: .7rem; font-weight: 700; color: rgba(74,56,32,.8); background: rgba(139,105,20,.08); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 5px 11px; }
         .sbc2b-kpi-gold { color: #fff; background: var(--sbc-gold-deep); border-color: var(--sbc-gold-deep); }
@@ -191,7 +192,7 @@ export default function Model2BrowsePage() {
         .sbc2b-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
         .sbc2b-youpay { display: flex; flex-direction: column; line-height: 1.05; }
         .sbc2b-youpay b { color: var(--sbc-coffee); font-size: .92rem; }
-        .sbc2b-youpay span { font-size: .58rem; color: rgba(74,56,32,.5); }
+        .sbc2b-youpay span { font-size: .63rem; color: rgba(74,56,32,.72); }
         .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.94) 70%, rgba(255,255,255,0)); }
         .sbc2b-basket-in { max-width: 720px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #f1f4f6; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
         .sbc2b-basket-lines { font-size: .78rem; opacity: .92; }

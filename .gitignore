@@ -10,3 +10,8 @@ responsive-audit/report.md
 
 # security regression test build artifacts
 tests/security/.build/
+
+# visual-regression run outputs (baselines in e2e/__baseline__ are committed)
+e2e/report/
+e2e/test-results/
+test-results/

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { peekPendingIntent } from "@/lib/auth-intent";
+import { TriangleAlert, ArrowLeft } from "lucide-react";
 import {
   safeReturnRoute,
   isAdminIntentRoute,
@@ -420,7 +421,7 @@ function AuthPage() {
 
   const ErrorBox = () => error ? (
     <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
-      <span className="text-red-400 mt-0.5 shrink-0 text-base">⚠</span>
+      <TriangleAlert size={16} strokeWidth={2.4} aria-hidden className="text-red-400 mt-0.5 shrink-0" />
       <p className="text-sm text-red-600 leading-relaxed">{error}</p>
     </div>
   ) : null;
@@ -447,7 +448,7 @@ function AuthPage() {
         {screen === "options" && (
           <>
             <Brand subtitle="Sign in to your account" />
-            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6 space-y-3">
+            <div className="au-card rounded-3xl p-6 space-y-3">
 
               {/* Primary login — Google (Gmail). Mobile OTP is temporarily
                   unavailable, so Google is the fastest, recommended way in.
@@ -507,9 +508,9 @@ function AuthPage() {
         {screen === "phone" && (
           <>
             <Brand subtitle="Enter your mobile number" />
-            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+            <div className="au-card rounded-3xl p-6">
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Back
+                <ArrowLeft size={13} strokeWidth={2.4} aria-hidden /> Back
               </button>
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gold-50 border border-gold-200 mb-5 mx-auto">
                 <PhoneIcon />
@@ -537,9 +538,9 @@ function AuthPage() {
         {screen === "phone-otp" && (
           <>
             <Brand subtitle={`OTP sent to +91 ${phone}`} />
-            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+            <div className="au-card rounded-3xl p-6">
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Change number
+                <ArrowLeft size={13} strokeWidth={2.4} aria-hidden /> Change number
               </button>
               <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">Enter 6-Digit OTP</label>
               <input type="text" value={otp}
@@ -563,9 +564,9 @@ function AuthPage() {
         {screen === "whatsapp" && (
           <>
             <Brand subtitle="Enter your WhatsApp number" />
-            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+            <div className="au-card rounded-3xl p-6">
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Back
+                <ArrowLeft size={13} strokeWidth={2.4} aria-hidden /> Back
               </button>
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-green-50 border border-green-200 mb-5 mx-auto">
                 <WhatsAppIcon />
@@ -596,9 +597,9 @@ function AuthPage() {
         {screen === "whatsapp-otp" && (
           <>
             <Brand subtitle={`OTP sent to +91 ${phone}`} />
-            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+            <div className="au-card rounded-3xl p-6">
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Change number
+                <ArrowLeft size={13} strokeWidth={2.4} aria-hidden /> Change number
               </button>
               <div className="flex items-center justify-center gap-2 mb-5">
                 <WhatsAppIcon />

@@ -39,6 +39,7 @@
    rule — no <style jsx> blocks in component files; SWC panic guard).
 ═══════════════════════════════════════════════════════════════════ */
 
+import { X, Lock, Flag, Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import type { BidCard } from "./BidCardStack";
@@ -541,7 +542,7 @@ export default function ClimberMilestoneMap({
                   was. A small green ✓ badge sits in the corner to
                   indicate done state. Locked discs still show 🔒. */}
               <span className="cmm-node-glyph">
-                {locked ? "🔒" : card.icon}
+                {locked ? <Lock size={22} strokeWidth={2.2} aria-hidden /> : card.icon}
               </span>
               <span className="cmm-node-sheen" aria-hidden="true" />
               {done && (
@@ -585,7 +586,7 @@ export default function ClimberMilestoneMap({
       >
         <span className="cmm-peak-ring" aria-hidden="true" />
         <span className="cmm-peak-disc">
-          <span className="cmm-peak-glyph">{allDone ? "🚩" : "🔒"}</span>
+          <span className="cmm-peak-glyph">{allDone ? <Flag size={22} strokeWidth={2.2} aria-hidden /> : <Lock size={22} strokeWidth={2.2} aria-hidden />}</span>
           <span className="cmm-peak-sheen" aria-hidden="true" />
         </span>
         <span className="cmm-peak-label">
@@ -616,7 +617,7 @@ export default function ClimberMilestoneMap({
               onClick={handleSheetClose}
               aria-label="Close"
             >
-              ✕
+              <X size={16} strokeWidth={2.4} aria-hidden />
             </button>
             <div className="cmm-sheet-handle" aria-hidden="true" />
             <header className="cmm-sheet-head">
@@ -662,7 +663,7 @@ export default function ClimberMilestoneMap({
                       ? cards[sheetIdx].onDoneClick
                       : null;
                   const doneLabel = ok
-                    ? cards[sheetIdx].doneLabel || "✓ Done"
+                    ? cards[sheetIdx].doneLabel || <><Check size={14} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Done</>
                     : cards[sheetIdx].hint || "Pick to unlock";
                   return (
                     <button

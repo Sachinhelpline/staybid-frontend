@@ -23,6 +23,11 @@ import { MemberCard } from "@/components/passport/MemberCard";
 import { FamilyPassport } from "@/components/passport/FamilyPassport";
 import { HowItGrows } from "@/components/passport/HowItGrows";
 import { PassportMedal, MEDAL_GOLD, MEDAL_LOCKED } from "@/components/passport/PassportMedal";
+// v641 — UI-upgrade program: hub chrome emojis → lucide. KEPT as content
+// vocabulary: kindIcon()/rule.icon reward glyphs (rendered in PassportMedal +
+// modals), 🎉 celebration, ✓ typographic ticks, and every glyph inside the
+// passport book/stamps/badges components (see docs/upgrade/99-PROGRESS-LEDGER.md).
+import { BookUser, CreditCard, Sparkles, Ticket, UserRound, Lock, Wallet as WalletIcon } from "lucide-react";
 import {
   tierForBalance,
   canUserRedeem,
@@ -36,11 +41,11 @@ import {
 const fmt = (n: number) => (Number(n) || 0).toLocaleString("en-IN");
 
 type TabKey = "passport" | "wallet" | "rewards" | "codes";
-const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: "passport", label: "Passport", icon: "🛂" },
-  { key: "wallet", label: "Wallet", icon: "💳" },
-  { key: "rewards", label: "Rewards", icon: "✨" },
-  { key: "codes", label: "Codes", icon: "🎟️" },
+const TABS: { key: TabKey; label: string; Icon: React.ComponentType<any> }[] = [
+  { key: "passport", label: "Passport", Icon: BookUser },
+  { key: "wallet", label: "Wallet", Icon: CreditCard },
+  { key: "rewards", label: "Rewards", Icon: Sparkles },
+  { key: "codes", label: "Codes", Icon: Ticket },
 ];
 
 function PassportHub() {
@@ -140,8 +145,9 @@ function PassportHub() {
             href="/profile"
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl sb-card-lift"
             style={{ border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}
+            aria-label="Profile"
           >
-            👤
+            <UserRound size={15} strokeWidth={2.2} aria-hidden />
           </Link>
         </div>
 
@@ -161,7 +167,7 @@ function PassportHub() {
                   : { color: "var(--text-muted)" }
               }
             >
-              <span className="mr-1">{t.icon}</span>
+              <t.Icon size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} />
               {t.label}
             </button>
           ))}
@@ -209,8 +215,8 @@ function PassportHub() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-3xl p-8 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
-                <p className="text-4xl mb-2">🛂</p>
+              <div className="ppx-card rounded-3xl p-8 text-center">
+                <p className="mb-2"><BookUser size={34} strokeWidth={2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></p>
                 <p className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
                   Your passport is being prepared
                 </p>
@@ -314,12 +320,12 @@ function WalletTab({
         <button onClick={onGoRewards}
           className="rounded-2xl py-2.5 px-3 text-white font-bold text-xs relative overflow-hidden sb-card-lift sb-shimmer flex items-center justify-center gap-1.5"
           style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" }}>
-          <span className="relative" style={{ zIndex: 2 }}>✨ Redeem Points</span>
+          <span className="relative flex items-center gap-1.5" style={{ zIndex: 2 }}><Sparkles size={13} strokeWidth={2.4} aria-hidden /> Redeem Points</span>
         </button>
         <button onClick={onGoCodes}
           className="rounded-2xl py-2.5 px-3 font-bold text-xs sb-card-lift flex items-center justify-center gap-1.5"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }}>
-          🎟️ My Codes
+          <Ticket size={13} strokeWidth={2.4} aria-hidden /> My Codes
         </button>
       </div>
 
@@ -329,7 +335,7 @@ function WalletTab({
       </h3>
       {txns.length === 0 ? (
         <div className="text-center py-12" style={{ color: "var(--text-muted)" }}>
-          <p className="text-3xl mb-2">💳</p>
+          <p className="mb-2"><CreditCard size={28} strokeWidth={2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></p>
           <p className="font-medium text-sm" style={{ color: "var(--text-base)" }}>No transactions yet</p>
           <p className="text-xs mt-1">Complete a booking to see your spending here.</p>
         </div>
@@ -339,8 +345,7 @@ function WalletTab({
             const isCredit = String(tx.type || "").toUpperCase().includes("CREDIT");
             return (
               <div key={tx.id || i}
-                className="rounded-[22px] px-4 py-3.5 flex items-center justify-between sb-tx-row"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                className="ppx-card rounded-[22px] px-4 py-3.5 flex items-center justify-between sb-tx-row">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
                     style={{ background: isCredit ? "#e6f0e6" : "#fde8e4", color: isCredit ? "#4a6f4a" : "#a85b4e" }}>
@@ -418,8 +423,7 @@ function RewardsTab({
   return (
     <div className="space-y-4 sb-fade-in">
       {/* Balance strip */}
-      <div className="rounded-3xl p-5 sb-card-lift relative overflow-hidden"
-        style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+      <div className="ppx-card rounded-3xl p-5 sb-card-lift relative overflow-hidden">
         <p className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "var(--text-muted)" }}>StayPoints</p>
         <p className="font-display text-4xl font-bold leading-none mt-1 tabular-nums" style={{ color: "var(--text-base)" }}>
           <CountUp value={stayPoints} duration={1000} />
@@ -455,7 +459,7 @@ function RewardsTab({
       {/* Catalog */}
       {filtered.length === 0 ? (
         <div className="text-center py-12" style={{ color: "var(--text-muted)" }}>
-          <p className="text-3xl mb-2">✨</p>
+          <p className="mb-2"><Sparkles size={28} strokeWidth={2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></p>
           <p className="text-sm">No rewards available right now.</p>
         </div>
       ) : (
@@ -464,8 +468,7 @@ function RewardsTab({
             const v = canUserRedeem({ rule: r, pointsBalance: stayPoints, userTier, monthlyCount: monthlyCounts[r.id] || 0 });
             return (
               <div key={r.id}
-                className="rounded-[22px] p-4 flex items-center gap-3 sb-card-lift"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                className="ppx-card rounded-[22px] p-4 flex items-center gap-3 sb-card-lift">
                 <PassportMedal
                   glyph={r.icon || kindIcon(r.kind)}
                   size={50}
@@ -488,7 +491,7 @@ function RewardsTab({
                   style={{ background: v.ok ? "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)" : "var(--bg-pill)" }}
                   title={v.ok ? "Redeem" : (v as any).error}>
                   <span className="relative" style={{ zIndex: 2, color: v.ok ? "#fff" : "var(--text-muted)" }}>
-                    {v.ok ? "Redeem" : "🔒"}
+                    {v.ok ? "Redeem" : <Lock size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px" }} />}
                   </span>
                 </button>
               </div>
@@ -501,8 +504,7 @@ function RewardsTab({
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
           onClick={() => !busy && setConfirm(null)}>
-          <div className="rounded-3xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+          <div className="ppx-card rounded-3xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
             <p className="text-3xl text-center mb-2">{confirm.icon || kindIcon(confirm.kind)}</p>
             <h3 className="font-display text-xl font-semibold text-center" style={{ color: "var(--text-base)" }}>{confirm.title}</h3>
             <p className="text-sm text-center mt-1" style={{ color: "var(--text-muted)" }}>{confirm.description}</p>
@@ -532,8 +534,7 @@ function RewardsTab({
       {success && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
           onClick={() => setSuccess(null)}>
-          <div className="rounded-3xl p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+          <div className="ppx-card rounded-3xl p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
             <p className="text-4xl mb-2">🎉</p>
             <h3 className="font-display text-xl font-semibold" style={{ color: "var(--text-base)" }}>Reward unlocked!</h3>
             <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{success.title}</p>
@@ -593,15 +594,15 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
   return (
     <div className="space-y-4 sb-fade-in">
       {walletCredit > 0 && (
-        <div className="rounded-[22px] p-4 sb-card-lift flex items-center justify-between"
-          style={{ background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))", border: "1px solid rgba(106,133,160,0.4)" }}>
+        <div className="ppx-card rounded-[22px] p-4 sb-card-lift flex items-center justify-between"
+          style={{ background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))" }}>
           <div>
             {/* the card surface now flips with the theme (gold-tinted cream in light,
                 gold-tinted dark card in dark), so the text uses normal tokens. */}
             <p className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "var(--accent)" }}>Wallet Credit</p>
             <p className="font-display text-2xl font-bold tabular-nums" style={{ color: "var(--text-base)" }}>₹<CountUp value={walletCredit} duration={900} /></p>
           </div>
-          <span className="text-2xl">💰</span>
+          <WalletIcon size={24} strokeWidth={2.2} aria-hidden style={{ color: "var(--accent)" }} />
         </div>
       )}
 
@@ -620,7 +621,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
 
       {filtered.length === 0 ? (
         <div className="text-center py-12" style={{ color: "var(--text-muted)" }}>
-          <p className="text-3xl mb-2">🎟️</p>
+          <p className="mb-2"><Ticket size={28} strokeWidth={2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></p>
           <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>No codes here yet</p>
           <p className="text-xs mt-1">Redeem points or claim stamp rewards to get codes.</p>
         </div>
@@ -632,8 +633,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
             const stBg = st === "active" ? "#e6f0e6" : st === "used" ? "#eef0f2" : "#fde8e4";
             return (
               <div key={c.id}
-                className="rounded-[22px] p-4 sb-card-lift"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                className="ppx-card rounded-[22px] p-4 sb-card-lift">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
                     <span className="text-2xl">{kindIcon(c.kind)}</span>

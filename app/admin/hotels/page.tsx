@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Building2, Clock, CircleCheck, BedDouble, CalendarDays, Wallet, Ban } from "lucide-react";
 import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
 
@@ -164,12 +165,12 @@ export default function AdminHotels() {
       </h1>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Hotels"  value={stats.total}     icon="🏨" color="#9fb1c2" live sub={`${stats.suspended} suspended`} onClick={() => { setStatus("all"); setApproval("all"); }} />
-        <KpiCard title="Pending Review" value={stats.pendingReview} icon="🕓" color="#c6d0da" live sub="awaiting verify" onClick={() => setApproval("pending")} />
-        <KpiCard title="Active"        value={stats.active}    icon="✅" color="#2ECC71" live onClick={() => setStatus("active")} />
-        <KpiCard title="Total Rooms"   value={stats.totalRooms} icon="🛏️" color="#A855F7" live onClick={() => router.push("/admin/pricing")} />
-        <KpiCard title="MTD Bookings"  value={stats.mtdBookings} icon="📅" color="#3D9CF5" live onClick={() => router.push("/admin/bookings")} />
-        <KpiCard title="Total GMV"     value={stats.totalGmv}  format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#c6d0da" live onClick={() => router.push("/admin/finance")} />
+        <KpiCard title="Total Hotels"  value={stats.total}     icon={<Building2 size={18} strokeWidth={2} aria-hidden />} color="#9fb1c2" live sub={`${stats.suspended} suspended`} onClick={() => { setStatus("all"); setApproval("all"); }} />
+        <KpiCard title="Pending Review" value={stats.pendingReview} icon={<Clock size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" live sub="awaiting verify" onClick={() => setApproval("pending")} />
+        <KpiCard title="Active"        value={stats.active}    icon={<CircleCheck size={18} strokeWidth={2} aria-hidden />} color="#2ECC71" live onClick={() => setStatus("active")} />
+        <KpiCard title="Total Rooms"   value={stats.totalRooms} icon={<BedDouble size={18} strokeWidth={2} aria-hidden />} color="#A855F7" live onClick={() => router.push("/admin/pricing")} />
+        <KpiCard title="MTD Bookings"  value={stats.mtdBookings} icon={<CalendarDays size={18} strokeWidth={2} aria-hidden />} color="#3D9CF5" live onClick={() => router.push("/admin/bookings")} />
+        <KpiCard title="Total GMV"     value={stats.totalGmv}  format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon={<Wallet size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" live onClick={() => router.push("/admin/finance")} />
       </div>
 
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
@@ -193,9 +194,9 @@ export default function AdminHotels() {
         </select>
         <select value={approval} onChange={(e) => setApproval(e.target.value)} style={selectStyle}>
           <option value="all">All Approval</option>
-          <option value="pending">🕓 Pending Review</option>
-          <option value="approved">✅ Approved</option>
-          <option value="rejected">⛔ Rejected</option>
+          <option value="pending">Pending Review</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
         </select>
         <button onClick={load} style={btnStyle}>Search</button>
         <span style={{ marginLeft: "auto", color: "#8A8FA8", alignSelf: "center", fontSize: 13 }}>
@@ -234,12 +235,12 @@ export default function AdminHotels() {
           <div style={{ marginTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 16 }}>
             <div style={{ color: "#8A8FA8", fontSize: 12, marginBottom: 10 }}>VERIFICATION — VERIFY BEFORE LIVE</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              <button onClick={() => patch("approve", null)} style={{ ...btnStyle, background: "rgba(46,204,113,0.12)", color: "#2ECC71", border: "1px solid rgba(46,204,113,0.35)" }}>✅ Approve &amp; Go Live</button>
+              <button onClick={() => patch("approve", null)} style={{ ...btnStyle, background: "rgba(46,204,113,0.12)", color: "#2ECC71", border: "1px solid rgba(46,204,113,0.35)", display: "inline-flex", alignItems: "center", gap: 6 }}><CircleCheck size={15} strokeWidth={2.2} aria-hidden />Approve &amp; Go Live</button>
               <button
                 onClick={() => patch("reject", rejectReason.trim() || null)}
-                style={{ ...btnStyle, background: "rgba(255,71,87,0.1)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.3)" }}
+                style={{ ...btnStyle, background: "rgba(255,71,87,0.1)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.3)", display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                ⛔ Reject
+                <Ban size={15} strokeWidth={2.2} aria-hidden />Reject
               </button>
             </div>
             <input
@@ -314,9 +315,9 @@ function hotelTypeInfo(h: any): { label: string; color: string; hint: string } {
   const ot = h?.owner_type;
   const at = h?.account_type;
   if (ot === "host_circle")
-    return { label: "🏨 Host Circle", color: "#A855F7", hint: "StayBid-operated · provisioned from a host property listing" };
+    return { label: "Host Circle", color: "#A855F7", hint: "StayBid-operated · provisioned from a host property listing" };
   if (ot === "circle" || at === "circle_operator" || at === "staybid_operated")
-    return { label: "🏨 Operated", color: "#3D9CF5", hint: "StayBid-operated hotel" };
+    return { label: "Operated", color: "#3D9CF5", hint: "StayBid-operated hotel" };
   return { label: "Owner", color: "#8A8FA8", hint: "Classic owner-run hotel" };
 }
 const inputStyle: React.CSSProperties = { background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", color: "#E8EAF0", fontSize: 14, outline: "none", fontFamily: "DM Sans, sans-serif", minWidth: 220 };

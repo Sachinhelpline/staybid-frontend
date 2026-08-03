@@ -8,6 +8,7 @@
 // bid_attributions preserves the rate used at write time).
 // ─────────────────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState } from "react";
+import { BadgePercent, Sparkles, X } from "lucide-react";
 import type { CommissionRule, Slab, LoyaltyBonus } from "@/lib/commission";
 
 type Creator = { id: string; userId: string; displayName: string; phone: string | null };
@@ -127,7 +128,7 @@ export default function AdminCommissionRules() {
 
   return (
     <div style={{ padding: "24px 28px", fontFamily: "DM Sans, sans-serif" }}>
-      <h1 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 26, margin: 0 }}>💰 Commission Rules</h1>
+      <h1 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 26, margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}><BadgePercent size={23} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Commission Rules</h1>
       <p style={{ color: "#8A8FA8", fontSize: 13, margin: "6px 0 20px" }}>
         Slab-based commission with loyalty bonus. Slabs are matched by THIS calendar month's attributed booking count.
         Loyalty bonus kicks in when the creator stays at the same slab (or higher) for N consecutive months.
@@ -166,11 +167,11 @@ export default function AdminCommissionRules() {
                   return (
                     <div key={ov.id} style={overrideCard}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ color: "#E8EAF0", fontWeight: 600, margin: 0 }}>
-                          ✨ {c?.displayName || "Creator"} <span style={{ color: "#8A8FA8", fontWeight: 400, fontSize: 12 }}>· {c?.phone || ov.creator_id?.slice(0, 12)}</span>
+                        <p style={{ color: "#E8EAF0", fontWeight: 600, margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, minWidth: 0 }}>
+                          <Sparkles size={14} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />{c?.displayName || "Creator"} <span style={{ color: "#8A8FA8", fontWeight: 400, fontSize: 12, wordBreak: "break-all" }}>· {c?.phone || ov.creator_id?.slice(0, 12)}</span>
                         </p>
                         <RuleSummary rule={ov} compact />
-                        {ov.note && <p style={{ color: "#666876", fontSize: 11, margin: "4px 0 0", fontStyle: "italic" }}>{ov.note}</p>}
+                        {ov.note && <p style={{ color: "#8A8FA8", fontSize: 11, margin: "4px 0 0", fontStyle: "italic" }}>{ov.note}</p>}
                       </div>
                       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                         <button onClick={() => openEditor({ kind: "creator", creatorId: ov.creator_id! })} style={ghostBtn}>Edit</button>
@@ -239,7 +240,7 @@ export default function AdminCommissionRules() {
                 <NumInput label="From"  value={s.minBookings} onChange={v => updateSlabs(setDraftSlabs, i, { minBookings: v })} />
                 <NumInput label="To"    value={s.maxBookings} onChange={v => updateSlabs(setDraftSlabs, i, { maxBookings: v })} />
                 <NumInput label="%"     value={s.pct}         onChange={v => updateSlabs(setDraftSlabs, i, { pct: v })} step={0.5} />
-                <button onClick={() => setDraftSlabs(prev => prev.filter((_, j) => j !== i))} style={removeBtn} disabled={draftSlabs.length <= 1}>✕</button>
+                <button onClick={() => setDraftSlabs(prev => prev.filter((_, j) => j !== i))} style={removeBtn} disabled={draftSlabs.length <= 1} aria-label="Remove"><X size={14} strokeWidth={2.4} aria-hidden /></button>
               </div>
             ))}
             <button onClick={() => {
@@ -258,7 +259,7 @@ export default function AdminCommissionRules() {
               <div key={i} style={slabRow}>
                 <NumInput label="Months" value={b.months}   onChange={v => updateBonuses(setDraftBonuses, i, { months: v })} />
                 <NumInput label="+%"     value={b.bonusPct} onChange={v => updateBonuses(setDraftBonuses, i, { bonusPct: v })} step={0.5} />
-                <button onClick={() => setDraftBonuses(prev => prev.filter((_, j) => j !== i))} style={removeBtn}>✕</button>
+                <button onClick={() => setDraftBonuses(prev => prev.filter((_, j) => j !== i))} style={removeBtn} aria-label="Remove"><X size={14} strokeWidth={2.4} aria-hidden /></button>
               </div>
             ))}
             <button onClick={() => {
@@ -392,7 +393,7 @@ function Modal({ title, onClose, maxWidth, children }: { title: string; onClose:
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 22, width: "100%", maxWidth: maxWidth || 480, maxHeight: "90vh", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <p style={{ color: "#E8EAF0", fontSize: 18, fontWeight: 700, margin: 0, fontFamily: "Syne, sans-serif" }}>{title}</p>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#8A8FA8", cursor: "pointer", fontSize: 18 }}>✕</button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "#8A8FA8", cursor: "pointer", display: "inline-flex", alignItems: "center" }}><X size={18} strokeWidth={2} aria-hidden /></button>
         </div>
         {children}
       </div>
@@ -403,11 +404,11 @@ function Modal({ title, onClose, maxWidth, children }: { title: string; onClose:
 const inputStyle: React.CSSProperties = { background: "#0F1117", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "10px 12px", color: "#E8EAF0", fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const ghostBtn: React.CSSProperties = { background: "rgba(255,255,255,0.06)", color: "#E8EAF0", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
-const dangerBtn: React.CSSProperties = { background: "rgba(255,71,87,0.12)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
+const dangerBtn: React.CSSProperties = { background: "rgba(255,71,87,0.12)", color: "#FF6B7A", border: "1px solid rgba(255,71,87,0.4)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" };
 const removeBtn: React.CSSProperties = { background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "none", borderRadius: 8, padding: "0 10px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif", height: 36 };
 const slabRow: React.CSSProperties = { display: "flex", gap: 8, alignItems: "flex-end", background: "rgba(255,255,255,0.03)", padding: "8px 10px", borderRadius: 10 };
 const slabPill: React.CSSProperties = { background: "rgba(140, 160, 182,0.12)", border: "1px solid rgba(140, 160, 182,0.35)", color: "#E8EAF0", borderRadius: 999, fontSize: 12, fontWeight: 600 };
-const overrideCard: React.CSSProperties = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 12, display: "flex", alignItems: "flex-start", gap: 14 };
+const overrideCard: React.CSSProperties = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 12, display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap" };
 const pickerRow: React.CSSProperties = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 12px", color: "#E8EAF0", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "DM Sans, sans-serif", textAlign: "left" };
 const sectionH: React.CSSProperties = { color: "#E8EAF0", fontSize: 14, fontWeight: 700, margin: "0 0 6px", fontFamily: "Syne, sans-serif" };
 const sectionP: React.CSSProperties = { color: "#8A8FA8", fontSize: 12, margin: "0 0 12px", lineHeight: 1.5 };

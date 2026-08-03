@@ -3,6 +3,7 @@
 // Cozy dark-luxury theme matching the rest of /admin/*. List + editor modal.
 
 import { useEffect, useState } from "react";
+import { Gift, Ticket, Wallet, Building2, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Kind = "coupon" | "wallet_credit" | "amenity" | "voucher";
@@ -26,16 +27,21 @@ type Rule = {
 };
 
 const KIND_LABEL: Record<Kind, string> = {
-  coupon: "🎟️ Coupon",
-  wallet_credit: "💰 Wallet Credit",
-  amenity: "🏨 Hotel Amenity",
-  voucher: "🎁 Voucher",
+  coupon: "Coupon",
+  wallet_credit: "Wallet Credit",
+  amenity: "Hotel Amenity",
+  voucher: "Voucher",
+};
+// Admin-surface reward avatar → lucide by reward kind. The stored `icon`
+// field (an emoji the reward shows to end users) is left untouched in data.
+const KIND_LUCIDE: Record<string, LucideIcon> = {
+  coupon: Ticket, wallet_credit: Wallet, amenity: Building2, voucher: Gift,
 };
 
 const TIER_COLOR: Record<Tier, string> = {
   silver: "#94a3b8",
   gold: "#9fb1c2",
-  platinum: "#A855F7",
+  platinum: "#D8B4FE",
 };
 
 const blankRule: Partial<Rule> = {
@@ -119,8 +125,8 @@ export default function AdminRedemptionRulesPage() {
   return (
     <div style={{ padding: 0, fontFamily: "DM Sans, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-        <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0 }}>
-          🎁 Redemption Rules
+        <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}>
+          <Gift size={20} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Redemption Rules
         </h1>
         <button
           onClick={() => setEditing({ ...blankRule })}
@@ -144,7 +150,7 @@ export default function AdminRedemptionRulesPage() {
           ["Active", KPI.active, "#2ECC71"],
           ["Coupons", KPI.coupons, "#3D9CF5"],
           ["Wallet Credits", KPI.wallet, "#c6d0da"],
-          ["Amenities", KPI.amenities, "#A855F7"],
+          ["Amenities", KPI.amenities, "#D8B4FE"],
         ].map(([label, val, color]) => (
           <div key={String(label)} className="admin-card" style={{ background: "#151820", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)" }}>
             <p style={{ fontSize: 11, color: "#8A8FA8", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{label}</p>
@@ -177,8 +183,8 @@ export default function AdminRedemptionRulesPage() {
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map((r) => (
             <div key={r.id} className="admin-card" style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, background: "#151820", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-                {r.icon || "🎁"}
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#1a1407" }}>
+                {(() => { const I = KIND_LUCIDE[r.kind] || Gift; return <I size={22} strokeWidth={2} aria-hidden />; })()}
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <p style={{ fontWeight: 700, color: "#E8EAF0", margin: 0 }}>{r.title}</p>

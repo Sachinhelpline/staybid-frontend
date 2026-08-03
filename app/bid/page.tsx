@@ -40,6 +40,10 @@ import PremiumGuestPicker, { type GuestKind } from "@/components/PremiumGuestPic
 // import swap restores the older UX).
 import BidCardStack, { useIsMobileTablet, type BidCard } from "@/components/BidCardStack";
 import BidGameZone from "@/components/BidGameZone";
+// v644 — UI-upgrade program: step-sheet chrome → lucide. KEPT as game/content
+// vocabulary: boot storyboard mock pills, emojiForCount morphing characters,
+// property-type disc glyphs, city avatars, the ⚡ brand bolt, ▶ PRESS START.
+import { Globe, Building2, CalendarDays, Users, Wallet, Search, CreditCard, X, Bot, Check, ChevronDown, ChevronUp, Sparkles, TriangleAlert, RotateCw, Hourglass, Eye, Target, Star, Zap, Rocket } from "lucide-react";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
 // hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
 // conflict and let the customer update the existing bid budget instead.
@@ -315,6 +319,11 @@ const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
    ──────────────────────────────────────────────────────────────── */
 const LIVE_WINDOW_MS = 15 * 60 * 1000; // accepted-offer hold window
 
+// v644 — inline lucide helper for text-flow icons (mirrors hotel page InIc).
+function BIc({ I, size = 13 }: { I: React.ComponentType<any>; size?: number }) {
+  return <I size={size} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} />;
+}
+
 function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab, numRooms = 1, nights = 1 }: {
   bid: any; launchTs: number; nowTs: number; idx: number;
   onOpen: (hotelId: string) => void;
@@ -406,7 +415,7 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab, numRooms = 1, 
               className="bx-live-grab-btn"
               aria-label={`Pay ₹${total.toLocaleString("en-IN")} total and grab this booking`}
             >
-              💰 Pay Now &amp; Grab — ₹{total.toLocaleString("en-IN")} →
+              <BIc I={Wallet} size={14} /> Pay Now &amp; Grab — ₹{total.toLocaleString("en-IN")} →
             </button>
           )}
         </>
@@ -932,11 +941,11 @@ export default function BidPage() {
   const presetExpected = presetLivePrice * roomMult; // per-room per-night
   const presets: {
     label: string; tier: "budget" | "smart" | "premium";
-    amount: number; icon: string; desc: string; recommended?: boolean;
+    amount: number; icon: React.ReactNode; desc: string; recommended?: boolean;
   }[] = city ? [
-    { label: "Budget",   tier: "budget",  amount: snap100(presetExpected * 0.70 * nightsRooms), icon: "💰", desc: "Budget bidder" },
-    { label: "Smart",    tier: "smart",   amount: snap100(presetExpected * 1.00 * nightsRooms), icon: "⭐", desc: "Balanced bid",  recommended: true },
-    { label: "Premium",  tier: "premium", amount: snap100(presetExpected * 1.30 * nightsRooms), icon: "⚡", desc: "Premium bidder" },
+    { label: "Budget",   tier: "budget",  amount: snap100(presetExpected * 0.70 * nightsRooms), icon: <Wallet size={22} strokeWidth={2.2} aria-hidden />, desc: "Budget bidder" },
+    { label: "Smart",    tier: "smart",   amount: snap100(presetExpected * 1.00 * nightsRooms), icon: <Star size={22} strokeWidth={2.2} aria-hidden />, desc: "Balanced bid",  recommended: true },
+    { label: "Premium",  tier: "premium", amount: snap100(presetExpected * 1.30 * nightsRooms), icon: <Zap size={22} strokeWidth={2.2} aria-hidden />, desc: "Premium bidder" },
   ] : [];
 
   // v172 — meal cost (per night, all guests) scaled to the property class.
@@ -1680,11 +1689,11 @@ export default function BidPage() {
   const step1Cards: BidCard[] = [
     {
       key: "destination",
-      icon: "🌍",
+      icon: <Globe size={24} strokeWidth={2} aria-hidden />,
       title: "Where do you want to stay?",
       hint: "Pick a city to see hotels listening tonight",
       isComplete: () => !!form.city,
-      summary: () => `📍 ${form.city}`,
+      summary: () => `${form.city}`,
       autoAdvance: true,
       autoAdvanceDelayMs: 380,
       render: () => {
@@ -1706,7 +1715,7 @@ export default function BidPage() {
         <>
           {/* v577 — search any of our cities */}
           <div className="bgz-city-search">
-            <span className="bgz-city-search-ic" aria-hidden="true">🔎</span>
+            <span className="bgz-city-search-ic" aria-hidden="true"><Search size={15} strokeWidth={2.4} /></span>
             <input
               type="text"
               value={citySearch}
@@ -1716,7 +1725,7 @@ export default function BidPage() {
               aria-label="Search cities"
             />
             {q && (
-              <button type="button" className="bgz-city-search-x" onClick={() => setCitySearch("")} aria-label="Clear search">✕</button>
+              <button type="button" className="bgz-city-search-x" onClick={() => setCitySearch("")} aria-label="Clear search"><X size={14} strokeWidth={2.4} aria-hidden /></button>
             )}
           </div>
           {/* v203.2 — borderless circular city AVATARS (gaming-zone
@@ -1771,12 +1780,14 @@ export default function BidPage() {
               className="bgz-city-toggle"
               onClick={() => setShowAllCities((v) => !v)}
             >
-              {showAllCities ? "Show fewer cities ▴" : `Show all ${allCities.length} cities ▾`}
+              {showAllCities
+                ? <>Show fewer cities <ChevronUp size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px" }} /></>
+                : <>Show all {allCities.length} cities <ChevronDown size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px" }} /></>}
             </button>
           )}
           {city && (
             <div className="bx-insight" style={{ marginTop: 12 }}>
-              <span className="bx-insight-icon">🤖</span>
+              <span className="bx-insight-icon"><Bot size={18} strokeWidth={2.2} aria-hidden /></span>
               <div>
                 <div className="bx-insight-title">AI Insight</div>
                 <div className="bx-insight-body">{city.tip}</div>
@@ -1792,7 +1803,7 @@ export default function BidPage() {
     },
     {
       key: "propertyType",
-      icon: "🏨",
+      icon: <Building2 size={24} strokeWidth={2} aria-hidden />,
       title: "What kind of property?",
       hint: "Pick any types (optional) — leave blank for all types",
       // v227 — property is now optional. Zero picks = "Any type"; one
@@ -1832,15 +1843,15 @@ export default function BidPage() {
           </div>
           <p className="bgz-prop-tally">
             {form.propertyTypes.length > 0
-              ? `✓ Bid prefers ${form.propertyTypes.length} ${form.propertyTypes.length === 1 ? "type" : "types"} (falls back to all if none match)`
-              : `Any type · bid will reach every property in ${form.city || "this city"}`}
+              ? <><BIc I={Check} size={12} /> Bid prefers {form.propertyTypes.length} {form.propertyTypes.length === 1 ? "type" : "types"} (falls back to all if none match)</>
+              : <>Any type · bid will reach every property in {form.city || "this city"}</>}
           </p>
         </>
       ),
     },
     {
       key: "dates",
-      icon: "📅",
+      icon: <CalendarDays size={24} strokeWidth={2} aria-hidden />,
       title: "When are you travelling?",
       hint: "Pick check-in and check-out dates",
       isComplete: () => !!(form.checkIn && form.checkOut && nights >= 1),
@@ -1880,7 +1891,7 @@ export default function BidPage() {
                     : "Pick date"}
                 </div>
               </div>
-              <span className="bx-date-btn-icon">📅</span>
+              <span className="bx-date-btn-icon"><CalendarDays size={18} strokeWidth={2.2} aria-hidden /></span>
             </button>
             <button
               type="button"
@@ -1895,7 +1906,7 @@ export default function BidPage() {
                     : "Pick date"}
                 </div>
               </div>
-              <span className="bx-date-btn-icon">📅</span>
+              <span className="bx-date-btn-icon"><CalendarDays size={18} strokeWidth={2.2} aria-hidden /></span>
             </button>
           </div>
           {nights > 0 && (
@@ -1910,7 +1921,7 @@ export default function BidPage() {
     },
     {
       key: "guests",
-      icon: "👥",
+      icon: <Users size={24} strokeWidth={2} aria-hidden />,
       title: "Who's coming?",
       hint: "Adults, children + how many rooms",
       /* v220 — require an explicit user interaction (any +/- tap). Without
@@ -1990,12 +2001,12 @@ export default function BidPage() {
             </label>
             {autoFit && cappedMinRooms > 1 && form.rooms === cappedMinRooms && totalGuests > 2 && (
               <p style={{ fontSize: "0.7rem", color: "var(--text-muted, rgba(255,255,255,0.55))", margin: 0, lineHeight: 1.4 }}>
-                ✨ Auto-set to {form.rooms} rooms for {totalGuests} guests
+                <BIc I={Sparkles} size={12} /> Auto-set to {form.rooms} rooms for {totalGuests} guests
               </p>
             )}
             {!autoFit && roomsShortBy > 0 && (
               <p style={{ fontSize: "0.7rem", color: "#D49583", margin: 0, lineHeight: 1.4 }}>
-                ⚠️ {totalGuests} guests in {form.rooms} room{form.rooms > 1 ? "s" : ""} — most hotels will decline. Recommended: {cappedMinRooms} rooms.
+                <BIc I={TriangleAlert} size={12} /> {totalGuests} guests in {form.rooms} room{form.rooms > 1 ? "s" : ""} — most hotels will decline. Recommended: {cappedMinRooms} rooms.
               </p>
             )}
             {minRooms > 10 && (
@@ -2009,7 +2020,7 @@ export default function BidPage() {
                   textDecoration: "underline",
                 }}
               >
-                🏨 Need {minRooms}+ rooms? Talk to concierge →
+                <BIc I={Building2} size={12} /> Need {minRooms}+ rooms? Talk to concierge →
               </a>
             )}
           </div>
@@ -2024,7 +2035,7 @@ export default function BidPage() {
        tapping it fires submit() directly (no goStep(2)). */
     {
       key: "price",
-      icon: "💰",
+      icon: <Wallet size={24} strokeWidth={2} aria-hidden />,
       title: "Set your price",
       hint: "Pick a preset or type your total trip budget",
       isComplete: () => budget > 0,
@@ -2042,7 +2053,7 @@ export default function BidPage() {
          dismissed the sheet thinking it didn't fire (SS1). Cards array
          is rebuilt every render so the closure over `loading` stays
          fresh and the label flips in real time. */
-      doneLabel: loading ? "⏳ Launching…" : "🚀 Launch Bid",
+      doneLabel: loading ? "Launching…" : <><Rocket size={15} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> Launch Bid</>,
       onDoneClick: () => {
         if (loading) return;
         /* v222 — open the Review Bid sheet IMMEDIATELY (don't wait for
@@ -2070,7 +2081,7 @@ export default function BidPage() {
           {city && presets.length > 0 && (
             <>
               <div className="bx-section-h" style={{ margin: "0 0 8px" }}>
-                <span className="bx-section-h-label">🤖 AI Smart Presets</span>
+                <span className="bx-section-h-label"><BIc I={Bot} size={13} /> AI Smart Presets</span>
                 <span className="bx-section-h-rule" />
               </div>
               <div className="bx-preset-row" style={{ marginBottom: 14 }}>
@@ -2149,9 +2160,9 @@ export default function BidPage() {
        jump to /my-bids. */
     {
       key: "review",
-      icon: "🔍",
+      icon: <Search size={24} strokeWidth={2} aria-hidden />,
       title: "Review Bid & Visit",
-      hint: "Tap 🚀 Launch Bid in Step 5 first",
+      hint: "Tap Launch Bid in Step 5 first",
       isComplete: () => success !== null,
       summary: () => success ? `${success.hotelsNotified} hotels bidding` : "—",
       autoAdvance: false,
@@ -2178,7 +2189,7 @@ export default function BidPage() {
               const currentAmt = Number(c.counterAmount || c.amount || 0);
               return (
                 <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
-                  <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>🎯</div>
+                  <div style={{ marginBottom: 8 }}><Target size={38} strokeWidth={2} aria-hidden style={{ color: "#8198ae" }} /></div>
                   <div style={{ fontWeight: 700, fontSize: "1.05rem", marginBottom: 6 }}>
                     You already have an active bid in {c.city || form.city}
                   </div>
@@ -2205,14 +2216,14 @@ export default function BidPage() {
                       cursor: "pointer",
                     }}
                   >
-                    👀 View Active Bid →
+                    <BIc I={Eye} size={14} /> View Active Bid →
                   </button>
                 </div>
               );
             }
             return (
               <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
-                <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⚠️</div>
+                <div style={{ marginBottom: 8 }}><TriangleAlert size={38} strokeWidth={2} aria-hidden style={{ color: "#C77E6D" }} /></div>
                 <div style={{ fontWeight: 700, fontSize: "1.05rem", marginBottom: 6 }}>
                   Couldn't reach hotels
                 </div>
@@ -2240,7 +2251,7 @@ export default function BidPage() {
                     cursor: "pointer",
                   }}
                 >
-                  🔄 Try Again
+                  <BIc I={RotateCw} size={14} /> Try Again
                 </button>
               </div>
             );
@@ -2271,12 +2282,12 @@ export default function BidPage() {
           }
           return (
             <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
-              <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⏳</div>
+              <div style={{ marginBottom: 8 }}><Hourglass size={36} strokeWidth={2} aria-hidden style={{ color: "#8198ae" }} /></div>
               <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: 6 }}>
                 Launch your bid first
               </div>
               <div style={{ fontSize: "0.86rem", color: "var(--cozy-cocoa-soft)" }}>
-                Go back to Step 5 and tap 🚀 Launch Bid. Hotels will start responding live here.
+                Go back to Step 5 and tap Launch Bid. Hotels will start responding live here.
               </div>
             </div>
           );
@@ -2317,7 +2328,7 @@ export default function BidPage() {
               ))}
             </div>
             <p className="bx-live-note" style={{ marginTop: 12 }}>
-              ✓ Every price here is <strong>below market rate</strong>. Tap a hotel name to visit the property, or use 💳 Pay & Grab to lock the booking.
+              <BIc I={Check} size={12} /> Every price here is <strong>below market rate</strong>. Tap a hotel name to visit the property, or use <BIc I={CreditCard} size={12} /> Pay & Grab to lock the booking.
             </p>
           </div>
         );
@@ -2330,7 +2341,7 @@ export default function BidPage() {
        until at least one hotel accepts. */
     {
       key: "pay",
-      icon: "💳",
+      icon: <CreditCard size={24} strokeWidth={2} aria-hidden />,
       title: "Pay & Grab the Deal",
       hint: "Wait for an accepted bid first",
       isComplete: () => false, // terminal — never auto-completes
@@ -2350,7 +2361,7 @@ export default function BidPage() {
         if (acceptedBids.length === 0) {
           return (
             <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
-              <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⏳</div>
+              <div style={{ marginBottom: 8 }}><Hourglass size={36} strokeWidth={2} aria-hidden style={{ color: "#8198ae" }} /></div>
               <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: 6 }}>
                 Waiting for an accepted bid
               </div>
@@ -2365,7 +2376,7 @@ export default function BidPage() {
             <div className="bx-live-head" style={{ marginBottom: 10 }}>
               <span className="bx-live-head-l">
                 <span className="bx-live-dot sb-pulse-dot" />
-                💳 Pay & confirm booking
+                <BIc I={CreditCard} size={13} /> Pay & confirm booking
               </span>
               <span className="bx-live-head-r">
                 <b className="bx-live-head-ok">{acceptedBids.length} ready</b>
@@ -2387,7 +2398,7 @@ export default function BidPage() {
               ))}
             </div>
             <p className="bx-live-note" style={{ marginTop: 12 }}>
-              ✓ Accepted offers are <strong>held 15 minutes</strong>. Tap Pay & Grab to confirm at the displayed price.
+              <BIc I={Check} size={12} /> Accepted offers are <strong>held 15 minutes</strong>. Tap Pay & Grab to confirm at the displayed price.
             </p>
           </div>
         );
@@ -2478,7 +2489,7 @@ export default function BidPage() {
               <BidGameZone
                 cards={step1Cards}
                 onAllComplete={() => { /* v217 — peak hidden when 7 cards */ }}
-                finalCtaLabel="🚀 Launch Bid"
+                finalCtaLabel="Launch Bid"
               />
             ) : (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
@@ -2517,7 +2528,7 @@ export default function BidPage() {
 
                 {city && (
                   <div className="bx-insight">
-                    <span className="bx-insight-icon">🤖</span>
+                    <span className="bx-insight-icon"><Bot size={18} strokeWidth={2.2} aria-hidden /></span>
                     <div>
                       <div className="bx-insight-title">AI Insight</div>
                       <div className="bx-insight-body">{city.tip}</div>
@@ -2599,7 +2610,7 @@ export default function BidPage() {
                             : "Pick date"}
                         </div>
                       </div>
-                      <span className="bx-date-btn-icon">📅</span>
+                      <span className="bx-date-btn-icon"><CalendarDays size={18} strokeWidth={2.2} aria-hidden /></span>
                     </button>
                     <button
                       type="button"
@@ -2614,7 +2625,7 @@ export default function BidPage() {
                             : "Pick date"}
                         </div>
                       </div>
-                      <span className="bx-date-btn-icon">📅</span>
+                      <span className="bx-date-btn-icon"><CalendarDays size={18} strokeWidth={2.2} aria-hidden /></span>
                     </button>
                   </div>
                   {nights > 0 && (
@@ -2679,12 +2690,12 @@ export default function BidPage() {
                   </label>
                   {autoFit && cappedMinRooms > 1 && form.rooms === cappedMinRooms && totalGuests > 2 && (
                     <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", margin: 0, lineHeight: 1.4 }}>
-                      ✨ Auto-set to {form.rooms} rooms for {totalGuests} guests
+                      <BIc I={Sparkles} size={12} /> Auto-set to {form.rooms} rooms for {totalGuests} guests
                     </p>
                   )}
                   {!autoFit && roomsShortBy > 0 && (
                     <p style={{ fontSize: "0.7rem", color: "#A85B4E", margin: 0, lineHeight: 1.4 }}>
-                      ⚠️ {totalGuests} guests in {form.rooms} room{form.rooms > 1 ? "s" : ""} — most hotels will decline. Recommended: {cappedMinRooms} rooms.
+                      <BIc I={TriangleAlert} size={12} /> {totalGuests} guests in {form.rooms} room{form.rooms > 1 ? "s" : ""} — most hotels will decline. Recommended: {cappedMinRooms} rooms.
                     </p>
                   )}
                   {minRooms > 10 && (
@@ -2697,7 +2708,7 @@ export default function BidPage() {
                         textDecoration: "underline",
                       }}
                     >
-                      🏨 Need {minRooms}+ rooms? Talk to concierge →
+                      <BIc I={Building2} size={12} /> Need {minRooms}+ rooms? Talk to concierge →
                     </a>
                   )}
                 </div>
@@ -2718,7 +2729,7 @@ export default function BidPage() {
               {city && (
                 <div data-autonext="presets">
                   <div className="bx-section-h">
-                    <span className="bx-section-h-label">🤖 AI Smart Presets</span>
+                    <span className="bx-section-h-label"><BIc I={Bot} size={13} /> AI Smart Presets</span>
                     <span className="bx-section-h-rule" />
                   </div>
                   <div className="bx-card is-accented">

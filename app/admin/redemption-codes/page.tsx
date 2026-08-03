@@ -3,6 +3,7 @@
 // status/kind/rule, revoke abusive ones, extend expiry for support cases.
 
 import { useEffect, useMemo, useState } from "react";
+import { Ticket, Wallet, Building2, Gift, Ban, Clock, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Code = {
@@ -25,11 +26,22 @@ type Code = {
 };
 
 const KIND_LABEL: Record<string, string> = {
-  coupon: "🎟️ Coupon",
-  wallet_credit: "💰 Wallet",
-  amenity: "🏨 Amenity",
-  voucher: "🎁 Voucher",
+  coupon: "Coupon",
+  wallet_credit: "Wallet",
+  amenity: "Amenity",
+  voucher: "Voucher",
 };
+const KIND_LUCIDE: Record<string, LucideIcon> = {
+  coupon: Ticket, wallet_credit: Wallet, amenity: Building2, voucher: Gift,
+};
+function KindLabel({ kind }: { kind: string }) {
+  const I = KIND_LUCIDE[kind] || Ticket;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <I size={13} strokeWidth={2} aria-hidden />{KIND_LABEL[kind] || kind}
+    </span>
+  );
+}
 
 const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
   active:  { bg: "rgba(46,204,113,0.15)", text: "#2ECC71" },
@@ -118,8 +130,8 @@ export default function AdminRedemptionCodesPage() {
 
   return (
     <div style={{ padding: 0, fontFamily: "DM Sans, sans-serif" }}>
-      <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0, marginBottom: 16 }}>
-        🎟️ Issued Codes
+      <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 22, color: "#E8EAF0", margin: 0, marginBottom: 16, display: "inline-flex", alignItems: "center", gap: 9 }}>
+        <Ticket size={20} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Issued Codes
       </h1>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
@@ -130,7 +142,7 @@ export default function AdminRedemptionCodesPage() {
           ["Expired", kpis.expiredCount || 0, "#8A8FA8"],
           ["Revoked", kpis.revokedCount || 0, "#FF4757"],
           ["Points Spent", fmt(kpis.totalPointsSpent || 0), "#c6d0da"],
-          ["₹ Cost (used)", `₹${fmt(kpis.usedRupeeCost || 0)}`, "#A855F7"],
+          ["₹ Cost (used)", `₹${fmt(kpis.usedRupeeCost || 0)}`, "#D8B4FE"],
         ].map(([label, val, color]) => (
           <div key={String(label)} className="admin-card" style={{ background: "#151820", padding: 14, borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)" }}>
             <p style={{ fontSize: 11, color: "#8A8FA8", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{label}</p>
@@ -178,13 +190,13 @@ export default function AdminRedemptionCodesPage() {
                 <tr key={c.id} style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                   <td style={{ padding: "10px 12px" }}>
                     <p style={{ fontFamily: "monospace", color: "#E8EAF0", fontWeight: 700, margin: 0, fontSize: 12 }}>{c.code}</p>
-                    <p style={{ fontFamily: "monospace", color: "#5C627A", fontSize: 10, margin: 0, marginTop: 2 }}>{c.barcode_value}</p>
+                    <p style={{ fontFamily: "monospace", color: "#8A8FA8", fontSize: 10, margin: 0, marginTop: 2 }}>{c.barcode_value}</p>
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     <p style={{ color: "#E8EAF0", fontSize: 12, margin: 0, fontWeight: 600 }}>{c.user?.name || "—"}</p>
                     <p style={{ color: "#8A8FA8", fontSize: 11, margin: 0, marginTop: 2 }}>{c.user?.phone || c.user?.email || "—"}</p>
                   </td>
-                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#E8EAF0" }}>{KIND_LABEL[c.kind] || c.kind}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#E8EAF0" }}><KindLabel kind={c.kind} /></td>
                   <td style={{ padding: "10px 12px", fontSize: 12, color: "#E8EAF0" }}>{c.title || c.rule_slug || "—"}</td>
                   <td style={{ padding: "10px 12px", fontSize: 12, color: "#9fb1c2", fontWeight: 600 }}>
                     {Number(c.value_inr) > 0 ? `₹${fmt(Number(c.value_inr))}` : "—"}
@@ -232,7 +244,7 @@ export default function AdminRedemptionCodesPage() {
               ["Customer", detail.user?.name || detail.user_id],
               ["Phone", detail.user?.phone || "—"],
               ["Email", detail.user?.email || "—"],
-              ["Kind", KIND_LABEL[detail.kind] || detail.kind],
+              ["Kind", <KindLabel kind={detail.kind} />],
               ["Reward", detail.title || "—"],
               ["Value", Number(detail.value_inr) > 0 ? `₹${fmt(Number(detail.value_inr))}` : "—"],
               ["Points spent", fmt(detail.points_spent)],
@@ -251,14 +263,14 @@ export default function AdminRedemptionCodesPage() {
             <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
               {detail.status === "active" && (
                 <button onClick={() => revoke(detail)} disabled={busy}
-                  style={{ flex: 1, minWidth: 120, background: "rgba(255,71,87,0.1)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.3)", padding: "9px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                  ⛔ Revoke
+                  style={{ flex: 1, minWidth: 120, background: "rgba(255,71,87,0.1)", color: "#FF6B7A", border: "1px solid rgba(255,71,87,0.3)", padding: "9px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <Ban size={14} strokeWidth={2.2} aria-hidden />Revoke
                 </button>
               )}
               {(detail.status === "active" || detail.status === "expired") && (
                 <button onClick={() => extend(detail)} disabled={busy}
-                  style={{ flex: 1, minWidth: 120, background: "rgba(140, 160, 182,0.1)", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)", padding: "9px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                  ⏰ Extend
+                  style={{ flex: 1, minWidth: 120, background: "rgba(140, 160, 182,0.1)", color: "#9fb1c2", border: "1px solid rgba(140, 160, 182,0.3)", padding: "9px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <Clock size={14} strokeWidth={2.2} aria-hidden />Extend
                 </button>
               )}
               <button onClick={() => setDetail(null)}

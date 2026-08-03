@@ -14,6 +14,7 @@
 // the "My Rooms" operator tab, below CircleUnitsTab.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ReceiptText, TriangleAlert, ArrowLeftRight, Plus, ShoppingCart } from "lucide-react";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 import { CIRCLE_RESALE_RISK_NOTE } from "@/lib/circle/disclosure";
 
@@ -73,17 +74,18 @@ type B2bTrade = {
 type MarketListing = B2bListing & { hotel_city?: string | null };
 
 const STATUS_STYLE: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-600",
-  quoted: "bg-slate-100 text-slate-600",
+  draft: "bg-luxury-100 text-luxury-500",
+  quoted: "bg-luxury-100 text-luxury-500",
   pending_payment: "bg-amber-100 text-amber-700",
   owned: "bg-blue-100 text-blue-700",
   listed: "bg-emerald-100 text-emerald-700",
   sold: "bg-emerald-100 text-emerald-700",
-  expired: "bg-slate-100 text-slate-400",
-  cancelled: "bg-rose-100 text-rose-600",
-  refunded: "bg-rose-100 text-rose-600",
-  withdrawn: "bg-slate-100 text-slate-400",
+  expired: "bg-luxury-100 text-luxury-400",
+  cancelled: "bg-red-100 text-red-700",
+  refunded: "bg-red-100 text-red-700",
+  withdrawn: "bg-luxury-100 text-luxury-400",
 };
+const STATUS_FALLBACK = "bg-luxury-100 text-luxury-500";
 
 export default function CircleInventoryTab({
   hotelId,
@@ -478,7 +480,7 @@ export default function CircleInventoryTab({
 
   if (!units.length) {
     return (
-      <div className="mt-6 rounded-2xl border border-dashed p-6 text-sm text-slate-500"
+      <div className="mt-6 rounded-2xl border border-dashed p-6 text-sm text-luxury-500"
            style={{ borderColor: "var(--border-soft)" }}>
         Pre-buy Inventory (Model 2) becomes available once you own rooms on this hotel.
       </div>
@@ -488,8 +490,8 @@ export default function CircleInventoryTab({
   return (
     <div className="mt-8">
       <div className="mb-3">
-        <h3 className="text-base font-semibold" style={{ color: "var(--text-base)" }}>
-          🧾 Pre-buy Inventory <span className="text-xs font-normal opacity-60">· Model 2</span>
+        <h3 className="text-base font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--text-base)" }}>
+          <ReceiptText size={16} strokeWidth={2.2} aria-hidden />Pre-buy Inventory <span className="text-xs font-normal opacity-60">· Model 2</span>
         </h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
           Buy specific room-nights wholesale, then <b>list them on the guest feed</b> at your own resale
@@ -497,8 +499,8 @@ export default function CircleInventoryTab({
           <b> auto-mark-down</b> as check-in nears (never below your cost); opt into <b>platform buyback</b>
           to recover your wholesale cost if a block stays unsold.
         </p>
-        <p className="text-[11px] mt-1.5 leading-snug" style={{ color: "var(--text-muted)" }}>
-          ⚠ {CIRCLE_RESALE_RISK_NOTE}
+        <p className="text-[11px] mt-1.5 leading-snug flex items-start gap-1.5" style={{ color: "var(--text-muted)" }}>
+          <TriangleAlert size={12} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" /><span>{CIRCLE_RESALE_RISK_NOTE}</span>
         </p>
       </div>
 
@@ -569,7 +571,7 @@ export default function CircleInventoryTab({
             {blocks.map((b) => (
               <div key={b.id} className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
                 style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
-                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[b.status] || "bg-slate-100 text-slate-600"}`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[b.status] || STATUS_FALLBACK}`}>
                   {b.status.replace(/_/g, " ")}
                 </span>
                 <span className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
@@ -583,7 +585,7 @@ export default function CircleInventoryTab({
                 </span>
                 {/* v330 — C4: auto-markdown badge (only shows once the cron has discounted a listed block). */}
                 {b.status === "listed" && Number(b.metadata?.markdownPct) > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600"
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-red-100 text-red-700"
                     title={`Auto-marked down as check-in nears · was ${inr(b.metadata?.listResalePerNight)}/n`}>
                     −{Number(b.metadata?.markdownPct)}% auto
                     {b.metadata?.listResalePerNight ? (
@@ -637,16 +639,16 @@ export default function CircleInventoryTab({
                       </div>
                       {/* v331 — D1: OR trade to another investor on the B2B exchange. */}
                       {activeB2bByBlock[b.id] ? (
-                        <span className="text-[11px] px-2 py-1 rounded-lg font-medium bg-indigo-50 text-indigo-600"
+                        <span className="text-[11px] px-2 py-1 rounded-lg font-medium bg-indigo-50 text-indigo-600 inline-flex items-center gap-1"
                           title={`On the B2B exchange at ${inr(activeB2bByBlock[b.id].ask_per_night)}/night`}>
-                          ⇄ On exchange · {inr(activeB2bByBlock[b.id].ask_total)}
+                          <ArrowLeftRight size={11} strokeWidth={2.4} aria-hidden />On exchange · {inr(activeB2bByBlock[b.id].ask_total)}
                         </span>
                       ) : (
                         <button disabled={busy} onClick={() => listB2b(b)}
                           title="List this owned block on the B2B exchange at the StayBid-regulated price (Spine cost + markup; StayBid takes the commission)."
-                          className="text-xs px-2.5 py-1 rounded-lg font-semibold border"
+                          className="text-xs px-2.5 py-1 rounded-lg font-semibold border inline-flex items-center gap-1"
                           style={{ borderColor: "var(--border-strong)", color: "var(--text-base)" }}>
-                          ⇄ List on exchange
+                          <ArrowLeftRight size={12} strokeWidth={2.4} aria-hidden />List on exchange
                         </button>
                       )}
                     </div>
@@ -670,8 +672,8 @@ export default function CircleInventoryTab({
       {/* v331 — D1: Model 4 B2B exchange listings (this investor's offers). */}
       <div className="mt-7">
         <div className="mb-2">
-          <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
-            ⇄ B2B Exchange <span className="text-xs font-normal opacity-60">· Model 2</span>
+          <div className="text-sm font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--text-base)" }}>
+            <ArrowLeftRight size={15} strokeWidth={2.3} aria-hidden />B2B Exchange <span className="text-xs font-normal opacity-60">· Model 2</span>
           </div>
           <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
             Sell an <b>owned</b> block to another investor at your own B2B price — a faster exit than waiting
@@ -684,8 +686,8 @@ export default function CircleInventoryTab({
             pre-bought block — the buyer is auto-assigned a free unit at checkout. */}
         {roomOptions.length > 0 && (
           <div className="rounded-2xl border p-4 mb-3" style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
-            <div className="text-xs font-medium mb-2" style={{ color: "var(--text-base)" }}>
-              ➕ List your own inventory <span className="opacity-60 font-normal">· no pre-buy needed</span>
+            <div className="text-xs font-medium mb-2 inline-flex items-center gap-1.5" style={{ color: "var(--text-base)" }}>
+              <Plus size={13} strokeWidth={2.5} aria-hidden />List your own inventory <span className="opacity-60 font-normal">· no pre-buy needed</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <label className="text-xs">
@@ -737,7 +739,7 @@ export default function CircleInventoryTab({
             {b2bListings.map((l) => (
               <div key={l.id} className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
                 style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
-                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[l.status] || "bg-slate-100 text-slate-600"}`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[l.status] || STATUS_FALLBACK}`}>
                   {l.status.replace(/_/g, " ")}
                 </span>
                 <span className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
@@ -755,7 +757,7 @@ export default function CircleInventoryTab({
                         <>
                           ask <s style={{ color: "var(--text-muted)" }}>{inr(orig)}/n</s>{" "}
                           <b style={{ color: "var(--text-base)" }}>{inr(l.ask_per_night)}/n</b>{" "}
-                          <span className="text-[11px] px-1.5 py-0.5 rounded-full font-semibold bg-rose-50 text-rose-600">
+                          <span className="text-[11px] px-1.5 py-0.5 rounded-full font-semibold bg-red-50 text-red-600">
                             −{md}% auto
                           </span>
                         </>
@@ -792,8 +794,8 @@ export default function CircleInventoryTab({
       {market.length > 0 && (
         <div className="mt-7">
           <div className="mb-2">
-            <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
-              🛒 Buy from the exchange <span className="text-xs font-normal opacity-60">· Model 2</span>
+            <div className="text-sm font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--text-base)" }}>
+              <ShoppingCart size={15} strokeWidth={2.3} aria-hidden />Buy from the exchange <span className="text-xs font-normal opacity-60">· Model 2</span>
             </div>
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
               Owned blocks other investors on this hotel have put up for sale — cheapest first. Buy one and it
@@ -835,8 +837,8 @@ export default function CircleInventoryTab({
       {(b2bTrades.asBuyer.length > 0 || b2bTrades.asSeller.length > 0) && (
         <div className="mt-7">
           <div className="mb-2">
-            <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
-              ⇄ Exchange trades <span className="text-xs font-normal opacity-60">· Model 2</span>
+            <div className="text-sm font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--text-base)" }}>
+              <ArrowLeftRight size={15} strokeWidth={2.3} aria-hidden />Exchange trades <span className="text-xs font-normal opacity-60">· Model 2</span>
             </div>
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
               Blocks you bought from or sold to other investors on the exchange. Sold blocks pay out to the seller

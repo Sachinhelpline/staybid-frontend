@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Zap, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Admin login — Google/Gmail ONLY (hotfix v621 security).
@@ -91,7 +92,7 @@ export default function AdminLogin() {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div>
+          <div style={{ marginBottom: 12, display: "flex", justifyContent: "center", color: "#9fb1c2" }}><Zap size={40} strokeWidth={2} aria-hidden /></div>
           <div
             style={{
               fontFamily: "Syne, sans-serif",
@@ -138,7 +139,7 @@ export default function AdminLogin() {
           </div>
         ) : (
           <button onClick={continueWithGoogle} style={googleBtn}>
-            <span style={{ fontSize: 18 }}>🔐</span> Continue with Google
+            <Lock size={18} strokeWidth={2} aria-hidden /> Continue with Google
           </button>
         )}
 

@@ -4,6 +4,7 @@
 // Tapping any badge opens the PassportDetailSheet (big 3D flip-in + blurb +
 // progress). Mirrors the API's badge catalog shape.
 import { useState } from "react";
+import { Medal } from "lucide-react";
 import { PassportMedal, MEDAL_GOLD, MEDAL_LOCKED } from "./PassportMedal";
 import { PassportDetailSheet, type DetailItem } from "./PassportDetailSheet";
 
@@ -47,8 +48,8 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
-          🏅 Achievements
+        <h3 className="font-display text-lg font-semibold flex items-center gap-2" style={{ color: "var(--text-base)" }}>
+          <Medal size={17} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} /> Achievements
         </h3>
         <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-muted)" }}>
           {earned} / {badges.length} unlocked

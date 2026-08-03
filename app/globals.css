@@ -838,6 +838,158 @@
 [data-theme="dark"] .onb-root .text-gold-800 { color: var(--cozy-champagne-light) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v649 — Partner panel (`.pdash-root`) DARK-MODE FOUNDATION. The whole
+   partner dashboard + its ~20 tab components share a self-contained
+   design system defined in the page's in-component <style> block
+   (`.card-p` / `.hub-tile` / `.btn-ghost` / `.inp-p` / `.sec-title`) with
+   HARDCODED light hex — the panel never had a dark mode at all. Unlike the
+   customer bridges it carries no `.lux-bg`, so nothing here is auto-handled.
+   This block is DARK-ONLY (`[data-theme="dark"] .pdash-root …`), so LIGHT
+   mode stays byte-identical — it only supplies the missing dark surfaces.
+   The panel keeps its OWN refined, data-dense card identity (a subtle
+   border + soft shadow, NOT the consumer borderless-4-layer grammar, which
+   reads heavy at this data density); the bridge just makes it dark-aware.
+   Colored per-tab status tints (bg-emerald-50 / amber / sky …) are the
+   later per-tab sweep, not this foundation. */
+/* The PAGE background is keyed to the dashboard root's own `bg-luxury-50` (NOT
+   a bare `.pdash-root`), so the same class can wrap a body-portaled modal
+   (v654 — see lib/partner/modal-portal.ts) to inherit the design-system dark
+   rules below WITHOUT forcing an opaque background onto the modal's own
+   translucent backdrop. */
+[data-theme="dark"] .pdash-root { color: var(--text-base); }
+[data-theme="dark"] .pdash-root.bg-luxury-50 { background: var(--bg-page) !important; }
+/* Shared design-system surfaces */
+[data-theme="dark"] .pdash-root .card-p {
+  background: var(--bg-card) !important;
+  border-color: var(--border-soft) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.30) !important;
+}
+[data-theme="dark"] .pdash-root .hub-tile {
+  background: var(--bg-card) !important;
+  border-color: var(--border-soft) !important;
+}
+[data-theme="dark"] .pdash-root .hub-tile:hover {
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 9px 24px rgba(0,0,0,0.44) !important;
+}
+[data-theme="dark"] .pdash-root .sec-title { color: var(--text-base) !important; }
+[data-theme="dark"] .pdash-root .btn-ghost {
+  background: var(--bg-pill) !important;
+  color: var(--text-soft) !important;
+  border-color: var(--border-soft) !important;
+}
+[data-theme="dark"] .pdash-root .btn-ghost:hover:not(:disabled) {
+  border-color: var(--border-strong) !important;
+  color: var(--text-base) !important;
+  background: var(--bg-input) !important;
+}
+[data-theme="dark"] .pdash-root .inp-p {
+  background: var(--bg-input) !important;
+  color: var(--text-base) !important;
+  border-color: var(--border-soft) !important;
+}
+[data-theme="dark"] .pdash-root .inp-p::placeholder { color: var(--text-muted) !important; }
+[data-theme="dark"] .pdash-root .inp-p:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft) !important;
+}
+/* Neutral Tailwind luxury/white utilities used across shell + tabs */
+[data-theme="dark"] .pdash-root .bg-white { background: var(--bg-card) !important; }
+[data-theme="dark"] .pdash-root .bg-white\/95 { background: color-mix(in srgb, var(--bg-card) 95%, transparent) !important; }
+[data-theme="dark"] .pdash-root .bg-white\/70 { background: color-mix(in srgb, var(--bg-card) 70%, transparent) !important; }
+/* The 4 overview KPI cards carry an inline light tint (byte-identical light);
+   this class-scoped !important flips only their dark surface. */
+[data-theme="dark"] .pdash-root .pdash-kpi { background: var(--bg-card) !important; border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .bg-luxury-50,
+[data-theme="dark"] .pdash-root .bg-luxury-100 { background: var(--bg-pill) !important; }
+[data-theme="dark"] .pdash-root .text-luxury-900,
+[data-theme="dark"] .pdash-root .text-luxury-800 { color: var(--text-base) !important; }
+[data-theme="dark"] .pdash-root .text-luxury-700,
+[data-theme="dark"] .pdash-root .text-luxury-600 { color: var(--text-soft) !important; }
+[data-theme="dark"] .pdash-root .text-luxury-500,
+[data-theme="dark"] .pdash-root .text-luxury-400 { color: var(--text-muted) !important; }
+[data-theme="dark"] .pdash-root .border-luxury-100,
+[data-theme="dark"] .pdash-root .border-luxury-200,
+[data-theme="dark"] .pdash-root .border-luxury-300 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .divide-luxury-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border-soft) !important; }
+
+/* v650 — partner STATUS-TINT dark layer. The panel colour-codes state with
+   Tailwind `bg-<c>-50` chips + `-100/-200` borders + `-600/-700` text across
+   every tab. Those pastel `-50` fills stay bright in dark mode (light boxes on
+   a dark page). This flips them to a translucent tint of the same hue (colour
+   coding preserved, surface dark) and lifts the label text to a `-300` shade
+   for contrast. DARK-ONLY, so light stays byte-identical. Gold routes through
+   the app's champagne token (matches the other bridges). One block → every
+   partner tab's status chips read correctly in dark. */
+[data-theme="dark"] .pdash-root .bg-emerald-50 { background: rgba(16,185,129,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-emerald-100 { background: rgba(16,185,129,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-emerald-100,
+[data-theme="dark"] .pdash-root .border-emerald-200,
+[data-theme="dark"] .pdash-root .border-emerald-300 { border-color: rgba(16,185,129,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-emerald-600,
+[data-theme="dark"] .pdash-root .text-emerald-700 { color: #6ee7b7 !important; }
+[data-theme="dark"] .pdash-root .bg-amber-50 { background: rgba(245,158,11,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-amber-100 { background: rgba(245,158,11,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-amber-100,
+[data-theme="dark"] .pdash-root .border-amber-200,
+[data-theme="dark"] .pdash-root .border-amber-300 { border-color: rgba(245,158,11,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-amber-600,
+[data-theme="dark"] .pdash-root .text-amber-700 { color: #fcd34d !important; }
+[data-theme="dark"] .pdash-root .bg-blue-50 { background: rgba(59,130,246,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-blue-100 { background: rgba(59,130,246,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-blue-100,
+[data-theme="dark"] .pdash-root .border-blue-200 { border-color: rgba(59,130,246,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-blue-600,
+[data-theme="dark"] .pdash-root .text-blue-700 { color: #93c5fd !important; }
+[data-theme="dark"] .pdash-root .bg-orange-50 { background: rgba(249,115,22,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-orange-100 { background: rgba(249,115,22,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-orange-100,
+[data-theme="dark"] .pdash-root .border-orange-200 { border-color: rgba(249,115,22,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-orange-600,
+[data-theme="dark"] .pdash-root .text-orange-700 { color: #fdba74 !important; }
+[data-theme="dark"] .pdash-root .bg-red-50 { background: rgba(239,68,68,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-red-100 { background: rgba(239,68,68,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-red-100,
+[data-theme="dark"] .pdash-root .border-red-200,
+[data-theme="dark"] .pdash-root .border-red-300 { border-color: rgba(239,68,68,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-red-500,
+[data-theme="dark"] .pdash-root .text-red-600,
+[data-theme="dark"] .pdash-root .text-red-700 { color: #fca5a5 !important; }
+[data-theme="dark"] .pdash-root .bg-sky-50 { background: rgba(14,165,233,0.13) !important; }
+[data-theme="dark"] .pdash-root .text-sky-600,
+[data-theme="dark"] .pdash-root .text-sky-700 { color: #7dd3fc !important; }
+[data-theme="dark"] .pdash-root .bg-purple-50 { background: rgba(168,85,247,0.13) !important; }
+[data-theme="dark"] .pdash-root .border-purple-200 { border-color: rgba(168,85,247,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-purple-600,
+[data-theme="dark"] .pdash-root .text-purple-700 { color: #d8b4fe !important; }
+[data-theme="dark"] .pdash-root .bg-indigo-50 { background: rgba(99,102,241,0.13) !important; }
+[data-theme="dark"] .pdash-root .border-indigo-200 { border-color: rgba(99,102,241,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-indigo-600,
+[data-theme="dark"] .pdash-root .text-indigo-700 { color: #a5b4fc !important; }
+[data-theme="dark"] .pdash-root .bg-teal-50 { background: rgba(20,184,166,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-teal-100 { background: rgba(20,184,166,0.20) !important; }
+[data-theme="dark"] .pdash-root .text-teal-600,
+[data-theme="dark"] .pdash-root .text-teal-700 { color: #5eead4 !important; }
+[data-theme="dark"] .pdash-root .bg-cyan-50 { background: rgba(6,182,212,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-cyan-100 { background: rgba(6,182,212,0.20) !important; }
+[data-theme="dark"] .pdash-root .text-cyan-600,
+[data-theme="dark"] .pdash-root .text-cyan-700 { color: #67e8f9 !important; }
+[data-theme="dark"] .pdash-root .bg-purple-100 { background: rgba(168,85,247,0.20) !important; }
+[data-theme="dark"] .pdash-root .bg-gold-50,
+[data-theme="dark"] .pdash-root .bg-gold-100 { background: var(--bg-pill) !important; }
+[data-theme="dark"] .pdash-root .border-gold-200,
+[data-theme="dark"] .pdash-root .border-gold-300 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .text-gold-600,
+[data-theme="dark"] .pdash-root .text-gold-700 { color: var(--cozy-champagne-light) !important; }
+/* v664 — CircleUnitsTab ("My Rooms") uses the consumer `.card-luxury`/
+   `.input-luxury` classes, whose dark-mode rules exist only under specific
+   root wrappers (.inf-root/.onb-root/.trust-root/…), NOT the bare global. Inside
+   the partner shell they would paint their hardcoded LIGHT background in dark.
+   Remap them the same way here so the one partner tab that uses them is dark-safe. */
+[data-theme="dark"] .pdash-root .card-luxury { background: var(--bg-card) !important; border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .input-luxury { background: var(--bg-card) !important; border-color: var(--border-soft) !important; color: var(--text-base) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
    v458 — Auth (sign-in) uplift. The single highest-traffic customer
    screen was 100% legacy palette: pure-white cards on a hardcoded light
    gradient (#f8f9fa→#f0f2f5), no dark-mode response. Its outer div now
@@ -849,6 +1001,26 @@
    blue/green, and the red error box) dark-appropriate translucent
    surfaces so they read on the dark card. Scoped to `.auth-root`. */
 .auth-root .bg-white { background: var(--bg-card) !important; }
+/* v642 — auth card shells join the borderless 4-layer 3D grammar (same
+   family as .hx-room-card / .mb-card / .bk-card / .ppx-card). The v458
+   bridge above keeps handling inputs/pills/tints/text; this class only
+   replaces the old bg-white + 1px border + shadow-luxury card shell. */
+.auth-root .au-card {
+  background: var(--bg-card);
+  border: none;
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .auth-root .au-card {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
 .auth-root .bg-luxury-50 { background: var(--bg-pill) !important; }
 .auth-root .bg-luxury-100 { background: var(--bg-pill) !important; }
 .auth-root .input-luxury { background: var(--bg-card); border-color: var(--border-soft); color: var(--text-base); }
@@ -1364,6 +1536,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   width: 36px; height: 36px; border-radius: 999px; border: 1px solid rgba(106,133,160,0.3);
   background: linear-gradient(180deg, #fff 0%, #e8ecf0 100%);
   color: #6b5018; font-weight: 800; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; /* v643 — centre the lucide svg */
   box-shadow: 0 2px 0 rgba(106,133,160,0.35), 0 4px 10px rgba(106,133,160,0.18);
   transition: transform 0.15s ease;
 }
@@ -1440,6 +1613,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   border: 1px solid rgba(106,133,160,0.28);
   background: linear-gradient(180deg, #fff 0%, #e8ecf0 100%);
   color: #6b5018; font-size: 1.3rem; font-weight: 800; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; /* v643 — centre the lucide svg */
   box-shadow: 0 2px 0 rgba(106,133,160,0.35), 0 4px 10px rgba(106,133,160,0.18);
   transition: transform 0.15s ease, opacity 0.15s ease;
 }
@@ -1683,6 +1857,12 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     var(--bg-page);
   min-height: 100dvh;
   position: relative;
+  /* v636 — PRE-EXISTING document-level horizontal overflow found by the
+     Treatment-A audit (88-125px at 390w): the ambient backdrop, hero-swipe
+     slides and mosaic peek-tiles all extend past the viewport. clip (not
+     hidden — no new scroll container) fences them at the page shell; the
+     internal swipe/scroll galleries keep scrolling inside their own boxes. */
+  overflow-x: clip;
 }
 /* v500 — dark mode: drop the opaque --bg-page fill (keep the gold radial) so the
    fixed <AmbientBackdrop> tints through from behind. The body still paints
@@ -1894,6 +2074,18 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   background: var(--cozy-cream-200);
   cursor: pointer;
   height: 78px;
+  /* v637 — photos get the room-card 3D grammar (owner: "photos ko bhi 3D"):
+     raised layered shadow + top lit edge, both themes. */
+  box-shadow:
+    0 12px 20px -12px rgba(31, 26, 15, 0.35),
+    0 4px 8px -4px rgba(31, 26, 15, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+[data-theme="dark"] .hx-mosaic-strip-tile {
+  box-shadow:
+    0 12px 20px -12px rgba(0, 0, 0, 0.7),
+    0 4px 8px -4px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .hx-mosaic-strip-tile-1 { width: 110px; aspect-ratio: 4 / 3; }
 .hx-mosaic-strip-tile-2 { width: 78px;  aspect-ratio: 1 / 1; }
@@ -2127,30 +2319,48 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 
 /* ─── Room showcase card ────────────────────────────────────────── */
+/* v636 — borderless 3D room card (the v634 flash-card depth grammar):
+   the hairline border is gone; depth = long cast + mid bloom + contact
+   edge + inset top highlight. Flash/selected keep their accent RING via
+   box-shadow (not border) so the geometry never shifts. */
 .hx-room-card {
   background: var(--bg-card);
-  border: 1px solid var(--border-soft);
+  border: none;
   border-radius: 24px;
   overflow: hidden;
   position: relative;
-  transition: transform 0.28s ease-out, box-shadow 0.3s ease, border-color 0.3s ease;
-  box-shadow: 0 10px 28px -16px rgba(31, 26, 15, 0.15);
+  transition: transform 0.28s ease-out, box-shadow 0.3s ease;
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   contain: layout style paint;
+}
+[data-theme="dark"] .hx-room-card {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 @media (hover: hover) {
   .hx-room-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 18px 40px -18px rgba(106, 133, 160, 0.28);
-    border-color: rgba(106, 133, 160, 0.45);
+    box-shadow:
+      0 30px 52px -24px rgba(106, 133, 160, 0.4),
+      0 12px 24px -12px rgba(31, 26, 15, 0.2),
+      0 0 0 1px rgba(106, 133, 160, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
   }
 }
-.hx-room-card.is-flash {
-  border-color: rgba(106, 133, 160, 0.55);
-  box-shadow: 0 16px 38px -14px rgba(106, 133, 160, 0.32);
-}
+.hx-room-card.is-flash,
 .hx-room-card.is-selected {
-  border-color: rgba(106, 133, 160, 0.55);
-  box-shadow: 0 16px 38px -14px rgba(106, 133, 160, 0.32);
+  box-shadow:
+    0 24px 42px -20px rgba(106, 133, 160, 0.38),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 0 0 1.5px rgba(106, 133, 160, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 /* Desktop: image LEFT, content RIGHT in a 5/7 split */
@@ -2670,12 +2880,74 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     align-self: start;
   }
 }
+/* v647/v648 — legacy `card-luxury` shells on the menu-destination pages +
+   the Creator Hub (`.inf-root`) join the borderless 4-layer 3D grammar,
+   scoped to their theme roots (the v460/v462 + `.inf-root` bridges keep
+   handling bg/text underneath). Global .card-luxury elsewhere is untouched. */
+.lux-soft .card-luxury,
+.trust-root .card-luxury,
+.verif-root .card-luxury,
+.upg-root .card-luxury,
+.inf-root .card-luxury {
+  border: none !important;
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+[data-theme="dark"] .lux-soft .card-luxury,
+[data-theme="dark"] .trust-root .card-luxury,
+[data-theme="dark"] .verif-root .card-luxury,
+[data-theme="dark"] .upg-root .card-luxury,
+[data-theme="dark"] .inf-root .card-luxury {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+/* v641 — /passport generic cards join the borderless 4-layer 3D grammar
+   (same family as .hx-room-card / .mb-card / .bk-card). Used by the hub page
+   + FamilyPassport/HowItGrows section containers. The passport BOOK, medals,
+   member card and detail sheet keep their own custom depth — never flatten
+   them onto this class. */
+.ppx-card {
+  background: var(--bg-card);
+  border: none;
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .ppx-card {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* v638 — sticky rail joins the borderless 4-layer 3D grammar (same family as .hx-room-card) */
 .hx-sticky-card {
   background: var(--bg-card);
-  border: 1px solid var(--border-soft);
+  border: none;
   border-radius: 22px;
   padding: 22px 20px;
-  box-shadow: 0 20px 50px -22px rgba(31, 26, 15, 0.22);
+  box-shadow:
+    0 24px 42px -22px rgba(31, 26, 15, 0.32),
+    0 10px 20px -12px rgba(31, 26, 15, 0.18),
+    0 2px 6px -2px rgba(31, 26, 15, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .hx-sticky-card {
+  box-shadow:
+    0 24px 42px -22px rgba(0, 0, 0, 0.7),
+    0 10px 20px -12px rgba(0, 0, 0, 0.48),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .hx-sticky-rate-l {
   font-size: 0.62rem;
@@ -5450,7 +5722,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   line-height: 1.25;
 }
 .hxr-hero-eyebrow {
-  font-size: 0.5rem;
+  font-size: 0.63rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -5473,7 +5745,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .hxr-hero-dot { color: var(--text-muted); opacity: 0.5; }
 @media (min-width: 1024px) {
-  .hxr-hero-eyebrow { font-size: 0.6rem; }
+  .hxr-hero-eyebrow { font-size: 0.66rem; }
   .hxr-hero-title   { font-size: 1.5rem; }
   .hxr-hero-count   { font-size: 0.85rem; }
 }
@@ -6302,12 +6574,14 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 @media (min-width: 768px) {
   .hxr-badge { top: 10px; left: 10px; padding: 5px 10px; font-size: 0.7rem; }
 }
+/* v626 — deal-GOLD badge (Treatment A), one-deal-one-colour: matches the
+   /flash-deals .fd-disc-stamp + home .sbh-chip-off gold. Dark ink for AA. */
 .hxr-badge-flash {
-  background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4, #5f7c98 60%, #3f5369);
-  color: #ffffff;
-  text-shadow: 0 1px 1px rgba(20,30,44,0.35);
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+  color: #2a1e06;
+  text-shadow: none;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 8px -4px rgba(40,55,72,0.4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 3px 8px -4px rgba(130,90,12,0.4);
 }
 .hxr-badge-fav {
   background: var(--bg-card);
@@ -6447,8 +6721,11 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   font-variant-numeric: tabular-nums;
 }
 @media (min-width: 1024px) { .hxr-card-amount { font-size: 1.12rem; } }
+/* v626 Treatment A — calmer price: the flash amount reads in ink like every
+   other card (the deal is signalled by the gold badge + "below market" chip,
+   not a coloured number). */
 .hxr-card-amount-flash {
-  color: var(--accent);
+  color: var(--text-base);
 }
 .hxr-card-per { color: var(--text-muted); font-size: 0.72rem; }
 .hxr-card-strike { color: var(--text-muted); font-size: 0.7rem; text-decoration: line-through; margin-right: 2px; }
@@ -7471,7 +7748,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   /* Hero shrink on laptop+ */
   .hxr-hero-slim { padding: 4px 32px 4px; }
   .hxr-hero-title { font-size: 1.05rem; }
-  .hxr-hero-eyebrow { font-size: 0.55rem; }
+  .hxr-hero-eyebrow { font-size: 0.63rem; }
   .hxr-hero-count { font-size: 0.74rem; }
   /* Non-compact rail cards — 5-6 per row on laptop */
   .hxr-card-rail { width: clamp(180px, 17vw, 220px); }
@@ -8243,9 +8520,15 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
      trapping gesture-nav phones (no OS nav bar) on /bid. Ending the shell
      one dock-height above the viewport bottom leaves the dock uncovered
      (the shell scrolls internally, and .bgz-cta-rail sticks just above it).
-     Matches the global `body { padding-bottom: calc(52px + safe-area) }`
-     dock reserve. Desktop keeps bottom:0 (dock is hidden ≥1024px anyway). */
-  .bgz-shell { top: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+     Matches the global `body { padding-bottom: calc(54px + safe-area) }`
+     dock reserve (v631 blended 50px dock; keep in sync with
+     components/discover/BottomDock.tsx). ⚠ The boot screen (.bgz-boot) is
+     absolute inset:0 + overflow:hidden + centered — every px carved here
+     is a px of boot content CLIPPED WITHOUT SCROLL (the v630 60px carve
+     cut PRESS START in half on the owner's phone; the layout was tuned
+     against the original 52px). Keep this as small as the dock allows.
+     Desktop keeps bottom:0 (dock is hidden ≥1024px anyway). */
+  .bgz-shell { top: 0; bottom: calc(54px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* v238 — Desktop-only ALWAYS-VISIBLE scrollbar. Mobile users scroll via
@@ -8410,8 +8693,22 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 
 .bgz-boot-cta {
-  position: relative;
-  display: inline-flex;
+  /* v631 — STICKY at the bottom of the scrollable .bgz-boot-content, so
+     PRESS START is ALWAYS fully on screen no matter the device height —
+     the journey steps scroll UNDER it. (v243 tuned the content to "fit on
+     common phones", but the dock carve + content growth broke that on
+     844px-class viewports: the button rested half below the fold —
+     owner's screenshot 3.) Sticky in a scroller degrades gracefully:
+     short content = sits in flow exactly as before. */
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  /* block-level flex + auto margins: keeps the pill centred exactly as the
+     old inline-flex did, but sticky behaves reliably on a block box. */
+  display: flex;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
   align-items: center;
   justify-content: center;
   padding: 16px 38px;
@@ -8727,6 +9024,54 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .bgz-boot-step-title { font-size: 0.86rem; margin-bottom: 6px; }
   .bgz-boot-mock-pills > span,
   .bgz-boot-mock-guests > span { font-size: 0.66rem; padding: 3px 8px; }
+}
+
+/* v633 — FLUID boot fit (replaces the v632 fixed micro-compression, which
+   over-shot: content shrank to ~640px in a 790px shell and place-items:
+   center split ~150px of dead space above AND below — owner screenshot 2).
+   Every vertical spender now breathes with the viewport via clamp(min,
+   svh, max): tall phones relax toward the original comfortable sizes,
+   short phones compress — the content column always ≈ fills the shell.
+   No scroll AND no dead-space bands, at any height. ⚠ This block must
+   stay AFTER every base .bgz-boot-* rule and after the (max-width:380px)
+   block — equal specificity means source order decides. Measured height
+   driver: the step EYEBROW (disc + .bgz-boot-step-eye-title/-eye-sub). */
+@media (max-height: 920px) {
+  .bgz-boot-content { padding: clamp(6px, 1.2svh, 14px) 14px clamp(6px, 1.2svh, 14px) 14px; }
+  .bgz-boot-header { margin-bottom: clamp(4px, 0.9svh, 10px); }
+  .bgz-boot-title { font-size: clamp(1.05rem, 4.6vw, 1.45rem); }
+  .bgz-boot-sub { font-size: 0.66rem; }
+  .bgz-boot-tracker { margin-bottom: clamp(5px, 1svh, 12px); }
+  .bgz-boot-track-num { width: clamp(18px, 2.6svh, 22px); height: clamp(18px, 2.6svh, 22px); }
+  .bgz-boot-journey { gap: clamp(3px, 1svh, 9px); margin-bottom: clamp(5px, 1svh, 12px); }
+  .bgz-boot-step { gap: clamp(5px, 0.8svh, 8px); }
+  .bgz-boot-step--right { grid-template-columns: minmax(0, clamp(88px, 12svh, 110px)) minmax(0, 1fr); }
+  .bgz-boot-step--left  { grid-template-columns: minmax(0, 1fr) minmax(0, clamp(88px, 12svh, 110px)); }
+  .bgz-boot-step-num { width: clamp(30px, 5svh, 44px); height: clamp(30px, 5svh, 44px); font-size: clamp(1rem, 2svh, 1.35rem); }
+  .bgz-boot-step-eyebrow { gap: clamp(2px, 0.5svh, 5px); }
+  .bgz-boot-step-eye-title { font-size: clamp(0.72rem, 1.5svh, 0.95rem); }
+  .bgz-boot-step-eye-sub { font-size: clamp(0.56rem, 1.1svh, 0.72rem); line-height: 1.22; }
+  .bgz-boot-step-card { padding-top: clamp(3px, 0.9svh, 9px); padding-bottom: clamp(3px, 0.9svh, 9px); }
+  .bgz-boot-step-title { font-size: clamp(0.72rem, 1.3svh, 0.84rem); margin-bottom: clamp(3px, 0.6svh, 6px); }
+  .bgz-boot-mock-pills > span,
+  .bgz-boot-mock-guests > span { padding: clamp(3px, 0.5svh, 4px) 8px; font-size: clamp(0.62rem, 1.1svh, 0.68rem); }
+  .bgz-boot-mock-dates > div:not(.sep) { padding: clamp(2px, 0.5svh, 4px) 8px; }
+  .bgz-boot-mock-dates .val { font-size: clamp(0.66rem, 1.2svh, 0.74rem); }
+  .bgz-boot-mock-price .mock-price-amt { font-size: clamp(0.95rem, 1.8svh, 1.12rem); }
+  .bgz-boot-cta { padding: clamp(10px, 1.7svh, 15px) clamp(28px, 5svh, 36px); font-size: clamp(0.88rem, 1.6svh, 0.98rem); }
+}
+/* very short viewports only: the tracker sub-line duplicates the journey
+   card titles — dropping it buys three text rows without losing meaning. */
+@media (max-height: 800px) {
+  .bgz-boot-track-sub { display: none; }
+}
+/* ≤720px-height micro-step (600-700px class devices): the svh floors alone
+   land ~8px over — trim the tracker discs + pill chrome to close it. */
+@media (max-height: 720px) {
+  .bgz-boot-track-num { width: 16px; height: 16px; font-size: 0.58rem; }
+  .bgz-boot-title { font-size: clamp(0.95rem, 4.2vw, 1.15rem); }
+  .bgz-boot-mock-pills > span,
+  .bgz-boot-mock-guests > span { padding: 2px 7px; }
 }
 
 @keyframes bgzBootIn {
@@ -13044,18 +13389,19 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(28,38,52,0.28), 0 3px 8px -5px rgba(45,62,82,0.5) !important;
 }
 
-/* offer badges (home + reel) — satin gold, keep the one-deal-one-colour rule */
+/* offer badges (home + reel) — v625 deal-GOLD (owner pick), one-deal-one-colour:
+   matches the /flash-deals .fd-disc-stamp gold. Dark ink for AA on gold. */
 .sbh-chip-off {
-  background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 1px rgba(20,30,44,0.35) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 4px rgba(28,38,52,0.24), 0 4px 10px -6px rgba(40,55,72,0.4) !important;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%) !important;
+  color: #2a1e06 !important;
+  text-shadow: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 4px rgba(120,80,10,0.24), 0 4px 10px -6px rgba(130,90,12,0.4) !important;
 }
 .sbh-tk-accent {
-  background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 1px rgba(20,30,44,0.35) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 4px rgba(28,38,52,0.24), 0 4px 10px -6px rgba(40,55,72,0.4) !important;
+  background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%) !important;
+  color: #2a1e06 !important;
+  text-shadow: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 4px rgba(120,80,10,0.24), 0 4px 10px -6px rgba(130,90,12,0.4) !important;
 }
 
 /* ── refined matte WALNUT cards (warmer, richer, satin-gold hairline + sage) ── */
@@ -13167,3 +13513,397 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 /* season-preference chips (v583.1) base → dark-on-cream (is-on stays gold) */
 .sbh-tf-season:not(.is-on) { color: #5a4420 !important; background: rgba(106, 133, 160, 0.12) !important; border-color: rgba(106, 133, 160, 0.3) !important; }
 .sbh-tf-season.is-auto { color: rgba(74, 56, 32, 0.7) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI UPGRADE — FOUNDATION LAYER (Phase 0a, additive/invisible)
+   ───────────────────────────────────────────────────────────────────────────
+   A design-token + primitive layer for components/ui/*. NOTHING here changes an
+   existing surface — no current element uses a `.sbui-*` class or an `--fs-*`/
+   `--sbui-*` variable. Adoption happens per-surface in later phases.
+
+   Palette is the LIVE production palette, verbatim (owner-locked Direction A —
+   see docs/upgrade/04-DIRECTION-LOCKED.md). This block only READS the existing
+   semantic tokens (--accent, --bg-card, --text-*, --border-*) so light↔dark is
+   the existing flip; it never redefines a colour value.
+
+   Type scale uses the `--fs-*` namespace (NOT Tailwind's `--text-*`, which would
+   generate utility classes and collide with 150 files of existing usage).
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* type scale — the ONLY sizes new UI should use (9 steps, fluid where marked) */
+  --fs-display: clamp(2.1rem, 5vw, 3.4rem);
+  --fs-title: clamp(1.45rem, 3.4vw, 1.9rem);
+  --fs-heading: 1.2rem;
+  --fs-body: 1rem;
+  --fs-support: 0.875rem;
+  --fs-caption: 0.78rem;
+  --fs-micro: 0.68rem;          /* the floor — nothing smaller */
+  --fs-price-lg: clamp(1.6rem, 4vw, 2.4rem);
+  --fs-price: 1.15rem;
+  --lh-tight: 1.06;
+  --lh-snug: 1.28;
+  --lh-normal: 1.55;
+
+  /* radius + elevation scale */
+  --sbui-r-sm: 8px;
+  --sbui-r-md: 11px;
+  --sbui-r-lg: 14px;
+  --sbui-r-pill: 999px;
+  --sbui-elev-1: 0 6px 22px rgba(31, 26, 15, 0.10);   /* == live --shadow-card */
+  --sbui-elev-2: 0 14px 40px -22px rgba(31, 26, 15, 0.30);
+
+  /* primary CTA = the exact live brushed-pewter gradient (verbatim) */
+  --sbui-btn-primary-bg:
+    radial-gradient(88% 64% at 32% 4%, rgba(240, 247, 253, 0.24), transparent 58%),
+    linear-gradient(160deg, #a0b2c6 0%, #6f8aa6 50%, #42566d 100%);
+  --sbui-btn-primary-ink: #ffffff;
+  --sbui-btn-primary-shadow: 0 10px 22px -12px rgba(66, 86, 109, 0.7);
+
+  /* semantic status (namespaced; separate from the --accent brand hue) */
+  --sbui-success: #2f8f5b;
+  --sbui-warning: #c07a1e;
+  --sbui-danger: #c0392b;
+}
+:root[data-theme="dark"] {
+  --sbui-elev-1: 0 8px 26px rgba(0, 0, 0, 0.5);
+  --sbui-elev-2: 0 16px 44px -20px rgba(0, 0, 0, 0.6);
+  --sbui-success: #4fbf82;
+  --sbui-warning: #dba24a;
+  --sbui-danger: #e5716a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sbui-elev-1: 0 8px 26px rgba(0, 0, 0, 0.5);
+    --sbui-elev-2: 0 16px 44px -20px rgba(0, 0, 0, 0.6);
+    --sbui-success: #4fbf82;
+    --sbui-warning: #dba24a;
+    --sbui-danger: #e5716a;
+  }
+}
+
+/* ---- Button ---- */
+.sbui-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5em;
+  font-family: var(--font-body); font-size: var(--fs-support); font-weight: 600;
+  line-height: 1; letter-spacing: 0.01em; white-space: nowrap;
+  border: 1px solid transparent; border-radius: var(--sbui-r-md);
+  padding: 0.7em 1.1em; min-height: 40px; cursor: pointer;
+  transition: filter 0.18s ease, border-color 0.18s ease, transform 0.1s ease, background 0.18s ease;
+  text-decoration: none;
+}
+.sbui-btn:active { transform: translateY(1px); }
+.sbui-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sbui-btn[disabled], .sbui-btn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; }
+.sbui-btn--primary { background: var(--sbui-btn-primary-bg); color: var(--sbui-btn-primary-ink); box-shadow: var(--sbui-btn-primary-shadow); }
+.sbui-btn--primary:hover { filter: brightness(1.05); }
+.sbui-btn--secondary { background: transparent; color: var(--text-base); border-color: var(--border-strong); }
+.sbui-btn--secondary:hover { border-color: var(--accent); color: var(--accent); }
+.sbui-btn--ghost { background: transparent; color: var(--text-soft); border-color: transparent; }
+.sbui-btn--ghost:hover { color: var(--text-base); background: var(--accent-soft); }
+.sbui-btn--danger { background: var(--sbui-danger); color: #fff; }
+.sbui-btn--danger:hover { filter: brightness(1.06); }
+.sbui-btn--success { background: var(--sbui-success); color: #fff; }
+.sbui-btn--success:hover { filter: brightness(1.06); }
+.sbui-btn--sm { font-size: var(--fs-caption); padding: 0.55em 0.85em; min-height: 34px; border-radius: var(--sbui-r-sm); }
+.sbui-btn--lg { font-size: var(--fs-body); padding: 0.85em 1.4em; min-height: 48px; }
+.sbui-btn--block { display: flex; width: 100%; }
+
+/* ---- Card ---- */
+.sbui-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: var(--sbui-r-lg); }
+.sbui-card--pad { padding: 18px; }
+.sbui-card--elevated { box-shadow: var(--sbui-elev-1); }
+.sbui-card--media { overflow: hidden; box-shadow: var(--sbui-elev-1); }
+
+/* ---- Badge / Chip ---- */
+.sbui-badge {
+  display: inline-flex; align-items: center; gap: 0.4em;
+  font-size: var(--fs-micro); font-weight: 700; line-height: 1;
+  border-radius: var(--sbui-r-sm); padding: 0.42em 0.66em; letter-spacing: 0.02em;
+}
+.sbui-badge--neutral { background: var(--accent-soft); color: var(--text-soft); }
+.sbui-badge--accent { background: var(--accent); color: #fff; }
+.sbui-badge--success { color: var(--sbui-success); background: color-mix(in srgb, var(--sbui-success) 15%, transparent); }
+.sbui-badge--warning { color: var(--sbui-warning); background: color-mix(in srgb, var(--sbui-warning) 15%, transparent); }
+.sbui-badge--danger { color: var(--sbui-danger); background: color-mix(in srgb, var(--sbui-danger) 15%, transparent); }
+.sbui-badge--pill { border-radius: var(--sbui-r-pill); }
+.sbui-badge--dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ---- Skeleton ---- */
+.sbui-skeleton {
+  display: block; border-radius: var(--sbui-r-sm);
+  background: linear-gradient(90deg, var(--border-soft) 25%, color-mix(in srgb, var(--border-soft) 40%, transparent) 50%, var(--border-soft) 75%);
+  background-size: 200% 100%; animation: sbuiShimmer 1.4s ease-in-out infinite;
+}
+@keyframes sbuiShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sbui-skeleton { animation: none; } }
+
+/* ---- Icon (lucide wrapper) ---- */
+.sbui-icon { display: inline-block; vertical-align: middle; flex: 0 0 auto; color: currentColor; }
+
+/* ═══ v625 Reels overlay Treatment A (Clean) — reel is an always-dark surface ═══
+   New classes only (no existing .ig-* rule touched, no new styled-jsx block).
+   The reel restyle replaces the pill-wall trust row with one line and makes the
+   Bid CTA a quiet secondary beside the primary Book button. */
+.ig-trust-line {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.ig-trust-item {
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+}
+/* Quiet secondary CTA (Bid) beside the primary Book button. Book (.ig-cta-3d)
+   keeps flex:1 and stays prominent; this one is compact glass. */
+.ig-cta-mini {
+  display: inline-flex; align-items: center; gap: 5px;
+  flex: 0 0 auto;
+  padding: 10px 14px; border-radius: 12px;
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.01em;
+  color: #ffffff; cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: background 0.18s ease, transform 0.1s ease;
+}
+.ig-cta-mini:hover { background: rgba(255, 255, 255, 0.18); }
+.ig-cta-mini:active { transform: translateY(1px); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v633 — HERO DEPTH TRANSITION, rebuilt (Hotstar/Netflix/Disney+ grammar) —
+   mobile Stage ONLY.
+
+   WHY THE v631/v632 VERSIONS READ UGLY (owner review, root-caused):
+   the cover panel met the RAW hero photo at a hard tonal cliff. Every
+   streaming app that does this hides that seam with TONAL CONTINUITY —
+   the hero artwork's foot fades into the PAGE background colour, so the
+   panel emerges out of its own colour, never out of a photograph.
+
+   The grammar, in full:
+   ① FOOT FADE — .sbh-hero::before, the bottom 26% of the ARTWORK fades to
+     var(--bg-page). It sits at z:1 — above the photo + scrim, BELOW
+     .sbh-hero-inner (z:2) — so the hero's white text/CTAs stay crisp in
+     BOTH themes (a light-theme cream fade never touches the type).
+   ② PIN + RECEDE — hero sticky at z:0; scroll maps --sbhp 0→1 to
+     scale 1→0.94 (origin upper third), sink 10px, dim 0→0.45 (z:4).
+     Subtle beats theatrical: 6% shrink reads premium, 8% read cartoon.
+   ③ COVER — .sbh-rails is ONE continuous panel (ticker lives inside it):
+     24px top radius, 14px top padding (content never hugs the radius),
+     -24px tuck so at rest the panel edge sits INSIDE the faded zone —
+     the seam is soft at scroll 0 and stays soft at every frame after.
+     Background = the page's own layered gradient. Un-zoom 0.985→1.
+   Driven by ONE custom property --sbhp written by an rAF-throttled
+   passive scroll listener in DesktopHome.tsx — transform/opacity only,
+   GPU-composited, no layout thrash. Light + dark both verified: every
+   colour here is a theme token, never a literal page colour.
+   UNLAYERED on purpose (the .sbh-* layer contract): desktop.css lives in
+   layer(utilities) and must not fight this; ≥1024px is untouched anyway.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  .sbh-root { --sbhp: 0; }
+
+  /* ② v634 — the hero EXITS INTO THE TOP (the actual JioHotstar motion,
+     from the owner's two reference screenshots): it is NOT pinned — it
+     scrolls up WITH the page but LAGS it (+22vh of counter-translate over
+     the transition ⇒ it leaves at ~56% of scroll speed), shrinking toward
+     the TOP edge (origin 50% 0%). The cover overtakes it from below, so
+     the hero reads as being swallowed into the top of the phone. v633's
+     sticky pin was the wrong idiom — a pinned hero "waits", Hotstar's
+     hero "leaves". */
+  .sbh-root > .sbh-hero {
+    position: relative;
+    z-index: 0;
+    transform-origin: 50% 0%;
+    /* translate3d (not translateY) — forces the hero onto its own GPU
+       layer from frame one, so the per-frame var write only moves a
+       composited texture. */
+    transform: translate3d(0, calc(var(--sbhp) * 22vh), 0) scale(calc(1 - var(--sbhp) * 0.06));
+    will-change: transform;
+  }
+  /* ① FOOT FADE — artwork melts into the page colour. z:1 keeps it above
+     the photo/scrim and below the hero's own text (z:2). */
+  .sbh-root > .sbh-hero::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 26%;
+    z-index: 1;
+    background: linear-gradient(180deg,
+      transparent 0%,
+      color-mix(in srgb, var(--bg-page) 55%, transparent) 55%,
+      var(--bg-page) 96%);
+    pointer-events: none;
+  }
+  /* recede dim — above everything in the hero, never blocks taps. */
+  .sbh-root > .sbh-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    background: #0b0f14;
+    opacity: calc(var(--sbhp) * 0.45);
+    will-change: opacity;
+    pointer-events: none;
+  }
+
+  /* ③ the COVER — one continuous panel (the ticker is its first child). */
+  .sbh-root > .sbh-rails {
+    position: relative;
+    z-index: 1;
+    background:
+      radial-gradient(1100px 560px at 18% -6%, var(--accent-soft), transparent 60%),
+      var(--bg-page);
+    border-radius: 24px 24px 0 0;
+    margin-top: -24px;              /* panel edge rests INSIDE the faded zone */
+    padding-top: 14px;              /* content breathes off the radius */
+    box-shadow: 0 -10px 28px rgba(11, 15, 20, 0.20);
+    /* v634.1 — the cover's per-frame un-zoom is GONE (owner: "swipe atak
+       raha hai"). Scaling the panel meant re-rasterising the ENTIRE page
+       subtree on every scroll frame — the one guaranteed jank source on
+       mid-range phones. The depth read survives fully on the hero's own
+       lag/shrink/dim (all on one small composited layer); Hotstar's feed
+       doesn't continuously scale either. NEVER put a scroll-linked
+       transform back on this panel. */
+  }
+  [data-theme="dark"] .sbh-root > .sbh-rails {
+    box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Reduced motion: no lag-exit, no transforms, no dim — plain scrolling
+     page. The foot fade STAYS (it is composition, not motion). */
+  @media (prefers-reduced-motion: reduce) {
+    .sbh-root > .sbh-hero { transform: none; }
+    .sbh-root > .sbh-hero::after { display: none; }
+  }
+}
+
+/* v633 — /bid dock underlay. ROOT CAUSE of the "second bar behind the nav"
+   (owner screenshot): the .bgz-shell is carved 54px above the viewport
+   bottom (v614, so the dock stays tappable under the z-1000 shell), and
+   that carve strip shows the UNDERLYING /bid page (cream in light theme)
+   through the fade-glass dock's transparent top. The old opaque dock hid
+   this by accident; the glass dock revealed it. Fix at the cause: a fixed
+   dark underlay that owns the strip — same #0d0a05 family as the shell's
+   CTA-rail gradient directly above it and the existing status-bar fill
+   (app/layout.tsx #sb-safe-top-fill), so rail → strip → glass dock read
+   as ONE continuous dark foot. z:59 = above page content, BELOW the z:60
+   dock (and the z-1000 shell), so it can never cover a control. Scoped to
+   the existing body.sb-bid-immersive class — /bid only, auto-removed on
+   route leave, desktop unaffected (shell reaches bottom:0 there). */
+@media (max-width: 1023px) {
+  body.sb-bid-immersive::after {
+    content: "";
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: calc(54px + env(safe-area-inset-bottom, 0px));
+    z-index: 59;
+    background: #0d0a05;
+    pointer-events: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v636 — HOTEL DETAIL Treatment A (owner-picked): trust strip + room reveal.
+   .hx-* scope (this page only).
+   ═══════════════════════════════════════════════════════════════════════ */
+/* — Trust strip: Rating · SB Score · Rooms · vs OTA in ONE row (replaces
+     the live pill + stats ribbon + medal bands). Cells are content-aware. */
+.hx-trust-strip { margin-top: 10px; }
+.hx-ts-cells {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.hx-ts-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 9px 6px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  box-shadow:
+    0 10px 18px -12px rgba(31, 26, 15, 0.28),
+    0 2px 6px -3px rgba(31, 26, 15, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+[data-theme="dark"] .hx-ts-cell {
+  box-shadow:
+    0 10px 18px -12px rgba(0, 0, 0, 0.6),
+    0 2px 6px -3px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.hx-ts-cell > b {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-base);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.hx-ts-cell > span {
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #8a7f6f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+/* v637 — the Score cell was removed (badge overflowed it; the medal block
+   is back in its original v128.1 spot below the strip). */
+/* quiet live-activity caption under the cells (the old v133 pill's data) */
+.hx-ts-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 7px 2px 0;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--text-soft, #4a3820);
+}
+.hx-ts-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cozy-sage, #7f9269);
+  animation: hx-pulse-soft 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.hx-ts-live-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+/* — Per-card scroll reveal with a FAILSAFE (see the v238 history note in
+     app/hotels/[id]/page.tsx RevealCard). If the observer never fires, the
+     keyframe forces the card visible 1.4s after mount — the room list can
+     never be lost to an animation bug. */
+.hx-io {
+  opacity: 0;
+  transform: translateY(20px) scale(0.985);
+  transition:
+    transform 0.5s cubic-bezier(.2,.7,.2,1),
+    opacity 0.5s cubic-bezier(.2,.7,.2,1);
+  animation: hxIoFailsafe 0.5s ease 1.4s forwards;
+}
+.hx-io.is-in {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+@keyframes hxIoFailsafe {
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-io { opacity: 1; transform: none; transition: none; animation: none; }
+}

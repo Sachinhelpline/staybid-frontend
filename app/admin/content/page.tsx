@@ -18,6 +18,7 @@
 // mutation goes through Phase 2's POST /api/admin/content/[id] which logs
 // to admin_audit_log via logAdminAction.
 import { useEffect, useState, useCallback } from "react";
+import { Images, RotateCw, Ticket, MapPin, Building2, TriangleAlert, Check, X, Flag, Trash2 } from "lucide-react";
 
 type AdminPendingPost = {
   id: string;
@@ -53,11 +54,11 @@ const COLORS = {
   borderStrong: "rgba(255,255,255,0.12)",
   text: "#E8EAF0",
   textSoft: "#8A8FA8",
-  textMuted: "#5A6175",
+  textMuted: "#808698",
   gold: "#9fb1c2",
   goldSoft: "#c6d0da",
   green: "#2ECC71",
-  red: "#FF4757",
+  red: "#FF6B7A",
   amber: "#F0A030",
   blue: "#3D9CF5",
 };
@@ -203,7 +204,7 @@ export default function AdminContentPage() {
               color: COLORS.goldSoft,
             }}
           >
-            🖼️ Content Reviews
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}><Images size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Content Reviews</span>
           </h1>
           <p
             style={{
@@ -227,9 +228,12 @@ export default function AdminContentPage() {
             fontSize: "0.82rem",
             fontWeight: 600,
             cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          ↻ Refresh
+          <RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh
         </button>
       </div>
 
@@ -288,9 +292,9 @@ export default function AdminContentPage() {
               p.author?.username || p.author?.display_name || "user";
             const verificationLabel =
               p.verification_method === "booking"
-                ? "🎫 Verified Guest (booking)"
+                ? "Verified Guest (booking)"
                 : p.verification_method === "location_otp"
-                  ? "📍 Verified Local (on-site OTP)"
+                  ? "Verified Local (on-site OTP)"
                   : p.verification_method
                     ? p.verification_method
                     : null;
@@ -405,7 +409,7 @@ export default function AdminContentPage() {
                       marginBottom: 4,
                     }}
                   >
-                    🏨{" "}
+                    <Building2 size={13} strokeWidth={2} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
                     <span style={{ color: COLORS.text, fontWeight: 600 }}>
                       {p.hotel?.name || "Unknown hotel"}
                     </span>
@@ -419,8 +423,16 @@ export default function AdminContentPage() {
                         fontSize: "0.78rem",
                         color: COLORS.green,
                         marginBottom: 6,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
                       }}
                     >
+                      {p.verification_method === "booking" ? (
+                        <Ticket size={13} strokeWidth={2} aria-hidden />
+                      ) : p.verification_method === "location_otp" ? (
+                        <MapPin size={13} strokeWidth={2} aria-hidden />
+                      ) : null}
                       {verificationLabel}
                     </div>
                   )}
@@ -433,7 +445,7 @@ export default function AdminContentPage() {
                       marginBottom: 8,
                     }}
                   >
-                    ⚠ Escalated {timeAgo(p.escalated_to_admin_at)}
+                    <TriangleAlert size={12} strokeWidth={2.2} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />Escalated {timeAgo(p.escalated_to_admin_at)}
                     {p.escalated_by && (
                       <span style={{ color: COLORS.textMuted }}>
                         {" "}by {p.escalated_by === "cron" ? "auto-cron" : "hotel partner"}
@@ -471,9 +483,10 @@ export default function AdminContentPage() {
                         borderRadius: 8,
                         cursor: busyId === p.id ? "not-allowed" : "pointer",
                         opacity: busyId === p.id ? 0.5 : 1,
+                        display: "inline-flex", alignItems: "center", gap: 5,
                       }}
                     >
-                      ✓ Approve
+                      <Check size={14} strokeWidth={2.4} aria-hidden />Approve
                     </button>
                     <button
                       disabled={busyId === p.id}
@@ -490,9 +503,10 @@ export default function AdminContentPage() {
                         borderRadius: 8,
                         cursor: busyId === p.id ? "not-allowed" : "pointer",
                         opacity: busyId === p.id ? 0.5 : 1,
+                        display: "inline-flex", alignItems: "center", gap: 5,
                       }}
                     >
-                      ✕ Reject
+                      <X size={14} strokeWidth={2.4} aria-hidden />Reject
                     </button>
                     <button
                       disabled={busyId === p.id}
@@ -509,9 +523,10 @@ export default function AdminContentPage() {
                         borderRadius: 8,
                         cursor: busyId === p.id ? "not-allowed" : "pointer",
                         opacity: busyId === p.id ? 0.5 : 1,
+                        display: "inline-flex", alignItems: "center", gap: 5,
                       }}
                     >
-                      🚩 Flag
+                      <Flag size={14} strokeWidth={2.2} aria-hidden />Flag
                     </button>
                     <button
                       disabled={busyId === p.id}
@@ -528,9 +543,10 @@ export default function AdminContentPage() {
                         borderRadius: 8,
                         cursor: busyId === p.id ? "not-allowed" : "pointer",
                         opacity: busyId === p.id ? 0.5 : 1,
+                        display: "inline-flex", alignItems: "center", gap: 5,
                       }}
                     >
-                      🗑 Delete
+                      <Trash2 size={14} strokeWidth={2.2} aria-hidden />Delete
                     </button>
                   </div>
                 </div>

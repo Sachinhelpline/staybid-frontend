@@ -17,6 +17,7 @@
 // Posts  POST /api/partner/content/[id]     ({ action: "report", reason })
 // Auth: x-partner-token (sb_partner_token) + x-partner-hotel-id.
 import { useEffect, useState, useCallback } from "react";
+import { RotateCw, Camera, Ticket, MapPin, Flag } from "lucide-react";
 import TierBadge from "@/components/tier/TierBadge";
 import { modalPortal } from "@/lib/partner/modal-portal";
 import type { ContentTier } from "@/lib/tier/types";
@@ -146,9 +147,9 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
         </div>
         <button
           onClick={fetchContent}
-          className="text-xs text-gold-600 font-semibold border border-gold-200 hover:bg-gold-50 px-3 py-2 rounded-lg"
+          className="text-xs text-gold-600 font-semibold border border-gold-200 hover:bg-gold-50 px-3 py-2 rounded-lg inline-flex items-center gap-1.5"
         >
-          ↻ Refresh
+          <RotateCw size={13} strokeWidth={2.3} aria-hidden />Refresh
         </button>
       </div>
 
@@ -167,7 +168,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
       {!loading && !err && posts.length === 0 && (
         <div className="text-center py-16 bg-white rounded-2xl border border-luxury-100">
           <div className="w-16 h-16 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl">📸</span>
+            <Camera size={24} strokeWidth={1.9} aria-hidden className="text-gold-600" />
           </div>
           <p className="text-luxury-800 font-semibold mb-1">
             No guest content yet
@@ -185,11 +186,11 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
             const handle =
               p.author?.username || p.author?.display_name || "user";
             const tier = (p.author?.user_type as ContentTier) || "PUBLIC";
-            const verificationLabel =
+            const verification =
               p.verification_method === "booking"
-                ? "🎫 Verified Guest (booking)"
+                ? { Ic: Ticket, text: "Verified Guest (booking)" }
                 : p.verification_method === "location_otp"
-                  ? "📍 Verified Local (on-site OTP)"
+                  ? { Ic: MapPin, text: "Verified Local (on-site OTP)" }
                   : null;
             return (
               <div
@@ -260,14 +261,14 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
                       </span>
                     </div>
 
-                    {verificationLabel && (
-                      <div className="text-xs text-emerald-700 mb-1.5 font-medium">
-                        {verificationLabel}
+                    {verification && (
+                      <div className="text-xs text-emerald-700 mb-1.5 font-medium inline-flex items-center gap-1">
+                        <verification.Ic size={12} strokeWidth={2.3} aria-hidden />{verification.text}
                       </div>
                     )}
 
-                    <div className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5 mb-2">
-                      ● Live on feed
+                    <div className="inline-flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5 mb-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-hidden />Live on feed
                     </div>
 
                     {p.caption && (
@@ -280,9 +281,9 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
                       <button
                         disabled={busyId === p.id}
                         onClick={() => setReportId(p.id)}
-                        className="text-xs font-semibold text-red-600 border border-red-300 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg disabled:opacity-50"
+                        className="text-xs font-semibold text-red-600 border border-red-300 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg disabled:opacity-50 inline-flex items-center gap-1.5"
                       >
-                        🚩 Report to admin
+                        <Flag size={12} strokeWidth={2.3} aria-hidden />Report to admin
                       </button>
                     </div>
                   </div>
@@ -317,7 +318,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
               onChange={(e) => setReasonText(e.target.value)}
               placeholder="Reason (required)..."
               rows={3}
-              className="w-full p-3 rounded-xl border border-luxury-200 text-sm resize-none focus:outline-hidden focus:border-gold-400"
+              className="w-full p-3 rounded-xl border border-luxury-200 bg-white text-luxury-900 text-sm resize-none focus:outline-hidden focus:border-gold-400"
             />
             <div className="flex gap-2 mt-4">
               <button

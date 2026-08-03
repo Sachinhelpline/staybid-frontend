@@ -5,6 +5,7 @@
 // that hits /api/cron/expire-holds with the admin token.
 
 import { useEffect, useState } from "react";
+import { Lock, Zap, RotateCw, Check, Clock, X } from "lucide-react";
 
 type Hold = {
   bid_id: string;
@@ -108,19 +109,19 @@ export default function AdminHolds() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, color: "#E8EAF0", margin: 0 }}>
-            🔒 Active Holds
+          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, color: "#E8EAF0", margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <Lock size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Active Holds
           </h1>
           <p style={{ color: "#8A8FA8", fontSize: 13, margin: "6px 0 0" }}>
             All bid_holds rows · live state · admin override + manual cron trigger
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={runCron} disabled={busy} style={btnGhost}>
-            {busy ? "Running…" : "⚡ Run cron now"}
+          <button onClick={runCron} disabled={busy} style={{ ...btnGhost, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {busy ? "Running…" : <><Zap size={14} strokeWidth={2.2} aria-hidden />Run cron now</>}
           </button>
-          <button onClick={load} disabled={loading} style={btnPrimary}>
-            ↻ Refresh
+          <button onClick={load} disabled={loading} style={{ ...btnPrimary, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh
           </button>
         </div>
       </div>
@@ -176,8 +177,8 @@ export default function AdminHolds() {
       {pendingAutoAccepts.length > 0 && (
         <div style={{ background: "#151820", border: "1px solid rgba(140, 160, 182,0.18)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <p style={{ color: "#E8EAF0", fontSize: 14, fontWeight: 700, margin: 0 }}>
-              ⚡ Pending auto-accepts ({pendingAutoAccepts.length})
+            <p style={{ color: "#E8EAF0", fontSize: 14, fontWeight: 700, margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Zap size={15} strokeWidth={2.2} aria-hidden />Pending auto-accepts ({pendingAutoAccepts.length})
             </p>
             <span style={{ color: "#8A8FA8", fontSize: 11 }}>Above-floor bids · paid · waiting tier window before flipping ACCEPTED</span>
           </div>
@@ -278,9 +279,9 @@ export default function AdminHolds() {
                     <Td>
                       {h.status === "active" && (
                         <div style={{ display: "flex", gap: 4 }}>
-                          <button onClick={() => forceAction(h, "force_complete")} disabled={busy} style={btnXs("#10b981")}>✓</button>
-                          <button onClick={() => forceAction(h, "force_expire")}   disabled={busy} style={btnXs("#f59e0b")}>⏰</button>
-                          <button onClick={() => forceAction(h, "force_cancel")}   disabled={busy} style={btnXs("#ef4444")}>✕</button>
+                          <button onClick={() => forceAction(h, "force_complete")} disabled={busy} title="Force complete" aria-label="Force complete" style={{ ...btnXs("#10b981"), display: "inline-flex", alignItems: "center" }}><Check size={14} strokeWidth={2.6} aria-hidden /></button>
+                          <button onClick={() => forceAction(h, "force_expire")}   disabled={busy} title="Force expire" aria-label="Force expire" style={{ ...btnXs("#f59e0b"), display: "inline-flex", alignItems: "center" }}><Clock size={14} strokeWidth={2.4} aria-hidden /></button>
+                          <button onClick={() => forceAction(h, "force_cancel")}   disabled={busy} title="Force cancel" aria-label="Force cancel" style={{ ...btnXs("#ef4444"), display: "inline-flex", alignItems: "center" }}><X size={14} strokeWidth={2.6} aria-hidden /></button>
                         </div>
                       )}
                     </Td>

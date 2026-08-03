@@ -9,8 +9,11 @@ import SbState from "@/components/SbState";
 // v129 — every flash-deal price is a ₹100 multiple. Same rule as the
 // Negotiate slider, /bid presets, and partner counter slider.
 import { snap100 } from "@/lib/price-snap";
+import { useReveal } from "@/lib/useReveal";
 // v139 — Phase-3 flash deals spotlight tour (3 steps: ticker → card → CTA).
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v645 — flash drawer chrome → lucide (rules list, view-hotel, grab CTA).
+import { Clock, BedDouble, Ban, CreditCard, Undo2, Building2, Zap } from "lucide-react";
 // v143 — flash-drawer modal tour triggered on card tap.
 import { useTutorial } from "@/lib/tutorial/tutorial-store";
 // v160 — shared globe picker for the unified control bar.
@@ -736,11 +739,13 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
   const discPct = showOriginal > showAiPrice
     ? Math.round((1 - showAiPrice / showOriginal) * 100)
     : 0;
-  // Deal-level discount for the image %OFF stamp (headline/base room vs market).
-  const headlineMarket = Number(deal.marketRate) || 0;
-  const headlineDisc = headlineMarket > deal.aiPrice
-    ? Math.round((1 - deal.aiPrice / headlineMarket) * 100)
-    : Math.max(0, Math.round(deal.discount || 0));
+  // v625 — the image %OFF stamp is `discPct`: derived from the SAME two prices the
+  // card prints (showOriginal → showAiPrice), so the badge can never contradict
+  // them. We no longer fall back to `deal.discount` (the stale /api/flash/near
+  // field — it can read 48% against a real 20% move; CLAUDE.md forbids rendering
+  // it). discPct === 0 ⇒ no stamp.
+  // Human "Ends in 11h 26m" replaces the internal HH:MM:SS ring on the card face.
+  const endsLabel = hrs > 0 ? `${hrs}h ${mins}m` : mins > 0 ? `${mins}m` : `${secs}s`;
 
   // v522 — real hotel info to fill the card (amenity chips + rating).
   const amen = amenityChips(deal.hotel?.amenities || deal.room?.amenities);
@@ -755,17 +760,30 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
   // with the deal context, NOT the booking flow. The deal room shows the
   // locked flash price; other rooms show upgrade prices. No directBook.
   const openHotelTour = () => {
-    const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${headlineDisc}`;
+    const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${discPct}`;
     router.push(url);
   };
 
+  // v634 — scroll-linked entrance: the card rises out of the background as
+  // it enters the viewport (house useReveal/IO pattern — same engine as the
+  // hotel page sections). Replaces the mount-time fdFadeUp, which finished
+  // before below-fold cards were ever seen. Stagger via transitionDelay.
+  // v634.1 — tuned for SWIPE SPEED: rootMargin pre-triggers 15% below the
+  // fold (the card is already mid-rise when a fast swipe lands on it — no
+  // empty holes), and the CSS settle is 0.5s so it never feels floaty.
+  const { ref: revealRef, visible: revealed } = useReveal<HTMLDivElement>({ threshold: 0, rootMargin: "0px 0px 15% 0px" });
+
   return (
     <div
-      className="fd-card"
-      style={{ animationDelay: `${idx * 0.06}s` }}
+      ref={revealRef}
+      className={`fd-card fd-card-a${revealed ? " is-in" : ""}`}
+      style={{ transitionDelay: revealed ? `${(idx % 3) * 0.04}s` : "0s" }}
       onClick={openHotelTour}
     >
-      {/* Image with cinematic ken-burns + gradient overlay */}
+      {/* Image — one gold %OFF stamp (top-left), heart (top-right), and a
+          human "Ends in 11h 26m" pill (bottom-left). v625 Treatment A (Clean):
+          only what decides a booking reads first; rank / amenities / other room
+          types now live on the hotel detail page. */}
       <div className="fd-img-wrap">
         {img ? (
           <img src={img} alt={deal.hotel?.name} className="fd-img" />
@@ -775,189 +793,77 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           </div>
         )}
         <div className="fd-img-shade" />
-        <div className="fd-img-shimmer" />
 
-        {/* LIVE badge */}
-        <div className="fd-live-pill">
-          <span className="fd-dot-live" />
-          <span>LIVE</span>
-        </div>
+        {/* Deal-gold %OFF stamp — DERIVED from the two printed prices (discPct);
+            hidden when there is no real discount. */}
+        {discPct > 0 && (
+          <div className="fd-disc-stamp">
+            <span className="fd-disc-num">{discPct}%</span>
+            <span className="fd-disc-off">OFF</span>
+          </div>
+        )}
 
-        {/* Discount stamp (animated) */}
-        <div className={`fd-disc-stamp ${headlineDisc >= 25 ? "fire" : ""}`}>
-          <span className="fd-disc-num">{headlineDisc}%</span>
-          <span className="fd-disc-off">OFF</span>
-        </div>
-
-        {/* v611 — wishlist heart (top-right) */}
         {deal.hotelId ? (
           <FlashSaveHeart hotelId={deal.hotelId} target={{ name: deal.hotel?.name, city: deal.city, star_rating: deal.hotel?.starRating, images: img ? [img] : [] }} />
         ) : null}
 
-        {/* Bottom-left location */}
-        <div className="fd-img-bottom">
-          <div className="fd-loc">
-            <span className="fd-loc-dot" />
-            {area ? `${area}, ${deal.city}` : deal.city || "—"}
-          </div>
-        </div>
-
-        {/* Countdown ring (bottom-right) — v159.7 real-timer digit rolls */}
-        <div className="fd-ring-wrap">
-          <CountdownRing pctRemaining={pctRemaining} urgent={urgent} />
-          <div className="fd-ring-time">
-            <span className={`fd-ring-digits ${urgent ? "urgent" : ""}`} aria-label={`Ends in ${pad2(hrs)}:${pad2(mins)}:${pad2(secs)}`}>
-              <TimerDigits hrs={hrs} mins={mins} secs={secs} />
-            </span>
-            <span className="fd-ring-lbl">ends</span>
-          </div>
-        </div>
+        <div className="fd-ends">Ends in {endsLabel}</div>
       </div>
 
-      {/* Body — v159.4 Airbnb-compact: tight name+score row, single meta
-          line, slim upgrade chips, horizontal price+CTA row. No dead
-          vertical gaps from a tall medal column. */}
+      {/* Body — v634.1 TWO-COLUMN (owner's circled dead-space fix): the
+          right column (rank chip over Grab now) now sits BESIDE the text
+          block instead of below it, so the empty band right of the
+          name/price and the hole between price and rating are gone —
+          structurally, on every breakpoint. Left = name · location ·
+          price · rating; right = rank / Grab now; urgency line spans. */}
       <div className="fd-body">
-        {/* Row 1 — Hotel name (truncates) + compact score pill (inline) */}
-        <div className="fd-name-row">
-          <h3 className="fd-hotel-name" title={deal.hotel?.name || "Hotel"}>{deal.hotel?.name || "Hotel"}</h3>
-          {deal.hotelId ? (
-            <div className="fd-score-inline" onClick={(e) => e.stopPropagation()}>
-              <HotelScoreBadge
-                hotelId={deal.hotelId}
-                hotelName={deal.hotel?.name}
-                variant="compact"
-              />
-            </div>
-          ) : null}
-        </div>
+        <div className="fd-cols">
+          <div className="fd-main">
+            <h3 className="fd-hotel-name" title={deal.hotel?.name || "Hotel"}>{deal.hotel?.name || "Hotel"}</h3>
+            <p className="fd-loc-line">{area ? `${area}, ${deal.city}` : deal.city || "—"}</p>
 
-        {/* v523 — split body: info left, price+CTA panel right, so a wide
-            (mobile 1-col) card fills its right half instead of dead space.
-            Narrow desktop cards collapse this back to a stacked column. */}
-        <div className="fd-body-split">
-        <div className="fd-body-main">
-
-        {/* Row 2 — rating + stars + room type + capacity, all inline */}
-        <div className="fd-meta-line">
-          {ratingVal > 0 ? (
-            <>
-              <span className="fd-rating">★ {ratingVal.toFixed(1)}{reviewCnt > 0 ? <span className="fd-rating-cnt"> ({reviewCnt})</span> : null}</span>
-              <span className="fd-meta-sep">·</span>
-            </>
-          ) : deal.hotel?.starRating ? (
-            <>
-              <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
-              <span className="fd-meta-sep">·</span>
-            </>
-          ) : null}
-          <span className="fd-room-type">{showType}</span>
-          <span className="fd-meta-sep">·</span>
-          <span className="fd-room-cap">sleeps {pickedUp?.capacity || deal.room?.capacity || 2}</span>
-        </div>
-
-        {/* v522 — Guest Favourite (when it qualifies) + real amenity chips.
-            Fills the card with scannable, trust-building info. */}
-        {(amen.length > 0 || deal.hotelId) && (
-          <div className="fd-chip-row">
-            <FlashGuestFav hotelId={deal.hotelId} />
-            {amen.map((a) => (
-              <span key={a.label} className="fd-amen-chip">
-                <span aria-hidden="true">{a.icon}</span> {a.label}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Upgrade chips — slim horizontal row, no big wrapper box */}
-        {deal.upgrades.length > 0 && (
-          <div className="fd-up-row" onClick={(e) => e.stopPropagation()}>
-            <button
-              className={`fd-up-chip ${pickedRoomId === deal.roomId ? "active" : ""}`}
-              onClick={(e) => { e.stopPropagation(); onPickUpgrade(deal.roomId); }}
-            >
-              <span className="fd-up-chip-type">{deal.room?.type || "Base"}</span>
-              <span className="fd-up-chip-delta">{fmtINR(deal.aiPrice)}</span>
-            </button>
-            {deal.upgrades.slice(0, 3).map(u => (
-              <button
-                key={u.roomId}
-                className={`fd-up-chip ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
-                disabled={!u.available}
-                onClick={(e) => { e.stopPropagation(); if (u.available) onPickUpgrade(u.roomId); }}
-              >
-                <span className="fd-up-chip-type">{u.type}</span>
-                <span className="fd-up-chip-delta">
-                  {u.available
-                    ? (u.extraPerNight > 0 ? `+${fmtINR(u.extraPerNight)}` : fmtINR(u.dealPrice))
-                    : "Sold"}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* v522 — scarcity bar: how many rooms remain at this flash price.
-            Positive framing when plenty left, urgent when low. */}
-        <div className={`fd-scarcity ${leftSlots <= 2 && !sold ? "urgent" : ""} ${sold ? "soldout" : ""}`}>
-          <div className="fd-scarcity-track">
-            <div className="fd-scarcity-fill" style={{ width: `${Math.max(6, fillPct)}%` }} />
-          </div>
-          <span className="fd-scarcity-lbl">
-            {sold
-              ? "Sold out"
-              : leftSlots <= 2
-                ? `🔥 Only ${leftSlots} left at this price`
-                : `${leftSlots} rooms left at this price`}
-          </span>
-        </div>
-
-        </div>{/* /fd-body-main */}
-
-        {/* Price + CTA — a right-side panel on wide cards, a bottom row on
-            narrow desktop cards. */}
-        <div className="fd-price-panel">
-          <div className="fd-price-block">
             <div className="fd-price-line">
+              <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
               {showOriginal > showAiPrice && (
                 <span className="fd-price-strike">{fmtINR(showOriginal)}</span>
               )}
-              <span className="fd-price-hero">
-                <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
-                <span className="fd-price-unit">/night</span>
-              </span>
+              <span className="fd-price-unit">/night</span>
             </div>
-            {saveAmt > 0 && (
-              <p className="fd-price-save">
-                Save {fmtINR(saveAmt)}
-                {discPct > 0 && <span className="fd-price-off">{discPct}% OFF</span>}
-              </p>
-            )}
+
+            <span className="fd-metaline">
+              {ratingVal > 0 && (
+                <span className="fd-rating">★ {ratingVal.toFixed(1)}{reviewCnt > 0 ? <span className="fd-rating-cnt"> ({reviewCnt})</span> : null}</span>
+              )}
+            </span>
           </div>
+
+          <div className="fd-foot-right">
+            {deal.hotelId ? (
+              <span className="fd-score-inline" onClick={(e) => e.stopPropagation()}>
+                <HotelScoreBadge hotelId={deal.hotelId} hotelName={deal.hotel?.name} variant="compact" />
+              </span>
+            ) : null}
           <button
             className={`fd-cta ${sold ? "sold" : ""}`}
             disabled={sold}
             onClick={(e) => {
-              // v159.15 — Grab Now opens the deal drawer (room picker +
-              // how-it-works + View-hotel / Grab options) instead of
-              // jumping straight to the booking modal.
+              // v159.15 — Grab opens the deal drawer (room picker +
+              // how-it-works + View-hotel / Grab), not the booking modal.
               e.stopPropagation();
               if (sold) return;
               onOpen();
             }}
           >
-            {sold ? "Sold Out" : (
-              <>
-                <svg className="fd-cta-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M13 2 L4 13 h6 l-1 9 L20 10 h-6 z" />
-                </svg>
-                Grab Now
-              </>
-            )}
+            {sold ? "Sold Out" : "Grab now"}
           </button>
+          </div>
         </div>
 
-        </div>{/* /fd-body-split */}
+        {!sold && (
+          <p className={`fd-onlyleft ${leftSlots <= 2 ? "urgent" : ""}`}>
+            {leftSlots <= 2 ? `Only ${leftSlots} left at this price` : `${leftSlots} rooms left at this price`}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1000,7 +906,7 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
 
         {/* Hero image */}
         <div className="fd-drawer-img">
-          {img ? <img src={img} alt={deal.hotel?.name} /> : <div className="fd-drawer-img-fallback">🏨</div>}
+          {img ? <img src={img} alt={deal.hotel?.name} /> : <div className="fd-drawer-img-fallback"><Building2 size={34} strokeWidth={2} aria-hidden /></div>}
           <div className="fd-drawer-img-shade" />
           <div className="fd-drawer-img-head">
             <div className="fd-drawer-eyebrow">
@@ -1076,11 +982,11 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
           <div className="fd-drawer-rules">
             <div className="fd-drawer-section-title">How this deal works</div>
             <ul>
-              <li><span>🕒</span><span>Expires at midnight tonight · auto-refreshes next day.</span></li>
-              <li><span>🛏️</span><span>One headline price per hotel — pick from available rooms above.</span></li>
-              <li><span>🚫</span><span>Sold rooms are hidden in real time. No double-booking.</span></li>
-              <li><span>💳</span><span>Instant confirmation · pay only the headline / upgrade price.</span></li>
-              <li><span>↩️</span><span>Free cancellation up to 4 hours before check-in.</span></li>
+              <li><span><Clock size={15} strokeWidth={2.2} aria-hidden /></span><span>Expires at midnight tonight · auto-refreshes next day.</span></li>
+              <li><span><BedDouble size={15} strokeWidth={2.2} aria-hidden /></span><span>One headline price per hotel — pick from available rooms above.</span></li>
+              <li><span><Ban size={15} strokeWidth={2.2} aria-hidden /></span><span>Sold rooms are hidden in real time. No double-booking.</span></li>
+              <li><span><CreditCard size={15} strokeWidth={2.2} aria-hidden /></span><span>Instant confirmation · pay only the headline / upgrade price.</span></li>
+              <li><span><Undo2 size={15} strokeWidth={2.2} aria-hidden /></span><span>Free cancellation up to 4 hours before check-in.</span></li>
             </ul>
           </div>
         </div>
@@ -1095,7 +1001,7 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
             className="fd-drawer-viewhotel"
             onClick={() => onViewHotel(pickedRoomId)}
           >
-            <span>🏨 View hotel &amp; full tour</span>
+            <span><Building2 size={14} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> View hotel &amp; full tour</span>
             <span className="fd-drawer-viewhotel-arrow" aria-hidden="true">→</span>
           </button>
           <div className="fd-drawer-cta-row">
@@ -1104,7 +1010,7 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, o
               <div className="fd-drawer-cta-price">{fmtINR(showAiPrice)}<span>/night</span></div>
             </div>
             <button className="fd-drawer-cta" onClick={() => onBook(pickedRoomId)}>
-              ⚡ Grab this stay
+              <Zap size={15} strokeWidth={2.6} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> Grab this stay
             </button>
           </div>
         </div>
@@ -1395,35 +1301,57 @@ function FdStyles() {
          top of the theme-aware token shadow (works in both light + dark). */
       /* v521 — cozy 3D lift: warm layered resting shadow + champagne hairline
          + a soft top-inset highlight, and a deeper raise on hover. */
+      /* v634 — BORDER-LESS 3D card (owner: "bottom ki line hatao, shadow
+         aisi ho jaise card background se nikal ke 3D utha hua ho"). The
+         hairline border is gone; depth now comes from a LAYERED ambient
+         shadow — a long soft cast below, a mid bloom, a tight contact
+         edge, and a top inner highlight (the lit edge that sells "raised").
+         Entrance is scroll-linked (.is-in via useReveal in DealCard) —
+         each card rises + settles as it scrolls into view. */
       .fd-card {
         position: relative;
         background: var(--bg-card);
-        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #5f7c98) 22%, var(--border-soft));
+        border: none;
         border-radius: 24px;
         overflow: hidden;
         cursor: pointer;
         color: var(--text-base);
-        transition: transform 0.4s cubic-bezier(.4,.0,.2,1), border-color 0.3s, box-shadow 0.3s;
-        animation: fdFadeUp 0.55s cubic-bezier(.2,.7,.2,1) both;
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+        transition:
+          transform 0.5s cubic-bezier(.2,.7,.2,1),
+          opacity 0.5s cubic-bezier(.2,.7,.2,1),
+          box-shadow 0.3s ease;
         box-shadow:
-          0 14px 30px -18px rgba(74, 56, 32, 0.5),
-          0 3px 10px -6px rgba(74, 56, 32, 0.3),
-          inset 0 1px 0 rgba(255,255,255,0.06);
+          0 26px 44px -20px rgba(31, 26, 15, 0.34),
+          0 10px 20px -10px rgba(31, 26, 15, 0.20),
+          0 2px 6px -2px rgba(31, 26, 15, 0.14),
+          inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      }
+      .fd-card.is-in { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .fd-card { opacity: 1; transform: none; transition: box-shadow 0.3s ease; }
       }
       .fd-card:hover {
         transform: translateY(-6px);
-        border-color: color-mix(in srgb, var(--accent) 62%, var(--border-soft));
         box-shadow:
-          0 26px 50px -20px rgba(74, 56, 32, 0.6),
-          0 8px 18px -8px rgba(120, 90, 40, 0.32),
+          0 34px 56px -22px rgba(31, 26, 15, 0.42),
+          0 12px 24px -10px rgba(31, 26, 15, 0.24),
           0 0 0 1px var(--accent-soft),
-          inset 0 1px 0 rgba(255,255,255,0.08);
+          inset 0 1px 0 rgba(255, 255, 255, 0.6);
       }
       [data-theme="dark"] .fd-card {
-        box-shadow: 0 16px 34px -18px rgba(0,0,0,0.7), 0 3px 10px -6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        box-shadow:
+          0 26px 44px -20px rgba(0, 0, 0, 0.72),
+          0 10px 20px -10px rgba(0, 0, 0, 0.5),
+          0 2px 6px -2px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.07);
       }
       [data-theme="dark"] .fd-card:hover {
-        box-shadow: 0 28px 54px -20px rgba(0,0,0,0.8), 0 0 0 1px var(--accent-soft), inset 0 1px 0 rgba(255,255,255,0.07);
+        box-shadow:
+          0 34px 58px -22px rgba(0, 0, 0, 0.82),
+          0 0 0 1px var(--accent-soft),
+          inset 0 1px 0 rgba(255, 255, 255, 0.09);
       }
       @keyframes fdFadeUp {
         from { opacity: 0; transform: translateY(22px); }
@@ -1432,9 +1360,9 @@ function FdStyles() {
       /* v159.3 — Image height responsive. Mobile is wider in 1-col grid so
          keep aspect-ratio shorter; tablet+ stays similar. */
       .fd-img-wrap {
-        position: relative; height: 168px; overflow: hidden; background: #0d0d1a;
+        position: relative; height: 158px; overflow: hidden; background: #0d0d1a;
       }
-      @media (min-width: 640px)  { .fd-img-wrap { height: 180px; } }
+      @media (min-width: 640px)  { .fd-img-wrap { height: 174px; } }
       /* v480 — taller, more premium imagery on desktop (was capped at 200px,
          which read letterboxed on a wide card). */
       @media (min-width: 1024px) { .fd-img-wrap { height: 210px; } }
@@ -1476,7 +1404,7 @@ function FdStyles() {
          cream text + a gold gloss (was pink-on-glass, low contrast). */
       /* v611 — wishlist heart, top-right of the flash card media */
       .fd-save-heart {
-        position: absolute; top: 52px; left: 12px; z-index: 3;
+        position: absolute; top: 12px; right: 12px; z-index: 3;
         display: inline-flex; align-items: center; justify-content: center;
         width: 34px; height: 34px; border-radius: 999px;
         background: rgba(18,13,7,0.55); backdrop-filter: blur(8px);
@@ -1507,42 +1435,70 @@ function FdStyles() {
       /* v521 — premium embossed GOLD coin (no pink). 3D bevel = bright top
          inset highlight + dark bottom inset + drop shadow, plus a slow shine
          sweep. Big discounts (.fire) get a richer, deeper gold — still cozy. */
+      /* v625 — deal-GOLD %OFF coin (owner pick: Treatment A + gold), top-left.
+         Same gold contract as the /flash-deals stamp; dark ink for AA contrast
+         on gold. Calm/static (no rotate) to suit the clean treatment. */
       .fd-disc-stamp {
-        position: absolute; top: 12px; right: 12px; z-index: 2;
-        /* v590 — satin matte gold coin (was glossy + a moving shine sweep). */
-        background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(150deg, #9db0c4 0%, #5f7c98 46%, #3f5369 100%);
-        border-radius: 15px;
-        padding: 8px 12px;
-        display: flex; flex-direction: column; align-items: center;
+        position: absolute; top: 12px; left: 12px; z-index: 2;
+        background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
+        border-radius: 12px;
+        padding: 6px 10px;
+        display: flex; align-items: baseline; gap: 3px;
         line-height: 1;
-        overflow: hidden;
         box-shadow:
-          0 8px 16px -8px rgba(40,55,72,0.5),
-          inset 0 1px 0 rgba(255,255,255,0.5),
-          inset 0 -2px 4px rgba(28,38,52,0.26);
-        animation: fdStamp 2.6s ease-in-out infinite;
+          0 8px 16px -9px rgba(130,90,12,0.55),
+          inset 0 1px 0 rgba(255,255,255,0.55),
+          inset 0 -2px 4px rgba(120,80,10,0.26);
       }
-      /* v590 — matte: the moving gloss sweep is gone. */
-      .fd-disc-stamp::after { display: none; }
-      @keyframes fdCoinShine {
-        0%   { background-position: 230% 0; }
-        100% { background-position: -230% 0; }
+      .fd-disc-num { color: #2a1e06; font-weight: 900; font-size: 0.92rem; letter-spacing: -0.01em; }
+      .fd-disc-off { color: rgba(42,30,6,0.82); font-weight: 800; font-size: 0.55rem; letter-spacing: 0.14em; }
+
+      /* ── v625 Treatment A (Clean) card face ─────────────────────────────── */
+      /* "Ends in 11h 26m" pill — bottom-left, dark glass over the photo. */
+      .fd-ends {
+        position: absolute; left: 12px; bottom: 12px; z-index: 2;
+        background: rgba(15, 12, 8, 0.58); backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        color: #f3f5f7; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.01em;
+        padding: 5px 10px; border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.18);
       }
-      .fd-disc-stamp.fire {
-        /* v590 — satin, slightly deeper for the higher-discount "fire" tier. */
-        background: linear-gradient(145deg, #adbbca 0%, #8a9fb4 46%, #67829e 100%);
-        box-shadow:
-          0 10px 22px -8px rgba(130,90,12,0.5),
-          inset 0 1px 0 rgba(176, 192, 209,0.26);
+      /* Location, on the page under the name (not over the photo). */
+      .fd-loc-line {
+        margin: 1px 0 6px; font-size: 0.78rem; color: var(--text-soft, #4a3820);
       }
-      @keyframes fdStamp {
-        0%, 100% { transform: rotate(-3deg) scale(1); }
-        50%      { transform: rotate(-3deg) scale(1.045); }
+      /* Price row is the hero: now (big) · was (strike) · /night. */
+      .fd-card-a .fd-price-line { display: flex; align-items: baseline; gap: 9px; margin: 0; }
+      .fd-card-a .fd-price-now { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; }
+      .fd-card-a .fd-price-strike { font-size: 0.86rem; }
+      .fd-card-a .fd-price-unit { font-size: 0.72rem; color: var(--text-soft, #4a3820); }
+      /* Foot — one quiet meta line + the CTA, baseline-aligned. */
+      /* v634.1 — two-column body (owner's circled dead space): text block
+         left, rank+CTA right, centred against each other. No empty band
+         beside the name/price, no hole between price and rating. */
+      .fd-cols {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px;
       }
-      .fd-disc-num { position: relative; z-index: 1; color: #ffffff; font-weight: 900; font-size: 1.12rem; letter-spacing: -0.02em; text-shadow: 0 1px 1px rgba(20,30,44,0.4); }
-      .fd-disc-stamp.fire .fd-disc-num { color: #ffffff; }
-      .fd-disc-off { position: relative; z-index: 1; color: rgba(255,255,255,0.92); font-weight: 800; font-size: 0.55rem; letter-spacing: 0.18em; }
-      .fd-disc-stamp.fire .fd-disc-off { color: rgba(255,255,255,0.92); }
+      .fd-main {
+        min-width: 0; display: flex; flex-direction: column; gap: 2px;
+      }
+      .fd-foot-right {
+        display: flex; flex-direction: column; align-items: flex-end;
+        justify-content: center; gap: 8px; flex-shrink: 0;
+      }
+      .fd-metaline {
+        display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+        font-size: 0.74rem; color: var(--text-soft, #4a3820);
+        margin-top: 2px;
+      }
+      .fd-metaline .fd-rating { white-space: nowrap; }
+      .fd-onlyleft {
+        margin: 6px 0 0; font-size: 0.73rem; font-weight: 600;
+        color: var(--text-soft, #4a3820);
+      }
+      .fd-onlyleft.urgent { color: var(--warn, #c07a1e); }
+      [data-theme="dark"] .fd-onlyleft.urgent { color: #dba24a; }
 
       .fd-img-bottom {
         position: absolute; bottom: 12px; left: 12px; z-index: 2;
@@ -1651,9 +1607,11 @@ function FdStyles() {
       }
 
       /* Body — v159.3 tighter on mobile. */
-      .fd-body { padding: 11px 13px 12px; }
-      @media (min-width: 640px)  { .fd-body { padding: 13px 14px 14px; } }
-      @media (min-width: 1024px) { .fd-body { padding: 14px 16px 16px; } }
+      /* v634 — tightened (owner: dead space): body padding + the foot/urgency
+         margins below shed ~18px of empty height per card on mobile. */
+      .fd-body { padding: 9px 12px 9px; }
+      @media (min-width: 640px)  { .fd-body { padding: 11px 13px 11px; } }
+      @media (min-width: 1024px) { .fd-body { padding: 12px 15px 13px; } }
       .fd-hotel-row {
         display: flex; align-items: flex-start; justify-content: space-between;
         gap: 8px; margin-bottom: 6px;
@@ -2034,7 +1992,9 @@ function FdStyles() {
       .fd-cta.sold::after { display: none; }
 
       /* v92 — Skeleton uses taupe shimmer so it's visible on cream cards too */
-      .fd-card-skel { cursor: default; pointer-events: none; }
+      /* v634 — skeletons share .fd-card but never get .is-in: force them
+         visible or the loading grid is invisible. */
+      .fd-card-skel { cursor: default; pointer-events: none; opacity: 1; transform: none; }
       .fd-card-skel:hover { transform: none; }
       .fd-skel-img {
         height: 200px;

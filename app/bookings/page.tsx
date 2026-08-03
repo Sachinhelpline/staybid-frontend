@@ -22,6 +22,14 @@ import InspirationBanner from "@/components/tier/InspirationBanner";
 // v141 — Phase-5 bookings tour. 3 steps: booking card → StayPoints →
 // chat with hotel.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v640 — UI-upgrade program: chrome emojis → lucide. KEPT as content
+// vocabulary: ★/☆ rating glyphs, the 😊 smiley-composer reference, the
+// drawn <Barcode/> (see docs/upgrade/99-PROGRESS-LEDGER.md).
+import {
+  KeyRound, Building2, Lock, AlarmClock, Wallet, Check, Star, Gift, Flag,
+  ChevronDown, MapPin, Phone, Mail, BedDouble, CalendarDays, Map as MapIcon,
+  MessageCircle, Ticket, ClipboardList,
+} from "lucide-react";
 
 // v174 — cozy-theme status palette. Mid-tone colours that read on both
 // the cream (light) and walnut (dark) surfaces — no per-theme branching.
@@ -56,7 +64,7 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
       <div className="mb-4 rounded-2xl p-4 border"
         style={{ background: "rgba(106,133,160,0.10)", borderColor: "rgba(106,133,160,0.42)" }}>
         <div className="flex items-start gap-3">
-          <span className="text-xl">🏨</span>
+          <Building2 size={20} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae", flexShrink: 0, marginTop: 2 }} />
           <div className="flex-1">
             <p className="text-sm font-bold" style={{ color: "var(--text-base)" }}>Pay at Hotel · Balance ₹{state.balanceDue.toLocaleString()}</p>
             <p className="text-[0.7rem] leading-relaxed mt-0.5" style={{ color: "var(--text-soft)" }}>
@@ -123,7 +131,9 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
     return (
       <div className="mb-4 rounded-2xl p-4 border"
         style={{ background: STATUS_META.CANCELLED.soft, borderColor: `${STATUS_META.CANCELLED.color}55` }}>
-        <p className="text-sm font-bold" style={{ color: STATUS_META.CANCELLED.color }}>⏰ Hold expired</p>
+        <p className="text-sm font-bold" style={{ color: STATUS_META.CANCELLED.color }}>
+          <AlarmClock size={14} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Hold expired
+        </p>
         <p className="text-[0.7rem] mt-0.5" style={{ color: "var(--text-soft)" }}>
           Your ₹{state.holdAmount.toLocaleString()} hold for ₹{state.totalAmount.toLocaleString()} has expired.
           Contact the hotel to re-confirm at current rates.
@@ -138,7 +148,7 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
     <div className="mb-4 rounded-2xl p-4 border-2"
       style={{ background: STATUS_META.CONFIRMED.soft, borderColor: `${STATUS_META.CONFIRMED.color}66` }}>
       <div className="flex items-start gap-3 mb-3">
-        <span className="text-2xl">🔒</span>
+        <Lock size={22} strokeWidth={2.2} aria-hidden style={{ color: STATUS_META.CONFIRMED.color, flexShrink: 0, marginTop: 2 }} />
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p className="text-sm font-bold" style={{ color: STATUS_META.CONFIRMED.color }}>Price locked — pay balance to confirm</p>
@@ -158,7 +168,9 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
           color: "#fff",
           boxShadow: "0 6px 18px rgba(127,146,105,0.4)",
         }}>
-        {paying ? "⏳ Opening Razorpay…" : `✅ Pay Balance ₹${state.balanceDue.toLocaleString()} & Confirm`}
+        {paying
+          ? "Opening Razorpay…"
+          : <><Wallet size={15} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> Pay Balance ₹{state.balanceDue.toLocaleString()} & Confirm</>}
       </button>
     </div>
   );
@@ -236,7 +248,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
     return (
       <div className="mb-4 rounded-2xl p-3 flex items-center gap-3"
         style={{ background: STATUS_META.CONFIRMED.soft, border: `1px solid ${STATUS_META.CONFIRMED.color}44` }}>
-        <span className="text-lg">✅</span>
+        <Check size={18} strokeWidth={2.6} aria-hidden style={{ color: STATUS_META.CONFIRMED.color, flexShrink: 0 }} />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold" style={{ color: STATUS_META.CONFIRMED.color }}>Thanks for your feedback</p>
           <p className="text-[0.65rem]" style={{ color: "var(--text-soft)" }}>
@@ -256,7 +268,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
         style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.32)" }}
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">⭐</span>
+          <Star size={22} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae", flexShrink: 0 }} />
           <div className="flex-1">
             <p className="text-sm font-bold" style={{ color: "var(--text-base)" }}>Rate your stay at {hotelName}</p>
             <p className="text-[0.7rem]" style={{ color: "var(--text-soft)" }}>
@@ -397,8 +409,9 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
   const mapsQuery = encodeURIComponent([hotel.name, address, city].filter(Boolean).join(", "));
   const whatsappNum = phone?.replace(/\D/g, "");
 
-  // Reusable cozy "info row" for the expanded section
-  const InfoRow = ({ icon, children }: { icon: string; children: React.ReactNode }) => (
+  // Reusable cozy "info row" for the expanded section (v640: icon is now a
+  // ReactNode so lucide icons slot in; string emojis still render unchanged)
+  const InfoRow = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
     <div className="flex items-start gap-3">
       <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-base"
         style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.28)" }}>{icon}</div>
@@ -434,12 +447,12 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         {unitNumber ? (
           <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-xs tracking-wide"
             style={{ background: "rgba(106,133,160,0.12)", border: "1px solid rgba(106,133,160,0.36)", color: "#8198ae" }}>
-            🔑 Room #{unitNumber} Allocated
+            <KeyRound size={13} strokeWidth={2.4} aria-hidden /> Room #{unitNumber} Allocated
           </div>
         ) : isConfirmed && (
           <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[0.7rem]"
             style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
-            🔑 Room number will be allocated at check-in
+            <KeyRound size={12} strokeWidth={2.4} aria-hidden /> Room number will be allocated at check-in
           </div>
         )}
 
@@ -465,7 +478,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         {isCompleted ? (
           <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 mb-4"
             style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.30)" }}>
-            <span className="text-lg">🎁</span>
+            <Gift size={18} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae", flexShrink: 0 }} />
             <div>
               <p className="text-xs font-bold" style={{ color: "#8198ae" }}>+{stayPoints} StayPoints Credited!</p>
               <p className="text-[0.65rem]" style={{ color: "var(--text-soft)" }}>Added to your wallet as cashback</p>
@@ -474,7 +487,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         ) : isConfirmed ? (
           <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 mb-4"
             style={{ background: STATUS_META.PENDING.soft, border: `1px solid ${STATUS_META.PENDING.color}40` }}>
-            <span className="text-lg">⭐</span>
+            <Star size={18} strokeWidth={2.2} aria-hidden style={{ color: STATUS_META.PENDING.color, flexShrink: 0 }} />
             <div>
               <p className="text-xs font-bold" style={{ color: "var(--text-base)" }}>Earn {stayPoints} StayPoints on checkout</p>
               <p className="text-[0.65rem]" style={{ color: "var(--text-soft)" }}>Redeemable as cashback on future stays</p>
@@ -549,7 +562,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
               className="text-[0.75rem] font-semibold transition-colors inline-flex items-center gap-1.5"
               style={{ color: STATUS_META.CANCELLED.color }}
             >
-              <span>🚩</span>
+              <Flag size={12} strokeWidth={2.4} aria-hidden />
               <span>Report an issue with this booking</span>
             </a>
           </div>
@@ -562,7 +575,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
           style={{ borderTop: "1px solid var(--border-soft)", color: "var(--text-muted)" }}
         >
           <span className="font-medium uppercase tracking-widest">{expanded ? "Hide Details" : "View Hotel Details"}</span>
-          <span className={`transition-transform duration-200 text-[10px] ${expanded ? "rotate-180" : ""}`}>▼</span>
+          <ChevronDown size={14} strokeWidth={2.4} aria-hidden className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
         </button>
 
         {/* Expanded details */}
@@ -571,30 +584,30 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
 
             {/* Location with Maps button */}
             {(address || city) && (
-              <InfoRow icon="📍">
+              <InfoRow icon={<MapPin size={16} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />}>
                 <Lbl>Location</Lbl>
                 <p className="text-sm font-medium mb-2" style={{ color: "var(--text-base)" }}>{[address, city].filter(Boolean).join(", ")}</p>
                 <a href={`https://maps.google.com/?q=${mapsQuery}`} target="_blank" rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-lg transition-colors">
-                  🗺 Get Directions
+                  <MapIcon size={13} strokeWidth={2.4} aria-hidden /> Get Directions
                 </a>
               </InfoRow>
             )}
 
             {/* Phone with Call + WhatsApp */}
             {phone && (
-              <InfoRow icon="📞">
+              <InfoRow icon={<Phone size={16} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />}>
                 <Lbl>Hotel Contact</Lbl>
                 <p className="text-sm font-semibold mb-2" style={{ color: "var(--text-base)" }}>{phone}</p>
                 <div className="flex gap-2 flex-wrap">
                   <a href={`tel:${phone}`}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-colors">
-                    📱 Call Now
+                    <Phone size={13} strokeWidth={2.4} aria-hidden /> Call Now
                   </a>
                   <a href={`https://wa.me/${whatsappNum}?text=Hi, I have a booking #${bookingId} at ${hotel.name || "your hotel"}`}
                     target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#25D366] hover:bg-[#20b958] px-3 py-1.5 rounded-lg transition-colors">
-                    💬 WhatsApp
+                    <MessageCircle size={13} strokeWidth={2.4} aria-hidden /> WhatsApp
                   </a>
                 </div>
               </InfoRow>
@@ -602,7 +615,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
 
             {/* Email */}
             {email && (
-              <InfoRow icon="✉️">
+              <InfoRow icon={<Mail size={16} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />}>
                 <Lbl>Email</Lbl>
                 <a href={`mailto:${email}`} className="text-sm font-semibold hover:underline" style={{ color: "#8198ae" }}>{email}</a>
               </InfoRow>
@@ -610,14 +623,14 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
 
             {/* Room */}
             {room.type && (
-              <InfoRow icon="🛏">
+              <InfoRow icon={<BedDouble size={16} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />}>
                 <Lbl>Room</Lbl>
                 <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>{room.type}{room.capacity ? ` · Up to ${room.capacity} guests` : ""}</p>
               </InfoRow>
             )}
 
             {/* Booked on */}
-            <InfoRow icon="🗓">
+            <InfoRow icon={<CalendarDays size={16} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />}>
               <Lbl>Booked On</Lbl>
               <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
                 {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
@@ -627,7 +640,9 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
             {/* StayPoints redemption info */}
             <div className="rounded-xl p-4"
               style={{ background: "rgba(106,133,160,0.10)", border: "1px solid rgba(106,133,160,0.28)" }}>
-              <p className="text-xs font-bold mb-1" style={{ color: "#8198ae" }}>⭐ StayPoints Program</p>
+              <p className="text-xs font-bold mb-1" style={{ color: "#8198ae" }}>
+                <Star size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} /> StayPoints Program
+              </p>
               <p className="text-[0.7rem] leading-relaxed" style={{ color: "var(--text-soft)" }}>
                 Earn <strong>{stayPoints} points</strong> (₹{stayPoints} value) on completing this stay.
                 Points are credited to your wallet after check-out and can be redeemed on future bookings.
@@ -750,8 +765,34 @@ export default function BookingsPage() {
   const styleBlock = (
     <style>{`
       @keyframes bkFadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-      .bk-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
-      .bk-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
+      /* v640 — borderless 4-layer 3D grammar (same family as .hx-room-card /
+         .mb-card): long cast + mid bloom + contact edge + inset top highlight. */
+      .bk-card {
+        background: var(--bg-card); border:none; border-radius:22px;
+        box-shadow:
+          0 24px 42px -22px rgba(31, 26, 15, 0.32),
+          0 10px 20px -12px rgba(31, 26, 15, 0.18),
+          0 2px 6px -2px rgba(31, 26, 15, 0.12),
+          inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        transition: transform .2s ease, box-shadow .2s ease;
+      }
+      [data-theme="dark"] .bk-card {
+        box-shadow:
+          0 24px 42px -22px rgba(0, 0, 0, 0.7),
+          0 10px 20px -12px rgba(0, 0, 0, 0.48),
+          0 2px 6px -2px rgba(0, 0, 0, 0.38),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+      @media (hover: hover) {
+        .bk-card:hover {
+          transform: translateY(-3px);
+          box-shadow:
+            0 30px 52px -24px rgba(106,133,160,0.4),
+            0 12px 24px -12px rgba(31, 26, 15, 0.2),
+            0 0 0 1px rgba(106,133,160,0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.55);
+        }
+      }
       .bk-gold-btn { position:relative; overflow:hidden; background:radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color:#ffffff; text-shadow:0 1px 1px rgba(20,30,44,.35); font-weight:800; letter-spacing:.03em; box-shadow:inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(28,38,52,.28), 0 8px 18px -9px rgba(45,62,82,.5); }
     `}</style>
   );
@@ -786,18 +827,18 @@ export default function BookingsPage() {
             <div className="flex items-center gap-2.5 mt-3 flex-wrap">
               <span className="text-xs font-semibold px-3 py-1 rounded-full"
                 style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
-                🎫 <CountUp value={bookings.length} duration={700} /> total
+                <Ticket size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} /><CountUp value={bookings.length} duration={700} /> total
               </span>
               {upcoming > 0 && (
                 <span className="text-xs font-semibold px-3 py-1 rounded-full"
                   style={{ background: STATUS_META.CONFIRMED.soft, border: `1px solid ${STATUS_META.CONFIRMED.color}44`, color: STATUS_META.CONFIRMED.color }}>
-                  🗓 <CountUp value={upcoming} duration={700} /> upcoming
+                  <CalendarDays size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} /><CountUp value={upcoming} duration={700} /> upcoming
                 </span>
               )}
               {totalPoints > 0 && (
                 <span className="text-xs font-semibold px-3 py-1 rounded-full"
                   style={{ background: "rgba(106,133,160,0.12)", border: "1px solid rgba(106,133,160,0.32)", color: "#8198ae" }}>
-                  ⭐ <CountUp value={totalPoints} duration={900} /> StayPoints earned
+                  <Star size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} /><CountUp value={totalPoints} duration={900} /> StayPoints earned
                 </span>
               )}
             </div>
@@ -826,7 +867,7 @@ export default function BookingsPage() {
         {!loadErr && bookings.length === 0 && (
           <div className="text-center py-20">
             <div className="w-20 h-20 rounded-full bk-card flex items-center justify-center mx-auto mb-5">
-              <span className="text-3xl">📋</span>
+              <ClipboardList size={30} strokeWidth={2} aria-hidden style={{ color: "#8198ae" }} />
             </div>
             <p className="font-display text-xl font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bookings yet</p>
             <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Start by placing a bid or booking a flash deal.</p>

@@ -430,6 +430,17 @@ function useNightlyCountdown(): string {
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 }
 
+/* v632 — same wording as the /flash-deals card pill ("Ends in 23h 7m"):
+   the home card used to print the raw hh:mm:ss ticker, so the two surfaces
+   described the same deadline in two different languages. */
+function endsLabelFromClock(left: string): string {
+  const m = /^(\d+):(\d+)/.exec(left || "");
+  if (!m) return "";
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  return `Ends in ${h}h ${min}m`;
+}
+
 function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecard }) {
   const h = d.hotel;
   const img = imgOf(h);
@@ -449,7 +460,7 @@ function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecar
             flex owns the spacing, so nothing can overlap at any card width */}
         <div className="sbh-fd-toprow">
           {off > 0 ? <span className="sbh-chip sbh-chip-off">{off}% OFF</span> : null}
-          {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">⏳ {left}</span> : null}
+          {left ? <span className="sbh-chip sbh-chip-live sbh-chip-live-br">{endsLabelFromClock(left)}</span> : null}
           {hid ? <SaveHeart kind="hotel" id={hid} target={{ name: h?.name, city: h?.city, star_rating: h?.starRating, images: img ? [img] : [] }} /> : null}
         </div>
         {score?.overall != null ? (
@@ -1281,18 +1292,15 @@ export default function DesktopHome() {
         href: "/hotels",
       });
     }
-    deals.slice(0, 8).forEach((d, i) => {
-      if (!d.hotel?.name) return;
-      out.push({
-        k: `deal-${d.id || i}`,
-        icon: "⚡",
-        text: d.hotel.name,
-        accent: offPct(d.marketRate, d.aiPrice) > 0
-          ? `${offPct(d.marketRate, d.aiPrice)}% OFF`
-          : undefined,
-        // the deal's own hotel when we know it, else the deals surface
-        href: d.hotelId || d.hotel?.id ? `/hotels/${d.hotelId || d.hotel?.id}` : "/flash-deals",
-      });
+    // v628 — the ticker no longer repeats the Flash Deals rail. Flash now lives
+    // ONLY in the ⚡ Flash Deals rail below; the ticker carries season +
+    // real ZONE destination links (only zones that have live properties) +
+    // the inventory count — distinct, non-duplicative "what's live" facts.
+    const cityHasStay = (cities: string[]) =>
+      hotels.some((h) => cities.includes((h.city || "").toLowerCase()));
+    LAUNCH_ZONES.forEach((z) => {
+      if (!cityHasStay(z.cities)) return;
+      out.push({ k: `zone-${z.id}`, icon: "🧭", text: `Explore ${z.label}`, href: "/hotels" });
     });
     if (hotels.length) {
       out.push({
@@ -1303,7 +1311,7 @@ export default function DesktopHome() {
       });
     }
     return out;
-  }, [deals, hotels.length, demand]);
+  }, [hotels, demand]);
 
   // zone rails — reuse the launch curation grouping (same as /hotels).
   // v580 — rails are ordered by how reachable their best city is for THIS
@@ -1414,6 +1422,36 @@ export default function DesktopHome() {
       .map((x) => x.h);
   }, [hotels, selFormat, viewer]);
 
+  // v631 — Hotstar hero DEPTH transition (owner-approved from the live demo).
+  // Scroll-linked only: --sbhp runs 0→1 over the first half viewport of
+  // scroll; the mobile CSS block in globals.css maps it to the hero's
+  // recede (scale/sink/dim) + the cover surface's un-zoom. rAF-throttled
+  // passive listener writing ONE custom property — transform/opacity only,
+  // no layout reads besides scrollY. Desktop CSS ignores the var (≥1024px
+  // rules untouched); reduced-motion bails here AND is reset in CSS.
+  const depthRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    // Re-run when `on` flips: the first mount returns null (the `if (!on)`
+    // gate below), so the ref only attaches once the Stage actually renders.
+    const el = depthRef.current;
+    if (!on || !el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const tick = () => {
+      raf = 0;
+      const span = Math.max(window.innerHeight * 0.5, 1);
+      const p = Math.min(Math.max(window.scrollY / span, 0), 1);
+      el.style.setProperty("--sbhp", p.toFixed(4));
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    tick();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [on]);
+
   if (!on) return null;
 
   const fScore = featured ? scores[featured.id] : undefined;
@@ -1422,7 +1460,7 @@ export default function DesktopHome() {
   const fRank = fScore?.rank;
 
   return (
-    <div className="sbh-root">
+    <div className="sbh-root" ref={depthRef}>
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section
         className="sbh-hero"
@@ -1458,7 +1496,7 @@ export default function DesktopHome() {
         <div className="sbh-hero-inner">
           <p className="sbh-eyebrow">
             <span className="sbh-dot" aria-hidden />
-            {SEASON_ICON[demand.season] || "✦"} {demand.season} · In season now
+            {SEASON_ICON[demand.season] || "✦"} {demand.season} · {featured && demandTier(featured.city || "", effMonth) === "primary" ? "In season now" : "picked for you"}
             {fRank?.rank && fRank?.scopeLabel ? ` · #${fRank.rank} in ${fRank.scopeLabel}` : ""}
           </p>
           <h1 className="sbh-hero-title">{featured?.name || "Bid your stay. Save big."}</h1>
@@ -1540,44 +1578,49 @@ export default function DesktopHome() {
         ) : null}
       </section>
 
-      {/* ── LIVE TICKER ───────────────────────────────────────────────────
-          Every item is a link now, which changes what the motion is allowed
-          to do. On a POINTER the marquee runs and pauses on hover/focus, so
-          you can always stop a chip and click it (also WCAG 2.2.2's pause
-          requirement). On TOUCH it does not auto-move at all — it is a
-          swipeable row — because chasing a moving chip with a thumb is not a
-          real interaction. Only the FIRST group is in the a11y tree; the
-          second is the seamless-loop duplicate and is hidden + unfocusable,
-          otherwise every offer would be announced twice. */}
-      {ticker.length ? (
-        <nav className="sbh-ticker" aria-label="Live offers and season">
-          <div className="sbh-ticker-track">
-            {[0, 1].map((dup) => (
-              <div
-                className="sbh-ticker-group"
-                key={dup}
-                aria-hidden={dup === 1 ? true : undefined}
-              >
-                {ticker.map((t) => (
-                  <Link
-                    href={t.href}
-                    className="sbh-ticker-item"
-                    key={`${dup}-${t.k}`}
-                    tabIndex={dup === 1 ? -1 : undefined}
-                  >
-                    <span className="sbh-tk-ico" aria-hidden>{t.icon}</span>
-                    <span className="sbh-tk-text">{t.text}</span>
-                    {t.accent ? <span className="sbh-tk-accent">{t.accent}</span> : null}
-                  </Link>
-                ))}
-              </div>
-            ))}
-          </div>
-        </nav>
-      ) : null}
-
       {/* ── RAILS ────────────────────────────────────────────────────── */}
+      {/* v632 — the LIVE TICKER moved INSIDE .sbh-rails (first child). On
+          mobile the rails panel is the hero-depth COVER surface (sticky
+          hero slides under it) — when the ticker was a separate sibling it
+          became a floating white band over the hero with a see-through
+          margin gap beneath it (owner screenshot). One continuous cover =
+          the Hotstar look. Ticker markup + behaviour unchanged. */}
       <div className="sbh-rails">
+        {/* ── LIVE TICKER ─────────────────────────────────────────────
+            Every item is a link, which changes what the motion is allowed
+            to do. On a POINTER the marquee runs and pauses on hover/focus,
+            so you can always stop a chip and click it (also WCAG 2.2.2's
+            pause requirement). On TOUCH it does not auto-move at all — it
+            is a swipeable row — because chasing a moving chip with a thumb
+            is not a real interaction. Only the FIRST group is in the a11y
+            tree; the second is the seamless-loop duplicate and is hidden +
+            unfocusable, otherwise every offer would be announced twice. */}
+        {ticker.length ? (
+          <nav className="sbh-ticker" aria-label="Live offers and season">
+            <div className="sbh-ticker-track">
+              {[0, 1].map((dup) => (
+                <div
+                  className="sbh-ticker-group"
+                  key={dup}
+                  aria-hidden={dup === 1 ? true : undefined}
+                >
+                  {ticker.map((t) => (
+                    <Link
+                      href={t.href}
+                      className="sbh-ticker-item"
+                      key={`${dup}-${t.k}`}
+                      tabIndex={dup === 1 ? -1 : undefined}
+                    >
+                      <span className="sbh-tk-ico" aria-hidden>{t.icon}</span>
+                      <span className="sbh-tk-text">{t.text}</span>
+                      {t.accent ? <span className="sbh-tk-accent">{t.accent}</span> : null}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </nav>
+        ) : null}
         {/* v582 — TRIP FINDER: the first thing under the hero, because the
             most common visitor state is "I don't know where to go". Three
             taps → three destinations with reasons. Every number is real
@@ -1621,40 +1664,13 @@ export default function DesktopHome() {
           </Rail>
         ) : null}
 
-        {/* v581 — "WHAT KIND OF TRIP?" — the deck's 6 trip formats as chips.
-            The traveller who doesn't know WHERE they want to go usually does
-            know WHAT KIND of trip they want — pick the trip, we match the
-            places (corridor + budget-band gated, reach-ordered). Selection
-            persists and feeds the audience-segment inference. */}
-        <section className="sbh-trip" ref={tripRef} aria-label="Plan by trip type">
-          <div className="sbh-trip-head">
-            <h2 className="sbh-rail-title">🧭 What kind of trip?</h2>
-            <p className="sbh-rail-sub">Not sure where to go? Pick the trip — we&apos;ll match the places.</p>
-          </div>
-          <div className="sbh-trip-chips" role="tablist" aria-label="Trip types">
-            {TRIP_FORMATS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                role="tab"
-                aria-selected={tripSel === f.id}
-                className={`sbh-trip-chip${tripSel === f.id ? " is-on" : ""}`}
-                onClick={() => pickTrip(f.id)}
-              >
-                <span aria-hidden>{f.emoji}</span> {f.label}
-              </button>
-            ))}
-          </div>
-        </section>
-        {tripRail.length ? (
-          <Rail
-            title={`${selFormat.emoji} ${selFormat.label} picks`}
-            sub={`${selFormat.blurb} · ${selFormat.nights}`}
-            href="/hotels"
-          >
-            {tripRail.map((h) => <HotelCard key={h.id} h={h} score={scores[h.id]} drive={driveFor(h.city)} why={whyFor(h.city)} />)}
-          </Rail>
-        ) : null}
+        {/* v628 — "What kind of trip?" chips + the format-picks rail were a
+            SECOND, parallel trip chooser alongside the Trip Finder above (which
+            already asks the trip type in its Who·Trip·Budget flow). Consolidated
+            to the one Trip Finder (owner decision 1A): the duplicate chips
+            section + its picks rail are removed. The same properties still
+            appear in the Trip Finder matches, the zone rails and Easy getaways —
+            nothing left the product, only the repetition. */}
 
         {/* v580 — the owner's fit-matrix strategy as a browse surface: the
             top properties this viewer can most easily reach, in one row, so

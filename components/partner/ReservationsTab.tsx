@@ -13,6 +13,7 @@
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { modalPortal } from "@/lib/partner/modal-portal";
+import { Plus, Search, ConciergeBell, Pencil, Trash2, X } from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -33,10 +34,12 @@ function statusOf(r: any): "upcoming" | "inhouse" | "departed" {
   if ((r.fromDate || "") > t) return "upcoming";
   return "inhouse";
 }
-const ST: Record<string, { label: string; bg: string; c: string }> = {
-  upcoming: { label: "Upcoming", bg: "#dbeafe", c: "#1d4ed8" },
-  inhouse:  { label: "In-house", bg: "#dcfce7", c: "#15803d" },
-  departed: { label: "Departed", bg: "#eceff3", c: "#78716c" },
+// Status pills use Tailwind class pairs (not inline hex) so the partner
+// status-tint dark layer (globals.css) flips them correctly in dark mode.
+const ST: Record<string, { label: string; cls: string }> = {
+  upcoming: { label: "Upcoming", cls: "bg-blue-100 text-blue-700" },
+  inhouse:  { label: "In-house", cls: "bg-emerald-100 text-emerald-700" },
+  departed: { label: "Departed", cls: "bg-luxury-100 text-luxury-500" },
 };
 
 export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; rooms: any[] }) {
@@ -64,7 +67,7 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
   useEffect(() => { load(); }, [load]);
 
   async function cancelRes(id: string) {
-    if (!confirm("Is reservation ko cancel karein? Room ki dates free ho jayengi.")) return;
+    if (!confirm("Cancel this reservation? The room's dates will be freed up.")) return;
     try {
       const r = await fetch(`/api/partner/walk-in?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
@@ -105,9 +108,9 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h2 className="sec-title text-xl">Front Desk &middot; Reservations</h2>
-          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Walk-in, phone &amp; group bookings — banao, edit karo, manage karo.</p>
+          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Walk-in, phone &amp; group bookings — create, edit and manage.</p>
         </div>
-        <button onClick={() => setEditor({ mode: "create" })} className="btn-gold">➕ New Reservation</button>
+        <button onClick={() => setEditor({ mode: "create" })} className="btn-gold"><span className="inline-flex items-center gap-1.5"><Plus size={14} strokeWidth={2.4} aria-hidden /> New Reservation</span></button>
       </div>
 
       {/* filters + search */}
@@ -124,26 +127,29 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
             </button>
           );
         })}
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="🔍 Guest name / phone"
-          className="inp-p flex-1 min-w-[150px]"
-        />
+        <div className="relative flex-1 min-w-[150px]">
+          <Search size={13} strokeWidth={2.4} aria-hidden className="absolute left-2.5 top-1/2 -translate-y-1/2 text-luxury-400 pointer-events-none" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Guest name / phone"
+            className="inp-p w-full pl-7"
+          />
+        </div>
       </div>
 
       {loading ? (
         <div className="card-p text-center py-10 text-luxury-400 text-sm">Loading reservations…</div>
       ) : filtered.length === 0 ? (
         <div className="card-p text-center py-10">
-          <p className="text-3xl mb-2">🛎️</p>
+          <ConciergeBell size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />
           <p className="text-luxury-600 font-semibold text-sm">
-            {list.length === 0 ? "Abhi koi reservation nahi hai" : "Is filter me kuch nahi mila"}
+            {list.length === 0 ? "No reservations yet" : "Nothing matches this filter"}
           </p>
           {list.length === 0 && (
             <>
-              <p className="text-luxury-400 text-xs mt-0.5 mb-3">Front desk se pehli booking add karo.</p>
-              <button onClick={() => setEditor({ mode: "create" })} className="btn-gold">➕ New Reservation</button>
+              <p className="text-luxury-400 text-xs mt-0.5 mb-3">Add your first booking from the front desk.</p>
+              <button onClick={() => setEditor({ mode: "create" })} className="btn-gold"><span className="inline-flex items-center gap-1.5"><Plus size={14} strokeWidth={2.4} aria-hidden /> New Reservation</span></button>
             </>
           )}
         </div>
@@ -161,8 +167,7 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{r.guestName || "Guest"}</p>
-                    <span className="text-[0.56rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                      style={{ background: st.bg, color: st.c }}>{st.label}</span>
+                    <span className={`text-[0.56rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
                   </div>
                   <p className="text-[0.68rem] text-luxury-500 truncate">
                     {room?.name || room?.type || "Room"}
@@ -177,9 +182,9 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
                   </p>
                 )}
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => setEditor({ mode: "edit", res: r })} className="btn-ghost px-2.5! py-1.5!">✏️</button>
-                  <button onClick={() => cancelRes(r.id)}
-                    className="btn-ghost px-2.5! py-1.5! text-red-600! hover:border-red-300!">🗑</button>
+                  <button onClick={() => setEditor({ mode: "edit", res: r })} aria-label="Edit reservation" className="btn-ghost px-2.5! py-1.5! inline-flex items-center"><Pencil size={13} strokeWidth={2.2} aria-hidden /></button>
+                  <button onClick={() => cancelRes(r.id)} aria-label="Cancel reservation"
+                    className="btn-ghost px-2.5! py-1.5! text-red-600! hover:border-red-300! inline-flex items-center"><Trash2 size={13} strokeWidth={2.2} aria-hidden /></button>
                 </div>
               </div>
             );
@@ -228,10 +233,10 @@ function ReservationForm({
   const n = nights(f.fromDate, f.toDate);
 
   async function save() {
-    if (!f.guestName.trim()) { setErr("Guest ka naam daalo."); return; }
-    if (!f.roomId)           { setErr("Room category select karo."); return; }
-    if (!f.fromDate || !f.toDate) { setErr("Check-in aur check-out dates daalo."); return; }
-    if (f.toDate <= f.fromDate)   { setErr("Check-out, check-in ke baad honi chahiye."); return; }
+    if (!f.guestName.trim()) { setErr("Enter the guest's name."); return; }
+    if (!f.roomId)           { setErr("Select a room category."); return; }
+    if (!f.fromDate || !f.toDate) { setErr("Enter check-in and check-out dates."); return; }
+    if (f.toDate <= f.fromDate)   { setErr("Check-out must be after check-in."); return; }
     setSaving(true); setErr("");
     try {
       const payload: any = {
@@ -281,15 +286,15 @@ function ReservationForm({
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>
             {mode === "create" ? "New Reservation" : "Edit Reservation"}
           </p>
-          <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center transition">×</button>
+          <button onClick={onClose} aria-label="Close"
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center transition"><X size={16} strokeWidth={2.2} aria-hidden /></button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           <div>
             <label className={lbl}>Guest name *</label>
             <input value={f.guestName} onChange={(e) => set("guestName", e.target.value)}
-              placeholder="Guest ka naam" className="inp-p" autoFocus />
+              placeholder="Guest name" className="inp-p" autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <div>

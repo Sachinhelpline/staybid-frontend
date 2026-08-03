@@ -8,6 +8,7 @@
 //   • Pricing  — per-service monthly/quarterly/yearly price + bundle plans.
 // Auth: x-admin-token / x-admin-id headers.
 import { useCallback, useEffect, useState } from "react";
+import { TriangleAlert, Building2 } from "lucide-react";
 import { SERVICE_LABEL, SUBSCRIPTION_SERVICES } from "@/lib/partner/services";
 
 const C = {
@@ -44,7 +45,7 @@ export default function AdminServicesPage() {
     <div style={wrap}>
       <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, margin: 0 }}>Service Access</h1>
       <p style={{ color: C.textSoft, fontSize: 12.5, marginTop: 2 }}>
-        Subscription services ke access requests + pricing manage karein.
+        Manage subscription-service access requests and pricing.
       </p>
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
         {(["requests", "pricing", "payments"] as const).map((v) => (
@@ -102,7 +103,7 @@ function PaymentsView() {
     <>
       {!provisioned && (
         <div style={{ ...card, marginBottom: 14, borderColor: "rgba(140, 160, 182,0.4)", background: "rgba(140, 160, 182,0.08)" }}>
-          <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700 }}>⚠ migrations/2026-05-21-service-payments.sql apply karein.</p>
+          <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}><TriangleAlert size={14} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0 }} />Apply migrations/2026-05-21-service-payments.sql.</p>
         </div>
       )}
 
@@ -129,7 +130,7 @@ function PaymentsView() {
       </div>
 
       {rows.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>Koi payment nahi.</div>
+        <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>No payments yet.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {rows.map((p) => {
@@ -142,8 +143,8 @@ function PaymentsView() {
                     {p.bundle_id ? "Bundle" : svcName(p.service_key)}
                     <span style={{ color: C.textMuted, fontWeight: 500 }}> · {PLAN_LBL[p.plan] || p.plan}</span>
                   </p>
-                  <p style={{ fontSize: 11, color: C.textSoft }}>
-                    🏨 {p.hotel_name || p.hotel_id} · {svcKeys.map(svcName).join(", ")}
+                  <p style={{ fontSize: 11, color: C.textSoft, display: "flex", alignItems: "center", gap: 5 }}>
+                    <Building2 size={12} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />{p.hotel_name || p.hotel_id} · {svcKeys.map(svcName).join(", ")}
                   </p>
                   <p style={{ fontSize: 10.5, color: C.textMuted }}>
                     {fmtT(p.paid_at || p.created_at)}{p.expires_at ? ` · expires ${fmtT(p.expires_at)}` : ""}
@@ -206,7 +207,7 @@ function RequestsView() {
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.error || "Action failed");
       await load();
-    } catch (e: any) { alert("❌ " + (e?.message || "Failed")); }
+    } catch (e: any) { alert(e?.message || "Failed"); }
     finally { setBusy(""); }
   }
   function approve(rq: any) {
@@ -221,7 +222,7 @@ function RequestsView() {
     <>
       {!provisioned && (
         <div style={{ ...card, marginBottom: 14, borderColor: "rgba(140, 160, 182,0.4)", background: "rgba(140, 160, 182,0.08)" }}>
-          <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700 }}>⚠ migrations/2026-05-21-hotel-services.sql apply karein.</p>
+          <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}><TriangleAlert size={14} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0 }} />Apply migrations/2026-05-21-hotel-services.sql.</p>
         </div>
       )}
 
@@ -231,7 +232,7 @@ function RequestsView() {
       {loading ? (
         <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>Loading…</div>
       ) : pending.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>Koi pending request nahi.</div>
+        <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>No pending requests.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {pending.map((rq) => (
@@ -240,7 +241,7 @@ function RequestsView() {
                 {svcName(rq.service_key)}
                 <span style={{ color: C.textMuted, fontWeight: 500 }}> · {rq.kind === "free_trial" ? "free trial maanga" : "activate"}</span>
               </p>
-              <p style={{ fontSize: 11.5, color: C.textSoft }}>🏨 {rq.hotel_name || rq.hotel_id} · {fmtT(rq.created_at)}</p>
+              <p style={{ fontSize: 11.5, color: C.textSoft, display: "flex", alignItems: "center", gap: 5 }}><Building2 size={12} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />{rq.hotel_name || rq.hotel_id} · {fmtT(rq.created_at)}</p>
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <select value={pick[rq.id] || "free:0"} onChange={(e) => setPick((p) => ({ ...p, [rq.id]: e.target.value }))}
                   style={{ ...inp, width: "auto" }}>
@@ -264,7 +265,7 @@ function RequestsView() {
         Granted access {entitlements.length > 0 && <span style={{ color: C.textMuted }}>· {entitlements.length}</span>}
       </p>
       {entitlements.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>Abhi koi service grant nahi ki.</div>
+        <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>No services granted yet.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {entitlements.map((e) => {
@@ -278,8 +279,8 @@ function RequestsView() {
                       {" · "}{expired ? "expired" : e.access_type}{e.plan ? ` (${e.plan})` : ""}
                     </span>
                   </p>
-                  <p style={{ fontSize: 11, color: C.textSoft }}>
-                    🏨 {e.hotel_id} · {e.expires_at ? `expires ${fmtT(e.expires_at)}` : "no expiry"}
+                  <p style={{ fontSize: 11, color: C.textSoft, display: "flex", alignItems: "center", gap: 5 }}>
+                    <Building2 size={12} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />{e.hotel_id} · {e.expires_at ? `expires ${fmtT(e.expires_at)}` : "no expiry"}
                   </p>
                 </div>
                 <button onClick={() => act({ action: "revoke", hotelId: e.hotel_id, serviceKey: e.service_key }, e.id)} disabled={busy === e.id}
@@ -336,7 +337,7 @@ function PricingView() {
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.error || "Failed");
       await load();
-    } catch (e: any) { alert("❌ " + (e?.message || "Failed")); }
+    } catch (e: any) { alert(e?.message || "Failed"); }
     finally { setBusy(""); }
   }
   const setD = (k: string, f: string, v: string) =>
@@ -348,7 +349,7 @@ function PricingView() {
     <>
       {!provisioned && (
         <div style={{ ...card, marginBottom: 14, borderColor: "rgba(140, 160, 182,0.4)", background: "rgba(140, 160, 182,0.08)" }}>
-          <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700 }}>⚠ migrations/2026-05-21-service-pricing.sql apply karein.</p>
+          <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}><TriangleAlert size={14} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0 }} />Apply migrations/2026-05-21-service-pricing.sql.</p>
         </div>
       )}
 

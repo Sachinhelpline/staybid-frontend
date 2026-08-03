@@ -35,10 +35,17 @@ export const CUSTOMER_ROUTES = [
   { path: "/onboard",          name: "onboard",           auth: false },
   { path: "/onboard/signin",   name: "onboard-signin",    auth: false },
   { path: "/onboard/signup",   name: "onboard-signup",    auth: false },
+  { path: "/passport",         name: "passport",          auth: true  },
+  { path: "/trust",            name: "trust",             auth: false },
+  { path: "/privacy-policy",   name: "privacy-policy",    auth: false },
+  { path: "/verification/record", name: "verification-record", auth: true },
   // dynamic — representative sample values
   { path: "/hotels/sample",    name: "hotel-detail",      auth: false, dynamic: true },
+  { path: "/hotels/sample/reviews",  name: "hotel-reviews",  auth: false, dynamic: true },
+  { path: "/hotels/sample/feedback", name: "hotel-feedback", auth: false, dynamic: true },
   { path: "/u/staybid",        name: "user-public",       auth: false, dynamic: true },
   { path: "/tag/mussoorie",    name: "tag",               auth: false, dynamic: true },
+  { path: "/r/SAMPLE",         name: "referral-code",     auth: false, dynamic: true },
 ];
 
 // Other surfaces — audited in later phases (kept here so the harness is reusable).
@@ -106,10 +113,94 @@ export const ONBOARD_ROUTES = [
   { path: "/onboard/wizard",  name: "onboard-wizard",  auth: true },
 ];
 
+// StayBid Circle (multi-investor). Own chrome (CircleDock). Model2/3/4 legacy
+// prototype routes stay in scope (owner decision #8 — nothing dropped).
+export const CIRCLE_ROUTES = [
+  { path: "/circle",              name: "circle-hub",       auth: false },
+  { path: "/circle/discover",     name: "circle-discover",  auth: false },
+  { path: "/circle/build",        name: "circle-build",     auth: true  },
+  { path: "/circle/dashboard",    name: "circle-dashboard", auth: true  },
+  { path: "/circle/me",           name: "circle-me",        auth: true  },
+  { path: "/circle/earnings",     name: "circle-earnings",  auth: true  },
+  { path: "/circle/kyc",          name: "circle-kyc",       auth: true  },
+  { path: "/circle/onboard",      name: "circle-onboard",   auth: false },
+  { path: "/circle/profile",      name: "circle-profile",   auth: true  },
+  { path: "/circle/support",      name: "circle-support",   auth: false },
+  { path: "/circle/model2",       name: "circle-model2",    auth: false },
+  { path: "/circle/model2/browse",name: "circle-m2-browse", auth: false },
+  { path: "/circle/model2/review",name: "circle-m2-review", auth: true  },
+  { path: "/circle/model2/selling",name: "circle-m2-selling",auth: true },
+  { path: "/circle/model3",       name: "circle-model3",    auth: false },
+  { path: "/circle/model4",       name: "circle-model4",    auth: false },
+  { path: "/circle/sample",       name: "circle-detail",    auth: false, dynamic: true },
+  { path: "/circle/model2/sample",name: "circle-m2-detail", auth: false, dynamic: true },
+];
+
+// StayBid for Hosts vertical. Own chrome (host layout + SwitchExperienceButton).
+export const HOST_ROUTES = [
+  { path: "/host",                name: "host-home",        auth: false },
+  { path: "/host/build",          name: "host-build",       auth: true  },
+  { path: "/host/properties",     name: "host-properties",  auth: true  },
+  { path: "/host/list-property",  name: "host-list",        auth: true  },
+  { path: "/host/store",          name: "host-store",       auth: true  },
+  { path: "/host/studio",         name: "host-studio",      auth: true  },
+  { path: "/host/channels",       name: "host-channels",    auth: true  },
+  { path: "/host/workforce",      name: "host-workforce",   auth: true  },
+  { path: "/host/workforce/join", name: "host-wf-join",     auth: false },
+  { path: "/host/me",             name: "host-me",          auth: true  },
+  { path: "/host/property/sample",name: "host-property",    auth: true, dynamic: true },
+];
+
+// Model-3 travel-agent auction. Own chrome (.trd-root). Google-auth agents.
+export const TRADE_ROUTES = [
+  { path: "/trade",           name: "trade-browse",  auth: false },
+  { path: "/trade/my-bids",   name: "trade-my-bids", auth: true  },
+  { path: "/trade/review",    name: "trade-review",  auth: true  },
+  { path: "/trade/sample",    name: "trade-lot",     auth: false, dynamic: true },
+];
+
+// Workforce panel (separate sb_worker session).
+export const WORKER_ROUTES = [
+  { path: "/worker",           name: "worker-login",     auth: false },
+  { path: "/worker/dashboard", name: "worker-dashboard", auth: true  },
+];
+
+// Support-agent console (customer support — NOT the auction /trade agents).
+// Admin's dark-slate palette. Gates on an agent session.
+export const AGENT_ROUTES = [
+  { path: "/agent",         name: "agent-console", auth: true  },
+  { path: "/agent/login",   name: "agent-login",   auth: false },
+  { path: "/agent/metrics", name: "agent-metrics", auth: true  },
+  { path: "/agent/sample",  name: "agent-ticket",  auth: true, dynamic: true },
+];
+
+// Offline kiosk — own fullscreen surface.
+export const KIOSK_ROUTES = [
+  { path: "/kiosk",         name: "kiosk-home",    auth: false },
+  { path: "/kiosk/book",    name: "kiosk-book",    auth: false },
+  { path: "/kiosk/display", name: "kiosk-display", auth: false },
+];
+
+// Public QR food-ordering page — own chrome + own font import.
+export const ORDER_ROUTES = [
+  { path: "/order/sample",  name: "order-outlet",  auth: false, dynamic: true },
+];
+
 export const SURFACES = {
   customer: CUSTOMER_ROUTES,
   partner: PARTNER_ROUTES,
   admin: ADMIN_ROUTES,
   creator: CREATOR_ROUTES,
   onboard: ONBOARD_ROUTES,
+  circle: CIRCLE_ROUTES,
+  host: HOST_ROUTES,
+  trade: TRADE_ROUTES,
+  worker: WORKER_ROUTES,
+  agent: AGENT_ROUTES,
+  kiosk: KIOSK_ROUTES,
+  order: ORDER_ROUTES,
 };
+
+// Convenience: every surface, in phase order (worker/trade/agent/influencer
+// first = cheapest, admin/partner last = XL). Used by `--surface all`.
+export const ALL_SURFACES = Object.keys(SURFACES);

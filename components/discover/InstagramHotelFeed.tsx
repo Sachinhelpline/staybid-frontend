@@ -2269,14 +2269,10 @@ const HotelCard = memo(function HotelCard({
             <span className="opacity-50">·</span>
             <span>{fmtCount(followersLive)} followers</span>
           </div>
-          {/* Creator subline — only shown for CREATOR or PUBLIC reels.
-              For HOTEL-source reels, the hotel itself IS the author —
-              showing a second @creator chip below would be both
-              redundant AND misleading (e.g. a Mussoorie hotel reel
-              showing "@indiastays" below it implied a different
-              poster, which the user explicitly flagged as wrong).
-              User-uploaded posts also skip this — `_userPost` reels
-              already show "YOU" in the bottom strip. */}
+          {/* Creator subline — only shown for CREATOR or PUBLIC reels, where the
+              header shows the TAGGED HOTEL and this chip is the ACTUAL poster
+              (distinct entity — NOT redundant here, and the only affordance that
+              opens the creator profile). Hotel-source + user posts skip it. */}
           {creator.sourceType !== "hotel" && !h._userPost && (
             <button
               type="button"
@@ -2377,10 +2373,7 @@ const HotelCard = memo(function HotelCard({
           aria-label={muted ? "Unmute" : "Mute"}
         >
           <span className="ig-icon">{muted ? <RailIcon name="soundOff" /> : <RailIcon name="soundOn" />}</span>
-          {/* Volume booster label removed in v82 — was showing "1.8×"
-              even when nobody used the booster, just adds noise. Now
-              shows simple On/Off state. */}
-          <span className="ig-rail-count">{muted ? "Off" : "On"}</span>
+          {/* v625 Treatment A — icon-only rail (aria-label carries the state). */}
         </button>
         <button
           aria-label="Like"
@@ -2408,7 +2401,6 @@ const HotelCard = memo(function HotelCard({
           className="ig-rail-btn"
         >
           <span className="ig-icon"><RailIcon name="share" /></span>
-          <span className="ig-rail-count">Share</span>
         </button>
         <button
           aria-label="Save"
@@ -2474,7 +2466,6 @@ const HotelCard = memo(function HotelCard({
           className="ig-rail-btn"
         >
           <span className={`ig-icon ${saved ? "ig-icon-saved" : ""}`}><RailIcon name="bookmark" filled={saved} /></span>
-          <span className="ig-rail-count">{saved ? "Saved" : "Save"}</span>
         </button>
         <button
           aria-label="More"
@@ -2482,7 +2473,6 @@ const HotelCard = memo(function HotelCard({
           className="ig-rail-btn"
         >
           <span className="ig-icon"><RailIcon name="more" /></span>
-          <span className="ig-rail-count">More</span>
         </button>
 
         {/* v89 — Rotating audio disc REMOVED per user feedback ("kya kaam hai
@@ -2491,20 +2481,26 @@ const HotelCard = memo(function HotelCard({
       </div>
 
       {/* BOTTOM-LEFT: caption + price + equal CTAs. v87 — pushed above the
-          BottomDock (64px + safe-area) so Book Now / Bid buttons are no
-          longer clipped behind the dock. Was the root cause of screenshot 1's
-          "buttons neeche ho gaye" — they were never gone, the dock was sitting
-          on top of them. */}
+          BottomDock so Book Now / Bid buttons are no longer clipped behind
+          the dock. Was the root cause of screenshot 1's "buttons neeche ho
+          gaye" — they were never gone, the dock was sitting on top of them.
+          v630 — 54px → 58px: clears the Hotstar dock (~50px total; the v629
+          64px-tall bar buried this rail — owner's second screenshot). */}
       <div
         className="ig-reel-caption absolute left-3 right-[4.5rem] z-30"
-        style={{ bottom: "calc(54px + env(safe-area-inset-bottom, 0px))" }}
+        style={{ bottom: "calc(58px + env(safe-area-inset-bottom, 0px))" }}
       >
-        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+        {/* v625 Treatment A — ONE quiet trust line (rating · StayBid score ·
+            views) replaces the 5–7 pill wall. Dropped from the card face: the
+            star-count pill, the "LIVE BIDDING" pill (the Bid CTA already says
+            it), and the duplicate tagged-hotel score chip. The score stays as
+            the live, interactive HotelScoreBadge; every figure still exists,
+            it just stops competing on the first glance. */}
+        <div className="ig-trust-line mb-1.5">
           {h._userPost && (
             <span
               className="ig-pill"
               style={{
-                /* v88 — cozy champagne+cocoa instead of magenta/purple */
                 background: "linear-gradient(135deg, rgba(176, 192, 209,0.30), rgba(110,84,48,0.25))",
                 border: "1px solid rgba(176, 192, 209,0.55)",
                 color: "var(--cozy-cream-50)",
@@ -2513,14 +2509,7 @@ const HotelCard = memo(function HotelCard({
               ✨ YOUR {String(h._userPostKind || "POST").toUpperCase()}
             </span>
           )}
-          {h.starRating > 0 && <span className="ig-pill ig-pill-gold">{"★".repeat(Math.min(h.starRating, 5))}</span>}
-          {h.avgRating > 0 && <span className="ig-pill">★ {Number(h.avgRating).toFixed(1)}</span>}
-          {!h._userPost && <span className="ig-pill ig-pill-live"><span className="ig-dot" /> LIVE BIDDING</span>}
-          <span className="ig-pill">{fmtCount(viewCount)} views</span>
-
-          {/* v128.6 — Score badge lives INSIDE the pills row so it
-              shares flex-wrap with the other chips. Saves vertical
-              space on the desktop reel-frame where every row matters. */}
+          {h.avgRating > 0 && <span className="ig-trust-item">★ {Number(h.avgRating).toFixed(1)}</span>}
           {!h._userPost && h.id ? (
             <span className="ig-score-chip" onClick={(e) => e.stopPropagation()}>
               <HotelScoreBadge
@@ -2530,15 +2519,7 @@ const HotelCard = memo(function HotelCard({
               />
             </span>
           ) : null}
-          {h._userPostTaggedHotel?.id ? (
-            <span className="ig-score-chip" onClick={(e) => e.stopPropagation()}>
-              <HotelScoreBadge
-                hotelId={String(h._userPostTaggedHotel.id)}
-                hotelName={h._userPostTaggedHotel.name}
-                variant="compact"
-              />
-            </span>
-          ) : null}
+          <span className="ig-trust-item">{fmtCount(viewCount)} views</span>
         </div>
 
         {/* v416 — editorial serif hotel name (Cormorant, loaded in globals.css)
@@ -2552,7 +2533,7 @@ const HotelCard = memo(function HotelCard({
           style={{
             textShadow: "0 1px 3px rgba(0,0,0,0.75)",
             display: "-webkit-box",
-            WebkitLineClamp: showCaption ? 99 : 2,
+            WebkitLineClamp: showCaption ? 99 : 1,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
@@ -2692,10 +2673,10 @@ const HotelCard = memo(function HotelCard({
                   onNegotiate(h);
                 }
               }}
-              className="ig-cta-3d ig-cta-bid"
+              className="ig-cta-mini"
             >
               <span className="ig-cta-icon">🏷️</span>
-              <span className="ig-cta-text">Bid Now</span>
+              <span className="ig-cta-text">Bid</span>
             </button>
           </div>
         ) : null}
@@ -3973,7 +3954,12 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-filter-chip {
           position: fixed;
           top: calc(env(safe-area-inset-top, 0px) + 6px);  /* v87: clear notch */
-          right: 10px;
+          /* v630 — right 10px → 54px: the corner now belongs to the global
+             "You" avatar chip (.ig-you-chip in BottomDock, 34px @ right:10px).
+             Shifting the filter pills left makes the two read as ONE control
+             row — [All · City] (You) — instead of overlapping (owner's
+             real-device screenshot showed the chip sitting ON these pills). */
+          right: 54px;
           left: auto;
           z-index: 41;
           display: inline-flex;

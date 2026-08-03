@@ -5,6 +5,7 @@
 // Investor identity is stripped server-side (/api/partner/circle removes
 // contact + user_id) — the partner sees rooms + inflow, never personal data.
 import { useEffect, useState } from "react";
+import { CircleDot, RotateCw, MapPin } from "lucide-react";
 import { fmtINR, type PaymentPlanKey, CIRCLE_PLANS } from "@/lib/circle/engine";
 import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 
@@ -82,13 +83,13 @@ export default function PartnerCircleTab() {
     <div className="space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="font-display text-xl font-semibold text-luxury-900">◎ StayCircle Investments</h2>
+          <h2 className="font-display text-xl font-semibold text-luxury-900 inline-flex items-center gap-2"><CircleDot size={19} strokeWidth={2.2} aria-hidden />StayCircle Investments</h2>
           <p className="text-xs text-luxury-500 mt-0.5">
             Community partners investing in rooms at your property via StayCircle.
           </p>
         </div>
-        <button onClick={load} className="text-xs font-semibold text-luxury-500 border border-luxury-200 px-3 py-1.5 rounded-xl hover:border-gold-300">
-          ↻ Refresh
+        <button onClick={load} className="text-xs font-semibold text-luxury-500 border border-luxury-200 px-3 py-1.5 rounded-xl hover:border-gold-300 inline-flex items-center gap-1.5">
+          <RotateCw size={13} strokeWidth={2.3} aria-hidden />Refresh
         </button>
       </div>
 
@@ -120,7 +121,7 @@ export default function PartnerCircleTab() {
       {/* Empty state — no circle property linked to this hotel yet */}
       {properties.length === 0 ? (
         <div className="rounded-2xl border border-luxury-100 bg-white p-8 text-center shadow-sm">
-          <div className="text-3xl">◎</div>
+          <CircleDot className="mx-auto text-luxury-300" size={30} strokeWidth={1.9} aria-hidden />
           <h3 className="mt-2 font-display text-lg font-semibold text-luxury-900">Not on StayCircle yet</h3>
           <p className="mx-auto mt-1 max-w-md text-xs text-luxury-500">
             StayCircle lets community partners invest in your rooms and earn from actual
@@ -148,8 +149,8 @@ export default function PartnerCircleTab() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold text-luxury-900">{p.title}</h3>
-                      <span className="rounded-full bg-luxury-50 px-2 py-0.5 text-[10px] font-semibold text-luxury-500">
-                        📍 {p.location_label || p.city}
+                      <span className="rounded-full bg-luxury-50 px-2 py-0.5 text-[10px] font-semibold text-luxury-500 inline-flex items-center gap-1">
+                        <MapPin size={10} strokeWidth={2.4} aria-hidden />{p.location_label || p.city}
                       </span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${p.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-luxury-100 text-luxury-500"}`}>
                         {p.status.toUpperCase()}
@@ -167,7 +168,7 @@ export default function PartnerCircleTab() {
                     {p.roomTypes.map((rt) => {
                       const free = Math.max(0, (rt.total_units || 0) - (rt.locked_units || 0));
                       return (
-                        <div key={rt.id} className="rounded-xl border border-luxury-100 bg-luxury-50/50 px-3 py-2">
+                        <div key={rt.id} className="rounded-xl border border-luxury-100 bg-luxury-50 px-3 py-2">
                           <div className="text-xs font-semibold text-luxury-800">{rt.name}</div>
                           <div className="mt-0.5 text-[11px] text-luxury-500" style={{ fontVariantNumeric: "tabular-nums" }}>
                             {fmtINR(rt.monthly_rate)}/mo · {rt.locked_units}/{rt.total_units} invested

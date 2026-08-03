@@ -5,6 +5,11 @@
 // inline styles (matches /admin/holds). Auth via x-admin-token.
 
 import { useEffect, useState } from "react";
+import {
+  Inbox, Briefcase, Home, Search, Palette, Sofa, Wrench, Link2,
+  FolderOpen, Calculator, RotateCw, Lock, CreditCard, Clapperboard, Building2,
+  ExternalLink, Rocket, X, Zap, Check, type LucideIcon,
+} from "lucide-react";
 
 type Kpis = {
   leads: number; leadsNew: number;
@@ -33,15 +38,15 @@ type HostData = {
 
 type Tab = "leads" | "properties" | "portfolios" | "projects" | "orders" | "inquiries" | "jobs" | "channels";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "leads", label: "Leads", icon: "📨" },
-  { id: "portfolios", label: "Portfolios", icon: "💼" },
-  { id: "properties", label: "Property Listings", icon: "🏡" },
-  { id: "inquiries", label: "Property Inquiries", icon: "🔍" },
-  { id: "projects", label: "Design Studio", icon: "🎨" },
-  { id: "orders", label: "Store Orders", icon: "🛋️" },
-  { id: "jobs", label: "Workforce Jobs", icon: "🧑‍🔧" },
-  { id: "channels", label: "Channel Requests", icon: "🔗" },
+const TABS: { id: Tab; label: string; Ic: LucideIcon }[] = [
+  { id: "leads", label: "Leads", Ic: Inbox },
+  { id: "portfolios", label: "Portfolios", Ic: Briefcase },
+  { id: "properties", label: "Property Listings", Ic: Home },
+  { id: "inquiries", label: "Property Inquiries", Ic: Search },
+  { id: "projects", label: "Design Studio", Ic: Palette },
+  { id: "orders", label: "Store Orders", Ic: Sofa },
+  { id: "jobs", label: "Workforce Jobs", Ic: Wrench },
+  { id: "channels", label: "Channel Requests", Ic: Link2 },
 ];
 
 // Per-source status options offered as quick-set actions.
@@ -221,17 +226,17 @@ export default function AdminHost() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div>
-          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif" }}>
-            🏠 StayBid for Hosts
+          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif", display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <Home size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />StayBid for Hosts
           </h1>
           <p style={{ color: "#8A8FA8", fontSize: 13, margin: "4px 0 0" }}>
             Managed-portfolio vertical — leads, design, store, discovery, workforce & channels.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <a href="/admin/host/catalog" style={{ ...btnPrimary, textDecoration: "none", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0" }}>🗂 Manage Catalog</a>
-          <a href="/admin/host/pricing" style={{ ...btnPrimary, textDecoration: "none", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0" }}>🧮 Wizard Pricing</a>
-          <button onClick={load} disabled={loading} style={btnPrimary}>↻ Refresh</button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href="/admin/host/catalog" style={{ ...btnPrimary, textDecoration: "none", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", display: "inline-flex", alignItems: "center", gap: 6 }}><FolderOpen size={14} strokeWidth={2} aria-hidden />Manage Catalog</a>
+          <a href="/admin/host/pricing" style={{ ...btnPrimary, textDecoration: "none", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", display: "inline-flex", alignItems: "center", gap: 6 }}><Calculator size={14} strokeWidth={2} aria-hidden />Wizard Pricing</a>
+          <button onClick={load} disabled={loading} style={{ ...btnPrimary, display: "inline-flex", alignItems: "center", gap: 6 }}><RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh</button>
         </div>
       </div>
 
@@ -251,7 +256,7 @@ export default function AdminHost() {
           <Kpi label="Design projects" value={String(k.projects)} color="#A855F7" subtle />
           <Kpi label="Store orders" value={String(k.orders)} sub={inr(k.storeGmv) + " GMV"} color="#0EA5A0" />
           <Kpi label="Workforce jobs" value={String(k.jobs)} sub={`${k.jobsActive} open · ${inr(k.workforceRevenue)}`} color="#F59E0B" />
-          <Kpi label="Channel requests" value={String(k.channels)} sub={`${k.channelsNew} new`} color="#2563EB" />
+          <Kpi label="Channel requests" value={String(k.channels)} sub={`${k.channelsNew} new`} color="#5B8DEF" />
         </div>
       )}
 
@@ -271,12 +276,12 @@ export default function AdminHost() {
             <button key={t.id} onClick={() => setTab(t.id)}
               style={{
                 padding: "7px 15px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-                border: "1px solid",
+                border: "1px solid", display: "inline-flex", alignItems: "center", gap: 6,
                 ...(tab === t.id
                   ? { background: "linear-gradient(160deg,#d4dde6 0%,#b1bfd0 52%,#93a7bc 100%)", color: "#0F1117", borderColor: "transparent" }
                   : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
               }}>
-              {t.icon} {t.label}{count !== undefined ? ` · ${count}` : ""}
+              <t.Ic size={14} strokeWidth={2} aria-hidden />{t.label}{count !== undefined ? ` · ${count}` : ""}
             </button>
           );
         })}
@@ -359,7 +364,7 @@ function PortfoliosTable({ rows }: { rows: any[] }) {
             <tr key={r.id} style={trBody}>
               <Td>
                 <div style={{ color: "#8A8FA8", fontSize: 10, fontFamily: "monospace" }}>{String(r.id).slice(0, 8)}</div>
-                {r.razorpay_payment_id && <div style={{ color: "#2ECC71", fontSize: 10 }}>paid ✓</div>}
+                {r.razorpay_payment_id && <div style={{ color: "#2ECC71", fontSize: 10, display: "inline-flex", alignItems: "center", gap: 3 }}><Check size={10} strokeWidth={2.6} aria-hidden />paid</div>}
               </Td>
               <Td>
                 <div style={{ color: "#E8EAF0" }}>{r.contact?.name || r._user?.name || "—"}</div>
@@ -383,9 +388,9 @@ function PortfoliosTable({ rows }: { rows: any[] }) {
                 {r.pay_now ? inr(r.pay_now) : "—"}
                 {r.recurring ? <div style={{ color: "#8A8FA8", fontSize: 10, fontWeight: 400 }}>{inr(r.recurring)}/period</div> : null}
                 {r.pay_option === "hold" && Number(r.balance_due) > 0 && (
-                  <div style={{ color: "#e0a458", fontSize: 10, fontWeight: 600 }}>🔒 10% hold · {inr(Number(r.balance_due))} due</div>
+                  <div style={{ color: "#e0a458", fontSize: 10, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}><Lock size={10} strokeWidth={2.4} aria-hidden />10% hold · {inr(Number(r.balance_due))} due</div>
                 )}
-                {r.pay_option === "emi" && <div style={{ color: "#3D9CF5", fontSize: 10, fontWeight: 400 }}>💳 EMI / Pay-Later</div>}
+                {r.pay_option === "emi" && <div style={{ color: "#3D9CF5", fontSize: 10, fontWeight: 400, display: "inline-flex", alignItems: "center", gap: 3 }}><CreditCard size={10} strokeWidth={2.2} aria-hidden />EMI / Pay-Later</div>}
               </Td>
               <Td><StaticBadge status={r.status} /></Td>
               <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
@@ -422,7 +427,7 @@ function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableP
                   <div>
                     <div style={{ color: "#E8EAF0", fontWeight: 600 }}>{r.title || "Untitled"}</div>
                     <div style={{ color: "#8A8FA8", fontSize: 11 }}>{[r.locality, r.city, r.state].filter(Boolean).join(", ") || "—"}</div>
-                    <a href={`/host/property/${r.id}`} target="_blank" rel="noreferrer" style={{ color: "#9fb1c2", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🎬 Manage content ↗</a>
+                    <a href={`/host/property/${r.id}`} target="_blank" rel="noreferrer" style={{ color: "#9fb1c2", fontSize: 11, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}><Clapperboard size={11} strokeWidth={2.2} aria-hidden />Manage content<ExternalLink size={10} strokeWidth={2.2} aria-hidden /></a>
                   </div>
                 </div>
               </Td>
@@ -450,11 +455,11 @@ function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableP
                     const live = r._provisionedHotel?.approval_status === "approved";
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <span style={{ ...pill, background: "rgba(140, 160, 182,0.15)", color: "#9fb1c2", borderColor: "rgba(140, 160, 182,0.4)", whiteSpace: "nowrap" }}>🏨 Provisioned</span>
+                        <span style={{ ...pill, background: "rgba(140, 160, 182,0.15)", color: "#9fb1c2", borderColor: "rgba(140, 160, 182,0.4)", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}><Building2 size={10} strokeWidth={2.2} aria-hidden />Provisioned</span>
                         {live ? (
                           <>
-                            <span style={{ ...pill, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)", whiteSpace: "nowrap" }}>✓ Live on StayBid</span>
-                            <a href={`/hotels/${r.provisioned_hotel_id}`} target="_blank" rel="noreferrer" style={{ color: "#8A8FA8", fontSize: 10, textDecoration: "none" }}>{r.provisioned_hotel_id} ↗</a>
+                            <span style={{ ...pill, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={10} strokeWidth={2.6} aria-hidden />Live on StayBid</span>
+                            <a href={`/hotels/${r.provisioned_hotel_id}`} target="_blank" rel="noreferrer" style={{ color: "#8A8FA8", fontSize: 10, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}>{r.provisioned_hotel_id}<ExternalLink size={10} strokeWidth={2.2} aria-hidden /></a>
                           </>
                         ) : (
                           <>
@@ -462,15 +467,15 @@ function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableP
                             {onGoLive && (
                               <button disabled={busy === r.provisioned_hotel_id} onClick={() => onGoLive(r.provisioned_hotel_id)}
                                 title="Publish the operated hotel to customers (approval — enters every customer feed)"
-                                style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)" }}>
-                                {busy === r.provisioned_hotel_id ? "…" : "🚀 Go Live"}
+                                style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                {busy === r.provisioned_hotel_id ? "…" : <><Rocket size={11} strokeWidth={2.2} aria-hidden />Go Live</>}
                               </button>
                             )}
                           </>
                         )}
                         {onProvision && (
                           <button disabled={busy === r.id} onClick={() => onProvision(r.id)} title="Re-run provisioning (idempotent — syncs rooms/units)"
-                            style={{ ...miniBtn, background: "transparent", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.18)", fontSize: 10 }}>↻ Re-sync</button>
+                            style={{ ...miniBtn, background: "transparent", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.18)", fontSize: 10, display: "inline-flex", alignItems: "center", gap: 4 }}><RotateCw size={10} strokeWidth={2.2} aria-hidden />Re-sync</button>
                         )}
                       </div>
                     );
@@ -480,16 +485,16 @@ function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableP
                     {isPending && (
                       <>
                         <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "available")}
-                          style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)" }}>✓ Approve</button>
+                          style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} strokeWidth={2.4} aria-hidden />Approve</button>
                         <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "rejected")}
-                          style={{ ...miniBtn, background: "rgba(239,68,68,0.12)", color: "#EF4444", borderColor: "rgba(239,68,68,0.35)" }}>✕ Reject</button>
+                          style={{ ...miniBtn, background: "rgba(239,68,68,0.12)", color: "#FF6B7A", borderColor: "rgba(239,68,68,0.35)", display: "inline-flex", alignItems: "center", gap: 4 }}><X size={11} strokeWidth={2.4} aria-hidden />Reject</button>
                       </>
                     )}
                     {onProvision && r.status !== "rejected" && (
                       <button disabled={busy === r.id} onClick={() => onProvision(r.id)}
                         title="Create the operated StayBid hotel (rooms + units) + grant the lister dashboard access"
-                        style={{ ...miniBtn, background: "rgba(140, 160, 182,0.15)", color: "#9fb1c2", borderColor: "rgba(140, 160, 182,0.4)" }}>
-                        {busy === r.id ? "…" : "🏨 Approve + Provision"}
+                        style={{ ...miniBtn, background: "rgba(140, 160, 182,0.15)", color: "#9fb1c2", borderColor: "rgba(140, 160, 182,0.4)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {busy === r.id ? "…" : <><Building2 size={11} strokeWidth={2.2} aria-hidden />Approve + Provision</>}
                       </button>
                     )}
                   </div>
@@ -565,7 +570,7 @@ function OrdersTable({ rows, busy, onStatus }: TableProps) {
         {rows.map((r) => (
           <tr key={r.id} style={trBody}>
             <Td><div style={{ color: "#8A8FA8", fontSize: 10, fontFamily: "monospace" }}>{r.id.slice(0, 10)}</div>
-              {r.razorpay_payment_id && <div style={{ color: "#2ECC71", fontSize: 10 }}>paid ✓</div>}</Td>
+              {r.razorpay_payment_id && <div style={{ color: "#2ECC71", fontSize: 10, display: "inline-flex", alignItems: "center", gap: 3 }}><Check size={10} strokeWidth={2.6} aria-hidden />paid</div>}</Td>
             <Td><div style={{ color: "#E8EAF0" }}>{r.contact?.name || r._user?.name || "—"}</div>
               <div style={{ color: "#8A8FA8", fontSize: 11 }}>{r.contact?.phone || r._user?.phone || ""}</div></Td>
             <Td style={{ color: "#8A8FA8", fontSize: 12, maxWidth: 220 }}>
@@ -592,7 +597,7 @@ function JobsTable({ rows, busy, onStatus }: TableProps) {
         {rows.map((r) => (
           <tr key={r.id} style={trBody}>
             <Td><div style={{ color: "#8A8FA8", fontSize: 10, fontFamily: "monospace" }}>{r.id.slice(0, 10)}</div>
-              {r.razorpay_payment_id && <div style={{ color: "#2ECC71", fontSize: 10 }}>paid ✓</div>}</Td>
+              {r.razorpay_payment_id && <div style={{ color: "#2ECC71", fontSize: 10, display: "inline-flex", alignItems: "center", gap: 3 }}><Check size={10} strokeWidth={2.6} aria-hidden />paid</div>}</Td>
             <Td><div style={{ color: "#E8EAF0" }}>{r.contact?.name || r._user?.name || "—"}</div>
               <div style={{ color: "#8A8FA8", fontSize: 11 }}>{r.contact?.phone || r._user?.phone || ""}</div></Td>
             <Td><div style={{ color: "#E8EAF0" }}>{r._worker?.name || "—"}</div>
@@ -628,11 +633,11 @@ function ChannelsTable({ rows, busy, onStatus, onSetup }: TableProps) {
               {onSetup && r.status !== "connected" && (
                 <button disabled={busy === r.id} onClick={() => onSetup(r.id)}
                   title="Create the channel_connections (+ iCal feed if a URL is given) for this host's hotel and grant the Channels service"
-                  style={{ background: "rgba(46,204,113,0.14)", border: "1px solid rgba(46,204,113,0.35)", color: "#2ECC71", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 600, cursor: busy === r.id ? "wait" : "pointer", fontFamily: "inherit" }}>
-                  {busy === r.id ? "…" : "⚡ Set up sync"}
+                  style={{ background: "rgba(46,204,113,0.14)", border: "1px solid rgba(46,204,113,0.35)", color: "#2ECC71", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 600, cursor: busy === r.id ? "wait" : "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {busy === r.id ? "…" : <><Zap size={12} strokeWidth={2.2} aria-hidden />Set up sync</>}
                 </button>
               )}
-              {r.status === "connected" && <span style={{ color: "#2ECC71", fontSize: 12, fontWeight: 600 }}>✓ Connected</span>}
+              {r.status === "connected" && <span style={{ color: "#2ECC71", fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={12} strokeWidth={2.6} aria-hidden />Connected</span>}
             </Td>
             <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
           </tr>

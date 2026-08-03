@@ -12,6 +12,7 @@
 //   • Free trial — always raises an admin request.
 //
 import { useState } from "react";
+import { RotateCw, Lock, X, Hourglass, ArrowLeft, Zap, Wallet, Gift } from "lucide-react";
 import { modalPortal } from "@/lib/partner/modal-portal";
 import { SERVICE_LABEL } from "@/lib/partner/services";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
@@ -122,27 +123,27 @@ export default function ServiceLockModal({
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
-          <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>{renew ? "🔄" : "🔒"} {label}</p>
+          <p className="font-display text-lg text-luxury-900 inline-flex items-center gap-1.5" style={{ fontWeight: 500 }}>{renew ? <RotateCw size={16} strokeWidth={2.3} aria-hidden /> : <Lock size={16} strokeWidth={2.3} aria-hidden />} {label}</p>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center"><X size={16} strokeWidth={2.4} aria-hidden /></button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
           {pendingRequest ? (
             <div className="text-center py-4">
-              <p className="text-3xl mb-2">⏳</p>
-              <p className="text-[0.82rem] font-bold text-luxury-900">Request bhej di gayi hai</p>
+              <Hourglass className="mx-auto mb-2 text-luxury-300" size={28} strokeWidth={1.9} aria-hidden />
+              <p className="text-[0.82rem] font-bold text-luxury-900">Request sent</p>
               <p className="text-[0.7rem] text-luxury-500 mt-1">
-                Admin aapki <b>{label}</b> request review kar raha hai. Approve hote hi ye service apne aap unlock ho jayegi.
+                The admin is reviewing your <b>{label}</b> request. It&apos;ll unlock automatically once approved.
               </p>
             </div>
           ) : mode === "plans" ? (
             <>
               <button onClick={() => { if (renew) { onClose(); } else { setMode("choose"); setErr(""); } }}
-                className="text-[0.7rem] text-luxury-500 mb-2">‹ Wapas</button>
+                className="text-[0.7rem] text-luxury-500 mb-2 inline-flex items-center gap-1"><ArrowLeft size={12} strokeWidth={2.4} aria-hidden />Back</button>
               <p className="text-[0.78rem] text-luxury-600 mb-3">
-                <b>{label}</b> {renew ? "ko renew karne ke liye plan choose karo" : "ke liye apna plan choose karo"}.
-                Payment ke turant baad service {renew ? "renew" : "unlock"} ho jayegi.
+                {renew ? <>Choose a plan to renew <b>{label}</b>.</> : <>Choose a plan for <b>{label}</b>.</>}{" "}
+                The service {renew ? "renews" : "unlocks"} right after payment.
               </p>
 
               {hasPrice && (
@@ -154,8 +155,7 @@ export default function ServiceLockModal({
                     const tag = serviceKey + ":" + pl;
                     return (
                       <button key={pl} onClick={() => pay(pl)} disabled={!!busy}
-                        className="w-full flex items-center justify-between rounded-xl p-3 transition-all disabled:opacity-50"
-                        style={{ background: "#f7f8fa", border: "1.5px solid #c1ccd7" }}>
+                        className="w-full flex items-center justify-between rounded-xl p-3 transition-all disabled:opacity-50 bg-luxury-50 border border-luxury-200">
                         <span className="text-left">
                           <span className="block text-[0.8rem] font-bold text-luxury-900">{PLAN_LABEL[pl]}</span>
                           <span className="block text-[0.6rem] text-luxury-500">{PLAN_TERM[pl]} access</span>
@@ -173,7 +173,7 @@ export default function ServiceLockModal({
                 <div className="space-y-2">
                   <p className="text-[0.66rem] font-bold text-luxury-700">Bundle plans (extra services included)</p>
                   {myBundles.map((b: any) => (
-                    <div key={b.id} className="rounded-xl p-2.5" style={{ background: "#eff2f5" }}>
+                    <div key={b.id} className="rounded-xl p-2.5 bg-luxury-50">
                       <p className="text-[0.74rem] font-bold text-luxury-900">{b.name}</p>
                       <p className="text-[0.58rem] text-luxury-500 mb-1.5">
                         {(b.service_keys || []).map((k: string) => SERVICE_LABEL[k] || k).join(" · ")}
@@ -185,8 +185,7 @@ export default function ServiceLockModal({
                           const tag = b.id + ":" + pl;
                           return (
                             <button key={pl} onClick={() => pay(pl, b.id)} disabled={!!busy}
-                              className="bg-white rounded-lg px-1.5 py-1.5 text-center transition-all disabled:opacity-50"
-                              style={{ border: "1px solid #c1ccd7" }}>
+                              className="bg-white rounded-lg px-1.5 py-1.5 text-center transition-all disabled:opacity-50 border border-luxury-200">
                               <span className="block text-[0.5rem] text-luxury-400 uppercase tracking-wide">{PLAN_LABEL[pl]}</span>
                               <span className="block text-[0.72rem] font-bold text-gold-700">
                                 {busy === tag ? "…" : fmtCur(price)}
@@ -205,35 +204,33 @@ export default function ServiceLockModal({
           ) : (
             <>
               <p className="text-[0.78rem] text-luxury-600 mb-3">
-                <b>{label}</b> ek subscription service hai. Iska access lene ke liye neeche se choose karo —
-                admin aapko free access dega ya plan ka price batayega.
+                <b>{label}</b> is a subscription service. Choose an option below — the admin will
+                give you free access or share the plan price.
               </p>
               <div className="space-y-2">
                 <button onClick={onActivate} disabled={!!busy}
-                  className="w-full text-left rounded-xl p-3 transition-all disabled:opacity-50"
-                  style={{ background: "#f7f8fa", border: "1.5px solid #c1ccd7" }}>
-                  <p className="text-[0.82rem] font-bold text-luxury-900">⚡ Activate</p>
+                  className="w-full text-left rounded-xl p-3 transition-all disabled:opacity-50 bg-luxury-50 border border-luxury-200">
+                  <p className="text-[0.82rem] font-bold text-luxury-900 inline-flex items-center gap-1.5"><Zap size={14} strokeWidth={2.4} aria-hidden />Activate</p>
                   <p className="text-[0.64rem] text-luxury-500">
-                    {canBuy ? "Plan choose karke abhi unlock karo" : "Subscribe karne ke liye admin ko request bhejo"}
+                    {canBuy ? "Pick a plan and unlock it now" : "Send the admin a request to subscribe"}
                   </p>
                 </button>
                 <button onClick={() => setShowCharges((s) => !s)}
-                  className="w-full text-left rounded-xl p-3 transition-all bg-white"
-                  style={{ border: "1.5px solid #d7dee6" }}>
-                  <p className="text-[0.82rem] font-bold text-luxury-900">💰 Show charges</p>
-                  <p className="text-[0.64rem] text-luxury-500">Is service ka plan price dekho</p>
+                  className="w-full text-left rounded-xl p-3 transition-all bg-white border border-luxury-200">
+                  <p className="text-[0.82rem] font-bold text-luxury-900 inline-flex items-center gap-1.5"><Wallet size={14} strokeWidth={2.3} aria-hidden />Show charges</p>
+                  <p className="text-[0.64rem] text-luxury-500">See this service&apos;s plan price</p>
                 </button>
                 {showCharges && (() => {
                   if (!hasPrice && !myBundles.length) {
                     return (
-                      <div className="rounded-xl p-2.5 text-[0.68rem] text-luxury-600" style={{ background: "#eff2f5" }}>
-                        Iss service ki pricing admin abhi set kar raha hai. Activate ya free-trial request bhejo —
-                        admin aapko exact price ya free access bata dega.
+                      <div className="rounded-xl p-2.5 text-[0.68rem] text-luxury-600 bg-luxury-50">
+                        The admin is still setting this service&apos;s pricing. Send an Activate or free-trial
+                        request — they&apos;ll share the exact price or free access.
                       </div>
                     );
                   }
                   return (
-                    <div className="rounded-xl p-2.5" style={{ background: "#eff2f5" }}>
+                    <div className="rounded-xl p-2.5 bg-luxury-50">
                       {hasPrice && (
                         <>
                           <p className="text-[0.66rem] font-bold text-luxury-700 mb-1">{label} — plan price</p>
@@ -258,15 +255,14 @@ export default function ServiceLockModal({
                           ))}
                         </div>
                       )}
-                      <p className="text-[0.58rem] text-luxury-400 mt-1.5">Activate dabao — plan choose karke pay karo.</p>
+                      <p className="text-[0.58rem] text-luxury-400 mt-1.5">Tap Activate — pick a plan and pay.</p>
                     </div>
                   );
                 })()}
                 <button onClick={() => raise("free_trial")} disabled={!!busy}
-                  className="w-full text-left rounded-xl p-3 transition-all bg-white disabled:opacity-50"
-                  style={{ border: "1.5px solid #d7dee6" }}>
-                  <p className="text-[0.82rem] font-bold text-luxury-900">🎁 Request free trial</p>
-                  <p className="text-[0.64rem] text-luxury-500">Admin se kuch din ka free access maango</p>
+                  className="w-full text-left rounded-xl p-3 transition-all bg-white border border-luxury-200 disabled:opacity-50">
+                  <p className="text-[0.82rem] font-bold text-luxury-900 inline-flex items-center gap-1.5"><Gift size={14} strokeWidth={2.3} aria-hidden />Request free trial</p>
+                  <p className="text-[0.64rem] text-luxury-500">Ask the admin for a few days of free access</p>
                 </button>
               </div>
               {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-2">{err}</p>}
@@ -276,7 +272,7 @@ export default function ServiceLockModal({
 
         <div className="px-4 py-3 border-t border-luxury-100 shrink-0">
           <button onClick={onClose} className="btn-ghost w-full">
-            {pendingRequest ? "Theek hai" : "Abhi nahi"}
+            {pendingRequest ? "OK" : "Not now"}
           </button>
         </div>
       </div>

@@ -18,6 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { Home, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { basketCount as m2BasketCount, onBasketChange as onM2BasketChange } from "@/lib/circle/model2-basket";
@@ -141,7 +142,7 @@ export function CircleDock() {
     <nav className={`sbc-dock v2${roomsActive ? " rooms-open" : ""}`} aria-label="StayCircle steps">
       {/* Home */}
       <Link href="/circle" prefetch className={`sbc-dock-end${isHome ? " on" : ""}`} aria-current={isHome ? "page" : undefined}>
-        <span className="sbc-dock-glyph">🏠</span>
+        <span className="sbc-dock-glyph" style={{ display: "grid", placeItems: "center" }}><Home size={20} strokeWidth={2.1} aria-hidden /></span>
         <span className="sbc-dock-label">Home</span>
       </Link>
 
@@ -190,7 +191,7 @@ export function CircleDock() {
 
       {/* Dashboard */}
       <Link href="/circle/dashboard" prefetch className={`sbc-dock-end${isDash ? " on" : ""}`} aria-current={isDash ? "page" : undefined}>
-        <span className="sbc-dock-glyph">☰</span>
+        <span className="sbc-dock-glyph" style={{ display: "grid", placeItems: "center" }}><Menu size={19} strokeWidth={2.1} aria-hidden /></span>
         <span className="sbc-dock-label">Dashboard</span>
       </Link>
     </nav>

@@ -1,5 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
+import { RotateCw, Clapperboard } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -175,7 +176,7 @@ export default function VerificationPage() {
               className="shrink-0 text-xs px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
               style={{ background: "rgba(255,255,255,0.08)", color: "#c8d2dc", border: "1px solid rgba(106,133,160,0.28)" }}
               aria-label="Refresh">
-              {refreshing ? "Refreshing…" : "↻ Refresh"}
+              {refreshing ? "Refreshing…" : <><RotateCw size={13} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Refresh</>}
             </button>
           </div>
 
@@ -210,7 +211,7 @@ export default function VerificationPage() {
 
         {bookings.length === 0 ? (
           <div className="card-luxury sb-card-lift sb-fade-in p-10 text-center">
-            <div className="text-5xl mb-3">🎬</div>
+            <div className="mb-3"><Clapperboard size={40} strokeWidth={2} aria-hidden style={{ display: "inline-block", color: "#8198ae" }} /></div>
             <div className="font-display text-2xl text-luxury-900">No confirmed bookings yet</div>
             <p className="text-luxury-500 text-sm mt-2">Verification videos are available after a booking is confirmed.</p>
             <Link href="/hotels" className="btn-luxury mt-5 inline-block sb-card-lift">Browse hotels</Link>

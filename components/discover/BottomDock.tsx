@@ -1,56 +1,70 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
-// BottomDock — Instagram-style horizontal nav bar at the bottom of the
-// reel feed.
+// BottomDock — Hotstar-style bottom nav (v629 redesign, owner-picked).
 //
-// Replaces the left-edge DialerNav crown wheel on /, /discover and /reels
-// per the v78 design ask. The crown wheel still lives on every other page
-// (DialerNav.tsx hides itself on the routes this dock owns).
+// 5 slots (was 7): the owner locked the set + the JioHotstar anatomy —
+// airy icon-only sides (label appears under the ACTIVE side item only),
+// one emphasized CENTRE slot with a permanent label:
 //
-// 6 slots:
-//   ⌂ Home    → /
-//   ⌕ Hotels  → /hotels      (search / browse)
-//   ⚡ Deals   → /flash-deals
-//   ◎ Bid     → /bid
-//   ▷ Reels   → /discover    (active on the reel pages)
-//   ○ You     → /me
+//   ⌂ Home    → /              (left 1)
+//   ⌕ Hotels  → /hotels        (left 2)
+//   ⚡ DEALS  → /flash-deals   (CENTRE — gold starburst, flash-stamp gold)
+//   ₹ Bid     → /bid           (right 1)
+//   ▷ Reels   → /discover      (right 2)
 //
-// The dock is fixed at the bottom (above the system gesture bar), uses a
-// glassy blurred surface so the reel video still bleeds subtly through.
+// "You" (/me) left the bar → the YouChip avatar, fixed top-right, rendered
+// on the reel-app routes where the Navbar is hidden (mobile). Every other
+// page keeps profile access via the Navbar (chips + More sheet). "Wishlist"
+// (/saved) left the bar → the ♥ on cards + the row inside /me. BOTH routes
+// stay fully live — nothing was deleted, only the bar slots.
+//
+// Carried over UNCHANGED from the 7-slot dock: the operator-panel hide
+// list, composer/modal hide, reel-page dark skin, /bid immersive skin,
+// light-theme skin, safe-area padding, overflow-x clip (Galaxy Fold), and
+// the body bottom-buffer (52px → 64px for the taller centre star; the
+// matching /bid `.bgz-shell` carve in globals.css:~8253 moved with it).
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Home, Search, Zap, IndianRupee, Clapperboard, User } from "lucide-react";
+
+type LucideCmp = typeof Home;
 
 type Item = {
-  href:  string;
-  label: string;
-  icon:  string;
-  /** Solid (filled) glyph used when the route is active. */
-  iconActive?: string;
+  href:   string;
+  label:  string;
+  Icon:   LucideCmp;
+  center?: boolean;
 };
 
-// Slot 2 = Hotels, slot 5 = Reels (swapped per the customer ask). Order is
-// the only thing that changed — isActive() keys off href, not index, so
-// every route/highlight still resolves correctly.
 const ITEMS: Item[] = [
-  { href: "/",            label: "Home",    icon: "⌂",  iconActive: "⌂" },
-  { href: "/hotels",      label: "Hotels",  icon: "⌕",  iconActive: "⌕" },
-  { href: "/flash-deals", label: "Deals",   icon: "⚡", iconActive: "⚡" },
-  { href: "/bid",         label: "Bid",     icon: "◎",  iconActive: "●" },
-  { href: "/discover",    label: "Reels",   icon: "▷",  iconActive: "▶" },
-  // v578 — wishlist entry on the mobile nav (the heart on cards saves to /saved;
-  // it was only reachable from the /me drawer before).
-  { href: "/saved",       label: "Wishlist", icon: "♡",  iconActive: "♥" },
-  { href: "/me",          label: "You",     icon: "○",  iconActive: "●" },
+  { href: "/",            label: "Home",   Icon: Home },
+  { href: "/hotels",      label: "Hotels", Icon: Search },
+  { href: "/flash-deals", label: "Deals",  Icon: Zap, center: true },
+  { href: "/bid",         label: "Bid",    Icon: IndianRupee },
+  { href: "/discover",    label: "Reels",  Icon: Clapperboard },
 ];
 
 export function BottomDock() {
   const pathname = usePathname() || "/";
 
-  // Show on EVERY customer-facing page (v80) — was previously only the
-  // reel surfaces; user reported it disappearing when they tapped into
-  // /bid, /hotels, or any hamburger destination. Only the operator
-  // panels keep their own headers + hide the public dock.
+  // "You" avatar chip: the signed-in user's initial (sb_user is
+  // localStorage-only, so read it AFTER mount — SSR-safe).
+  const [initial, setInitial] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sb_user");
+      if (raw) {
+        const u = JSON.parse(raw);
+        const src = (u?.name || u?.email || "").trim();
+        setInitial(src ? src[0].toUpperCase() : null);
+      }
+    } catch { /* stay icon-only */ }
+  }, [pathname]);
+
+  // Show on EVERY customer-facing page (v80) — operator panels keep their
+  // own headers + hide the public dock. (Unchanged list.)
   const hidden =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
@@ -71,20 +85,49 @@ export function BottomDock() {
     if (href === "/discover") {
       return pathname.startsWith("/discover") || pathname.startsWith("/reels");
     }
-    // /me — the "You" tab — lights up across the whole profile surface,
-    // also when the user is on /profile (account settings linked from the
-    // hamburger drawer) since that's logically still "You".
-    if (href === "/me") {
-      return pathname.startsWith("/me") || pathname.startsWith("/profile");
-    }
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  // The YouChip renders ONLY where the Navbar is CSS-hidden on mobile
+  // (Navbar isReelRoute list), minus /me itself (it IS the destination).
+  // ≥1024px the chip is display:none — the desktop Navbar shows everywhere.
+  const showYouChip =
+    pathname === "/" ||
+    pathname.startsWith("/discover") ||
+    pathname.startsWith("/reels") ||
+    pathname.startsWith("/saved/posts");
+
   return (
     <>
+      {showYouChip && (
+        <Link href="/me" prefetch className="ig-you-chip" aria-label="You — profile">
+          {initial
+            ? <span className="ig-you-init">{initial}</span>
+            : <User size={16} strokeWidth={2.2} aria-hidden />}
+        </Link>
+      )}
+
       <nav className="ig-bottom-dock" aria-label="Primary navigation">
         {ITEMS.map((it) => {
           const active = isActive(it.href);
+          const I = it.Icon;
+          if (it.center) {
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                prefetch
+                className={`ig-dock-deal${active ? " is-active" : ""}`}
+                aria-label={it.label}
+                aria-current={active ? "page" : undefined}
+              >
+                <span className="ig-deal-star" aria-hidden>
+                  <I size={16} strokeWidth={2.3} />
+                </span>
+                <span className="ig-deal-label">{it.label}</span>
+              </Link>
+            );
+          }
           return (
             <Link
               key={it.href}
@@ -94,18 +137,25 @@ export function BottomDock() {
               aria-label={it.label}
               aria-current={active ? "page" : undefined}
             >
-              <span className="ig-dock-glyph">{active ? (it.iconActive || it.icon) : it.icon}</span>
-              <span className="ig-dock-label">{it.label}</span>
+              {/* v630 — sides are icon-only ALWAYS (true Hotstar anatomy; the
+                  v629 active-only label made the active side visually heavier,
+                  which read as "Deals is off-centre" on a real phone). Active
+                  state = colour + weight + pill only. aria-label carries the
+                  name for a11y. */}
+              <I className="ig-dock-ic" size={20} strokeWidth={active ? 2.5 : 1.9} aria-hidden />
             </Link>
           );
         })}
       </nav>
 
       <style jsx global>{`
-        /* v90 — Theme-aware dock. In dark mode, warm cocoa bar (the v88
-           look). In light mode, frosted cream over whatever's beneath
-           with cocoa text + champagne active accent. Same brand colour
-           on both. */
+        /* v632 — FADE-GLASS bar (owner: "colour change nahi — TRANSLUCENT;
+           bottom→top fade so it melts into whatever is behind"). The
+           ORIGINAL skin colours stay, but as a vertical gradient: solid at
+           the bottom edge → fully transparent at the top edge, over a
+           backdrop blur. NO border-top, NO shadow — those hard lines were
+           exactly what made every earlier version read as "a slab placed
+           on top". Same pattern in all four skins below. */
         .ig-bottom-dock {
           position: fixed;
           left: 0;
@@ -116,62 +166,55 @@ export function BottomDock() {
           align-items: center;
           justify-content: space-around;
           gap: 2px;
-          /* v607 — shrink the dock height (top/bottom padding 5→3).
-             v618 — EDGE-TO-EDGE experiment. The dock is at bottom:0, so its
-             background already reaches the true bottom edge. max(5px, safe-area)
-             pads the ICONS up above the gesture pill while the dock's OWN
-             background continuously fills the gesture-bar region — so on a
-             device that draws content edge-to-edge (viewport-fit=cover), the
-             pill floats over the nav instead of over a separate OS-coloured
-             strip. On devices that don't (safe-area=0) it collapses to 5px =
-             unchanged. This is the standard iOS/Android pattern (IG's bar
-             extends under the home indicator). */
-          padding: 3px 4px max(5px, env(safe-area-inset-bottom, 0px));
-          background: rgba(19, 23, 28, 0.94);
-          backdrop-filter: blur(18px) saturate(1.4);
-          -webkit-backdrop-filter: blur(18px) saturate(1.4);
-          border-top: 1px solid rgba(176, 192, 209, 0.12);
-          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
-          /* The dock is exactly viewport-width (left:0;right:0). On the
-             280px Galaxy Fold cover screen the 6 emoji glyphs' intrinsic
-             width is the shrink floor, so the rightmost item can spill a
-             few px past the edge → a transient document-level horizontal
-             scrollbar. Clip it here (can't hide anything real since the
-             dock already spans the full viewport). */
+          /* v618 EDGE-TO-EDGE (kept): background fills the gesture-bar
+             region; max(3px, safe-area) pads the icons above the pill. */
+          padding: 2px 6px max(3px, env(safe-area-inset-bottom, 0px));
+          /* v633 — steeper fade: only the top ~18% is see-through; by the
+             icon zone the glass is ≥93% solid. v632's 38%-transparent top
+             put the icons' upper halves on raw page content — "buttons
+             sahi se visible nahi" (owner). The soft top edge (the actual
+             "melt into the page") is preserved. */
+          background: linear-gradient(180deg,
+            rgba(19, 23, 28, 0) 0%,
+            rgba(19, 23, 28, 0.72) 18%,
+            rgba(19, 23, 28, 0.93) 45%,
+            rgba(19, 23, 28, 0.96) 100%);
+          backdrop-filter: blur(14px) saturate(1.3);
+          -webkit-backdrop-filter: blur(14px) saturate(1.3);
+          border-top: none;
+          box-shadow: none;
+          /* Galaxy Fold 280px: clip transient horizontal spill (kept). */
           overflow-x: clip;
         }
         [data-theme="light"] .ig-bottom-dock {
-          background: rgba(176, 192, 209, 0.94);
-          border-top: 1px solid var(--border-soft);
-          box-shadow: 0 -4px 18px rgba(31, 26, 15, 0.08);
+          background: linear-gradient(180deg,
+            rgba(176, 192, 209, 0) 0%,
+            rgba(176, 192, 209, 0.70) 18%,
+            rgba(176, 192, 209, 0.93) 45%,
+            rgba(176, 192, 209, 0.96) 100%);
+          border-top: none;
+          box-shadow: none;
         }
-        /* v114 — hide the dock while the Composer is open so it can't
-           bleed through ANY stacking context (real iOS Safari + Android
-           Chrome both have edge cases where high-z fixed panels still
-           let a sibling fixed nav peek through). The Composer sets
-           body.sb-composer-open on mount + clears on unmount. */
+        /* v114 — hide while Composer/modal open (kept). */
         body.sb-composer-open .ig-bottom-dock,
         body.sb-modal-open    .ig-bottom-dock { display: none !important; }
-        /* v610/v614 — owner: the /bid page USED to hide the dock (v407
-           immersive game zone). On gesture-nav phones with no OS nav bar that
-           trapped the user — no way to leave /bid. The dock now STAYS visible
-           on /bid (v614 also carves the dock height out of the fixed z-1000
-           .bgz-shell overlay so it can't bury the dock). (Composer/modal
-           still hide it.)
-           /bid is an always-dark game surface even in light theme, so match
-           the dock to the dark game zone here — otherwise a bright slate bar
-           flashes at the bottom of the dark climber. Reuses the inert
-           body.sb-bid-immersive class the page already sets. */
+        body.sb-composer-open .ig-you-chip,
+        body.sb-modal-open    .ig-you-chip { display: none !important; }
+        /* v610/v614 — /bid immersive skin (kept, fade-glass, v633 stops). */
         body.sb-bid-immersive .ig-bottom-dock {
-          background: rgba(13, 10, 5, 0.92);
-          border-top: 1px solid rgba(176, 192, 209, 0.14);
-          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.55);
+          background: linear-gradient(180deg,
+            rgba(13, 10, 5, 0) 0%,
+            rgba(13, 10, 5, 0.72) 18%,
+            rgba(13, 10, 5, 0.93) 45%,
+            rgba(13, 10, 5, 0.96) 100%);
+          border-top: none;
+          box-shadow: none;
         }
         body.sb-bid-immersive .ig-dock-item { color: rgba(197, 212, 228, 0.82); }
         body.sb-bid-immersive .ig-dock-item.is-active {
           color: var(--cozy-champagne-light, #b4c1cf);
-          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
+
         .ig-dock-item {
           flex: 1 1 0;
           min-width: 0;
@@ -179,11 +222,13 @@ export function BottomDock() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 1px;
-          padding: 4px 2px;
+          gap: 2px;
+          padding: 3px 2px;
+          /* v631 — 40px visual row (owner: thinner). Still comfortably over
+             the 24px WCAG 2.5.8 minimum; each slot is ~70px wide. */
+          min-height: 40px;
           overflow: hidden;
-          /* v88 — cream-tinted instead of harsh white; v609 lifted for legibility */
-          color: rgba(197, 212, 228, 0.86);
+          color: rgba(197, 212, 228, 0.78);
           text-decoration: none;
           border-radius: 12px;
           transition:
@@ -191,65 +236,128 @@ export function BottomDock() {
             transform 0.14s cubic-bezier(.32,1.2,.36,1),
             background 0.18s ease;
         }
-        /* v609 — owner: the v608 slate read dull. Deep, saturated slate so the
-           nav (the app's main control) reads premium + clearly legible. */
-        [data-theme="light"] .ig-dock-item { color: #3f5369; font-weight: 650; }
-        /* v408 — On the immersive reel (always dark, even in light theme) the
-           cream dock read as a bright block stacked on the phone's system nav
-           bar ("double layer"). Force the dark walnut dock + light glyphs there
-           so the bottom blends into the reel like TikTok/IG. Scoped to
-           .is-reel-page (0,2,1 specificity) so it beats the light-theme rules
-           without touching any other surface. */
+        /* v633 — deeper ink + a faint theme-matched halo so glyphs stay
+           legible even over the fade's softer top edge. */
+        [data-theme="light"] .ig-dock-item { color: #33465c; }
+        .ig-dock-item .ig-dock-ic { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+        [data-theme="light"] .ig-dock-item .ig-dock-ic {
+          filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.55));
+        }
+        /* v408 — reel-page always-dark skin (kept, fade-glass, v633 stops). */
         body.is-reel-page .ig-bottom-dock {
-          background: rgba(10, 8, 5, 0.92);
-          border-top: 1px solid rgba(176, 192, 209, 0.14);
-          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.55);
+          background: linear-gradient(180deg,
+            rgba(10, 8, 5, 0) 0%,
+            rgba(10, 8, 5, 0.72) 18%,
+            rgba(10, 8, 5, 0.93) 45%,
+            rgba(10, 8, 5, 0.96) 100%);
+          border-top: none;
+          box-shadow: none;
         }
         body.is-reel-page .ig-dock-item { color: rgba(176, 192, 209, 0.62); }
         body.is-reel-page .ig-dock-item.is-active {
           color: var(--cozy-champagne-light, #b4c1cf);
-          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
         .ig-dock-item:active { transform: scale(0.94); }
+        /* v631 — active = COLOUR + weight only, no pill background (the
+           background block read chunky on device and unbalanced the bar). */
         .ig-dock-item.is-active {
-          /* v88 — desaturated cozy champagne instead of saturated gold */
           color: var(--cozy-champagne-light, #b4c1cf);
-          background: linear-gradient(180deg, rgba(176, 192, 209,0.10), rgba(176, 192, 209,0.02));
         }
         [data-theme="light"] .ig-dock-item.is-active {
           color: var(--accent);
-          background: linear-gradient(180deg, rgba(79,109,138,0.16), rgba(79,109,138,0.04));
         }
-        .ig-dock-glyph {
-          font-size: 1.25rem;
-          line-height: 1;
-          font-weight: 600;
+        .ig-dock-ic { flex: 0 0 auto; }
+
+        /* ── CENTRE: ⚡ Deals — the /flash-deals GOLD stamp gradient
+              (one deal, one colour — matches .fd-disc-stamp). ── */
+        .ig-dock-deal {
+          flex: 0 0 50px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 2px;
+          padding: 0 2px;
+          text-decoration: none;
+          position: relative;
         }
-        .ig-dock-label {
-          font-size: 0.52rem;
-          font-weight: 700;
-          letter-spacing: 0.04em;
+        .ig-deal-star {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #3a2a08;
+          background: radial-gradient(circle at 32% 28%, #ffe9ad, #f2c650 46%, #d69a1e);
+          box-shadow: 0 0 0 1px rgba(214, 154, 30, 0.35), 0 4px 14px rgba(214, 154, 30, 0.45);
+          transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), box-shadow 0.18s ease;
+        }
+        .ig-dock-deal:active .ig-deal-star { transform: scale(0.92); }
+        .ig-dock-deal.is-active .ig-deal-star {
+          box-shadow: 0 0 0 2px rgba(242, 198, 80, 0.55), 0 4px 18px rgba(214, 154, 30, 0.6);
+        }
+        .ig-deal-label {
+          font-size: max(10px, 0.63rem);
+          font-weight: 800;
+          letter-spacing: 0.05em;
           text-transform: uppercase;
+          color: #f2c650;
         }
-        /* Global padding so no page content gets stuck under the dock.
-           Reel-app routes (/, /discover, /reels) opt out via their own
-           layout but everything else gets a safe ~70px bottom buffer.
-           v124.2: bumped from safe-area-only to dock-height + safe-area
-           so the LAST in-page CTA (Book Now, Submit Bid, etc.) is always
-           clear of the dock on mobile + tablet. Real-device feedback —
-           several pages had the last CTA row half-covered. */
-        body { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+        [data-theme="light"] .ig-deal-label { color: #8a6210; }
+        body.is-reel-page .ig-deal-label,
+        body.sb-bid-immersive .ig-deal-label { color: #f2c650; }
+
+        /* ── "You" avatar chip — top-right on reel-app routes (mobile).
+              Desktop ≥1024 shows the Navbar everywhere → chip off. ── */
+        .ig-you-chip {
+          position: fixed;
+          /* v630 — aligned to the reel feed's own top-right control row
+             (.ig-filter-chip sits at safe+6px / right:54px since v630, so
+             the corner is RESERVED for this chip — they read as ONE row:
+             [All · City]  (You). See InstagramHotelFeed .ig-filter-chip. */
+          top: calc(4px + env(safe-area-inset-top, 0px));
+          right: 10px;
+          z-index: 58;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          color: #f2f6fa;
+          background: linear-gradient(160deg, #5d7d9c, #3f5a75);
+          border: 1.5px solid rgba(255, 255, 255, 0.55);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+        }
+        [data-theme="dark"] .ig-you-chip,
+        body.is-reel-page   .ig-you-chip {
+          background: linear-gradient(160deg, #a9c3dc, #7fa0bf);
+          color: #131a21;
+          border-color: rgba(19, 23, 28, 0.6);
+        }
+        .ig-you-chip:active { transform: scale(0.92); }
+        .ig-you-init {
+          font-size: 0.82rem;
+          font-weight: 800;
+          line-height: 1;
+        }
+        @media (min-width: 1024px) {
+          .ig-you-chip { display: none; }
+        }
+
+        /* Global bottom buffer so no content hides under the dock.
+           v631: 60px → 54px (bar is 50px total). The /bid .bgz-shell
+           carve in globals.css moved with it — keep the two values in
+           sync (and see the boot-screen clipping warning there). */
+        body { padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px)); }
         body.is-reel-page { padding-bottom: 0; }
-        /* Operator panels (admin, partner, onboard, auth) hide the dock —
-           don't reserve the dock-height there. */
+        /* Operator panels hide the dock — no dock-height reserve (kept). */
         body:has([data-route-admin]), body:has([data-route-partner]),
         body:has([data-route-onboard]), body.no-bottom-dock {
           padding-bottom: env(safe-area-inset-bottom, 0px) !important;
         }
-        /* v610 — the /bid dock is visible again, so /bid keeps the normal
-           dock-height reserve (from the body rule above) so PRESS START sits
-           above the dock instead of under it. (Old v413 buffer-drop removed.) */
-
       `}</style>
     </>
   );

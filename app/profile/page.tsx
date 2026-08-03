@@ -1,4 +1,5 @@
 "use client";
+import { Gem, Pencil, Sparkles, Lock, Target } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
@@ -193,7 +194,7 @@ export default function ProfilePage() {
             )}
             {!nextLevel && (
               <div className="mt-4 flex items-center gap-2 text-purple-300 text-xs">
-                <span>💎</span>
+                <Gem size={16} strokeWidth={2.2} aria-hidden />
                 <span>You've reached the highest tier — Platinum Elite</span>
               </div>
             )}
@@ -207,7 +208,7 @@ export default function ProfilePage() {
             {!editMode ? (
               <button onClick={() => setEditMode(true)}
                 className="text-xs font-semibold text-gold-600 border border-gold-200 px-3 py-1.5 rounded-xl hover:bg-[var(--bg-pill)] transition-all">
-                ✏️ Edit
+                <Pencil size={12} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} /> Edit
               </button>
             ) : (
               <div className="flex gap-2">
@@ -317,7 +318,7 @@ export default function ProfilePage() {
         <div className="fade-up bg-[var(--bg-card)] rounded-3xl border border-[var(--border-soft)] shadow-luxury p-6 space-y-4" style={{ animationDelay: "0.12s" }}>
           <div className="flex items-center justify-between">
             <h3 className="font-display font-semibold text-luxury-900 text-lg tracking-tight">
-              ✨ Upgrade your account
+              <Sparkles size={15} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} /> Upgrade your account
             </h3>
             <a href="/upgrade" className="text-xs font-semibold text-gold-600 hover:underline">Full upgrade page →</a>
           </div>
@@ -348,7 +349,7 @@ export default function ProfilePage() {
               <div className="space-y-1.5 opacity-50">
                 {nextLevel.perks.slice(nextLevel.perks.length - 2).map((perk, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-[var(--bg-pill)] flex items-center justify-center shrink-0 text-[0.6rem]">🔒</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--bg-pill)] flex items-center justify-center shrink-0 text-[0.6rem]"><Lock size={11} strokeWidth={2.4} aria-hidden /></span>
                     <span className="text-sm text-luxury-500">{perk}</span>
                   </div>
                 ))}
@@ -385,7 +386,7 @@ export default function ProfilePage() {
 
         {/* ── All milestones ── */}
         <div className="fade-up sb-card-lift bg-[var(--bg-card)] rounded-3xl border border-[var(--border-soft)] shadow-luxury p-6" style={{ animationDelay:"0.3s" }}>
-          <h3 className="font-display font-semibold text-luxury-900 text-lg mb-4 tracking-tight">🎯 Reward Milestones</h3>
+          <h3 className="font-display font-semibold text-luxury-900 text-lg mb-4 tracking-tight"><Target size={16} strokeWidth={2.4} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 6 }} /> Reward Milestones</h3>
           <div className="space-y-3 sb-stagger">
             {MILESTONES.map((m, i) => {
               const achieved = totalSpend >= m.at;

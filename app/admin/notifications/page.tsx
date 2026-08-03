@@ -10,6 +10,11 @@
 // failed, and shows queue health KPIs.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Bell, RotateCw, RotateCcw, Hourglass, CircleCheck, TriangleAlert, Mail, X, Ban,
+  MessageSquare, XCircle, AlarmClock, Zap, Heart, Reply, UserPlus, CalendarCheck, Flag, Star,
+  type LucideIcon,
+} from "lucide-react";
 import KpiCard from "@/components/admin/kpi-card";
 import DataTable from "@/components/admin/data-table";
 import { adminColors as C, btnGhost, btnGold, h1Style, pageStyle, pill, selectStyle } from "@/lib/admin/styles";
@@ -34,13 +39,19 @@ const STATUS_COLOR: Record<string, string> = {
   failed:  C.red,
 };
 
-const KIND_ICON: Record<string, string> = {
-  bid_accepted: "✅", bid_countered: "💬", bid_rejected: "❌",
-  bid_auto_cancelled: "⏰", bid_expiring_soon: "⚡",
-  video_like: "❤️", video_comment: "💬", comment_reply: "↪",
-  new_follower: "👤", booking_confirm: "📅", complaint_new: "🚩",
-  feedback_thanks: "⭐",
+// Notification-kind → lucide icon. Used in the table + drawer (the kind
+// dropdown lists plain kind names — an <option> can't hold a React node).
+const KIND_LUCIDE: Record<string, LucideIcon> = {
+  bid_accepted: CircleCheck, bid_countered: MessageSquare, bid_rejected: XCircle,
+  bid_auto_cancelled: AlarmClock, bid_expiring_soon: Zap,
+  video_like: Heart, video_comment: MessageSquare, comment_reply: Reply,
+  new_follower: UserPlus, booking_confirm: CalendarCheck, complaint_new: Flag,
+  feedback_thanks: Star,
 };
+function KindIcon({ kind, size = 14 }: { kind: string; size?: number }) {
+  const I = KIND_LUCIDE[kind] || Mail;
+  return <I size={size} strokeWidth={2} aria-hidden />;
+}
 
 export default function AdminNotifications() {
   const [list, setList] = useState<Notif[]>([]);
@@ -114,8 +125,8 @@ export default function AdminNotifications() {
       key: "kind",
       label: "Kind",
       render: (n: Notif) => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 14 }}>{KIND_ICON[n.kind] || "📨"}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.text }}>
+          <KindIcon kind={n.kind} />
           <span style={{ color: C.text, fontWeight: 500 }}>{n.kind}</span>
         </span>
       ),
@@ -157,12 +168,12 @@ export default function AdminNotifications() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ ...h1Style, margin: 0 }} className="admin-h1">📨 Notification Queue</h1>
+        <h1 style={{ ...h1Style, margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }} className="admin-h1"><Bell size={22} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Notification Queue</h1>
         <button
           onClick={load}
-          style={{ ...btnGhost, padding: "8px 14px" }}
+          style={{ ...btnGhost, padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 6 }}
         >
-          ↻ Refresh
+          <RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh
         </button>
         <button
           onClick={() => exportRows(`notifications-${status}`, filtered, cols.filter((c: any) => c.key !== "actions"))}
@@ -198,10 +209,10 @@ export default function AdminNotifications() {
 
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
-        <KpiCard title="Pending"  value={counts.pending} icon="⏳" color={C.amber} />
-        <KpiCard title="Sent"     value={counts.sent}    icon="✅" color={C.green} />
-        <KpiCard title="Failed"   value={counts.failed}  icon="⚠️" color={C.red}   />
-        <KpiCard title="Total"    value={counts.total}   icon="📨" color={C.gold}  />
+        <KpiCard title="Pending"  value={counts.pending} icon={<Hourglass size={18} strokeWidth={2} aria-hidden />} color={C.amber} />
+        <KpiCard title="Sent"     value={counts.sent}    icon={<CircleCheck size={18} strokeWidth={2} aria-hidden />} color={C.green} />
+        <KpiCard title="Failed"   value={counts.failed}  icon={<TriangleAlert size={18} strokeWidth={2} aria-hidden />} color={C.red}   />
+        <KpiCard title="Total"    value={counts.total}   icon={<Mail size={18} strokeWidth={2} aria-hidden />} color={C.gold}  />
       </div>
 
       {/* Filters */}
@@ -214,7 +225,7 @@ export default function AdminNotifications() {
         </select>
         <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} style={selectStyle}>
           <option value="all">All kinds</option>
-          {kinds.map((k) => <option key={k} value={k}>{KIND_ICON[k] || "📨"} {k}</option>)}
+          {kinds.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
         <span style={{ marginLeft: "auto", alignSelf: "center", color: C.textDim, fontSize: 13 }}>
           Showing {filtered.length} / {list.length}
@@ -242,11 +253,11 @@ export default function AdminNotifications() {
             <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <p style={{ color: C.textDim, fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", margin: 0 }}>Notification</p>
-                <p style={{ color: C.text, fontSize: 15, fontWeight: 600, margin: "3px 0 0" }}>
-                  <span style={{ marginRight: 6 }}>{KIND_ICON[selected.kind] || "📨"}</span>{selected.kind}
+                <p style={{ color: C.text, fontSize: 15, fontWeight: 600, margin: "3px 0 0", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <KindIcon kind={selected.kind} size={15} />{selected.kind}
                 </p>
               </div>
-              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textDim, fontSize: 22, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSelected(null)} aria-label="Close" style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", display: "inline-flex", alignItems: "center" }}><X size={22} strokeWidth={2} aria-hidden /></button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
               <Row label="ID"        value={<span style={{ fontFamily: "monospace", color: C.text }}>{selected.id}</span>} />
@@ -265,18 +276,18 @@ export default function AdminNotifications() {
             </div>
             <div style={{ padding: 16, borderTop: `1px solid ${C.border}`, display: "flex", gap: 8, flexWrap: "wrap" }}>
               {selected.status !== "sent" && (
-                <button onClick={() => setRowStatus(selected.id, "sent")} disabled={busy} style={{ ...btnGold, flex: 1, background: C.green, color: "#0F1117" }}>
-                  ✓ Mark sent
+                <button onClick={() => setRowStatus(selected.id, "sent")} disabled={busy} style={{ ...btnGold, flex: 1, background: C.green, color: "#0F1117", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <CircleCheck size={15} strokeWidth={2.2} aria-hidden />Mark sent
                 </button>
               )}
               {selected.status !== "failed" && (
-                <button onClick={() => setRowStatus(selected.id, "failed", "Manually closed by admin")} disabled={busy} style={{ ...btnGhost, color: C.red, borderColor: `${C.red}55` }}>
-                  ⊘ Mark failed
+                <button onClick={() => setRowStatus(selected.id, "failed", "Manually closed by admin")} disabled={busy} style={{ ...btnGhost, color: C.red, borderColor: `${C.red}55`, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Ban size={15} strokeWidth={2.2} aria-hidden />Mark failed
                 </button>
               )}
               {selected.status !== "pending" && (
-                <button onClick={() => setRowStatus(selected.id, "pending")} disabled={busy} style={btnGhost}>
-                  ↺ Re-queue
+                <button onClick={() => setRowStatus(selected.id, "pending")} disabled={busy} style={{ ...btnGhost, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <RotateCcw size={15} strokeWidth={2.2} aria-hidden />Re-queue
                 </button>
               )}
             </div>

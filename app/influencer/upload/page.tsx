@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { CountUp } from "@/components/CountUp";
+import { Clapperboard, Video, Image as ImageIcon, Rocket, Heart } from "lucide-react";
 
 const SB_URL  = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
@@ -170,7 +171,7 @@ export default function UploadPage() {
             <h2 className="font-display text-2xl font-bold text-luxury-900">Upload a Reel</h2>
             <p className="text-luxury-500 text-sm mt-0.5">Show off a hotel stay · Earn when viewers book</p>
           </div>
-          <span className="text-4xl">🎬</span>
+          <Clapperboard size={36} strokeWidth={1.8} aria-hidden style={{ color: "#c9a24a" }} />
         </div>
       </div>
 
@@ -186,7 +187,7 @@ export default function UploadPage() {
             <video src={videoPreview} className="w-full rounded-2xl max-h-72 object-contain" controls />
           ) : (
             <div className="text-center py-10 px-4">
-              <div className="text-5xl mb-3">📹</div>
+              <Video size={46} strokeWidth={1.6} aria-hidden className="mx-auto mb-3 text-luxury-400" />
               <p className="font-semibold text-luxury-700">Tap to choose a video</p>
               <p className="text-xs text-luxury-500 mt-1">MP4 · MOV · WebM · up to 200 MB</p>
             </div>
@@ -201,7 +202,7 @@ export default function UploadPage() {
             className="relative shrink-0 w-24 h-24 rounded-xl border-2 border-dashed border-luxury-200 bg-luxury-50 flex items-center justify-center cursor-pointer hover:border-gold-400 transition-all overflow-hidden">
             {thumbPreview
               ? <img src={thumbPreview} alt="thumb" className="w-full h-full object-cover" />
-              : <span className="text-3xl">🖼️</span>}
+              : <ImageIcon size={28} strokeWidth={1.8} aria-hidden className="text-luxury-400" />}
             <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={pickThumb} />
           </div>
           <div className="flex-1 space-y-3">
@@ -264,7 +265,7 @@ export default function UploadPage() {
           type="submit"
           disabled={uploading || !videoFile}
           className="btn-luxury sb-shimmer w-full py-3 text-base font-bold disabled:opacity-50 disabled:cursor-not-allowed relative">
-          <span className="relative" style={{ zIndex: 2 }}>{uploading ? "Uploading…" : "Upload Reel 🚀"}</span>
+          <span className="relative inline-flex items-center justify-center gap-2" style={{ zIndex: 2 }}>{uploading ? "Uploading…" : <>Upload Reel <Rocket size={16} strokeWidth={2.2} aria-hidden /></>}</span>
         </button>
       </form>
 
@@ -286,7 +287,7 @@ export default function UploadPage() {
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full text-white"
                         style={{ background: badge.color + "cc" }}>{badge.label}</span>
-                      {v.likes_count > 0 && <span className="text-[0.6rem] text-white/80">❤️ {v.likes_count}</span>}
+                      {v.likes_count > 0 && <span className="text-[0.6rem] text-white/80 inline-flex items-center gap-0.5"><Heart size={10} strokeWidth={2.4} aria-hidden /> {v.likes_count}</span>}
                     </div>
                   </div>
                 </div>

@@ -1,56 +1,64 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard, Users, Sparkles, Building2, ClipboardList, Home, Calculator,
+  Radio, CircleDot, ReceiptText, Building, Tag, Video, Clapperboard, Siren, Tags,
+  Monitor, Lock, Timer, BarChart3, MessageSquare, Headphones, Image as ImageIcon,
+  Flag, Stamp, Key, ShieldAlert, Landmark, BadgePercent, Percent, Gift, Ticket,
+  TrendingUp, FileText, Star, Bell, ShieldCheck, Settings,
+  Zap, X, ChevronRight, ChevronLeft, CircleHelp, ArrowLeftRight,
+} from "lucide-react";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
 
 const NAV = [
-  { href: "/admin", label: "Dashboard", icon: "⊞" },
-  { href: "/admin/users", label: "Users", icon: "👤" },
-  { href: "/admin/creators", label: "Creators", icon: "✨" },
-  { href: "/admin/hotels", label: "Hotels", icon: "🏨" },
-  { href: "/admin/bookings", label: "Bookings & Bids", icon: "📋" },
-  { href: "/admin/host", label: "StayBid for Hosts", icon: "🏠" },
-  { href: "/admin/host/pricing", label: "Host Wizard Pricing", icon: "🧮" },
+  { href: "/admin", label: "Dashboard", Ic: LayoutDashboard },
+  { href: "/admin/users", label: "Users", Ic: Users },
+  { href: "/admin/creators", label: "Creators", Ic: Sparkles },
+  { href: "/admin/hotels", label: "Hotels", Ic: Building2 },
+  { href: "/admin/bookings", label: "Bookings & Bids", Ic: ClipboardList },
+  { href: "/admin/host", label: "StayBid for Hosts", Ic: Home },
+  { href: "/admin/host/pricing", label: "Host Wizard Pricing", Ic: Calculator },
   // v319 — Channel Manager admin health console
-  { href: "/admin/channels", label: "Channel Health", icon: "📡" },
+  { href: "/admin/channels", label: "Channel Health", Ic: Radio },
   // v288 — StayCircle™ Community Partner Platform (room-level investing)
-  { href: "/admin/circle", label: "StayCircle", icon: "◎" },
+  { href: "/admin/circle", label: "StayCircle", Ic: CircleDot },
   // v330 — Circle Model 3 pre-buy inventory oversight (blocks + payouts)
-  { href: "/admin/circle-inventory", label: "Circle Inventory", icon: "🧾" },
+  { href: "/admin/circle-inventory", label: "Circle Inventory", Ic: ReceiptText },
   // v341 — Circle Marketplace M2: Model-3 pre-buy supply admin (enable + window)
-  { href: "/admin/circle-supply", label: "Circle Supply", icon: "🏢" },
+  { href: "/admin/circle-supply", label: "Circle Supply", Ic: Building },
   // v361 — Circle Model 3: travel-agent monthly auction oversight
-  { href: "/admin/auction", label: "Agent Auction", icon: "🏷️" },
-  { href: "/admin/verification", label: "Verification", icon: "🎥" },
-  { href: "/admin/videos", label: "Hotel Videos", icon: "🎬" },
-  { href: "/admin/complaints", label: "Complaints", icon: "🚨" },
-  { href: "/admin/pricing", label: "Pricing & Deals", icon: "💰" },
-  { href: "/kiosk", label: "Offline Kiosk", icon: "🖥️", external: true },
-  { href: "/admin/hold-config", label: "Hold Config", icon: "🔒" },
-  { href: "/admin/holds", label: "Active Holds", icon: "⏱" },
-  { href: "/admin/analytics", label: "Bid Analytics", icon: "📊" },
-  { href: "/admin/messages", label: "Chat Moderation", icon: "💬" },
+  { href: "/admin/auction", label: "Agent Auction", Ic: Tag },
+  { href: "/admin/verification", label: "Verification", Ic: Video },
+  { href: "/admin/videos", label: "Hotel Videos", Ic: Clapperboard },
+  { href: "/admin/complaints", label: "Complaints", Ic: Siren },
+  { href: "/admin/pricing", label: "Pricing & Deals", Ic: Tags },
+  { href: "/kiosk", label: "Offline Kiosk", Ic: Monitor, external: true },
+  { href: "/admin/hold-config", label: "Hold Config", Ic: Lock },
+  { href: "/admin/holds", label: "Active Holds", Ic: Timer },
+  { href: "/admin/analytics", label: "Bid Analytics", Ic: BarChart3 },
+  { href: "/admin/messages", label: "Chat Moderation", Ic: MessageSquare },
   // v146 — Hybrid AI + agent support inbox
-  { href: "/admin/support", label: "Support Inbox", icon: "🎧" },
+  { href: "/admin/support", label: "Support Inbox", Ic: Headphones },
   // Phase 5 tier-system — escalated content moderation queue
-  { href: "/admin/content", label: "Content Reviews", icon: "🖼️" },
+  { href: "/admin/content", label: "Content Reviews", Ic: ImageIcon },
   // v402 — reel reports + blocked-contact comment flags
-  { href: "/admin/moderation", label: "Moderation", icon: "🚩" },
-  { href: "/admin/passport", label: "Passports", icon: "🛂" },
-  { href: "/admin/services", label: "Service Access", icon: "🔑" },
-  { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },
-  { href: "/admin/finance", label: "Finance", icon: "📊" },
-  { href: "/admin/commission-rules", label: "Creator Commission", icon: "✨" },
-  { href: "/admin/hotel-commission-rules", label: "Hotel Commission", icon: "🏨" },
-  { href: "/admin/redemption-rules", label: "Redemption Rules", icon: "🎁" },
-  { href: "/admin/redemption-codes", label: "Issued Codes", icon: "🎟️" },
-  { href: "/admin/revenue", label: "Revenue", icon: "💹" },
-  { href: "/admin/reports", label: "Reports Center", icon: "📑" },
-  { href: "/admin/feedback", label: "Feedback", icon: "⭐" },
-  { href: "/admin/notifications", label: "Notifications", icon: "📨" },
-  { href: "/admin/rls", label: "RLS / Security", icon: "🛡️" },
-  { href: "/admin/settings", label: "Settings", icon: "⚙️" },
+  { href: "/admin/moderation", label: "Moderation", Ic: Flag },
+  { href: "/admin/passport", label: "Passports", Ic: Stamp },
+  { href: "/admin/services", label: "Service Access", Ic: Key },
+  { href: "/admin/fraud", label: "Fraud & Security", Ic: ShieldAlert },
+  { href: "/admin/finance", label: "Finance", Ic: Landmark },
+  { href: "/admin/commission-rules", label: "Creator Commission", Ic: BadgePercent },
+  { href: "/admin/hotel-commission-rules", label: "Hotel Commission", Ic: Percent },
+  { href: "/admin/redemption-rules", label: "Redemption Rules", Ic: Gift },
+  { href: "/admin/redemption-codes", label: "Issued Codes", Ic: Ticket },
+  { href: "/admin/revenue", label: "Revenue", Ic: TrendingUp },
+  { href: "/admin/reports", label: "Reports Center", Ic: FileText },
+  { href: "/admin/feedback", label: "Feedback", Ic: Star },
+  { href: "/admin/notifications", label: "Notifications", Ic: Bell },
+  { href: "/admin/rls", label: "RLS / Security", Ic: ShieldCheck },
+  { href: "/admin/settings", label: "Settings", Ic: Settings },
 ];
 
 interface Props {
@@ -120,7 +128,7 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
             flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: 22, flexShrink: 0 }}>⚡</span>
+          <Zap size={22} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, color: "#9fb1c2" }} />
           {!effectiveCollapsed && (
             <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#9fb1c2", fontSize: 18, whiteSpace: "nowrap" }}>
               StayBid Admin
@@ -134,13 +142,18 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
               border: "none",
               color: "#8A8FA8",
               cursor: "pointer",
-              fontSize: 18,
+              display: "flex",
+              alignItems: "center",
               padding: 4,
               flexShrink: 0,
             }}
             title={isMobile ? "Close menu" : "Toggle sidebar"}
           >
-            {isMobile ? "✕" : effectiveCollapsed ? "›" : "‹"}
+            {isMobile
+              ? <X size={18} strokeWidth={2.2} aria-hidden />
+              : effectiveCollapsed
+                ? <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
+                : <ChevronLeft size={18} strokeWidth={2.2} aria-hidden />}
           </button>
         </div>
 
@@ -183,7 +196,7 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
                   transition: "all 0.15s",
                 }}
               >
-                <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
+                <item.Ic size={16} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />
                 {!effectiveCollapsed && <span>{item.label}</span>}
               </Link>
             );
@@ -201,11 +214,11 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
             return (
               <>
                 <AppTourButton title={effectiveCollapsed ? "App Tour" : undefined} style={{ ...navBtn, marginTop: 4, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-                  <span style={{ fontSize: 15, flexShrink: 0 }}>❓</span>
+                  <CircleHelp size={16} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />
                   {!effectiveCollapsed && <span>App Tour</span>}
                 </AppTourButton>
                 <HelpSupportButton title={effectiveCollapsed ? "Help & Support" : undefined} style={navBtn}>
-                  <span style={{ fontSize: 15, flexShrink: 0 }}>🎧</span>
+                  <Headphones size={16} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />
                   {!effectiveCollapsed && <span>Help &amp; Support</span>}
                 </HelpSupportButton>
               </>
@@ -235,7 +248,7 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
               textAlign: "left",
             }}
           >
-            <span style={{ fontSize: 15, flexShrink: 0 }}>⇄</span>
+            <ArrowLeftRight size={16} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />
             {!effectiveCollapsed && <span>Switch experience</span>}
           </SwitchExperienceButton>
         </nav>

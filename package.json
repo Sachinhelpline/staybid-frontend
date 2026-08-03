@@ -9,7 +9,10 @@
     "dev": "next dev",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build",
     "start": "next start",
-    "test:security": "node tests/security/security.test.js"
+    "test:security": "node tests/security/security.test.js",
+    "vr": "playwright test",
+    "vr:update": "playwright test --update-snapshots",
+    "audit:responsive": "bash responsive-audit/run.sh"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
@@ -19,6 +22,7 @@
     "firebase": "^12.13.0",
     "gsap": "^3.15.0",
     "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.28.0",
     "nanoid": "^5.1.11",
     "next": "^16.2.6",
     "nodemailer": "^8.0.10",

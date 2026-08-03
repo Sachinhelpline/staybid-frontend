@@ -4,6 +4,7 @@
 // which felt like "it just opens a hotel page". This is a reviews-first
 // surface: every stay scored on real guest experience, each row linking
 // straight into that hotel's guest-review page (/hotels/[id]/reviews).
+import { BadgeCheck, Trophy, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -55,9 +56,9 @@ export default function TrustReviewsPage() {
         {/* Explainer chips */}
         <div className="grid grid-cols-3 gap-2.5 mb-6 sb-stagger">
           {[
-            { icon: "✅", t: "Verified stays", s: "Video-checked rooms" },
-            { icon: "🏆", t: "Stay Score", s: "0–100 + city rank" },
-            { icon: "⭐", t: "Guest reviews", s: "Real · post-checkout" },
+            { icon: <BadgeCheck size={20} strokeWidth={2.2} aria-hidden style={{ color: "#7F9269" }} />, t: "Verified stays", s: "Video-checked rooms" },
+            { icon: <Trophy size={20} strokeWidth={2.2} aria-hidden style={{ color: "#c9a24a" }} />, t: "Stay Score", s: "0–100 + city rank" },
+            { icon: <Star size={20} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />, t: "Guest reviews", s: "Real · post-checkout" },
           ].map((c) => (
             <div key={c.t} className="card-luxury sb-card-lift p-3 text-center rounded-2xl">
               <div className="text-xl mb-1">{c.icon}</div>

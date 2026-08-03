@@ -7,6 +7,7 @@
 // window (StayBid as biller, the hotel as customer).
 //
 import { useEffect, useState } from "react";
+import { ReceiptText, X, Printer } from "lucide-react";
 import { modalPortal } from "@/lib/partner/modal-portal";
 import { SERVICE_LABEL } from "@/lib/partner/services";
 
@@ -31,7 +32,7 @@ function payServices(p: any): string {
 
 function openReceipt(p: any) {
   const w = window.open("", "_blank", "width=520,height=720");
-  if (!w) { alert("Receipt popup block ho gaya — popups allow karein."); return; }
+  if (!w) { alert("The receipt pop-up was blocked — please allow pop-ups."); return; }
   const esc = (s: any) => String(s ?? "—").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] as string));
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"/>
 <title>StayBid Receipt — ${esc(p.id)}</title>
@@ -77,7 +78,7 @@ function openReceipt(p: any) {
     <div class="amt">${esc(fmtCur(p.amount))}</div>
   </div>
   <div class="ft">
-    Yeh ek system-generated receipt hai — signature ki zaroorat nahi.<br/>
+    This is a system-generated receipt — no signature required.<br/>
     StayBid · support@staybids.in · staybids.in
   </div>
   <script>setTimeout(function(){window.print();},250);<\/script>
@@ -115,11 +116,11 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <div>
-            <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>🧾 Subscription Billing</p>
-            <p className="text-[0.62rem] text-luxury-500">Aapke service payments aur receipts</p>
+            <p className="font-display text-lg text-luxury-900 inline-flex items-center gap-1.5" style={{ fontWeight: 500 }}><ReceiptText size={17} strokeWidth={2.2} aria-hidden />Subscription Billing</p>
+            <p className="text-[0.62rem] text-luxury-500">Your service payments and receipts</p>
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center"><X size={16} strokeWidth={2.4} aria-hidden /></button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
@@ -129,16 +130,15 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
             <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>
           ) : payments.length === 0 ? (
             <div className="text-center py-6">
-              <p className="text-3xl mb-2">🧾</p>
-              <p className="text-[0.8rem] font-bold text-luxury-900">Abhi koi payment nahi</p>
+              <ReceiptText className="mx-auto mb-2 text-luxury-300" size={30} strokeWidth={1.8} aria-hidden />
+              <p className="text-[0.8rem] font-bold text-luxury-900">No payments yet</p>
               <p className="text-[0.68rem] text-luxury-500 mt-1">
-                Jab aap koi subscription service activate karenge, uska payment yahan dikhega.
+                When you activate a subscription service, its payment will appear here.
               </p>
             </div>
           ) : (
             <>
-              <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between"
-                style={{ background: "#f7f8fa", border: "1.5px solid #c1ccd7" }}>
+              <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between bg-luxury-50 border border-luxury-200">
                 <span className="text-[0.7rem] text-luxury-600">Total paid</span>
                 <span className="text-[0.95rem] font-bold text-gold-700">{fmtCur(totalPaid)}</span>
               </div>
@@ -146,8 +146,7 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
                 {payments.map((p) => {
                   const paid = p.status === "paid";
                   return (
-                    <div key={p.id} className="rounded-xl p-3"
-                      style={{ background: "#f6f7f9", border: "1px solid #d7dee6" }}>
+                    <div key={p.id} className="rounded-xl p-3 bg-luxury-50 border border-luxury-200">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[0.8rem] font-bold text-luxury-900 truncate">
@@ -158,20 +157,17 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-[0.86rem] font-bold text-gold-700">{fmtCur(p.amount)}</p>
-                          <span className="text-[0.55rem] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{
-                              background: paid ? "#e7f6ec" : p.status === "failed" ? "#fdeceb" : "#ebeef2",
-                              color: paid ? "#1c7a3e" : p.status === "failed" ? "#c0392b" : "#8a7a3a",
-                            }}>
+                          <span className={`text-[0.55rem] font-bold px-1.5 py-0.5 rounded-full ${
+                            paid ? "bg-emerald-50 text-emerald-700" : p.status === "failed" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
                             {paid ? "PAID" : String(p.status || "").toUpperCase()}
                           </span>
                         </div>
                       </div>
                       {paid && (
                         <button onClick={() => openReceipt(p)}
-                          className="mt-2 w-full rounded-lg py-1.5 text-[0.68rem] font-bold text-white transition-all"
+                          className="mt-2 w-full rounded-lg py-1.5 text-[0.68rem] font-bold text-white transition-all inline-flex items-center justify-center gap-1.5"
                           style={{ background: "#8198ae" }}>
-                          🧾 Receipt dekho / print karo
+                          <Printer size={13} strokeWidth={2.3} aria-hidden />View / print receipt
                         </button>
                       )}
                     </div>
@@ -183,7 +179,7 @@ export default function SubscriptionBillingModal({ onClose }: { onClose: () => v
         </div>
 
         <div className="px-4 py-3 border-t border-luxury-100 shrink-0">
-          <button onClick={onClose} className="btn-ghost w-full">Band karein</button>
+          <button onClick={onClose} className="btn-ghost w-full">Close</button>
         </div>
       </div>
     </div>

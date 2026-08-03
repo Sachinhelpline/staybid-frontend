@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Flag, ShieldAlert, ClipboardList, MessageSquare } from "lucide-react";
 import KPICard from "@/components/admin/kpi-card";
 import DataTable from "@/components/admin/data-table";
 import { adminColors as C, h1Style, pageStyle, pill } from "@/lib/admin/styles";
@@ -107,15 +108,15 @@ export default function AdminModeration() {
       </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
-        <KPICard title="Open reel reports" value={kpis.openReports ?? 0} icon="🚩" color={C.red} />
-        <KPICard title="Open comment flags" value={kpis.openFlags ?? 0} icon="🛡️" color={C.amber} />
-        <KPICard title="Total reports" value={kpis.totalReports ?? 0} icon="📑" color={C.textDim} />
-        <KPICard title="Total flags" value={kpis.totalFlags ?? 0} icon="💬" color={C.textDim} />
+        <KPICard title="Open reel reports" value={kpis.openReports ?? 0} icon={<Flag size={18} strokeWidth={2} aria-hidden />} color={C.red} />
+        <KPICard title="Open comment flags" value={kpis.openFlags ?? 0} icon={<ShieldAlert size={18} strokeWidth={2} aria-hidden />} color={C.amber} />
+        <KPICard title="Total reports" value={kpis.totalReports ?? 0} icon={<ClipboardList size={18} strokeWidth={2} aria-hidden />} color={C.textDim} />
+        <KPICard title="Total flags" value={kpis.totalFlags ?? 0} icon={<MessageSquare size={18} strokeWidth={2} aria-hidden />} color={C.textDim} />
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        <button style={tabBtn("reports", "reports")} onClick={() => setTab("reports")}>🚩 Reported reels ({reports.length})</button>
-        <button style={tabBtn("flags", "flags")} onClick={() => setTab("flags")}>🛡️ Blocked-contact comments ({flags.length})</button>
+        <button style={{ ...tabBtn("reports", "reports"), display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setTab("reports")}><Flag size={14} strokeWidth={2.2} aria-hidden />Reported reels ({reports.length})</button>
+        <button style={{ ...tabBtn("flags", "flags"), display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setTab("flags")}><ShieldAlert size={14} strokeWidth={2.2} aria-hidden />Blocked-contact comments ({flags.length})</button>
       </div>
 
       {tab === "reports"

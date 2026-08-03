@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Wallet, TrendingUp, CalendarDays, Target, CircleCheck, Hourglass, Star } from "lucide-react";
 import KpiCard from "@/components/admin/kpi-card";
 import AdminLineChart from "@/components/admin/charts/line-chart";
 
@@ -35,24 +36,24 @@ export default function AdminRevenuePage() {
             <KpiCard
               title="Gross All-time"
               value={k.grossAllTime || 0}
-              format={inr} icon="💰" color="#9fb1c2" live
+              format={inr} icon={<Wallet size={18} strokeWidth={2} aria-hidden />} color="#9fb1c2" live
               sparkline={(data?.series || []).map((s: any) => s.gross)}
             />
             <KpiCard
               title="Gross This Month"
               value={k.grossMTD || 0}
-              format={inr} icon="📈" color="#3D9CF5" live
+              format={inr} icon={<TrendingUp size={18} strokeWidth={2} aria-hidden />} color="#3D9CF5" live
             />
             <KpiCard
               title="Gross Last 30d"
               value={k.gross30 || 0}
-              format={inr} icon="🗓️" color="#2ECC71" live
+              format={inr} icon={<CalendarDays size={18} strokeWidth={2} aria-hidden />} color="#2ECC71" live
               sparkline={(data?.series || []).map((s: any) => s.gross)}
             />
             <KpiCard
               title="Accepted Bids"
               value={k.acceptedBids || 0}
-              icon="🎯" color="#A855F7" live
+              icon={<Target size={18} strokeWidth={2} aria-hidden />} color="#A855F7" live
             />
           </div>
 
@@ -60,18 +61,18 @@ export default function AdminRevenuePage() {
             <KpiCard
               title="Commission Paid"
               value={k.commissionPaid || 0}
-              format={inr} icon="✅" color="#2ECC71" live
+              format={inr} icon={<CircleCheck size={18} strokeWidth={2} aria-hidden />} color="#2ECC71" live
             />
             <KpiCard
               title="Commission Pending"
               value={k.commissionPending || 0}
-              format={inr} icon="⏳" color="#c6d0da" live
+              format={inr} icon={<Hourglass size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" live
             />
             <KpiCard
               title="Points Outstanding"
               value={k.pointsOutstanding || 0}
               format={(n) => Math.round(n).toLocaleString("en-IN")}
-              icon="⭐" color="#FF8C42" live
+              icon={<Star size={18} strokeWidth={2} aria-hidden />} color="#FF8C42" live
             />
           </div>
 

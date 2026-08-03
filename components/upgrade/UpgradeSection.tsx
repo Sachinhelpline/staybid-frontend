@@ -8,6 +8,7 @@
 // useAccountTier is now a re-export alias of useTier so v108 callsites
 // keep working, but every consumer in the app shares ONE tier instance
 // + ONE refresh().
+import { Sparkles as LSparkles, Building2 as LBuilding2, Check as LCheck } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -186,7 +187,7 @@ function StatusBanner({
           className="rounded-xl p-4 flex items-center gap-3 flex-wrap"
           style={{ background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))", border: "1px solid rgba(46,204,113,0.45)" }}
         >
-          <span className="text-2xl">✨</span>
+          <LSparkles size={22} strokeWidth={2.2} aria-hidden className="text-white" />
           <div className="flex-1 min-w-[180px]">
             <p className="font-bold text-luxury-900 text-sm">You're an active Creator</p>
             <p className="text-luxury-600 text-xs">
@@ -203,7 +204,7 @@ function StatusBanner({
           className="rounded-xl p-4 flex items-center gap-3 flex-wrap"
           style={{ background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))", border: "1px solid rgba(46,204,113,0.45)" }}
         >
-          <span className="text-2xl">🏨</span>
+          <LBuilding2 size={22} strokeWidth={2.2} aria-hidden className="text-white" />
           <div className="flex-1 min-w-[180px]">
             <p className="font-bold text-luxury-900 text-sm">You're an active Hotel partner</p>
             <p className="text-luxury-600 text-xs">{hotelOwned?.name || "Your hotel"} · {hotelOwned?.city || ""}</p>
@@ -273,7 +274,7 @@ function UpgradeCard({
         <ul className="text-luxury-700 text-sm space-y-1.5 mb-4">
           {config.perks.map((p) => (
             <li key={p} className="flex items-start gap-2">
-              <span className="text-emerald-600 mt-0.5">✓</span>
+              <LCheck size={14} strokeWidth={2.6} aria-hidden className="text-emerald-600 mt-0.5 shrink-0" />
               <span>{p}</span>
             </li>
           ))}

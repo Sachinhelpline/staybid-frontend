@@ -9,6 +9,7 @@
 // guest-payment payout is a backend (settlement) phase and is labelled as such.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Home, Link2, Tag, Globe, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -165,10 +166,10 @@ export default function Model2SellingPage() {
 
               {/* sell-through channels */}
               <div className="sbc2s-chan">
-                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "myrooms")}><span>🏠</span><div><b>Option A · Sell on StayBid</b><small>list to guests · set your price</small></div><span className="sbc2s-ch-go">→</span></button>
-                <button className="sbc2s-ch" onClick={() => copyDirect(b)}><span>🔗</span><div><b>Option B · Direct selling</b><small>{copied === b.id ? "Copied ✓" : "your own customers · copy link"}</small></div><span className="sbc2s-ch-go">⧉</span></button>
-                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "agentauction")}><span>🏷️</span><div><b>Sell to travel agents</b><small>Model 3 · wholesale auction</small></div><span className="sbc2s-ch-go">→</span></button>
-                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "channels")}><span>🌐</span><div><b>Your OTA listings</b><small>Channel Manager · Airbnb / Booking</small></div><span className="sbc2s-ch-go">→</span></button>
+                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "myrooms")}><span style={{ display: "inline-flex" }}><Home size={18} strokeWidth={2} aria-hidden /></span><div><b>Option A · Sell on StayBid</b><small>list to guests · set your price</small></div><span className="sbc2s-ch-go">→</span></button>
+                <button className="sbc2s-ch" onClick={() => copyDirect(b)}><span style={{ display: "inline-flex" }}><Link2 size={18} strokeWidth={2} aria-hidden /></span><div><b>Option B · Direct selling</b><small>{copied === b.id ? "Copied ✓" : "your own customers · copy link"}</small></div><span className="sbc2s-ch-go" style={{ display: "inline-flex" }}><Copy size={15} strokeWidth={2} aria-hidden /></span></button>
+                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "agentauction")}><span style={{ display: "inline-flex" }}><Tag size={18} strokeWidth={2} aria-hidden /></span><div><b>Sell to travel agents</b><small>Model 3 · wholesale auction</small></div><span className="sbc2s-ch-go">→</span></button>
+                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "channels")}><span style={{ display: "inline-flex" }}><Globe size={18} strokeWidth={2} aria-hidden /></span><div><b>Your OTA listings</b><small>Channel Manager · Airbnb / Booking</small></div><span className="sbc2s-ch-go">→</span></button>
               </div>
             </div>
           ))}

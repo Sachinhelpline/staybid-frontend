@@ -6,6 +6,7 @@
 // the anti-bypass sanitizer caught contact-info attempts.
 
 import { useEffect, useState } from "react";
+import { MessageSquare, Flag, User, Building2, X } from "lucide-react";
 
 type Convo = {
   bid_id: string;
@@ -89,18 +90,18 @@ export default function AdminMessages() {
     <div style={{ padding: "24px 28px", fontFamily: "DM Sans, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, color: "#E8EAF0", margin: 0 }}>
-            💬 Chat Moderation
+          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, color: "#E8EAF0", margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <MessageSquare size={23} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Chat Moderation
           </h1>
           <p style={{ color: "#8A8FA8", fontSize: 13, margin: "6px 0 0" }}>
             All booking_messages · click a row to expand · hide individual messages
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") load(); }}
             placeholder="Search body / bid id…"
-            style={{ minWidth: 220, padding: "8px 12px", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#E8EAF0", fontFamily: "inherit", fontSize: 12, outline: "none" }} />
+            style={{ flex: "1 1 160px", minWidth: 140, padding: "8px 12px", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#E8EAF0", fontFamily: "inherit", fontSize: 12, outline: "none" }} />
           <button onClick={() => setFlaggedOnly((v) => !v)}
             style={{
               padding: "8px 14px", borderRadius: 999,
@@ -109,8 +110,9 @@ export default function AdminMessages() {
               ...(flaggedOnly
                 ? { background: "rgba(239,68,68,0.18)", color: "#fca5a5", borderColor: "rgba(239,68,68,0.45)" }
                 : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
+              display: "inline-flex", alignItems: "center", gap: 6,
             }}>
-            🚩 Flagged only
+            <Flag size={13} strokeWidth={2.2} aria-hidden />Flagged only
           </button>
         </div>
       </div>
@@ -144,16 +146,16 @@ export default function AdminMessages() {
                       <span style={{ fontWeight: 600 }}>{c.customer?.name || "Guest"}</span>
                       <span style={{ color: "#8A8FA8", fontSize: 11 }}>↔</span>
                       <span style={{ color: "#8A8FA8", fontSize: 12 }}>{c.hotel?.name || c.hotel_id}</span>
-                      {flagged && <span style={{ background: "rgba(239,68,68,0.18)", color: "#fca5a5", fontSize: 10, padding: "1px 8px", borderRadius: 999, border: "1px solid rgba(239,68,68,0.4)" }}>🚩 flagged</span>}
+                      {flagged && <span style={{ background: "rgba(239,68,68,0.18)", color: "#fca5a5", fontSize: 10, padding: "1px 8px", borderRadius: 999, border: "1px solid rgba(239,68,68,0.4)", display: "inline-flex", alignItems: "center", gap: 3 }}><Flag size={10} strokeWidth={2.4} aria-hidden />flagged</span>}
                       {c.hidden_count > 0 && <span style={{ background: "rgba(168,85,247,0.18)", color: "#d8b4fe", fontSize: 10, padding: "1px 8px", borderRadius: 999 }}>{c.hidden_count} hidden</span>}
                     </div>
-                    <p style={{ color: "#8A8FA8", fontSize: 12, margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {lm.sender === "customer" ? "👤" : "🏨"} {lm.body}
+                    <p style={{ color: "#8A8FA8", fontSize: 12, margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
+                      {lm.sender === "customer" ? <User size={12} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} /> : <Building2 size={12} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />}<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lm.body}</span>
                     </p>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <p style={{ color: "#8A8FA8", fontSize: 11, margin: 0 }}>{new Date(lm.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
-                    <p style={{ color: "#666876", fontSize: 11, margin: "2px 0 0" }}>{c.message_count} msgs</p>
+                    <p style={{ color: "#8A8FA8", fontSize: 11, margin: "2px 0 0" }}>{c.message_count} msgs</p>
                   </div>
                 </button>
               );
@@ -175,7 +177,7 @@ export default function AdminMessages() {
                   {selected.customer?.name || "Guest"} ↔ {selected.hotel?.name || selected.hotel_id}
                 </p>
               </div>
-              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: "#8A8FA8", fontSize: 22, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSelected(null)} aria-label="Close" style={{ background: "none", border: "none", color: "#8A8FA8", cursor: "pointer", display: "inline-flex", alignItems: "center" }}><X size={22} strokeWidth={2} aria-hidden /></button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               {drawerLoading ? (
@@ -190,8 +192,8 @@ export default function AdminMessages() {
                     return (
                       <div key={m.id} style={{ background: isHidden ? "rgba(75,85,99,0.18)" : flagged ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${isHidden ? "rgba(168,85,247,0.4)" : flagged ? "rgba(239,68,68,0.35)" : "rgba(255,255,255,0.06)"}`, borderRadius: 10, padding: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                          <span style={{ color: "#E8EAF0", fontSize: 11, fontWeight: 700 }}>
-                            {m.sender === "customer" ? "👤 Customer" : "🏨 Hotel"}
+                          <span style={{ color: "#E8EAF0", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                            {m.sender === "customer" ? <><User size={12} strokeWidth={2} aria-hidden />Customer</> : <><Building2 size={12} strokeWidth={2} aria-hidden />Hotel</>}
                           </span>
                           <span style={{ color: "#8A8FA8", fontSize: 10 }}>
                             {new Date(m.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -201,7 +203,7 @@ export default function AdminMessages() {
                           {m.body}
                         </p>
                         <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
-                          {flagged && <span style={{ background: "rgba(239,68,68,0.18)", color: "#fca5a5", fontSize: 10, padding: "1px 8px", borderRadius: 999 }}>🚩 flagged</span>}
+                          {flagged && <span style={{ background: "rgba(239,68,68,0.18)", color: "#fca5a5", fontSize: 10, padding: "1px 8px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 3 }}><Flag size={10} strokeWidth={2.4} aria-hidden />flagged</span>}
                           {isHidden && <span style={{ background: "rgba(168,85,247,0.18)", color: "#d8b4fe", fontSize: 10, padding: "1px 8px", borderRadius: 999 }}>hidden</span>}
                           <div style={{ flex: 1 }} />
                           <button onClick={() => toggleHide(m)} disabled={busy}

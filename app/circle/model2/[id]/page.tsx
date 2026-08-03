@@ -9,6 +9,7 @@
 // market. Picked nights add to the localStorage bundle read by the review page.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TrendingUp } from "lucide-react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -172,7 +173,7 @@ function RoomCard({ listing }: { listing: Listing }) {
         <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
           <div className="sbc2p-room-name">{f.room}</div>
           <div className="sbc2p-room-sub">{f.capacity ? `up to ${f.capacity} guests · ` : ""}from {perN(f.buyN)}/night</div>
-          {q?.market && <div className="sbc2p-room-mkt">📈 Market {perN(q.market.adr)} ADR</div>}
+          {q?.market && <div className="sbc2p-room-mkt" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><TrendingUp size={12} strokeWidth={2.2} aria-hidden />Market {perN(q.market.adr)} ADR</div>}
           {inBasket && <div className="sbc2p-room-in">✓ in bundle</div>}
         </div>
         <span className="sbc2p-room-caret">{open ? "▾" : "View ›"}</span>
@@ -199,7 +200,7 @@ function RoomCard({ listing }: { listing: Listing }) {
                 <div className="sbc2p-mkt-track"><span className="sbc2p-mkt-dot" style={{ left: `${Math.max(3, Math.min(95, ((buyN - q.market.low) / Math.max(1, q.market.high - q.market.low)) * 100))}%` }} /></div>
                 <span>high {perN(q.market.high)}</span>
               </div>
-              {buyN < q.market.adr && <div className="sbc2p-mkt-note">📈 You buy {perN(q.market.adr - buyN)}/night below market — resale upside.</div>}
+              {buyN < q.market.adr && <div className="sbc2p-mkt-note" style={{ display: "flex", alignItems: "center", gap: 5 }}><TrendingUp size={12} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0 }} />You buy {perN(q.market.adr - buyN)}/night below market — resale upside.</div>}
             </>) : <div className="sbc2p-mkt-note dim">Loading market price…</div>}
           </div>
 

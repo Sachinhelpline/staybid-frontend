@@ -10,6 +10,7 @@
 // (101, 102) are managed separately as units in the Rooms tab.
 //
 import { useState } from "react";
+import { X } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { modalPortal } from "@/lib/partner/modal-portal";
 
@@ -54,7 +55,7 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
     setAmenities((p) => (p.includes(a) ? p.filter((x) => x !== a) : [...p, a]));
 
   async function save() {
-    if (!f.name.trim()) { setErr("Room category ka naam likhna zaroori hai."); return; }
+    if (!f.name.trim()) { setErr("Please enter a room category name."); return; }
     setSaving(true); setErr("");
     try {
       const payload: any = {
@@ -123,12 +124,12 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
               {mode === "create" ? "New Room Category" : "Edit Room Category"}
             </p>
             <p className="text-[0.66rem] text-luxury-400">
-              {mode === "create" ? "Naye type ka kamra add karo (Deluxe, Suite…)" : f.name}
+              {mode === "create" ? "Add a new room type (Deluxe, Suite…)" : f.name}
             </p>
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center transition">
-            ×
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center transition">
+            <X size={16} strokeWidth={2.4} aria-hidden />
           </button>
         </div>
 
@@ -165,7 +166,7 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
               {numField("Bid floor", "floorPrice", { prefix: "₹", placeholder: "auto" })}
               {numField("Flash floor", "flashFloorPrice", { prefix: "₹", placeholder: "optional" })}
             </div>
-            <p className="text-[0.6rem] text-luxury-400 mt-1">Bid floor khali chhodo to MRP ka ~78% auto set ho jayega.</p>
+            <p className="text-[0.6rem] text-luxury-400 mt-1">Leave the bid floor blank and ~78% of MRP is set automatically.</p>
           </div>
 
           {/* Capacity */}
@@ -207,8 +208,8 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
                   <div key={i} className="relative rounded-lg overflow-hidden aspect-square border border-luxury-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setImages((p) => p.filter((_, x) => x !== i))}
-                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs leading-none">×</button>
+                    <button type="button" onClick={() => setImages((p) => p.filter((_, x) => x !== i))} aria-label="Remove photo"
+                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"><X size={12} strokeWidth={2.6} aria-hidden /></button>
                   </div>
                 ))}
               </div>

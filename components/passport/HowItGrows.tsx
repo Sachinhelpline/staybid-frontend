@@ -21,10 +21,7 @@ export function HowItGrows() {
   const [open, setOpen] = useState<DetailItem | null>(null);
 
   return (
-    <div
-      className="rounded-3xl p-5"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}
-    >
+    <div className="ppx-card rounded-3xl p-5">
       <h3 className="font-display text-lg font-semibold mb-3" style={{ color: "var(--text-base)" }}>
         How your passport grows
       </h3>

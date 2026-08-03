@@ -4,6 +4,7 @@
 // progress; tapping opens the detail sheet where the reward is claimed (mints a
 // real redemption_code shown in My Codes).
 import { useState } from "react";
+import { Gift } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import type { RewardState } from "@/lib/passport/engine";
@@ -107,8 +108,8 @@ export function RewardLadder({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
-          🎁 Stamp Rewards
+        <h3 className="font-display text-lg font-semibold flex items-center gap-2" style={{ color: "var(--text-base)" }}>
+          <Gift size={17} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} /> Stamp Rewards
         </h3>
         <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-muted)" }}>
           {stampCount} stamps

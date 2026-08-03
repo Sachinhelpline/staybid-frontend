@@ -24,6 +24,7 @@ import {
 } from "@/lib/circle/engine";
 import { CIRCLE_INCOME_SHORT, CIRCLE_RESALE_RISK_NOTE, CIRCLE_AUCTION_NOTE } from "@/lib/circle/disclosure";
 import ResaleOffers from "@/components/circle/ResaleOffers";
+import { Menu, Search, Gem, BarChart3, CalendarDays, HelpCircle, Lock, Globe, Play } from "lucide-react";
 
 type RoomType = { id: string; name: string; monthlyRate: number; availableUnits: number };
 type CircleProperty = {
@@ -231,7 +232,7 @@ export default function CircleHomePage() {
           <div className="sbc-home-sub">Ready to grow your wealth?</div>
         </div>
         <Link href="/circle/dashboard" className="sbc-home-bell" aria-label="Dashboard">
-          <span>☰</span>
+          <Menu size={20} strokeWidth={2} aria-hidden />
         </Link>
       </header>
 
@@ -275,7 +276,7 @@ export default function CircleHomePage() {
             <div className="sbc-hp-label">Your Portfolio</div>
             <div className="sbc-hp-value">Start earning<span>from ₹20,000/mo</span></div>
             <p className="sbc-hp-empty">Lock handpicked, verified properties and earn <b>15%–32%</b> annual returns — fully managed by StayBid.</p>
-            <Link href="/circle/discover" className="sbc-hp-cta">🔒 Lock your first property →</Link>
+            <Link href="/circle/discover" className="sbc-hp-cta" style={{ gap: 7 }}><Lock size={16} strokeWidth={2.2} aria-hidden />Lock your first property →</Link>
           </>
         )}
       </section>
@@ -285,19 +286,19 @@ export default function CircleHomePage() {
         <div className="sbc-home-sec-h">Quick Actions</div>
         <div className="sbc-qa">
           <Link href="/circle/discover" className="sbc-qa-item">
-            <span className="sbc-qa-ic">🔍</span><span>Discover<br />Properties</span>
+            <span className="sbc-qa-ic"><Search size={22} strokeWidth={2.2} aria-hidden style={{ color: "var(--sbc-walnut)" }} /></span><span>Discover<br />Properties</span>
           </Link>
           <Link href="/circle/build" className="sbc-qa-item">
-            <span className="sbc-qa-ic">💎</span><span>Build<br />Bundle</span>
+            <span className="sbc-qa-ic"><Gem size={22} strokeWidth={2.2} aria-hidden style={{ color: "var(--sbc-walnut)" }} /></span><span>Build<br />Bundle</span>
           </Link>
           <Link href="/circle/me" className="sbc-qa-item">
-            <span className="sbc-qa-ic">📊</span><span>My<br />Portfolio</span>
+            <span className="sbc-qa-ic"><BarChart3 size={22} strokeWidth={2.2} aria-hidden style={{ color: "var(--sbc-walnut)" }} /></span><span>My<br />Portfolio</span>
           </Link>
           <Link href="/circle/demand-cycle" className="sbc-qa-item">
-            <span className="sbc-qa-ic">🗓</span><span>Demand<br />Cycle</span>
+            <span className="sbc-qa-ic"><CalendarDays size={22} strokeWidth={2.2} aria-hidden style={{ color: "var(--sbc-walnut)" }} /></span><span>Demand<br />Cycle</span>
           </Link>
           <a href="#how" className="sbc-qa-item">
-            <span className="sbc-qa-ic">❓</span><span>How It<br />Works</span>
+            <span className="sbc-qa-ic"><HelpCircle size={22} strokeWidth={2.2} aria-hidden style={{ color: "var(--sbc-walnut)" }} /></span><span>How It<br />Works</span>
           </a>
         </div>
       </section>
@@ -391,12 +392,12 @@ export default function CircleHomePage() {
       <section className="sbc-home-sec">
         <div className="sbc-home-sec-h between">
           <span>Handpicked Properties</span>
-          <Link href="/circle/discover" className="sbc-home-reels">▶ Watch reels</Link>
+          <Link href="/circle/discover" className="sbc-home-reels" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Play size={12} strokeWidth={2.4} fill="currentColor" aria-hidden />Watch reels</Link>
         </div>
 
         {/* location filter chips */}
         <div className="sbc-home-chips">
-          <button className={`sbc-home-chip ${city === "all" ? "on" : ""}`} onClick={() => setCity("all")}>🌐 All India</button>
+          <button className={`sbc-home-chip ${city === "all" ? "on" : ""}`} onClick={() => setCity("all")} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Globe size={13} strokeWidth={2.2} aria-hidden />All India</button>
           {cities.map((c) => (
             <button key={c} className={`sbc-home-chip ${city === c ? "on" : ""}`} onClick={() => setCity(c)}>{c}</button>
           ))}
@@ -454,7 +455,7 @@ export default function CircleHomePage() {
       {/* ───────── build-bundle CTA ───────── */}
       <section className="sbc-home-sec">
         <Link href="/circle/build" className="sbc-home-bundle">
-          <span className="sbc-home-bundle-ic">💎</span>
+          <span className="sbc-home-bundle-ic"><Gem size={24} strokeWidth={2} aria-hidden /></span>
           <div className="sbc-home-bundle-body">
             <span className="sbc-home-bundle-eyebrow">Final step · Review &amp; pay</span>
             <b>Build Your Investment Bundle</b>

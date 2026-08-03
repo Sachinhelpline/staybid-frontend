@@ -67,6 +67,41 @@ import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
 // AI is on their inventory: auto / hybrid / manual. See lib/autopilot.ts
 // for the customer-side resolver + lib/bidder-score.ts for the tier rules.
 import { AUTOPILOT_MODE_LABEL, AUTOPILOT_MODE_DESC, type AutopilotMode, invalidateAutopilotCache } from "@/lib/autopilot";
+import {
+  LayoutDashboard, BedDouble, Inbox, Building2, Zap, CalendarCheck, ConciergeBell,
+  CalendarRange, SprayCan, ReceiptText, UtensilsCrossed, QrCode, Users, BookUser,
+  CircleDot, Gavel, TrendingUp, Flag, Ticket, Image as ImageIcon, Clapperboard,
+  Share2, UserCog, Settings, Hotel, ChevronDown, Check, Lock,
+  MessageSquareReply, CircleCheck, Wallet, CircleHelp, Headphones,
+  ArrowLeftRight, LogOut, Plus, Sunrise, PlaneLanding, PlaneTakeoff,
+  TriangleAlert, Copy, MessageCircle, Phone, Mail, Moon, UserRound,
+  FileText, Heart, Star, X, Ban, Sparkles, Link2, RefreshCw, Bot, PartyPopper,
+  Pencil, Trash2, Camera, Hash, Wrench, RotateCw,
+  Globe, Grid3x3, Pin, CalendarDays, OctagonX,
+} from "lucide-react";
+
+// Inline shell-chrome icon helper (partner dashboard) — matches BIc/InIc pattern.
+const DIc = ({ I, size = 13, ...rest }: { I: any; size?: number; [k: string]: any }) =>
+  <I size={size} strokeWidth={2.3} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} {...rest} />;
+
+// v649 — partner shell nav/hub/tab icons keyed by the SAME id the TABS +
+// quick-launch-hub configs use, so both render sites share one lucide map.
+// The legacy emoji in the config objects stay as a graceful fallback for any
+// id not in the map (e.g. myrooms/passport/circle only appear conditionally).
+const PICON: Record<string, any> = {
+  overview: LayoutDashboard, myrooms: BedDouble, bids: Inbox, rooms: Building2,
+  flash: Zap, bookings: CalendarCheck, reservations: ConciergeBell,
+  availability: CalendarRange, housekeeping: SprayCan, billing: ReceiptText,
+  menu: UtensilsCrossed, fnbqr: QrCode, guests: Users, passport: BookUser,
+  circle: CircleDot, agentauction: Gavel, reports: TrendingUp, complaints: Flag,
+  redeem: Ticket, content: ImageIcon, verification: Clapperboard, channels: Share2,
+  staff: UserCog, profile: Settings,
+};
+// Render a shell icon by id; falls back to the emoji string the config carries.
+function pIcon(id: string, fallback: React.ReactNode, size = 16, color?: string) {
+  const I = PICON[id];
+  return I ? <I size={size} strokeWidth={2.1} aria-hidden style={color ? { color } : undefined} /> : fallback;
+}
 
 // Tiny wrapper that pulls partner-side auth from localStorage. Keeps the
 // shared BookingChat component agnostic of which session keys we use.
@@ -132,19 +167,19 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; l
 
 // v94 — Source badge (Direct / Creator / Hotel-feed / Flash). Maps the
 // bid.source field surfaced by the new /api/partner/bids attribution join.
-const SOURCE_STYLE: Record<string, { icon: string; label: string; bg: string; text: string }> = {
-  "direct":      { icon: "🔗", label: "Direct",      bg: "bg-sky-50",     text: "text-sky-700"     },
-  "creator":     { icon: "✨", label: "Creator",     bg: "bg-purple-50",  text: "text-purple-700"  },
-  "hotel-feed":  { icon: "🏨", label: "Your reel",   bg: "bg-amber-50",   text: "text-amber-700"   },
-  "flash":       { icon: "⚡", label: "Flash deal",  bg: "bg-red-50",     text: "text-red-700"     },
-  "unknown":     { icon: "•",  label: "Unknown",     bg: "bg-luxury-50",  text: "text-luxury-600"  },
+const SOURCE_STYLE: Record<string, { Ic: any; label: string; bg: string; text: string }> = {
+  "direct":      { Ic: Link2,     label: "Direct",      bg: "bg-sky-50",     text: "text-sky-700"     },
+  "creator":     { Ic: Sparkles,  label: "Creator",     bg: "bg-purple-50",  text: "text-purple-700"  },
+  "hotel-feed":  { Ic: Hotel,     label: "Your reel",   bg: "bg-amber-50",   text: "text-amber-700"   },
+  "flash":       { Ic: Zap,       label: "Flash deal",  bg: "bg-red-50",     text: "text-red-700"     },
+  "unknown":     { Ic: CircleDot, label: "Unknown",     bg: "bg-luxury-50",  text: "text-luxury-600"  },
 };
 function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle?: string | null }) {
   const s = SOURCE_STYLE[source || "direct"] || SOURCE_STYLE.direct;
   const label = source === "creator" && creatorHandle ? `via @${creatorHandle}` : s.label;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.62rem] font-bold ${s.bg} ${s.text}`} title={`Booking source: ${s.label}`}>
-      <span>{s.icon}</span>
+      <s.Ic size={11} strokeWidth={2.2} aria-hidden />
       <span className="truncate max-w-[100px]">{label}</span>
     </span>
   );
@@ -1096,8 +1131,8 @@ export default function PartnerDashboard() {
           </div>
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             {hotel && hotelList.length <= 1 && (
-              <span className="hidden sm:block text-xs font-semibold text-white/75 bg-white/6 px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
-                🏨 {hotel.name}
+              <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-white/75 bg-white/6 px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
+                <Hotel size={12} strokeWidth={2.2} aria-hidden className="shrink-0" /> <span className="truncate">{hotel.name}</span>
               </span>
             )}
             {/* v285 — Multi-property switcher (only when the partner owns 2+ hotels) */}
@@ -1108,8 +1143,9 @@ export default function PartnerDashboard() {
                   className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/10 hover:bg-white/15 px-2.5 py-1 rounded-full border border-amber-400/30 transition-all max-w-[190px]"
                   title="Switch property"
                 >
-                  <span className="truncate">🏨 {hotel?.name || "Select property"}</span>
-                  <span className="text-amber-300/80 text-[0.6rem] shrink-0">▾</span>
+                  <Hotel size={12} strokeWidth={2.2} aria-hidden className="shrink-0" />
+                  <span className="truncate">{hotel?.name || "Select property"}</span>
+                  <ChevronDown size={12} strokeWidth={2.4} aria-hidden className="text-amber-300/80 shrink-0" />
                 </button>
                 {switcherOpen && (
                   <>
@@ -1140,7 +1176,7 @@ export default function PartnerDashboard() {
                                   {h.city || "—"}{isCircle ? " · Circle" : ""}
                                 </span>
                               </span>
-                              {on && <span className="text-amber-300 text-[0.7rem] shrink-0">✓</span>}
+                              {on && <Check size={13} strokeWidth={2.6} aria-hidden className="text-amber-300 shrink-0" />}
                             </button>
                           );
                         })}
@@ -1156,7 +1192,7 @@ export default function PartnerDashboard() {
             {hotel?.isOperator && (
               <span className="hidden sm:flex items-center gap-1 text-[0.58rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap"
                 title="This property is operated by StayBid — you manage your own rooms here">
-                🏨 Operated by StayBid
+                <Hotel size={11} strokeWidth={2.4} aria-hidden /> Operated by StayBid
               </span>
             )}
             {pUser?.staffRole && (
@@ -1191,8 +1227,8 @@ export default function PartnerDashboard() {
                       )}
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {hotel?.isOperator && (
-                          <span className="text-[0.5rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                            🏨 Operated
+                          <span className="inline-flex items-center gap-1 text-[0.5rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                            <Hotel size={9} strokeWidth={2.6} aria-hidden /> Operated
                           </span>
                         )}
                         {pUser?.staffRole && (
@@ -1207,7 +1243,7 @@ export default function PartnerDashboard() {
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
                       title="Open the app tour & help"
                     >
-                      <span aria-hidden className="text-amber-300">❓</span>
+                      <CircleHelp size={15} strokeWidth={2.2} aria-hidden className="text-amber-300" />
                       <span>App Tour</span>
                     </AppTourButton>
                     <HelpSupportButton
@@ -1215,7 +1251,7 @@ export default function PartnerDashboard() {
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
                       title="Chat with StayBid support"
                     >
-                      <span aria-hidden className="text-amber-300">🎧</span>
+                      <Headphones size={15} strokeWidth={2.2} aria-hidden className="text-amber-300" />
                       <span>Help &amp; Support</span>
                     </HelpSupportButton>
                     <SwitchExperienceButton
@@ -1223,13 +1259,13 @@ export default function PartnerDashboard() {
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
                       title="Switch to another StayBid panel"
                     >
-                      <span aria-hidden className="text-amber-300">⇄</span>
+                      <ArrowLeftRight size={15} strokeWidth={2.2} aria-hidden className="text-amber-300" />
                       <span>Switch experience</span>
                     </SwitchExperienceButton>
                     <button
                       onClick={() => { setAcctOpen(false); logout(); }}
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-red-300 hover:bg-red-500/8 border-t border-white/8 transition-all text-left">
-                      <span aria-hidden>↶</span>
+                      <LogOut size={15} strokeWidth={2.2} aria-hidden />
                       <span>Sign out</span>
                     </button>
                   </div>
@@ -1259,8 +1295,8 @@ export default function PartnerDashboard() {
               : undefined;
             const inner = (
               <>
-                <span className="text-[0.85rem]">{t.icon}</span>{t.label}
-                {locked && <span className="text-[0.7rem]">🔒</span>}
+                {pIcon(t.id, t.icon, 14)}{t.label}
+                {locked && <Lock size={11} strokeWidth={2.4} aria-hidden />}
                 {t.id === "bids" && pendingBids > 0 && !active && (
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 )}
@@ -1333,18 +1369,18 @@ export default function PartnerDashboard() {
               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #a9b9c8 0%, transparent 50%), radial-gradient(circle at 80% 80%, #8198ae 0%, transparent 50%)" }} />
               <div className="relative p-5 flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.25em]">🏨 Front Desk</p>
+                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.25em]"><DIc I={Hotel} size={11} /> Front Desk</p>
                   <h3 className="font-display text-2xl text-white font-light mt-1">Walk-in Guest Arrived?</h3>
                   <p className="text-white/75 text-sm mt-1">Check room availability & check them in — auto-blocks the room across StayBid, Booking.com, Airbnb everywhere.</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button onClick={() => setQuickWalkInOpen(true)}
                     className="bg-linear-to-r from-gold-400 to-amber-400 text-luxury-900 font-bold px-5 py-3 rounded-xl hover:scale-105 transition-all shadow-lg text-sm">
-                    ➕ New Walk-in
+                    <DIc I={Plus} size={14} /> New Walk-in
                   </button>
                   <button onClick={() => setTab("availability")}
                     className="bg-white/10 text-white border border-white/25 font-bold px-5 py-3 rounded-xl hover:bg-white/20 transition-all text-sm backdrop-blur-sm">
-                    🗓️ Availability
+                    <DIc I={CalendarRange} size={14} /> Availability
                   </button>
                 </div>
               </div>
@@ -1354,18 +1390,18 @@ export default function PartnerDashboard() {
             <div className="rounded-3xl overflow-hidden shadow-lg border border-luxury-200 bg-white">
               <div className="bg-linear-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-5 py-4 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.2em]">🌅 Today · {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})}</p>
+                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.2em]"><DIc I={Sunrise} size={11} /> Today · {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})}</p>
                   <p className="text-white font-display text-xl font-light mt-0.5">Your day at a glance</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
-                    🛬 {checkInsToday.length} Check-in{checkInsToday.length!==1?"s":""}
+                    <DIc I={PlaneLanding} size={12} /> {checkInsToday.length} Check-in{checkInsToday.length!==1?"s":""}
                   </span>
                   <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
-                    🛫 {checkOutsToday.length} Check-out{checkOutsToday.length!==1?"s":""}
+                    <DIc I={PlaneTakeoff} size={12} /> {checkOutsToday.length} Check-out{checkOutsToday.length!==1?"s":""}
                   </span>
                   <span className="bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
-                    🏨 {inHouseToday.length} In-house
+                    <DIc I={BedDouble} size={12} /> {inHouseToday.length} In-house
                   </span>
                 </div>
               </div>
@@ -1375,7 +1411,7 @@ export default function PartnerDashboard() {
                 {/* Check-ins */}
                 <div className="p-4">
                   <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span>🛬</span> Arriving Today
+                    <PlaneLanding size={13} strokeWidth={2.3} aria-hidden /> Arriving Today
                   </p>
                   {checkInsToday.length === 0 ? (
                     <p className="text-sm text-luxury-400 italic">No arrivals today</p>
@@ -1408,7 +1444,7 @@ export default function PartnerDashboard() {
                 {/* Check-outs */}
                 <div className="p-4">
                   <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span>🛫</span> Departing Today
+                    <PlaneTakeoff size={13} strokeWidth={2.3} aria-hidden /> Departing Today
                   </p>
                   {checkOutsToday.length === 0 ? (
                     <p className="text-sm text-luxury-400 italic">No departures today</p>
@@ -1441,7 +1477,7 @@ export default function PartnerDashboard() {
                 {/* In-house */}
                 <div className="p-4">
                   <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span>🏨</span> Staying Now
+                    <BedDouble size={13} strokeWidth={2.3} aria-hidden /> Staying Now
                   </p>
                   {inHouseToday.length === 0 ? (
                     <p className="text-sm text-luxury-400 italic">No in-house guests</p>
@@ -1473,16 +1509,16 @@ export default function PartnerDashboard() {
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
               {[
-                { label:"Pending Bids",  value: pendingBids,  icon:"📩", color:"#b45309", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bids") },
-                { label:"Countered",     value: counteredBids, icon:"💬", color:"#c2410c", bg:"#fff7ed", border:"#fed7aa", action: () => setTab("bids") },
-                { label:"Confirmed",     value: acceptedBids, icon:"✅", color:"#047857", bg:"#ecfdf5", border:"#a7f3d0", action: () => setTab("bookings") },
-                { label:"Est. Revenue",  value: fmtCur(revenue), icon:"💰", color:"#a16207", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bookings") },
+                { label:"Pending Bids",  value: pendingBids,  Ic: Inbox,       color:"#b45309", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bids") },
+                { label:"Countered",     value: counteredBids, Ic: MessageSquareReply, color:"#c2410c", bg:"#fff7ed", border:"#fed7aa", action: () => setTab("bids") },
+                { label:"Confirmed",     value: acceptedBids, Ic: CircleCheck, color:"#047857", bg:"#ecfdf5", border:"#a7f3d0", action: () => setTab("bookings") },
+                { label:"Est. Revenue",  value: fmtCur(revenue), Ic: Wallet,   color:"#a16207", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bookings") },
               ].map(s => (
                 <button key={s.label} onClick={s.action}
-                  className="card-p card-tight text-left hover:-translate-y-0.5 transition-transform cursor-pointer"
+                  className="card-p card-tight pdash-kpi text-left hover:-translate-y-0.5 transition-transform cursor-pointer"
                   style={{ background:s.bg, borderColor:s.border }}>
                   <div className="flex items-center justify-between">
-                    <span className="text-base">{s.icon}</span>
+                    <s.Ic size={16} strokeWidth={2.2} aria-hidden style={{ color: s.color }} />
                     <span className="text-luxury-300 text-sm">›</span>
                   </div>
                   <p className="text-xl font-bold mt-1.5" style={{ color:s.color }}>{s.value}</p>
@@ -1524,9 +1560,9 @@ export default function PartnerDashboard() {
                   <button key={h.id}
                     onClick={() => locked ? setLockModal(h.id) : (h.href ? router.push(h.href) : setTab(h.id as any))}
                     className="hub-tile" style={locked ? { opacity: 0.62 } : undefined}>
-                    <div className="hub-ico" style={{ background:h.bg }}>{h.icon}</div>
+                    <div className="hub-ico" style={{ background:h.bg }}>{pIcon(h.id, h.icon, 18, h.c)}</div>
                     <p className="text-[0.78rem] font-bold text-luxury-900 leading-tight">
-                      {h.label}{locked && <span className="ml-1">🔒</span>}
+                      {h.label}{locked && <Lock size={11} strokeWidth={2.4} aria-hidden className="ml-1 inline align-[-1px]" />}
                     </p>
                     <p className="text-[0.62rem] font-semibold leading-tight" style={{ color: locked ? "#768fa7" : h.c }}>
                       {locked ? "Tap to unlock" : h.hint}
@@ -1540,7 +1576,7 @@ export default function PartnerDashboard() {
             {/* Active flash deals strip */}
             {activeDeals.length > 0 && (
               <div className="card-p bg-linear-to-r from-amber-50 to-gold-50 border border-gold-200">
-                <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3">⚡ Active Flash Deals</p>
+                <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3"><DIc I={Zap} size={11} /> Active Flash Deals</p>
                 <div className="space-y-2">
                   {activeDeals.slice(0,3).map(d => (
                     <div key={d.id} className="flex items-center justify-between text-sm">
@@ -1660,7 +1696,7 @@ export default function PartnerDashboard() {
                                   color: "#3f5369",
                                   fontSize: "0.62rem", fontWeight: 700,
                                 }}>
-                                  🛏️ {b.numRooms} rooms
+                                  <DIc I={BedDouble} size={10} /> {b.numRooms} rooms
                                 </span>
                               )}
                             </p>
@@ -1671,7 +1707,7 @@ export default function PartnerDashboard() {
                                 accommodate via rollaway). */}
                             {b.capacityMismatch && (
                               <p className="text-[0.65rem] text-amber-700 bg-amber-50 border border-amber-200 inline-block px-2 py-0.5 rounded-sm mt-1" style={{ fontWeight: 600 }}>
-                                ⚠️ {b.guests || 2} guests in {b.numRooms || 1} room{(b.numRooms || 1) > 1 ? "s" : ""} — extra-bed setup may be needed
+                                <DIc I={TriangleAlert} size={11} /> {b.guests || 2} guests in {b.numRooms || 1} room{(b.numRooms || 1) > 1 ? "s" : ""} — extra-bed setup may be needed
                               </p>
                             )}
                             {/* v239 — Bid ID chip + copy-to-clipboard so the
@@ -1698,7 +1734,7 @@ export default function PartnerDashboard() {
                               title={`Bid ID: ${b.id} (tap to copy)`}
                               className="mt-1 text-[0.6rem] font-mono px-1.5 py-0.5 rounded-sm bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
                             >
-                              <span aria-hidden="true">📋</span>
+                              <Copy size={11} strokeWidth={2.2} aria-hidden />
                               <span>BID-…{String(b.id || "").slice(-6)}</span>
                             </button>
                             <div className="mt-1">
@@ -1748,7 +1784,7 @@ export default function PartnerDashboard() {
 
                       {b.message && (
                         <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 italic">
-                          💬 "{b.message}"
+                          <DIc I={MessageCircle} size={12} /> "{b.message}"
                         </div>
                       )}
 
@@ -1760,7 +1796,7 @@ export default function PartnerDashboard() {
                       )}
                       {b.status === "ACCEPTED" && (
                         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-semibold">
-                          ✓ Booking confirmed at {fmtCur(b.counterAmount || b.amount)}/night
+                          <DIc I={Check} size={13} /> Booking confirmed at {fmtCur(b.counterAmount || b.amount)}/night
                         </div>
                       )}
 
@@ -1790,16 +1826,16 @@ export default function PartnerDashboard() {
                 </div>
               </div>
               <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold">
-                ➕ Add Room Category
+                <DIc I={Plus} size={14} /> Add Room Category
               </button>
             </div>
 
             {rooms.length === 0 ? (
               <div className="card-p text-center py-10">
-                <p className="text-3xl mb-2">🏨</p>
+                <Building2 size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />
                 <p className="text-luxury-600 font-semibold text-sm">Abhi koi room category nahi hai</p>
                 <p className="text-luxury-400 text-xs mt-0.5 mb-3">Pehla room type add karke pricing set karo.</p>
-                <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold">➕ Add Room Category</button>
+                <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold"><DIc I={Plus} size={14} /> Add Room Category</button>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-5">
@@ -1818,12 +1854,12 @@ export default function PartnerDashboard() {
                         <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                         <div className="absolute top-2.5 left-2.5 flex gap-1.5">
                           <button onClick={() => setRoomEditor({ mode: "edit", room: r })}
-                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition">
-                            ✏️ Edit
+                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition inline-flex items-center gap-1">
+                            <Pencil size={11} strokeWidth={2.4} aria-hidden /> Edit
                           </button>
-                          <button onClick={() => deleteRoomCategory(r.id)}
-                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-red-600 hover:bg-white backdrop-blur-md transition">
-                            🗑
+                          <button onClick={() => deleteRoomCategory(r.id)} aria-label="Delete room category"
+                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-red-600 hover:bg-white backdrop-blur-md transition inline-flex items-center">
+                            <Trash2 size={12} strokeWidth={2.2} aria-hidden />
                           </button>
                         </div>
                         {ai && ds && (
@@ -1909,14 +1945,13 @@ export default function PartnerDashboard() {
                           onClick={() => saveRoomPricing(r.id)}
                           disabled={savingRoom === r.id || (!ep.floor && !ep.flash)}
                           className={`btn-gold w-full py-2.5 text-sm ${savedRoom === r.id ? "bg-emerald-500!" : ""}`}>
-                          {savingRoom === r.id ? "Saving…" : savedRoom === r.id ? "✓ Saved!" : "Save Pricing"}
+                          {savingRoom === r.id ? "Saving…" : savedRoom === r.id ? <><DIc I={Check} size={13} /> Saved!</> : "Save Pricing"}
                         </button>
 
                         {/* ── Room Photos (owner self-serve gallery) ── */}
                         <div className="mt-4 pt-4 border-t border-luxury-100">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">
-                              📸 Room Photos ({(r.images || []).length})
+                            <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Camera} size={11} /> Room Photos ({(r.images || []).length})
                             </p>
                             <span className="text-[0.6rem] text-luxury-400">Shown to guests on booking</span>
                           </div>
@@ -1928,9 +1963,9 @@ export default function PartnerDashboard() {
                                   <img src={url} alt={`Room photo ${i+1}`} className="w-full h-full object-cover" />
                                   <button
                                     onClick={() => saveRoomImages(r.id, (r.images || []).filter((_: string, j: number) => j !== i))}
-                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white text-[0.6rem] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="Remove photo">
-                                    ✕
+                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Remove photo" aria-label="Remove photo">
+                                    <X size={11} strokeWidth={2.6} aria-hidden />
                                   </button>
                                 </div>
                               ))}
@@ -1952,7 +1987,7 @@ export default function PartnerDashboard() {
                           return (
                             <div className="mt-4 pt-4 border-t border-luxury-100">
                               <div className="flex items-center justify-between mb-2">
-                                <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">🔢 Physical Rooms ({units.length})</p>
+                                <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Hash} size={11} /> Physical Rooms ({units.length})</p>
                                 <span className="text-[0.6rem] text-luxury-400">Individual room numbers</span>
                               </div>
 
@@ -1968,11 +2003,12 @@ export default function PartnerDashboard() {
                                       #{u.roomNumber}
                                       <button onClick={() => toggleUnitStatus(u)}
                                         title={u.status === "active" ? "Mark as under maintenance" : "Reactivate"}
-                                        className="opacity-40 hover:opacity-100">
-                                        {u.status === "active" ? "🔧" : "↻"}
+                                        aria-label={u.status === "active" ? "Mark as under maintenance" : "Reactivate"}
+                                        className="opacity-40 hover:opacity-100 inline-flex items-center">
+                                        {u.status === "active" ? <Wrench size={11} strokeWidth={2.2} aria-hidden /> : <RotateCw size={11} strokeWidth={2.2} aria-hidden />}
                                       </button>
-                                      <button onClick={() => deleteRoomUnit(u.id)}
-                                        className="opacity-40 hover:opacity-100 text-red-500">✕</button>
+                                      <button onClick={() => deleteRoomUnit(u.id)} aria-label="Delete room number"
+                                        className="opacity-40 hover:opacity-100 text-red-500 inline-flex items-center"><X size={11} strokeWidth={2.4} aria-hidden /></button>
                                     </span>
                                   ))}
                                 </div>
@@ -2014,7 +2050,7 @@ export default function PartnerDashboard() {
 
             {/* Create deal */}
             <div className="card-p border-2 border-gold-200 bg-linear-to-br from-gold-50/30 to-white">
-              <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-4">⚡ Create New Flash Deal</p>
+              <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-4"><DIc I={Zap} size={11} /> Create New Flash Deal</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                 <div>
                   <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Room</label>
@@ -2058,7 +2094,7 @@ export default function PartnerDashboard() {
                 </div>
                 <div className="flex items-end">
                   <button onClick={createFlashDeal} disabled={dealLoading} className="btn-gold w-full py-2.5 text-sm">
-                    {dealLoading ? "Creating…" : "⚡ Launch Deal"}
+                    {dealLoading ? "Creating…" : <><DIc I={Zap} size={14} /> Launch Deal</>}
                   </button>
                 </div>
               </div>
@@ -2081,7 +2117,7 @@ export default function PartnerDashboard() {
                     return (
                       <div key={d.id} className={`card-p flex items-center justify-between gap-4 ${active ? "border-gold-200" : "opacity-60"}`}>
                         <div className="flex items-center gap-3">
-                          <span className={`text-lg ${active ? "" : "grayscale"}`}>⚡</span>
+                          <Zap size={18} strokeWidth={2.2} aria-hidden className={active ? "text-gold-600" : "text-luxury-300"} />
                           <div>
                             <p className="font-semibold text-luxury-900">{room?.name || room?.type || "Room"}</p>
                             <p className="text-xs text-luxury-400">
@@ -2116,7 +2152,7 @@ export default function PartnerDashboard() {
             <h2 className="sec-title text-xl mb-5">Confirmed Bookings</h2>
             {bookings.length === 0 ? (
               <div className="card-p text-center py-12 text-luxury-400">
-                <p className="text-4xl mb-3">📅</p>
+                <CalendarDays size={34} strokeWidth={1.8} aria-hidden className="mx-auto mb-3 text-luxury-400" />
                 <p className="font-semibold text-luxury-600">No confirmed bookings yet</p>
               </div>
             ) : (
@@ -2132,7 +2168,7 @@ export default function PartnerDashboard() {
                     <button key={b.id} onClick={() => setSelectedBooking(b)}
                       className="card-p flex items-start justify-between gap-4 w-full text-left hover:shadow-lg hover:border-gold-300 transition-all cursor-pointer">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-base shrink-0">🎫</div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-700"><Ticket size={18} strokeWidth={2.2} aria-hidden /></div>
                         <div className="min-w-0">
                           <p className="font-semibold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"} · {b.room?.type || b.roomId || "Room"}</p>
                           <p className="text-xs text-luxury-500">
@@ -2283,7 +2319,7 @@ export default function PartnerDashboard() {
                 Manager console lives in the Channels tab. */}
             <div className="card-p">
               <div className="flex items-start justify-between gap-3 mb-1">
-                <h3 className="font-display text-xl text-luxury-900">🌐 OTA Channel Sync</h3>
+                <h3 className="font-display text-xl text-luxury-900 flex items-center gap-2"><Globe size={19} strokeWidth={2} aria-hidden className="text-luxury-500" /> OTA Channel Sync</h3>
                 {tabAllowed(role, "channels") && (
                   <button onClick={() => setTab("channels")} className="btn-ghost text-xs px-2.5! py-1! shrink-0">
                     Full Channel Manager →
@@ -2308,7 +2344,7 @@ export default function PartnerDashboard() {
                   <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest">Walk-in Booking</p>
                   <p className="text-white font-semibold text-lg">{rooms.find(r=>r.id===walkInOpen.roomId)?.type || "Room"}</p>
                 </div>
-                <button onClick={()=>setWalkInOpen(null)} className="text-white/70 hover:text-white text-2xl">✕</button>
+                <button onClick={()=>setWalkInOpen(null)} aria-label="Close" className="text-white/70 hover:text-white flex items-center"><X size={20} strokeWidth={2.2} aria-hidden /></button>
               </div>
               <div className="p-6 space-y-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -2331,7 +2367,7 @@ export default function PartnerDashboard() {
                   const allForRoom = roomUnits.filter(u => u.roomId === walkInOpen.roomId);
                   return (
                     <div>
-                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🔢 Allocate Room Number</label>
+                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
                       {allForRoom.length === 0 ? (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
                           No room numbers set for this category. Add them in <b>Rooms</b> tab.
@@ -2372,7 +2408,7 @@ export default function PartnerDashboard() {
                   <textarea rows={2} className="inp-p resize-none" value={walkIn.note} onChange={e=>setWalkIn(p=>({...p, note:e.target.value}))} placeholder="ID proof, notes, etc."/>
                 </div>
                 <button onClick={submitWalkIn} disabled={walkInSaving} className="btn-gold w-full py-3 text-sm">
-                  {walkInSaving ? "Saving…" : "✓ Confirm Walk-in"}
+                  {walkInSaving ? "Saving…" : <><DIc I={Check} size={14} /> Confirm Walk-in</>}
                 </button>
               </div>
             </div>
@@ -2393,11 +2429,11 @@ export default function PartnerDashboard() {
                 onClick={e => e.stopPropagation()}>
                 <div className="bg-linear-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-6 py-4 flex items-center justify-between">
                   <div>
-                    <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest">🏨 Front Desk</p>
+                    <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-widest"><DIc I={Hotel} size={11} /> Front Desk</p>
                     <p className="text-white font-display text-xl font-light">Walk-in Booking</p>
                   </div>
-                  <button onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }}
-                    className="text-white/70 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">✕</button>
+                  <button onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }} aria-label="Close"
+                    className="text-white/70 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><X size={16} strokeWidth={2.2} aria-hidden /></button>
                 </div>
 
                 <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
@@ -2417,7 +2453,7 @@ export default function PartnerDashboard() {
 
                   {/* Room category selector — with live availability count */}
                   <div>
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🏨 Room Category</label>
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={BedDouble} size={11} /> Room Category</label>
                     <div className="grid grid-cols-1 gap-2">
                       {rooms.map(r => {
                         const free = freeUnitsForRoom(r.id, walkIn.fromDate, walkIn.toDate);
@@ -2461,20 +2497,20 @@ export default function PartnerDashboard() {
                     if (total === 0) {
                       return (
                         <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                          ⚠️ No physical room numbers set for this category. Go to <b>Rooms</b> tab and add room numbers (e.g. 101, 102) for this category first.
+                          <DIc I={TriangleAlert} size={12} /> No physical room numbers set for this category. Go to <b>Rooms</b> tab and add room numbers (e.g. 101, 102) for this category first.
                         </div>
                       );
                     }
                     if (free.length === 0) {
                       return (
                         <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
-                          🛑 All rooms of this category are occupied on these dates.
+                          <DIc I={OctagonX} size={12} /> All rooms of this category are occupied on these dates.
                         </div>
                       );
                     }
                     return (
                       <div>
-                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🔢 Allocate Room Number</label>
+                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1"><DIc I={Hash} size={11} /> Allocate Room Number</label>
                         <div className="grid grid-cols-4 gap-1.5">
                           {free.map((u: any) => (
                             <button key={u.id}
@@ -2517,7 +2553,7 @@ export default function PartnerDashboard() {
                   <button onClick={async () => { await submitWalkIn(); setQuickWalkInOpen(false); }}
                     disabled={walkInSaving || !walkInOpen?.roomId || !walkIn.fromDate || !walkIn.toDate}
                     className="w-full py-3 rounded-xl bg-linear-to-r from-gold-400 to-amber-400 text-luxury-900 font-bold text-sm hover:shadow-xl transition-all disabled:opacity-40">
-                    {walkInSaving ? "Saving…" : walkIn.assignedUnitNumber ? `✓ Check-in · Room #${walkIn.assignedUnitNumber}` : "✓ Confirm Walk-in (auto-assign)"}
+                    {walkInSaving ? "Saving…" : walkIn.assignedUnitNumber ? <><DIc I={Check} size={14} /> Check-in · Room #{walkIn.assignedUnitNumber}</> : <><DIc I={Check} size={14} /> Confirm Walk-in (auto-assign)</>}
                   </button>
                 </div>
               </div>
@@ -2530,8 +2566,8 @@ export default function PartnerDashboard() {
           <div className="fade-up space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <h2 className="sec-title text-xl">Guest Complaints</h2>
-              <button onClick={loadComplaints} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-luxury-200 text-luxury-700 hover:bg-luxury-50">
-                ↻ Refresh
+              <button onClick={loadComplaints} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-luxury-200 text-luxury-700 hover:bg-luxury-50 inline-flex items-center gap-1.5">
+                <RotateCw size={12} strokeWidth={2.3} aria-hidden /> Refresh
               </button>
             </div>
             <p className="text-sm text-luxury-500 -mt-3">
@@ -2980,15 +3016,15 @@ export default function PartnerDashboard() {
               {/* Action choice */}
               <div className="grid grid-cols-3 gap-2">
                 {([
-                  { v:"accept",  icon:"✅", label:"Accept",  bg:"bg-emerald-50", border:"border-emerald-300", text:"text-emerald-700" },
-                  { v:"counter", icon:"💬", label:"Counter", bg:"bg-amber-50",   border:"border-amber-300",   text:"text-amber-700"   },
-                  { v:"reject",  icon:"❌", label:"Decline", bg:"bg-red-50",     border:"border-red-300",     text:"text-red-700"     },
+                  { v:"accept",  Ic: CircleCheck,   label:"Accept",  bg:"bg-emerald-50", border:"border-emerald-300", text:"text-emerald-700", c:"#047857" },
+                  { v:"counter", Ic: MessageCircle,  label:"Counter", bg:"bg-amber-50",   border:"border-amber-300",   text:"text-amber-700",   c:"#b45309" },
+                  { v:"reject",  Ic: Ban,            label:"Decline", bg:"bg-red-50",     border:"border-red-300",     text:"text-red-700",     c:"#dc2626" },
                 ] as const).map(a => (
                   <button key={a.v} onClick={() => setBidAction(a.v)}
                     className={`p-3 rounded-2xl border-2 text-center transition-all ${
                       bidAction === a.v ? `${a.bg} ${a.border} shadow-md scale-[1.03]` : "border-luxury-200 hover:border-luxury-300"
                     }`}>
-                    <p className="text-2xl mb-1">{a.icon}</p>
+                    <a.Ic size={24} strokeWidth={2} aria-hidden className="mx-auto mb-1" style={{ color: a.c }} />
                     <p className={`text-xs font-bold ${bidAction === a.v ? a.text : "text-luxury-500"}`}>{a.label}</p>
                   </button>
                 ))}
@@ -3043,10 +3079,10 @@ export default function PartnerDashboard() {
                   matchProb >= 45 ? { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   dot: "bg-amber-500"   } :
                                     { bg: "bg-rose-50",    text: "text-rose-700",    border: "border-rose-200",    dot: "bg-rose-500"    };
 
-                const chips: { label: string; amt: number; sub: string }[] = [
-                  { label: "❤️ Match guest", amt: guestBid,  sub: "Sweetheart" },
-                  { label: "⭐ AI smart",    amt: aiSuggest, sub: "Recommended" },
-                  { label: "⚡ Premium",     amt: premium,   sub: "Top margin" },
+                const chips: { label: string; Ic: any; amt: number; sub: string }[] = [
+                  { label: "Match guest", Ic: Heart, amt: guestBid,  sub: "Sweetheart" },
+                  { label: "AI smart",    Ic: Star,  amt: aiSuggest, sub: "Recommended" },
+                  { label: "Premium",     Ic: Zap,   amt: premium,   sub: "Top margin" },
                 ];
 
                 return (
@@ -3054,7 +3090,7 @@ export default function PartnerDashboard() {
                     {/* Premium header: arena vibe + live probability chip. */}
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">⚡ Counter Pricing Arena</p>
+                        <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Zap} size={11} /> Counter Pricing Arena</p>
                         <p className="text-[0.6rem] text-luxury-500 mt-0.5">Drag the gold dot · steps of ₹{PRICE_STEP}</p>
                       </div>
                       <div className={`flex items-center gap-1.5 text-[0.65rem] font-bold px-2.5 py-1 rounded-full border ${probColor.bg} ${probColor.text} ${probColor.border}`}>
@@ -3163,7 +3199,7 @@ export default function PartnerDashboard() {
                                 : "bg-white border-luxury-200 hover:border-amber-300 hover:scale-[1.01]"
                             }`}
                           >
-                            <p className={`text-[0.62rem] font-bold ${active ? "text-amber-700" : "text-luxury-600"}`}>{c.label}</p>
+                            <p className={`text-[0.62rem] font-bold inline-flex items-center gap-1 ${active ? "text-amber-700" : "text-luxury-600"}`}><c.Ic size={11} strokeWidth={2.3} aria-hidden /> {c.label}</p>
                             <p className={`text-sm font-extrabold mt-0.5 ${active ? "text-amber-900" : "text-luxury-800"}`}>{fmtCur(amt)}</p>
                             <p className={`text-[0.5rem] mt-0.5 ${active ? "text-amber-600" : "text-luxury-400"}`}>{c.sub}</p>
                           </button>
@@ -3266,9 +3302,9 @@ export default function PartnerDashboard() {
               <button onClick={submitBidAction} disabled={bidActLoading || (bidAction==="counter" && !counterAmt)}
                 className="btn-gold w-full py-3 text-sm shadow-md">
                 {bidActLoading ? "Sending…" :
-                  bidAction==="accept"  ? `✅ Accept at ${fmtCur(customerBidOf(selectedBid))}/night` :
-                  bidAction==="counter" ? `💬 Send Counter: ${counterAmt ? fmtCur(snap100(counterAmt)) : "—"}/night${counterAddons.length ? ` + ${counterAddons.length} perk${counterAddons.length>1?"s":""}` : ""}` :
-                  "❌ Decline Bid"}
+                  bidAction==="accept"  ? <><DIc I={Check} size={14} /> Accept at {fmtCur(customerBidOf(selectedBid))}/night</> :
+                  bidAction==="counter" ? <><DIc I={MessageCircle} size={14} /> Send Counter: {counterAmt ? fmtCur(snap100(counterAmt)) : "—"}/night{counterAddons.length ? ` + ${counterAddons.length} perk${counterAddons.length>1?"s":""}` : ""}</> :
+                  <><DIc I={Ban} size={14} /> Decline Bid</>}
               </button>
             </div>
           </div>
@@ -3278,8 +3314,8 @@ export default function PartnerDashboard() {
       {bidActDone && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-xs w-full mx-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 text-3xl">
-              {bidAction==="accept" ? "🎉" : bidAction==="counter" ? "💬" : "✓"}
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4" style={{ color: "#047857" }}>
+              {bidAction==="accept" ? <PartyPopper size={30} strokeWidth={2} aria-hidden /> : bidAction==="counter" ? <MessageCircle size={30} strokeWidth={2} aria-hidden /> : <Check size={30} strokeWidth={2.4} aria-hidden />}
             </div>
             <h3 className="font-display text-xl font-light text-luxury-900 mb-1">
               {bidAction==="accept" ? "Booking Confirmed!" : bidAction==="counter" ? "Counter Sent!" : "Bid Declined"}
@@ -3319,7 +3355,7 @@ export default function PartnerDashboard() {
               {/* Header */}
               <div className="relative bg-linear-to-br from-luxury-900 via-luxury-800 to-black px-6 py-5">
                 <button onClick={() => setSelectedBooking(null)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg">✕</button>
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"><X size={16} strokeWidth={2.4} aria-hidden /></button>
                 <p className="text-[0.6rem] font-bold text-gold-400 uppercase tracking-[0.25em]">Booking Details</p>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="w-12 h-12 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold">{guestInitials}</div>
@@ -3338,19 +3374,19 @@ export default function PartnerDashboard() {
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <p className="text-[0.6rem] font-bold text-emerald-600 uppercase tracking-widest">🛬 Check-in</p>
+                    <p className="text-[0.6rem] font-bold text-emerald-600 uppercase tracking-widest"><DIc I={PlaneLanding} size={11} /> Check-in</p>
                     <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkIn)}</p>
                     <p className="text-[0.65rem] text-luxury-500">{b.checkIn && new Date(b.checkIn).toLocaleDateString("en-IN",{weekday:"long"})}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                    <p className="text-[0.6rem] font-bold text-amber-600 uppercase tracking-widest">🛫 Check-out</p>
+                    <p className="text-[0.6rem] font-bold text-amber-600 uppercase tracking-widest"><DIc I={PlaneTakeoff} size={11} /> Check-out</p>
                     <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkOut)}</p>
                     <p className="text-[0.65rem] text-luxury-500">{b.checkOut && new Date(b.checkOut).toLocaleDateString("en-IN",{weekday:"long"})}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xs text-luxury-500 font-semibold">
                   <span className="h-px flex-1 bg-luxury-200" />
-                  <span>🌙 {nights} night{nights>1?"s":""}</span>
+                  <span className="inline-flex items-center gap-1"><Moon size={12} strokeWidth={2.2} aria-hidden /> {nights} night{nights>1?"s":""}</span>
                   <span className="h-px flex-1 bg-luxury-200" />
                 </div>
 
@@ -3362,7 +3398,7 @@ export default function PartnerDashboard() {
                   const freeForAssign = freeUnitsForRoom(b.roomId, b.checkIn || "", b.checkOut || "");
                   return (
                     <div className="p-4 rounded-2xl bg-luxury-50 border border-luxury-200">
-                      <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">🏨 Room</p>
+                      <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2"><DIc I={BedDouble} size={11} /> Room</p>
                       <div className="flex items-baseline justify-between gap-3 flex-wrap">
                         <div>
                           <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "—"}</p>
@@ -3376,7 +3412,7 @@ export default function PartnerDashboard() {
                           </div>
                         ) : (
                           <div className="w-full mt-2">
-                            <p className="text-[0.6rem] font-bold text-amber-600 uppercase mb-1">⚠️ No room # assigned</p>
+                            <p className="text-[0.6rem] font-bold text-amber-600 uppercase mb-1"><DIc I={TriangleAlert} size={11} /> No room # assigned</p>
                             {freeForAssign.length === 0 ? (
                               <p className="text-xs text-luxury-400">No free rooms in this category.</p>
                             ) : (
@@ -3408,16 +3444,16 @@ export default function PartnerDashboard() {
 
                 {/* Guest contact */}
                 <div className="p-4 rounded-2xl bg-white border border-luxury-200 space-y-2">
-                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest">👤 Guest Contact</p>
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={UserRound} size={11} /> Guest Contact</p>
                   {(b.guestPhone || b.user?.phone) && (
                     <a href={`tel:${b.guestPhone || b.user?.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
-                      <span className="text-luxury-600">📱 Phone</span>
+                      <span className="text-luxury-600 inline-flex items-center gap-1.5"><Phone size={12} strokeWidth={2.2} aria-hidden /> Phone</span>
                       <span className="font-bold text-luxury-900">{b.guestPhone || b.user?.phone}</span>
                     </a>
                   )}
                   {(b.guestEmail || b.user?.email) && (
                     <a href={`mailto:${b.guestEmail || b.user?.email}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
-                      <span className="text-luxury-600">✉️ Email</span>
+                      <span className="text-luxury-600 inline-flex items-center gap-1.5"><Mail size={12} strokeWidth={2.2} aria-hidden /> Email</span>
                       <span className="font-semibold text-luxury-900 truncate">{b.guestEmail || b.user?.email}</span>
                     </a>
                   )}
@@ -3428,7 +3464,7 @@ export default function PartnerDashboard() {
 
                 {/* Payment */}
                 <div className="p-4 rounded-2xl bg-linear-to-br from-gold-50 to-amber-50 border border-gold-200">
-                  <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-widest mb-2">💰 Payment</p>
+                  <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-widest mb-2"><DIc I={Wallet} size={11} /> Payment</p>
                   <div className="flex justify-between text-sm py-1">
                     <span className="text-luxury-600">Rate per night</span>
                     <span className="font-semibold text-luxury-900">{fmtCur(pricePerNight)}</span>
@@ -3443,14 +3479,14 @@ export default function PartnerDashboard() {
                     <span className="text-xl font-bold text-gold-700">{fmtCur(total)}</span>
                   </div>
                   {b.message && /razorpay|pay_/i.test(b.message) && (
-                    <p className="text-[0.65rem] text-emerald-700 font-semibold mt-2">✓ Paid online via Razorpay</p>
+                    <p className="text-[0.65rem] text-emerald-700 font-semibold mt-2"><DIc I={Check} size={11} /> Paid online via Razorpay</p>
                   )}
                 </div>
 
                 {/* Notes / source */}
                 {b.message && (
                   <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
-                    <p className="text-[0.6rem] font-bold text-blue-600 uppercase tracking-widest mb-1">📝 Guest Message</p>
+                    <p className="text-[0.6rem] font-bold text-blue-600 uppercase tracking-widest mb-1"><DIc I={FileText} size={11} /> Guest Message</p>
                     <p className="text-xs text-luxury-700">{b.message}</p>
                   </div>
                 )}
@@ -3464,14 +3500,14 @@ export default function PartnerDashboard() {
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   {(b.guestPhone || b.user?.phone) && (
                     <a href={`tel:${b.guestPhone || b.user?.phone}`}
-                      className="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold text-center transition-all">
-                      📞 Call Guest
+                      className="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold text-center transition-all inline-flex items-center justify-center gap-1.5">
+                      <Phone size={14} strokeWidth={2.3} aria-hidden /> Call Guest
                     </a>
                   )}
                   {(b.guestPhone || b.user?.phone) && (
                     <a href={`https://wa.me/${String(b.guestPhone || b.user?.phone).replace(/[^0-9]/g,"")}`} target="_blank" rel="noopener"
-                      className="py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold text-center transition-all">
-                      💬 WhatsApp
+                      className="py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold text-center transition-all inline-flex items-center justify-center gap-1.5">
+                      <MessageCircle size={14} strokeWidth={2.3} aria-hidden /> WhatsApp
                     </a>
                   )}
                 </div>

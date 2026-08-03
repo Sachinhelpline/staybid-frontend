@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Column<T> {
   key: string;
@@ -147,9 +148,12 @@ export default function DataTable<T extends Record<string, unknown>>({
                 cursor: page === 0 ? "default" : "pointer",
                 padding: "6px 12px",
                 fontSize: 13,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
               }}
             >
-              ← Prev
+              <ChevronLeft size={14} strokeWidth={2.2} aria-hidden />Prev
             </button>
             {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
               const p = Math.max(0, Math.min(page - 2, totalPages - 5)) + i;
@@ -183,9 +187,12 @@ export default function DataTable<T extends Record<string, unknown>>({
                 cursor: page >= totalPages - 1 ? "default" : "pointer",
                 padding: "6px 12px",
                 fontSize: 13,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
               }}
             >
-              Next →
+              Next<ChevronRight size={14} strokeWidth={2.2} aria-hidden />
             </button>
           </div>
         </div>

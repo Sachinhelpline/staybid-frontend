@@ -8,6 +8,7 @@
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { modalPortal } from "@/lib/partner/modal-portal";
+import { Sparkles, SprayCan, CircleCheck, Ban, BedDouble, UserRound, TriangleAlert, RotateCcw, X } from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -15,11 +16,14 @@ function getToken() {
 
 type HKStatus = "clean" | "dirty" | "inspected" | "out_of_order";
 
-const META: Record<HKStatus, { label: string; icon: string; bg: string; c: string; border: string }> = {
-  clean:        { label: "Clean",        icon: "✨", bg: "#ecfdf5", c: "#15803d", border: "#a7f3d0" },
-  dirty:        { label: "Dirty",        icon: "🧹", bg: "#fafbfc", c: "#b45309", border: "#dfe5eb" },
-  inspected:    { label: "Inspected",    icon: "✅", bg: "#eff6ff", c: "#1d4ed8", border: "#bfdbfe" },
-  out_of_order: { label: "Out of Order", icon: "🚫", bg: "#fef2f2", c: "#b91c1c", border: "#fecaca" },
+// Status tiles use Tailwind tint classes (not inline hex) so the partner
+// status-tint dark layer flips them in dark; `ring` is a saturated accent that
+// reads on both themes, used only for the active/selected state.
+const META: Record<HKStatus, { label: string; Ic: any; bg: string; text: string; border: string; ring: string }> = {
+  clean:        { label: "Clean",        Ic: Sparkles,    bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", ring: "#10b981" },
+  dirty:        { label: "Dirty",        Ic: SprayCan,    bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   ring: "#f59e0b" },
+  inspected:    { label: "Inspected",    Ic: CircleCheck, bg: "bg-blue-50",    text: "text-blue-700",    border: "border-blue-200",    ring: "#3b82f6" },
+  out_of_order: { label: "Out of Order", Ic: Ban,         bg: "bg-red-50",     text: "text-red-700",     border: "border-red-200",     ring: "#ef4444" },
 };
 const ORDER: HKStatus[] = ["clean", "dirty", "inspected", "out_of_order"];
 
@@ -72,7 +76,7 @@ export default function HousekeepingTab({
       if (!r.ok || !d.ok) {
         if (r.status === 412) {
           setProvisioned(false);
-          alert("⚠ Housekeeping abhi DB me set nahi hua — migration apply karni hai (migrations/2026-05-21-room-housekeeping.sql).");
+          alert("Housekeeping isn't set up in the DB yet — apply the migration (migrations/2026-05-21-room-housekeeping.sql).");
         } else {
           alert("❌ " + (d.error || "Save failed"));
         }
@@ -110,23 +114,23 @@ export default function HousekeepingTab({
     <div className="fade-up">
       <div className="mb-4">
         <h2 className="sec-title text-xl">Housekeeping</h2>
-        <p className="text-[0.7rem] text-luxury-500 mt-0.5">Har kamre ka status — kisi room par tap karke update karo.</p>
+        <p className="text-[0.7rem] text-luxury-500 mt-0.5">Each room's status — tap a room to update it.</p>
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
-          <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Housekeeping storage abhi setup nahi hua</p>
+        <div className="card-p card-tight mb-3 bg-amber-50 border-amber-200">
+          <p className="text-[0.74rem] text-amber-800 font-semibold inline-flex items-center gap-1.5"><TriangleAlert size={13} strokeWidth={2.3} aria-hidden /> Housekeeping storage isn't set up yet</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
-            Status save karne ke liye <span className="font-mono">migrations/2026-05-21-room-housekeeping.sql</span> Supabase me apply karni hai. Tab tak board read-only hai.
+            To save statuses, apply <span className="font-mono">migrations/2026-05-21-room-housekeeping.sql</span> in Supabase. Until then the board is read-only.
           </p>
         </div>
       )}
 
       {roomUnits.length === 0 ? (
         <div className="card-p text-center py-10">
-          <p className="text-3xl mb-2">🛏️</p>
-          <p className="text-luxury-600 font-semibold text-sm">Abhi koi room number nahi hai</p>
-          <p className="text-luxury-400 text-xs mt-0.5">Rooms tab me jaa kar har category me room numbers (101, 102…) add karo — housekeeping unhi par chalega.</p>
+          <BedDouble size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />
+          <p className="text-luxury-600 font-semibold text-sm">No room numbers yet</p>
+          <p className="text-luxury-400 text-xs mt-0.5">Go to the Rooms tab and add room numbers (101, 102…) to each category — housekeeping runs on those.</p>
         </div>
       ) : (
         <>
@@ -137,26 +141,26 @@ export default function HousekeepingTab({
               const active = filter === s;
               return (
                 <button key={s} onClick={() => setFilter(active ? "all" : s)}
-                  className="card-p card-tight text-left transition-all hover:-translate-y-0.5"
-                  style={{ background: m.bg, borderColor: active ? m.c : m.border, borderWidth: active ? 1.5 : 1 }}>
+                  className={`card-p card-tight text-left transition-all hover:-translate-y-0.5 border ${m.bg} ${m.border}`}
+                  style={active ? { boxShadow: `0 0 0 1.5px ${m.ring}` } : undefined}>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">{m.icon}</span>
-                    <span className="text-lg font-bold" style={{ color: m.c }}>{counts[s]}</span>
+                    <m.Ic size={15} strokeWidth={2.2} aria-hidden className={m.text} />
+                    <span className={`text-lg font-bold ${m.text}`}>{counts[s]}</span>
                   </div>
-                  <p className="text-[0.66rem] font-bold mt-0.5" style={{ color: m.c }}>{m.label}</p>
+                  <p className={`text-[0.66rem] font-bold mt-0.5 ${m.text}`}>{m.label}</p>
                 </button>
               );
             })}
           </div>
           {filter !== "all" && (
             <button onClick={() => setFilter("all")}
-              className="text-[0.68rem] font-bold text-gold-600 mb-2.5">↺ Show all rooms</button>
+              className="text-[0.68rem] font-bold text-gold-600 mb-2.5 inline-flex items-center gap-1"><RotateCcw size={11} strokeWidth={2.4} aria-hidden /> Show all rooms</button>
           )}
 
           {loading ? (
             <div className="card-p text-center py-8 text-luxury-400 text-sm">Loading…</div>
           ) : groups.length === 0 ? (
-            <div className="card-p text-center py-8 text-luxury-400 text-sm">Is filter me koi room nahi.</div>
+            <div className="card-p text-center py-8 text-luxury-400 text-sm">No rooms match this filter.</div>
           ) : (
             <div className="space-y-3">
               {groups.map((g) => (
@@ -169,15 +173,14 @@ export default function HousekeepingTab({
                       const meta = statuses[u.id];
                       return (
                         <button key={u.id} onClick={() => setPicker(u)}
-                          className="rounded-xl p-2 text-left transition-all hover:-translate-y-0.5"
-                          style={{ background: m.bg, border: `1px solid ${m.border}` }}>
+                          className={`rounded-xl p-2 text-left transition-all hover:-translate-y-0.5 border ${m.bg} ${m.border}`}>
                           <div className="flex items-center justify-between">
                             <span className="text-[0.86rem] font-extrabold text-luxury-900">#{u.roomNumber}</span>
-                            <span className="text-xs">{m.icon}</span>
+                            <m.Ic size={13} strokeWidth={2.2} aria-hidden className={m.text} />
                           </div>
-                          <p className="text-[0.58rem] font-bold mt-0.5" style={{ color: m.c }}>{m.label}</p>
+                          <p className={`text-[0.58rem] font-bold mt-0.5 ${m.text}`}>{m.label}</p>
                           {meta?.assignedTo && (
-                            <p className="text-[0.54rem] text-luxury-500 truncate mt-0.5">👤 {meta.assignedTo}</p>
+                            <p className="text-[0.54rem] text-luxury-500 truncate mt-0.5 inline-flex items-center gap-1"><UserRound size={9} strokeWidth={2.4} aria-hidden /> {meta.assignedTo}</p>
                           )}
                         </button>
                       );
@@ -231,8 +234,8 @@ function UnitPicker({
             <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>Room #{unit.roomNumber}</p>
             <p className="text-[0.66rem] text-luxury-400">{room?.name || room?.type || "Room"}</p>
           </div>
-          <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center transition">×</button>
+          <button onClick={onClose} aria-label="Close"
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center transition"><X size={16} strokeWidth={2.2} aria-hidden /></button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
@@ -244,13 +247,10 @@ function UnitPicker({
                 const on = status === s;
                 return (
                   <button key={s} onClick={() => setStatus(s)}
-                    className="rounded-xl p-2.5 text-left transition-all"
-                    style={{
-                      background: on ? m.bg : "#fff",
-                      border: `1.5px solid ${on ? m.c : "#d7dee6"}`,
-                    }}>
-                    <span className="text-sm">{m.icon}</span>
-                    <p className="text-[0.74rem] font-bold mt-0.5" style={{ color: on ? m.c : "#7a6645" }}>{m.label}</p>
+                    className={`rounded-xl p-2.5 text-left transition-all border ${on ? `${m.bg} ${m.border}` : "bg-white border-luxury-200"}`}
+                    style={on ? { boxShadow: `0 0 0 1px ${m.ring}` } : undefined}>
+                    <m.Ic size={15} strokeWidth={2.2} aria-hidden className={on ? m.text : "text-luxury-500"} />
+                    <p className={`text-[0.74rem] font-bold mt-0.5 ${on ? m.text : "text-luxury-600"}`}>{m.label}</p>
                   </button>
                 );
               })}
@@ -259,7 +259,7 @@ function UnitPicker({
           <div>
             <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Assigned to</label>
             <input value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}
-              placeholder="Staff ka naam (optional)" className="inp-p" />
+              placeholder="Staff name (optional)" className="inp-p" />
           </div>
           <div>
             <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Note</label>

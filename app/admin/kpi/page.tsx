@@ -5,6 +5,7 @@
 // KPIs show an honest "—" with the reason, never an invented figure.
 
 import { useEffect, useState } from "react";
+import { BarChart3 } from "lucide-react";
 
 type Kpi = {
   key: string; label: string; actual: number | null; unit: string;
@@ -48,10 +49,10 @@ export default function AdminKpiPage() {
     <div style={{ padding: "26px 22px 60px", maxWidth: 1080, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic", fontSize: "1.9rem", color: "#e5eaef", margin: 0 }}>
-            📊 KPI Scorecard
+          <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic", fontSize: "1.9rem", color: "#e5eaef", margin: 0, display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <BarChart3 size={24} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} /> KPI Scorecard
           </h1>
-          <p style={{ fontSize: "0.78rem", color: "rgba(176, 192, 209,0.6)", margin: "4px 0 0" }}>
+          <p style={{ fontSize: "0.78rem", color: "rgba(176, 192, 209,0.82)", margin: "4px 0 0" }}>
             The growth-plan targets vs live actuals — computed from real bid requests, bookings and bids.
           </p>
         </div>
@@ -77,10 +78,10 @@ export default function AdminKpiPage() {
           Could not load KPIs ({err}). Sign in on /admin first.
         </p>
       ) : !data ? (
-        <p style={{ marginTop: 26, color: "rgba(176, 192, 209,0.6)", fontSize: "0.85rem" }}>Loading…</p>
+        <p style={{ marginTop: 26, color: "rgba(176, 192, 209,0.82)", fontSize: "0.85rem" }}>Loading…</p>
       ) : (
         <>
-          <p style={{ margin: "18px 0 14px", fontSize: "0.72rem", color: "rgba(176, 192, 209,0.55)" }}>
+          <p style={{ margin: "18px 0 14px", fontSize: "0.72rem", color: "rgba(176, 192, 209,0.82)" }}>
             Window: last {data.days} days · {data.totals.leads.toLocaleString("en-IN")} bid requests ·{" "}
             {data.totals.paidBookings.toLocaleString("en-IN")} paid bookings · {data.totals.bids.toLocaleString("en-IN")} bids
           </p>
@@ -98,7 +99,7 @@ export default function AdminKpiPage() {
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.05em", color: "rgba(176, 192, 209,0.65)", textTransform: "uppercase" }}>
+                    <span style={{ fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.05em", color: "rgba(176, 192, 209,0.82)", textTransform: "uppercase" }}>
                       {k.label}
                     </span>
                     <span style={{ fontSize: "0.54rem", fontWeight: 800, letterSpacing: "0.06em", color: st.color, background: st.bg, border: `1px solid ${st.color}44`, borderRadius: 999, padding: "3px 8px", whiteSpace: "nowrap" }}>
@@ -112,13 +113,13 @@ export default function AdminKpiPage() {
                     Target: {k.target}
                   </div>
                   {k.note ? (
-                    <div style={{ marginTop: 6, fontSize: "0.6rem", color: "rgba(176, 192, 209,0.5)" }}>{k.note}</div>
+                    <div style={{ marginTop: 6, fontSize: "0.6rem", color: "rgba(176, 192, 209,0.74)" }}>{k.note}</div>
                   ) : null}
                 </div>
               );
             })}
           </div>
-          <p style={{ marginTop: 18, fontSize: "0.62rem", color: "rgba(176, 192, 209,0.45)" }}>
+          <p style={{ marginTop: 18, fontSize: "0.62rem", color: "rgba(176, 192, 209,0.8)" }}>
             Targets from the growth plan. "Below goal" is expected pre-launch — the board exists so the trend is visible from day one.
           </p>
         </>

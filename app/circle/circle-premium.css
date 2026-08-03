@@ -73,8 +73,8 @@
 }
 .sbc-brand-name em { font-style: italic; color: var(--sbc-gold-deep); }
 .sbc-brand-sub {
-  display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .22em;
-  color: rgba(74, 56, 32, 0.6);
+  display: block; font-size: .66rem; text-transform: uppercase; letter-spacing: .22em;
+  color: rgba(74, 56, 32, 0.72);
 }
 .sbc-topnav { display: flex; align-items: center; gap: 4px; font-size: .85rem; }
 .sbc-topnav-link {
@@ -435,8 +435,9 @@
 .sbc-footer a { color: rgba(176, 192, 209,.75); text-decoration: none; }
 .sbc-footer a:hover { color: #dfe5ea; }
 .sbc-footer-bar {
+  max-width: 80rem; margin: 0 auto;
   border-top: 1px solid rgba(176, 192, 209,.12); padding: 14px 20px; text-align: center;
-  font-size: .72rem; color: rgba(176, 192, 209,.45);
+  font-size: .72rem; color: rgba(176, 192, 209,.62);
 }
 
 /* ---------- reduced motion ---------- */
@@ -477,7 +478,7 @@
   box-shadow: 0 6px 18px -8px rgba(74,56,32,.4);
 }
 .sbc-fbar-seg-label {
-  font-size: .6rem; text-transform: uppercase; letter-spacing: .16em;
+  font-size: .63rem; text-transform: uppercase; letter-spacing: .16em;
   color: rgba(74,56,32,.5); font-weight: 700;
 }
 .sbc-fbar-seg-val {
@@ -570,7 +571,7 @@
 .sbc-reel-railbtn:hover { transform: scale(1.08); background: rgba(20,14,6,.6); }
 .sbc-reel-railbtn:active { transform: scale(.92); }
 .sbc-reel-railbtn.on { color: #FF7A93; border-color: rgba(255,122,147,.5); }
-.sbc-reel-railcap { font-size: .58rem; color: rgba(176, 192, 209,.75); margin-top: -8px; font-weight: 700; }
+.sbc-reel-railcap { font-size: .63rem; color: rgba(176, 192, 209,.75); margin-top: -8px; font-weight: 700; }
 .sbc-reel-info {
   position: absolute; left: 16px; right: 78px; bottom: 96px; z-index: 4; color: #f1f4f6;
 }
@@ -719,7 +720,7 @@
 .sbc-cmp td { color: var(--sbc-ink); font-variant-numeric: tabular-nums; }
 .sbc-cmp td.best { background: rgba(127,146,105,.14); }
 .sbc-cmp-tag {
-  display: inline-block; margin-left: 6px; font-size: .58rem; font-weight: 800; padding: 1px 6px; border-radius: 999px;
+  display: inline-block; margin-left: 6px; font-size: .63rem; font-weight: 800; padding: 1px 6px; border-radius: 999px;
   background: var(--sbc-sage, #7F9269); color: #fff; vertical-align: middle;
 }
 .sbc-tour-how { display: grid; gap: 10px; }
@@ -900,7 +901,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-rail-btn:active .sbc-rail-ic { transform: scale(.9); }
 .sbc-rail-btn.on .sbc-rail-ic { color: var(--sbc-rose); border-color: rgba(212,149,131,.55); }
-.sbc-rail-cap { font-size: .6rem; font-weight: 700; color: rgba(176, 192, 209,.85); }
+.sbc-rail-cap { font-size: .63rem; font-weight: 700; color: rgba(176, 192, 209,.85); }
 
 /* bottom block — info + CTAs stacked; anchored above the dock so they can
    never overlap regardless of how many lines the title/badges wrap to */
@@ -1027,7 +1028,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-dock-item:active { transform: scale(.94); }
 .sbc-dock-item.on { color: var(--sbc-gold-2); }
 .sbc-dock-glyph { font-size: 1.28rem; line-height: 1; font-weight: 600; }
-.sbc-dock-label { font-size: .54rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.sbc-dock-label { font-size: .63rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .sbc-dock-item.center .sbc-dock-glyph {
   width: 46px; height: 46px; margin-top: -16px; border-radius: 999px; display: grid; place-items: center;
   font-size: 1.42rem; color: var(--sbc-walnut);
@@ -1036,7 +1037,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-dock-badge {
   position: absolute; top: 0; left: 50%; transform: translateX(6px); min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 999px; background: var(--sbc-rose); color: #241B10; font-size: .58rem; font-weight: 900;
+  border-radius: 999px; background: var(--sbc-rose); color: #241B10; font-size: .63rem; font-weight: 900;
   display: grid; place-items: center;
 }
 
@@ -1202,7 +1203,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-dock-end:active { transform: scale(.94); }
 .sbc-dock-end.on { color: var(--sbc-gold-2); }
 .sbc-dock-end .sbc-dock-glyph { font-size: 1.2rem; line-height: 1; }
-.sbc-dock-end .sbc-dock-label { font-size: .5rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.sbc-dock-end .sbc-dock-label { font-size: .63rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 
 .sbc-steps {
   position: relative; flex: 1 1 auto; display: flex; align-items: flex-start; justify-content: space-around;
@@ -1225,7 +1226,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   box-shadow: 0 4px 12px -6px rgba(0,0,0,.5);
   transition: transform .16s ease, background .18s ease, border-color .18s ease, color .18s ease;
 }
-.sbc-step-label { font-size: .52rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.sbc-step-label { font-size: .63rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .sbc-step.on { color: var(--sbc-gold-2); }
 .sbc-step.on .sbc-step-num { border-color: var(--sbc-gold); background: rgba(106,133,160,.24); color: #f5f7f9; transform: translateY(-1px); }
 .sbc-step.done .sbc-step-num { background: linear-gradient(135deg, var(--sbc-sage), #5f7350); border-color: var(--sbc-sage); color: #fff; }
@@ -1280,7 +1281,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-hp-glow { position: absolute; inset: -40% 40% auto -20%; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(106,133,160,.35), transparent 70%); filter: blur(24px); }
 .sbc-hp-label { position: relative; font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: rgba(176, 192, 209,.7); }
-.sbc-hp-scope { display: block; margin-top: 3px; font-size: .62rem; font-weight: 600; letter-spacing: .04em; text-transform: none; color: rgba(176, 192, 209,.5); }
+.sbc-hp-scope { display: block; margin-top: 3px; font-size: .63rem; font-weight: 600; letter-spacing: .04em; text-transform: none; color: rgba(176, 192, 209,.5); }
 .sbc-hp-note { position: relative; margin-top: 12px; font-size: .72rem; line-height: 1.5; color: rgba(183,208,160,.85); background: rgba(183,208,160,.09); border: 1px solid rgba(183,208,160,.2); border-radius: 12px; padding: 9px 12px; }
 .sbc-hp-note b { color: #C7E0A8; font-weight: 800; }
 .sbc-hp-value { position: relative; font-family: var(--font-display, serif); font-size: 2.05rem; font-weight: 800; color: #f5f7f9; line-height: 1.05; margin-top: 4px; }
@@ -1310,7 +1311,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-home-reels { font-size: .72rem; font-weight: 800; color: var(--sbc-gold-2); text-decoration: none; text-transform: none; letter-spacing: 0; padding: 5px 11px; border-radius: 999px; background: rgba(106,133,160,.16); border: 1px solid rgba(176, 192, 209,.24); }
 
 /* quick actions */
-.sbc-qa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.sbc-qa { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(6px, 2.2vw, 10px); }
 .sbc-qa-item {
   display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 14px 4px; border-radius: 16px;
   text-align: center; text-decoration: none; color: #e2e7ec; font-size: .64rem; font-weight: 700; line-height: 1.25;
@@ -1319,7 +1320,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-qa-item:active { transform: scale(.95); }
 .sbc-qa-item:hover { background: rgba(106,133,160,.14); }
 .sbc-qa-ic {
-  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  width: clamp(40px, 12vw, 46px); height: clamp(40px, 12vw, 46px); border-radius: 14px; display: grid; place-items: center;
   font-size: 1.42rem; line-height: 1;
   background:
     radial-gradient(120% 120% at 30% 22%, rgba(176, 192, 209,.5), transparent 55%),
@@ -1380,10 +1381,10 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-pcard-media { position: relative; aspect-ratio: 16/11; overflow: hidden; background: #1A130A; }
 .sbc-pcard-media img { width: 100%; height: 100%; object-fit: cover; }
 .sbc-pcard-noimg { width: 100%; height: 100%; display: grid; place-items: center; font-size: 2rem; color: rgba(106,133,160,.4); }
-.sbc-pcard-badge { position: absolute; top: 8px; left: 8px; font-size: .6rem; font-weight: 800; color: #f5f7f9; padding: 4px 9px; border-radius: 999px; background: rgba(20,14,6,.7); border: 1px solid rgba(176, 192, 209,.28); backdrop-filter: blur(6px); }
+.sbc-pcard-badge { position: absolute; top: 8px; left: 8px; font-size: .63rem; font-weight: 800; color: #f5f7f9; padding: 4px 9px; border-radius: 999px; background: rgba(20,14,6,.7); border: 1px solid rgba(176, 192, 209,.28); backdrop-filter: blur(6px); }
 .sbc-pcard-like { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font-size: 1rem; cursor: pointer; color: #f1f4f6; background: rgba(20,14,6,.55); border: 1px solid rgba(176, 192, 209,.24); backdrop-filter: blur(6px); }
 .sbc-pcard-like.on { color: var(--sbc-rose); }
-.sbc-pcard-lock { position: absolute; bottom: 8px; left: 8px; font-size: .6rem; font-weight: 800; color: #E8F0DC; padding: 4px 9px; border-radius: 999px; background: rgba(127,146,105,.85); }
+.sbc-pcard-lock { position: absolute; bottom: 8px; left: 8px; font-size: .63rem; font-weight: 800; color: #E8F0DC; padding: 4px 9px; border-radius: 999px; background: rgba(127,146,105,.85); }
 .sbc-pcard-body { padding: 11px 12px 12px; }
 .sbc-pcard-title { font-size: .92rem; font-weight: 800; color: #f1f4f6; line-height: 1.25; }
 .sbc-pcard-loc { font-size: .7rem; color: rgba(176, 192, 209,.55); margin-top: 3px; }
@@ -1394,7 +1395,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-pcard-stats > div { flex: 1; text-align: center; padding: 6px 2px; border-radius: 10px; background: rgba(20,14,6,.45); border: 1px solid rgba(176, 192, 209,.1); }
 .sbc-pcard-stats b { display: block; font-size: .78rem; font-weight: 900; color: #e2e7ec; }
 .sbc-pcard-stats b.sage { color: #B7C7A3; } .sbc-pcard-stats b.gold { color: var(--sbc-gold-2); }
-.sbc-pcard-stats span { display: block; font-size: .54rem; text-transform: uppercase; letter-spacing: .03em; color: rgba(176, 192, 209,.45); margin-top: 1px; }
+.sbc-pcard-stats span { display: block; font-size: .63rem; text-transform: uppercase; letter-spacing: .03em; color: rgba(176, 192, 209,.45); margin-top: 1px; }
 .sbc-pcard-cta { display: block; margin-top: 11px; text-align: center; font-size: .78rem; font-weight: 800; color: var(--sbc-gold-2); }
 
 .sbc-home-empty { text-align: center; padding: 30px 16px; color: rgba(176, 192, 209,.72); }
@@ -1427,9 +1428,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-dash-edit { flex: 0 0 auto; font-size: .78rem; font-weight: 700; color: var(--sbc-c-sage-deep); text-decoration: none; padding: 7px 14px; border-radius: 999px; background: var(--sbc-c-sage-tint); border: 1px solid var(--sbc-c-line); }
 .sbc-dash-edit.gold { color: #fdfdfe; background: linear-gradient(135deg, var(--sbc-c-sage), var(--sbc-c-sage-deep)); border-color: transparent; }
 
-.sbc-dash-strip { display: flex; align-items: center; gap: 16px; margin-top: 12px; padding: 15px 17px; border-radius: 17px; text-decoration: none; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); transition: transform .16s ease; }
+.sbc-dash-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-top: 12px; padding: 15px 17px; border-radius: 17px; text-decoration: none; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); transition: transform .16s ease; }
 .sbc-dash-strip:active { transform: scale(.99); }
-.sbc-dash-strip-k { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; color: var(--sbc-c-ink-faint); font-weight: 700; }
+.sbc-dash-strip-k { display: block; font-size: .64rem; text-transform: uppercase; letter-spacing: .06em; color: var(--sbc-c-ink-faint); font-weight: 700; }
 .sbc-dash-strip-v { display: block; font-size: 1.2rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 2px; }
 .sbc-dash-strip-go { margin-left: auto; font-size: .76rem; font-weight: 800; color: var(--sbc-c-sage-deep); white-space: nowrap; }
 .sbc-dash-rooms { background: linear-gradient(135deg, var(--sbc-c-sage-tint), rgba(92,107,69,.06)); border-color: color-mix(in srgb, var(--sbc-c-sage) 42%, transparent); }
@@ -1449,7 +1450,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-mode-ic { font-size: 1.5rem; }
 .sbc-mode-card b { font-size: .96rem; color: var(--sbc-c-ink); margin-top: 4px; }
 .sbc-mode-sub { font-size: .68rem; color: var(--sbc-c-ink-soft); line-height: 1.35; }
-.sbc-mode-badge { position: absolute; top: 12px; right: 12px; font-size: .56rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: #fdfdfe; padding: 3px 8px; border-radius: 999px; background: var(--sbc-c-sage-deep); }
+.sbc-mode-badge { position: absolute; top: 12px; right: 12px; font-size: .63rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: #fdfdfe; padding: 3px 8px; border-radius: 999px; background: var(--sbc-c-sage-deep); }
 .sbc-mode-badge.locked { background: var(--sbc-c-ink-faint); }
 .sbc-mode-go { font-size: .7rem; font-weight: 800; color: var(--sbc-c-sage-deep); margin-top: 5px; }
 .sbc-mode-go.locked { color: var(--sbc-c-ink-faint); }
@@ -1636,7 +1637,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-rsel-rthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sbc-rsel-roi {
-  position: absolute; left: 4px; bottom: 4px; font-size: .58rem; font-weight: 800;
+  position: absolute; left: 4px; bottom: 4px; font-size: .63rem; font-weight: 800;
   padding: 1px 6px; border-radius: 999px; color: #E9F3DE;
   background: rgba(20,14,6,.62); border: 1px solid rgba(157,173,143,.4); backdrop-filter: blur(4px);
 }
@@ -1856,7 +1857,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   }
   .sbc-topbar--dark .sbc-brand-name { color: #f1f4f6; }
   .sbc-topbar--dark .sbc-brand-name em { color: var(--sbc-gold-2); }
-  .sbc-topbar--dark .sbc-brand-sub { color: rgba(176, 192, 209, 0.5); }
+  .sbc-topbar--dark .sbc-brand-sub { color: rgba(176, 192, 209, 0.82); }
   .sbc-topbar--dark .sbc-topnav-link { color: rgba(176, 192, 209, 0.82); }
   .sbc-topbar--dark .sbc-topnav-link:hover,
   .sbc-topbar--dark .sbc-topnav-link.on { background: rgba(106, 133, 160, 0.28); color: #f5f7f9; }
@@ -1977,7 +1978,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 /* eyebrow — compound selector beats `.sbc-home-bundle span` */
 .sbc-home-bundle .sbc-home-bundle-eyebrow {
-  display: block; font-size: .62rem; font-weight: 800; letter-spacing: .12em;
+  display: block; font-size: .63rem; font-weight: 800; letter-spacing: .12em;
   text-transform: uppercase; color: var(--sbc-gold-2); margin: 0 0 4px;
 }
 /* cap width on desktop so the CTA reads as a button, not a full-bleed banner */
@@ -2004,7 +2005,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 
 .sbc-earn-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 12px; }
 .sbc-earn-kpi { padding: 13px 12px; border-radius: 15px; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); }
-.sbc-earn-kpi-k { display: block; font-size: .58rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--sbc-c-ink-faint); }
+.sbc-earn-kpi-k { display: block; font-size: .63rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--sbc-c-ink-faint); }
 .sbc-earn-kpi-v { display: block; font-size: 1.06rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 3px; }
 
 .sbc-earn-note { display: flex; gap: 9px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--sbc-c-surface-2); border: 1px solid var(--sbc-c-line-soft); }
@@ -2019,7 +2020,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-earn-row-main span { display: block; font-size: .7rem; color: var(--sbc-c-ink-soft); margin-top: 2px; }
 .sbc-earn-row-amt { flex: 0 0 auto; text-align: right; }
 .sbc-earn-row-amt b { display: block; font-size: 1rem; font-weight: 900; color: var(--sbc-c-ink); font-variant-numeric: tabular-nums; }
-.sbc-earn-status { display: inline-block; margin-top: 3px; font-size: .58rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
+.sbc-earn-status { display: inline-block; margin-top: 3px; font-size: .63rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
 .sbc-earn-status.paid    { color: var(--sbc-c-sage-deep); background: var(--sbc-c-sage-tint); }
 .sbc-earn-status.pending { color: #8a6b18; background: rgba(106,133,160,.16); }
 
@@ -2060,7 +2061,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-earn-kpi-v { font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 380px) {
   .sbc-earn-kpi-v { font-size: .9rem; }
-  .sbc-earn-kpi-k { font-size: .54rem; }
+  .sbc-earn-kpi-k { font-size: .63rem; }
 }
 
 /* ============================================================================
@@ -2327,7 +2328,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-dock-end.on { color: var(--sbc-c-sage-deep); }
 .sbc-dock-end .sbc-dock-glyph { font-size: 1.05rem; }
-.sbc-dock-end .sbc-dock-label { font-size: .46rem; }
+.sbc-dock-end .sbc-dock-label { font-size: .63rem; line-height: 1.1; }
 
 /* step rail → sage tint (was gold) */
 .sbc-steps { padding: 6px 6px 0; }
@@ -2349,7 +2350,19 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   border: 1.5px solid color-mix(in srgb, var(--sbc-c-sage) 34%, transparent);
   box-shadow: 0 3px 9px -6px rgba(60, 52, 32, .4);
 }
-.sbc-step-label { font-size: .48rem; }
+.sbc-step-label { font-size: .63rem; line-height: 1.1; }
+/* v689 — dock inactive text was --sbc-c-ink-faint (#9A9082) on the light-pewter
+   dock = 1.77:1 (invisible). Give the dock its own readable inactive per theme. */
+.sbc-dock .sbc-step:not(.on), .sbc-dock .sbc-dock-end:not(.on) { color: #4d4a40; }
+[data-theme="dark"] .sbc .sbc-dock .sbc-step:not(.on),
+[data-theme="dark"] .sbc .sbc-dock .sbc-dock-end:not(.on) { color: rgba(200, 212, 226, 0.82); }
+/* active dock item — sage-deep (#5C6B45) was 3.24:1 on the light dock; deepen it */
+.sbc-dock .sbc-step.on, .sbc-dock .sbc-dock-end.on { color: #3f4d28; }
+[data-theme="dark"] .sbc .sbc-dock .sbc-step.on,
+[data-theme="dark"] .sbc .sbc-dock .sbc-dock-end.on { color: #c0cfa6; }
+/* inactive step NUMBER (--sbc-c-ink-soft #6C6353 = 3.03:1) — darken to match label */
+.sbc-dock .sbc-step:not(.on):not(.done) .sbc-step-num { color: #4d4a40; }
+[data-theme="dark"] .sbc .sbc-dock .sbc-step:not(.on):not(.done) .sbc-step-num { color: rgba(200, 212, 226, 0.85); }
 .sbc-step.on .sbc-step-num {
   border-color: var(--sbc-c-sage);
   background: var(--sbc-c-sage-tint);
@@ -2406,7 +2419,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   text-shadow: 0 1px 2px rgba(80,55,10,.4);
 }
 .sbc-model-tag {
-  font-size: .58rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  font-size: .64rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
   padding: 4px 9px; border-radius: 999px; white-space: nowrap;
 }
 .sbc-model-tag.hot  { color: var(--sbc-walnut); background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold)); }
@@ -2414,12 +2427,12 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   color: var(--sbc-c-sage-deep); background: var(--sbc-c-sage-tint);
   border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 28%, transparent);
 }
-.sbc-model-num   { position: relative; margin-top: 12px; font-size: .6rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--sbc-gold-deep); }
+.sbc-model-num   { position: relative; margin-top: 12px; font-size: .64rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--sbc-gold-deep); }
 .sbc-model-title { position: relative; margin-top: 3px; font-size: 1.06rem; font-weight: 800; color: var(--sbc-c-ink); font-family: var(--font-display, serif); }
 .sbc-model-desc  { position: relative; margin-top: 6px; font-size: .78rem; line-height: 1.5; color: var(--sbc-c-ink-soft); flex: 1; }
 .sbc-model-desc b { color: var(--sbc-gold-deep); font-weight: 800; }
 .sbc-model-cta   { position: relative; margin-top: 13px; display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 800; color: var(--sbc-gold-deep); }
-.sbc-model-fine  { position: relative; margin-top: 10px; font-size: .6rem; line-height: 1.45; color: var(--sbc-c-ink-faint); }
+.sbc-model-fine  { position: relative; margin-top: 10px; font-size: .64rem; line-height: 1.45; color: var(--sbc-c-ink-faint); }
 
 /* Model-3 card is a div (has a nested secondary link) → full-card stretch link */
 .sbc-model-sub {
@@ -2448,12 +2461,12 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 
 .sbc-ms-eyebrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .sbc-ms-model {
-  font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+  font-size: .63rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
   color: var(--sbc-walnut); padding: 4px 9px; border-radius: 999px;
   background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold));
 }
 .sbc-ms-tag {
-  font-size: .62rem; font-weight: 700; letter-spacing: .04em; color: rgba(176, 192, 209,.82);
+  font-size: .63rem; font-weight: 700; letter-spacing: .04em; color: rgba(176, 192, 209,.82);
   padding: 4px 9px; border-radius: 999px;
   background: rgba(106,133,160,.14); border: 1px solid rgba(176, 192, 209,.22);
 }
@@ -2780,6 +2793,17 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   background: color-mix(in srgb, var(--sbc-c-bg) 84%, transparent);
   border-bottom-color: var(--sbc-c-line);
 }
+/* v688 — the CREAM topbar's bg flips DARK in dark theme (rule above), so its
+   text (dark walnut by default) became invisible. Flip the text light too.
+   The explicit .sbc-topbar--dark variant already handles its own colours. */
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-link { color: rgba(198, 210, 224, 0.85); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-link:hover,
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-link.on { background: rgba(106, 133, 160, 0.28); color: #f5f7f9; }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-name { color: #f1f4f6; }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-name em { color: var(--sbc-gold-2); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-sub { color: rgba(198, 210, 224, 0.68); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-brand-mark { color: var(--sbc-gold-2); }
+[data-theme="dark"] .sbc .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-cta { color: var(--sbc-walnut); }
 /* Bottom step-nav dock (v294.15 re-skinned it to cream rgba(176, 192, 209,.92)). */
 [data-theme="dark"] .sbc .sbc-dock {
   background: color-mix(in srgb, var(--sbc-c-bg) 90%, transparent);
