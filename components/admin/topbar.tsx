@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Menu, Zap, Bell, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 interface Props {
@@ -71,13 +72,13 @@ export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }
             padding: 0,
           }}
         >
-          <span style={{ fontSize: 18, lineHeight: 1 }}>☰</span>
+          <Menu size={18} strokeWidth={2.2} aria-hidden />
         </button>
       )}
 
       {isMobile && (
-        <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#9fb1c2", fontSize: 16 }}>
-          ⚡ Admin
+        <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#9fb1c2", fontSize: 16, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Zap size={16} strokeWidth={2.2} aria-hidden /> Admin
         </span>
       )}
 
@@ -145,9 +146,12 @@ export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }
             fontSize: 12,
             fontWeight: 700,
             fontFamily: "DM Sans, sans-serif",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          🔔 {totalBadge}
+          <Bell size={13} strokeWidth={2.3} aria-hidden /> {totalBadge}
         </span>
       )}
 
@@ -163,9 +167,12 @@ export default function AdminTopbar({ sidebarCollapsed, isMobile, onMobileMenu }
           fontFamily: "DM Sans, sans-serif",
           fontSize: 13,
           fontWeight: 600,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
         }}
       >
-        {isMobile ? "↪" : "Logout"}
+        {isMobile ? <LogOut size={15} strokeWidth={2.2} aria-hidden /> : "Logout"}
       </button>
     </header>
   );

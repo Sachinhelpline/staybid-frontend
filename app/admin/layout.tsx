@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Zap, X } from "lucide-react";
 import AdminSidebar from "@/components/admin/sidebar";
 import AdminTopbar from "@/components/admin/topbar";
 import { installAdminFetchInterceptor } from "@/lib/admin/client-fetch";
@@ -92,7 +93,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (checking) {
     return (
       <div style={{ minHeight: "100vh", background: "#07080C", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "#9fb1c2", fontSize: 24 }}>⚡</div>
+        <Zap size={26} strokeWidth={2.2} aria-hidden style={{ color: "#9fb1c2" }} />
       </div>
     );
   }
@@ -149,9 +150,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 type="button"
                 aria-label="Dismiss admin data error"
                 onClick={() => setApiError(null)}
-                style={{ border: 0, background: "transparent", color: "#ff9aa4", cursor: "pointer", fontSize: 18 }}
+                style={{ border: 0, background: "transparent", color: "#ff9aa4", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
               >
-                ×
+                <X size={18} strokeWidth={2.2} aria-hidden />
               </button>
             </div>
           )}

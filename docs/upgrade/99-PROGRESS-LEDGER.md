@@ -1514,6 +1514,36 @@
   modals) is COMPLETE.** NEXT: Phase 2 remaining panels — admin → circle → trade →
   host → onboard → worker + the global-dashboard-chrome/ImageUpload follow-ups.
 
+### 2026-08-03 — Session 6 cont. (v668 — ADMIN panel foundation: shell shell/sidebar/topbar)
+- **Phase 2, admin vertical STARTED.** Owner decision (asked + answered): the admin
+  panel stays **DARK-ONLY** (deliberate dark-luxury tool, `#07080C` ground, its own
+  `admin.css`) — NO light mode built. Sweep = emoji→lucide + English + polish +
+  strict responsive + tokenized status, dark only.
+- **AdminSidebar (`components/admin/sidebar.tsx`):** the 38-entry `NAV` array's emoji
+  icons → lucide components (LayoutDashboard/Users/Sparkles/Building2/ClipboardList/
+  Home/Calculator/Radio/CircleDot/ReceiptText/Building/Tag/Video/Clapperboard/Siren/
+  Tags/Monitor/Lock/Timer/BarChart3/MessageSquare/Headphones/Image/Flag/Stamp/Key/
+  ShieldAlert/Landmark/BadgePercent/Percent/Gift/Ticket/TrendingUp/FileText/Star/Bell/
+  ShieldCheck/Settings), rendered as `<item.Ic>` inheriting the row's `currentColor`
+  (active #9fb1c2 / idle #8A8FA8). Logo ⚡→Zap; collapse toggle ✕/›/‹ →
+  X/ChevronRight/ChevronLeft; App Tour ❓→CircleHelp; Help 🎧→Headphones; Switch
+  experience ⇄→ArrowLeftRight. The gold scrollbar + off-canvas mobile drawer logic
+  untouched.
+- **AdminTopbar:** ☰→Menu, mobile "⚡ Admin"→Zap, 🔔→Bell, mobile logout ↪→LogOut.
+  KEPT "All clear ✓" (content tick) + the semantic notification-badge colours
+  (blue/red/purple/green — already dark-appropriate).
+- **admin/layout.tsx:** loading ⚡→Zap, the api-error dismiss ×→X.
+- Badge v667→**v668** (`SB_BUILD v668-admin-foundation`), sw `HTML_CACHE`
+  v464→**v465**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **32/32** —
+  `/admin` shell @ 320/390/768/1280 (dark): 38 nav links / 43 lucide svg, no chrome
+  emoji in the shell, dark panel bg avg=23, zero h-overflow, AND the mobile
+  off-canvas drawer opens on the lucide hamburger (x≈0) at 320/390/768.
+- **14 rules honoured:** presentation-only (no admin auth/fetch/nav logic touched —
+  security 385/0), dark-only per owner decision, strict responsive + mobile drawer,
+  measured verify, lucide. NEXT: admin shared components (kpi-card / data-table /
+  modal / live-ticker / stub-page / charts) → then the 43 admin pages.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
