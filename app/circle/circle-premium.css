@@ -1427,7 +1427,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-dash-edit { flex: 0 0 auto; font-size: .78rem; font-weight: 700; color: var(--sbc-c-sage-deep); text-decoration: none; padding: 7px 14px; border-radius: 999px; background: var(--sbc-c-sage-tint); border: 1px solid var(--sbc-c-line); }
 .sbc-dash-edit.gold { color: #fdfdfe; background: linear-gradient(135deg, var(--sbc-c-sage), var(--sbc-c-sage-deep)); border-color: transparent; }
 
-.sbc-dash-strip { display: flex; align-items: center; gap: 16px; margin-top: 12px; padding: 15px 17px; border-radius: 17px; text-decoration: none; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); transition: transform .16s ease; }
+.sbc-dash-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-top: 12px; padding: 15px 17px; border-radius: 17px; text-decoration: none; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); transition: transform .16s ease; }
 .sbc-dash-strip:active { transform: scale(.99); }
 .sbc-dash-strip-k { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; color: var(--sbc-c-ink-faint); font-weight: 700; }
 .sbc-dash-strip-v { display: block; font-size: 1.2rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 2px; }

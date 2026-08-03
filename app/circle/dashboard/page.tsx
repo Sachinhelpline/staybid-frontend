@@ -13,6 +13,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  BarChart3, Gem, Home, CalendarDays, Building2, Receipt, Tag, KeyRound,
+  Settings, BadgeCheck, Wallet, MessageCircle, LogOut, HelpCircle,
+  Headphones, ArrowUpDown, BedDouble,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   computeBundle, fmtINR,
@@ -208,7 +213,7 @@ export default function CircleDashboardPage() {
           className="sbc-dash-strip sbc-dash-rooms"
         >
           <div>
-            <span className="sbc-dash-strip-k">🛏️ Your rooms are live</span>
+            <span className="sbc-dash-strip-k" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><BedDouble size={12} strokeWidth={2.2} aria-hidden />Your rooms are live</span>
             <b className="sbc-dash-strip-v">
               {ownsRooms.unitCount} {ownsRooms.unitCount === 1 ? "room" : "rooms"}
               {ownsRooms.hotelCount > 1 ? ` · ${ownsRooms.hotelCount} properties` : ""}
@@ -234,7 +239,7 @@ export default function CircleDashboardPage() {
           onClick={() => window.dispatchEvent(new Event("sb:open-tour"))}
         >
           <div>
-            <span className="sbc-dash-strip-k">❓ App tour</span>
+            <span className="sbc-dash-strip-k" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><HelpCircle size={12} strokeWidth={2.2} aria-hidden />App tour</span>
             <b className="sbc-dash-strip-v">Replay any guided tour</b>
           </div>
           <span className="sbc-dash-strip-go">Open →</span>
@@ -246,7 +251,7 @@ export default function CircleDashboardPage() {
           onClick={() => window.dispatchEvent(new Event("sb:open-support"))}
         >
           <div>
-            <span className="sbc-dash-strip-k">🎧 Help & Support</span>
+            <span className="sbc-dash-strip-k" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Headphones size={12} strokeWidth={2.2} aria-hidden />Help & Support</span>
             <b className="sbc-dash-strip-v">Chat with our team</b>
           </div>
           <span className="sbc-dash-strip-go">Open →</span>
@@ -259,7 +264,7 @@ export default function CircleDashboardPage() {
           onClick={() => window.dispatchEvent(new Event("sb:open-switcher"))}
         >
           <div>
-            <span className="sbc-dash-strip-k">⇅ All of StayBid · one account</span>
+            <span className="sbc-dash-strip-k" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ArrowUpDown size={12} strokeWidth={2.2} aria-hidden />All of StayBid · one account</span>
             <b className="sbc-dash-strip-v">Travelling · Partner · Hosts · Creator · Kiosk</b>
           </div>
           <span className="sbc-dash-strip-go">Switch →</span>
@@ -270,14 +275,14 @@ export default function CircleDashboardPage() {
       <section className="sbc-dash-sec">
         <div className="sbc-dash-sec-h">Your dashboard</div>
         <div className="sbc-dash-tiles">
-          <Link href="/circle/me" className="sbc-dash-tile"><span>📊</span>Portfolio</Link>
-          <Link href="/circle/build" className="sbc-dash-tile"><span>💎</span>My Bundle</Link>
-          <Link href="/circle/discover" className="sbc-dash-tile"><span>🏡</span>Properties</Link>
-          <Link href="/circle/me" className="sbc-dash-tile"><span>📅</span>Payouts</Link>
-          <Link href="/circle/discover" className="sbc-dash-tile"><span>🏙</span>By City</Link>
-          <Link href="/circle/model2/browse" className="sbc-dash-tile"><span>🧾</span>Buy inventory</Link>
-          <Link href="/circle/model2/selling" className="sbc-dash-tile"><span>🏷️</span>Selling Inventory</Link>
-          <Link href="/circle/me?tab=city" className="sbc-dash-tile"><span>🗝️</span>City Access</Link>
+          <Link href="/circle/me" className="sbc-dash-tile"><span><BarChart3 size={22} strokeWidth={2} aria-hidden /></span>Portfolio</Link>
+          <Link href="/circle/build" className="sbc-dash-tile"><span><Gem size={22} strokeWidth={2} aria-hidden /></span>My Bundle</Link>
+          <Link href="/circle/discover" className="sbc-dash-tile"><span><Home size={22} strokeWidth={2} aria-hidden /></span>Properties</Link>
+          <Link href="/circle/me" className="sbc-dash-tile"><span><CalendarDays size={22} strokeWidth={2} aria-hidden /></span>Payouts</Link>
+          <Link href="/circle/discover" className="sbc-dash-tile"><span><Building2 size={22} strokeWidth={2} aria-hidden /></span>By City</Link>
+          <Link href="/circle/model2/browse" className="sbc-dash-tile"><span><Receipt size={22} strokeWidth={2} aria-hidden /></span>Buy inventory</Link>
+          <Link href="/circle/model2/selling" className="sbc-dash-tile"><span><Tag size={22} strokeWidth={2} aria-hidden /></span>Selling Inventory</Link>
+          <Link href="/circle/me?tab=city" className="sbc-dash-tile"><span><KeyRound size={22} strokeWidth={2} aria-hidden /></span>City Access</Link>
         </div>
       </section>
 
@@ -308,12 +313,12 @@ export default function CircleDashboardPage() {
       <section className="sbc-dash-sec">
         <div className="sbc-dash-sec-h">Account</div>
         <div className="sbc-dash-links">
-          <Link href="/circle/profile" className="sbc-dash-link"><span>⚙</span>Profile &amp; settings<em>›</em></Link>
-          <Link href="/circle/kyc" className="sbc-dash-link"><span>✅</span>KYC &amp; verification<em>›</em></Link>
-          <Link href="/circle/earnings" className="sbc-dash-link"><span>💰</span>Earnings &amp; payouts<em>›</em></Link>
-          <Link href="/circle/support" className="sbc-dash-link"><span>💬</span>Help &amp; support<em>›</em></Link>
+          <Link href="/circle/profile" className="sbc-dash-link"><span style={{ display: "inline-flex" }}><Settings size={18} strokeWidth={2} aria-hidden /></span>Profile &amp; settings<em>›</em></Link>
+          <Link href="/circle/kyc" className="sbc-dash-link"><span style={{ display: "inline-flex" }}><BadgeCheck size={18} strokeWidth={2} aria-hidden /></span>KYC &amp; verification<em>›</em></Link>
+          <Link href="/circle/earnings" className="sbc-dash-link"><span style={{ display: "inline-flex" }}><Wallet size={18} strokeWidth={2} aria-hidden /></span>Earnings &amp; payouts<em>›</em></Link>
+          <Link href="/circle/support" className="sbc-dash-link"><span style={{ display: "inline-flex" }}><MessageCircle size={18} strokeWidth={2} aria-hidden /></span>Help &amp; support<em>›</em></Link>
           {user && (
-            <button className="sbc-dash-link danger" onClick={doLogout}><span>↩</span>Sign out<em></em></button>
+            <button className="sbc-dash-link danger" onClick={doLogout}><span style={{ display: "inline-flex" }}><LogOut size={18} strokeWidth={2} aria-hidden /></span>Sign out<em></em></button>
           )}
         </div>
       </section>

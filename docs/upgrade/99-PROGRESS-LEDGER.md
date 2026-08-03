@@ -1948,6 +1948,31 @@
   nav/action + kept brand emoji (hybrid). NEXT: continue Circle — shared chrome (CircleChrome /
   CircleStepShell) + the model/discover/build pages.
 
+### 2026-08-03 — Session 6 cont. (v684 — Circle dashboard + shared-chrome audit, HYBRID)
+- **Circle batch 2** — the investor account hub (`app/circle/dashboard`, 324 lines), light+dark.
+- **Shared chrome verified CLEAN (no changes needed):** `CircleChrome` (brand ◎ mark + trust ✓
+  ticks) and `CircleStepShell` (← back + ✓ step-done) use ONLY brand/content glyphs — all kept
+  under the hybrid rule, so neither needed a conversion.
+- **Dashboard (`app/circle/dashboard`), converted → lucide** (utilitarian nav/action, per hybrid):
+  the 8 nav tiles 📊/💎/🏡/📅/🏙/🧾/🏷️/🗝️ →BarChart3/Gem/Home/CalendarDays/Building2/Receipt/Tag/
+  KeyRound; the 5 account links ⚙/✅/💰/💬/↩ →Settings/BadgeCheck/Wallet/MessageCircle/LogOut; the
+  3 help/switch strips ❓/🎧/⇅ →HelpCircle/Headphones/ArrowUpDown; the 🛏️ rooms-live strip →BedDouble.
+  Tile/link icons inherit `--sbc-c-ink` (theme-aware); the Sign-out icon inherits the danger
+  terracotta. KEPT (content/brand): ← back, 📱 phone, 📍 city, ◎ no-image, → / ↗ arrows, › chevrons.
+- **Responsive fix (MEASURED, found at 320px):** `.sbc-dash-strip` was a no-wrap flex row, so the
+  portfolio strip's "View portfolio →" label overflowed the page 18px at 320px → added
+  `flex-wrap: wrap` + row-gap (no change at wider widths; the go-label drops to its own line only when
+  it can't fit). Shared by every dash strip — a general narrow-width hardening.
+- **MEASURED, BOTH THEMES, 5 widths 320–1280:** ALL CLEAN — zero text-contrast fails, zero
+  icon-contrast fails (SVG probe: every lucide icon ≥2.9:1 vs its bg in both themes), zero overflow,
+  only the intended keep-set glyphs.
+- Badge v683→**v684** (`SB_BUILD v684-circle-dashboard`), sw `HTML_CACHE` v480→**v481**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **10/10 (2 themes × 5 widths)**.
+- **14 rules honoured:** presentation-only (no bundle/lock/logout logic touched — security 385/0),
+  light AND dark verified, strict responsive to 320px (real overflow fix), MEASURED contrast (text +
+  icon) both themes, lucide for nav/action + kept brand/content emoji (hybrid). NEXT: continue Circle —
+  the model2/model3/model4 journey pages + discover/build.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
