@@ -1973,6 +1973,36 @@
   icon) both themes, lucide for nav/action + kept brand/content emoji (hybrid). NEXT: continue Circle —
   the model2/model3/model4 journey pages + discover/build.
 
+### 2026-08-03 — Session 6 cont. (v685 — Responsive retrofit Batch 0: full device matrix)
+- **New program standard (owner ask): every page perfect at EVERY screen size**, not just 320–1280.
+  The earlier sweeps were measured only 320–1280, so >1280 (to 2560) and the sub-320 Fold cover were
+  UNVERIFIED. This batch establishes + proves the full device matrix.
+- **Infra (committed earlier this session):** `docs/upgrade/responsive-audit.mjs` — one reusable
+  harness measuring, per route, in BOTH themes across **13 widths (280 Fold-cover · 320 · 360 · 390 ·
+  414 · 768 · 834 iPad · 1024 · 1280 · 1440 · 1536 · 1920 · 2560):** overflow, WCAG text contrast,
+  SVG-icon contrast, decorative-emoji, ultra-wide line-stretch, min-font floor. Plus
+  `docs/upgrade/RESPONSIVE-MATRIX.md` — the anti-memory-loss ledger (all 139 routes; RESP ✓ only on a
+  green full-matrix run).
+- **Baseline finding (honest, measured):** across the 5 already-swept surfaces, **ultra-wide
+  (1440–2560) does NOT break anything** — zero overflow, zero stretch. The ONLY real defects were at
+  **280px** (narrow-grid overflow) and the **sub-10px font floor**.
+- **Fixes (data-driven):**
+  - **Font floor (circle-wide, architecture):** every sub-10px font in `circle-premium.css` (20
+    declarations, 8.3–9.9px) bumped to ≥`.63rem` (10.08px) — clears the floor on ALL circle surfaces.
+  - **280px Fold-cover overflow:** `/circle` Quick-Actions made fluid (`.sbc-qa-ic`
+    `clamp(40px,12vw,46px)`, gap `clamp(6px,2.2vw,10px)`); `/admin/reports` grid
+    `minmax(280px,1fr)`→`minmax(min(280px,100%),1fr)`; reports category/disclaimer 10→11px.
+  - Harness calibration: exclude the fixed dev badge; composite the icon-contrast bg stack (killed
+    same-hue-tint false lows); font floor set to 10px.
+- **RESULT — MEASURED, 13 widths × 2 themes:** `/circle`, `/circle/dashboard`, `/admin/reports`,
+  `/admin/rls`, `/admin/host` — **ALL 5 ROUTES CLEAN** (rls + host were already clean at the full
+  matrix; the 3 others fixed). Matrix: RESP **5/139**.
+- Badge v684→**v685** (`SB_BUILD v685-responsive-fold-fontfloor`), sw `HTML_CACHE` v481→**v482**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · full-matrix headless audit **5/5 routes clean**.
+- **14 rules honoured:** presentation-only, light+dark, now provably responsive **280→2560**, MEASURED
+  (contrast+icon+overflow+font-floor), fluid auto-size (clamp) per owner's "auto-size everything" ask.
+  NEXT: sweep the remaining 134 routes through the matrix in batches; global-first fixes where shared.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

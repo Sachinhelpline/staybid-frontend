@@ -1,4 +1,4 @@
-# Responsive Coverage Matrix — full device matrix (program memory) — 139 routes · ICON 44/139 · RESP 0/139
+# Responsive Coverage Matrix — full device matrix (program memory) — 139 routes · ICON 44/139 · RESP 5/139
 
 > **The anti-memory-loss ledger for the responsive/fluid retrofit.** Every route in the app is
 > listed here. A route is **RESP ✓** only after it PASSES the reusable harness
@@ -34,7 +34,7 @@ Legend: **ICON** = lucide/emoji-hybrid sweep done · **RESP** = full-matrix resp
 | `/admin/fraud` | ✓ | ⏳ |
 | `/admin/hold-config` | ✓ | ⏳ |
 | `/admin/holds` | ✓ | ⏳ |
-| `/admin/host` | ✓ | ⏳ |
+| `/admin/host` | ✓ | ✓ v685 |
 | `/admin/host/catalog` | ✓ | ⏳ |
 | `/admin/host/pricing` | ✓ | ⏳ |
 | `/admin/hotel-commission-rules` | ✓ | ⏳ |
@@ -48,9 +48,9 @@ Legend: **ICON** = lucide/emoji-hybrid sweep done · **RESP** = full-matrix resp
 | `/admin/pricing` | ✓ | ⏳ |
 | `/admin/redemption-codes` | ✓ | ⏳ |
 | `/admin/redemption-rules` | ✓ | ⏳ |
-| `/admin/reports` | ✓ | ⏳ |
+| `/admin/reports` | ✓ | ✓ v685 |
 | `/admin/revenue` | ✓ | ⏳ |
-| `/admin/rls` | ✓ | ⏳ |
+| `/admin/rls` | ✓ | ✓ v685 |
 | `/admin/services` | ✓ | ⏳ |
 | `/admin/settings` | ✓ | ⏳ |
 | `/admin/support` | ✓ | ⏳ |
@@ -91,10 +91,10 @@ Legend: **ICON** = lucide/emoji-hybrid sweep done · **RESP** = full-matrix resp
 
 | Route | ICON | RESP |
 | :--- | :--: | :--: |
-| `/circle` | ✓ | ⏳ |
+| `/circle` | ✓ | ✓ v685 |
 | `/circle/[id]` | — | ⏳ |
 | `/circle/build` | — | ⏳ |
-| `/circle/dashboard` | ✓ | ⏳ |
+| `/circle/dashboard` | ✓ | ✓ v685 |
 | `/circle/demand-cycle` | — | ⏳ |
 | `/circle/discover` | — | ⏳ |
 | `/circle/earnings` | — | ⏳ |

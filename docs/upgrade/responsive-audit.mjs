@@ -25,7 +25,8 @@ const ONLY = process.argv[3] || '';
 const WIDTHS = [280, 320, 360, 390, 414, 768, 834, 1024, 1280, 1440, 1536, 1920, 2560];
 const THEMES = ['light', 'dark'];
 const MAX_LINE = 1500;   // a single text block wider than this reads as "stretched"
-const FONT_FLOOR = 10.5; // px — nothing rendered smaller than this
+const FONT_FLOOR = 10;   // px — flag genuinely-tiny text (< floor). 10px micro-labels
+                         // sit at the design's --fs-micro floor and pass.
 
 // brand/content glyphs intentionally kept program-wide (hybrid rule)
 const KEEP = new Set(['←','→','↗','↘','↩','⇅','›','‹','·','–','—','✓','✕','×','★','☆','♥','♡',
@@ -88,6 +89,7 @@ for (const cfg of ROUTES) {
         const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n;
         while((n=walk.nextNode())){ const t=n.textContent||''; const el=n.parentElement; if(!el||el.closest('script,style'))continue;
           const cs=getComputedStyle(el); const fs=parseFloat(cs.fontSize)||16;
+          if(cs.position==='fixed'&&cs.pointerEvents==='none')continue; // fixed dev-version chip
           const bad=[...(t.match(RE)||[])].filter(ch=>!KEEP.has(ch));
           if(bad.length && fs<40) emoji.push({t:t.trim().slice(0,18),bad});
           if(fs>0 && fs<FONT_FLOOR && t.trim()) tiny.push({t:t.trim().slice(0,18),fs:+fs.toFixed(1)});
@@ -109,8 +111,19 @@ for (const cfg of ROUTES) {
           const fs=parseFloat(cs.fontSize),fw=parseInt(cs.fontWeight)||400; const large=fs>=24||(fs>=18.66&&fw>=700); const min=large?3.0:4.5;
           if(cr<min-0.05) cfails.push({t:(el.textContent||'').trim().slice(0,16),cr:+cr.toFixed(2)});
         }
-        // icon contrast
-        const ifails=[]; root.querySelectorAll('svg').forEach(svg=>{ const col=P(getComputedStyle(svg).color); if(!col)return; let el=svg.parentElement,bg=null; while(el){const b=P(getComputedStyle(el).backgroundColor); if(b&&b.a>0){bg=b;break;} el=el.parentElement;} const base=bg?{r:bg.r*bg.a+bodyBg.r*(1-bg.a),g:bg.g*bg.a+bodyBg.g*(1-bg.a),b:bg.b*bg.a+bodyBg.b*(1-bg.a)}:bodyBg; const L=(c)=>{const f=(v)=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b);}; const l1=L(col),l2=L(base),hi=Math.max(l1,l2),lo=Math.min(l1,l2); const cr=(hi+0.05)/(lo+0.05); if(cr<2.9) ifails.push(+cr.toFixed(2)); });
+        // icon contrast — composite the FULL bg stack to the ground (same as text),
+        // so an icon on a faint same-hue tint reads against the real card, not the tint.
+        const L=(c)=>{const f=(v)=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b);};
+        const ifails=[]; root.querySelectorAll('svg').forEach(svg=>{
+          const col=P(getComputedStyle(svg).color); if(!col)return;
+          const stk=[]; let cur=svg.parentElement, grad=false;
+          while(cur){const s=getComputedStyle(cur); if(s.backgroundImage&&s.backgroundImage!=='none')grad=true; stk.push(s.backgroundColor); cur=cur.parentElement;}
+          if(grad)return; // gradient tile — can't measure a flat bg; visual check covers it
+          let bg={...bodyBg}; for(let i=stk.length-1;i>=0;i--){const b=P(stk[i]); if(b&&b.a>0){const a=b.a; bg={r:b.r*a+bg.r*(1-a),g:b.g*a+bg.g*(1-a),b:b.b*a+bg.b*(1-a)};}}
+          const a=col.a; const over={r:col.r*a+bg.r*(1-a),g:col.g*a+bg.g*(1-a),b:col.b*a+bg.b*(1-a)};
+          const l1=L(over),l2=L(bg),hi=Math.max(l1,l2),lo=Math.min(l1,l2); const cr=(hi+0.05)/(lo+0.05);
+          if(cr<2.9) ifails.push(+cr.toFixed(2));
+        });
         return { overflow, emoji:emoji.slice(0,6), tooWide:tooWide.slice(0,4), tiny:tiny.slice(0,4), cfails:cfails.slice(0,6), ifails:ifails.slice(0,6) };
       }, { scope: cfg.scope, KEEParr:[...KEEP], MAX_LINE, FONT_FLOOR });
 

@@ -533,7 +533,7 @@ export default function AdminReportsPage() {
       </div>
 
       {/* Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 10 }}>
         {visible.map((rep) => (
           <div key={rep.id} className="admin-card" style={{
             background: "#151820", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)",
@@ -552,7 +552,7 @@ export default function AdminReportsPage() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
-              <span style={{ fontSize: 10, color: "#808698", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span style={{ fontSize: 11, color: "#808698", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 {rep.category} · {counts[rep.id] != null ? `${counts[rep.id].toLocaleString("en-IN")} rows` : "…"}
               </span>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -699,7 +699,7 @@ export default function AdminReportsPage() {
                 );
               })()}
             </div>
-            <p style={{ color: "#808698", fontSize: 10, marginTop: 12, lineHeight: 1.5 }}>
+            <p style={{ color: "#808698", fontSize: 11, marginTop: 12, lineHeight: 1.5 }}>
               The data leaves the platform once shared. Confidential — internal use only.
             </p>
             <div style={{ marginTop: 12, textAlign: "right" }}>
