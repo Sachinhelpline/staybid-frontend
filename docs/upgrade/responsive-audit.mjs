@@ -53,6 +53,7 @@ const HOTELS = [
   {id:'h2',name:'Ridge Retreat',city:'Mussoorie',state:'UK',starRating:5,images:['x'],image:'x',fromPrice:3200,cheapestPrice:3200,rooms:[{id:'r2',name:'Suite'}]},
   {id:'h3',name:'Riverside Camp',city:'Rishikesh',state:'UK',starRating:3,images:['x'],image:'x',fromPrice:1800,cheapestPrice:1800,rooms:[{id:'r3',name:'Tent'}]},
 ];
+const ADMIN_FX = { kpis:{users:1240,bookings:380,revenue:1200000,hotels:42,complaints:3,pendingContent:2,payoutsOwed:14000}, ledger:[], payouts:[], bookings:[], holds:[], hotels:[], topCreators:[], codes:[], complaints:[], feedback:[], flags:[], users:[], creators:[], counts:{} };
 const CIRCLE_PROPS = { cities:['Dehradun'], properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',locationLabel:'Rajpur, Dehradun',images:[],monthlyRate:30000,roiMin:15,roiMax:28,occupancyLabel:'High',badges:['Trending'],operationModel:'managed',status:'open',roomTypes:[{id:'r1',name:'Deluxe',monthlyRate:30000,availableUnits:3}]}] };
 const CIRCLE_PORTFOLIO = { ownedBlocks:2, activeListings:1, inventoryValue:60000, b2bNetEarned:12000, payoutsReceived:4400, blocks:[{id:'b1',hotel_name:'Cave View',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,status:'owned'}], listings:[], trades:[], operatedHotels:[{id:'h1',name:'Cave View Resort'}] };
 const ROUTES = [
@@ -84,6 +85,18 @@ const ROUTES = [
     fixtures:{ 'b2b/marketplace': { listings:[{id:'l1',hotel_name:'Cave View',hotel_city:'Dehradun',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,ask_total:9000}] } } },
   { route:'/admin/host', scope:'body', admin:true,
     fixtures:{ 'admin/host':{ kpis:{leads:3,leadsNew:1,portfolios:2,portfoliosActive:1,portfolioRevenue:1000,propertySubmissions:2,propertySubmissionsPending:1,inquiries:1,inquiriesNew:1,projects:1,orders:1,storeGmv:1,jobs:1,jobsActive:1,workforceRevenue:1,channels:1,channelsNew:1}, leads:[], portfolios:[], propertySubmissions:[], inquiries:[], projects:[], orders:[], jobs:[], channels:[] } } },
+
+  // ── Admin panel (DARK-ONLY per owner decision 2 — judge the dark rows) ────
+  { route:'/admin', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX } },
+  { route:'/admin/users', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/users':{ users:[{id:'u1',name:'Asha Verma',phone:'+919812345678',role:'customer',isBlocked:false,createdAt:'2026-07-01'}], count:1 } } },
+  { route:'/admin/bookings', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/bookings':{ bookings:[{id:'bk1',status:'CONFIRMED',hotelName:'Cave View',guestName:'Asha',totalAmount:4800,checkIn:'2026-09-10',checkOut:'2026-09-12'}] } } },
+  { route:'/admin/hotels', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/hotels':{ hotels:[{id:'h1',name:'Cave View Resort',city:'Dehradun',approval_status:'approved',owner_type:'hotel_owner'}] } } },
+  { route:'/admin/finance', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/finance':{ ledger:[], payouts:[], kpis:{revenue:120000,commission:14000,payoutsOwed:3000} } } },
+  { route:'/admin/complaints', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/complaints':{ complaints:[{id:'c1',status:'open',subject:'AC not working',hotelName:'Cave View',createdAt:'2026-08-01'}] } } },
+  { route:'/admin/content', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/content':{ posts:[], pending:[] } } },
+  { route:'/admin/settings', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/settings':{ config:{} } } },
+  { route:'/admin/analytics', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/analytics':{ kpis:{}, series:[] } } },
+  { route:'/admin/verification', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/verification':{ requests:[], videos:[] } } },
 
   // ── Circle remaining pages (signed-in investor) ──────────────────────────
   { route:'/circle/discover', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
