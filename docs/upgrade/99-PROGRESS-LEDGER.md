@@ -1872,6 +1872,30 @@
   **incl. contrast + a real fix**, lucide, content ticks/× multiplication kept. NEXT: admin
   pages — rls / reports (the last two large ones), 1 per batch.
 
+### 2026-08-03 — Session 6 cont. (v681 — admin page: Row-Level Security)
+- **Admin pages sweep, batch 12** — the RLS manager (`app/admin/rls`, 573 lines), dark-only.
+- **RLS (`app/admin/rls`):** heading 🛡️→ShieldCheck; ↻ Refresh →RotateCw; the 5 KPI icons
+  (🗂️/🛡️/⚠️/🔓/🔐) → lucide (Table2/ShieldCheck/ShieldAlert/LockOpen/Lock); info-banner 🔐
+  →inline Lock; card sensitive badge 🔐→Lock; 🔒 Lock button →Lock; the no-policy ⚠ warning
+  →TriangleAlert; toast ✓/✗ →Check/X; drawer close ✕→X; template buttons 🔐 Deny anon →ShieldX,
+  🛡️ Service-role only →ShieldCheck, 👤 Owner-only →User. The ⚠/🔒 inside native `confirm()`/
+  `prompt()` dialog strings are kept (native alerts can't render icons; ⚠ is content vocab).
+- **Contrast fixes (MEASURED, whole-body scan, policy drawer opened):**
+  - Shared `lib/admin/styles.ts` `adminColors.purple` `#A855F7` (3.88–4.06:1 as small pill/
+    button text) → **`#D8B4FE`** (the established recurring fix; 10.0:1 card / 11.3 ground).
+    Grep-confirmed purple is never a solid fill in admin (always text/accent on a faint tint),
+    so brightening only improves contrast — a net win across every admin page.
+  - The lockdown button's enabled fill `#FF4757` (white text = 3.34:1) → **`#C62828`** (white =
+    5.62:1). Disabled state unchanged.
+- **CONTRAST + EMOJI + OVERFLOW (owner ask — MEASURED, 5 widths 320–1280, drawer open,
+  option-popup + fixed dev-chip + script-node false-positives excluded):** ALL WIDTHS CLEAN.
+- Badge v680→**v681** (`SB_BUILD v681-admin-page-rls`), sw `HTML_CACHE` v477→**v478**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **5/5**.
+- **14 rules honoured:** presentation-only (no toggle/policy/lockdown/template mutation logic
+  touched — security 385/0), dark-only, strict responsive to 320px, measured verify **incl.
+  contrast + two real fixes (one shared-token)**, lucide, content ⚠ in native dialogs kept.
+  NEXT: admin pages — **reports** (the last large one).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

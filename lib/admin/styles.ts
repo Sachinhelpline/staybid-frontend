@@ -13,7 +13,7 @@ export const adminColors = {
   green: "#2ECC71",
   red: "#FF4757",
   blue: "#3D9CF5",
-  purple: "#A855F7",
+  purple: "#D8B4FE",
   amber: "#F59E0B",
 };
 

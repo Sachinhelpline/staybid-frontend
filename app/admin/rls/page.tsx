@@ -11,6 +11,10 @@
 // with restrictive policies once the app has service-role replacements.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ShieldCheck, ShieldAlert, ShieldX, RotateCw, Table2, LockOpen, Lock,
+  TriangleAlert, Check, X, User,
+} from "lucide-react";
 import KpiCard from "@/components/admin/kpi-card";
 import { adminColors as C, btnGhost, btnGold, h1Style, inputStyle, pageStyle, pill, selectStyle } from "@/lib/admin/styles";
 
@@ -240,8 +244,8 @@ export default function AdminRLS() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ ...h1Style, margin: 0 }} className="admin-h1">🛡️ Row-Level Security</h1>
-        <button onClick={load} style={{ ...btnGhost, padding: "8px 14px" }}>↻ Refresh</button>
+        <h1 style={{ ...h1Style, margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }} className="admin-h1"><ShieldCheck size={24} strokeWidth={2} aria-hidden />Row-Level Security</h1>
+        <button onClick={load} style={{ ...btnGhost, padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 6 }}><RotateCw size={14} strokeWidth={2.2} aria-hidden />Refresh</button>
         {/* v100 — service-role status badge */}
         <span
           title={serviceRole
@@ -267,11 +271,11 @@ export default function AdminRLS() {
 
       {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
-        <KpiCard title="Tables"          value={stats.total} icon="🗂️" color={C.gold}   />
-        <KpiCard title="RLS Enabled"     value={stats.on}    icon="🛡️" color={C.green}  />
-        <KpiCard title="RLS Disabled"    value={stats.off}   icon="⚠️"  color={C.red}    />
-        <KpiCard title="No Policies"     value={stats.noPol} icon="🔓" color={C.amber}  />
-        <KpiCard title="Sensitive"       value={stats.sens}  icon="🔐" color={C.purple} />
+        <KpiCard title="Tables"          value={stats.total} icon={<Table2 size={17} strokeWidth={2} aria-hidden />}       color={C.gold}   />
+        <KpiCard title="RLS Enabled"     value={stats.on}    icon={<ShieldCheck size={17} strokeWidth={2} aria-hidden />}   color={C.green}  />
+        <KpiCard title="RLS Disabled"    value={stats.off}   icon={<ShieldAlert size={17} strokeWidth={2} aria-hidden />}   color={C.red}    />
+        <KpiCard title="No Policies"     value={stats.noPol} icon={<LockOpen size={17} strokeWidth={2} aria-hidden />}      color={C.amber}  />
+        <KpiCard title="Sensitive"       value={stats.sens}  icon={<Lock size={17} strokeWidth={2} aria-hidden />}          color={C.purple} />
       </div>
 
       {/* Info banner */}
@@ -280,7 +284,7 @@ export default function AdminRLS() {
         <code style={{ color: C.amber, margin: "0 4px" }}>all_anon_all</code> policy that lets the app's
         anon key read + write. RLS being <em>enabled</em> means the policy is consulted; disabling RLS
         removes that gate. To genuinely restrict a table, ADD restrictive policies first, THEN drop
-        the permissive one. Tables flagged 🔐 hold sensitive data and warrant restrictive policies before
+        the permissive one. Tables flagged <Lock size={12} strokeWidth={2.4} aria-hidden style={{ display: "inline", verticalAlign: "-2px", color: C.purple }} /> hold sensitive data and warrant restrictive policies before
         production scale.
       </div>
 
@@ -331,7 +335,7 @@ export default function AdminRLS() {
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: r.rls_enabled ? `linear-gradient(90deg, ${C.green}, transparent)` : `linear-gradient(90deg, ${C.red}, transparent)` }} />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                    {sensitive && <span title="Sensitive table" style={{ fontSize: 13 }}>🔐</span>}
+                    {sensitive && <span title="Sensitive table" style={{ display: "inline-flex", color: C.purple, flexShrink: 0 }}><Lock size={13} strokeWidth={2.4} aria-hidden /></span>}
                     <span style={{ color: C.text, fontWeight: 600, fontSize: 14, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {r.table}
                     </span>
@@ -378,20 +382,21 @@ export default function AdminRLS() {
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: (busy || !serviceRole) ? "not-allowed" : "pointer",
-                        background: serviceRole ? C.red : "rgba(255,71,87,0.08)",
+                        background: serviceRole ? "#C62828" : "rgba(255,71,87,0.08)",
                         color: serviceRole ? "#fff" : C.red,
                         border: `1px solid ${C.red}`,
                         opacity: (busy || !serviceRole) ? 0.55 : 1,
+                        display: "inline-flex", alignItems: "center", gap: 5,
                       }}
                     >
-                      🔒 Lock
+                      <Lock size={12} strokeWidth={2.4} aria-hidden />Lock
                     </button>
                   )}
                 </div>
 
                 {noPolicy && r.rls_enabled && (
-                  <div style={{ marginTop: 10, padding: 8, background: "rgba(255,71,87,0.08)", border: `1px solid ${C.red}55`, borderRadius: 8, color: C.red, fontSize: 11 }}>
-                    ⚠ RLS enabled with no policies — app is locked OUT of this table.
+                  <div style={{ marginTop: 10, padding: 8, background: "rgba(255,71,87,0.08)", border: `1px solid ${C.red}55`, borderRadius: 8, color: C.red, fontSize: 11, display: "flex", alignItems: "flex-start", gap: 5 }}>
+                    <TriangleAlert size={13} strokeWidth={2.4} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />RLS enabled with no policies — app is locked OUT of this table.
                   </div>
                 )}
               </div>
@@ -407,8 +412,9 @@ export default function AdminRLS() {
           background: toast.kind === "ok" ? "rgba(46,204,113,0.95)" : "rgba(255,71,87,0.95)",
           color: "#0F1117", padding: "10px 16px", borderRadius: 10, fontWeight: 600, fontSize: 13,
           boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+          display: "flex", alignItems: "center", gap: 6,
         }}>
-          {toast.kind === "ok" ? "✓ " : "✗ "}{toast.msg}
+          {toast.kind === "ok" ? <Check size={14} strokeWidth={2.6} aria-hidden /> : <X size={14} strokeWidth={2.6} aria-hidden />}{toast.msg}
         </div>
       )}
 
@@ -429,7 +435,7 @@ export default function AdminRLS() {
                   {selected.table}
                 </p>
               </div>
-              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textDim, fontSize: 22, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSelected(null)} aria-label="Close" style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", display: "inline-flex", alignItems: "center", padding: 2 }}><X size={22} strokeWidth={2} aria-hidden /></button>
             </div>
 
             <div style={{ padding: 20, borderBottom: `1px solid ${C.border}`, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -457,17 +463,17 @@ export default function AdminRLS() {
                     onClick={() => applyTemplate(selected.table, "deny_anon")}
                     disabled={busy}
                     title="Adds a RESTRICTIVE policy that DENIES anon callers. Useful as defense-in-depth alongside the permissive auth policy."
-                    style={{ background: "rgba(255,71,87,0.1)", color: C.red, border: `1px solid ${C.red}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.5 : 1 }}
+                    style={{ background: "rgba(255,71,87,0.1)", color: C.red, border: `1px solid ${C.red}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
-                    🔐 Deny anon
+                    <ShieldX size={12} strokeWidth={2.2} aria-hidden />Deny anon
                   </button>
                   <button
                     onClick={() => applyTemplate(selected.table, "service_role_only")}
                     disabled={busy || !serviceRole}
                     title={serviceRole ? "Drops all permissive policies → only service_role can access" : "Set SUPABASE_SERVICE_ROLE_KEY env var first"}
-                    style={{ background: serviceRole ? "rgba(140, 160, 182,0.15)" : "rgba(140, 160, 182,0.05)", color: C.gold, border: `1px solid ${C.gold}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: (busy || !serviceRole) ? "not-allowed" : "pointer", opacity: (busy || !serviceRole) ? 0.5 : 1 }}
+                    style={{ background: serviceRole ? "rgba(140, 160, 182,0.15)" : "rgba(140, 160, 182,0.05)", color: C.gold, border: `1px solid ${C.gold}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: (busy || !serviceRole) ? "not-allowed" : "pointer", opacity: (busy || !serviceRole) ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
-                    🛡️ Service-role only
+                    <ShieldCheck size={12} strokeWidth={2.2} aria-hidden />Service-role only
                   </button>
                   <button
                     onClick={() => {
@@ -476,9 +482,9 @@ export default function AdminRLS() {
                     }}
                     disabled={busy}
                     title="Restricts row access to where {col} = JWT sub claim. Requires Supabase Auth path."
-                    style={{ background: "rgba(168,85,247,0.1)", color: C.purple, border: `1px solid ${C.purple}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.5 : 1 }}
+                    style={{ background: "rgba(168,85,247,0.1)", color: C.purple, border: `1px solid ${C.purple}55`, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
-                    👤 Owner-only
+                    <User size={12} strokeWidth={2.2} aria-hidden />Owner-only
                   </button>
                 </div>
               </div>
