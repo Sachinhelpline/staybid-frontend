@@ -983,6 +983,34 @@
   components (Channel/Billing/Guests/Staff/Circle/AgentAuction/Content/etc.).
   Then admin → circle → trade → host → onboard → worker + Hinglish sweep.
 
+### 2026-08-03 — Session 6 cont. (v651 — partner Rooms & Pricing sweep + STRICT-RESPONSIVE gate re-affirmed)
+- **Owner re-affirmed a locked rule (explicitly, this turn):** EVERY screen at
+  EVERY device/window size must auto-fit — nothing oversized, nothing hidden, no
+  extra horizontal scroll — across the ENTIRE app, down to the smallest window,
+  strictly. From now the audit harness enforces a MULTI-WIDTH responsive gate
+  (320 / 360 / 390 / 768 / 1280, both themes, zero horizontal overflow, widest
+  offender reported) on every ship, and I fix any breakage found, not just
+  chrome.
+- **Rooms & Pricing tab → lucide:** header + empty-state ➕ → Plus, empty 🏨 →
+  Building2, card ✏️ Edit → Pencil, 🗑 → Trash2 (+ aria-label), "✓ Saved!" →
+  Check, 📸 Room Photos → Camera, photo-remove ✕ → X (+ aria-label), 🔢 Physical
+  Rooms → Hash, unit 🔧/↻ maintenance-toggle → Wrench/RotateCw (+ aria-labels),
+  unit-delete ✕ → X (+ aria-label). KEEP: the "Apply AI → Bid Floor/Flash"
+  inline text arrows, the "+ Add" compact text button. The tab was already
+  responsive-sound (`grid md:grid-cols-2` single-col on mobile, flex-wrap unit
+  chips) — verified, no layout change needed.
+- Badge v650→**v651** (`SB_BUILD v651-partner-rooms-responsive`), sw
+  `HTML_CACHE` v447→**v448**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **22/22** —
+  the RESPONSIVE gate (overview + rooms @ 320/360/390/768/1280 in LIGHT and DARK
+  with a stress-long hotel+room name) all ZERO h-overflow, + rooms-tab lucide
+  (43) + rooms chrome emoji gone.
+- NEXT (partner sweeps): Flash Deals tab → Bookings/Reservations/Availability
+  (inline + walk-in/OTA chrome) → the standalone tab components
+  (Channel/Billing/Guests/Staff/Circle/AgentAuction/Content/Housekeeping/Menu/
+  Fnb/Reports). Then admin → circle → trade → host → onboard → worker +
+  Hinglish sweep. Each ship now carries the multi-width responsive gate.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

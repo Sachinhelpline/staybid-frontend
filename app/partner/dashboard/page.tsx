@@ -76,6 +76,7 @@ import {
   ArrowLeftRight, LogOut, Plus, Sunrise, PlaneLanding, PlaneTakeoff,
   TriangleAlert, Copy, MessageCircle, Phone, Mail, Moon, UserRound,
   FileText, Heart, Star, X, Ban, Sparkles, Link2, RefreshCw, Bot, PartyPopper,
+  Pencil, Trash2, Camera, Hash, Wrench, RotateCw,
 } from "lucide-react";
 
 // Inline shell-chrome icon helper (partner dashboard) — matches BIc/InIc pattern.
@@ -1824,16 +1825,16 @@ export default function PartnerDashboard() {
                 </div>
               </div>
               <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold">
-                ➕ Add Room Category
+                <DIc I={Plus} size={14} /> Add Room Category
               </button>
             </div>
 
             {rooms.length === 0 ? (
               <div className="card-p text-center py-10">
-                <p className="text-3xl mb-2">🏨</p>
+                <Building2 size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />
                 <p className="text-luxury-600 font-semibold text-sm">Abhi koi room category nahi hai</p>
                 <p className="text-luxury-400 text-xs mt-0.5 mb-3">Pehla room type add karke pricing set karo.</p>
-                <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold">➕ Add Room Category</button>
+                <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold"><DIc I={Plus} size={14} /> Add Room Category</button>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-5">
@@ -1852,12 +1853,12 @@ export default function PartnerDashboard() {
                         <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                         <div className="absolute top-2.5 left-2.5 flex gap-1.5">
                           <button onClick={() => setRoomEditor({ mode: "edit", room: r })}
-                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition">
-                            ✏️ Edit
+                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition inline-flex items-center gap-1">
+                            <Pencil size={11} strokeWidth={2.4} aria-hidden /> Edit
                           </button>
-                          <button onClick={() => deleteRoomCategory(r.id)}
-                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-red-600 hover:bg-white backdrop-blur-md transition">
-                            🗑
+                          <button onClick={() => deleteRoomCategory(r.id)} aria-label="Delete room category"
+                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-red-600 hover:bg-white backdrop-blur-md transition inline-flex items-center">
+                            <Trash2 size={12} strokeWidth={2.2} aria-hidden />
                           </button>
                         </div>
                         {ai && ds && (
@@ -1943,14 +1944,13 @@ export default function PartnerDashboard() {
                           onClick={() => saveRoomPricing(r.id)}
                           disabled={savingRoom === r.id || (!ep.floor && !ep.flash)}
                           className={`btn-gold w-full py-2.5 text-sm ${savedRoom === r.id ? "bg-emerald-500!" : ""}`}>
-                          {savingRoom === r.id ? "Saving…" : savedRoom === r.id ? "✓ Saved!" : "Save Pricing"}
+                          {savingRoom === r.id ? "Saving…" : savedRoom === r.id ? <><DIc I={Check} size={13} /> Saved!</> : "Save Pricing"}
                         </button>
 
                         {/* ── Room Photos (owner self-serve gallery) ── */}
                         <div className="mt-4 pt-4 border-t border-luxury-100">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">
-                              📸 Room Photos ({(r.images || []).length})
+                            <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Camera} size={11} /> Room Photos ({(r.images || []).length})
                             </p>
                             <span className="text-[0.6rem] text-luxury-400">Shown to guests on booking</span>
                           </div>
@@ -1962,9 +1962,9 @@ export default function PartnerDashboard() {
                                   <img src={url} alt={`Room photo ${i+1}`} className="w-full h-full object-cover" />
                                   <button
                                     onClick={() => saveRoomImages(r.id, (r.images || []).filter((_: string, j: number) => j !== i))}
-                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white text-[0.6rem] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="Remove photo">
-                                    ✕
+                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Remove photo" aria-label="Remove photo">
+                                    <X size={11} strokeWidth={2.6} aria-hidden />
                                   </button>
                                 </div>
                               ))}
@@ -1986,7 +1986,7 @@ export default function PartnerDashboard() {
                           return (
                             <div className="mt-4 pt-4 border-t border-luxury-100">
                               <div className="flex items-center justify-between mb-2">
-                                <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">🔢 Physical Rooms ({units.length})</p>
+                                <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Hash} size={11} /> Physical Rooms ({units.length})</p>
                                 <span className="text-[0.6rem] text-luxury-400">Individual room numbers</span>
                               </div>
 
@@ -2002,11 +2002,12 @@ export default function PartnerDashboard() {
                                       #{u.roomNumber}
                                       <button onClick={() => toggleUnitStatus(u)}
                                         title={u.status === "active" ? "Mark as under maintenance" : "Reactivate"}
-                                        className="opacity-40 hover:opacity-100">
-                                        {u.status === "active" ? "🔧" : "↻"}
+                                        aria-label={u.status === "active" ? "Mark as under maintenance" : "Reactivate"}
+                                        className="opacity-40 hover:opacity-100 inline-flex items-center">
+                                        {u.status === "active" ? <Wrench size={11} strokeWidth={2.2} aria-hidden /> : <RotateCw size={11} strokeWidth={2.2} aria-hidden />}
                                       </button>
-                                      <button onClick={() => deleteRoomUnit(u.id)}
-                                        className="opacity-40 hover:opacity-100 text-red-500">✕</button>
+                                      <button onClick={() => deleteRoomUnit(u.id)} aria-label="Delete room number"
+                                        className="opacity-40 hover:opacity-100 text-red-500 inline-flex items-center"><X size={11} strokeWidth={2.4} aria-hidden /></button>
                                     </span>
                                   ))}
                                 </div>
