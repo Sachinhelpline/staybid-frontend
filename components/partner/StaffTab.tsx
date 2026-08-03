@@ -8,15 +8,18 @@
 //
 import { useCallback, useEffect, useState } from "react";
 import { modalPortal } from "@/lib/partner/modal-portal";
+import { Plus, TriangleAlert, Smartphone, UserCog, Pencil, Pause, Play, Trash2, X, CircleDot, Circle } from "lucide-react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
 }
 
-export const ROLE_META: Record<string, { label: string; c: string; bg: string; desc: string }> = {
-  manager:      { label: "Manager",      c: "#6d28d9", bg: "#ede9fe", desc: "Sabhi operations tabs" },
-  front_desk:   { label: "Front Desk",   c: "#0d9488", bg: "#ccfbf1", desc: "Bids · Reservations · Bookings · Redeem · Guests" },
-  housekeeping: { label: "Housekeeping", c: "#0e7490", bg: "#cffafe", desc: "Sirf Housekeeping" },
+// Role colours are Tailwind class pairs (not inline hex) so the partner
+// status-tint dark layer flips them in dark mode.
+export const ROLE_META: Record<string, { label: string; text: string; bg: string; desc: string }> = {
+  manager:      { label: "Manager",      text: "text-purple-700", bg: "bg-purple-100", desc: "All operations tabs" },
+  front_desk:   { label: "Front Desk",   text: "text-teal-700",   bg: "bg-teal-100",   desc: "Bids · Reservations · Bookings · Redeem · Guests" },
+  housekeeping: { label: "Housekeeping", text: "text-cyan-700",   bg: "bg-cyan-100",   desc: "Housekeeping only" },
 };
 const ROLE_KEYS = ["manager", "front_desk", "housekeeping"];
 
@@ -52,7 +55,7 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
     } catch { load(); }
   }
   async function removeStaff(id: string) {
-    if (!confirm("Is staff login ko delete karein?")) return;
+    if (!confirm("Delete this staff login?")) return;
     try {
       await fetch(`/api/partner/staff?id=${encodeURIComponent(id)}`, {
         method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` },
@@ -66,23 +69,23 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h2 className="sec-title text-xl">Staff &amp; Roles</h2>
-          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Apni team ke logins banao — har role ko apna scoped dashboard milta hai.</p>
+          <p className="text-[0.7rem] text-luxury-500 mt-0.5">Create logins for your team — each role gets its own scoped dashboard.</p>
         </div>
-        <button onClick={() => setEditor({ mode: "create" })} className="btn-gold">➕ Add Staff</button>
+        <button onClick={() => setEditor({ mode: "create" })} className="btn-gold"><span className="inline-flex items-center gap-1.5"><Plus size={14} strokeWidth={2.4} aria-hidden /> Add Staff</span></button>
       </div>
 
       {!provisioned && (
-        <div className="card-p card-tight mb-3 border-amber-200" style={{ background: "#fafbfc" }}>
-          <p className="text-[0.74rem] text-amber-800 font-semibold">⚠ Staff storage abhi setup nahi hua</p>
+        <div className="card-p card-tight mb-3 bg-amber-50 border-amber-200">
+          <p className="text-[0.74rem] text-amber-800 font-semibold inline-flex items-center gap-1.5"><TriangleAlert size={13} strokeWidth={2.3} aria-hidden /> Staff storage isn't set up yet</p>
           <p className="text-[0.66rem] text-amber-700 mt-0.5">
-            <span className="font-mono">migrations/2026-05-21-hotel-staff.sql</span> apply karni hai.
+            Apply <span className="font-mono">migrations/2026-05-21-hotel-staff.sql</span>.
           </p>
         </div>
       )}
 
-      <div className="card-p card-tight mb-3" style={{ background: "#eff2f5" }}>
-        <p className="text-[0.7rem] text-luxury-600">
-          📲 Staff <span className="font-mono font-bold">staybids.in/partner/staff</span> par login code + PIN se sign-in karte hain.
+      <div className="card-p card-tight mb-3 bg-luxury-50">
+        <p className="text-[0.7rem] text-luxury-600 inline-flex items-center gap-1.5">
+          <Smartphone size={13} strokeWidth={2.2} aria-hidden className="shrink-0" /> <span>Staff sign in at <span className="font-mono font-bold">staybids.in/partner/staff</span> with a login code + PIN.</span>
         </p>
       </div>
 
@@ -90,10 +93,10 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
         <div className="card-p text-center py-8 text-luxury-400 text-sm">Loading…</div>
       ) : staff.length === 0 ? (
         <div className="card-p text-center py-10">
-          <p className="text-3xl mb-2">🧑‍💼</p>
-          <p className="text-luxury-600 font-semibold text-sm">Abhi koi staff login nahi hai</p>
-          <p className="text-luxury-400 text-xs mt-0.5 mb-3">Front desk ya housekeeping ke liye login banao.</p>
-          <button onClick={() => setEditor({ mode: "create" })} className="btn-gold">➕ Add Staff</button>
+          <UserCog size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />
+          <p className="text-luxury-600 font-semibold text-sm">No staff logins yet</p>
+          <p className="text-luxury-400 text-xs mt-0.5 mb-3">Create a login for front desk or housekeeping.</p>
+          <button onClick={() => setEditor({ mode: "create" })} className="btn-gold"><span className="inline-flex items-center gap-1.5"><Plus size={14} strokeWidth={2.4} aria-hidden /> Add Staff</span></button>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -102,14 +105,13 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
             return (
               <div key={s.id} className={`card-p card-tight ${s.active ? "" : "opacity-60"}`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ background: m.bg, color: m.c }}>
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${m.bg} ${m.text}`}>
                     {(s.name || "S").slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{s.name}</p>
-                      <span className="text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full" style={{ background: m.bg, color: m.c }}>
+                      <span className={`text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full ${m.bg} ${m.text}`}>
                         {m.label}
                       </span>
                       {!s.active && <span className="text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full bg-luxury-100 text-luxury-500">Disabled</span>}
@@ -121,11 +123,11 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
                   </div>
                 </div>
                 <div className="flex gap-1.5 mt-2">
-                  <button onClick={() => setEditor({ mode: "edit", row: s })} className="btn-ghost px-2.5! py-1! text-[0.7rem]">✏️ Edit</button>
-                  <button onClick={() => toggleActive(s)} className="btn-ghost px-2.5! py-1! text-[0.7rem]">
-                    {s.active ? "⏸ Disable" : "▶ Enable"}
+                  <button onClick={() => setEditor({ mode: "edit", row: s })} className="btn-ghost px-2.5! py-1! text-[0.7rem] inline-flex items-center gap-1"><Pencil size={11} strokeWidth={2.3} aria-hidden /> Edit</button>
+                  <button onClick={() => toggleActive(s)} className="btn-ghost px-2.5! py-1! text-[0.7rem] inline-flex items-center gap-1">
+                    {s.active ? <><Pause size={11} strokeWidth={2.3} aria-hidden /> Disable</> : <><Play size={11} strokeWidth={2.3} aria-hidden /> Enable</>}
                   </button>
-                  <button onClick={() => removeStaff(s.id)} className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300!">🗑</button>
+                  <button onClick={() => removeStaff(s.id)} aria-label="Delete staff login" className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300! inline-flex items-center"><Trash2 size={12} strokeWidth={2.2} aria-hidden /></button>
                 </div>
               </div>
             );
@@ -164,9 +166,9 @@ function StaffEditor({
   const [created, setCreated] = useState<any>(null);
 
   async function save() {
-    if (!name.trim()) { setErr("Naam daalo."); return; }
-    if (mode === "create" && !/^\d{4,6}$/.test(pin)) { setErr("PIN 4–6 digit ka ho."); return; }
-    if (mode === "edit" && pin && !/^\d{4,6}$/.test(pin)) { setErr("PIN 4–6 digit ka ho."); return; }
+    if (!name.trim()) { setErr("Enter a name."); return; }
+    if (mode === "create" && !/^\d{4,6}$/.test(pin)) { setErr("PIN must be 4–6 digits."); return; }
+    if (mode === "edit" && pin && !/^\d{4,6}$/.test(pin)) { setErr("PIN must be 4–6 digits."); return; }
     setSaving(true); setErr("");
     try {
       const r = await fetch("/api/partner/staff", {
@@ -197,16 +199,16 @@ function StaffEditor({
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>
             {created ? "Staff Login Ready" : mode === "create" ? "Add Staff" : "Edit Staff"}
           </p>
-          <button onClick={created ? onSaved : onClose}
-            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+          <button onClick={created ? onSaved : onClose} aria-label="Close"
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 flex items-center justify-center"><X size={16} strokeWidth={2.2} aria-hidden /></button>
         </div>
 
         {created ? (
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
             <p className="text-[0.78rem] text-luxury-600 mb-3">
-              <b>{created.name}</b> ko ye details do — inse wo <span className="font-mono">/partner/staff</span> par login karega:
+              Give these details to <b>{created.name}</b> — they'll use them to sign in at <span className="font-mono">/partner/staff</span>:
             </p>
-            <div className="rounded-xl p-3 mb-3" style={{ background: "linear-gradient(135deg,#f7f8fa,#eff2f4)", border: "1px solid #dae1e7" }}>
+            <div className="rounded-xl p-3 mb-3 bg-luxury-50 border border-luxury-200">
               <div className="flex justify-between py-1">
                 <span className="text-[0.7rem] text-luxury-500">Login code</span>
                 <span className="font-mono font-extrabold text-luxury-900 tracking-wider">{created.login_code}</span>
@@ -216,7 +218,7 @@ function StaffEditor({
                 <span className="font-mono font-extrabold text-luxury-900 tracking-wider">{created.pin}</span>
               </div>
             </div>
-            <p className="text-[0.62rem] text-luxury-400 mb-3">⚠ PIN dobara nahi dikhega — abhi note kar lo. Baad me Edit se reset kar sakte ho.</p>
+            <p className="text-[0.62rem] text-luxury-400 mb-3 inline-flex items-start gap-1"><TriangleAlert size={11} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" /> <span>The PIN won't be shown again — note it now. You can reset it later from Edit.</span></p>
             <button onClick={onSaved} className="btn-gold w-full">Done</button>
           </div>
         ) : (
@@ -234,9 +236,9 @@ function StaffEditor({
                     const on = role === k;
                     return (
                       <button key={k} type="button" onClick={() => setRole(k)}
-                        className="w-full text-left rounded-xl p-2.5 transition-all"
-                        style={{ background: on ? m.bg : "#fff", border: `1.5px solid ${on ? m.c : "#d7dee6"}` }}>
-                        <p className="text-[0.78rem] font-bold" style={{ color: on ? m.c : "#3d2c14" }}>{on ? "● " : "○ "}{m.label}</p>
+                        className={`w-full text-left rounded-xl p-2.5 transition-all border ${on ? `${m.bg} border-transparent` : "bg-white border-luxury-200"}`}
+                        style={on ? { boxShadow: "0 0 0 1.5px currentColor" } : undefined}>
+                        <p className={`text-[0.78rem] font-bold inline-flex items-center gap-1.5 ${on ? m.text : "text-luxury-700"}`}>{on ? <CircleDot size={13} strokeWidth={2.3} aria-hidden /> : <Circle size={13} strokeWidth={2.3} aria-hidden />} {m.label}</p>
                         <p className="text-[0.62rem] text-luxury-500 mt-0.5">{m.desc}</p>
                       </button>
                     );
@@ -247,7 +249,7 @@ function StaffEditor({
                 <label className={lbl}>{mode === "create" ? "PIN (4–6 digits) *" : "Reset PIN (optional)"}</label>
                 <input value={pin} inputMode="numeric" type="password"
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder={mode === "edit" ? "Khali chhodo to PIN same rahega" : "e.g. 1234"}
+                  placeholder={mode === "edit" ? "Leave blank to keep the same PIN" : "e.g. 1234"}
                   className="inp-p" />
               </div>
               {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}

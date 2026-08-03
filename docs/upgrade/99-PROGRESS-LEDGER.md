@@ -1165,6 +1165,34 @@
   Circle tabs → Content/Passport → the shared modals. Then admin → circle →
   trade → host → onboard → worker.
 
+### 2026-08-03 — Session 6 cont. (v657 — partner StaffTab + teal/cyan/purple-100 dark tints)
+- **Status-tint layer extended: teal + cyan + purple-100** — StaffTab's role
+  colours (manager purple / front_desk teal / housekeeping cyan) needed hues the
+  v650/v653 layer didn't cover; added teal-50/100, cyan-50/100 + -600/700 text
+  and purple-100 dark overrides to the `.pdash-root` layer.
+- **StaffTab — all 4 dimensions.** ① `ROLE_META` moved off inline hex to
+  Tailwind class pairs (bg-purple/teal/cyan-100 + text-…-700) so role avatars,
+  badges and the role picker flip in dark. ② emoji → lucide: ➕→Plus (×2),
+  ⚠→TriangleAlert (×2), 📲→Smartphone, 🧑‍💼→UserCog, ✏️→Pencil, ⏸/▶ toggle →
+  Pause/Play, 🗑→Trash2, ×→X, and the role-picker ●/○ radio glyphs → CircleDot/
+  Circle. ③ inline-hex panels tokenized (not-provisioned #fafbfc → bg-amber-50,
+  info strip #eff2f5 → bg-luxury-50, the credentials card gradient → bg-luxury-50
+  + border). ④ Hinglish → English throughout (subhead, both notices, empty
+  state, role descriptions "Sabhi/Sirf…", delete-confirm, both validation
+  messages, the credentials copy + PIN-won't-show warning, the reset-PIN
+  placeholder). Responsive verified. The StaffEditor modal inherits dark via the
+  v654 modalPortal scope.
+- Badge v656→**v657** (`SB_BUILD v657-partner-staff`), sw `HTML_CACHE`
+  v453→**v454**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **21/21** —
+  Staff list + the opened StaffEditor modal responsive @ 320/360/390/768/1280 ×
+  LIGHT/DARK all zero h-overflow; dark teal role tint `rgba(20,184,166,0.2)`;
+  modal dark `rgb(27,33,42)`; chrome emoji + ●/○ gone; Hinglish gone; lucide (36).
+- NEXT (standalone components): ChannelManagerTab/OtaFeedManager → BillingTab →
+  MenuBuilderTab/FnbOrdersTab → ReportsTab → AgentAuctionTab → Circle tabs →
+  Content/Passport → the shared modals. Then admin → circle → trade → host →
+  onboard → worker.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
