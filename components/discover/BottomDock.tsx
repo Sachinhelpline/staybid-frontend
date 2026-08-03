@@ -298,7 +298,7 @@ export function BottomDock() {
           box-shadow: 0 0 0 2px rgba(242, 198, 80, 0.55), 0 4px 18px rgba(214, 154, 30, 0.6);
         }
         .ig-deal-label {
-          font-size: 0.5rem;
+          font-size: max(10px, 0.63rem);
           font-weight: 800;
           letter-spacing: 0.05em;
           text-transform: uppercase;

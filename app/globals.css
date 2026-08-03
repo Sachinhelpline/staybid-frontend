@@ -5722,7 +5722,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   line-height: 1.25;
 }
 .hxr-hero-eyebrow {
-  font-size: 0.5rem;
+  font-size: 0.63rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -5745,7 +5745,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .hxr-hero-dot { color: var(--text-muted); opacity: 0.5; }
 @media (min-width: 1024px) {
-  .hxr-hero-eyebrow { font-size: 0.6rem; }
+  .hxr-hero-eyebrow { font-size: 0.66rem; }
   .hxr-hero-title   { font-size: 1.5rem; }
   .hxr-hero-count   { font-size: 0.85rem; }
 }
@@ -7748,7 +7748,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   /* Hero shrink on laptop+ */
   .hxr-hero-slim { padding: 4px 32px 4px; }
   .hxr-hero-title { font-size: 1.05rem; }
-  .hxr-hero-eyebrow { font-size: 0.55rem; }
+  .hxr-hero-eyebrow { font-size: 0.63rem; }
   .hxr-hero-count { font-size: 0.74rem; }
   /* Non-compact rail cards — 5-6 per row on laptop */
   .hxr-card-rail { width: clamp(180px, 17vw, 220px); }

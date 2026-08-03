@@ -70,7 +70,7 @@ import {
 } from "@/lib/user-links";
 import ModalCloseButton from "@/components/ModalCloseButton";
 // v646 — drawer/profile chrome → lucide (highlight emojis = user content, kept).
-import { ArrowUpDown, CircleHelp, Headphones, LogOut, LogIn, Grid3x3, Play, ArrowUp, Menu as MenuIc } from "lucide-react";
+import { ArrowUpDown, CircleHelp, Headphones, LogOut, LogIn, Grid3x3, Play, ArrowUp, Menu as MenuIc, Camera } from "lucide-react";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -631,7 +631,7 @@ export default function MePage() {
           )}
           {/* Small camera badge bottom-right of the avatar — same hint
               Instagram uses to signal "tap to change photo". */}
-          <span className="me-avatar-cam" aria-hidden>📷</span>
+          <span className="me-avatar-cam" aria-hidden><Camera size={13} color="#fff" strokeWidth={2.4} /></span>
         </button>
         <div className="me-stats">
           <Stat label="Posts" value={fmtCount(allPosts.length)} />
@@ -944,7 +944,7 @@ export default function MePage() {
           gap: 1px;
         }
         .me-stat-value { font-size: 1.05rem; font-weight: 800; color: #2c1d04; font-variant-numeric: tabular-nums; }
-        .me-stat-label { font-size: 0.72rem; font-weight: 500; color: #3e4f61; }
+        .me-stat-label { font-size: max(10px, 0.72rem); font-weight: 500; color: #3e4f61; }
 
         .me-bio-wrap { padding: 4px 18px 10px; }
         .me-display-name {

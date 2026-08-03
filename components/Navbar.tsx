@@ -613,8 +613,8 @@ export function Navbar() {
                     <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
                   )}
                   {isReels && !active && (
-                    <span className="ml-0.5 text-[0.55rem] font-black px-1.5 py-0.5 rounded-full"
-                      style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#000" }}>
+                    <span className="ml-0.5 font-black px-1.5 py-0.5 rounded-full leading-none"
+                      style={{ fontSize: "0.63rem", background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#000" }}>
                       NEW
                     </span>
                   )}
@@ -663,7 +663,7 @@ export function Navbar() {
                   >
                     <span className="text-sm">☰</span>
                     Menu
-                    <span className="text-[0.5rem] opacity-60">▼</span>
+                    <span className="text-[0.63rem] opacity-60 leading-none">▼</span>
                   </button>
                   {moreOpen && (
                     <>
@@ -758,7 +758,7 @@ export function Navbar() {
                 <Link href="/profile"
                   className={`nav3d-chip nav3d-eq group relative ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}
                   style={{ paddingLeft: 5 }}>
-                  <div className="rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
+                  <div className="rounded-full flex items-center justify-center text-white text-[0.66rem] font-bold shrink-0"
                     style={{ width: 26, height: 26, background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                     {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
                   </div>

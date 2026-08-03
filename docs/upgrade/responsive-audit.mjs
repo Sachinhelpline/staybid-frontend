@@ -30,7 +30,11 @@ const FONT_FLOOR = 10;   // px — flag genuinely-tiny text (< floor). 10px micr
 
 // brand/content glyphs intentionally kept program-wide (hybrid rule)
 const KEEP = new Set(['←','→','↗','↘','↩','⇅','⇄','↔','›','‹','·','–','—','✓','✕','×','★','☆','♥','♡',
-  '👋','✨','🔥','🏠','🔑','🏷','🏔','🏨','◎','📍','📱','🎉','🛏','●','○','▶','◀','🥇','🥈','🥉','😊','😐','😞']);
+  '👋','✨','🔥','🏠','🔑','🏷','🏔','🏨','◎','📍','📱','🎉','🛏','●','○','▶','◀','🥇','🥈','🥉','😊','😐','😞',
+  // home "The Stage" brand/content/season glyphs (hybrid keep)
+  '❄️','🌸','☀️','🌧️','🍂','🛕','⚡','🎬','💎','✦','🧭','🌟','💚','✈️','🚗','❄','🌧','💫','🎯','🛂','◆',
+  // reel/profile content-vocabulary: story-highlight covers + nav menu glyph (hybrid keep)
+  '🌄','🏖','🍜','🎒','☰','↺']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
@@ -40,7 +44,24 @@ function comp(fg,bg){const a=fg.a;return {r:fg.r*a+bg.r*(1-a),g:fg.g*a+bg.g*(1-a
 
 // { route, scope (CSS root of the surface), auth?, ls?, fixtures: {urlSubstr: json} }
 const GENERIC = { ok:true, config:null, locks:[], properties:[], tables:[], creators:[], users:[], bookings:[], rows:[] };
+const HOTELS = [
+  {id:'h1',name:'Cave View Resort',city:'Dehradun',state:'UK',starRating:4,images:['x'],image:'x',fromPrice:2400,cheapestPrice:2400,rooms:[{id:'r1',name:'Deluxe'}]},
+  {id:'h2',name:'Ridge Retreat',city:'Mussoorie',state:'UK',starRating:5,images:['x'],image:'x',fromPrice:3200,cheapestPrice:3200,rooms:[{id:'r2',name:'Suite'}]},
+  {id:'h3',name:'Riverside Camp',city:'Rishikesh',state:'UK',starRating:3,images:['x'],image:'x',fromPrice:1800,cheapestPrice:1800,rooms:[{id:'r3',name:'Tent'}]},
+];
 const ROUTES = [
+  { route:'/', scope:'body',
+    fixtures:{
+      'bids/insights':{ ok:true, totalBids:1240, hotelsLive:38, avgSavingPct:22, recentWins:[{hotel:'Cave View',city:'Dehradun',saved:1200},{hotel:'Ridge Retreat',city:'Mussoorie',saved:900}] },
+      'flash/near':{ ok:true, deals:[{id:'d1',hotelId:'h1',hotelName:'Cave View Resort',city:'Dehradun',roomName:'Deluxe',marketRate:3000,aiPrice:2400,discount:48,image:'x',images:['x']},{id:'d2',hotelId:'h2',hotelName:'Ridge Retreat',city:'Mussoorie',roomName:'Suite',marketRate:5000,aiPrice:3200,discount:40,image:'x',images:['x']}] },
+      'hotels/starting-prices':{ ok:true, prices:{h1:2400,h2:3200,h3:1800} },
+      'hotels/scorecards':{ ok:true, scores:{h1:{overall:8.6,tier:'gold'},h2:{overall:9.1,tier:'platinum'},h3:{overall:7.4,tier:'silver'}} },
+      'hotels':{ ok:true, hotels:HOTELS },
+      'social/feed':{ ok:true, posts:[{id:'p1',media_url:'x',thumbnail_url:'x',caption:'Sunset at Cave View',hotel_id:'h1',hotel_name:'Cave View',like_count:42,author_name:'Asha'},{id:'p2',media_url:'x',thumbnail_url:'x',caption:'Ridge morning',hotel_id:'h2',hotel_name:'Ridge',like_count:31,author_name:'Rin'}] },
+      'circle/properties':{ ok:true, cities:['Dehradun'], properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',images:['x'],monthlyRate:30000,roiMin:15,roiMax:28,status:'open',roomTypes:[{id:'r1',monthlyRate:30000}]}] },
+      'circle/marketplace-summary':{ ok:true, model3:{count:8,fromPrice:2100}, model4:{count:5,fromPrice:9000} },
+      'trade/lots':{ ok:true, lots:[{id:'l1',hotel_name:'Cave View',city:'Dehradun',min_bid_per_room_night:1200,num_rooms:4,sale_mode:'live'}] },
+    } },
   { route:'/circle', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
     fixtures:{ 'circle/properties': { cities:['Dehradun'], properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',locationLabel:'Rajpur, Dehradun',images:[],monthlyRate:30000,roiMin:15,roiMax:28,occupancyLabel:'High',badges:['Trending'],operationModel:'managed',status:'open',roomTypes:[{id:'r1',name:'Deluxe',monthlyRate:30000,availableUnits:3}]}] } } },
   { route:'/circle/dashboard', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}',sb_circle_locks_v1:'["p1"]'},
@@ -57,13 +78,42 @@ const ROUTES = [
     fixtures:{ 'b2b/marketplace': { listings:[{id:'l1',hotel_name:'Cave View',hotel_city:'Dehradun',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,ask_total:9000}] } } },
   { route:'/admin/host', scope:'body', admin:true,
     fixtures:{ 'admin/host':{ kpis:{leads:3,leadsNew:1,portfolios:2,portfoliosActive:1,portfolioRevenue:1000,propertySubmissions:2,propertySubmissionsPending:1,inquiries:1,inquiriesNew:1,projects:1,orders:1,storeGmv:1,jobs:1,jobsActive:1,workforceRevenue:1,channels:1,channelsNew:1}, leads:[], portfolios:[], propertySubmissions:[], inquiries:[], projects:[], orders:[], jobs:[], channels:[] } } },
+
+  // ── Customer frontend (the main app) ─────────────────────────────────────
+  { route:'/hotels', scope:'body',
+    fixtures:{ 'hotels/scorecards':{ok:true,scores:{h1:{overall:8.6,tier:'gold'},h2:{overall:9.1,tier:'platinum'},h3:{overall:7.4,tier:'silver'}}}, 'hotels':{ok:true,hotels:HOTELS} } },
+  { route:'/hotels/h1', scope:'body',
+    fixtures:{ 'hotels/h1':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', state:'UK', starRating:4, account_type:'hotel_owner', description:'A serene hillside retreat with valley views, curated interiors and a warm, personal welcome.', images:['x','x','x'], amenities:['Wi-Fi','Pool','Breakfast','Parking','Spa'], lat:30.3, lng:78.0, avgRating:4.6, totalReviews:128, rooms:[{id:'r1',name:'Deluxe Valley',floorPrice:2400,basePrice:3200,capacity:2,images:['x'],amenities:['Balcony','AC'],meal_plans:['EP','CP']},{id:'r2',name:'Premier Suite',floorPrice:3600,basePrice:4800,capacity:3,images:['x'],amenities:['Living room','Bathtub'],meal_plans:['CP','MAP']}], reviews:[{id:'rv1',rating:5,text:'Lovely stay',author:'Asha'}], individualRooms:false, roomListings:[] } }, 'hotels/scorecards':{ok:true,scores:{h1:{overall:8.6,tier:'gold'}}}, 'availability':{ok:true,available:true,blocked:[]}, 'availability/units':{ok:true,units:[]}, 'hotel-hold-config':{ok:true}, 'bids/auto-accept-info':{ok:true}, 'pricing/spine':{ok:true,prices:{}} } },
+  { route:'/flash-deals', scope:'body',
+    fixtures:{ 'flash/near':{ ok:true, deals:[{id:'d1',hotelId:'h1',hotelName:'Cave View Resort',city:'Dehradun',roomName:'Deluxe',marketRate:3000,aiPrice:2400,discount:48,image:'x',images:['x']},{id:'d2',hotelId:'h2',hotelName:'Ridge Retreat',city:'Mussoorie',roomName:'Suite',marketRate:5000,aiPrice:3200,discount:40,image:'x',images:['x']},{id:'d3',hotelId:'h3',hotelName:'Riverside Camp',city:'Rishikesh',roomName:'Tent',marketRate:2500,aiPrice:1800,discount:28,image:'x',images:['x']}] } } },
+  { route:'/bid', scope:'body',
+    fixtures:{ 'bids/insights':{ok:true,totalBids:1240,hotelsLive:38,avgSavingPct:22,recentWins:[]}, 'bids/my':{bids:[]}, 'hotels':{ok:true,hotels:HOTELS} } },
+  { route:'/my-bids', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'bids/my':{ bids:[{id:'b1',status:'PENDING',hotelName:'Cave View Resort',hotelId:'h1',city:'Dehradun',roomName:'Deluxe',bidAmount:2400,numRooms:1,checkIn:'2026-09-10',checkOut:'2026-09-12',createdAt:'2026-08-01 10:00:00',source:'place'},{id:'b2',status:'ACCEPTED',hotelName:'Ridge Retreat',hotelId:'h2',city:'Mussoorie',roomName:'Suite',bidAmount:3200,numRooms:2,checkIn:'2026-09-15',checkOut:'2026-09-17',createdAt:'2026-08-02 11:00:00',expiresAt:'2026-08-30 11:00:00',source:'negotiate'}] }, 'bids/auto-accept-info':{ok:true}, 'my/unit-assignments':{assignments:[]}, 'bid/paid':{ok:true} } },
+  { route:'/bookings', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'bookings/my':{ bookings:[{id:'bk1',status:'CONFIRMED',hotelName:'Cave View Resort',hotelId:'h1',city:'Dehradun',roomName:'Deluxe',totalAmount:4800,numRooms:1,checkIn:'2026-09-10',checkOut:'2026-09-12',code:'STY-12AB'}] }, 'holds':{holds:[]}, 'my/unit-assignments':{assignments:[]}, 'bid/paid':{ok:true} } },
+  { route:'/passport', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'passport':{ profile:{explorer_id:'EXP-001',member_since:'2026-01-01',display_name:'Asha Verma',rank_key:'wanderer',xp:420}, rank:{rank:{key:'wanderer',label:'Wanderer'},next:{key:'voyager',label:'Voyager',xpTo:580},progressPct:62}, stats:{stays:3,cities:2,reviews:1,savedTotal:5600}, stamps:[{id:'s1',city:'Dehradun',date:'2026-03-01'},{id:'s2',city:'Mussoorie',date:'2026-05-01'}], badges:[{key:'first_stay',label:'First Stay',earned:true},{key:'explorer',label:'Explorer',earned:false}], rewards:[{code:'WELCOME',label:'Welcome ₹500',status:'available'}] } } },
+  { route:'/wallet', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'passport':{ profile:{explorer_id:'EXP-001',member_since:'2026-01-01',display_name:'Asha',rank_key:'wanderer',xp:420}, rank:{rank:{key:'wanderer',label:'Wanderer'},next:{key:'voyager',label:'Voyager',xpTo:580},progressPct:62}, stats:{stays:3,cities:2,reviews:1,savedTotal:5600}, stamps:[], badges:[], rewards:[{code:'WELCOME',label:'Welcome ₹500',status:'available'}] } } },
+  { route:'/points', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha","phone":"+919812345678"}'},
+    fixtures:{ 'passport':{ profile:{explorer_id:'EXP-001',member_since:'2026-01-01',display_name:'Asha',rank_key:'wanderer',xp:420}, rank:{rank:{key:'wanderer',label:'Wanderer'},next:{key:'voyager',label:'Voyager',xpTo:580},progressPct:62}, stats:{stays:3,cities:2,reviews:1,savedTotal:5600}, stamps:[], badges:[], rewards:[] } } },
+  { route:'/auth', scope:'body', fixtures:{} },
+  { route:'/profile', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678","email":"asha@example.com"}'}, fixtures:{} },
+  // ── Reel surfaces (hide Navbar/dock; phone-frame reel player) ─────────────
+  { route:'/discover', scope:'body',
+    fixtures:{ 'discover/feed':{ok:true,items:[{id:'i1',type:'reel',hotelId:'h1',hotelName:'Cave View',city:'Dehradun',media_url:'x',thumbnail_url:'x',caption:'Sunset',like_count:42}]}, 'social/feed':{ok:true,posts:[]}, 'flash/near':{ok:true,deals:[]}, 'hotels':{ok:true,hotels:HOTELS} } },
+  { route:'/reels', scope:'body',
+    fixtures:{ 'videos/feed':{ok:true,videos:[{id:'v1',hotelId:'h1',hotelName:'Cave View',city:'Dehradun',s3_url:'x',thumbnail_url:'x',caption:'Tour',like_count:12,author_name:'Asha'}]}, 'hashtags/trending':{ok:true,tags:['#dehradun','#hills']} } },
+  { route:'/me', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'social/profiles/me':{ok:true,profile:{display_name:'Asha Verma',username:'asha',follower_count:12,is_verified:false,bio:'Traveller'}}, 'influencer/my-videos':{ok:true,videos:[]}, 'social/feed':{ok:true,posts:[]} } },
 ];
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const summary = [];
 
 for (const cfg of ROUTES) {
-  if (ONLY && !cfg.route.includes(ONLY)) continue;
+  if (ONLY && !(cfg.route === ONLY || (ONLY.length > 1 && cfg.route.includes(ONLY)))) continue;
   const rowFails = [];
   for (const theme of THEMES) {
     for (const w of WIDTHS) {
@@ -78,10 +128,11 @@ for (const cfg of ROUTES) {
         return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(GENERIC)});
       });
       try { await page.goto(`${BASE}${cfg.route}`, { waitUntil:'domcontentloaded', timeout:20000 }); } catch(e){}
-      await page.evaluate((th)=>document.documentElement.setAttribute('data-theme',th), theme);
-      await page.waitForTimeout(900);
-
-      const r = await page.evaluate((args)=>{
+      // Some client pages settle via a router push/redirect on first load. On the
+      // slower dev server that can destroy the evaluate context mid-measure, so
+      // set-theme + measure are retried once behind a longer settle. A row that
+      // still can't measure is recorded as NAVERR (never aborts the whole route).
+      const EVAL_FN = (args)=>{
         const { scope, KEEParr, MAX_LINE, FONT_FLOOR } = args;
         const KEEP = new Set(KEEParr);
         const root = document.querySelector(scope) || document.body;
@@ -133,15 +184,26 @@ for (const cfg of ROUTES) {
           if(cr<2.9) ifails.push(+cr.toFixed(2));
         });
         return { overflow, emoji:emoji.slice(0,6), tooWide:tooWide.slice(0,4), tiny:tiny.slice(0,4), cfails:cfails.slice(0,6), ifails:ifails.slice(0,6) };
-      }, { scope: cfg.scope, KEEParr:[...KEEP], MAX_LINE, FONT_FLOOR });
+      };
+      const measure = async () => {
+        await page.evaluate((th)=>document.documentElement.setAttribute('data-theme',th), theme);
+        await page.waitForTimeout(900);
+        return page.evaluate(EVAL_FN, { scope: cfg.scope, KEEParr:[...KEEP], MAX_LINE, FONT_FLOOR });
+      };
+      let r;
+      try { r = await measure(); }
+      catch(e1){ try { await page.waitForTimeout(1200); r = await measure(); } catch(e2){ r = { naverr:true }; } }
 
       const issues = [];
-      if (r.overflow) issues.push(`OVERFLOW ${r.overflow.s}>${r.overflow.c}`);
-      if (r.emoji.length) issues.push(`EMOJI ${JSON.stringify(r.emoji)}`);
-      if (r.cfails.length) issues.push(`TEXT ${JSON.stringify(r.cfails)}`);
-      if (r.ifails.length) issues.push(`ICON ${JSON.stringify(r.ifails)}`);
-      if (r.tooWide.length) issues.push(`WIDE ${JSON.stringify(r.tooWide)}`);
-      if (r.tiny.length) issues.push(`TINY ${JSON.stringify(r.tiny)}`);
+      if (r.naverr) { issues.push('NAVERR (could not settle — re-run)'); }
+      else {
+        if (r.overflow) issues.push(`OVERFLOW ${r.overflow.s}>${r.overflow.c}`);
+        if (r.emoji.length) issues.push(`EMOJI ${JSON.stringify(r.emoji)}`);
+        if (r.cfails.length) issues.push(`TEXT ${JSON.stringify(r.cfails)}`);
+        if (r.ifails.length) issues.push(`ICON ${JSON.stringify(r.ifails)}`);
+        if (r.tooWide.length) issues.push(`WIDE ${JSON.stringify(r.tooWide)}`);
+        if (r.tiny.length) issues.push(`TINY ${JSON.stringify(r.tiny)}`);
+      }
       if (issues.length) rowFails.push(`  [${theme} ${w}] ${issues.join(' | ')}`);
       await ctx.close();
     }

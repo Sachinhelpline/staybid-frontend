@@ -19,6 +19,41 @@
 
 ## Session log
 
+### 2026-08-03 — Customer frontend full-matrix pass (v690, shipped)
+**Scope:** the whole customer frontend measured across the full device matrix (280→2560px ×
+light+dark) with `docs/upgrade/responsive-audit.mjs` — home `/`, `/hotels`, `/hotels/[id]`,
+`/flash-deals`, `/bid`, `/my-bids`, `/bookings`, `/passport`, `/wallet`, `/points`, `/auth`,
+`/profile`, and the reel surfaces `/discover` `/reels` `/me`. Emoji already clean + on lucide from
+earlier eras, so this pass was almost entirely the responsive/font-floor axis.
+
+**Defects found (all MEASURED, not guessed) + fixed:**
+- Reels **"NEW" nav badge** — 8.8px (0.55rem) → **10.08px** via a robust inline `fontSize:0.63rem`
+  (`components/Navbar.tsx`). Shared chrome → helps every page. (A Tailwind arbitrary class did NOT
+  hot-reload reliably on dev; inline style is JIT-independent.)
+- **`.hxr-hero-eyebrow`** (Explore / hero eyebrows on `/hotels` + hotel detail) — 8/8.8px →
+  **0.63/0.66rem** across all three breakpoint rules (`app/globals.css`).
+- Navbar signed-in chrome: **"Menu ▼"** caret 8px→0.63rem, **user-avatar initials** 9.92px→10.56rem
+  (0.66rem) (`components/Navbar.tsx`).
+- Reel-surface **BottomDock `.ig-deal-label`** — 8px → **`max(10px,0.63rem)`**
+  (`components/discover/BottomDock.tsx`).
+- **`/me`** self-profile: camera button **📷 → lucide `Camera`** (action icon); **`.me-stat-label`**
+  → `max(10px,0.72rem)` (the desktop phone-frame reduced root shrank 0.72rem below the floor). Story-
+  highlight covers (🌄🏖🍜🎒) + the ☰ menu / ↺ reset glyphs are content/nav vocabulary → KEPT (hybrid).
+- Nav-chip brand emoji (🏠🏨⚡🎬🎯♡) KEPT — established owner-chosen brand vocabulary, consistent with
+  the home Stage's own section glyphs.
+
+**Harness hardened:** the measurement `page.evaluate` is now retry-wrapped + records `NAVERR` instead
+of aborting a whole route when a client-side nav destroys the context on the slower dev server; KEEP set
+grew the reel/profile content covers. Added `/` + all customer + reel + `/hotels/[id]` routes with fixtures.
+
+**Env gotcha logged:** ~14 orphaned `next dev`/`next start` servers from earlier sessions had accumulated;
+a stale `next start` **production build** was holding port 3960, so dev edits weren't served (two rounds of
+"still 8.8px" were measuring the stale build). Cleared them; one clean `next dev` — NEW badge then probe-
+confirmed at 10.08px.
+
+Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-identical). Badge
+**v690**, sw HTML_CACHE **v486**.
+
 ### 2026-08-02 — Session 1 (Phase R)
 - Full codebase audit completed (5 parallel deep audits: reels overlay, flash card,
   home, design system, all 9 panels). External screenshot report verified: ~75-80%
