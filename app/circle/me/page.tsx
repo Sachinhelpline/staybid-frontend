@@ -320,7 +320,7 @@ export default function CircleMePage() {
             <div>
               <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Locked Properties</h2>
               {locks.length === 0 ? (
-                <div className="sbc-panel" style={{ padding: 24, color: "rgba(74,56,32,.65)", fontSize: ".88rem" }}>
+                <div className="sbc-panel" style={{ padding: 24, color: "rgba(74,56,32,.8)", fontSize: ".88rem" }}>
                   No properties locked — explore <Link href="/circle" style={{ color: "var(--sbc-gold-deep)", fontWeight: 700 }}>Discover</Link>.
                 </div>
               ) : (
