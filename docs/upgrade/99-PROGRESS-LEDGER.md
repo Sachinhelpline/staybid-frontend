@@ -1383,6 +1383,35 @@
   Circle tabs (PartnerCircleTab / CircleUnitsTab / CircleInventoryTab) →
   Content/Passport → shared modals.
 
+### 2026-08-03 — Session 6 cont. (v664 — partner Circle tabs pair: PartnerCircleTab + CircleUnitsTab)
+- **Two Circle tabs in one ship** (both English already — emoji + dark only).
+  PartnerCircleTab (216 lines) = the `circle` tab (StayCircle investments view);
+  CircleUnitsTab (361 lines) = the `myrooms` "My Rooms" per-unit manager.
+- **KEY dark-mode fix — `.card-luxury`/`.input-luxury` inside the partner shell.**
+  CircleUnitsTab is the ONLY partner component that uses the CONSUMER
+  `card-luxury`/`input-luxury`/`btn-luxury` classes, whose dark rules exist only
+  under specific root wrappers (`.inf-root`/`.onb-root`/`.trust-root`/… — NOT the
+  bare global), so inside `.pdash-root` they painted their hardcoded LIGHT bg in
+  dark. Added `[data-theme="dark"] .pdash-root .card-luxury` + `.input-luxury`
+  overrides to the pdash bridge (globals.css) → `var(--bg-card)`/`--border-soft`/
+  `--text-base`. Verified: the My-Rooms card flips to avg=34 in dark.
+- **PartnerCircleTab:** ◎ heading + ◎ empty state → lucide CircleDot; ↻ Refresh →
+  RotateCw; 📍 location pill → MapPin; `bg-luxury-50/50` opacity variant →
+  `bg-luxury-50` (bridge only covers the plain class). All other surfaces already
+  used bridge-covered classes (bg-white/emerald/luxury).
+- **CircleUnitsTab:** 🏠 empty → Home; ↻ → RotateCw; 🛏️ no-photo placeholder →
+  BedDouble; ●/○ Live/Hidden toggle → CircleDot/Circle; 🤖 auto-confirm label →
+  Bot. Listed toggle + autopilot chips already class-paired (emerald/luxury/gold).
+- Badge v663→**v664** (`SB_BUILD v664-partner-circle-tabs`), sw `HTML_CACHE`
+  v460→**v461**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **70/70** —
+  both tabs @ 320/360/390/768/1280 × LIGHT/DARK, zero h-overflow, chrome emoji
+  gone, dark card bg avg=34 (incl. the newly-bridged `.card-luxury`).
+- **14 rules honoured:** presentation-only (no circle/unit save/load/autopilot
+  logic touched), light+dark perfect (closed a real `.card-luxury` dark gap),
+  strict responsive to 320px, measured verify. NEXT: **CircleInventoryTab (901
+  lines — its own ship)** → PartnerContentTab/PartnerPassportTab → shared modals.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

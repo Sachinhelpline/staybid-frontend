@@ -13,6 +13,7 @@
 // surfaces when hotel.isOperator (mounted from the dashboard).
 
 import { useEffect, useMemo, useState } from "react";
+import { Home, RotateCw, BedDouble, CircleDot, Circle, Bot } from "lucide-react";
 import { AUTOPILOT_MODE_LABEL, AUTOPILOT_MODE_DESC, type AutopilotMode } from "@/lib/autopilot";
 
 function getToken() {
@@ -105,7 +106,7 @@ export default function CircleUnitsTab({
   if (!units.length) {
     return (
       <div className="card-luxury p-6 text-center">
-        <div className="text-4xl mb-2">🏠</div>
+        <Home className="mx-auto mb-2 text-luxury-300" size={34} strokeWidth={1.8} aria-hidden />
         <div className="font-bold text-luxury-800 mb-1">No rooms yet</div>
         <p className="text-sm text-luxury-500">
           Rooms appear here once your StayCircle investment is active and StayBid has
@@ -129,8 +130,8 @@ export default function CircleUnitsTab({
         </div>
         <button
           onClick={load}
-          className="text-xs font-semibold text-gold-600 hover:text-gold-700 px-2 py-1"
-        >↻ Refresh</button>
+          className="text-xs font-semibold text-gold-600 hover:text-gold-700 px-2 py-1 inline-flex items-center gap-1.5"
+        ><RotateCw size={13} strokeWidth={2.3} aria-hidden />Refresh</button>
       </div>
 
       {units.map((u) => (
@@ -242,7 +243,7 @@ function UnitCard({
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
-          <div className="w-16 h-16 rounded-xl bg-luxury-100 flex items-center justify-center text-2xl shrink-0">🛏️</div>
+          <div className="w-16 h-16 rounded-xl bg-luxury-100 flex items-center justify-center shrink-0"><BedDouble className="text-luxury-400" size={22} strokeWidth={1.9} aria-hidden /></div>
         )}
         <div className="min-w-0 flex-1">
           <div className="font-bold text-luxury-900 truncate">{title || catName}</div>
@@ -262,7 +263,7 @@ function UnitCard({
               : "bg-luxury-100 text-luxury-500 border border-luxury-200"
           }`}
           title={listed ? "Live — tap to unlist" : "Hidden — tap to list"}
-        >{listed ? "● Live" : "○ Hidden"}</button>
+        ><span className="inline-flex items-center gap-1">{listed ? <CircleDot size={11} strokeWidth={2.5} aria-hidden /> : <Circle size={11} strokeWidth={2.3} aria-hidden />}{listed ? "Live" : "Hidden"}</span></button>
       </div>
 
       {/* Edit grid */}
@@ -297,8 +298,8 @@ function UnitCard({
       {/* Phase A — per-unit auto-confirm mode (StayCircle owner control) */}
       <div className="mt-3 pt-3 border-t border-luxury-100">
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <label className="text-[11px] font-semibold text-luxury-600">
-            🤖 Auto-confirm mode for this room
+          <label className="text-[11px] font-semibold text-luxury-600 inline-flex items-center gap-1.5">
+            <Bot size={13} strokeWidth={2.3} aria-hidden />Auto-confirm mode for this room
           </label>
           {aSaving && <span className="text-[10px] text-luxury-400">saving…</span>}
         </div>

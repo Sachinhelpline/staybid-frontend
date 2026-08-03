@@ -981,6 +981,13 @@
 [data-theme="dark"] .pdash-root .border-gold-300 { border-color: var(--border-soft) !important; }
 [data-theme="dark"] .pdash-root .text-gold-600,
 [data-theme="dark"] .pdash-root .text-gold-700 { color: var(--cozy-champagne-light) !important; }
+/* v664 — CircleUnitsTab ("My Rooms") uses the consumer `.card-luxury`/
+   `.input-luxury` classes, whose dark-mode rules exist only under specific
+   root wrappers (.inf-root/.onb-root/.trust-root/…), NOT the bare global. Inside
+   the partner shell they would paint their hardcoded LIGHT background in dark.
+   Remap them the same way here so the one partner tab that uses them is dark-safe. */
+[data-theme="dark"] .pdash-root .card-luxury { background: var(--bg-card) !important; border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .input-luxury { background: var(--bg-card) !important; border-color: var(--border-soft) !important; color: var(--text-base) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
    v458 — Auth (sign-in) uplift. The single highest-traffic customer
