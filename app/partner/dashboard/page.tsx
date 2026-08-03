@@ -67,6 +67,37 @@ import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
 // AI is on their inventory: auto / hybrid / manual. See lib/autopilot.ts
 // for the customer-side resolver + lib/bidder-score.ts for the tier rules.
 import { AUTOPILOT_MODE_LABEL, AUTOPILOT_MODE_DESC, type AutopilotMode, invalidateAutopilotCache } from "@/lib/autopilot";
+import {
+  LayoutDashboard, BedDouble, Inbox, Building2, Zap, CalendarCheck, ConciergeBell,
+  CalendarRange, SprayCan, ReceiptText, UtensilsCrossed, QrCode, Users, BookUser,
+  CircleDot, Gavel, TrendingUp, Flag, Ticket, Image as ImageIcon, Clapperboard,
+  Share2, UserCog, Settings, Hotel, ChevronDown, Check, Lock,
+  MessageSquareReply, CircleCheck, Wallet, CircleHelp, Headphones,
+  ArrowLeftRight, LogOut, Plus, Sunrise, PlaneLanding, PlaneTakeoff,
+} from "lucide-react";
+
+// Inline shell-chrome icon helper (partner dashboard) — matches BIc/InIc pattern.
+const DIc = ({ I, size = 13, ...rest }: { I: any; size?: number; [k: string]: any }) =>
+  <I size={size} strokeWidth={2.3} aria-hidden style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 5 }} {...rest} />;
+
+// v649 — partner shell nav/hub/tab icons keyed by the SAME id the TABS +
+// quick-launch-hub configs use, so both render sites share one lucide map.
+// The legacy emoji in the config objects stay as a graceful fallback for any
+// id not in the map (e.g. myrooms/passport/circle only appear conditionally).
+const PICON: Record<string, any> = {
+  overview: LayoutDashboard, myrooms: BedDouble, bids: Inbox, rooms: Building2,
+  flash: Zap, bookings: CalendarCheck, reservations: ConciergeBell,
+  availability: CalendarRange, housekeeping: SprayCan, billing: ReceiptText,
+  menu: UtensilsCrossed, fnbqr: QrCode, guests: Users, passport: BookUser,
+  circle: CircleDot, agentauction: Gavel, reports: TrendingUp, complaints: Flag,
+  redeem: Ticket, content: ImageIcon, verification: Clapperboard, channels: Share2,
+  staff: UserCog, profile: Settings,
+};
+// Render a shell icon by id; falls back to the emoji string the config carries.
+function pIcon(id: string, fallback: React.ReactNode, size = 16, color?: string) {
+  const I = PICON[id];
+  return I ? <I size={size} strokeWidth={2.1} aria-hidden style={color ? { color } : undefined} /> : fallback;
+}
 
 // Tiny wrapper that pulls partner-side auth from localStorage. Keeps the
 // shared BookingChat component agnostic of which session keys we use.
@@ -1096,8 +1127,8 @@ export default function PartnerDashboard() {
           </div>
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             {hotel && hotelList.length <= 1 && (
-              <span className="hidden sm:block text-xs font-semibold text-white/75 bg-white/6 px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
-                🏨 {hotel.name}
+              <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-white/75 bg-white/6 px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
+                <Hotel size={12} strokeWidth={2.2} aria-hidden className="shrink-0" /> <span className="truncate">{hotel.name}</span>
               </span>
             )}
             {/* v285 — Multi-property switcher (only when the partner owns 2+ hotels) */}
@@ -1108,8 +1139,9 @@ export default function PartnerDashboard() {
                   className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/10 hover:bg-white/15 px-2.5 py-1 rounded-full border border-amber-400/30 transition-all max-w-[190px]"
                   title="Switch property"
                 >
-                  <span className="truncate">🏨 {hotel?.name || "Select property"}</span>
-                  <span className="text-amber-300/80 text-[0.6rem] shrink-0">▾</span>
+                  <Hotel size={12} strokeWidth={2.2} aria-hidden className="shrink-0" />
+                  <span className="truncate">{hotel?.name || "Select property"}</span>
+                  <ChevronDown size={12} strokeWidth={2.4} aria-hidden className="text-amber-300/80 shrink-0" />
                 </button>
                 {switcherOpen && (
                   <>
@@ -1140,7 +1172,7 @@ export default function PartnerDashboard() {
                                   {h.city || "—"}{isCircle ? " · Circle" : ""}
                                 </span>
                               </span>
-                              {on && <span className="text-amber-300 text-[0.7rem] shrink-0">✓</span>}
+                              {on && <Check size={13} strokeWidth={2.6} aria-hidden className="text-amber-300 shrink-0" />}
                             </button>
                           );
                         })}
@@ -1156,7 +1188,7 @@ export default function PartnerDashboard() {
             {hotel?.isOperator && (
               <span className="hidden sm:flex items-center gap-1 text-[0.58rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap"
                 title="This property is operated by StayBid — you manage your own rooms here">
-                🏨 Operated by StayBid
+                <Hotel size={11} strokeWidth={2.4} aria-hidden /> Operated by StayBid
               </span>
             )}
             {pUser?.staffRole && (
@@ -1191,8 +1223,8 @@ export default function PartnerDashboard() {
                       )}
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {hotel?.isOperator && (
-                          <span className="text-[0.5rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                            🏨 Operated
+                          <span className="inline-flex items-center gap-1 text-[0.5rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                            <Hotel size={9} strokeWidth={2.6} aria-hidden /> Operated
                           </span>
                         )}
                         {pUser?.staffRole && (
@@ -1207,7 +1239,7 @@ export default function PartnerDashboard() {
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
                       title="Open the app tour & help"
                     >
-                      <span aria-hidden className="text-amber-300">❓</span>
+                      <CircleHelp size={15} strokeWidth={2.2} aria-hidden className="text-amber-300" />
                       <span>App Tour</span>
                     </AppTourButton>
                     <HelpSupportButton
@@ -1215,7 +1247,7 @@ export default function PartnerDashboard() {
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
                       title="Chat with StayBid support"
                     >
-                      <span aria-hidden className="text-amber-300">🎧</span>
+                      <Headphones size={15} strokeWidth={2.2} aria-hidden className="text-amber-300" />
                       <span>Help &amp; Support</span>
                     </HelpSupportButton>
                     <SwitchExperienceButton
@@ -1223,13 +1255,13 @@ export default function PartnerDashboard() {
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
                       title="Switch to another StayBid panel"
                     >
-                      <span aria-hidden className="text-amber-300">⇄</span>
+                      <ArrowLeftRight size={15} strokeWidth={2.2} aria-hidden className="text-amber-300" />
                       <span>Switch experience</span>
                     </SwitchExperienceButton>
                     <button
                       onClick={() => { setAcctOpen(false); logout(); }}
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-red-300 hover:bg-red-500/8 border-t border-white/8 transition-all text-left">
-                      <span aria-hidden>↶</span>
+                      <LogOut size={15} strokeWidth={2.2} aria-hidden />
                       <span>Sign out</span>
                     </button>
                   </div>
@@ -1259,8 +1291,8 @@ export default function PartnerDashboard() {
               : undefined;
             const inner = (
               <>
-                <span className="text-[0.85rem]">{t.icon}</span>{t.label}
-                {locked && <span className="text-[0.7rem]">🔒</span>}
+                {pIcon(t.id, t.icon, 14)}{t.label}
+                {locked && <Lock size={11} strokeWidth={2.4} aria-hidden />}
                 {t.id === "bids" && pendingBids > 0 && !active && (
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 )}
@@ -1333,18 +1365,18 @@ export default function PartnerDashboard() {
               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #a9b9c8 0%, transparent 50%), radial-gradient(circle at 80% 80%, #8198ae 0%, transparent 50%)" }} />
               <div className="relative p-5 flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.25em]">🏨 Front Desk</p>
+                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.25em]"><DIc I={Hotel} size={11} /> Front Desk</p>
                   <h3 className="font-display text-2xl text-white font-light mt-1">Walk-in Guest Arrived?</h3>
                   <p className="text-white/75 text-sm mt-1">Check room availability & check them in — auto-blocks the room across StayBid, Booking.com, Airbnb everywhere.</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button onClick={() => setQuickWalkInOpen(true)}
                     className="bg-linear-to-r from-gold-400 to-amber-400 text-luxury-900 font-bold px-5 py-3 rounded-xl hover:scale-105 transition-all shadow-lg text-sm">
-                    ➕ New Walk-in
+                    <DIc I={Plus} size={14} /> New Walk-in
                   </button>
                   <button onClick={() => setTab("availability")}
                     className="bg-white/10 text-white border border-white/25 font-bold px-5 py-3 rounded-xl hover:bg-white/20 transition-all text-sm backdrop-blur-sm">
-                    🗓️ Availability
+                    <DIc I={CalendarRange} size={14} /> Availability
                   </button>
                 </div>
               </div>
@@ -1354,18 +1386,18 @@ export default function PartnerDashboard() {
             <div className="rounded-3xl overflow-hidden shadow-lg border border-luxury-200 bg-white">
               <div className="bg-linear-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-5 py-4 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.2em]">🌅 Today · {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})}</p>
+                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.2em]"><DIc I={Sunrise} size={11} /> Today · {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})}</p>
                   <p className="text-white font-display text-xl font-light mt-0.5">Your day at a glance</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
-                    🛬 {checkInsToday.length} Check-in{checkInsToday.length!==1?"s":""}
+                    <DIc I={PlaneLanding} size={12} /> {checkInsToday.length} Check-in{checkInsToday.length!==1?"s":""}
                   </span>
                   <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
-                    🛫 {checkOutsToday.length} Check-out{checkOutsToday.length!==1?"s":""}
+                    <DIc I={PlaneTakeoff} size={12} /> {checkOutsToday.length} Check-out{checkOutsToday.length!==1?"s":""}
                   </span>
                   <span className="bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
-                    🏨 {inHouseToday.length} In-house
+                    <DIc I={BedDouble} size={12} /> {inHouseToday.length} In-house
                   </span>
                 </div>
               </div>
@@ -1375,7 +1407,7 @@ export default function PartnerDashboard() {
                 {/* Check-ins */}
                 <div className="p-4">
                   <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span>🛬</span> Arriving Today
+                    <PlaneLanding size={13} strokeWidth={2.3} aria-hidden /> Arriving Today
                   </p>
                   {checkInsToday.length === 0 ? (
                     <p className="text-sm text-luxury-400 italic">No arrivals today</p>
@@ -1408,7 +1440,7 @@ export default function PartnerDashboard() {
                 {/* Check-outs */}
                 <div className="p-4">
                   <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span>🛫</span> Departing Today
+                    <PlaneTakeoff size={13} strokeWidth={2.3} aria-hidden /> Departing Today
                   </p>
                   {checkOutsToday.length === 0 ? (
                     <p className="text-sm text-luxury-400 italic">No departures today</p>
@@ -1441,7 +1473,7 @@ export default function PartnerDashboard() {
                 {/* In-house */}
                 <div className="p-4">
                   <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span>🏨</span> Staying Now
+                    <BedDouble size={13} strokeWidth={2.3} aria-hidden /> Staying Now
                   </p>
                   {inHouseToday.length === 0 ? (
                     <p className="text-sm text-luxury-400 italic">No in-house guests</p>
@@ -1473,16 +1505,16 @@ export default function PartnerDashboard() {
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
               {[
-                { label:"Pending Bids",  value: pendingBids,  icon:"📩", color:"#b45309", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bids") },
-                { label:"Countered",     value: counteredBids, icon:"💬", color:"#c2410c", bg:"#fff7ed", border:"#fed7aa", action: () => setTab("bids") },
-                { label:"Confirmed",     value: acceptedBids, icon:"✅", color:"#047857", bg:"#ecfdf5", border:"#a7f3d0", action: () => setTab("bookings") },
-                { label:"Est. Revenue",  value: fmtCur(revenue), icon:"💰", color:"#a16207", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bookings") },
+                { label:"Pending Bids",  value: pendingBids,  Ic: Inbox,       color:"#b45309", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bids") },
+                { label:"Countered",     value: counteredBids, Ic: MessageSquareReply, color:"#c2410c", bg:"#fff7ed", border:"#fed7aa", action: () => setTab("bids") },
+                { label:"Confirmed",     value: acceptedBids, Ic: CircleCheck, color:"#047857", bg:"#ecfdf5", border:"#a7f3d0", action: () => setTab("bookings") },
+                { label:"Est. Revenue",  value: fmtCur(revenue), Ic: Wallet,   color:"#a16207", bg:"#fafbfc", border:"#dfe5eb", action: () => setTab("bookings") },
               ].map(s => (
                 <button key={s.label} onClick={s.action}
-                  className="card-p card-tight text-left hover:-translate-y-0.5 transition-transform cursor-pointer"
+                  className="card-p card-tight pdash-kpi text-left hover:-translate-y-0.5 transition-transform cursor-pointer"
                   style={{ background:s.bg, borderColor:s.border }}>
                   <div className="flex items-center justify-between">
-                    <span className="text-base">{s.icon}</span>
+                    <s.Ic size={16} strokeWidth={2.2} aria-hidden style={{ color: s.color }} />
                     <span className="text-luxury-300 text-sm">›</span>
                   </div>
                   <p className="text-xl font-bold mt-1.5" style={{ color:s.color }}>{s.value}</p>
@@ -1524,9 +1556,9 @@ export default function PartnerDashboard() {
                   <button key={h.id}
                     onClick={() => locked ? setLockModal(h.id) : (h.href ? router.push(h.href) : setTab(h.id as any))}
                     className="hub-tile" style={locked ? { opacity: 0.62 } : undefined}>
-                    <div className="hub-ico" style={{ background:h.bg }}>{h.icon}</div>
+                    <div className="hub-ico" style={{ background:h.bg }}>{pIcon(h.id, h.icon, 18, h.c)}</div>
                     <p className="text-[0.78rem] font-bold text-luxury-900 leading-tight">
-                      {h.label}{locked && <span className="ml-1">🔒</span>}
+                      {h.label}{locked && <Lock size={11} strokeWidth={2.4} aria-hidden className="ml-1 inline align-[-1px]" />}
                     </p>
                     <p className="text-[0.62rem] font-semibold leading-tight" style={{ color: locked ? "#768fa7" : h.c }}>
                       {locked ? "Tap to unlock" : h.hint}
@@ -1540,7 +1572,7 @@ export default function PartnerDashboard() {
             {/* Active flash deals strip */}
             {activeDeals.length > 0 && (
               <div className="card-p bg-linear-to-r from-amber-50 to-gold-50 border border-gold-200">
-                <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3">⚡ Active Flash Deals</p>
+                <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3"><DIc I={Zap} size={11} /> Active Flash Deals</p>
                 <div className="space-y-2">
                   {activeDeals.slice(0,3).map(d => (
                     <div key={d.id} className="flex items-center justify-between text-sm">

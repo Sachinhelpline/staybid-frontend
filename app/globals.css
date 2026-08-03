@@ -838,6 +838,76 @@
 [data-theme="dark"] .onb-root .text-gold-800 { color: var(--cozy-champagne-light) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v649 — Partner panel (`.pdash-root`) DARK-MODE FOUNDATION. The whole
+   partner dashboard + its ~20 tab components share a self-contained
+   design system defined in the page's in-component <style> block
+   (`.card-p` / `.hub-tile` / `.btn-ghost` / `.inp-p` / `.sec-title`) with
+   HARDCODED light hex — the panel never had a dark mode at all. Unlike the
+   customer bridges it carries no `.lux-bg`, so nothing here is auto-handled.
+   This block is DARK-ONLY (`[data-theme="dark"] .pdash-root …`), so LIGHT
+   mode stays byte-identical — it only supplies the missing dark surfaces.
+   The panel keeps its OWN refined, data-dense card identity (a subtle
+   border + soft shadow, NOT the consumer borderless-4-layer grammar, which
+   reads heavy at this data density); the bridge just makes it dark-aware.
+   Colored per-tab status tints (bg-emerald-50 / amber / sky …) are the
+   later per-tab sweep, not this foundation. */
+[data-theme="dark"] .pdash-root { background: var(--bg-page) !important; color: var(--text-base); }
+[data-theme="dark"] .pdash-root.bg-luxury-50 { background: var(--bg-page) !important; }
+/* Shared design-system surfaces */
+[data-theme="dark"] .pdash-root .card-p {
+  background: var(--bg-card) !important;
+  border-color: var(--border-soft) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.30) !important;
+}
+[data-theme="dark"] .pdash-root .hub-tile {
+  background: var(--bg-card) !important;
+  border-color: var(--border-soft) !important;
+}
+[data-theme="dark"] .pdash-root .hub-tile:hover {
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 9px 24px rgba(0,0,0,0.44) !important;
+}
+[data-theme="dark"] .pdash-root .sec-title { color: var(--text-base) !important; }
+[data-theme="dark"] .pdash-root .btn-ghost {
+  background: var(--bg-pill) !important;
+  color: var(--text-soft) !important;
+  border-color: var(--border-soft) !important;
+}
+[data-theme="dark"] .pdash-root .btn-ghost:hover:not(:disabled) {
+  border-color: var(--border-strong) !important;
+  color: var(--text-base) !important;
+  background: var(--bg-input) !important;
+}
+[data-theme="dark"] .pdash-root .inp-p {
+  background: var(--bg-input) !important;
+  color: var(--text-base) !important;
+  border-color: var(--border-soft) !important;
+}
+[data-theme="dark"] .pdash-root .inp-p::placeholder { color: var(--text-muted) !important; }
+[data-theme="dark"] .pdash-root .inp-p:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft) !important;
+}
+/* Neutral Tailwind luxury/white utilities used across shell + tabs */
+[data-theme="dark"] .pdash-root .bg-white { background: var(--bg-card) !important; }
+[data-theme="dark"] .pdash-root .bg-white\/95 { background: color-mix(in srgb, var(--bg-card) 95%, transparent) !important; }
+/* The 4 overview KPI cards carry an inline light tint (byte-identical light);
+   this class-scoped !important flips only their dark surface. */
+[data-theme="dark"] .pdash-root .pdash-kpi { background: var(--bg-card) !important; border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .bg-luxury-50,
+[data-theme="dark"] .pdash-root .bg-luxury-100 { background: var(--bg-pill) !important; }
+[data-theme="dark"] .pdash-root .text-luxury-900,
+[data-theme="dark"] .pdash-root .text-luxury-800 { color: var(--text-base) !important; }
+[data-theme="dark"] .pdash-root .text-luxury-700,
+[data-theme="dark"] .pdash-root .text-luxury-600 { color: var(--text-soft) !important; }
+[data-theme="dark"] .pdash-root .text-luxury-500,
+[data-theme="dark"] .pdash-root .text-luxury-400 { color: var(--text-muted) !important; }
+[data-theme="dark"] .pdash-root .border-luxury-100,
+[data-theme="dark"] .pdash-root .border-luxury-200,
+[data-theme="dark"] .pdash-root .border-luxury-300 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .divide-luxury-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border-soft) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
    v458 — Auth (sign-in) uplift. The single highest-traffic customer
    screen was 100% legacy palette: pure-white cards on a hardcoded light
    gradient (#f8f9fa→#f0f2f5), no dark-mode response. Its outer div now

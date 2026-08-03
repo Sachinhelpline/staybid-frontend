@@ -884,6 +884,61 @@
   trade → host → onboard → worker) + the Hinglish sweep. Deferred (owner
   approval): lux-cal/picker dark-mode deep pass; global-chrome phase (Navbar ✨).
 
+### 2026-08-03 — Session 6 cont. (v649 — Phase 2 START: partner panel DARK FOUNDATION + shell/overview lucide)
+- **PHASE 2 BEGINS (panels).** Owner "go ahead" → partner is first. Study
+  found the partner surface is a DIFFERENT beast from the customer pages:
+  ~15k lines across 24 files (dashboard shell 3,719 + ~20 tab components), a
+  SELF-CONTAINED `.pdash-*`/`.card-p`/`.hub-tile`/`.btn`/`.inp-p` design system
+  in an in-component <style> block, and ZERO dark mode (all hardcoded light
+  hex) — no `.lux-bg`/token bridge to build on. Owner picked **"Foundation
+  first, then tabs"** (AskUserQuestion): tokenize the shared system + add a
+  `.pdash-root` dark bridge + shell/overview chrome, then sweep tabs later.
+- **DARK FOUNDATION (globals.css, new `.pdash-root` block, modeled on the
+  `.fd-root` v486 pattern):** DARK-ONLY overrides
+  (`[data-theme="dark"] .pdash-root …`) so LIGHT stays byte-identical — the
+  panel never had dark, so nothing light is touched, only the missing dark
+  surfaces are supplied. Covers the design-system classes (`.card-p`,
+  `.hub-tile`+hover, `.btn-ghost`+hover, `.inp-p`+focus+placeholder,
+  `.sec-title`) + the neutral Tailwind utilities used across shell+tabs
+  (`.bg-white`/`.bg-white/95`, `.bg-luxury-50/100`, `.text-luxury-900…400`,
+  `.border-luxury-*`, `.divide-luxury-100`) + a `.pdash-kpi` class fix for the
+  4 overview KPI cards (they carry an inline light tint that CSS must beat with
+  `!important` only in dark). **DESIGN CALL:** the panel KEEPS its own refined,
+  data-dense card identity (subtle border + soft shadow) — NOT the consumer
+  borderless-4-layer grammar, which reads heavy at this density; the bridge
+  just makes it dark-aware. Colored per-tab status tints (bg-emerald-50 / amber
+  / sky …) are the later per-tab sweep, not this foundation.
+- **SHELL + OVERVIEW LUCIDE (app/partner/dashboard/page.tsx):** added a
+  lucide import + a `PICON` id→icon map (shared by the TABS row + the
+  quick-launch hub, same ids) + a `pIcon(id,fallback,size,color)` renderer
+  (emoji fallback for any unmapped id) + a `DIc` inline helper. Swapped: the
+  top nav (🏨 property / ▾ switcher / ✓ active / 🏨 Operated ×2 / ❓ App Tour /
+  🎧 Help / ⇄ Switch / ↶ Sign out), the full TAB BAR (~24 tab icons via PICON)
+  + its 🔒 locks, the 4 overview KPI cards (📩💬✅💰 → Inbox/MessageSquareReply/
+  CircleCheck/Wallet), the ~18 quick-launch hub tiles (via PICON, colored by
+  each tile's accent) + 🔒, and the overview "Today" panel (🏨 Front Desk, ➕
+  New Walk-in, 🗓️ Availability, 🌅 Today, 🛬🛫🏨 count pills + the 3 column
+  headers Arriving/Departing/Staying, ⚡ Active Flash Deals). KEEP: 👋 greeting.
+- **SCOPE HONESTY:** this is the FOUNDATION — the design-system dark bridge +
+  the persistent nav/tab-bar + the overview. Every tab now inherits the dark
+  surfaces + neutral-utility flips, so tabs are already substantially
+  dark-correct. The deeper per-tab inline chrome (Bids/Rooms/Flash/Bookings/
+  Availability/walk-in & bid-detail modals/Redeem scanner still IN this file,
+  L1660+, plus the ~20 separate tab components) + their colored status tints are
+  the NEXT sweeps, tab-group by tab-group.
+- Badge v648→**v649** (`SB_BUILD v649-partner-dark-foundation`), sw `HTML_CACHE`
+  v445→**v446**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **10/10**
+  (partner fixture = fake `sb_partner_token` + mocked `/api/partner/*`): LIGHT
+  `.card-p` byte-identical white (rgb 250,251,252 = the unchanged KPI tint) +
+  81 lucide in the shell + shell chrome emoji GONE + 0 overflow; DARK `.card-p`
+  → `--bg-card` rgb(27,33,42), page bg → #13171c, 81 lucide, 0 overflow.
+- NEXT (partner tab sweeps): Bids inbox + bid-detail/counter arena → Rooms &
+  Pricing → Flash → Bookings/Reservations/Availability → the standalone tab
+  components (Channel/Billing/Guests/Staff/Circle/AgentAuction/etc.) → their
+  colored status tints. Then the rest of Phase 2 (admin → circle → trade → host
+  → onboard → worker) + Hinglish sweep.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
