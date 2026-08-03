@@ -851,7 +851,12 @@
    reads heavy at this data density); the bridge just makes it dark-aware.
    Colored per-tab status tints (bg-emerald-50 / amber / sky …) are the
    later per-tab sweep, not this foundation. */
-[data-theme="dark"] .pdash-root { background: var(--bg-page) !important; color: var(--text-base); }
+/* The PAGE background is keyed to the dashboard root's own `bg-luxury-50` (NOT
+   a bare `.pdash-root`), so the same class can wrap a body-portaled modal
+   (v654 — see lib/partner/modal-portal.ts) to inherit the design-system dark
+   rules below WITHOUT forcing an opaque background onto the modal's own
+   translucent backdrop. */
+[data-theme="dark"] .pdash-root { color: var(--text-base); }
 [data-theme="dark"] .pdash-root.bg-luxury-50 { background: var(--bg-page) !important; }
 /* Shared design-system surfaces */
 [data-theme="dark"] .pdash-root .card-p {

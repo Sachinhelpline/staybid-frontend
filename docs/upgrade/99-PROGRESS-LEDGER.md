@@ -1070,6 +1070,45 @@
   hardcoded hex + English-ize Hinglish where present + responsive gate). Then
   admin → circle → trade → host → onboard → worker.
 
+### 2026-08-03 — Session 6 cont. (v654 — partner standalone components START: modalPortal dark-scope fix + ReservationsTab)
+- **SYSTEMIC FIX — every partner modal now gets dark mode.** `modalPortal`
+  (`lib/partner/modal-portal.ts`) renders overlays into `document.body` (to
+  escape the `.fade-up` transform trap), which put them OUTSIDE `.pdash-root`,
+  so all 12 portaled partner modals escaped the dark bridge (white modal +
+  light inputs in dark). Fixed by wrapping the portaled tree in a
+  `<div className="pdash-root">` scope, so the design-system dark rules reach
+  them. To keep the scope from forcing an opaque bg over a modal's own
+  translucent backdrop, the page-bg rule was re-keyed to the dashboard root's
+  `bg-luxury-50` (the generic `.pdash-root` dark rule now sets only `color`).
+  Verified: the ReservationForm modal is byte-identical white in light and
+  flips to `rgb(27,33,42)` (`--bg-card`) in dark. This one change dark-enables
+  RoomEditorModal, ServiceLockModal, SubscriptionBillingModal, and every other
+  portaled partner modal for free.
+- **ReservationsTab — all 4 dimensions:** ① emoji → lucide (➕→Plus, 🔍
+  placeholder → an absolute Search icon in the input, 🛎️→ConciergeBell,
+  ✏️→Pencil, 🗑→Trash2, modal ×→X; icon-only buttons got aria-labels). ②
+  hardcoded status hex → Tailwind class pairs (`ST` map upcoming/inhouse/
+  departed → bg-blue-100/emerald-100/luxury-100 + text) so the v650 tint layer
+  flips them in dark instead of the old inline `style={{background:#dbeafe…}}`.
+  ③ Hinglish → English (the cancel-confirm, the "banao/edit karo/manage karo"
+  subhead, both empty states, all 4 form validation messages, the "Guest ka
+  naam" placeholders). ④ responsive verified. KEEP: the `alert("❌ …")` browser-
+  alert string (can't host an icon).
+- Badge v653→**v654** (`SB_BUILD v654-partner-reservations-modalscope`), sw
+  `HTML_CACHE` v450→**v451**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **21/21** —
+  Reservations tab + the OPENED ReservationForm modal responsive @ 320/360/390/
+  768/1280 × LIGHT/DARK all zero h-overflow; portaled modal light byte-identical
+  white → dark `rgb(27,33,42)` (modalPortal fix proven); chrome emoji gone;
+  Hinglish gone; lucide (29).
+- NEXT (standalone components, each = emoji+dark-hex+Hinglish+responsive, all
+  their modals now auto-dark): HousekeepingTab → GuestsTab → StaffTab →
+  ChannelManagerTab/OtaFeedManager → BillingTab → MenuBuilderTab/FnbOrdersTab →
+  ReportsTab → AgentAuctionTab → the Circle tabs → Content/Passport → the
+  shared modals (ServiceLockModal/RoomEditorModal/SubscriptionBillingModal/
+  ServiceRenewBanner/CodeScanner). Then admin → circle → trade → host → onboard
+  → worker.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
