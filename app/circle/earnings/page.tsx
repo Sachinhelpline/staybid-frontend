@@ -14,6 +14,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { fmtINR } from "@/lib/circle/engine";
+import { TrendingUp, Landmark, Lock, Wallet, Clock } from "lucide-react";
 
 type Payout = {
   id: string;
@@ -137,7 +138,7 @@ export default function CircleEarningsPage() {
 
           {pendingTotal > 0 && (
             <div className="sbc-earn-note">
-              <span style={{ fontSize: "1rem" }}>⏳</span>
+              <Clock size={15} aria-hidden style={{ flexShrink: 0 }} />
               <span><b>{fmtINR(pendingTotal)}</b> pending — will be credited on the next payout cycle.</span>
             </div>
           )}
@@ -146,7 +147,7 @@ export default function CircleEarningsPage() {
           {projected && Number(projected.bookingCount) > 0 && (
             <section style={{ marginTop: 14, border: "1px solid rgba(139,105,20,.22)", borderRadius: 16, overflow: "hidden", background: "linear-gradient(160deg,#fdfdfd,#f3f5f7)" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "13px 15px 0" }}>
-                <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}>📈 Projected from your live bookings</div>
+                <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}><TrendingUp size={15} style={{display:"inline",verticalAlign:"-2px",marginRight:5}} aria-hidden />Projected from your live bookings</div>
                 <span style={{ fontSize: ".63rem", fontWeight: 800, color: "#65819c", background: "rgba(106,133,160,.16)", padding: "3px 9px", borderRadius: 999 }}>PREVIEW</span>
               </div>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "8px 15px 4px" }}>
@@ -171,7 +172,7 @@ export default function CircleEarningsPage() {
           {/* v390 — Payout account (where the owner gets paid). Foundation for money-out. */}
           <section style={{ marginTop: 14, border: "1px solid rgba(139,105,20,.22)", borderRadius: 16, background: "#fff", padding: "14px 15px" }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}>🏦 Payout account <span style={{ fontSize: ".7rem", fontWeight: 500, color: "rgba(74,56,32,.55)" }}>· where you get paid</span></div>
+              <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}><Landmark size={15} style={{display:"inline",verticalAlign:"-2px",marginRight:5}} aria-hidden />Payout account <span style={{ fontSize: ".7rem", fontWeight: 500, color: "rgba(74,56,32,.55)" }}>· where you get paid</span></div>
               {acct && !acctEditing && (
                 <span style={{ fontSize: ".62rem", fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: acct.status === "verified" ? "#ecfdf5" : "rgba(106,133,160,.16)", color: acct.status === "verified" ? "#047857" : "#65819c" }}>{String(acct.status || "pending").toUpperCase()}</span>
               )}
@@ -217,7 +218,7 @@ export default function CircleEarningsPage() {
           </section>
 
           <p className="sbc-earn-note" style={{ marginTop: 12 }}>
-            <span style={{ fontSize: "1rem" }}>🔒</span>
+            <Lock size={15} aria-hidden style={{display:"inline",verticalAlign:"-2px"}} />
             <span>This is your <b>StayCircle investment income</b>. It is completely separate from any hotel-partner or creator earnings.</span>
           </p>
 
@@ -238,7 +239,7 @@ export default function CircleEarningsPage() {
                   const isPaid = (p.status || "").toLowerCase() === "paid";
                   return (
                     <div key={p.id} className="sbc-earn-row">
-                      <span className="sbc-earn-row-ic">{isPaid ? "💰" : "⏳"}</span>
+                      <span className="sbc-earn-row-ic">{isPaid ? <Wallet size={15} aria-hidden /> : <Clock size={15} aria-hidden />}</span>
                       <div className="sbc-earn-row-main">
                         <b>{p.month_label || "Payout"}</b>
                         {p.note ? <span>{p.note}</span> : null}
