@@ -907,6 +907,62 @@
 [data-theme="dark"] .pdash-root .border-luxury-300 { border-color: var(--border-soft) !important; }
 [data-theme="dark"] .pdash-root .divide-luxury-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border-soft) !important; }
 
+/* v650 — partner STATUS-TINT dark layer. The panel colour-codes state with
+   Tailwind `bg-<c>-50` chips + `-100/-200` borders + `-600/-700` text across
+   every tab. Those pastel `-50` fills stay bright in dark mode (light boxes on
+   a dark page). This flips them to a translucent tint of the same hue (colour
+   coding preserved, surface dark) and lifts the label text to a `-300` shade
+   for contrast. DARK-ONLY, so light stays byte-identical. Gold routes through
+   the app's champagne token (matches the other bridges). One block → every
+   partner tab's status chips read correctly in dark. */
+[data-theme="dark"] .pdash-root .bg-emerald-50 { background: rgba(16,185,129,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-emerald-100 { background: rgba(16,185,129,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-emerald-100,
+[data-theme="dark"] .pdash-root .border-emerald-200,
+[data-theme="dark"] .pdash-root .border-emerald-300 { border-color: rgba(16,185,129,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-emerald-600,
+[data-theme="dark"] .pdash-root .text-emerald-700 { color: #6ee7b7 !important; }
+[data-theme="dark"] .pdash-root .bg-amber-50 { background: rgba(245,158,11,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-amber-100 { background: rgba(245,158,11,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-amber-100,
+[data-theme="dark"] .pdash-root .border-amber-200,
+[data-theme="dark"] .pdash-root .border-amber-300 { border-color: rgba(245,158,11,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-amber-600,
+[data-theme="dark"] .pdash-root .text-amber-700 { color: #fcd34d !important; }
+[data-theme="dark"] .pdash-root .bg-blue-50 { background: rgba(59,130,246,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-blue-100 { background: rgba(59,130,246,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-blue-100,
+[data-theme="dark"] .pdash-root .border-blue-200 { border-color: rgba(59,130,246,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-blue-600,
+[data-theme="dark"] .pdash-root .text-blue-700 { color: #93c5fd !important; }
+[data-theme="dark"] .pdash-root .bg-orange-50 { background: rgba(249,115,22,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-orange-100 { background: rgba(249,115,22,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-orange-100,
+[data-theme="dark"] .pdash-root .border-orange-200 { border-color: rgba(249,115,22,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-orange-600,
+[data-theme="dark"] .pdash-root .text-orange-700 { color: #fdba74 !important; }
+[data-theme="dark"] .pdash-root .bg-red-50 { background: rgba(239,68,68,0.13) !important; }
+[data-theme="dark"] .pdash-root .bg-red-100 { background: rgba(239,68,68,0.20) !important; }
+[data-theme="dark"] .pdash-root .border-red-100,
+[data-theme="dark"] .pdash-root .border-red-200,
+[data-theme="dark"] .pdash-root .border-red-300 { border-color: rgba(239,68,68,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-red-500,
+[data-theme="dark"] .pdash-root .text-red-600,
+[data-theme="dark"] .pdash-root .text-red-700 { color: #fca5a5 !important; }
+[data-theme="dark"] .pdash-root .bg-sky-50 { background: rgba(14,165,233,0.13) !important; }
+[data-theme="dark"] .pdash-root .text-sky-600,
+[data-theme="dark"] .pdash-root .text-sky-700 { color: #7dd3fc !important; }
+[data-theme="dark"] .pdash-root .bg-purple-50 { background: rgba(168,85,247,0.13) !important; }
+[data-theme="dark"] .pdash-root .border-purple-200 { border-color: rgba(168,85,247,0.34) !important; }
+[data-theme="dark"] .pdash-root .text-purple-600,
+[data-theme="dark"] .pdash-root .text-purple-700 { color: #d8b4fe !important; }
+[data-theme="dark"] .pdash-root .bg-gold-50,
+[data-theme="dark"] .pdash-root .bg-gold-100 { background: var(--bg-pill) !important; }
+[data-theme="dark"] .pdash-root .border-gold-200,
+[data-theme="dark"] .pdash-root .border-gold-300 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .pdash-root .text-gold-600,
+[data-theme="dark"] .pdash-root .text-gold-700 { color: var(--cozy-champagne-light) !important; }
+
 /* ═══════════════════════════════════════════════════════════════════
    v458 — Auth (sign-in) uplift. The single highest-traffic customer
    screen was 100% legacy palette: pure-white cards on a hardcoded light

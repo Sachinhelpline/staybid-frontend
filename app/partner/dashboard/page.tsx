@@ -74,6 +74,8 @@ import {
   Share2, UserCog, Settings, Hotel, ChevronDown, Check, Lock,
   MessageSquareReply, CircleCheck, Wallet, CircleHelp, Headphones,
   ArrowLeftRight, LogOut, Plus, Sunrise, PlaneLanding, PlaneTakeoff,
+  TriangleAlert, Copy, MessageCircle, Phone, Mail, Moon, UserRound,
+  FileText, Heart, Star, X, Ban, Sparkles, Link2, RefreshCw, Bot, PartyPopper,
 } from "lucide-react";
 
 // Inline shell-chrome icon helper (partner dashboard) — matches BIc/InIc pattern.
@@ -163,19 +165,19 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; l
 
 // v94 — Source badge (Direct / Creator / Hotel-feed / Flash). Maps the
 // bid.source field surfaced by the new /api/partner/bids attribution join.
-const SOURCE_STYLE: Record<string, { icon: string; label: string; bg: string; text: string }> = {
-  "direct":      { icon: "🔗", label: "Direct",      bg: "bg-sky-50",     text: "text-sky-700"     },
-  "creator":     { icon: "✨", label: "Creator",     bg: "bg-purple-50",  text: "text-purple-700"  },
-  "hotel-feed":  { icon: "🏨", label: "Your reel",   bg: "bg-amber-50",   text: "text-amber-700"   },
-  "flash":       { icon: "⚡", label: "Flash deal",  bg: "bg-red-50",     text: "text-red-700"     },
-  "unknown":     { icon: "•",  label: "Unknown",     bg: "bg-luxury-50",  text: "text-luxury-600"  },
+const SOURCE_STYLE: Record<string, { Ic: any; label: string; bg: string; text: string }> = {
+  "direct":      { Ic: Link2,     label: "Direct",      bg: "bg-sky-50",     text: "text-sky-700"     },
+  "creator":     { Ic: Sparkles,  label: "Creator",     bg: "bg-purple-50",  text: "text-purple-700"  },
+  "hotel-feed":  { Ic: Hotel,     label: "Your reel",   bg: "bg-amber-50",   text: "text-amber-700"   },
+  "flash":       { Ic: Zap,       label: "Flash deal",  bg: "bg-red-50",     text: "text-red-700"     },
+  "unknown":     { Ic: CircleDot, label: "Unknown",     bg: "bg-luxury-50",  text: "text-luxury-600"  },
 };
 function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle?: string | null }) {
   const s = SOURCE_STYLE[source || "direct"] || SOURCE_STYLE.direct;
   const label = source === "creator" && creatorHandle ? `via @${creatorHandle}` : s.label;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.62rem] font-bold ${s.bg} ${s.text}`} title={`Booking source: ${s.label}`}>
-      <span>{s.icon}</span>
+      <s.Ic size={11} strokeWidth={2.2} aria-hidden />
       <span className="truncate max-w-[100px]">{label}</span>
     </span>
   );
@@ -1692,7 +1694,7 @@ export default function PartnerDashboard() {
                                   color: "#3f5369",
                                   fontSize: "0.62rem", fontWeight: 700,
                                 }}>
-                                  🛏️ {b.numRooms} rooms
+                                  <DIc I={BedDouble} size={10} /> {b.numRooms} rooms
                                 </span>
                               )}
                             </p>
@@ -1703,7 +1705,7 @@ export default function PartnerDashboard() {
                                 accommodate via rollaway). */}
                             {b.capacityMismatch && (
                               <p className="text-[0.65rem] text-amber-700 bg-amber-50 border border-amber-200 inline-block px-2 py-0.5 rounded-sm mt-1" style={{ fontWeight: 600 }}>
-                                ⚠️ {b.guests || 2} guests in {b.numRooms || 1} room{(b.numRooms || 1) > 1 ? "s" : ""} — extra-bed setup may be needed
+                                <DIc I={TriangleAlert} size={11} /> {b.guests || 2} guests in {b.numRooms || 1} room{(b.numRooms || 1) > 1 ? "s" : ""} — extra-bed setup may be needed
                               </p>
                             )}
                             {/* v239 — Bid ID chip + copy-to-clipboard so the
@@ -1730,7 +1732,7 @@ export default function PartnerDashboard() {
                               title={`Bid ID: ${b.id} (tap to copy)`}
                               className="mt-1 text-[0.6rem] font-mono px-1.5 py-0.5 rounded-sm bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
                             >
-                              <span aria-hidden="true">📋</span>
+                              <Copy size={11} strokeWidth={2.2} aria-hidden />
                               <span>BID-…{String(b.id || "").slice(-6)}</span>
                             </button>
                             <div className="mt-1">
@@ -1780,7 +1782,7 @@ export default function PartnerDashboard() {
 
                       {b.message && (
                         <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 italic">
-                          💬 "{b.message}"
+                          <DIc I={MessageCircle} size={12} /> "{b.message}"
                         </div>
                       )}
 
@@ -1792,7 +1794,7 @@ export default function PartnerDashboard() {
                       )}
                       {b.status === "ACCEPTED" && (
                         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-semibold">
-                          ✓ Booking confirmed at {fmtCur(b.counterAmount || b.amount)}/night
+                          <DIc I={Check} size={13} /> Booking confirmed at {fmtCur(b.counterAmount || b.amount)}/night
                         </div>
                       )}
 
@@ -3012,15 +3014,15 @@ export default function PartnerDashboard() {
               {/* Action choice */}
               <div className="grid grid-cols-3 gap-2">
                 {([
-                  { v:"accept",  icon:"✅", label:"Accept",  bg:"bg-emerald-50", border:"border-emerald-300", text:"text-emerald-700" },
-                  { v:"counter", icon:"💬", label:"Counter", bg:"bg-amber-50",   border:"border-amber-300",   text:"text-amber-700"   },
-                  { v:"reject",  icon:"❌", label:"Decline", bg:"bg-red-50",     border:"border-red-300",     text:"text-red-700"     },
+                  { v:"accept",  Ic: CircleCheck,   label:"Accept",  bg:"bg-emerald-50", border:"border-emerald-300", text:"text-emerald-700", c:"#047857" },
+                  { v:"counter", Ic: MessageCircle,  label:"Counter", bg:"bg-amber-50",   border:"border-amber-300",   text:"text-amber-700",   c:"#b45309" },
+                  { v:"reject",  Ic: Ban,            label:"Decline", bg:"bg-red-50",     border:"border-red-300",     text:"text-red-700",     c:"#dc2626" },
                 ] as const).map(a => (
                   <button key={a.v} onClick={() => setBidAction(a.v)}
                     className={`p-3 rounded-2xl border-2 text-center transition-all ${
                       bidAction === a.v ? `${a.bg} ${a.border} shadow-md scale-[1.03]` : "border-luxury-200 hover:border-luxury-300"
                     }`}>
-                    <p className="text-2xl mb-1">{a.icon}</p>
+                    <a.Ic size={24} strokeWidth={2} aria-hidden className="mx-auto mb-1" style={{ color: a.c }} />
                     <p className={`text-xs font-bold ${bidAction === a.v ? a.text : "text-luxury-500"}`}>{a.label}</p>
                   </button>
                 ))}
@@ -3075,10 +3077,10 @@ export default function PartnerDashboard() {
                   matchProb >= 45 ? { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   dot: "bg-amber-500"   } :
                                     { bg: "bg-rose-50",    text: "text-rose-700",    border: "border-rose-200",    dot: "bg-rose-500"    };
 
-                const chips: { label: string; amt: number; sub: string }[] = [
-                  { label: "❤️ Match guest", amt: guestBid,  sub: "Sweetheart" },
-                  { label: "⭐ AI smart",    amt: aiSuggest, sub: "Recommended" },
-                  { label: "⚡ Premium",     amt: premium,   sub: "Top margin" },
+                const chips: { label: string; Ic: any; amt: number; sub: string }[] = [
+                  { label: "Match guest", Ic: Heart, amt: guestBid,  sub: "Sweetheart" },
+                  { label: "AI smart",    Ic: Star,  amt: aiSuggest, sub: "Recommended" },
+                  { label: "Premium",     Ic: Zap,   amt: premium,   sub: "Top margin" },
                 ];
 
                 return (
@@ -3086,7 +3088,7 @@ export default function PartnerDashboard() {
                     {/* Premium header: arena vibe + live probability chip. */}
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">⚡ Counter Pricing Arena</p>
+                        <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={Zap} size={11} /> Counter Pricing Arena</p>
                         <p className="text-[0.6rem] text-luxury-500 mt-0.5">Drag the gold dot · steps of ₹{PRICE_STEP}</p>
                       </div>
                       <div className={`flex items-center gap-1.5 text-[0.65rem] font-bold px-2.5 py-1 rounded-full border ${probColor.bg} ${probColor.text} ${probColor.border}`}>
@@ -3195,7 +3197,7 @@ export default function PartnerDashboard() {
                                 : "bg-white border-luxury-200 hover:border-amber-300 hover:scale-[1.01]"
                             }`}
                           >
-                            <p className={`text-[0.62rem] font-bold ${active ? "text-amber-700" : "text-luxury-600"}`}>{c.label}</p>
+                            <p className={`text-[0.62rem] font-bold inline-flex items-center gap-1 ${active ? "text-amber-700" : "text-luxury-600"}`}><c.Ic size={11} strokeWidth={2.3} aria-hidden /> {c.label}</p>
                             <p className={`text-sm font-extrabold mt-0.5 ${active ? "text-amber-900" : "text-luxury-800"}`}>{fmtCur(amt)}</p>
                             <p className={`text-[0.5rem] mt-0.5 ${active ? "text-amber-600" : "text-luxury-400"}`}>{c.sub}</p>
                           </button>
@@ -3298,9 +3300,9 @@ export default function PartnerDashboard() {
               <button onClick={submitBidAction} disabled={bidActLoading || (bidAction==="counter" && !counterAmt)}
                 className="btn-gold w-full py-3 text-sm shadow-md">
                 {bidActLoading ? "Sending…" :
-                  bidAction==="accept"  ? `✅ Accept at ${fmtCur(customerBidOf(selectedBid))}/night` :
-                  bidAction==="counter" ? `💬 Send Counter: ${counterAmt ? fmtCur(snap100(counterAmt)) : "—"}/night${counterAddons.length ? ` + ${counterAddons.length} perk${counterAddons.length>1?"s":""}` : ""}` :
-                  "❌ Decline Bid"}
+                  bidAction==="accept"  ? <><DIc I={Check} size={14} /> Accept at {fmtCur(customerBidOf(selectedBid))}/night</> :
+                  bidAction==="counter" ? <><DIc I={MessageCircle} size={14} /> Send Counter: {counterAmt ? fmtCur(snap100(counterAmt)) : "—"}/night{counterAddons.length ? ` + ${counterAddons.length} perk${counterAddons.length>1?"s":""}` : ""}</> :
+                  <><DIc I={Ban} size={14} /> Decline Bid</>}
               </button>
             </div>
           </div>
@@ -3310,8 +3312,8 @@ export default function PartnerDashboard() {
       {bidActDone && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-xs w-full mx-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 text-3xl">
-              {bidAction==="accept" ? "🎉" : bidAction==="counter" ? "💬" : "✓"}
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4" style={{ color: "#047857" }}>
+              {bidAction==="accept" ? <PartyPopper size={30} strokeWidth={2} aria-hidden /> : bidAction==="counter" ? <MessageCircle size={30} strokeWidth={2} aria-hidden /> : <Check size={30} strokeWidth={2.4} aria-hidden />}
             </div>
             <h3 className="font-display text-xl font-light text-luxury-900 mb-1">
               {bidAction==="accept" ? "Booking Confirmed!" : bidAction==="counter" ? "Counter Sent!" : "Bid Declined"}
@@ -3351,7 +3353,7 @@ export default function PartnerDashboard() {
               {/* Header */}
               <div className="relative bg-linear-to-br from-luxury-900 via-luxury-800 to-black px-6 py-5">
                 <button onClick={() => setSelectedBooking(null)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg">✕</button>
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"><X size={16} strokeWidth={2.4} aria-hidden /></button>
                 <p className="text-[0.6rem] font-bold text-gold-400 uppercase tracking-[0.25em]">Booking Details</p>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="w-12 h-12 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold">{guestInitials}</div>
@@ -3370,19 +3372,19 @@ export default function PartnerDashboard() {
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <p className="text-[0.6rem] font-bold text-emerald-600 uppercase tracking-widest">🛬 Check-in</p>
+                    <p className="text-[0.6rem] font-bold text-emerald-600 uppercase tracking-widest"><DIc I={PlaneLanding} size={11} /> Check-in</p>
                     <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkIn)}</p>
                     <p className="text-[0.65rem] text-luxury-500">{b.checkIn && new Date(b.checkIn).toLocaleDateString("en-IN",{weekday:"long"})}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                    <p className="text-[0.6rem] font-bold text-amber-600 uppercase tracking-widest">🛫 Check-out</p>
+                    <p className="text-[0.6rem] font-bold text-amber-600 uppercase tracking-widest"><DIc I={PlaneTakeoff} size={11} /> Check-out</p>
                     <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkOut)}</p>
                     <p className="text-[0.65rem] text-luxury-500">{b.checkOut && new Date(b.checkOut).toLocaleDateString("en-IN",{weekday:"long"})}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xs text-luxury-500 font-semibold">
                   <span className="h-px flex-1 bg-luxury-200" />
-                  <span>🌙 {nights} night{nights>1?"s":""}</span>
+                  <span className="inline-flex items-center gap-1"><Moon size={12} strokeWidth={2.2} aria-hidden /> {nights} night{nights>1?"s":""}</span>
                   <span className="h-px flex-1 bg-luxury-200" />
                 </div>
 
@@ -3394,7 +3396,7 @@ export default function PartnerDashboard() {
                   const freeForAssign = freeUnitsForRoom(b.roomId, b.checkIn || "", b.checkOut || "");
                   return (
                     <div className="p-4 rounded-2xl bg-luxury-50 border border-luxury-200">
-                      <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">🏨 Room</p>
+                      <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2"><DIc I={BedDouble} size={11} /> Room</p>
                       <div className="flex items-baseline justify-between gap-3 flex-wrap">
                         <div>
                           <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "—"}</p>
@@ -3408,7 +3410,7 @@ export default function PartnerDashboard() {
                           </div>
                         ) : (
                           <div className="w-full mt-2">
-                            <p className="text-[0.6rem] font-bold text-amber-600 uppercase mb-1">⚠️ No room # assigned</p>
+                            <p className="text-[0.6rem] font-bold text-amber-600 uppercase mb-1"><DIc I={TriangleAlert} size={11} /> No room # assigned</p>
                             {freeForAssign.length === 0 ? (
                               <p className="text-xs text-luxury-400">No free rooms in this category.</p>
                             ) : (
@@ -3440,16 +3442,16 @@ export default function PartnerDashboard() {
 
                 {/* Guest contact */}
                 <div className="p-4 rounded-2xl bg-white border border-luxury-200 space-y-2">
-                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest">👤 Guest Contact</p>
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={UserRound} size={11} /> Guest Contact</p>
                   {(b.guestPhone || b.user?.phone) && (
                     <a href={`tel:${b.guestPhone || b.user?.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
-                      <span className="text-luxury-600">📱 Phone</span>
+                      <span className="text-luxury-600 inline-flex items-center gap-1.5"><Phone size={12} strokeWidth={2.2} aria-hidden /> Phone</span>
                       <span className="font-bold text-luxury-900">{b.guestPhone || b.user?.phone}</span>
                     </a>
                   )}
                   {(b.guestEmail || b.user?.email) && (
                     <a href={`mailto:${b.guestEmail || b.user?.email}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
-                      <span className="text-luxury-600">✉️ Email</span>
+                      <span className="text-luxury-600 inline-flex items-center gap-1.5"><Mail size={12} strokeWidth={2.2} aria-hidden /> Email</span>
                       <span className="font-semibold text-luxury-900 truncate">{b.guestEmail || b.user?.email}</span>
                     </a>
                   )}
@@ -3460,7 +3462,7 @@ export default function PartnerDashboard() {
 
                 {/* Payment */}
                 <div className="p-4 rounded-2xl bg-linear-to-br from-gold-50 to-amber-50 border border-gold-200">
-                  <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-widest mb-2">💰 Payment</p>
+                  <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-widest mb-2"><DIc I={Wallet} size={11} /> Payment</p>
                   <div className="flex justify-between text-sm py-1">
                     <span className="text-luxury-600">Rate per night</span>
                     <span className="font-semibold text-luxury-900">{fmtCur(pricePerNight)}</span>
@@ -3475,14 +3477,14 @@ export default function PartnerDashboard() {
                     <span className="text-xl font-bold text-gold-700">{fmtCur(total)}</span>
                   </div>
                   {b.message && /razorpay|pay_/i.test(b.message) && (
-                    <p className="text-[0.65rem] text-emerald-700 font-semibold mt-2">✓ Paid online via Razorpay</p>
+                    <p className="text-[0.65rem] text-emerald-700 font-semibold mt-2"><DIc I={Check} size={11} /> Paid online via Razorpay</p>
                   )}
                 </div>
 
                 {/* Notes / source */}
                 {b.message && (
                   <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
-                    <p className="text-[0.6rem] font-bold text-blue-600 uppercase tracking-widest mb-1">📝 Guest Message</p>
+                    <p className="text-[0.6rem] font-bold text-blue-600 uppercase tracking-widest mb-1"><DIc I={FileText} size={11} /> Guest Message</p>
                     <p className="text-xs text-luxury-700">{b.message}</p>
                   </div>
                 )}
@@ -3496,14 +3498,14 @@ export default function PartnerDashboard() {
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   {(b.guestPhone || b.user?.phone) && (
                     <a href={`tel:${b.guestPhone || b.user?.phone}`}
-                      className="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold text-center transition-all">
-                      📞 Call Guest
+                      className="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold text-center transition-all inline-flex items-center justify-center gap-1.5">
+                      <Phone size={14} strokeWidth={2.3} aria-hidden /> Call Guest
                     </a>
                   )}
                   {(b.guestPhone || b.user?.phone) && (
                     <a href={`https://wa.me/${String(b.guestPhone || b.user?.phone).replace(/[^0-9]/g,"")}`} target="_blank" rel="noopener"
-                      className="py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold text-center transition-all">
-                      💬 WhatsApp
+                      className="py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold text-center transition-all inline-flex items-center justify-center gap-1.5">
+                      <MessageCircle size={14} strokeWidth={2.3} aria-hidden /> WhatsApp
                     </a>
                   )}
                 </div>

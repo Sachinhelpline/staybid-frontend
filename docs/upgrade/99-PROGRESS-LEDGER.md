@@ -939,6 +939,50 @@
   colored status tints. Then the rest of Phase 2 (admin → circle → trade → host
   → onboard → worker) + Hinglish sweep.
 
+### 2026-08-03 — Session 6 cont. (v650 — partner Bids sweep + panel-wide status-tint dark layer)
+- **First partner TAB SWEEP (after the v649 foundation).** Scope: the Bids
+  inbox + the bid-action/counter-pricing arena modal + the booking-detail modal
+  (shared, opens from overview + bids) + the `SourceBadge` attribution chips.
+- **STATUS-TINT DARK LAYER (globals.css, panel-wide, one block):** the panel
+  colour-codes state with Tailwind `bg-<c>-50` chips + `-100/-200` borders +
+  `-600/-700` text across EVERY tab, and those pastel `-50` fills stayed bright
+  in dark. Added a DARK-ONLY layer that flips emerald/amber/blue/orange/red/
+  sky/purple `-50` → a translucent tint of the same hue (colour coding kept,
+  surface dark), softens the borders, and lifts the label text to a `-300`
+  shade; gold routes through the champagne token. LIGHT untouched
+  (byte-identical). One block → every partner tab's status chips read correctly
+  in dark (not just Bids) — efficient foundation-adjacent win for the whole
+  panel.
+- **Bids/modal chrome → lucide:** inbox card (🛏️ rooms→BedDouble, ⚠️
+  mismatch→TriangleAlert, 📋 copy→Copy, 💬 message→MessageCircle, ✓
+  confirmed→Check); bid-action modal (✕→X, the 3-way ✅💬❌ selector →
+  CircleCheck/MessageCircle/Ban, submit CTA ✅/💬/❌ → Check/MessageCircle/Ban,
+  done-state 🎉/💬/✓ → PartyPopper/MessageCircle/Check); counter arena (⚡
+  header→Zap, quick-picks ❤️⭐⚡ → Heart/Star/Zap); booking-detail modal (✕→X,
+  🛬🛫→PlaneLanding/PlaneTakeoff, 🌙→Moon, 🏨→BedDouble, ⚠️→TriangleAlert,
+  👤→UserRound, 📱→Phone, ✉️→Mail, 💰→Wallet, 📝→FileText, 📞 Call→Phone, 💬
+  WhatsApp→MessageCircle, ✓ Paid→Check); `SOURCE_STYLE` badges (🔗✨🏨⚡• →
+  Link2/Sparkles/Hotel/Zap/CircleDot).
+- **KEEP:** the COUNTER_ADDONS amenity glyphs (lib catalog — amenity
+  vocabulary), the addon checkbox ✓ + the "✓ Copied"/"✓ Room assigned" JS
+  toast/alert strings (tick/string vocabulary), the "Respond to Bid →" inline
+  text arrow, and the ◆ AI / ▼ Floor slider markers (geometric markers,
+  consistent with the CSS-triangle floor marker — not emoji chrome).
+- **NOTE (for the Hinglish phase):** the Rooms tab carries Hinglish copy
+  ("Abhi koi room category nahi hai" / "Pehla room type add karke…") — left
+  for the dedicated Hinglish sweep, not this presentation pass.
+- Badge v649→**v650** (`SB_BUILD v650-partner-bids-tints`), sw `HTML_CACHE`
+  v446→**v447**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **11/11**
+  (partner fixture with a rendered PENDING bid): LIGHT `bg-emerald-50`/
+  `bg-amber-50` near-white (byte-identical) + 36 bids-tab lucide + bids chrome
+  emoji GONE; DARK the same tints → `rgba(…,0.13)` translucent, `.card-p` →
+  rgb(27,33,42), 36 lucide.
+- NEXT (partner sweeps): Rooms & Pricing tab (room cards, unit editor, AI-price
+  chrome) → Flash → Bookings/Reservations/Availability → the standalone tab
+  components (Channel/Billing/Guests/Staff/Circle/AgentAuction/Content/etc.).
+  Then admin → circle → trade → host → onboard → worker + Hinglish sweep.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
