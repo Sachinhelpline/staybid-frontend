@@ -1782,6 +1782,31 @@
   contrast + 3 real fixes**, lucide, Hinglish→English, content ticks kept. NEXT: admin pages —
   content / creators / host / analytics / rls / reports / settings / login / … onward.
 
+### 2026-08-03 — Session 6 cont. (v677 — admin pages: Analytics + Login)
+- **Admin pages sweep, batch 8** (analytics + auth), dark-only. (Settings audited → already
+  clean — no emoji, no Hinglish — skipped.)
+- **Analytics (`app/admin/analytics`):** the `SOURCE_STYLE_ADMIN` emoji map (🔗✨🏨⚡•) →
+  lucide nodes (Link2/Sparkles/Building2/Zap/HelpCircle); 📊→BarChart3 heading; the 6 KPI
+  emoji (🎯✅⚡🔒💰⏱) → lucide (Target/CircleCheck/Zap/Lock/Wallet/Clock); the ✨ top-creator
+  marker → Sparkles. **Contrast fixes** — the MiniStat/Rejected counts used red `#ef4444`
+  (4.17–4.38:1) → `#FF6B7A`, and the MiniStat purple `#A855F7` (4.17:1) → `#D8B4FE`;
+  min now **4.94:1**.
+- **Login (`app/admin/login`):** ⚡ logo → lucide Zap; the 🔐 Google-button glyph → Lock.
+- **CONTRAST + EMOJI (owner ask — MEASURED):** analytics 5/5 widths clear WCAG AA
+  (gradient-aware + composited-bg + emoji-in-DOM scan) — min **4.94:1**, zero emoji glyphs,
+  zero overflow to 320px. Login verified via **SSR HTML** (lucide svg present, zero emoji
+  glyphs, HTTP 200) — its client render is gated by the page's own session-check/redirect in
+  a mock-less headless env, so it isn't headless-auditable; the card is a fixed 440px centered
+  layout (no overflow by construction).
+- Badge v676→**v677** (`SB_BUILD v677-admin-pages-analytics-login`), sw `HTML_CACHE`
+  v473→**v474**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit (analytics) **5/5** +
+  login SSR-verified.
+- **14 rules honoured:** presentation-only (no analytics-fetch/admin-auth logic touched —
+  security 385/0), dark-only, strict responsive to 320px, measured verify **incl. contrast +
+  2 real fixes**, lucide, content ticks/dots kept. NEXT: admin pages — content / creators /
+  host / rls / reports (the large remaining ones), 1–2 per batch.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

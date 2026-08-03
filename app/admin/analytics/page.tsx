@@ -3,7 +3,11 @@
 // bid lifecycle metrics introduced in phases 1-7: acceptance rates,
 // auto-accept hit rate, hold conversion, revenue by flow, daily trend.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  BarChart3, Target, CircleCheck, Zap, Lock, Wallet, Clock,
+  Link2, Sparkles, Building2, HelpCircle,
+} from "lucide-react";
 import AdminLineChart from "@/components/admin/charts/line-chart";
 import AdminBarChart from "@/components/admin/charts/bar-chart";
 import AdminPieChart from "@/components/admin/charts/pie-chart";
@@ -28,12 +32,12 @@ type Kpis = {
 };
 
 // v94 — source style for the admin breakdown panel
-const SOURCE_STYLE_ADMIN: Record<string, { icon: string; label: string; color: string }> = {
-  direct:        { icon: "🔗", label: "Direct",      color: "#3D9CF5" },
-  creator:       { icon: "✨", label: "Creator",     color: "#A855F7" },
-  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#9fb1c2" },
-  flash:         { icon: "⚡", label: "Flash deal",  color: "#FF4757" },
-  unknown:       { icon: "•",  label: "Unknown",     color: "#8A8FA8" },
+const SOURCE_STYLE_ADMIN: Record<string, { icon: ReactNode; label: string; color: string }> = {
+  direct:        { icon: <Link2 size={13} strokeWidth={2} aria-hidden />,      label: "Direct",      color: "#3D9CF5" },
+  creator:       { icon: <Sparkles size={13} strokeWidth={2} aria-hidden />,   label: "Creator",     color: "#D8B4FE" },
+  "hotel-feed":  { icon: <Building2 size={13} strokeWidth={2} aria-hidden />,  label: "Hotel reel",  color: "#9fb1c2" },
+  flash:         { icon: <Zap size={13} strokeWidth={2} aria-hidden />,        label: "Flash deal",  color: "#FF4757" },
+  unknown:       { icon: <HelpCircle size={13} strokeWidth={2} aria-hidden />, label: "Unknown",     color: "#8A8FA8" },
 };
 
 const TIER_COLORS: Record<string, string> = {
@@ -41,7 +45,7 @@ const TIER_COLORS: Record<string, string> = {
   STRONG: "#22c55e",
   NORMAL: "#a4b5c5",
   CAUTIOUS: "#f59e0b",
-  LOWBALL: "#ef4444",
+  LOWBALL: "#FF6B7A",
   NEW: "#3b82f6",
   UNKNOWN: "#6b7280",
 };
@@ -87,8 +91,8 @@ export default function AdminAnalytics() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, color: "#E8EAF0", margin: 0 }}>
-              📊 Bidding Analytics
+            <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, color: "#E8EAF0", margin: 0, display: "inline-flex", alignItems: "center", gap: 9 }}>
+              <BarChart3 size={20} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Bidding Analytics
             </h1>
             <LivePill lastRefreshAt={lastAt} refreshNow={refresh} />
           </div>
@@ -135,37 +139,37 @@ export default function AdminAnalytics() {
             <KpiCardShared
               title="Bids placed"
               value={k.totalBids || 0}
-              sub={`${days}d`} icon="🎯" color="#9fb1c2" live
+              sub={`${days}d`} icon={<Target size={18} strokeWidth={2} aria-hidden />} color="#9fb1c2" live
               sparkline={dailyTrend.map((d: any) => d.placed)}
             />
             <KpiCardShared
               title="Accept rate"
               value={k.acceptRate || 0}
               format={(n) => `${Math.round(n)}%`}
-              sub={`${k.accepted} accepted`} icon="✅" color="#2ECC71" live
+              sub={`${k.accepted} accepted`} icon={<CircleCheck size={18} strokeWidth={2} aria-hidden />} color="#2ECC71" live
             />
             <KpiCardShared
               title="Auto-accept hit"
               value={k.autoAcceptHit || 0}
               format={(n) => `${Math.round(n)}%`}
-              sub={`${k.autoAccepted} of ${k.scheduledBids} scheduled`} icon="⚡" color="#3D9CF5" live
+              sub={`${k.autoAccepted} of ${k.scheduledBids} scheduled`} icon={<Zap size={18} strokeWidth={2} aria-hidden />} color="#3D9CF5" live
             />
             <KpiCardShared
               title="Hold conversion"
               value={k.holds?.conversion || 0}
               format={(n) => `${Math.round(n)}%`}
-              sub={`${k.holds?.completed || 0}/${k.holds?.total || 0} paid balance`} icon="🔒" color="#A855F7" live
+              sub={`${k.holds?.completed || 0}/${k.holds?.total || 0} paid balance`} icon={<Lock size={18} strokeWidth={2} aria-hidden />} color="#D8B4FE" live
             />
             <KpiCardShared
               title="Revenue"
               value={k.revenueTotal || 0}
               format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
-              sub="paid amounts" icon="💰" color="#c6d0da" live
+              sub="paid amounts" icon={<Wallet size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" live
             />
             <KpiCardShared
               title="Avg time-to-accept"
               value={fmtMs(k.avgTimeToAcceptMs)}
-              sub="placed → auto-accepted" icon="⏱" color="#F59E0B" live
+              sub="placed → auto-accepted" icon={<Clock size={18} strokeWidth={2} aria-hidden />} color="#F59E0B" live
             />
           </div>
 
@@ -183,7 +187,7 @@ export default function AdminAnalytics() {
                 <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 999, background: "#9fb1c2", marginRight: 5 }} />Placed</span>
                 <span>·  Accepted: <strong style={{ color: "#2ECC71" }}>{k.accepted}</strong></span>
                 <span>·  Countered: <strong style={{ color: "#f59e0b" }}>{k.countered}</strong></span>
-                <span>·  Rejected: <strong style={{ color: "#ef4444" }}>{k.rejected}</strong></span>
+                <span>·  Rejected: <strong style={{ color: "#FF6B7A" }}>{k.rejected}</strong></span>
               </div>
             </Panel>
 
@@ -221,8 +225,8 @@ export default function AdminAnalytics() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                 <MiniStat label="Total holds"   value={k.holds.total}     color="#9fb1c2" />
                 <MiniStat label="Active"         value={k.holds.active}    color="#2ECC71" />
-                <MiniStat label="Completed"      value={k.holds.completed} color="#A855F7" />
-                <MiniStat label="Expired"        value={k.holds.expired}   color="#EF4444" />
+                <MiniStat label="Completed"      value={k.holds.completed} color="#D8B4FE" />
+                <MiniStat label="Expired"        value={k.holds.expired}   color="#FF6B7A" />
                 <MiniStat label="Pay-at-hotel"   value={k.holds.payAtHotelCount} color="#3D9CF5" />
                 <MiniStat label="Conversion %"   value={`${k.holds.conversion}%`} color="#c6d0da" />
               </div>
@@ -232,8 +236,8 @@ export default function AdminAnalytics() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                 <MiniStat label="Total windows" value={k.windows.total}    color="#9fb1c2" />
                 <MiniStat label="Active"         value={k.windows.active}  color="#2ECC71" />
-                <MiniStat label="Paid"           value={k.windows.paid}    color="#A855F7" />
-                <MiniStat label="Expired"        value={k.windows.expired} color="#EF4444" />
+                <MiniStat label="Paid"           value={k.windows.paid}    color="#D8B4FE" />
+                <MiniStat label="Expired"        value={k.windows.expired} color="#FF6B7A" />
                 <MiniStat label="Pay rate"       value={`${k.windows.payRate}%`} color="#c6d0da" />
               </div>
             </Panel>
@@ -273,7 +277,7 @@ export default function AdminAnalytics() {
                       return (
                         <div key={src}>
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                            <span style={{ color: "#E8EAF0", fontWeight: 600 }}>{meta.icon} {meta.label}</span>
+                            <span style={{ color: "#E8EAF0", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}>{meta.icon} {meta.label}</span>
                             <span style={{ color: "#8A8FA8" }}>{count}</span>
                           </div>
                           <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
@@ -296,7 +300,7 @@ export default function AdminAnalytics() {
                       const meta = SOURCE_STYLE_ADMIN[src] || SOURCE_STYLE_ADMIN.unknown;
                       return (
                         <div key={src} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${meta.color}33`, borderRadius: 8, padding: "8px 10px", display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ color: "#E8EAF0", fontSize: 12, fontWeight: 600 }}>{meta.icon} {meta.label}</span>
+                          <span style={{ color: "#E8EAF0", fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}>{meta.icon} {meta.label}</span>
                           <span style={{ color: meta.color, fontSize: 13, fontWeight: 700 }}>₹{(amt || 0).toLocaleString("en-IN")}</span>
                         </div>
                       );
@@ -314,11 +318,11 @@ export default function AdminAnalytics() {
                   <div key={c.handle} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 8, fontSize: 12 }}>
                     <span style={{ color: "#8A8FA8", fontWeight: 700, minWidth: 22 }}>#{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ color: "#E8EAF0", margin: 0, fontWeight: 600 }}>✨ @{c.handle}</p>
+                      <p style={{ color: "#E8EAF0", margin: 0, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}><Sparkles size={14} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />@{c.handle}</p>
                       <p style={{ color: "#8A8FA8", margin: 0, fontSize: 11 }}>{c.bookings} booking{c.bookings === 1 ? "" : "s"}</p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ color: "#A855F7", margin: 0, fontWeight: 700 }}>₹{Math.round(c.gmv).toLocaleString("en-IN")}</p>
+                      <p style={{ color: "#D8B4FE", margin: 0, fontWeight: 700 }}>₹{Math.round(c.gmv).toLocaleString("en-IN")}</p>
                       <p style={{ color: "#8A8FA8", margin: 0, fontSize: 11 }}>Comm ₹{Math.round(c.commission).toLocaleString("en-IN")}</p>
                     </div>
                   </div>
