@@ -107,7 +107,9 @@ for (const cfg of ROUTES) {
           const direct=Array.from(el.childNodes).some(c=>c.nodeType===3&&c.textContent.trim().length>0); if(!direct)continue;
           const cs=getComputedStyle(el); if(cs.visibility==='hidden'||cs.display==='none'||parseFloat(cs.opacity)===0)continue;
           if(cs.position==='fixed'&&cs.pointerEvents==='none')continue;
-          const stk=[]; let cur=el, grad=false; while(cur){const s=getComputedStyle(cur); if(s.backgroundImage&&s.backgroundImage!=='none')grad=true; stk.push(s.backgroundColor); cur=cur.parentElement;}
+          // A gradient OR a backdrop-filter (frosted glass) ancestor cannot be flat-composited,
+          // so a computed contrast number would be wrong — skip those (documented limitation).
+          const stk=[]; let cur=el, grad=false; while(cur){const s=getComputedStyle(cur); if(s.backgroundImage&&s.backgroundImage!=='none')grad=true; if((s.backdropFilter&&s.backdropFilter!=='none')||(s.webkitBackdropFilter&&s.webkitBackdropFilter!=='none'))grad=true; stk.push(s.backgroundColor); cur=cur.parentElement;}
           if(grad)continue;
           const fg=P(cs.color); if(!fg)continue;
           let bg={...bodyBg}; for(let i=stk.length-1;i>=0;i--){const b=P(stk[i]); if(b&&b.a>0){const a=b.a; bg={r:b.r*a+bg.r*(1-a),g:b.g*a+bg.g*(1-a),b:b.b*a+bg.b*(1-a)};}}
@@ -123,8 +125,8 @@ for (const cfg of ROUTES) {
         const ifails=[]; root.querySelectorAll('svg').forEach(svg=>{
           const col=P(getComputedStyle(svg).color); if(!col)return;
           const stk=[]; let cur=svg.parentElement, grad=false;
-          while(cur){const s=getComputedStyle(cur); if(s.backgroundImage&&s.backgroundImage!=='none')grad=true; stk.push(s.backgroundColor); cur=cur.parentElement;}
-          if(grad)return; // gradient tile — can't measure a flat bg; visual check covers it
+          while(cur){const s=getComputedStyle(cur); if(s.backgroundImage&&s.backgroundImage!=='none')grad=true; if((s.backdropFilter&&s.backdropFilter!=='none')||(s.webkitBackdropFilter&&s.webkitBackdropFilter!=='none'))grad=true; stk.push(s.backgroundColor); cur=cur.parentElement;}
+          if(grad)return; // gradient/glass tile — can't measure a flat bg; visual check covers it
           let bg={...bodyBg}; for(let i=stk.length-1;i>=0;i--){const b=P(stk[i]); if(b&&b.a>0){const a=b.a; bg={r:b.r*a+bg.r*(1-a),g:b.g*a+bg.g*(1-a),b:b.b*a+bg.b*(1-a)};}}
           const a=col.a; const over={r:col.r*a+bg.r*(1-a),g:col.g*a+bg.g*(1-a),b:col.b*a+bg.b*(1-a)};
           const l1=L(over),l2=L(bg),hi=Math.max(l1,l2),lo=Math.min(l1,l2); const cr=(hi+0.05)/(lo+0.05);

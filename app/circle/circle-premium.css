@@ -1857,7 +1857,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   }
   .sbc-topbar--dark .sbc-brand-name { color: #f1f4f6; }
   .sbc-topbar--dark .sbc-brand-name em { color: var(--sbc-gold-2); }
-  .sbc-topbar--dark .sbc-brand-sub { color: rgba(176, 192, 209, 0.5); }
+  .sbc-topbar--dark .sbc-brand-sub { color: rgba(176, 192, 209, 0.82); }
   .sbc-topbar--dark .sbc-topnav-link { color: rgba(176, 192, 209, 0.82); }
   .sbc-topbar--dark .sbc-topnav-link:hover,
   .sbc-topbar--dark .sbc-topnav-link.on { background: rgba(106, 133, 160, 0.28); color: #f5f7f9; }
@@ -2328,7 +2328,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-dock-end.on { color: var(--sbc-c-sage-deep); }
 .sbc-dock-end .sbc-dock-glyph { font-size: 1.05rem; }
-.sbc-dock-end .sbc-dock-label { font-size: .46rem; }
+.sbc-dock-end .sbc-dock-label { font-size: .63rem; line-height: 1.1; }
 
 /* step rail → sage tint (was gold) */
 .sbc-steps { padding: 6px 6px 0; }
@@ -2350,7 +2350,19 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   border: 1.5px solid color-mix(in srgb, var(--sbc-c-sage) 34%, transparent);
   box-shadow: 0 3px 9px -6px rgba(60, 52, 32, .4);
 }
-.sbc-step-label { font-size: .48rem; }
+.sbc-step-label { font-size: .63rem; line-height: 1.1; }
+/* v689 — dock inactive text was --sbc-c-ink-faint (#9A9082) on the light-pewter
+   dock = 1.77:1 (invisible). Give the dock its own readable inactive per theme. */
+.sbc-dock .sbc-step:not(.on), .sbc-dock .sbc-dock-end:not(.on) { color: #4d4a40; }
+[data-theme="dark"] .sbc .sbc-dock .sbc-step:not(.on),
+[data-theme="dark"] .sbc .sbc-dock .sbc-dock-end:not(.on) { color: rgba(200, 212, 226, 0.82); }
+/* active dock item — sage-deep (#5C6B45) was 3.24:1 on the light dock; deepen it */
+.sbc-dock .sbc-step.on, .sbc-dock .sbc-dock-end.on { color: #3f4d28; }
+[data-theme="dark"] .sbc .sbc-dock .sbc-step.on,
+[data-theme="dark"] .sbc .sbc-dock .sbc-dock-end.on { color: #c0cfa6; }
+/* inactive step NUMBER (--sbc-c-ink-soft #6C6353 = 3.03:1) — darken to match label */
+.sbc-dock .sbc-step:not(.on):not(.done) .sbc-step-num { color: #4d4a40; }
+[data-theme="dark"] .sbc .sbc-dock .sbc-step:not(.on):not(.done) .sbc-step-num { color: rgba(200, 212, 226, 0.85); }
 .sbc-step.on .sbc-step-num {
   border-color: var(--sbc-c-sage);
   background: var(--sbc-c-sage-tint);

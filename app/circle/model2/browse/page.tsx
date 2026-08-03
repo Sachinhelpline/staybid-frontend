@@ -192,7 +192,7 @@ export default function Model2BrowsePage() {
         .sbc2b-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
         .sbc2b-youpay { display: flex; flex-direction: column; line-height: 1.05; }
         .sbc2b-youpay b { color: var(--sbc-coffee); font-size: .92rem; }
-        .sbc2b-youpay span { font-size: .58rem; color: rgba(74,56,32,.5); }
+        .sbc2b-youpay span { font-size: .63rem; color: rgba(74,56,32,.72); }
         .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.94) 70%, rgba(255,255,255,0)); }
         .sbc2b-basket-in { max-width: 720px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #f1f4f6; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
         .sbc2b-basket-lines { font-size: .78rem; opacity: .92; }
