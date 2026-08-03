@@ -6,6 +6,7 @@
 // deterministic, so these are the only two durable levers (a real stamp row,
 // or persisted bonus_xp). Every mutation is audit-logged server-side.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BookUser, X } from "lucide-react";
 import {
   RANKS,
   STAMP_REWARDS,
@@ -214,8 +215,8 @@ export default function AdminPassportPage() {
   return (
     <div style={{ minHeight: "100vh", background: BG, color: TEXT, padding: "24px 20px 80px", fontFamily: "DM Sans, sans-serif" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 26, color: GOLD, margin: "0 0 4px" }}>
-          🛂 Passports
+        <h1 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 26, color: GOLD, margin: "0 0 4px", display: "inline-flex", alignItems: "center", gap: 9 }}>
+          <BookUser size={23} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Passports
         </h1>
         <p style={{ color: MUTE, fontSize: 13, margin: "0 0 18px" }}>
           Issue or remove stamps · adjust bonus XP. The rank &amp; rewards ladder are derived
@@ -249,7 +250,7 @@ export default function AdminPassportPage() {
         )}
 
         {/* List */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,320px),1fr))", gap: 12 }}>
           {list.map((p) => (
             <button
               key={p.user_id}
@@ -303,7 +304,7 @@ export default function AdminPassportPage() {
                   {selected.user?.phone ? ` · ${selected.user.phone}` : ""}
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: MUTE, fontSize: 22, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSelected(null)} aria-label="Close" style={{ background: "none", border: "none", color: MUTE, cursor: "pointer", display: "inline-flex", alignItems: "center" }}><X size={22} strokeWidth={2} aria-hidden /></button>
             </div>
 
             {/* Stat strip */}

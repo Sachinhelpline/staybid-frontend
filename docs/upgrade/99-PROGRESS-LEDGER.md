@@ -1694,6 +1694,37 @@
   verify **incl. contrast + 3 real fixes**, lucide, content ticks kept. NEXT: admin pages —
   content / creators / host / analytics / notifications / rls / services / … onward.
 
+### 2026-08-03 — Session 6 cont. (v674 — admin pages: Messages + Notifications + Passport)
+- **Admin pages sweep, batch 5** (comms/loyalty cluster), dark-only.
+- **Messages (`app/admin/messages`):** 💬→MessageSquare heading; 🚩 Flagged-only button +
+  the flagged badges (list + drawer) → Flag; the 👤/🏨 sender markers (preview + drawer)
+  → User/Building2; ✕ close → X. `↔` guest-hotel connector kept (typographic).
+  **Fixes** — the header search+button row didn't wrap (H-overflow 43px @320); added
+  `flexWrap` + made the search flex-shrink (`1 1 160px`). The dim "N msgs" tertiary text
+  `#666876` (3.22:1) → `#8A8FA8` (5.56:1).
+- **Notifications (`app/admin/notifications`):** the 12-entry `KIND_ICON` emoji map →
+  a `KIND_LUCIDE` component map + `<KindIcon>` (CircleCheck/MessageSquare/XCircle/
+  AlarmClock/Zap/Heart/Reply/UserPlus/CalendarCheck/Flag/Star, Mail fallback) used in the
+  table + drawer; the kind `<option>` list now shows plain kind names (an option can't hold
+  a node). 📨→Bell heading; ↻→RotateCw; KPI ⏳/✅/⚠️/📨 → Hourglass/CircleCheck/
+  TriangleAlert/Mail; ✕→X, ⊘→Ban, ↺→RotateCcw. ✓ Mark-sent tick → CircleCheck; the ●/○
+  channel-status dots kept (geometric).
+- **Passport (`app/admin/passport`):** 🛂→BookUser heading; ✕→X. **Fix** — the explorer
+  grid `minmax(320px,1fr)` forced a column wider than a 320px viewport (H-overflow 36px);
+  → `minmax(min(100%,320px),1fr)`. The data-driven `rankEmoji` rank badge is kept (content).
+- **CONTRAST + EMOJI (owner ask — MEASURED, 3 pages × 5 widths, gradient-aware +
+  emoji-in-DOM scan):** every measurable text clears WCAG AA — min **5.56:1** (messages) /
+  **4.61:1** (notifications) / **5.91:1** (passport); **zero emoji glyphs** in the rendered
+  DOM (the KindIcon map + option-text refactor proven clean).
+- Badge v673→**v674** (`SB_BUILD v674-admin-pages-messages-notifications-passport`), sw
+  `HTML_CACHE` v470→**v471**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **15/15**.
+- **14 rules honoured:** presentation-only (no chat-moderation/notification-dispatch/
+  passport-stamp logic touched — security 385/0), dark-only, strict responsive to 320px
+  **(2 real overflow fixes)**, measured verify **incl. contrast + a real fix**, lucide,
+  content ticks/dots/rank-emoji kept. NEXT: admin pages — content / creators / host /
+  analytics / rls / services / reports / holds / redemption / commission-rules / … onward.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
