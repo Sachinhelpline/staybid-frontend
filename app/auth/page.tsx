@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { peekPendingIntent } from "@/lib/auth-intent";
-import { TriangleAlert, ArrowLeft } from "lucide-react";
+import { TriangleAlert, ArrowLeft, Gavel, BadgePercent, ShieldCheck } from "lucide-react";
 import {
   safeReturnRoute,
   isAdminIntentRoute,
@@ -440,8 +440,25 @@ function AuthPage() {
   );
 
   return (
-    <div className="auth-root lux-bg min-h-[88vh] flex items-center justify-center px-4 py-10">
+    <div className="auth-root lux-bg min-h-[88vh] flex items-stretch">
       <div id="recaptcha-container" />
+      {/* v693 — desktop split-screen: a brand pane fills the empty desktop space
+          beside the form (was a lonely ~480px centred column on a 1440–1920px
+          screen). Hidden below lg; the form pane stays centred on mobile exactly
+          as before. Presentation only — NO auth logic touched. */}
+      <aside className="auth-brandpane" aria-hidden="true">
+        <div className="auth-brandpane-inner">
+          <div className="auth-brandpane-logo">StayBid</div>
+          <h2 className="auth-brandpane-tag">Name your price.<br />Hotels compete.</h2>
+          <p className="auth-brandpane-sub">India&apos;s first reverse-auction hotel platform — bid on premium stays and let hotels compete for your booking.</p>
+          <ul className="auth-brandpane-list">
+            <li><Gavel size={18} aria-hidden /><span>Place a bid — hotels counter in real time</span></li>
+            <li><BadgePercent size={18} aria-hidden /><span>Save up to 40% vs public rates</span></li>
+            <li><ShieldCheck size={18} aria-hidden /><span>Secure payments · instant confirmation</span></li>
+          </ul>
+        </div>
+      </aside>
+      <div className="auth-formpane">
       <div className="w-full max-w-sm">
 
         {/* ── OPTIONS SCREEN ── */}
@@ -624,6 +641,7 @@ function AuthPage() {
           </>
         )}
 
+      </div>
       </div>
     </div>
   );

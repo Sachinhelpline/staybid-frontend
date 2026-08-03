@@ -19,6 +19,36 @@
 
 ## Session log
 
+### 2026-08-03 — Desktop split-screen sign-in for ALL user types (v693, presentation-only)
+**Owner ask:** on desktop every sign-in surface (customer, admin, property-owner/partner, worker)
+punched its form into a lonely centred column with ⅔–¾ empty sides. Confirmed REAL by measurement
+(not assumption) — `/auth` was a ~480px column on 1440–1920px. Owner chose "Sab sign-in" → build a
+split-screen (brand pane fills the empty desktop space beside the form) on ALL four.
+- **Pattern (identical on all four):** wrapper → `flex items-stretch`; a desktop-only `aside` brand
+  pane (`aria-hidden`, lucide icons + a one-line value prop + 3 feature bullets) at `flex 1 1 54%`;
+  the form wrapped in a `1 1 46%` pane that centres it. Below `lg` the brand pane is `display:none`
+  and the form pane fills the width, centred — **byte-identical to the old single column**.
+- **Per-surface brand pane:** `/auth` warm-walnut (Gavel/BadgePercent/ShieldCheck); `/partner` steel
+  (BedDouble/LineChart/Wallet); `/worker` warm-walnut, theme-token card (ClipboardList/Wrench/BadgeCheck);
+  `/admin/login` steel, dark-only per the admin exemption (LayoutDashboard/ShieldCheck/ScrollText).
+- **Root blocker fixed:** `app/desktop.css` `main > div[class*="auth"] { max-width:480px }` (spec 0,1,2,
+  in layer utilities) capped `.auth-root`. Overrode with a two-class selector `.auth-root.lux-bg`
+  (0,2,0) so the split container fills the viewport; the form pane + `max-w-sm` still constrain the
+  actual form. Partner/worker/admin use page-scoped `.pauth-*`/`.wauth-*`/`.aauth-*` classes.
+- **🔒 NO auth logic touched** — login/token/role/gate code byte-identical (owner-confirmed LOCKED
+  v621/v622). Pure presentation. `test:security` stays 385/0.
+- **MEASURED (headless, computed geometry):** all four — desktop 1440/1920 brand pane visible ~54%
+  + form ~46%, no horizontal overflow; mobile 390 brand `display:none`, form full-width centred.
+  `/auth` full harness **CLEAN** (13 widths × 2 themes).
+  ⚠ Sandbox note: `/partner` (`@import` Google Fonts) + `/admin/login` (`<link>` Google Fonts) render
+  EMPTY in a local headless browser because React 19 suspends the subtree on the sandbox-BLOCKED font
+  CDN (`ERR_CONNECTION_RESET`) — SSR HTML is correct, tsc clean, zero JS error. Proven by re-probing
+  with the font request stubbed → both render the split perfectly. A pure measurement limitation
+  (fonts CDN blocked here, like the image/video CDNs), NOT a bug. `/auth` + `/worker` reference no
+  page-level font resource, so they render locally without the stub.
+- Badge v692→**v693** (`SB_BUILD v693-signin-split-screen`), sw `HTML_CACHE` v488→**v489**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+
 ### 2026-08-03 — Circle remaining pages: emoji-hybrid + contrast + harness bug-fixes (v692)
 **Scope:** the remaining circle journey pages — `/circle/{discover,build,me,earnings,kyc,onboard,
 profile,support,demand-cycle,model2/review,model2/selling}` — measured 280→2560 × light+dark.

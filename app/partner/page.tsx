@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BedDouble, LineChart, Wallet } from "lucide-react";
 
 export default function PartnerLogin() {
   const router = useRouter();
@@ -109,7 +110,7 @@ export default function PartnerLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-linear-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-stretch">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
         .font-display { font-family: 'Cormorant Garamond', serif; }
@@ -122,8 +123,43 @@ export default function PartnerLogin() {
         .gold-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         .fade-up { animation: fadeUp 0.4s ease-out both; }
+        /* v693 — desktop split-screen. On <lg the brand pane hides and the form
+           pane fills the width, centred (byte-identical to the old single card).
+           Presentation only — no auth logic changed. */
+        .pauth-form { flex: 1 1 100%; display: flex; align-items: center; justify-content: center; padding: 40px 16px; min-width: 0; }
+        .pauth-brand { display: none; }
+        .pauth-brand-inner { max-width: 440px; }
+        .pauth-brand-tag { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem, 2.8vw, 2.9rem); line-height: 1.08; font-weight: 600; margin: 0 0 16px; color: #f4f7fb; }
+        .pauth-brand-sub { font-size: 0.98rem; line-height: 1.6; color: rgba(226,234,244,0.78); margin: 0 0 28px; max-width: 380px; }
+        .pauth-brand-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+        .pauth-brand-list li { display: flex; align-items: center; gap: 12px; font-size: 0.92rem; color: rgba(226,234,244,0.9); }
+        .pauth-brand-list li svg { color: #a0b2c6; flex-shrink: 0; }
+        @media (min-width: 1024px) {
+          .pauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
+            background: radial-gradient(120% 85% at 12% 8%, rgba(106,133,160,0.22), transparent 58%), linear-gradient(155deg,#1a2431 0%,#111824 55%,#0b1017 100%); }
+          .pauth-form { flex: 1 1 46%; }
+        }
       `}</style>
 
+      {/* v693 — desktop-only brand pane (partner-themed steel). Hidden <lg. */}
+      <aside className="pauth-brand" aria-hidden="true">
+        <div className="pauth-brand-inner">
+          <div className="inline-flex items-center gap-2.5 mb-6">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+              style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", boxShadow: "0 3px 12px rgba(106, 133, 160,0.4)" }}>S</div>
+            <span className="font-display text-xl text-white tracking-wide">StayBid Partner</span>
+          </div>
+          <h2 className="pauth-brand-tag">Fill your rooms.<br />Own your pricing.</h2>
+          <p className="pauth-brand-sub">Manage inventory, accept live bids, and reach travellers across every channel — from one partner dashboard.</p>
+          <ul className="pauth-brand-list">
+            <li><BedDouble size={18} aria-hidden /><span>List rooms &amp; control availability in real time</span></li>
+            <li><LineChart size={18} aria-hidden /><span>Accept, counter, or auto-price incoming bids</span></li>
+            <li><Wallet size={18} aria-hidden /><span>Track bookings &amp; settlements in one place</span></li>
+          </ul>
+        </div>
+      </aside>
+
+      <div className="pauth-form">
       <div className="w-full max-w-sm fade-up">
         {/* Logo */}
         <div className="text-center mb-6">
@@ -243,6 +279,7 @@ export default function PartnerLogin() {
             ← Back to StayBid customer site
           </Link>
         </div>
+      </div>
       </div>
     </div>
   );
