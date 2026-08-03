@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { Users, Gem, Medal, CircleCheck, Wallet } from "lucide-react";
 import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
 
@@ -144,11 +145,11 @@ export default function AdminUsers() {
 
       {/* v103 — premium KPI strip */}
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Users"    value={stats.total}     icon="👤" color="#9fb1c2" live sub={`${stats.newWeek} new in 7d`} onClick={() => { setTier("all"); setStatus("all"); }} />
-        <KpiCard title="Platinum"       value={stats.platinum}  icon="💎" color="#A855F7" live onClick={() => setTier("platinum")} />
-        <KpiCard title="Gold"           value={stats.gold}      icon="🥇" color="#c6d0da" live onClick={() => setTier("gold")} />
-        <KpiCard title="Active"         value={stats.active}    icon="✅" color="#2ECC71" live sub={`${stats.banned} banned`} onClick={() => setStatus("active")} />
-        <KpiCard title="Lifetime Spend" value={stats.totalSpend} format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
+        <KpiCard title="Total Users"    value={stats.total}     icon={<Users size={18} strokeWidth={2} aria-hidden />} color="#9fb1c2" live sub={`${stats.newWeek} new in 7d`} onClick={() => { setTier("all"); setStatus("all"); }} />
+        <KpiCard title="Platinum"       value={stats.platinum}  icon={<Gem size={18} strokeWidth={2} aria-hidden />} color="#A855F7" live onClick={() => setTier("platinum")} />
+        <KpiCard title="Gold"           value={stats.gold}      icon={<Medal size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" live onClick={() => setTier("gold")} />
+        <KpiCard title="Active"         value={stats.active}    icon={<CircleCheck size={18} strokeWidth={2} aria-hidden />} color="#2ECC71" live sub={`${stats.banned} banned`} onClick={() => setStatus("active")} />
+        <KpiCard title="Lifetime Spend" value={stats.totalSpend} format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon={<Wallet size={18} strokeWidth={2} aria-hidden />} color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
       </div>
 
       {/* Filters */}

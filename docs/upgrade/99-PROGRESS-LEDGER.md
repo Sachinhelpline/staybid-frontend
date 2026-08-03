@@ -1570,6 +1570,41 @@
   touched), dark-only, strict responsive, measured verify **incl. contrast**, lucide.
   NEXT: admin pages — users / hotels / bookings / verification / … (43 total).
 
+### 2026-08-03 — Session 6 cont. (v670 — admin pages: Users + Hotels + Bookings)
+- **Admin pages sweep STARTED** (43 total), dark-only. First batch: Users, Hotels,
+  Bookings. Verification audited → already clean (no emoji; uses the tokenized
+  `lib/admin/styles` dark system + `CountUp`/`TrustRing`/`VerifChecklist`), no change.
+- **Users (`app/admin/users`):** the 5 KPI emoji icons → lucide nodes (👤→Users,
+  💎→Gem, 🥇→Medal, ✅→CircleCheck, 💰→Wallet). Tier/status inline-hex pills
+  (platinum/gold/silver · active/suspended/banned) kept — semantic, contrast-checked.
+  Already English + dark; modal tier/status override logic untouched.
+- **Hotels (`app/admin/hotels`):** 6 KPI icons → lucide (🏨→Building2, 🕓→Clock,
+  ✅→CircleCheck, 🛏️→BedDouble, 📅→CalendarDays, 💰→Wallet); Approve/Reject modal
+  buttons ✅/⛔ → CircleCheck/Ban (inline-flex + gap); Approval `<option>` emoji
+  (🕓/✅/⛔) stripped to plain English (can't nest a node in an option); the
+  `hotelTypeInfo` pill labels 🏨 Host Circle / 🏨 Operated → clean text pills. ★ star
+  rating KEPT (content vocabulary).
+- **Bookings (`app/admin/bookings`):** `SOURCE_STYLE` map `icon` widened `string`→
+  `ReactNode` — 🔗→Link2, ✨→Sparkles, 🏨→Building2, ⚡→Zap, •→HelpCircle; the "All"
+  filter 🌐→Globe. 5 KPI icons → lucide (📋→ClipboardList, ✅→CircleCheck, ⏳→Hourglass,
+  💬→MessageSquare, 💰→Wallet). The Rooms column 🛏️ {n} ⚠ → BedDouble + TriangleAlert
+  nodes. "✓ Copied" tap-to-copy tick KEPT (content tick); live-ticker/countdown/poll
+  logic + the `filterActiveBids` cleanup untouched. `→` date/flow separators are
+  typographic, left as-is.
+- **CONTRAST (owner ask — MEASURED across all 3 pages × 5 widths):** muted KPI label
+  `#8A8FA8` = **5.56:1** (AA), table header = **5.91:1**, table cell `#E8EAF0` =
+  **6.27:1**, page heading = **16.64:1** (AAA) — every text clears WCAG AA 4.5.
+- Badge v669→**v670** (`SB_BUILD v670-admin-pages-users-hotels-bookings`), sw
+  `HTML_CACHE` v466→**v467**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **15/15** — the
+  3 pages @ 320/360/390/768/1280 (dark, fixtured rows): zero h-overflow down to 320px,
+  lucide svg present in every KPI grid (5/6/5), + the four measured contrast ratios.
+- **14 rules honoured:** presentation-only (no admin fetch/patch/verdict/attribution/
+  bid-expiry logic touched — security 385/0), dark-only, strict responsive to 320px,
+  measured verify **incl. contrast**, lucide, content emoji (★/✓) kept. NEXT: remaining
+  admin pages — verification (done) → finance / pricing / content / circle-inventory /
+  auction / … onward.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
