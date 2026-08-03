@@ -1827,6 +1827,25 @@
   2 real fixes**, lucide, content ticks kept. NEXT: admin pages — creators / host / rls /
   reports (the remaining large ones), 1 per batch.
 
+### 2026-08-03 — Session 6 cont. (v679 — admin page: Creators)
+- **Admin pages sweep, batch 10** — the Creator applications page (502 lines), dark-only.
+- **Creators (`app/admin/creators`):** 📞→Phone, ✉️→Mail contact links; the 5 KPI emoji
+  (✨/⏳/✅/🚫/🛡️) → lucide (Sparkles/Hourglass/CircleCheck/Ban/ShieldCheck); the source
+  badge 🤖/⚠ → Bot/TriangleAlert (rendered by `application_source`); the KYC/status buttons
+  ✓ Aadhaar / ✓ PAN / ✓ Approve → Check, ⟲ Pending → RotateCcw, 🚫 Block → Ban; the `Badge`
+  on-state ✓ → Check (· off kept). 
+- **Contrast fix** — `btnRed` `#FF4757` (the Block button on its red tint, ~4.3:1) →
+  `#FF6B7A`; KPI Blocked/KYC accent tidied to `#FF6B7A`/`#D8B4FE`. Min now **4.71:1**.
+- **CONTRAST + EMOJI (owner ask — MEASURED, 5 widths, detail modal opened, gradient-aware +
+  emoji-in-DOM scan):** every text clears WCAG AA — min **4.71:1**; **zero emoji glyphs** in
+  the rendered DOM; zero overflow to 320px.
+- Badge v678→**v679** (`SB_BUILD v679-admin-page-creators`), sw `HTML_CACHE` v475→**v476**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **5/5**.
+- **14 rules honoured:** presentation-only (no creator-approval/KYC/patch logic touched —
+  security 385/0), dark-only, strict responsive to 320px, measured verify **incl. contrast +
+  a real fix**, lucide, content ticks/dots kept. NEXT: admin pages — host / rls / reports
+  (the last three large ones), 1 per batch.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

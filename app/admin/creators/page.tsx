@@ -4,6 +4,7 @@
 // without bouncing through another lookup. Approve / block / reactivate
 // actions hit /api/admin/creators (PATCH).
 import { useEffect, useMemo, useState } from "react";
+import { Phone, Mail, Sparkles, Hourglass, CircleCheck, Ban, ShieldCheck, Bot, TriangleAlert, RotateCcw, Check } from "lucide-react";
 import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
 
@@ -89,12 +90,12 @@ export default function AdminCreators() {
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
             {realPhone ? (
-              <a href={`tel:${realPhone}`} style={{ color: "#E8EAF0", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                📞 {realPhone}
+              <a href={`tel:${realPhone}`} style={{ color: "#E8EAF0", fontSize: 12, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Phone size={12} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />{realPhone}
               </a>
             ) : email ? (
-              <a href={`mailto:${email}`} style={{ color: "#E8EAF0", fontSize: 11.5, fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
-                ✉️ {email}
+              <a href={`mailto:${email}`} style={{ color: "#E8EAF0", fontSize: 11.5, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5, maxWidth: 180 }}>
+                <Mail size={12} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{email}</span>
               </a>
             ) : (
               <span style={{ fontSize: 10, color: "#8A8FA8", fontStyle: "italic" }}>No contact on file</span>
@@ -199,11 +200,11 @@ export default function AdminCreators() {
       </p>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="In View"      value={stats.total}    icon="✨" color="#9fb1c2" live sub="current filter" onClick={() => setStatusFilter("all")} />
-        <KpiCard title="Pending"      value={stats.pending}  icon="⏳" color="#c6d0da" live onClick={() => setStatusFilter("pending")} />
-        <KpiCard title="Active"       value={stats.active}   icon="✅" color="#2ECC71" live onClick={() => setStatusFilter("active")} />
-        <KpiCard title="Blocked"      value={stats.blocked}  icon="🚫" color="#FF4757" live onClick={() => setStatusFilter("blocked")} />
-        <KpiCard title="KYC Verified" value={stats.verified} icon="🛡️" color="#A855F7" live sub="Aadhaar + PAN" onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/commission-rules"))} />
+        <KpiCard title="In View"      value={stats.total}    icon={<Sparkles size={18} strokeWidth={2} aria-hidden />} color="#9fb1c2" live sub="current filter" onClick={() => setStatusFilter("all")} />
+        <KpiCard title="Pending"      value={stats.pending}  icon={<Hourglass size={18} strokeWidth={2} aria-hidden />} color="#c6d0da" live onClick={() => setStatusFilter("pending")} />
+        <KpiCard title="Active"       value={stats.active}   icon={<CircleCheck size={18} strokeWidth={2} aria-hidden />} color="#2ECC71" live onClick={() => setStatusFilter("active")} />
+        <KpiCard title="Blocked"      value={stats.blocked}  icon={<Ban size={18} strokeWidth={2} aria-hidden />} color="#FF6B7A" live onClick={() => setStatusFilter("blocked")} />
+        <KpiCard title="KYC Verified" value={stats.verified} icon={<ShieldCheck size={18} strokeWidth={2} aria-hidden />} color="#D8B4FE" live sub="Aadhaar + PAN" onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/commission-rules"))} />
       </div>
 
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
@@ -295,11 +296,16 @@ export default function AdminCreators() {
                   letterSpacing: 0.5,
                   marginBottom: 8,
                   fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                {selected.application_source === "auto_promote"
-                  ? "🤖 Auto-promoted by cron"
-                  : "⚠ Flagged by cron — admin review"}
+                {selected.application_source === "auto_promote" ? (
+                  <><Bot size={13} strokeWidth={2} aria-hidden />Auto-promoted by cron</>
+                ) : (
+                  <><TriangleAlert size={13} strokeWidth={2.2} aria-hidden />Flagged by cron — admin review</>
+                )}
               </div>
               {selected.auto_eval_data && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
@@ -351,14 +357,14 @@ export default function AdminCreators() {
                 onClick={() => patchCreator(selected.id, { aadhaar_verified: !selected.aadhaar_verified }, `Mark Aadhaar ${selected.aadhaar_verified ? "UN" : ""}verified?`)}
                 style={selected.aadhaar_verified ? btnGreen : btnGrey}
               >
-                {selected.aadhaar_verified ? "✓ Aadhaar verified" : "Mark Aadhaar verified"}
+                {selected.aadhaar_verified ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Check size={14} strokeWidth={2.4} aria-hidden />Aadhaar verified</span> : "Mark Aadhaar verified"}
               </button>
               <button
                 disabled={busy}
                 onClick={() => patchCreator(selected.id, { pan_verified: !selected.pan_verified }, `Mark PAN ${selected.pan_verified ? "UN" : ""}verified?`)}
                 style={selected.pan_verified ? btnGreen : btnGrey}
               >
-                {selected.pan_verified ? "✓ PAN verified" : "Mark PAN verified"}
+                {selected.pan_verified ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Check size={14} strokeWidth={2.4} aria-hidden />PAN verified</span> : "Mark PAN verified"}
               </button>
             </div>
           </div>
@@ -369,23 +375,23 @@ export default function AdminCreators() {
               <button
                 disabled={busy || selected.status === "active"}
                 onClick={() => patchCreator(selected.id, { status: "active" }, "Approve this creator? They'll get the active badge + creator perks.")}
-                style={{ ...btnGreen, opacity: selected.status === "active" ? 0.5 : 1 }}
+                style={{ ...btnGreen, opacity: selected.status === "active" ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 5 }}
               >
-                ✓ Approve (Active)
+                <Check size={14} strokeWidth={2.4} aria-hidden />Approve (Active)
               </button>
               <button
                 disabled={busy || selected.status === "pending"}
                 onClick={() => patchCreator(selected.id, { status: "pending" }, "Move back to pending review?")}
-                style={{ ...btnAmber, opacity: selected.status === "pending" ? 0.5 : 1 }}
+                style={{ ...btnAmber, opacity: selected.status === "pending" ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 5 }}
               >
-                ⟲ Pending
+                <RotateCcw size={14} strokeWidth={2.2} aria-hidden />Pending
               </button>
               <button
                 disabled={busy || selected.status === "blocked"}
                 onClick={() => patchCreator(selected.id, { status: "blocked" }, "Block this creator? They'll lose all creator perks until unblocked.")}
-                style={{ ...btnRed, opacity: selected.status === "blocked" ? 0.5 : 1 }}
+                style={{ ...btnRed, opacity: selected.status === "blocked" ? 0.5 : 1, display: "inline-flex", alignItems: "center", gap: 5 }}
               >
-                🚫 Block
+                <Ban size={14} strokeWidth={2.2} aria-hidden />Block
               </button>
             </div>
           </div>
@@ -405,9 +411,12 @@ function Badge({ label, on }: { label: string; on: boolean }) {
         borderRadius: 6,
         background: on ? "rgba(46,204,113,0.16)" : "rgba(138,143,168,0.12)",
         color: on ? "#2ECC71" : "#8A8FA8",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 3,
       }}
     >
-      {on ? "✓" : "·"} {label}
+      {on ? <Check size={11} strokeWidth={2.6} aria-hidden /> : "·"} {label}
     </span>
   );
 }
@@ -488,7 +497,7 @@ const btnAmber: React.CSSProperties = {
 };
 const btnRed: React.CSSProperties = {
   background: "rgba(255,71,87,0.10)",
-  color: "#FF4757",
+  color: "#FF6B7A",
   border: "1px solid rgba(255,71,87,0.35)",
   padding: "8px 14px", borderRadius: 10,
   cursor: "pointer", fontSize: 13, fontWeight: 600,
