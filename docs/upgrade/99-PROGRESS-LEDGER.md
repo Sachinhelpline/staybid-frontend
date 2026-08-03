@@ -1923,6 +1923,31 @@
   ★ Star kept as the feedback dataset glyph via lucide. NEXT (Phase 2): the remaining customer-facing
   verticals — circle journey, trade, host (customer), onboard, worker.
 
+### 2026-08-03 — Session 6 cont. (v683 — Phase 2 starts: Circle hub + dock, HYBRID emoji)
+- **First consumer-facing vertical after the admin sweep.** Circle is a light+dark cozy theme
+  (Direction-A pewter tokens, `.sbc-*` in `app/circle/circle-premium.css`), so this batch was
+  verified MEASURED in BOTH themes.
+- **Owner decision (asked): HYBRID** — convert utilitarian nav/action icons to lucide, KEEP the warm
+  brand/content glyphs.
+- **Circle hub (`app/circle/page.tsx`):** converted → lucide — ☰ dashboard →Menu, Quick Actions
+  🔍/💎/📊/🗓/❓ →Search/Gem/BarChart3/CalendarDays/HelpCircle, 🔒 first-property CTA →Lock, 🌐 All-India
+  chip →Globe, ▶ Watch-reels →Play, the bundle-CTA 💎 →Gem. Quick-Action/CTA icons sit on the pewter
+  gradient tiles so they take `--sbc-walnut` (dark) to read; bell/reels/bundle inherit the tile's own
+  currentColor.
+- **KEPT (brand/content, per hybrid):** 👋 greeting, 🔥 popular, model 🏠/🔑/🏷️, ✨ bonus, ♥/♡ save,
+  ✓ locked, 📍 location, 🏔️ empty-state, ◎ no-image, → CTA arrows.
+- **Shared circle shell — CircleDock:** the nav-dock 🏠 Home →Home and ☰ Dashboard →Menu (the ✓
+  step-done checks kept as content). Affects every circle route (the shell), a net improvement.
+- **MEASURED, BOTH THEMES (light + dark), 5 widths 320–1280:** ALL CLEAN — zero text-contrast fails,
+  zero horizontal overflow, only the intended keep-set glyphs present. Added an SVG-icon-contrast probe
+  (lucide currentColor vs its tile) — every converted icon verified visible in light AND dark.
+- Badge v682→**v683** (`SB_BUILD v683-circle-hub`), sw `HTML_CACHE` v479→**v480**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **10/10 (2 themes × 5 widths)**.
+- **14 rules honoured:** presentation-only (no bundle/lock/revenue logic touched — security 385/0),
+  light AND dark verified, strict responsive to 320px, MEASURED contrast in both themes, lucide for
+  nav/action + kept brand emoji (hybrid). NEXT: continue Circle — shared chrome (CircleChrome /
+  CircleStepShell) + the model/discover/build pages.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
