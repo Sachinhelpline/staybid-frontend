@@ -10,6 +10,7 @@
 //   • permission denied / no cam → clear error, manual entry still works
 //
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Camera, Compass, X } from "lucide-react";
 import { modalPortal } from "@/lib/partner/modal-portal";
 
 type Props = {
@@ -145,7 +146,7 @@ export default function CodeScanner({ onDetected, buttonClassName, buttonLabel }
   return (
     <>
       <button type="button" onClick={start} className={buttonClassName || "btn-gold"}>
-        {buttonLabel || "📷 Scan with Camera"}
+        {buttonLabel || <span className="inline-flex items-center gap-1.5"><Camera size={14} strokeWidth={2.3} aria-hidden />Scan with Camera</span>}
       </button>
 
       {open && modalPortal(
@@ -160,8 +161,8 @@ export default function CodeScanner({ onDetected, buttonClassName, buttonLabel }
               <button
                 onClick={close}
                 aria-label="Close scanner"
-                className="w-8 h-8 rounded-full bg-white/12 text-white text-xl leading-none flex items-center justify-center hover:bg-white/20 transition"
-              >×</button>
+                className="w-8 h-8 rounded-full bg-white/12 text-white flex items-center justify-center hover:bg-white/20 transition"
+              ><X size={17} strokeWidth={2.4} aria-hidden /></button>
             </div>
 
             <div className="scan-frame">
@@ -174,7 +175,9 @@ export default function CodeScanner({ onDetected, buttonClassName, buttonLabel }
               )}
               {(status === "error" || status === "unsupported") && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-                  <p className="text-3xl mb-2">{status === "unsupported" ? "🧭" : "📷"}</p>
+                  {status === "unsupported"
+                    ? <Compass size={30} strokeWidth={1.8} aria-hidden className="mb-2 text-white/90" />
+                    : <Camera size={30} strokeWidth={1.8} aria-hidden className="mb-2 text-white/90" />}
                   <p className="text-white/90 text-sm font-semibold leading-snug">
                     {status === "unsupported"
                       ? "Live camera scan needs Chrome or Edge (Android works best)."

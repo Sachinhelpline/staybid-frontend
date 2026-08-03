@@ -1472,6 +1472,48 @@
   ServiceRenewBanner / CodeScanner), then Phase 2 remaining panels (admin → circle
   → trade → host → onboard → worker).
 
+### 2026-08-03 — Session 6 cont. (v667 — partner SHARED MODALS: 5 components)
+- **The five shared partner modals/widgets, in one ship.** Three were Hinglish +
+  emoji + inline-hex (ServiceLockModal 285 · SubscriptionBillingModal 191 ·
+  ServiceRenewBanner 94); two lighter (RoomEditorModal 234 · CodeScanner 205).
+- **ServiceLockModal** (the v652-flagged one): full Hinglish→English (choose/plans
+  intros, pending-request, activate/show-charges/free-trial copy, footer
+  OK/Not-now); emoji → lucide (🔒/🔄 header→Lock/RotateCw, ⏳→Hourglass, ‹ Wapas→
+  ArrowLeft Back, ⚡→Zap, 💰→Wallet, 🎁→Gift, ×→X); inline-hex option cards
+  (`#f7f8fa`/`#c1ccd7`/`#eff2f5`/`#d7dee6`) → `bg-luxury-50`/`bg-white`+
+  `border-luxury-200` (flip via bridge).
+- **ServiceRenewBanner:** Hinglish→English (heading + per-item notes); ⚠️/⏰ →
+  TriangleAlert/Clock; banner bg/border (`#fdeceb`/`#f7f8fa`) → conditional
+  `bg-red-50 border-red-200` / `bg-luxury-50 border-luxury-200`. Semantic red/pewter
+  Renew CTAs kept (white text, both themes).
+- **SubscriptionBillingModal:** Hinglish→English (subtitle, empty state, receipt
+  button, footer, popup-block alert) + the ONE Hinglish line inside the printed
+  receipt; 🧾→ReceiptText, ×→X, receipt-button 🧾→Printer; the total/row inline hex
+  → `bg-luxury-50 border-luxury-200`, status badge hex → emerald/red/amber class
+  pairs. **The printed-receipt HTML/CSS hex is KEPT** (printed white document).
+- **RoomEditorModal:** 3 Hinglish→English (name-required, subtitle, bid-floor
+  hint); ×→X (close + delete-photo). KEPT the amenity ✓ selection tick (content).
+- **CodeScanner:** 📷 default button label + 🧭/📷 error-state icons → Camera/Compass;
+  ×→X. Camera overlay stays intentionally dark (theme-independent) — white lucide
+  icons.
+- ⚠ **Out of scope (noted):** the shared `components/ImageUpload.tsx` 📷 (rendered
+  inside RoomEditorModal) is a cross-app primitive — its own later sweep; and the
+  dashboard `page.tsx` profile/redeem tiles still carry 🧾/📷 chrome (part of the
+  later global-dashboard-chrome pass, not a tab/modal component).
+- Badge v666→**v667** (`SB_BUILD v667-partner-shared-modals`), sw `HTML_CACHE`
+  v463→**v464**.
+- **Gates GREEN:** tsc 0 · build 0 · security 385/0 · headless audit **64/64** —
+  each modal driven from its REAL trigger (lock via the F&B-Menu locked tab, in
+  choose AND plans mode; renew banner; room editor; billing "View history"; camera
+  overlay) @ 320/390 × LIGHT/DARK, zero h-overflow, chrome/Hinglish gone, dark
+  modal bg avg=34. (Harness fix: the dashboard IS a `.pdash-root`, so target
+  BODY's direct-child portals to hit the modal, not the page.)
+- **14 rules honoured:** presentation-only (no service-checkout/Razorpay/room-save/
+  scan logic touched — security 385/0), light+dark perfect, strict responsive to
+  320px, measured verify. **The ENTIRE partner panel (shell + all tabs + all shared
+  modals) is COMPLETE.** NEXT: Phase 2 remaining panels — admin → circle → trade →
+  host → onboard → worker + the global-dashboard-chrome/ImageUpload follow-ups.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

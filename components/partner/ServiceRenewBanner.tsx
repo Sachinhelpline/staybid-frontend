@@ -7,6 +7,7 @@
 // service expiring within 7 days — or already expired — shows here with
 // a one-tap Renew that re-runs the Razorpay checkout.
 //
+import { TriangleAlert, Clock } from "lucide-react";
 import { SERVICE_LABEL } from "@/lib/partner/services";
 
 const WARN_DAYS = 7;
@@ -53,25 +54,21 @@ export default function ServiceRenewBanner({
   const anyExpired = items.some((i) => i.expired);
 
   return (
-    <div
-      className="rounded-xl mb-4 px-3.5 py-3"
-      style={{
-        background: anyExpired ? "#fdeceb" : "#f7f8fa",
-        border: `1.5px solid ${anyExpired ? "#e9b3ad" : "#c1ccd7"}`,
-      }}
-    >
+    <div className={`rounded-xl mb-4 px-3.5 py-3 border ${anyExpired ? "bg-red-50 border-red-200" : "bg-luxury-50 border-luxury-200"}`}>
       <p className="text-[0.78rem] font-bold text-luxury-900 flex items-center gap-1.5">
-        <span>{anyExpired ? "⚠️" : "⏰"}</span>
-        {anyExpired ? "Kuch services expire ho gayi hain" : "Subscription jald expire ho rahi hai"}
+        {anyExpired
+          ? <TriangleAlert size={14} strokeWidth={2.4} aria-hidden className="text-red-600 shrink-0" />
+          : <Clock size={14} strokeWidth={2.4} aria-hidden className="text-luxury-500 shrink-0" />}
+        {anyExpired ? "Some services have expired" : "A subscription is expiring soon"}
       </p>
       <div className="mt-2 space-y-1.5">
         {items.map((it) => {
           const label = SERVICE_LABEL[it.key] || it.key;
           let note: string;
-          if (it.expired) note = `${it.trial ? "Trial" : "Plan"} khatam — service lock ho gayi`;
-          else if (it.days === 0) note = "Aaj expire ho rahi hai";
-          else if (it.days === 1) note = "Kal expire ho rahi hai";
-          else note = `${it.days} din mein expire`;
+          if (it.expired) note = `${it.trial ? "Trial" : "Plan"} ended — service locked`;
+          else if (it.days === 0) note = "Expires today";
+          else if (it.days === 1) note = "Expires tomorrow";
+          else note = `Expires in ${it.days} days`;
           return (
             <div key={it.key} className="flex items-center justify-between gap-2">
               <span className="text-[0.7rem] text-luxury-600 min-w-0">
