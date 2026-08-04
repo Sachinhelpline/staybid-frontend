@@ -19,6 +19,28 @@
 
 ## Session log
 
+### 2026-08-04 — Owner round 4c: customer bid-arena range widened (v719)
+**Owner decision after a full pricing-engine briefing. Presentation-only; tsc + build clean, `test:security` 385/0.**
+- **Arena slider minimum: `floor × 0.65` → `floor × 0.50`** (`app/hotels/[id]/page.tsx:4932`) — the customer can now drag down to 50% below the floor (was 35%). Safe: a below-floor submit is still clamped up to the floor (`submitAmt = negFloorEff`) and the guest's preferred price rides in the message → the hotel reviews/counters; the server still hard-rejects `amount < floor`. Nothing transacts below floor.
+- **Arena opens at `floor × 0.88` → `floor × 0.80`** (`:1721`) — a stronger 20%-below "deal" anchor.
+- **Pricing ground-truth briefed to owner (no code change):** 3 owner inputs (mrp/floorPrice/flashFloorPrice); market/live is the only truly AI-dynamic price (0.55×–2.20× × floor, capped 5% under OTA); **`bidFloor = snap100(floorPrice)` is STATIC despite "dynamic" comments** (GAP 1); Book-Now floor == bid floor (~0% diff); yield optimizer coded but shipped OFF (GAP 2); customers can't win below floor unlike agents' 0.85 band (GAP 3). Owner deciding whether to build a truly-dynamic customer bid floor / below-floor win band.
+- Badge v718→**v719**, sw HTML_CACHE v514→**v515**.
+
+### 2026-08-04 — Owner round 4b: paid-row cleanup + paid subscriptions live + admin trade-bid oversight (v718)
+**Owner approved all 3 follow-ups. tsc + build clean, `test:security` 385/0.**
+- **ss4 legacy data cleanup (owner-approved, live DB):** the pre-fix below-floor bug had written **27 `bid_paid_amounts` rows** with a phantom `paid_total` summing **₹1,76,114** of never-paid "revenue". Ran a guarded corrective UPDATE (`paid_total → 0 WHERE flow='negotiate-below-floor' AND paid_total>0`) — 27 rows corrected, verified **0 remaining**. The `paid_per_night` (preferred-price context) was left intact. No deletes.
+- **Paid subscriptions ENABLED (owner-approved, live DB):** applied the two never-applied migrations `service_pricing`/`service_bundles` (v177) + `service_payments` (v178) to Supabase (`hotel_services`/`service_requests` already existed). All idempotent `IF NOT EXISTS` + RLS + policies. Round-trip verified (write/read/delete, 0 leftover). The admin Service Access **Pricing / Payments** warning banners now clear and the tabs are functional — the owner just needs to SET the per-service prices. (The `service-checkout` billing code already existed.)
+- **Admin trade-bid oversight (owner-approved):** the admin Agent-Auction panel previously showed only lots + awards + sealed-EMD refunds — NO view of pending live agent bids (owner-only). Added `liveBids` (status `active`/`countered`) to `GET /api/admin/auction` + a new read-only **"Pending live agent bids"** table in `app/admin/auction` (room·hotel·city, segment, bid/night + counter, rooms, status, placed). Read-only oversight; the property owner keeps accept/counter control.
+- Badge v717→**v718**, sw HTML_CACHE v513→**v514**.
+
+### 2026-08-04 — Owner round 4: CRITICAL paid-on-unpaid-bid bug + trade dead-space + my-bids cards (v717)
+**Owner sent 4 photos + deep functional questions (2 Explore agents traced the bid lifecycle + the payment bug). tsc + build clean, `test:security` 385/0.**
+- **ss4 (CRITICAL DATA-INTEGRITY BUG) — a PENDING, unpaid negotiate-below-floor bid showed "Payment DONE" + "PAID TOTAL ₹5,200" in the admin bid timeline.** Root cause: `app/hotels/[id]/page.tsx` below-floor flow POSTed `/api/bid/paid` with `paidTotal: total` (the amount the guest WOULD pay) even though its own comment says "no payment for below-floor" and its sibling `recordAttribution` uses `0`. Fixed **defense-in-depth (3 layers)**: (1) SOURCE — send `paidTotal: 0` (never write a payment for an unpaid intent); (2) ROUTE (`/api/admin/bookings`) — stop fabricating `paidTotal = bid.amount` for every row; a below-floor row is forced null, otherwise use the real `paid_total`, and only fall back to `amount` for a CONFIRMED/stayed booking; (3) DISPLAY (`app/admin/bookings`) — the "Payment" milestone + "Paid Total" now require `paidTotal>0 AND a non-pre-acceptance status`, so a PENDING/COUNTER bid can NEVER read as paid even if a stray/legacy row leaks a value. ⚠ Existing legacy below-floor rows in the DB are now correctly hidden by (2)+(3); a one-off data cleanup of `bid_paid_amounts` for those rows is a separate owner-approved SQL (flagged).
+- **ss1 — `/trade/[id]` left column had big dead space** beside the tall sticky bid panel (worsened by the v715 widening). Filled it with a genuinely-useful "How this works" 3-step (bid wholesale → win → resell) so the two columns balance; real context on mobile too.
+- **ss2 — `/trade/my-bids` cards flat + not clickable + no publish feedback.** My-bids cards are now clickable → the lot tour (buttons stopPropagation), with a hover lift + "View lot →". Won-allotment cards now CONFIRM the publish state: once selling is enabled (`metadata.selling_enabled`) they show "✓ Listed on StayBid + OTA · Manage in dashboard", and before that "List on StayBid + OTA" with a clearer explainer.
+- **Architecture (reported to owner, not a code change):** customer-bid loop is fully wired (placed → partner "Bids" tab acts → admin "Bookings & Bids" oversight, read-only). Trade loop has two gaps — admin has NO view/action on pending live agent bids, and the won→publish step has no listing-status surface (now partly addressed by the my-bids "Listed ✓"). **ss3** — the admin Service Access "apply service-pricing.sql" banner is CORRECT (the paid-subscription tables were deliberately never applied; M5 free-marker choice); enabling paid subscriptions is an owner decision + a live migration.
+- Badge v716→**v717**, sw HTML_CACHE v512→**v513**.
+
 ### 2026-08-04 — Owner round 3: seamless sign-in (kill the centre seam + glass card) across EVERY auth screen (v716)
 **Owner: the centre line still shows (2 portions), the Google-auth card looks like a separate ugly box, admin login still old-based — upgrade every sign-in/signup, zero left. tsc + build clean, `test:security` 385/0.**
 - **Root cause of the "centre line":** v714's frosted-column treatment on the FORM pane (a translucent wash + `border-left` + inner shadow) WAS the divider the owner saw. Fix everywhere: **both panes fully transparent on the single root canvas — no wash, no border, no shadow** → one seamless screen; the form card is the only distinct element.
@@ -2690,6 +2712,209 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
 - **Gates:** tsc 0 · build 0 · security 385/0.
 - NEXT: resolve the `/circle` + browse glass-topbar residuals (verify real vs harness artifact via a
   screenshot/opaque-bg check), then resume sweeping new routes.
+
+### 2026-08-04 — Admin Pricing Engine tuning (v720 — owner-approved "A")
+- **Owner ask:** make the "digits" inside the AI dynamic-pricing formula ADMIN-editable WITHOUT code
+  changes (the 9 demand factors, the multiplier clamp, the OTA-undercut %, the flash-discount %), while
+  the AI still runs the full formula. Answered the owner's 4 pricing questions first (MRP-fixed vs
+  dynamic OTA-undercut is independent; MRP≥live≥flash≥floor ranking; the "normal discounted" price is
+  `livePrice`; all knobs were HARDCODED). Then built the tuning surface.
+- **Architecture (safe):** `calculateDynamicPrice` + `computeRoomDatePrice` are PURE and called from
+  BOTH the server cron AND four client fallbacks — so I did NOT make them fetch a table. Instead added
+  an OPTIONAL `cfg`/`engineCfg` param that defaults, field-by-field, to the exact hardcoded constant.
+  Client fallbacks pass nothing → byte-identical. The authoritative server writers (cron `price-spine`
+  + `read-spine`) load the admin config once and pass it in, so WRITTEN prices reflect the tuning.
+- **New:** `pricing_engine_config` singleton (migration `2026-07-21-v720`, seeded with today's defaults),
+  resolver `lib/pricing/engine-config-store.ts` (60s cache, fail-open to `PRICING_ENGINE_HARDCODED`),
+  admin route `/api/admin/pricing-config` (GET/POST, `requireVerifiedAdmin`, per-field clamp + reject,
+  audit), and a new **"Pricing Engine" tab** in `/admin/pricing` (`components/admin/PricingEngineTab.tsx`)
+  — season[12], DOW[7], occupancy[5], lead[6], events[N], city-demand map, monsoon/school/long-weekend,
+  clamp min/max, micro±%, undercut %, flash %, and the **Gap-6 opt-in "cap live at MRP"**. Reset-to-defaults.
+- **MEASURED (real engine via Node type-strip, both paths):** byte-identical **48/48** (no-cfg == undefined
+  == empty `{}`); spine no-cfg identical true. Tuning moves numbers exactly: flash 20→30% (2700→2400),
+  undercut 5→15% (live 3400→3100), cap-at-MRP holds live→2500, clampMax 2.2→1.2 (peak 6600→3600),
+  Sat 1.38→2.0 (4100→5900). Live DB: table applied + seeded + row read-verified.
+- Badge v719→**v720** (`SB_BUILD v720-admin-pricing-engine`), sw `HTML_CACHE` v515→**v516**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- **Gaps closed:** #4 (9-factor % admin-editable), #5 (undercut/flash admin-editable), #6 (MRP-cap opt-in),
+  #7 (dead "Demand Multiplier Cap" superseded by a real control). **Remaining:** #1 (dynamic customer bid
+  floor) + #2 (yield optimizer OFF) + #3 (customer below-floor win band) — pure bidding-mechanics side,
+  owner pre-approved, to be built separately.
+- NEXT: (a) owner merge of PR #543 (v717-719) + this v720; (b) Gap 1/3 bidding-floor build on the owner's go.
+
+### 2026-08-04 — Friday = peak weekend day (v721)
+- **Owner (hotel domain) note:** in the day-of-week factor, Friday is a weekend night with the highest
+  demand, not a weekday. **Checked the code (zero blind):** `DOW_MULT` already treated Friday as
+  weekend (1.32×, above weekdays 0.88–0.98, already tagged "Weekend Surge" at ≥1.28) — it was NOT
+  excluded. But Friday (1.32) sat just BELOW Saturday (1.38). Per the owner, bumped **Friday 1.32 → 1.40**
+  so it is the top peak day (Fri 1.40 > Sat 1.38 > Sun 1.20).
+- Applied to all 3 sources of truth: hardcoded `DOW_MULT` (client fallback), the v720 migration seed, and
+  the LIVE `pricing_engine_config.dow_mults` row (the authoritative value the cron writer reads). Fully
+  admin-tunable now in the Pricing Engine tab — owner can set Fri/Sat to any exact values without code.
+- Badge v720→**v721** (`SB_BUILD v721-friday-weekend-peak`). sw HTML_CACHE unchanged (pure-logic default,
+  no HTML/UI change; hashed JS chunk re-serves automatically).
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- NEXT: Gap 1 (dynamic customer bid floor, mirroring trade's `dynamicWholesaleFloor`) + Gap 3 (customer
+  below-floor forwarded-offer band) — owner pre-approved; investigation launched.
+
+### 2026-08-04 — Gap 1: dynamic customer bid floor (v722, admin, default OFF)
+- **Gap 1 closed:** the customer reverse-auction bid floor was STATIC (`bidFloor = snap100(floorPrice)`,
+  spine.ts) — a guest could auto-win at the bare floor even in peak demand. Now it can track the live
+  (season-adjusted) price, mirroring trade's `dynamicWholesaleFloor`.
+- **Safe architecture (reuses ALL v720 plumbing):** the spine already computes both `floor` and `live` in
+  one place, so the dynamic floor drops into `computeRoomDatePrice` via the SAME `engineCfg`. Three new
+  admin knobs on `pricing_engine_config` (migration `2026-07-21-v722`): `cust_floor_mode`
+  (static|**dynamic**, default static), `cust_floor_max_win_discount_pct` (25), `cust_floor_min_fraction`
+  (1.0). When dynamic: `bidFloor = clamp(snap100(live×(1−disc)), snap100(floor×minFrac), live)` — RAISES
+  in peak, NEVER below the hotel's own floorPrice. Default static → `snap100(floor)`, byte-identical.
+- Every reader auto-picks it up: cron writes `room_date_price.bid_floor`, the hotel-page arena reads it
+  via `roomSpineFloors`, and the `/bid` autopilot threshold already reads spine `bidFloor` (route:414).
+  The static hard-reject (`bids/place`:228, `rooms.floorPrice`) stays as the absolute anti-lowball guard.
+- Resolver + store (`engine-config-store.ts`), admin route (`/api/admin/pricing-config`), and a new
+  **"Customer bid floor"** section in the Pricing Engine tab (mode toggle + 2 knobs + ⚠ note).
+- **MEASURED (real engine):** static = 2000 in peak & off, undef-identical=true (byte-identical). Dynamic
+  PEAK: live 4400 → floor **3300**; dynamic OFF: live 2000 → floor **2000** (never below hotel floor).
+- Badge v721→**v722** (`v722-dynamic-customer-bid-floor`), sw HTML_CACHE v516→**v517** (new admin UI).
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live.
+- **Gap 3 (customer below-floor forwarded offers) — NOT built yet:** it modifies the core `bids/place`
+  accept logic (most money-sensitive route), so design presented for owner go-ahead before touching it.
+- NEXT: on owner confirm, build Gap 3 (real below-floor offer rows, bounded ratio, PENDING-only, admin
+  default OFF). Then Gap 2 (yield optimizer) is an env-flag decision.
+
+### 2026-08-04 — Gap 3: customer below-floor forwarded offers (v723, admin, default OFF)
+- **Gap 3 closed:** a guest can now OFFER below the room floor and have the REAL offer forwarded to the
+  owner (PENDING, owner accepts/counters/declines) — the customer analogue of the Model-3 agent
+  below-floor band. Previously `bids/place` hard-rejected `amount < floorPrice`, and the arena's
+  below-floor drag was lossy (clamped to floor, real price only in the message → auto-counter-to-floor).
+- **SERVER-ONLY + default OFF (byte-identical):** one knob `cust_below_floor_ratio` on
+  `pricing_engine_config` (default **1.0 = OFF**, migration `2026-07-21-v723`). In `app/api/bids/place`:
+  (1) the floor reject relaxes from `amount < floor` to `amount < floor × ratio` (ratio 1.0 → identical);
+  (2) when ratio < 1.0 and the intent is below floor, the guest's REAL offer (from the arena's
+  preferred-price message, `extractPreferredPrice`) is stored on the bid — clamped into
+  `[floor×ratio, floor)` — with status **PENDING**, `pd.action='below_floor_offer'`. It is NEVER
+  auto-accepted or auto-countered; the owner reviews it in the existing partner Bids inbox and can accept
+  it at that price. No client change — the arena's existing "we'll forward your preferred price, hotel may
+  accept or counter on your terms" copy already supports it end-to-end, so bid MECHANICS stay hidden.
+- Resolver/store + admin route + a "Below-floor offer ratio" knob in the Pricing Engine tab's Customer
+  bid floor section (⚠ note when < 1.0).
+- **MEASURED:** reject-bound + clamp arithmetic (ratio 1.0 → reject at floor = byte-identical; ratio 0.85
+  → offers 1750/1500/1990 stored 1750/1700/1990, always within [1700,1999], never below band). Live SQL
+  round-trip: ratio 0.85 set → read → reverted to 1.0 (default OFF); Friday 1.4 + cust_floor_mode static intact.
+- Badge v722→**v723** (`v723-customer-below-floor-offers`), sw HTML_CACHE v517→**v518** (admin UI knob).
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live. No auto-accept anywhere — owner-reviewed only.
+- NEXT: Gap 2 (yield optimizer, currently OFF behind `PRICING_OPTIMIZER_ENABLED`) is an env-flag + testing
+  decision — the only remaining gap. All of #1/#3/#4/#5/#6/#7 now closed.
+
+### 2026-08-04 — Gap 2: AI yield optimizer — admin toggle + preview (v724, default OFF)
+- **Gap 2 closed (the LAST gap):** the expected-revenue optimizer (`lib/pricing/optimizer.ts`) was
+  flag-gated by env `PRICING_OPTIMIZER_ENABLED` only (unset → off, always computed for observability). It
+  is now ALSO admin-toggleable from the Pricing Engine tab, and — crucially — **previewable** before enabling.
+- **Spine:** `optimizerApplied = optimizerEnabled() || cfg.yieldOptimizerEnabled === true`. Both default
+  OFF → livePrice byte-identical. When on, the spine applies the optimizer's guarded price (±12% of the
+  proven rule price, ≥ floor, ≤ competitor-undercut cap, snap100) — a NUDGE, never a divergence.
+- **New:** `yield_optimizer_enabled` on `pricing_engine_config` (migration `2026-07-21-v724`, default
+  false, applied live); resolver + admin-route field + a toggle in the tab.
+- **The "test" tool — NEW read-only `GET /api/admin/pricing-config/optimizer-preview`:** samples 8 real
+  priced rooms and, at BOTH low (0.15) and high (0.85) occupancy, computes rule→optimized price + Δ% +
+  accept-probability + expected-revenue lift. Pure reads + pure engine math (writes nothing, moves no
+  money). The tab renders it as a table so the owner SEES the effect before committing.
+- **MEASURED (real engine):** OFF (default) == cfg-false → byte-identical; ON nudges live 4300→4800 (low
+  occ) / 4400→4900 (high occ) — within ±12%, ≥ floor. Guard holds.
+- Badge v723→**v724** (`v724-yield-optimizer-toggle`), sw HTML_CACHE v518→**v519** (admin UI + preview).
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live.
+- **ALL pricing/bid gaps (1–7) now closed.** Enabling the optimizer in production stays the owner's call
+  (preview first, watch outcomes) — the toggle + preview make that a safe, no-redeploy decision.
+- NEXT: nothing pending on the pricing/bid gap list. Awaiting owner: merge PR #543 (v717–v724).
+
+### 2026-08-04 — Owner price-control, Phase 1: B2B bounded owner multiplier (v725)
+- **Owner recommendation build (Phase 1 of the "bounded owner control per channel" plan).** Closed the
+  biggest gap the deep-search found: a classic owner had **ZERO price control on the B2B exchange**
+  (Model-2) — the ask was fixed at the admin global 2× and the owner form sent no price. Now the owner can
+  pick their OWN resale multiplier **within an admin-set band** — regulated (bounded), not free pricing,
+  so the Model-2 legal/positioning framing stays intact.
+- **Additive + default-preserving (byte-identical):** the server already accepted a per-listing
+  `priceMultiplier` (unbounded 1–20) and the preview already took `?mult=`; the owner UI just never used
+  them. New: admin band `resale_multiplier_min`/`resale_multiplier_max` on `b2b_fee_config` (migration
+  `2026-07-21-v725`, default **1.5×–3.0×**, contains the 2× global). `clampOwnerMultiplier(raw,cfg)`
+  clamps the owner's pick into the band; **absent/invalid → global default = today's exact price.**
+- Wired: `createHotelOwnerListing` + `/api/b2b/regulated-quote` clamp to the band (preview == listed);
+  owner UI (`CircleInventoryTab` supply form) gained a **resale-multiplier slider** (band-bounded, live
+  price preview, "reset to default"); admin UI (`/admin/circle-inventory` fee card) gained **Owner band ×
+  [min–max]** inputs + live label; `/api/admin/b2b-fee` accepts/validates the band (min ≤ max).
+- **MEASURED:** absent/invalid → 2× (₹2000 own ₹1000, byte-identical); within band honored
+  (1.5→₹1500 · 2.5→₹2500 · 3→₹3000); below-band clamped up to 1.5×, above-band clamped down to 3×. Live
+  SQL band round-trip green (set 1.6/2.8 → revert 1.5/3.0).
+- Badge v724→**v725** (`v725-b2b-owner-price-band`), sw HTML_CACHE v519→**v520**.
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live.
+- NEXT (owner-recommendation plan, remaining phases): OTA-cap guard for `price_override` (brand-critical
+  bug — a flat unit price can currently exceed OTA); a unified owner "Manage My Price" surface
+  (retail floor/MRP · agent discount · B2B band in one place); owner-facing AI preview. Each additive +
+  default-preserving, phase-by-phase.
+
+### 2026-08-04 — Owner price-control, Phase 2: OTA "always cheapest" guard on flat prices (v726)
+- **Brand-critical fix + real bug.** The deep-search found the "StayBid is always cheapest than OTA"
+  promise had a hole: a per-unit `hotel_room_units.price_override` (a Circle owner's flat guest price)
+  BYPASSES the pricing spine, so the spine's competitor-undercut cap never ran on it — an owner could
+  silently price a unit ABOVE the OTA. Now clamped.
+- **NEW `lib/pricing/ota-cap.ts` `otaCapPrice(roomId, price)`** (server-only, pure read): clamps an
+  owner-set flat price to `competitor_min × (1 − COMPETITOR_UNDERCUT=0.05)` when a competitor price is
+  known, but NEVER below the room's `floorPrice` (owner never sells below cost). **Fail-open** — no
+  competitor data / any error → price returned UNCHANGED, so where `competitor_min` is null the behaviour
+  is byte-identical.
+- Wired into BOTH flat-price setters: `/api/circle/inventory/sell` (`listBlockPublic`, single `list`) and
+  `/api/partner/circle-units` (PATCH `price_override`). Each returns `{ priceCapped, listedPrice, warning }`
+  when it clamps; the owner UIs (`CircleUnitsTab` save toast + `/circle/model2/selling` list toast) show
+  the transparent warning ("set to ₹X to keep StayBid the cheapest · never below your cost").
+- **MEASURED (arithmetic):** no-competitor → unchanged; under-OTA → unchanged; above-OTA 6000 vs OTA 5000
+  → 4750; above-OTA-but-below-cost → stops at cost. **Live DB:** 183/205 rooms HAVE a competitor price
+  (guard is genuinely protective) and **0 units currently carry a price_override** (no existing live price
+  disturbed — clean ship).
+- Badge v725→**v726** (`v726-ota-cap-owner-price`), sw HTML_CACHE v520→**v521**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- NEXT (final phase): the unified owner **"Manage My Price"** surface (retail floor/MRP · agent discount ·
+  B2B band in one place) + an owner-facing AI preview. Additive + default-preserving.
+
+### 2026-08-04 — Owner price-control, Phase 3: unified "Manage My Price" clarity (v727)
+- **Final phase — UX consolidation (functional control was already complete after Phases 1+2).** The
+  partner "Rooms & Pricing" tab is already the per-room price surface (floor + flash editors + a live
+  per-room AI-price panel). Zero-clash approach: added ONE additive **"How your price works"** banner at
+  the top of that tab (no duplicate editors, no new data path).
+- The banner: (1) plain-language model — "you set the Bid Floor (your minimum) + Rack/MRP; StayBid's AI
+  prices guests dynamically between them and always just below the lowest OTA; never below your floor";
+  (2) cross-channel links so the owner controls price everywhere from one place — **🏷️ Travel agents**
+  (`setTab("agentauction")`), **🛏️ B2B exchange & units** (`setTab("myrooms")`, operator-gated), **🔗 OTA
+  channels** (`setTab("channels")`, `tabAllowed`-gated). All confirmed real tab ids.
+- Badge v726→**v727** (`v727-pricing-hub-explainer`), sw HTML_CACHE v521→**v522**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- **Owner price-control program COMPLETE:** every channel (retail floor/MRP · agent discount · B2B band)
+  gives the owner real, bounded, admin-guardrailed, OTA-safe control, surfaced clearly from the Rooms tab.
+  Remaining owner idea earlier (a Circle-investor-facing "My Price" on `/circle/*`) is already served by
+  the same `price_override` lever (now OTA-guarded) reachable via the My-Rooms bridge — no separate build
+  needed unless the owner wants a dedicated `/circle` surface.
+
+### 2026-08-04 — Cross-channel oversell hardening, Phase 1: agent-lot date-aware cap (v728)
+- **Investigation (both channels, code-verified):** a CLASSIC owner can publish to the Model-3 agent
+  auction (default wholesale branch, no owner_type gate) and *technically* list on B2B Model-2 (API
+  ungated; UI hidden behind `isOperator`). BUT both break on classic hotels for the same root cause —
+  `assignFreeUnit` (`lib/inventory/assign.ts:72 if(!units.length) return null`) needs `hotel_room_units`
+  rows, which classic (category+quantity) hotels don't have: B2B classic checkout 409s (unbuyable
+  dead-end); Model-3 classic never writes a hold → **permanent oversell** (agent allotment stays
+  guest/OTA-bookable). Where units exist, B2B is clash-free (holds at purchase-verify); Model-3 holds
+  only at the optional enable-selling step.
+- **Phase 1 (safe, read-only, shipped):** `/api/trade/owner/lots` publish now caps `numRooms` against the
+  rooms actually FREE across the auction month via `unitsFreeForRange` (capacity − existing
+  bookings/holds, tightest night) — closing the "auction rooms that are already booked" over-promise hole
+  for BOTH classic (capacity = `rooms.quantity`) and Circle. Fail-open (null capacity signal → no cap,
+  unchanged). The pre-existing raw unit-count guard is kept.
+- Badge v727→**v728** (`v728-agent-lot-availability-cap`). sw HTML_CACHE unchanged (server-only route).
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- **NEXT — Phase 2 (the core fix, DELICATE):** a category-level hold for unit-less classic hotels so an
+  agent's won allotment (and a classic B2B buy) reserves inventory (a `room_blocks` row with NO
+  assignedUnitId — the availability engine already counts every block as `numRooms:1` against
+  `rooms.quantity`, so it fits with no engine change). This closes the classic Model-3 oversell AND makes
+  classic B2B buyable. It touches the verified award money-path + the availability write surface (both on
+  the "never touch casually" list) → to be built as a careful, dedicated step with a live round-trip
+  (seed classic room → hold → assert unitsFreeForRange drops + guest can't book → cleanup), NOT rushed.
 
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)

@@ -18,13 +18,17 @@ export async function GET(req: NextRequest) {
     try { const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_READ, cache: "no-store" }); return r.ok ? await r.json().catch(() => []) : []; }
     catch { return []; }
   };
-  const [agents, lots, awards, refundsOwed] = await Promise.all([
+  const [agents, lots, awards, refundsOwed, liveBids] = await Promise.all([
     get("trade_agents?select=*&order=created_at.desc&limit=300"),
     get("auction_lots?select=*&order=created_at.desc&limit=300"),
     get("auction_awards?select=*&order=created_at.desc&limit=300"),
     get("auction_bids?status=eq.lost&metadata->>emd_refund=eq.owed&select=id,agent_user_id,agent_id,lot_id,segment_label,deposit_amount,metadata&limit=300"),
+    // v717.1 (owner) — admin oversight of PENDING live agent bids (previously
+    // only the property owner could see these). Read-only: the live-auction
+    // states awaiting owner action are `active` / `countered`.
+    get("auction_bids?status=in.(active,countered)&select=id,agent_user_id,agent_id,lot_id,segment_label,per_room_per_night,rooms_wanted,status,counter_per_room_per_night,created_at,metadata&order=created_at.desc&limit=300"),
   ]);
-  return NextResponse.json({ agents, lots, awards, refundsOwed });
+  return NextResponse.json({ agents, lots, awards, refundsOwed, liveBids });
 }
 
 export async function POST(req: NextRequest) {

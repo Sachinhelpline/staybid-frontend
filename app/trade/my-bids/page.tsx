@@ -187,18 +187,40 @@ export default function TradeMyBidsPage() {
                       </div>
                       {a.status === "voucher_issued" && (
                         <div className="mt-3 pt-3 border-t border-green-100">
-                          <div className="text-[0.72rem] font-bold text-luxury-700 mb-1.5">Sell your allotment:</div>
-                          <div className="flex flex-wrap gap-2">
-                            <button onClick={() => enableSelling(a)} disabled={sellBusy === a.id}
-                              className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-50" style={{ background: "#33251a" }}>
-                              {sellBusy === a.id ? "…" : "🏠 Sell on StayBid + OTA"}
-                            </button>
-                            <button onClick={() => copyLink(a)}
-                              className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold" style={{ background: "#f0f3f5", color: "#92400e" }}>
-                              {copied === a.id ? "✓ Link copied" : "🔗 Your channel link"}
-                            </button>
-                          </div>
-                          <div className="text-[0.68rem] text-luxury-400 mt-1.5">StayBid + OTA: list your rooms + set OTA feeds in the partner dashboard. Own channel: share the direct booking link with your guests.</div>
+                          {/* v716.1 (owner ss2) — once selling is enabled, CONFIRM where
+                              it went instead of leaving the agent guessing. The
+                              enable-selling route stamps metadata.selling_enabled. */}
+                          {a.metadata?.selling_enabled ? (
+                            <>
+                              <div className="text-[0.75rem] font-bold text-green-700 mb-1.5">✓ Listed on StayBid + OTA</div>
+                              <div className="flex flex-wrap gap-2">
+                                <button onClick={() => enableSelling(a)} disabled={sellBusy === a.id}
+                                  className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-50" style={{ background: "#33251a" }}>
+                                  {sellBusy === a.id ? "…" : "🏠 Manage in dashboard →"}
+                                </button>
+                                <button onClick={() => copyLink(a)}
+                                  className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold" style={{ background: "#f0f3f5", color: "#92400e" }}>
+                                  {copied === a.id ? "✓ Link copied" : "🔗 Your channel link"}
+                                </button>
+                              </div>
+                              <div className="text-[0.68rem] text-luxury-400 mt-1.5">Your rooms are live on StayBid + your OTA feeds. Manage price/availability, or share the direct link with your own guests.</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-[0.72rem] font-bold text-luxury-700 mb-1.5">Publish your allotment to sell:</div>
+                              <div className="flex flex-wrap gap-2">
+                                <button onClick={() => enableSelling(a)} disabled={sellBusy === a.id}
+                                  className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-50" style={{ background: "#33251a" }}>
+                                  {sellBusy === a.id ? "…" : "🏠 List on StayBid + OTA"}
+                                </button>
+                                <button onClick={() => copyLink(a)}
+                                  className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold" style={{ background: "#f0f3f5", color: "#92400e" }}>
+                                  {copied === a.id ? "✓ Link copied" : "🔗 Your channel link"}
+                                </button>
+                              </div>
+                              <div className="text-[0.68rem] text-luxury-400 mt-1.5">List once → your rooms go live on StayBid + your OTA feeds (manage in the partner dashboard). Or share the direct booking link with your own guests.</div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -216,8 +238,15 @@ export default function TradeMyBidsPage() {
                 <div className="space-y-2">
                   {bids.map((b) => {
                     const st = ST[b.status] || ST.active;
+                    const lotId = b.lot_id || b.lot?.id;
                     return (
-                      <div key={b.id} className="rounded-[22px] bg-white border border-luxury-200 p-3.5 flex gap-3 shadow-[0_4px_16px_-10px_rgba(31,26,15,0.2)]">
+                      /* v716.1 (owner ss2) — the whole card is now clickable → the
+                         lot tour (review / re-bid); the action buttons stopPropagation
+                         so they still work. Hover lift + "View lot →" signal it. */
+                      <div key={b.id} role="button" tabIndex={0}
+                        onClick={() => lotId && router.push(`/trade/${lotId}`)}
+                        onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && lotId) { e.preventDefault(); router.push(`/trade/${lotId}`); } }}
+                        className="rounded-[22px] bg-white border border-luxury-200 p-3.5 flex gap-3 shadow-[0_4px_16px_-10px_rgba(31,26,15,0.2)] cursor-pointer transition-transform hover:-translate-y-0.5">
                         <div className="w-14 h-14 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${b.lot?.metadata?.room_img || ""})`, background: b.lot?.metadata?.room_img ? undefined : "var(--trd-soft)" }} />
                         <div className="flex-1 min-w-0">
                           <div className="font-display text-base font-semibold text-luxury-900 truncate">{b.lot?.category || b.metadata?.room_id || b.lot_id}</div>
@@ -228,19 +257,20 @@ export default function TradeMyBidsPage() {
                               ? "⚡ Live · no deposit"
                               : `EMD ${inr(b.deposit_amount)}${b.status === "lost" ? " · refund owed" : ""}`}
                           </div>
-                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             {b.status === "countered" && Number(b.counter_per_room_per_night) > 0 && (
-                              <button onClick={() => acceptCounter(b)} disabled={counterBusy === b.id}
+                              <button onClick={(e) => { e.stopPropagation(); acceptCounter(b); }} disabled={counterBusy === b.id}
                                 className="px-3 py-1.5 rounded-lg text-[0.72rem] font-bold text-white disabled:opacity-50" style={{ background: "#6d28d9" }}>
                                 {counterBusy === b.id ? "…" : `Accept counter ${inr(b.counter_per_room_per_night)}/night`}
                               </button>
                             )}
                             {["active", "countered"].includes(b.status) && (
-                              <button onClick={() => cancelBid(b)} disabled={cancelBusy === b.id}
+                              <button onClick={(e) => { e.stopPropagation(); cancelBid(b); }} disabled={cancelBusy === b.id}
                                 className="px-3 py-1.5 rounded-lg text-[0.72rem] font-bold text-red-600 border border-red-200 disabled:opacity-50">
                                 {cancelBusy === b.id ? "…" : "Withdraw bid"}
                               </button>
                             )}
+                            <span className="text-[0.7rem] font-semibold text-gold-600 ml-auto">View lot →</span>
                           </div>
                         </div>
                         <span className="text-[0.7rem] font-bold px-2 py-1 rounded-full self-start" style={{ background: st.bg, color: st.c }}>{st.label}</span>

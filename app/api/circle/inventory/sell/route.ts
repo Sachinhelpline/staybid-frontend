@@ -31,6 +31,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, decodeJwt } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { otaCapPrice } from "@/lib/pricing/ota-cap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,9 +44,18 @@ function auth(req: NextRequest): { userId?: string; phone?: string; email?: stri
 
 // List ONE owned block for public booking. Authorization is assumed done by the
 // caller (block.investor_user_id ∈ ownerIds). Best-effort per step; never throws.
-async function listBlockPublic(block: any, idsCsv: string, price: number | null): Promise<void> {
+async function listBlockPublic(block: any, idsCsv: string, price: number | null): Promise<{ priceCapped: boolean; cappedTo: number | null }> {
   const blockId = String(block.id);
   const unitId = block.unit_id ? String(block.unit_id) : "";
+  // v726 — OTA "always cheapest" guard: never store a flat guest price above the
+  // competitor cap (falls back unchanged when no competitor price is known).
+  let priceToSet = price;
+  let priceCapped = false;
+  if (price !== null && block.room_id) {
+    const capRes = await otaCapPrice(String(block.room_id), price);
+    priceToSet = capRes.price;
+    priceCapped = capRes.capped;
+  }
   const nowIso = new Date().toISOString();
   const meta = (block.metadata && typeof block.metadata === "object") ? block.metadata : {};
   // 1) release the protective hold → the caller's nights open for guests.
@@ -61,7 +71,7 @@ async function listBlockPublic(block: any, idsCsv: string, price: number | null)
   //    release above already opened exactly their nights.
   if (unitId) {
     const patch: any = { is_listed: true };
-    if (price !== null) patch.price_override = price;
+    if (priceToSet !== null) patch.price_override = priceToSet;
     try {
       await fetch(
         `${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(unitId)}&owner_user_id=in.(${idsCsv})`,
@@ -76,6 +86,7 @@ async function listBlockPublic(block: any, idsCsv: string, price: number | null)
       body: JSON.stringify({ metadata: { ...meta, publicListed: true, listedAt: nowIso }, updated_at: nowIso }),
     });
   } catch { /* non-fatal */ }
+  return { priceCapped, cappedTo: priceCapped ? priceToSet : null };
 }
 
 // Re-hold ONE block (pause it from public sale).
@@ -157,6 +168,7 @@ export async function POST(req: NextRequest) {
       listed += 1;
     }
     return NextResponse.json({ ok: true, status: "listed", listed });
+    // (list_all never sets a price, so no OTA-cap warning applies here.)
   }
 
   // ── Single block: load + verify the caller owns it and it's a live holding. ──
@@ -175,8 +187,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === "list") {
-    await listBlockPublic(block, idsCsv, price);
-    return NextResponse.json({ ok: true, status: "listed" });
+    const res = await listBlockPublic(block, idsCsv, price);
+    return NextResponse.json({
+      ok: true,
+      status: "listed",
+      ...(res.priceCapped
+        ? { priceCapped: true, listedPrice: res.cappedTo, warning: `Your price was above the current lowest online rate, so it was set to ₹${res.cappedTo}/night to keep StayBid the cheapest. (Never below your cost.)` }
+        : {}),
+    });
   }
   await pauseBlockPublic(block);
   return NextResponse.json({ ok: true, status: "paused" });

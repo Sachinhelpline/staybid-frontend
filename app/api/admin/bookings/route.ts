@@ -53,7 +53,17 @@ export async function GET(req: NextRequest) {
         ...b,
         hotelName: h.name || b.hotelId,
         hotelCity: h.city || "",
-        paidTotal: paid?.paid_total || b.amount,
+        // v716.1 (owner ss4 BUG) — the old `paid?.paid_total || b.amount` fabricated
+        // a "paid total" (= the bid amount) for EVERY bid that had no real payment
+        // record, so a pending/accepted-unpaid bid read as PAID. Now:
+        //  • a below-floor negotiate row is NEVER a payment (it's a forwarded
+        //    intent) → force null;
+        //  • otherwise use the REAL paid_total when present;
+        //  • only fall back to the bid amount for a CONFIRMED / stayed booking
+        //    (a genuinely-paid state), never for pending/counter/accepted-unpaid.
+        paidTotal: (paid?.flow || attr?.flow) === "negotiate-below-floor"
+          ? null
+          : (paid?.paid_total ?? (["confirmed", "checked_in", "checked_out"].includes(String(b.status || "").toLowerCase()) ? b.amount : null)),
         flowType: paid?.flow || attr?.flow || "",
         checkIn: req?.checkIn || "",
         checkOut: req?.checkOut || "",

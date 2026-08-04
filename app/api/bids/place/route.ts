@@ -8,6 +8,7 @@ import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 import { resolveFlashFloorPerNight } from "@/lib/pricing/flash-authority";
 import { logPricingDecision } from "@/lib/pricing/decision-log";
 import { resolveOwnedUnit, isUnitFreeForRange } from "@/lib/circle/room-listings";
+import { resolveEngineConfig } from "@/lib/pricing/engine-config-store";
 
 // v241.26 / v248 — the auto-accept + auto-counter decision is fully server-
 // side + tamper-proof: tier comes from loadServerScore (canonical
@@ -222,12 +223,27 @@ export async function POST(req: NextRequest) {
   // Floor-price check (skipped when dealId is present). Floor stays
   // per-room-per-night — amount × nights × numRooms is the final
   // charge, but the floor compares 1:1 against amount.
+  // v723 Gap-3 — customer below-floor forwarded-offer ratio. 1.0 = OFF (today's
+  // hard reject at floor). < 1.0 lets a guest OFFER down to floor × ratio; the
+  // real offer is forwarded PENDING (never auto-accepted). Fail-open to 1.0.
+  let belowFloorRatio = 1.0;
+  if (!dealId) {
+    try {
+      const ec = await resolveEngineConfig();
+      const r = Number(ec?.custBelowFloorRatio);
+      if (Number.isFinite(r) && r >= 0.5 && r <= 1) belowFloorRatio = r;
+    } catch { /* fail-open → 1.0 = unchanged behaviour */ }
+  }
+
   if (!dealId) {
     const rooms = await sbSelect(`rooms?id=eq.${roomId}&select=floorPrice`);
     const floor = rooms[0]?.floorPrice;
-    if (floor && Number(amount) < Number(floor)) {
+    // Reject only BELOW the admin-allowed band (floor × ratio). With the default
+    // ratio 1.0 this is exactly the original `amount < floor` reject.
+    const minAllowed = Number(floor) * belowFloorRatio;
+    if (floor && Number(amount) < minAllowed) {
       return NextResponse.json(
-        { error: `Amount too low. Minimum: ₹${floor}` },
+        { error: `Amount too low. Minimum: ₹${Math.round(minAllowed)}` },
         { status: 400 }
       );
     }
@@ -377,6 +393,10 @@ export async function POST(req: NextRequest) {
     // We re-read the floor here so dealId-bypass (flash) bids never auto-act.
     let status = "PENDING";
     let counterAmount: number | null = null;
+    // v723 Gap-3 — the amount actually stored on the bid. Equals the submitted
+    // amount for every normal flow; only the below-floor forwarded-offer path
+    // (feature ON) overrides it with the guest's real sub-floor offer.
+    let effectiveAmount = Number(amount);
     // v249.1 — AI pricing data foundation. We capture the EPHEMERAL spine
     // snapshot + decision context here (it's recomputed daily by the cron, so
     // unreconstructable later), then log it fire-and-forget AFTER the bid
@@ -432,45 +452,61 @@ export async function POST(req: NextRequest) {
       const intent = extractPreferredPrice(message) ?? Number(amount);
       pd.intent = Number.isFinite(intent) ? intent : null;
 
-      // Only two cases can auto-act: /bid (flow="place") at/above floor →
-      // instant accept, OR any below-floor-intent bid → auto-counter. Skip
-      // the tier/mode lookups otherwise (Book Now / above-floor Negotiate stay
-      // PENDING here — Book Now accepts via its own path, Negotiate schedules).
-      const eligibleForAuto =
-        floor > 0 && ((flow === "place" && intent >= floor) || intent < floor);
-      let action: AutoAction = { kind: "manual" };
-      if (eligibleForAuto) {
-        const score = await loadServerScore(customerId);
-        // Phase A — per-unit autopilot. When the customer booked a SPECIFIC
-        // owned room (resolvedUnitId), that unit-owner's mode wins; else the
-        // hotel-level mode. Classic category bids have no unit → hotel-level.
-        const mode = await loadEffectiveAutopilotMode(hotelId, resolvedUnitId);
-        const band = counterBandForVacancy(vacancyRatio);
-        pd.tier = score.tier;
-        pd.mode = mode;
-        pd.band = band;
-        action = resolveAutoAction({
-          intent,
-          floor,
-          tier: score.tier,
-          baseMs: score.autoAcceptMs,
-          mode,
-          // v249 Layer 2 — empty date widens the counter band (0.78), nearly
-          // full closes it (1.0). Counter amount stays = floor (margin-safe).
-          counterBandMin: band,
-        });
-      }
-      pd.action = action.kind;
+      const belowFloorEnabled = belowFloorRatio < 1.0;
+      if (belowFloorEnabled && floor > 0 && intent < floor) {
+        // v723 Gap-3 — forward the guest's REAL below-floor offer to the owner as
+        // a PENDING offer (mirrors the Model-3 agent below-floor band). It is
+        // NEVER auto-accepted or auto-countered — the owner accepts / counters /
+        // declines it on their terms from the partner Bids inbox. The stored
+        // amount is the guest's own sub-floor number, clamped into the admin band
+        // [floor×ratio, floor) so it stays a genuine below-floor offer and never
+        // dips under the owner-set minimum.
+        const bandLow = Math.round(floor * belowFloorRatio);
+        const cappedHigh = Math.max(bandLow, floor - 1);
+        effectiveAmount = Math.min(Math.max(Math.round(intent), bandLow), cappedHigh);
+        status = "PENDING";
+        pd.action = "below_floor_offer";
+      } else {
+        // Only two cases can auto-act: /bid (flow="place") at/above floor →
+        // instant accept, OR any below-floor-intent bid → auto-counter. Skip
+        // the tier/mode lookups otherwise (Book Now / above-floor Negotiate stay
+        // PENDING here — Book Now accepts via its own path, Negotiate schedules).
+        const eligibleForAuto =
+          floor > 0 && ((flow === "place" && intent >= floor) || intent < floor);
+        let action: AutoAction = { kind: "manual" };
+        if (eligibleForAuto) {
+          const score = await loadServerScore(customerId);
+          // Phase A — per-unit autopilot. When the customer booked a SPECIFIC
+          // owned room (resolvedUnitId), that unit-owner's mode wins; else the
+          // hotel-level mode. Classic category bids have no unit → hotel-level.
+          const mode = await loadEffectiveAutopilotMode(hotelId, resolvedUnitId);
+          const band = counterBandForVacancy(vacancyRatio);
+          pd.tier = score.tier;
+          pd.mode = mode;
+          pd.band = band;
+          action = resolveAutoAction({
+            intent,
+            floor,
+            tier: score.tier,
+            baseMs: score.autoAcceptMs,
+            mode,
+            // v249 Layer 2 — empty date widens the counter band (0.78), nearly
+            // full closes it (1.0). Counter amount stays = floor (margin-safe).
+            counterBandMin: band,
+          });
+        }
+        pd.action = action.kind;
 
-      if (intent < floor && action.kind === "counter") {
-        // Below-floor near-floor → auto-counter at floor (any flow). The
-        // customer responds via the existing /my-bids COUNTER card.
-        status = "COUNTER";
-        counterAmount = action.counterAmount;
-      } else if (flow === "place" && intent >= floor && action.kind === "accept") {
-        // /bid instant accept (v196 rule, now mode-aware). Negotiate/Book-Now
-        // above-floor stay PENDING here → their schedule-accept lifecycle runs.
-        status = "ACCEPTED";
+        if (intent < floor && action.kind === "counter") {
+          // Below-floor near-floor → auto-counter at floor (any flow). The
+          // customer responds via the existing /my-bids COUNTER card.
+          status = "COUNTER";
+          counterAmount = action.counterAmount;
+        } else if (flow === "place" && intent >= floor && action.kind === "accept") {
+          // /bid instant accept (v196 rule, now mode-aware). Negotiate/Book-Now
+          // above-floor stay PENDING here → their schedule-accept lifecycle runs.
+          status = "ACCEPTED";
+        }
       }
     }
 
@@ -479,7 +515,7 @@ export async function POST(req: NextRequest) {
       customerId,
       hotelId,
       roomId,
-      amount: Number(amount),
+      amount: effectiveAmount,
       requestId: requestId || null,
       status,
       message: message || null,

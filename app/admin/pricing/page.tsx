@@ -6,8 +6,9 @@ import Modal from "@/components/admin/modal";
 import KPICard from "@/components/admin/kpi-card";
 import { adminColors as C, btnGold, btnGhost, h1Style, inputStyle, pageStyle, pill } from "@/lib/admin/styles";
 import { exportRows } from "@/lib/admin/export";
+import PricingEngineTab from "@/components/admin/PricingEngineTab";
 
-type Tab = "status" | "flash" | "overrides";
+type Tab = "status" | "flash" | "overrides" | "engine";
 
 export default function AdminPricing() {
   const [tab, setTab] = useState<Tab>("status");
@@ -209,7 +210,7 @@ export default function AdminPricing() {
       </div>
 
       <div className="admin-tabs" style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-        {(["status", "flash", "overrides"] as Tab[]).map((t) => (
+        {(["status", "flash", "overrides", "engine"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -226,7 +227,7 @@ export default function AdminPricing() {
               textTransform: "capitalize",
             }}
           >
-            {t === "status" ? "AI Status" : t === "flash" ? "Flash Deals" : "Overrides"}
+            {t === "status" ? "AI Status" : t === "flash" ? "Flash Deals" : t === "overrides" ? "Overrides" : "Pricing Engine"}
           </button>
         ))}
       </div>
@@ -270,6 +271,7 @@ export default function AdminPricing() {
 
       {tab === "flash" && <DataTable columns={dealCols} data={deals} loading={loading} pageSize={15} />}
       {tab === "overrides" && <DataTable columns={roomCols} data={rooms} loading={loading} pageSize={15} />}
+      {tab === "engine" && <PricingEngineTab />}
 
       {creating && (
         <Modal onClose={() => setCreating(false)} width={520}>

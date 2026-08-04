@@ -117,7 +117,10 @@ export default function CircleInventoryTab({
   const [ownFrom, setOwnFrom] = useState<string>(todayISO());
   const [ownTo, setOwnTo] = useState<string>("");
   // v349 — regulated-price preview for the own-inventory supply form.
-  const [ownQuote, setOwnQuote] = useState<{ askPerNight: number; askTotal: number; nights: number; split?: B2bSplit } | null>(null);
+  const [ownQuote, setOwnQuote] = useState<{ askPerNight: number; askTotal: number; nights: number; split?: B2bSplit; resaleMultiplier?: number; resaleMultiplierMin?: number; resaleMultiplierMax?: number; resaleMultiplierDefault?: number } | null>(null);
+  // v725 — owner-chosen resale multiplier (null = use the StayBid default). Bounded
+  // server-side into the admin band; the slider previews the exact listed price.
+  const [ownMult, setOwnMult] = useState<number | null>(null);
   // v332 — D2: my B2B trades (as buyer / as seller).
   const [b2bTrades, setB2bTrades] = useState<{ asBuyer: B2bTrade[]; asSeller: B2bTrade[] }>({ asBuyer: [], asSeller: [] });
   // v333 — D3: OTHER investors' active listings I can buy (this hotel).
@@ -141,14 +144,15 @@ export default function CircleInventoryTab({
   useEffect(() => {
     if (!ownRoomId || !ownFrom || !ownTo || ownTo <= ownFrom) { setOwnQuote(null); return; }
     let cancelled = false;
-    fetch(`/api/b2b/regulated-quote?roomId=${encodeURIComponent(ownRoomId)}&from=${ownFrom}&to=${ownTo}`, {
+    const mq = ownMult != null ? `&mult=${ownMult}` : "";
+    fetch(`/api/b2b/regulated-quote?roomId=${encodeURIComponent(ownRoomId)}&from=${ownFrom}&to=${ownTo}${mq}`, {
       headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store",
     })
       .then((r) => r.json())
       .then((d) => { if (!cancelled) setOwnQuote(d?.ok ? d : null); })
       .catch(() => { if (!cancelled) setOwnQuote(null); });
     return () => { cancelled = true; };
-  }, [ownRoomId, ownFrom, ownTo]);
+  }, [ownRoomId, ownFrom, ownTo, ownMult]);
 
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(""), 2600); };
 
@@ -286,7 +290,7 @@ export default function CircleInventoryTab({
       const r = await fetch(`/api/b2b/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ source: "hotel_owner", hotelId, roomId: ownRoomId, dateFrom: ownFrom, dateTo: ownTo }),
+        body: JSON.stringify({ source: "hotel_owner", hotelId, roomId: ownRoomId, dateFrom: ownFrom, dateTo: ownTo, ...(ownMult != null ? { priceMultiplier: ownMult } : {}) }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { flash(d?.error || "List failed"); return; }
@@ -710,12 +714,24 @@ export default function CircleInventoryTab({
                   className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
               </label>
               <div className="text-xs">
-                <span className="block mb-1 opacity-70">StayBid-regulated price · 2× your own price</span>
+                <span className="block mb-1 opacity-70">Your resale price · {(ownMult ?? ownQuote?.resaleMultiplier ?? 2).toFixed(1)}× your own price</span>
                 <div className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)", background: "var(--accent-soft)" }}>
                   {ownQuote ? <><b>{inr(ownQuote.askPerNight)}</b>/night · {inr(ownQuote.askTotal)} total</> : <span className="opacity-50">pick dates…</span>}
                 </div>
               </div>
             </div>
+            {ownQuote && Number(ownQuote.resaleMultiplierMax) > Number(ownQuote.resaleMultiplierMin) && (
+              <div className="mt-2">
+                <div className="flex items-center justify-between text-[11px] mb-1" style={{ color: "var(--text-muted)" }}>
+                  <span>Set your price · <b style={{ color: "var(--text-base)" }}>{(ownMult ?? ownQuote.resaleMultiplier ?? 2).toFixed(1)}×</b> <span className="opacity-70">(allowed {ownQuote.resaleMultiplierMin}×–{ownQuote.resaleMultiplierMax}×)</span></span>
+                  {ownMult != null && <button onClick={() => setOwnMult(null)} className="underline">reset to default</button>}
+                </div>
+                <input type="range" min={ownQuote.resaleMultiplierMin} max={ownQuote.resaleMultiplierMax} step={0.1}
+                  value={ownMult ?? ownQuote.resaleMultiplier ?? 2}
+                  onChange={(e) => setOwnMult(Number(e.target.value))}
+                  className="w-full" style={{ accentColor: "var(--accent)" }} />
+              </div>
+            )}
             {ownQuote?.split && (
               <div className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
                 You receive <b style={{ color: "var(--text-base)" }}>{inr(ownQuote.split.sellerNet)}</b> after the {ownQuote.split.sellerFeePct ?? 0}% seller fee · buyer pays {inr(ownQuote.split.buyerPays ?? ownQuote.split.askTotal)}.

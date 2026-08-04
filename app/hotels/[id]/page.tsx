@@ -1718,7 +1718,7 @@ export default function HotelDetail() {
     }
     setNegRoom(r);
     // v129 — initial bid lands at 88% of floor, snapped to a ₹100 multiple.
-    setNegAmt(snap100(r.floorPrice * 0.88));
+    setNegAmt(snap100(r.floorPrice * 0.80)); // v718.1 (owner) — arena opens at 20% below floor (was 12%/0.88) for a stronger "deal" anchor.
     setNegIn(globalCheckIn);
     setNegOut(globalCheckOut);
     setNegSuccess(false);
@@ -2048,14 +2048,21 @@ export default function HotelDetail() {
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: negNumRooms, guests: globalTotalGuests || negRoom.capacity || 2, ...(negUnitId ? { assignedUnitId: negUnitId } : {}) });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
-      // Record customer intent (no payment for below-floor)
+      // Record customer intent (NO payment for below-floor — the guest has NOT
+      // paid; this bid is only forwarded to the hotel to counter/accept).
+      // v716.1 (owner ss4 BUG): this used to send `paidTotal: total` (the amount
+      // the guest WOULD pay), which wrote a real bid_paid_amounts row and made a
+      // PENDING, unpaid bid read as PAID in the admin timeline + Paid Total. It
+      // MUST be 0 — matching this flow's own "no payment" comment and the sibling
+      // recordAttribution({ paidTotal: 0 }) call just below. `paidPerNight` still
+      // carries the guest's preferred rate (for the hotel's counter context).
       try {
         await fetch("/api/bid/paid", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             bidId: bidRes.bid.id, hotelId: hotel.id, roomId: negRoom.id,
             customerId: user.id,
-            paidTotal: total, paidPerNight: negAmt, nights,
+            paidTotal: 0, paidPerNight: negAmt, nights,
             flow: "negotiate-below-floor",
           }),
         });
@@ -4922,7 +4929,7 @@ export default function HotelDetail() {
         // step on the drag bar lands on the same indivisible billing unit the
         // platform uses end-to-end (Save Big chip, Smart chip, Instant chip,
         // hotel counter slider, /bid presets — all share PRICE_STEP).
-        const min     = Math.max(PRICE_MIN, floor100(floor * 0.65));
+        const min     = Math.max(PRICE_MIN, floor100(floor * 0.50)); // v718.1 (owner) — customer can bid down to 50% below floor (was 35%/0.65); below-floor bids are forwarded to the hotel, never auto-accepted, and the probability ring reads "Very Low · Will reject" that low.
         const max     = ceil100(floor * 1.05);
         const prob    = bidProb(negAmt, floor);
         const nights  = (negIn && negOut && negIn < negOut)

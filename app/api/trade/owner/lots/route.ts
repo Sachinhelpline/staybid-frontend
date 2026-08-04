@@ -12,6 +12,7 @@ import { resolveAuctionConfig } from "@/lib/trade/config";
 import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, circleOwnerFloor, wholesaleFloor, dynamicWholesaleFloor, activeUnitCount } from "@/lib/trade/lots";
 import { normalizeAutopilotMode } from "@/lib/trade/live-auction";
 import { monthMarket } from "@/lib/trade/market";
+import { unitsFreeForRange } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,22 @@ export async function POST(req: NextRequest) {
   if (unitCount > 0 && numRooms > unitCount) {
     return NextResponse.json({ error: `Only ${unitCount} units exist in this room category — reduce the room count.` }, { status: 400 });
   }
+  // v728 — DATE-AWARE over-promise guard. Beyond the raw unit-count above, cap
+  // the lot against the rooms actually FREE across the auction month (capacity −
+  // existing guest bookings/holds, tightest night). Works for classic hotels too
+  // (capacity falls back to rooms.quantity). Fail-open: no capacity signal →
+  // unitsFreeForRange returns null → no cap (unchanged behaviour), never blocks.
+  try {
+    const avail = await unitsFreeForRange({ hotelId, roomId, from: range.monthStart, to: range.monthEnd });
+    if (avail && numRooms > avail.free) {
+      return NextResponse.json({
+        error: avail.free > 0
+          ? `Only ${avail.free} room${avail.free === 1 ? "" : "s"} are free across ${monthKey} — the rest are already booked. Reduce the room count.`
+          : `No rooms are free across ${monthKey} — they're already booked, so there's nothing to auction.`,
+        freeRooms: avail.free,
+      }, { status: 409 });
+    }
+  } catch { /* fail-open — a capacity hiccup must never block a legit publish */ }
 
   // TAMPER-SAFE floor by OWNER TYPE:
   //  • Circle owner (host_circle): floor = THEIR purchase price/night × 1.20

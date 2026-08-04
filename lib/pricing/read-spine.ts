@@ -14,6 +14,7 @@
 
 import { sbSelect } from "@/lib/onboard/supabase-admin";
 import { computeRoomDatePrice, type SpinePrice } from "./spine";
+import { resolveEngineConfig } from "./engine-config-store";
 
 export interface ResolvedSpinePrice extends SpinePrice {
   roomId: string;
@@ -84,6 +85,9 @@ export async function resolveSpinePrices(
         const v = Number(c.competitor_min);
         if (v > 0) compOf[c.room_id] = v;
       }
+      // Admin-tuned engine config (fail-open) so on-the-fly computes match the
+      // cron-written cache. Loaded once for the whole missing-set.
+      const engineCfg = await resolveEngineConfig().catch(() => undefined);
       for (const r of rooms) {
         const sp = computeRoomDatePrice({
           floorPrice: Number(r.floorPrice) || 0,
@@ -92,6 +96,7 @@ export async function resolveSpinePrices(
           city: cityOf[r.hotelId] || "",
           date: day,
           competitorMin: compOf[r.id] ?? null,
+          engineCfg,
         });
         out[r.id] = { roomId: r.id, ...sp, source: "computed" };
       }

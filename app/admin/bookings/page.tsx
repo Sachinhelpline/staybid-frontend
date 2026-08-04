@@ -310,11 +310,20 @@ export default function AdminBookings() {
 }
 
 function BidTimelineModal({ bid, onClose }: { bid: any; onClose: () => void }) {
+  // v716.1 (owner ss4 BUG) — a payment CANNOT exist before the bid is accepted,
+  // so the "Payment" milestone + the "Paid Total" stat must be gated on BOTH a
+  // real positive amount AND a non-pre-acceptance status. This is the last line
+  // of defence: even if a stray bid_paid_amounts row leaks a value (e.g. the
+  // legacy below-floor rows already in the DB), a PENDING/COUNTER/rejected bid
+  // never reads as PAID.
+  const st = String(bid.status || "").toLowerCase();
+  const notPayable = ["pending", "counter", "countered", "rejected", "declined", "expired", "cancelled", "lowball"].includes(st);
+  const isPaid = Number(bid.paidTotal) > 0 && !notPayable;
   const steps = [
     { label: "Bid Created", date: bid.createdAt, done: true },
     { label: "Hotel Countered", date: bid.counterAmount ? bid.createdAt : null, done: !!bid.counterAmount },
     { label: "Accepted", date: ["accepted", "confirmed", "checked_in", "checked_out"].includes(bid.status?.toLowerCase()) ? bid.createdAt : null, done: ["accepted", "confirmed", "checked_in", "checked_out"].includes(bid.status?.toLowerCase()) },
-    { label: "Payment", date: bid.paidTotal ? bid.createdAt : null, done: !!bid.paidTotal },
+    { label: "Payment", date: isPaid ? (bid.paidAt || bid.createdAt) : null, done: isPaid },
     { label: "Checked In", date: ["checked_in", "checked_out"].includes(bid.status?.toLowerCase()) ? bid.checkIn : null, done: ["checked_in", "checked_out"].includes(bid.status?.toLowerCase()) },
     { label: "Checked Out", date: bid.status?.toLowerCase() === "checked_out" ? bid.checkOut : null, done: bid.status?.toLowerCase() === "checked_out" },
   ];
@@ -360,7 +369,7 @@ function BidTimelineModal({ bid, onClose }: { bid: any; onClose: () => void }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: "20px 0" }}>
           <Stat label="Bid Amount" value={`₹${Number(bid.amount).toLocaleString()}`} />
           <Stat label="Counter" value={bid.counterAmount ? `₹${Number(bid.counterAmount).toLocaleString()}` : "—"} />
-          <Stat label="Paid Total" value={bid.paidTotal ? `₹${Number(bid.paidTotal).toLocaleString()}` : "—"} />
+          <Stat label="Paid Total" value={isPaid ? `₹${Number(bid.paidTotal).toLocaleString()}` : "—"} />
           <Stat label="Flow Type" value={bid.flowType || "—"} />
         </div>
 
