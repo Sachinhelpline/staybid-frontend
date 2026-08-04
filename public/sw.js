@@ -632,7 +632,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // v730 — HTML_CACHE bump (v522 -> v523). New partner "Manage My Price" hub tab +
 // redesigned "Sell to Agents" tab. Bumping drops the stale cached partner-dashboard
 // markup so the new tab + redesign show on first load.
-const HTML_CACHE = 'staybid-html-v524';
+// v731 — HTML_CACHE bump (v523 -> v524). Admin full-width dead-space fix +
+// Pricing Engine redesign.
+// v732 — HTML_CACHE bump (v524 -> v525). /bid step sheets now hide the bottom
+// dock while open (sb-modal-open) so the CTA + content are never clipped behind
+// the nav on any step/device. Bumping drops the stale cached /bid markup.
+const HTML_CACHE = 'staybid-html-v525';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
