@@ -19,6 +19,59 @@
 
 ## Session log
 
+### 2026-08-04 — Owner round 2: Circle large-display width, basket overlap, trade widen+speed, hero per-device (v715)
+**Owner sent 3 more photos. tsc + build clean, `test:security` 385/0.**
+- **ss1 — Circle capped ~1340px → empty on MacBook/2560px + floating basket bar overlapped the footer**
+  (`app/circle/circle-premium.css`). Raised the whole-Circle content cap for large displays
+  (`.sbc-home>*` 1340→1560 @1280, +`min(93vw,1880)` @1600, +`min(94vw... 2160)` @2000; marketing chrome
+  `topbar/hero/section/footer` widen in step) so the browse grid + hub + journey use the big screen without
+  absurd line lengths. The fixed "Review & pay" basket bar overlapped the marketing footer (footer is a
+  sibling after `<main>`, no clearance) — added `body:has(.sbc2b-basket) .sbc-footer { padding-bottom }` so
+  clearance appears ONLY while the basket is active (no permanent gap).
+- **ss2 — Model 3 `/trade/[id]` narrow-centred on wide screens + loaded very late.** Width: `.sbt-wrap`
+  1080→1180 @900, +1320 @1280, +1480 @1600 (with wider bid column + taller hero). Speed: (1) replaced the
+  bare "Loading property…" with a real shimmer **skeleton** (instant perceived load); (2) the API route
+  `/api/trade/lots/[id]` did **6 sequential awaits** — hotel/room/config/market/scarcity depend only on the
+  lot, not each other, so they now run in one `Promise.all` batch; (3) `lib/trade/market.ts` `monthMarket`
+  ran up to **14 serial Spine fills** — now one concurrent `Promise.all` batch. Same results, latency ≈ the
+  single slowest call instead of the sum.
+- **ss3 — home hero filled the screen on short phones so the rails below never peeked.** `.sbh-hero` grows
+  past its `min-height` when content is tall; on ≤800px-tall phones the content summed to ~52svh+. Added
+  **height-aware compression** (`@media (max-width:1023px) and (max-height:800px|680px)`) that shrinks the
+  hero type + gaps + chip/CTA sizing so the hero stays compact and the next section always shows. No content
+  removed; tall phones + desktop untouched.
+- Badge v714→**v715**, sw HTML_CACHE v510→**v511**.
+
+### 2026-08-04 — Owner ss1–ss7 round: sign-in unify, dark-mode bid contrast, /bid nav, arena fit, tab clip (v714)
+**Owner sent 7 device photos. All presentation-only; `test:security` stayed 385/0, tsc + build clean.**
+- **ss1 + ss7 — split-screen sign-in read as "2 different cards"** (`app/partner/page.tsx`, `app/auth/page.tsx`
+  + `app/globals.css`). Desktop (≥1024) now shares ONE continuous premium canvas: the gradient moved to the
+  ROOT (full-bleed), the brand pane is transparent (shows the shared canvas), and the form pane is a faint
+  translucent same-colour wash + hairline seam + inner shadow — a gentle frosted column, not a second card. The
+  sign-in card floats on it; out-of-card copy (brand subtitle / "By continuing") kept cream on the dark wash.
+  Mobile (<1024) unchanged.
+- **ss2 + ss3 — "font visible nhi hai" in the /bid step sheets (owner runs DARK mode).** Root cause: `.cmm-sheet`
+  is a HARDCODED light frosted panel in both themes, but its `.bx-*` content reads the app theme tokens — in dark
+  mode those flip (`--bg-card`→navy, `--text-*`→light), so cozy-fixed labels went dark-on-dark and muted captions
+  went light-on-cream. Fix: **pin the sheet's token subtree to the LIGHT values in dark mode**
+  (`[data-theme="dark"] .cmm-sheet { … }`) so the whole sheet renders as the tested light design in either theme
+  (light theme byte-identical). Also deepened the accepted-card greens (`.bx-live-stat.is-ok` / `-head-ok` /
+  `-save-tag`: `#5f7a4a`→`#47702f`/`#3f6629`) for a clearer read on the cream card.
+- **ss4 — /bid climber buried the bottom nav (customer stuck).** The `.bgz-shell` is a fixed z-1000 fullscreen
+  overlay; the v614 carve reserved a dock band but on gesture-nav devices the dock still read as buried. Fix:
+  raise the dock ABOVE the shell on /bid (`body.sb-bid-immersive .ig-bottom-dock { z-index: 1001 }`) so it is
+  always visible + tappable; shell content stays clipped to the carve so the dock never overlaps a sheet's CTA.
+- **ss5 — AI Bidding Arena needed awkward scrolling / clipped the submit on Flip** (`app/hotels/[id]/page.tsx`).
+  The panel body used a hard-coded `maxHeight: calc(92vh - 70px)` (fixed-header assumption) + `overflow-hidden`
+  panel, so a taller-than-70px header on a short screen pushed the submit below the clipped panel. Fix: panel is
+  now a flex column (`flex flex-col`, `maxHeight: 92dvh`), header `shrink-0`, body `flex-1 min-h-0 overflow-y-auto`
+  — nothing is clipped on ANY height and dvh accounts for the mobile browser-UI band.
+- **ss6 — hotel tab strip clipped "About this stay" on narrow/Flip** (`.hx-tabs`/`.hx-tab`). The flex row had no
+  wrap/overflow, so the 4th tab fell off-screen. Fix: horizontal scroller (`flex-wrap:nowrap; overflow-x:auto`,
+  hidden scrollbar; tabs `white-space:nowrap; flex:0 0 auto`) so every tab is reachable; wide screens still fit
+  all four with no scroll.
+- Badge v713→**v714**, sw HTML_CACHE v509→**v510**.
+
 ### 2026-08-04 — Circle rebuild polish + exhaustive breakpoint QA (v713)
 **Owner: the 2 polish items, then a full QA sweep.**
 - **Home model cards** — the hollow middle is filled with a compact feature-chip row per model (Model 1

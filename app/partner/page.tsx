@@ -110,7 +110,7 @@ export default function PartnerLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-stretch">
+    <div className="pauth-root min-h-screen bg-linear-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-stretch">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
         .font-display { font-family: 'Cormorant Garamond', serif; }
@@ -134,10 +134,26 @@ export default function PartnerLogin() {
         .pauth-brand-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
         .pauth-brand-list li { display: flex; align-items: center; gap: 12px; font-size: 0.92rem; color: rgba(226,234,244,0.9); }
         .pauth-brand-list li svg { color: #a0b2c6; flex-shrink: 0; }
+        /* v714 (owner ss1) — ONE continuous premium steel canvas across the
+           whole desktop sign-in so the brand half and the form half stop
+           reading as two different cards. The gradient moves to the ROOT
+           (full-bleed); the brand pane is transparent (shows the shared
+           canvas) and the form pane is a faint translucent wash of the SAME
+           colour with a hairline seam — a gentle frosted column, not a second
+           card. The glass sign-in card floats on it. Mobile (<1024) unchanged. */
         @media (min-width: 1024px) {
+          .pauth-root {
+            background:
+              radial-gradient(120% 85% at 12% 8%, rgba(106,133,160,0.22), transparent 58%),
+              linear-gradient(155deg,#1a2431 0%,#111824 55%,#0b1017 100%) !important;
+          }
           .pauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
-            background: radial-gradient(120% 85% at 12% 8%, rgba(106,133,160,0.22), transparent 58%), linear-gradient(155deg,#1a2431 0%,#111824 55%,#0b1017 100%); }
-          .pauth-form { flex: 1 1 46%; }
+            background: transparent; }
+          .pauth-form { flex: 1 1 46%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.016) 100%);
+            backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+            border-left: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 34px 0 62px -42px rgba(0,0,0,0.5); }
         }
       `}</style>
 

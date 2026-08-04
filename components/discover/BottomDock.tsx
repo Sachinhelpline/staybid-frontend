@@ -214,6 +214,15 @@ export function BottomDock() {
         body.sb-bid-immersive .ig-dock-item.is-active {
           color: var(--cozy-champagne-light, #b4c1cf);
         }
+        /* v714 (owner ss4) — the /bid climber (.bgz-shell) is a fixed z-1000
+           fullscreen overlay. The v614 bottom-carve reserved a dock band, but
+           on gesture-nav devices with no OS bar the dock still read as buried
+           (owner: "bottom nav bar hide ho jata hai, customer ko block kar deta
+           hai"). Raise the dock ABOVE the shell on /bid so it is ALWAYS visible
+           + tappable — the customer can never get stuck on the climber. The
+           shell content stays clipped to the carve band, so the dock never
+           overlaps a step-sheet's controls. */
+        body.sb-bid-immersive .ig-bottom-dock { z-index: 1001; }
 
         .ig-dock-item {
           flex: 1 1 0;

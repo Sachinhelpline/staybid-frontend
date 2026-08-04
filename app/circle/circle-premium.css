@@ -440,6 +440,17 @@
   font-size: .72rem; color: rgba(176, 192, 209,.62);
 }
 
+/* v715 (owner ss1) — the fixed "Review & pay" basket bar (.sbc2b-basket) floats
+   at the viewport bottom, so on the browse page it sat ON TOP of the footer's
+   bottom row once the user scrolled all the way down. The footer had no bottom
+   clearance of its own (it is a sibling after <main>, outside the content
+   column's padding). Give the footer clearance ONLY while the basket bar is
+   present (:has) — so no permanent empty gap when the basket is empty. */
+body:has(.sbc2b-basket) .sbc-footer { padding-bottom: 128px; }
+@media (min-width: 1024px) {
+  body:has(.sbc2b-basket) .sbc-footer { padding-bottom: 104px; }
+}
+
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .sbc-hero::before, .sbc-hero::after, .sbc-brand-mark, .sbc-fab,
@@ -1969,9 +1980,27 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 /* SS1(b): a touch more content width on big screens so blocks read intentional
    rather than pinched. */
 @media (min-width: 1280px) {
-  .sbc-home > * { max-width: min(94vw, 1340px); }
+  .sbc-home > * { max-width: min(94vw, 1560px); }
   /* SS3 v295 — account hub fills a wide premium canvas (was pinned 760px). */
-  .sbc-dash > * { max-width: min(94vw, 1280px); }
+  .sbc-dash > * { max-width: min(94vw, 1440px); }
+}
+/* v715 (owner) — StayBid Circle was capped ~1340px, so on a MacBook / 2560px
+   monitor the whole vertical (browse grid, hub, journey) sat pinched in the
+   middle with big empty side margins. Let the content BREATHE on large displays
+   — generously wider, but still capped at a tasteful max so text lines never
+   run absurdly long. The marketing chrome (topbar / hero / sections / footer,
+   all 80rem) widens in step so the hub doesn't feel narrow inside the column. */
+@media (min-width: 1600px) {
+  .sbc-home > * { max-width: min(93vw, 1880px); }
+  .sbc-dash > * { max-width: min(93vw, 1680px); }
+  .sbc-topbar-inner, .sbc-hero-inner, .sbc-section,
+  .sbc-footer-inner, .sbc-footer-bar { max-width: min(92vw, 1560px); }
+}
+@media (min-width: 2000px) {
+  .sbc-home > * { max-width: min(92vw, 2160px); }
+  .sbc-dash > * { max-width: min(92vw, 1900px); }
+  .sbc-topbar-inner, .sbc-hero-inner, .sbc-section,
+  .sbc-footer-inner, .sbc-footer-bar { max-width: min(90vw, 1760px); }
 }
 
 /* ── SS1(c): the portfolio "Build plan" CTA was full-width → on a wide card it

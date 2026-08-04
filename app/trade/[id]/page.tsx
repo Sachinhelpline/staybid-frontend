@@ -41,7 +41,18 @@ export default function TradeTourPage() {
   }, [lotId]);
   useEffect(() => { setBasketN(bidBasketList().length); return onBidBasketChange(() => setBasketN(bidBasketList().length)); }, []);
 
-  if (loading) return <div className="sbt-wrap"><div className="sbt-load">Loading property…</div><TourStyles /></div>;
+  if (loading) return (
+    <div className="sbt-wrap">
+      <div className="sbt-back" style={{ opacity: .5 }}>← Back to auction</div>
+      <div className="sbt-skel sbt-skel-hero" />
+      <div className="sbt-skel-metrics">{[0, 1, 2, 3].map((i) => <div key={i} className="sbt-skel sbt-skel-metric" />)}</div>
+      <div className="sbt-skel sbt-skel-line" style={{ width: "72%" }} />
+      <div className="sbt-skel sbt-skel-line" style={{ width: "94%" }} />
+      <div className="sbt-skel sbt-skel-line" style={{ width: "84%" }} />
+      <div className="sbt-skel sbt-skel-box" />
+      <TourStyles />
+    </div>
+  );
   if (!data?.lot) return <div className="sbt-wrap"><Link href="/trade" className="sbt-back">← Back</Link><div className="sbt-load">This lot is no longer available.</div><TourStyles /></div>;
 
   const { lot, hotel, room, segments, depositPct } = data;
@@ -416,6 +427,19 @@ function TourStyles() {
       .sbt-wrap { max-width: 720px; margin: 0 auto; padding: 14px 14px 110px; min-height: 100vh; background: linear-gradient(180deg,var(--trd-page-a),var(--trd-page-b)); }
       .sbt-back { display: inline-block; margin-bottom: 12px; font-weight: 700; color: #65819c; font-size: .9rem; }
       .sbt-load { padding: 40px; text-align: center; color: rgba(74,56,32,.6); }
+      /* v715 (owner ss2) — a real shimmer skeleton in place of the bare
+         "Loading property…" line, so the tour feels instant on click even while
+         the lot + live-market data resolve. */
+      .sbt-skel { background: linear-gradient(100deg, var(--trd-soft) 28%, rgba(255,255,255,.32) 50%, var(--trd-soft) 72%); background-size: 200% 100%; animation: sbtShimmer 1.3s ease-in-out infinite; border-radius: 12px; }
+      @keyframes sbtShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+      .sbt-skel-hero { height: 250px; border-radius: 20px; }
+      @media (min-width: 640px) { .sbt-skel-hero { height: 340px; } }
+      .sbt-skel-metrics { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin: 16px 0 14px; }
+      @media (min-width: 560px) { .sbt-skel-metrics { grid-template-columns: repeat(4,1fr); } }
+      .sbt-skel-metric { height: 58px; border-radius: 13px; }
+      .sbt-skel-line { height: 13px; margin: 9px 0; border-radius: 7px; }
+      .sbt-skel-box { height: 190px; border-radius: 16px; margin-top: 18px; }
+      @media (prefers-reduced-motion: reduce) { .sbt-skel { animation: none; } }
       .sbt-hero { position: relative; height: 250px; border-radius: 20px; overflow: hidden; background: var(--trd-hero); box-shadow: 0 12px 34px rgba(40,26,12,.22); }
       .sbt-hero img { width: 100%; height: 100%; object-fit: cover; }
       .sbt-noimg { display: grid; place-items: center; font-size: 3rem; width: 100%; height: 100%; color: #e6ebef; }
@@ -521,9 +545,9 @@ function TourStyles() {
         .sbt-hero { height: auto; aspect-ratio: 16 / 9; max-height: 360px; }
         .sbt-roomgal { height: 240px; }
       }
-      /* ── Laptop / desktop: two columns, sticky bid panel, capped for cozy reading ── */
+      /* ── Laptop / desktop: two columns, sticky bid panel ── */
       @media (min-width: 900px) {
-        .sbt-wrap { max-width: 1080px; padding-left: 28px; padding-right: 28px; }
+        .sbt-wrap { max-width: 1180px; padding-left: 28px; padding-right: 28px; }
         .sbt-hero { aspect-ratio: 16 / 9; max-height: 400px; }
         .sbt-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; margin-top: 6px; }
         .sbt-left { min-width: 0; }
@@ -531,9 +555,19 @@ function TourStyles() {
         .sbt-h2 { margin-top: 0; }
         .sbt-roomgal { height: 300px; }
       }
+      /* v715 (owner ss2) — the tour was pinned at 1080px, so on a MacBook / big
+         monitor it read as a narrow centred column with wide empty margins. Let
+         it use the large display (still capped so line lengths stay readable). */
       @media (min-width: 1280px) {
-        .sbt-hero { aspect-ratio: 21 / 9; max-height: 460px; }
+        .sbt-wrap { max-width: 1320px; }
+        .sbt-hero { aspect-ratio: 21 / 9; max-height: 480px; }
         .sbt-cols { grid-template-columns: minmax(0, 1fr) 420px; gap: 34px; }
+        .sbt-roomgal { height: 340px; }
+      }
+      @media (min-width: 1600px) {
+        .sbt-wrap { max-width: 1480px; }
+        .sbt-cols { grid-template-columns: minmax(0, 1fr) 460px; gap: 40px; }
+        .sbt-hero { max-height: 540px; }
       }
     `}</style>
   );

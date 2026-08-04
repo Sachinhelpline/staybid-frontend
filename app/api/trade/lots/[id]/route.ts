@@ -21,42 +21,52 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const [lot] = r.ok ? await r.json().catch(() => []) : [];
   if (!lot) return NextResponse.json({ error: "Lot not found." }, { status: 404 });
 
-  // Side-load real hotel + room (no FK embeds).
-  let hotel: any = null, room: any = null;
-  try {
-    const hr = await fetch(`${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(lot.hotel_id)}&select=id,name,city,starRating,description,images&limit=1`, { headers: SB_READ, cache: "no-store" });
-    if (hr.ok) [hotel] = await hr.json().catch(() => []);
-  } catch { /* ignore */ }
-  try {
-    const rr = await fetch(`${SB_URL}/rest/v1/rooms?id=eq.${encodeURIComponent(lot.room_id)}&select=id,name,images,amenities,capacity,description&limit=1`, { headers: SB_READ, cache: "no-store" });
-    if (rr.ok) [room] = await rr.json().catch(() => []);
-  } catch { /* ignore */ }
-
   const range = {
     monthKey: lot.month_key, monthStart: String(lot.month_start).slice(0, 10),
     monthEnd: String(lot.month_end).slice(0, 10),
     nights: Math.round((new Date(lot.month_end).getTime() - new Date(lot.month_start).getTime()) / 86_400_000),
   };
   const segments = enumerateSegments(range).map((s) => ({ type: s.type, weekIndex: s.weekIndex, label: s.label, nights: s.nights }));
-  const cfg = await resolveAuctionConfig();
 
-  // Market intelligence (best-effort; the tour still works if it's null).
-  let market: { low: number; high: number; adr: number; samples: number; rack: number } | null = null;
-  try { market = await monthMarket(lot.room_id, range.monthStart, range.monthEnd); } catch { market = null; }
-
-  // Scarcity — rooms still available = num_rooms − rooms already awarded/won.
-  let roomsAvailable = Number(lot.num_rooms) || 0;
-  try {
-    const ar = await fetch(
-      `${SB_URL}/rest/v1/auction_awards?lot_id=eq.${encodeURIComponent(lot.id)}&status=in.(awarded,paid,voucher_issued)&select=rooms_awarded`,
-      { headers: SB_READ, cache: "no-store" },
-    );
-    if (ar.ok) {
-      const rows = await ar.json().catch(() => []);
-      const taken = (Array.isArray(rows) ? rows : []).reduce((s: number, x: any) => s + (Number(x.rooms_awarded) || 0), 0);
-      roomsAvailable = Math.max(0, (Number(lot.num_rooms) || 0) - taken);
-    }
-  } catch { /* best-effort */ }
+  // v715 (owner ss2 — slow load) — everything below depends ONLY on the lot we
+  // already have (hotel_id / room_id / month), NEVER on each other, so the five
+  // lookups (hotel · room · config · live market · scarcity) run CONCURRENTLY
+  // instead of one-await-after-another. Identical results; the tour data now
+  // arrives in roughly the time of the single slowest lookup, not their sum.
+  const [hotel, room, cfg, market, roomsAvailable] = await Promise.all([
+    (async (): Promise<any> => {
+      try {
+        const hr = await fetch(`${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(lot.hotel_id)}&select=id,name,city,starRating,description,images&limit=1`, { headers: SB_READ, cache: "no-store" });
+        if (hr.ok) { const [h] = await hr.json().catch(() => []); return h || null; }
+      } catch { /* ignore */ }
+      return null;
+    })(),
+    (async (): Promise<any> => {
+      try {
+        const rr = await fetch(`${SB_URL}/rest/v1/rooms?id=eq.${encodeURIComponent(lot.room_id)}&select=id,name,images,amenities,capacity,description&limit=1`, { headers: SB_READ, cache: "no-store" });
+        if (rr.ok) { const [rm] = await rr.json().catch(() => []); return rm || null; }
+      } catch { /* ignore */ }
+      return null;
+    })(),
+    resolveAuctionConfig(),
+    // Market intelligence (best-effort; the tour still works if it's null).
+    (async () => { try { return await monthMarket(lot.room_id, range.monthStart, range.monthEnd); } catch { return null; } })(),
+    // Scarcity — rooms still available = num_rooms − rooms already awarded/won.
+    (async (): Promise<number> => {
+      try {
+        const ar = await fetch(
+          `${SB_URL}/rest/v1/auction_awards?lot_id=eq.${encodeURIComponent(lot.id)}&status=in.(awarded,paid,voucher_issued)&select=rooms_awarded`,
+          { headers: SB_READ, cache: "no-store" },
+        );
+        if (ar.ok) {
+          const rows = await ar.json().catch(() => []);
+          const taken = (Array.isArray(rows) ? rows : []).reduce((s: number, x: any) => s + (Number(x.rooms_awarded) || 0), 0);
+          return Math.max(0, (Number(lot.num_rooms) || 0) - taken);
+        }
+      } catch { /* best-effort */ }
+      return Number(lot.num_rooms) || 0;
+    })(),
+  ]);
 
   return NextResponse.json({
     lot, range, segments, depositPct: cfg.depositPct, buyerPremiumPct: cfg.buyerPremiumPct,
