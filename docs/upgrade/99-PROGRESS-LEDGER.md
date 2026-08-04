@@ -19,6 +19,36 @@
 
 ## Session log
 
+### 2026-08-04 — Bucket A: previously-unswept surfaces polished (v701)
+**Owner asked "host se alag aur kuch toh nahi reh gaya" — double-check.** A full `app/**/page.tsx`
+enumeration + theme-token/`.lux-*`-wrapper/harness-declared cross-reference found ~14 non-host surfaces
+never swept ("Bucket A"). Measured reality: **theme was already correct on almost all** (the `.lux-bg` /
+`.lux-soft` wrappers already flip Tailwind luxury utilities to dark tokens — the theme-token scan was
+misleading). Genuine work was one un-themed page + emoji-hybrid + font-floor + a few contrast/overflow
+nits. Presentation-only; `test:security` **385/0**.
+- **`/order/[outlet]` (QR F&B menu)** — the ONE genuinely un-themed page (hardcoded light, stayed light in
+  dark mode) + Hinglish copy. Converted all inline/`<style>` colors to theme tokens (`--bg-page/-card/-pill/
+  -input`, `--text-base/-soft/-muted`, `--border-soft/-strong`) → now flips light/dark; translated all copy
+  to English (owner rule #8). Food/success/dark-banner/steel-button colors intentionally kept.
+- **Emoji-hybrid:** `/order` 📋→🍴; added food/hospitality/social content-vocabulary to the harness KEEP set
+  (🍽🍴🛎📷📖🤷); `/upgrade` 🛡️→lucide `ShieldCheck`.
+- **Font-floor (<10px → ≥10px):** shared `UpgradeSection` "Path 1/2" + labels (0.6/0.62rem→0.63rem, fixes
+  `/upgrade` + `/influencer/register` which redirects to it); `/verification` status labels; shared
+  `ProfileBadge` xs label + mark (`Math.max(10, …)`); `ProfileHeader` stat labels.
+- **Contrast:** `/saved` active tab (gold-500→gold-700 white-text) + header icon (`#8198ae`→`var(--text-soft)`
+  so it flips); shared `PostsScrollFeed` brand-dot + empty-state (fixes `/saved/posts` + `/u/[username]/posts`);
+  `ProfileBadge` PUBLIC grey `#8E8E8E`→`#6d6d6d`; `/social/profile` inactive tabs 0.4→0.62 white; `/circle/[id]`
+  not-found text → theme tokens + 🏔 explicit color (dark-mode invisible before).
+- **Overflow (≤360px):** `/u/[username]` header (avatar/gap/stat-font shrink `@media ≤360`); `/social/profile`
+  root `overflow-x-hidden` (contained IG profile, vertical-scroll only).
+- **Not touched (correctly):** IG cluster kept **fixed-dark** (Instagram idiom, owner-confirmed — more premium
+  for media, matches `/reels`, no shared-component blast radius); `/tag`, `/verification/record`, `/influencer`
+  (redirect shell) already clean; `/circle/model2/[id]` deck aesthetic intact.
+- **Harness:** added the 14 Bucket A routes (permanent coverage) + env-driven `AUDIT_WIDTHS` for fast triage
+  (defaults to the full 13-width matrix).
+- **Verified:** `tsc` + `next build` clean; `test:security` **385/0**; responsive-audit **CLEAN full-matrix
+  (13 widths × 2 themes)** on every Bucket A route. Badge **v701**, sw HTML_CACHE **v497**.
+
 ### 2026-08-04 — Kiosk media quality: crisp 4K photo pipeline + cinematic video hero (v700)
 **Owner asked** whether kiosk photos/videos can be made to not look soft/stretched on a big display, after
 the v699 large-format work. Honest boundary set first: front-end can't invent pixels a low-res upload never

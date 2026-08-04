@@ -60,15 +60,15 @@ export function ProfileHeader({ profile, postCount, isFollowing, isOwnProfile, o
           <div className="flex-1 grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-white font-bold text-base leading-none">{fmt(postCount)}</p>
-              <p className="text-white/55 text-[0.6rem] mt-1">Posts</p>
+              <p className="text-white/70 text-[0.63rem] mt-1">Posts</p>
             </div>
             <div>
               <p className="text-white font-bold text-base leading-none">{fmt(profile.follower_count)}</p>
-              <p className="text-white/55 text-[0.6rem] mt-1">Followers</p>
+              <p className="text-white/70 text-[0.63rem] mt-1">Followers</p>
             </div>
             <div>
               <p className="text-white font-bold text-base leading-none">{fmt(profile.following_count)}</p>
-              <p className="text-white/55 text-[0.6rem] mt-1">Following</p>
+              <p className="text-white/70 text-[0.63rem] mt-1">Following</p>
             </div>
           </div>
         </div>

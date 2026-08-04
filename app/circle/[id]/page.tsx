@@ -195,9 +195,9 @@ export default function CircleTourPage() {
   if (err || !p) {
     return (
       <div className="sbc-tour" style={{ textAlign: "center", paddingTop: 60 }}>
-        <div style={{ fontSize: 40 }}>🏔️</div>
-        <h2 style={{ fontFamily: "var(--font-display, serif)", fontSize: "1.5rem", color: "var(--sbc-coffee)", marginTop: 10 }}>Property not found</h2>
-        <p style={{ color: "rgba(74,56,32,.65)", marginTop: 4 }}>{err || "This StayCircle property may have been unlisted."}</p>
+        <div style={{ fontSize: 40, color: "var(--text-base)" }}>🏔️</div>
+        <h2 style={{ fontFamily: "var(--font-display, serif)", fontSize: "1.5rem", color: "var(--text-base)", marginTop: 10 }}>Property not found</h2>
+        <p style={{ color: "var(--text-soft)", marginTop: 4 }}>{err || "This StayCircle property may have been unlisted."}</p>
         <Link href="/circle" className="sbc-btn-gold" style={{ display: "inline-flex", marginTop: 18 }}>← Back to Discover</Link>
       </div>
     );

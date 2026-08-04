@@ -860,14 +860,14 @@ export function PostsScrollFeed({
           padding-right: 4px;
           user-select: none;
         }
-        .pf-brand-dot { color: var(--cozy-champagne, #5f7c98); margin: 0 1px; }
+        .pf-brand-dot { color: #33445a; margin: 0 1px; }
         .pf-spacer { width: 34px; }
 
         .pf-list { display: block; }
         .pf-empty {
           text-align: center;
           padding: 96px 32px;
-          color: rgba(12, 10, 4, 0.55);
+          color: rgba(12, 10, 4, 0.66);
         }
         .pf-empty-icon { font-size: 3rem; display: block; margin-bottom: 10px; }
         .pf-empty-title { font-size: 0.95rem; font-weight: 700; }

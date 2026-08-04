@@ -161,7 +161,7 @@ export default function VerificationPage() {
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-2"
                    style={{ background: "rgba(106,133,160,0.16)", border: "1px solid rgba(106,133,160,0.3)" }}>
                 <span className="sb-pulse-dot" style={{ background: "#5f7c98" }} />
-                <span className="text-[0.62rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#c8d2dc" }}>Stay Verification</span>
+                <span className="text-[0.63rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#c8d2dc" }}>Stay Verification</span>
               </div>
               <h1 className="font-display text-[1.7rem] sm:text-3xl leading-tight" style={{ color: "#f4f6f8" }}>
                 Room proofs &amp; complaints
@@ -193,7 +193,7 @@ export default function VerificationPage() {
                 <div className="text-xl font-bold" style={{ color: s.c, fontVariantNumeric: "tabular-nums" }}>
                   <CountUp value={s.value} duration={900} />{s.isScore && summary.scored ? <span className="text-[0.65rem] opacity-70">/100</span> : null}
                 </div>
-                <div className="text-[0.6rem] uppercase tracking-wider mt-0.5" style={{ color: "rgba(176, 192, 209,0.5)" }}>{s.label}</div>
+                <div className="text-[0.63rem] uppercase tracking-wider mt-0.5" style={{ color: "rgba(176, 192, 209,0.5)" }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -346,7 +346,7 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, p
           <div className="flex items-center gap-4">
             <TrustRing score={report.trust_score ?? 0} size={92} tone="light" />
             <div className="min-w-0 flex-1">
-              <div className="text-[0.62rem] font-bold tracking-widest uppercase text-gold-700">AI Trust Report</div>
+              <div className="text-[0.63rem] font-bold tracking-widest uppercase text-gold-700">AI Trust Report</div>
               <div className="font-display text-lg text-luxury-900 leading-tight mt-0.5">
                 {report.trust_score >= 80 ? "Room matches the promise" : report.trust_score >= 50 ? "Mostly verified" : "Needs a closer look"}
               </div>

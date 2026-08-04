@@ -282,6 +282,14 @@ export default function UserProfilePage() {
         }
         .u-stat-value { font-size: 1.05rem; font-weight: 800; color: #2c1d04; }
         .u-stat-label { font-size: 0.72rem; font-weight: 500; color: #6e4a08; }
+        @media (max-width: 360px) {
+          .u-header { gap: 10px; padding: 12px 12px 6px; }
+          .u-avatar-wrap { width: 64px; height: 64px; }
+          .u-avatar-fallback { font-size: 1.6rem; }
+          .u-stats { gap: 2px; }
+          .u-stat-value { font-size: 0.92rem; }
+          .u-stat-label { font-size: 0.66rem; }
+        }
         .u-stat-btn {
           background: transparent; border: none; padding: 4px 6px; margin: 0;
           cursor: pointer; border-radius: 8px;
@@ -456,7 +464,7 @@ function FollowListSheet({
         }}
       >
         <div style={{
-          display: "grid", gridTemplateColumns: "1fr auto 1fr",
+          display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
           alignItems: "center", gap: 8, padding: "14px 16px 10px",
           borderBottom: "1px solid rgba(106, 133, 160, 0.18)",
           background: "rgba(176, 192, 209, 0.92)",
