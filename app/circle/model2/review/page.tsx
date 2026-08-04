@@ -174,39 +174,42 @@ export default function Model2ReviewPage() {
       <style jsx global>{`
         .sbc2r { padding-bottom: 90px; max-width: 680px; margin: 0 auto; }
         .sbc2r-headrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .sbc2r-steppill { font-size: .68rem; font-weight: 800; letter-spacing: .04em; color: #fff; background: var(--sbc-coffee, #3a2c17); border-radius: 999px; padding: 6px 12px; }
-        .sbc2r-title { font-size: 1.7rem; font-weight: 800; color: var(--sbc-coffee); margin: 0; font-family: var(--font-syne, inherit); }
-        .sbc2r-sub { font-size: .86rem; color: rgba(74,56,32,.68); margin: 8px 0 16px; line-height: 1.5; }
+        /* v711 (owner Circle rebuild) — review page fully themed: the dark
+           COST & VALUE panel + every hardcoded walnut/steel color → app tokens
+           (light cards that match + flip in dark). */
+        .sbc2r-steppill { font-size: .68rem; font-weight: 800; letter-spacing: .04em; color: #fff; background: var(--accent); border-radius: 999px; padding: 6px 12px; }
+        .sbc2r-title { font-size: 1.7rem; font-weight: 800; color: var(--text-base); margin: 0; font-family: var(--font-syne, inherit); }
+        .sbc2r-sub { font-size: .86rem; color: var(--text-soft); margin: 8px 0 16px; line-height: 1.5; }
         .sbc2r-sech { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 8px; }
-        .sbc2r-sech span { font-size: .68rem; font-weight: 800; letter-spacing: .08em; color: rgba(74,56,32,.5); }
-        .sbc2r-edit { font-size: .78rem; font-weight: 700; color: var(--sbc-gold-deep); }
-        .sbc2r-city { background: #fff; border: 1px solid rgba(139,105,20,.16); border-radius: 15px; padding: 12px 14px; margin-bottom: 12px; }
-        .sbc2r-cityhead { font-size: .84rem; font-weight: 800; color: var(--sbc-coffee); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-        .sbc2r-newcity { font-size: .63rem; font-weight: 700; color: #8a6914; background: rgba(139,105,20,.1); border-radius: 999px; padding: 2px 8px; }
-        .sbc2r-unlocked { font-size: .62rem; font-weight: 700; color: #6b8f4e; }
-        .sbc2r-item { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-top: 1px solid rgba(139,105,20,.1); }
+        .sbc2r-sech span { font-size: .68rem; font-weight: 800; letter-spacing: .08em; color: var(--text-muted); }
+        .sbc2r-edit { font-size: .78rem; font-weight: 700; color: var(--accent); }
+        .sbc2r-city { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 15px; padding: 12px 14px; margin-bottom: 12px; }
+        .sbc2r-cityhead { font-size: .84rem; font-weight: 800; color: var(--text-base); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .sbc2r-newcity { font-size: .63rem; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 999px; padding: 2px 8px; }
+        .sbc2r-unlocked { font-size: .62rem; font-weight: 700; color: color-mix(in srgb, #7FA968 60%, var(--text-base)); }
+        .sbc2r-item { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-top: 1px solid var(--border-soft); }
         .sbc2r-item img { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; flex: none; }
-        .sbc2r-noimg { width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center; background: #e2e7ed; font-size: 1.2rem; flex: none; }
-        .sbc2r-itile { font-weight: 700; color: var(--sbc-coffee); font-size: .84rem; }
-        .sbc2r-isub { font-size: .68rem; color: rgba(74,56,32,.6); }
+        .sbc2r-noimg { width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center; background: var(--bg-pill); font-size: 1.2rem; flex: none; }
+        .sbc2r-itile { font-weight: 700; color: var(--text-base); font-size: .84rem; }
+        .sbc2r-isub { font-size: .68rem; color: var(--text-muted); }
         .sbc2r-idates { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-        .sbc2r-dchip { font-size: .64rem; font-weight: 600; color: #7a5c1e; background: rgba(140, 160, 182,.12); border: 1px solid rgba(140, 160, 182,.28); border-radius: 7px; padding: 3px 7px; }
-        .sbc2r-rm { display: block; font-size: .63rem; color: #c96f4a; background: none; border: 0; cursor: pointer; margin-top: 2px; margin-left: auto; }
-        .sbc2r-panel { background: linear-gradient(150deg, #1f1710, #33251a); border: 1px solid rgba(140, 160, 182,.28); border-radius: 16px; padding: 16px 17px; margin: 6px 0 14px; color: #e4e9ee; box-shadow: 0 8px 26px rgba(40,26,12,.2); }
-        .sbc2r-panel-h { font-size: .66rem; font-weight: 800; letter-spacing: .1em; color: rgba(176, 192, 209,.55); margin-bottom: 10px; }
-        .sbc2r-prow { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; color: rgba(176, 192, 209,.85); padding: 4px 0; }
-        .sbc2r-prow b { color: #d5dce4; }
-        .sbc2r-prow.total { border-top: 1px dashed rgba(140, 160, 182,.35); margin-top: 5px; padding-top: 11px; font-size: 1rem; }
-        .sbc2r-prow.total b { font-size: 1.3rem; font-weight: 800; color: #cad4dd; }
-        .sbc2r-value { border-top: 1px solid rgba(140, 160, 182,.18); margin-top: 9px; padding-top: 9px; }
-        .sbc2r-vrow { display: flex; justify-content: space-between; font-size: .78rem; color: rgba(176, 192, 209,.62); padding: 2px 0; }
-        .sbc2r-vrow b { color: #e4e9ee; }
-        .sbc2r-vrow.up { color: #a6d17a; } .sbc2r-vrow.up b { color: #a6d17a; font-weight: 800; }
-        .sbc2r-note { font-size: .66rem; color: rgba(74,56,32,.5); margin-top: 12px; line-height: 1.5; }
+        .sbc2r-dchip { font-size: .64rem; font-weight: 600; color: var(--text-soft); background: var(--bg-pill); border: 1px solid var(--border-soft); border-radius: 7px; padding: 3px 7px; }
+        .sbc2r-rm { display: block; font-size: .63rem; color: color-mix(in srgb, #c96f4a 60%, var(--text-base)); background: none; border: 0; cursor: pointer; margin-top: 2px; margin-left: auto; padding: 4px 2px; }
+        .sbc2r-panel { background: var(--bg-pill); border: 1px solid var(--border-strong); border-radius: 16px; padding: 16px 17px; margin: 6px 0 14px; color: var(--text-base); box-shadow: 0 8px 26px -14px rgba(31,26,15,.22); }
+        .sbc2r-panel-h { font-size: .66rem; font-weight: 800; letter-spacing: .1em; color: var(--text-muted); margin-bottom: 10px; }
+        .sbc2r-prow { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; color: var(--text-soft); padding: 4px 0; }
+        .sbc2r-prow b { color: var(--text-base); }
+        .sbc2r-prow.total { border-top: 1px dashed var(--border-soft); margin-top: 5px; padding-top: 11px; font-size: 1rem; }
+        .sbc2r-prow.total b { font-size: 1.3rem; font-weight: 800; color: var(--text-base); }
+        .sbc2r-value { border-top: 1px solid var(--border-soft); margin-top: 9px; padding-top: 9px; }
+        .sbc2r-vrow { display: flex; justify-content: space-between; font-size: .78rem; color: var(--text-muted); padding: 2px 0; }
+        .sbc2r-vrow b { color: var(--text-base); }
+        .sbc2r-vrow.up { color: color-mix(in srgb, #7FA968 62%, var(--text-base)); } .sbc2r-vrow.up b { color: color-mix(in srgb, #7FA968 62%, var(--text-base)); font-weight: 800; }
+        .sbc2r-note { font-size: .66rem; color: var(--text-muted); margin-top: 12px; line-height: 1.5; }
         .sbc2r-done { text-align: center; padding: 40px 10px; }
         .sbc2r-done-badge { width: 66px; height: 66px; border-radius: 50%; background: #6b8f4e; color: #fff; font-size: 2rem; display: grid; place-items: center; margin: 0 auto 16px; }
-        .sbc2r-done-h { font-size: 1.6rem; font-weight: 800; color: var(--sbc-coffee); margin: 0 0 8px; }
-        .sbc2r-done-p { font-size: .86rem; color: rgba(74,56,32,.7); margin: 0 auto 20px; max-width: 420px; line-height: 1.55; }
+        .sbc2r-done-h { font-size: 1.6rem; font-weight: 800; color: var(--text-base); margin: 0 0 8px; }
+        .sbc2r-done-p { font-size: .86rem; color: var(--text-soft); margin: 0 auto 20px; max-width: 420px; line-height: 1.55; }
       `}</style>
     </div></div>
   );

@@ -190,38 +190,40 @@ export default function Model2SellingPage() {
 
       <style jsx global>{`
         .sbc2s { padding-bottom: 90px; max-width: 960px; margin: 0 auto; }
-        .sbc2s-back { display: inline-block; margin-bottom: 12px; font-weight: 700; color: var(--sbc-gold-deep); font-size: .9rem; }
+        /* v711 (owner Circle rebuild) — selling page fully themed: the dark KPI
+           strip + cold-grey nudge + every hardcoded color → app tokens. */
+        .sbc2s-back { display: inline-block; margin-bottom: 12px; font-weight: 700; color: var(--accent); font-size: .9rem; }
         .sbc2s-kpis { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin: 16px 0 18px; }
         @media (min-width: 560px) { .sbc2s-kpis { grid-template-columns: repeat(4,1fr); } }
-        .sbc2s-kpi { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(140, 160, 182,.25); border-radius: 13px; padding: 13px 14px; }
-        .sbc2s-kpi b { display: block; color: #d5dce4; font-size: 1.1rem; font-weight: 800; }
-        .sbc2s-kpi span { font-size: .63rem; letter-spacing: .06em; color: rgba(176, 192, 209,.55); font-weight: 700; }
-        .sbc2s-h2 { font-size: 1.15rem; font-weight: 800; color: var(--sbc-coffee); margin: 6px 0 10px; }
-        .sbc2s-block { background: #fff; border: 1px solid rgba(139,105,20,.18); border-radius: 16px; padding: 13px 15px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
+        .sbc2s-kpi { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 13px; padding: 13px 14px; }
+        .sbc2s-kpi b { display: block; color: var(--text-base); font-size: 1.1rem; font-weight: 800; }
+        .sbc2s-kpi span { font-size: .63rem; letter-spacing: .06em; color: var(--text-muted); font-weight: 700; }
+        .sbc2s-h2 { font-size: 1.15rem; font-weight: 800; color: var(--text-base); margin: 6px 0 10px; }
+        .sbc2s-block { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 16px; padding: 13px 15px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(31,26,15,.06); }
         .sbc2s-block-top { display: flex; align-items: center; gap: 10px; }
-        .sbc2s-block-title { font-weight: 800; color: var(--sbc-coffee); font-size: .95rem; }
-        .sbc2s-block-sub { font-size: .72rem; color: rgba(74,56,32,.6); }
+        .sbc2s-block-title { font-weight: 800; color: var(--text-base); font-size: .95rem; }
+        .sbc2s-block-sub { font-size: .72rem; color: var(--text-muted); }
         .sbc2s-status { font-size: .64rem; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
-        .sbc2s-status.live { color: #4e7a2e; background: rgba(107,143,78,.14); }
-        .sbc2s-status.held { color: #8a6914; background: rgba(139,105,20,.1); }
-        .sbc2s-flash { font-size: .82rem; font-weight: 600; color: #4e7a2e; background: rgba(107,143,78,.12); border: 1px solid rgba(107,143,78,.3); border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; }
-        .sbc2s-nudge { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: linear-gradient(135deg,#f6f8f9,#eceff3); border: 1px solid rgba(106, 133, 160,.35); border-radius: 14px; padding: 13px 15px; margin-bottom: 14px; }
-        .sbc2s-nudge b { display: block; color: var(--sbc-coffee); font-size: .92rem; }
-        .sbc2s-nudge span { display: block; font-size: .72rem; color: rgba(74,56,32,.7); margin-top: 2px; max-width: 520px; line-height: 1.45; }
+        .sbc2s-status.live { color: color-mix(in srgb, #7FA968 55%, var(--text-base)); background: color-mix(in srgb, #7FA968 16%, transparent); }
+        .sbc2s-status.held { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+        .sbc2s-flash { font-size: .82rem; font-weight: 600; color: color-mix(in srgb, #7FA968 55%, var(--text-base)); background: color-mix(in srgb, #7FA968 12%, transparent); border: 1px solid color-mix(in srgb, #7FA968 30%, transparent); border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; }
+        .sbc2s-nudge { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: color-mix(in srgb, var(--accent) 8%, var(--bg-card)); border: 1px solid var(--border-strong); border-radius: 14px; padding: 13px 15px; margin-bottom: 14px; }
+        .sbc2s-nudge b { display: block; color: var(--text-base); font-size: .92rem; }
+        .sbc2s-nudge span { display: block; font-size: .72rem; color: var(--text-soft); margin-top: 2px; max-width: 520px; line-height: 1.45; }
         .sbc2s-nudge .sbc-btn-gold { white-space: nowrap; }
-        .sbc2s-sell { margin-top: 11px; padding-top: 11px; border-top: 1px dashed rgba(139,105,20,.2); }
+        .sbc2s-sell { margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--border-soft); }
         .sbc2s-sell-row { display: flex; gap: 8px; align-items: center; }
-        .sbc2s-price { flex: 1; min-width: 0; background: #fff; border: 1px solid rgba(139,105,20,.25); border-radius: 10px; padding: 8px 11px; font-size: .82rem; font-family: inherit; color: var(--sbc-coffee); }
-        .sbc2s-sell-note { font-size: .66rem; color: rgba(74,56,32,.6); margin-top: 6px; }
+        .sbc2s-price { flex: 1; min-width: 0; background: var(--bg-input); border: 1px solid var(--border-soft); border-radius: 10px; padding: 8px 11px; font-size: .82rem; font-family: inherit; color: var(--text-base); }
+        .sbc2s-sell-note { font-size: .66rem; color: var(--text-muted); margin-top: 6px; }
         .sbc2s-chan { display: grid; gap: 7px; margin-top: 11px; }
         @media (min-width: 640px) { .sbc2s-chan { grid-template-columns: repeat(3, 1fr); } }
-        .sbc2s-ch { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: rgba(139,105,20,.05); border: 1px solid rgba(139,105,20,.14); border-radius: 11px; padding: 9px 12px; cursor: pointer; font-family: inherit; }
+        .sbc2s-ch { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: var(--bg-pill); border: 1px solid var(--border-soft); border-radius: 11px; padding: 9px 12px; cursor: pointer; font-family: inherit; }
         .sbc2s-ch > span:first-child { font-size: 1.1rem; }
-        .sbc2s-ch b { display: block; color: var(--sbc-coffee); font-size: .8rem; }
-        .sbc2s-ch small { color: rgba(74,56,32,.6); font-size: .66rem; }
+        .sbc2s-ch b { display: block; color: var(--text-base); font-size: .8rem; }
+        .sbc2s-ch small { color: var(--text-muted); font-size: .66rem; }
         .sbc2s-ch div { flex: 1; min-width: 0; }
-        .sbc2s-ch-go { color: var(--sbc-gold-deep); font-weight: 800; }
-        .sbc2s-note { font-size: .7rem; color: rgba(74,56,32,.6); margin: 12px 0 0; line-height: 1.55; background: rgba(139,105,20,.06); border: 1px solid rgba(139,105,20,.14); border-radius: 12px; padding: 11px 13px; }
+        .sbc2s-ch-go { color: var(--accent); font-weight: 800; }
+        .sbc2s-note { font-size: .7rem; color: var(--text-soft); margin: 12px 0 0; line-height: 1.55; background: var(--bg-pill); border: 1px solid var(--border-soft); border-radius: 12px; padding: 11px 13px; }
       `}</style>
     </div>
   );

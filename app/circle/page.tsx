@@ -24,7 +24,7 @@ import {
 } from "@/lib/circle/engine";
 import { CIRCLE_INCOME_SHORT, CIRCLE_RESALE_RISK_NOTE, CIRCLE_AUCTION_NOTE } from "@/lib/circle/disclosure";
 import ResaleOffers from "@/components/circle/ResaleOffers";
-import { Menu, Search, Gem, BarChart3, CalendarDays, HelpCircle, Lock, Globe, Play } from "lucide-react";
+import { Menu, Search, Gem, BarChart3, CalendarDays, HelpCircle, Lock, Globe, Play, BadgeCheck, Sparkles } from "lucide-react";
 
 type RoomType = { id: string; name: string; monthlyRate: number; availableUnits: number };
 type CircleProperty = {
@@ -275,7 +275,14 @@ export default function CircleHomePage() {
           <>
             <div className="sbc-hp-label">Your Portfolio</div>
             <div className="sbc-hp-value">Start earning<span>from ₹20,000/mo</span></div>
-            <p className="sbc-hp-empty">Lock handpicked, verified properties and earn <b>15%–32%</b> annual returns — fully managed by StayBid.</p>
+            <p className="sbc-hp-empty">Lock handpicked, verified properties and earn <b>expected monthly income</b> from real bookings — fully managed by StayBid.</p>
+            {/* v711 (owner) — benefit chips fill the short signed-out card so the
+                hero column no longer empties out beside Quick Actions. */}
+            <div className="sbc-hp-benefits" aria-hidden>
+              <span className="sbc-hp-benefit"><BadgeCheck size={14} strokeWidth={2.2} aria-hidden />Verified &amp; legal</span>
+              <span className="sbc-hp-benefit"><Sparkles size={14} strokeWidth={2.2} aria-hidden />Fully managed</span>
+              <span className="sbc-hp-benefit"><CalendarDays size={14} strokeWidth={2.2} aria-hidden />Monthly payouts</span>
+            </div>
             <Link href="/circle/discover" className="sbc-hp-cta" style={{ gap: 7 }}><Lock size={16} strokeWidth={2.2} aria-hidden />Lock your first property →</Link>
           </>
         )}
@@ -318,6 +325,7 @@ export default function CircleHomePage() {
             <div className="sbc-model-num">Model 1</div>
             <div className="sbc-model-title">Managed Income</div>
             <p className="sbc-model-desc">Own hotel rooms — StayBid finds, designs &amp; runs them. Earn <b>expected monthly income</b> from real bookings, fully hands-off.</p>
+            <div className="sbc-model-feats" aria-hidden><span>Hands-off</span><span>Monthly income</span><span>Verified</span></div>
             <span className="sbc-model-cta">Start investing →</span>
             <p className="sbc-model-fine">{CIRCLE_INCOME_SHORT}</p>
           </Link>
@@ -332,6 +340,7 @@ export default function CircleHomePage() {
             <div className="sbc-model-num">Model 2</div>
             <div className="sbc-model-title">Multi-City Inventory Bundle</div>
             <p className="sbc-model-desc">Buy owner-released room-nights at <b>StayBid-regulated B2B prices</b> across cities, then sell through your own inventory — StayBid, your OTA listings or direct.</p>
+            <div className="sbc-model-feats" aria-hidden><span>Buy wholesale</span><span>Resell anywhere</span><span>Multi-city</span></div>
             <span className="sbc-model-cta">Open inventory marketplace →</span>
             <p className="sbc-model-fine">{CIRCLE_RESALE_RISK_NOTE}</p>
           </Link>
@@ -346,6 +355,7 @@ export default function CircleHomePage() {
             <div className="sbc-model-num">Model 3</div>
             <div className="sbc-model-title">Monthly Inventory Auction</div>
             <p className="sbc-model-desc">Owners auction spare rooms for the <b>upcoming month</b>. Approved travel agents bid per-room (full month / week / weekends) — <b>highest bid wins</b>, refundable EMD.</p>
+            <div className="sbc-model-feats" aria-hidden><span>Wholesale rooms</span><span>Refundable EMD</span><span>Monthly</span></div>
             <span className="sbc-model-cta">Enter the agent auction →</span>
             <p className="sbc-model-fine">{CIRCLE_AUCTION_NOTE}</p>
           </Link>

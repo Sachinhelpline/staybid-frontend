@@ -19,6 +19,83 @@
 
 ## Session log
 
+### 2026-08-04 — Circle rebuild polish + exhaustive breakpoint QA (v713)
+**Owner: the 2 polish items, then a full QA sweep.**
+- **Home model cards** — the hollow middle is filled with a compact feature-chip row per model (Model 1
+  Hands-off/Monthly income/Verified · Model 2 Buy wholesale/Resell anywhere/Multi-city · Model 3 Wholesale
+  rooms/Refundable EMD/Monthly) and the CTA now pins to the card base (`margin-top:auto`) so all three CTAs
+  align without a gap.
+- **Trade headers** — the dark walnut header bar on `/trade`, `/trade/review`, `/trade/my-bids` → themed light
+  bar (`--trd-card`/`--trd-ink`, hairline base, flips in dark); the bare `‹` back buttons on review/my-bids got
+  a real ≥40px hit area (WCAG).
+- **Exhaustive breakpoint QA** — headless sweep of the renderable Circle/Trade routes (`/circle`, `/dashboard`,
+  `/model3`, `/model4`, `/trade`) across **9 widths (320→1920) × light + dark = 90 checks**: **0 horizontal
+  overflow** on every one. (The probe's card-luminance "clash" flags were false positives from transparent
+  elements; the real dark→light flips were confirmed by targeted probes: marketplace card lum 254 light→32 dark,
+  home columns 394=394, tokens `--trd-card`/`--bg-card` #fff→#1a1610.)
+- `tsc` + `next build` clean; `test:security` **385/0**. Badge v712→**v713**, sw HTML_CACHE v508→**v509**.
+
+### 2026-08-04 — Circle rebuild Phase A.2: marketplace + review/selling/browse + home + splash (v712)
+**Owner: "do it all, don't stop."** The full de-walnut sweep across the rest of the Circle vertical, all to the
+app/`--trd-*` theme tokens (light cards that match the page and flip in dark).
+- **`.sbc-mkt-*` marketplace** (the biggest offender — the ENTIRE `/circle/model3` pre-buy + `/circle/model4`
+  exchange): city chips, skeleton, property cards, panels, inputs (dropped the forced `color-scheme:dark`),
+  quote rows, avail note, buttons, success overlay, toast → tokens.
+- **model2 review** (`.sbc2r-*` incl. the dark COST & VALUE panel), **selling** (`.sbc2s-*` incl. the dark KPI
+  strip + cold-grey nudge), **browse** (`.sbc2b-*` steps/kpis/chips/cards + the inline header colors), and the
+  shared `.sbc-panel` → tokens.
+- **Model 3 `/trade`**: tour hero now leads with the **room's own photos**, not the hotel lifestyle/wedding
+  stock (`app/trade/[id]` `heroImgs` room-first). (browse/review/my-bids use Tailwind luxury utils that already
+  dark-flip via the globals patch.)
+- **`/circle` home**: the hero dead-space is gone — signed-out portfolio card enriched with 3 benefit chips +
+  `align-items:stretch` so both columns are equal height (**measured 394=394, Δ0** at 1024/1440 light+dark);
+  softened "15–32% annual returns" → "expected monthly income from real bookings" (Circle legal framing).
+- **Switch splash**: scaled up on ≥768px (bigger tile/glyph/glow/type) so it's premium on desktop, not a tiny
+  tile in a white void.
+- **Verified:** tokens flip (`--trd-card`/`--bg-card` #fff→#1a1610 etc); home columns balanced; 0 overflow;
+  `tsc` + `next build` clean; `test:security` **385/0**. Badge v711→**v712**, sw HTML_CACHE v507→**v508**.
+- **Left for final QA:** model-card hollow-middle polish, the trade dark header bar (a deliberate brand strip),
+  and a full per-page breakpoint sweep.
+
+### 2026-08-04 — Circle rebuild Phase A.1: tour pages de-darkened (v711)
+**Owner: full god-level StayBid Circle rebuild** (home + Model 2 [code `/circle/model2` + legacy `model3`/
+`model4`] + Model 3 [`/trade/*`]), each redesigned to its own requirement, all breakpoints, both themes,
+presentation-only. Two Explore agents deep-mapped both models first (zero blind assumption). **Root cause
+found:** `.sbc-home` was flipped to a LIGHT page (`circle-premium.css:2115`) but almost every Circle/Trade
+card still hardcodes DARK walnut built for the old dark shell — only the v706 calendar/basket used flipping
+tokens. So: dark cards on a light page that never flip for dark. The fix is to route every surface through the
+app/`--trd-*` theme tokens (one system, light cards that match + flip).
+- **Phase A.1 (this ship) — the two TOUR pages from the screenshots (ss2/ss4):**
+  `app/circle/model2/[id]` — `.sbc2p-metric` + `.sbc2p-mkt` (+ desc/h2/room/amen) walnut → app tokens
+  (`--bg-card`/`--bg-pill`/`--text-*`/`--border-soft`/`--accent`); `app/trade/[id]` — `.sbt-metric` +
+  `.sbt-preview` + `.sbt-basket-in` + amen/desc walnut → `--trd-*` tokens, and the sealed basket bar made a
+  compact bottom-right cart on desktop. Owner picked "light, match page".
+- **Verified:** the tokens flip correctly — `--trd-card`/`--bg-card` = #fff/#fefefe (light) → #1a1610/#1b212a
+  (dark), ink inverts — so the metric/market/preview cards are light-on-light in light and dark-flipping in
+  dark (same proven tokens as the working `.sbt-bidbox`/calendar). The tour pages hang on "Loading…" headless
+  (sandbox data-fetch stall), so verified at the token level + on `next build`. `tsc` + build clean;
+  `test:security` **385/0**. Badge v710→**v711**, sw HTML_CACHE v506→**v507**.
+- **Still pending (this rebuild):** model2 review `.sbc2r-panel` + selling `.sbc2s-kpi`; the entire dark
+  `.sbc-mkt-*` marketplace (model3/model4 — the biggest offender); trade browse/review/my-bids headers +
+  imagery (room-images-first); `/circle` home hero rebalance + dense cards; dead-space/footer-overlap; switch
+  splash desktop. See tasks #35–#39.
+
+### 2026-08-04 — Hero: compact stack so the CTAs are never hidden by the cover panel (v710)
+**Owner follow-up (mobile hero screenshot).** The "Bid your stay" / "Watch reels" CTAs were partly HIDDEN —
+clipped by the rounded `.sbh-rails` cover panel. Root cause (measured): the cover panel tucks **-24px** up over
+the hero and paints above it (`.sbh-rails` z:1 > the hero's z:0), but `.sbh-hero-inner` had only **18px** bottom
+padding, so the button's bottom sat INSIDE that 24px overlap. Owner asked to shrink the hero content premium-ly
+device-to-device and trim the inter-element padding so the CTAs rise and clear the panel.
+- **`app/globals.css`** (mobile `@media max-width:1023px`): lifted the block above the tuck —
+  `.sbh-hero-inner` padding-bottom `18px → clamp(28px, 4.2vh, 34px)` (scales device-to-device) — and tightened
+  every inter-element gap so the stack SHRINKS rather than pushing the top up: eyebrow `9→6`, title `8→6`, meta
+  `12→8`, price `16→9`, chips `12→8`, CTA `14→10`.
+- **Measured** (headless, computed geometry): CTA-bottom→panel-top **clearance +7–10px** and
+  **btnUnderPanel = false** at 360×800, 390×844, 414×896, Fold-cover 344×882, short 360×740, light AND dark —
+  the buttons now clear the cover panel completely; eyebrow still visible up top on the short device. Desktop
+  (≥1024) untouched. `tsc` + `next build` clean; `test:security` **385/0**. Badge v709→**v710**, sw HTML_CACHE
+  v505→**v506**.
+
 ### 2026-08-04 — Phase 3 (part 2) / ss2: Circle dashboard multi-column card grid (v709)
 **Owner 9-screenshot round, Phase 3 completion.** ss2: the `/circle/dashboard` read as "dead space" on
 desktop. Investigation (part 1) showed the container is already wide (~1180–1340px) — the empty feel came

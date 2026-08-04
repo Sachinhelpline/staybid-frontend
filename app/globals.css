@@ -11560,9 +11560,13 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   .sbh-hero-inner {
     position: relative; z-index: 2;
-    /* v607 — trimmed bottom padding so the content block sits lower and the
-       dead space under the amenity chips shrinks. */
-    padding: 0 var(--sbh-gut) 18px;
+    /* v710 (owner) — the CTAs were being hidden: the .sbh-rails cover panel
+       tucks -24px up over the hero (and paints above it, z:1 > the hero's z:0),
+       but the content only had 18px bottom padding, so the buttons' bottom sat
+       INSIDE that overlap. Lift the whole block above the tuck (clamp so it
+       scales device-to-device) — combined with the tighter inter-element gaps
+       below, the content shrinks premium-ly AND the buttons clear the panel. */
+    padding: 0 var(--sbh-gut) clamp(28px, 4.2vh, 34px);
     width: 100%;
     color: #eef1f4;
   }
@@ -11572,7 +11576,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     font-size: 0.6rem; font-weight: 600;
     letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--sbh-gold-lt);
-    margin: 0 0 9px;
+    margin: 0 0 6px;
   }
   .sbh-dot { width: 6px; height: 6px; border-radius: 50%; background: #a9b9c8; }
   .sbh-hero-title {
@@ -11580,13 +11584,13 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     font-size: clamp(1.75rem, 7.4vw, 2.4rem);
     line-height: 1.06; font-weight: 600; letter-spacing: -0.01em;
     text-wrap: balance;
-    margin: 0 0 8px; color: #f9fafb;
+    margin: 0 0 6px; color: #f9fafb;
     text-shadow: 0 2px 22px rgba(0, 0, 0, 0.55);
   }
   .sbh-hero-meta {
     display: flex; align-items: center; flex-wrap: wrap; gap: 9px;
     font-size: 0.82rem; color: rgba(176, 192, 209, 0.88);
-    margin: 0 0 12px;
+    margin: 0 0 8px;
   }
   .sbh-stars { color: #b8c5d2; letter-spacing: 1.5px; }
   .sbh-hero-score {
@@ -11599,7 +11603,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-hero-price {
     display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
     font-size: 0.86rem; color: rgba(176, 192, 209, 0.78);
-    margin: 0 0 16px;
+    margin: 0 0 9px;
   }
   /* `>` — the nudge below carries its own <b>, and an unscoped
      `.sbh-hero-price b` swallowed it into the 1.4rem price style. */
@@ -11613,7 +11617,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-hero-nudge b { font-size: inherit; font-weight: 700; color: var(--sbh-gold-lt); }
   /* v704 (owner ss1) — amenity chips now sit ABOVE the CTAs, so the buttons
      get their own top gap from the chips (they used to hug the price). */
-  .sbh-hero-cta { display: flex; gap: 9px; margin-top: 14px; }
+  .sbh-hero-cta { display: flex; gap: 9px; margin-top: 10px; }
   /* v607 — owner: the CTAs were too tall and hid the hero photo/content
      behind them. Trimmed padding + height + type so they sit lighter on the
      image while staying a comfortable ≥40px thumb target. */
@@ -11637,7 +11641,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   /* v607 — owner: shift the amenity chips down to fill the dead space that
      sat below them at the hero's bottom edge. */
-  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   /* v698 — the amenity chips sit in the hero's bottom "foot-fade" band (the
      artwork melts to the page colour there), so the old translucent-WHITE pill
      + steel text washed out and vanished against the light fade. Make each chip
