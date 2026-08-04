@@ -181,6 +181,40 @@ export default function AdminAuctionPage() {
               </div>
             </div>
 
+            {/* v717.1 (owner) — admin oversight of PENDING live agent bids (was
+                owner-only). Read-only: the live-auction states awaiting the
+                property owner's accept/counter are `active` / `countered`. */}
+            <div style={card}>
+              <div style={{ fontWeight: 700, marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 7 }}><Zap size={16} strokeWidth={2} aria-hidden />Pending live agent bids ({(data.liveBids || []).length})</div>
+              <div style={{ color: "#8A8FA8", fontSize: 12, marginBottom: 8 }}>Live Model-3 bids awaiting the property owner's decision (accept / counter). Read-only oversight.</div>
+              {(data.liveBids || []).length === 0 ? <div style={{ color: "#8A8FA8", fontSize: 13 }}>No pending live bids.</div> : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+                    <thead><tr><th style={th}>Bid</th><th style={th}>Room · Hotel · City</th><th style={th}>Segment</th><th style={th}>Bid /night</th><th style={th}>Rooms</th><th style={th}>Status</th><th style={th}>Placed</th></tr></thead>
+                    <tbody>
+                      {(() => {
+                        const lotMap: Record<string, any> = Object.fromEntries((data.lots || []).map((l: any) => [l.id, l]));
+                        return (data.liveBids || []).map((b: any) => {
+                          const l = lotMap[b.lot_id] || {};
+                          return (
+                            <tr key={b.id}>
+                              <td style={td}>{String(b.id).slice(-8)}</td>
+                              <td style={td}>{l.category || b.lot_id}<div style={{ color: "#8A8FA8", fontSize: 11 }}>{l.metadata?.hotel_name || ""}{l.city ? ` · ${l.city}` : ""}</div></td>
+                              <td style={td}>{b.segment_label}</td>
+                              <td style={td}>{inr(b.per_room_per_night)}{Number(b.counter_per_room_per_night) > 0 ? <div style={{ color: "#c4a35a", fontSize: 11 }}>counter {inr(b.counter_per_room_per_night)}</div> : null}</td>
+                              <td style={td}>{b.rooms_wanted}</td>
+                              <td style={td}>{b.status === "countered" ? "Countered" : "Awaiting owner"}</td>
+                              <td style={td}>{b.created_at ? new Date(b.created_at).toLocaleDateString("en-IN") : "—"}</td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
             {/* Refunds owed */}
             <div style={card}>
               <div style={{ fontWeight: 700, marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 7 }}><Banknote size={16} strokeWidth={2} aria-hidden />EMD refunds owed ({data.refundsOwed.length})</div>
