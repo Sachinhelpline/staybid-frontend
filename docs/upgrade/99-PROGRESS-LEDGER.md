@@ -19,6 +19,24 @@
 
 ## Session log
 
+### 2026-08-04 — Phase 5 / ss9: Samsung Fold — hotel detail no longer cut on the side (v708)
+**Owner 9-screenshot round, Phase 5.** ss9: on Samsung Fold the hotel-detail content was cut on the side.
+Fold cover ≈280–376px and Fold inner ≈884px sit BETWEEN the audit matrix points (which jump 320→360 and
+834→1024), so the bug slipped through. Root-caused with headless geometry at 280/344/884:
+- **`.hx-page-grid { grid-template-columns: 1fr }`** — `1fr` is `minmax(auto,1fr)`, whose auto minimum is the
+  column's min-content. The room/hero **swipe rails** have a ~403px min-content, so on a Fold-cover width the
+  single column couldn't shrink below ~403px and the content was clipped at the `.hx-shell overflow-x:clip`
+  edge = "cut on the side." Fixed with **`minmax(0, 1fr)`** so the track shrinks to the viewport and the swipe
+  rails scroll inside their own boxes. Document overflow: **404px-blowout → 0px** at 280/344/884.
+- **`GuestsRoomsPicker` `.grp-wrap`** — the Guests(1fr)+Rooms(auto, min 116px) row has a ~334px min-content, so
+  it clipped the **Rooms stepper** at ≤360px + all Fold covers. Now **stacks to one column at ≤389px** (Rooms
+  `min-width:0`); ≥390px keeps the side-by-side layout. Measured: clip 0 at 280/320/344/360/390/414.
+- **Fold sweep** (headless, 344 + 884): `/hotels`, `/hotels/[id]`, `/bid`, `/flash-deals`, `/my-bids`,
+  `/bookings` all **0px** document overflow. `/` shows a 4px sub-pixel figure from the Stage ticker, which is
+  already `overflow:hidden`-clipped (no visible cut, nothing lost) — left untouched (the Stage ticker is a
+  don't-touch-casually surface). `tsc` + `next build` clean; `test:security` **385/0**. Badge v707→**v708**,
+  sw HTML_CACHE v503→**v504**.
+
 ### 2026-08-04 — Phase 4 / ss6+ss7: Kiosk hub + book fill the big display (v707)
 **Owner 9-screenshot round, Phase 4.** The kiosk is a big-display device surface, but the hub (`.kh-screen`)
 was a **920px** centred column and the booking pane (`.kb-pane`) a **1100px** one — most of a 43–55" screen

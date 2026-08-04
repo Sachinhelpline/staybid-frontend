@@ -3093,7 +3093,14 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 /* Layout shell (sticky-on-desktop two-column) */
 .hx-page-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  /* v708 (owner ss9 — Samsung Fold) — `1fr` is `minmax(auto,1fr)`, whose auto
+     minimum = the column's min-content. The room/hero swipe rails have a
+     ~403px min-content, so on a narrow Fold-cover width (280–344px) the single
+     column couldn't shrink below that and the content was clipped at the
+     `.hx-shell overflow-x:clip` edge ("cut on the side"). `minmax(0,1fr)` lets
+     the track shrink to the viewport so the swipe rails scroll inside their own
+     boxes instead of blowing out the column. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 @media (min-width: 1024px) {
