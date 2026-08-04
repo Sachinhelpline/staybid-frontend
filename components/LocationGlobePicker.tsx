@@ -29,6 +29,7 @@
    ────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { Search } from "lucide-react";
 // v392 — single canonical city list (hill-stations + 12-month demand-cycle hubs).
 import { CITY_DISPLAY_ORDER, CITY_ICON, cityMeta } from "@/lib/cities";
 import { currentMonthDemand } from "@/lib/circle/demand-cycle";
@@ -251,25 +252,25 @@ export function LocationGlobeModal({ activeCity, onClose }: {
         .loc-card {
           position: relative;
           width: 100%; max-width: 460px;
-          background: radial-gradient(circle at 50% -20%, rgba(140, 160, 182,0.18), transparent 55%), linear-gradient(180deg, #0d0b1a 0%, #08060f 100%);
-          border: 1px solid rgba(140, 160, 182,0.22);
+          background: radial-gradient(circle at 50% -20%, rgba(140, 160, 182,0.16), transparent 55%), var(--bg-card);
+          border: 1px solid var(--border-soft);
           border-radius: 24px;
           overflow: hidden;
-          box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+          box-shadow: var(--shadow-card, 0 30px 80px rgba(0,0,0,0.4)), inset 0 1px 0 rgba(255,255,255,0.05);
           animation: locModalIn 0.4s cubic-bezier(.2,.7,.2,1) both;
-          color: #eaeef2;
+          color: var(--text-base);
         }
         @media (max-width: 540px) { .loc-card { max-width: none; border-radius: 24px 24px 0 0; margin-top: auto; } }
         .loc-x {
           position: absolute; top: 14px; right: 14px; z-index: 4;
           width: 32px; height: 32px; border-radius: 50%;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
-          color: #fff; cursor: pointer;
+          background: var(--bg-pill);
+          border: 1px solid var(--border-soft);
+          color: var(--text-base); cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           transition: all 0.25s ease;
         }
-        .loc-x:hover { background: rgba(255,255,255,0.15); transform: rotate(90deg); }
+        .loc-x:hover { background: var(--bg-input); transform: rotate(90deg); }
 
         .loc-globe-stage {
           position: relative;
@@ -331,26 +332,22 @@ export function LocationGlobeModal({ activeCity, onClose }: {
           background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
           border: 1px solid rgba(140, 160, 182,0.35);
           border-radius: 999px;
-          font-size: 0.6rem; font-weight: 700;
-          letter-spacing: 0.18em; text-transform: uppercase;
-          color: #a9b9c8;
+          font-size: 0.63rem; font-weight: 700;
+          letter-spacing: 0.16em; text-transform: uppercase;
+          color: #cdd6df;
           display: inline-flex; align-items: center; gap: 6px;
         }
         .loc-globe-label .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #2ecc71; animation: locDot 1.6s infinite; }
 
         .loc-hero { position: relative; padding: 0 22px 14px; text-align: center; }
-        .loc-eyebrow { color: #a9b9c8; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 6px; }
+        .loc-eyebrow { color: var(--text-soft); font-size: 0.63rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; }
         .loc-active {
           font-family: 'Cormorant Garamond', 'Syne', serif;
-          font-weight: 400; font-style: italic; font-size: 1.5rem;
-          background: linear-gradient(90deg, #c6d0da, #a9b9c8, #90a4b8, #a9b9c8, #c6d0da);
-          background-size: 200% 100%;
-          -webkit-background-clip: text; background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: locShine 4s linear infinite;
+          font-weight: 500; font-style: italic; font-size: 1.5rem;
+          color: var(--text-base);
           margin: 0;
         }
-        .loc-active-sub { color: rgba(255,255,255,0.45); font-size: 0.72rem; margin: 2px 0 0; }
+        .loc-active-sub { color: var(--text-soft); font-size: 0.72rem; margin: 2px 0 0; }
 
         .loc-detect {
           margin: 4px 22px 16px;
@@ -379,38 +376,38 @@ export function LocationGlobeModal({ activeCity, onClose }: {
         .loc-detect.locating .loc-detect-icon,
         .loc-detect.located .loc-detect-icon { background: linear-gradient(135deg, #c6d0da, #a9b9c8); color: #0a0814; box-shadow: 0 6px 18px rgba(140, 160, 182,0.35); }
         .loc-detect-text { flex: 1; min-width: 0; }
-        .loc-detect-title { font-size: 0.86rem; font-weight: 700; line-height: 1.2; color: #fff; }
-        .loc-detect-sub { font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+        .loc-detect-title { font-size: 0.86rem; font-weight: 700; line-height: 1.2; color: var(--text-base); }
+        .loc-detect-sub { font-size: 0.7rem; color: var(--text-soft); margin-top: 2px; }
 
         .loc-search-wrap { margin: 0 22px 14px; position: relative; }
         .loc-search {
           width: 100%;
           padding: 12px 14px 12px 38px;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: var(--bg-input);
+          border: 1px solid var(--border-strong);
           border-radius: 14px;
-          color: #fff; font-size: 0.86rem;
+          color: var(--text-base); font-size: 0.86rem;
           outline: none;
           transition: all 0.22s ease;
         }
-        .loc-search:focus { border-color: rgba(140, 160, 182,0.55); background: rgba(255,255,255,0.06); }
-        .loc-search::placeholder { color: rgba(255,255,255,0.35); }
-        .loc-search-icon { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); color: rgba(255,255,255,0.4); }
+        .loc-search:focus { border-color: var(--accent); background: var(--bg-card); }
+        .loc-search::placeholder { color: var(--text-muted); }
+        .loc-search-icon { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); color: var(--text-muted); }
 
         /* Recent cities — quick one-tap re-pick */
         .loc-recent-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 22px 12px; }
         .loc-recent-chip {
           display: inline-flex; align-items: center; gap: 5px;
           padding: 6px 11px;
-          background: rgba(140, 160, 182,0.10);
-          border: 1px solid rgba(140, 160, 182,0.28);
+          background: var(--bg-pill);
+          border: 1px solid var(--border-soft);
           border-radius: 999px;
-          color: #d1d9e2; font-size: 0.75rem; font-weight: 600;
+          color: var(--text-base); font-size: 0.75rem; font-weight: 600;
           cursor: pointer; transition: all 0.2s ease;
         }
         .loc-recent-chip:hover { background: rgba(140, 160, 182,0.18); border-color: rgba(140, 160, 182,0.5); transform: translateY(-1px); }
 
-        .loc-wheel-title { padding: 0 22px; font-size: 0.6rem; font-weight: 700; color: rgba(140, 160, 182,0.85); letter-spacing: 0.18em; text-transform: uppercase; margin: 10px 0 8px; display: flex; align-items: center; gap: 6px; }
+        .loc-wheel-title { padding: 0 22px; font-size: 0.63rem; font-weight: 700; color: var(--text-soft); letter-spacing: 0.18em; text-transform: uppercase; margin: 10px 0 8px; display: flex; align-items: center; gap: 6px; }
         .loc-wheel-title:first-child { margin-top: 0; }
         .loc-wheel-wrap {
           position: relative;
@@ -428,48 +425,48 @@ export function LocationGlobeModal({ activeCity, onClose }: {
           display: flex; align-items: center; gap: 10px;
           padding: 12px 14px;
           margin-bottom: 4px;
-          background: rgba(255,255,255,0.025);
-          border: 1px solid rgba(255,255,255,0.06);
+          background: var(--bg-pill);
+          border: 1px solid var(--border-soft);
           border-radius: 14px;
           cursor: pointer; text-align: left;
           transition: all 0.22s ease;
-          color: #eaeef2;
+          color: var(--text-base);
           width: 100%;
         }
-        .loc-row:hover { transform: translateX(2px); border-color: rgba(140, 160, 182,0.4); }
-        .loc-row.active { background: linear-gradient(135deg, rgba(140, 160, 182,0.18), rgba(140, 160, 182,0.06)); border-color: rgba(140, 160, 182,0.65); box-shadow: 0 0 0 1px rgba(140, 160, 182,0.2); }
+        .loc-row:hover { transform: translateX(2px); border-color: var(--accent); }
+        .loc-row.active { background: color-mix(in srgb, var(--accent) 16%, var(--bg-card)); border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
         .loc-row-emoji { font-size: 1.1rem; line-height: 1; }
         .loc-row-text { flex: 1; min-width: 0; }
-        .loc-row-name { font-size: 0.92rem; font-weight: 600; color: #fff; }
-        .loc-row-meta { font-size: 0.68rem; color: rgba(255,255,255,0.5); margin-top: 1px; }
+        .loc-row-name { font-size: 0.92rem; font-weight: 600; color: var(--text-base); }
+        .loc-row-meta { font-size: 0.68rem; color: var(--text-soft); margin-top: 1px; }
         .loc-dist-badge {
           flex-shrink: 0;
           font-size: 0.64rem; font-weight: 800;
-          color: #a9b9c8;
-          background: rgba(140, 160, 182,0.12);
-          border: 1px solid rgba(140, 160, 182,0.28);
+          color: var(--accent);
+          background: color-mix(in srgb, var(--accent) 14%, transparent);
+          border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
           border-radius: 999px;
           padding: 2px 8px;
           font-variant-numeric: tabular-nums;
         }
-        .loc-row-arrow { color: rgba(140, 160, 182,0.7); font-size: 0.9rem; }
+        .loc-row-arrow { color: var(--text-muted); font-size: 0.9rem; }
 
-        .loc-empty { padding: 16px; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.78rem; }
+        .loc-empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 0.78rem; }
 
         .loc-bottom-bar { padding: 8px 16px 16px; display: flex; gap: 8px; }
         .loc-anywhere {
           flex: 1;
           padding: 11px 12px;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
+          background: var(--bg-input);
+          border: 1px solid var(--border-soft);
           border-radius: 12px;
-          color: rgba(255,255,255,0.7);
+          color: var(--text-soft);
           font-weight: 600; font-size: 0.78rem;
           cursor: pointer;
           transition: all 0.22s ease;
         }
-        .loc-anywhere.active { background: linear-gradient(135deg, rgba(140, 160, 182,0.18), rgba(140, 160, 182,0.06)); border-color: rgba(140, 160, 182,0.5); color: #a9b9c8; }
-        .loc-anywhere:hover { border-color: rgba(140, 160, 182,0.4); }
+        .loc-anywhere.active { background: color-mix(in srgb, var(--accent) 16%, var(--bg-card)); border-color: var(--accent); color: var(--text-base); }
+        .loc-anywhere:hover { border-color: var(--accent); }
       `}</style>
 
       <div className="loc-bg" onClick={onClose}>
@@ -525,7 +522,7 @@ export function LocationGlobeModal({ activeCity, onClose }: {
           </button>
 
           <div className="loc-search-wrap">
-            <span className="loc-search-icon">🔎</span>
+            <span className="loc-search-icon"><Search size={15} strokeWidth={2.2} aria-hidden /></span>
             {/* No autoFocus — opening the modal must NOT pop up the mobile
                 keyboard. The user explicitly taps this input when they want
                 to search; otherwise the wheel below is the primary affordance. */}

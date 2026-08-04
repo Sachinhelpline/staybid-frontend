@@ -11628,13 +11628,20 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   /* v607 — owner: shift the amenity chips down to fill the dead space that
      sat below them at the hero's bottom edge. */
-  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  /* v698 — the amenity chips sit in the hero's bottom "foot-fade" band (the
+     artwork melts to the page colour there), so the old translucent-WHITE pill
+     + steel text washed out and vanished against the light fade. Make each chip
+     SELF-CONTAINED instead: a solid-dark pill + near-white text reads on the
+     dark scrim AND on the light fade, so it no longer depends on what's behind
+     it. (Mobile only — desktop has no foot-fade.) */
   .sbh-amen {
     font-size: 0.68rem; font-weight: 600;
-    color: rgba(176, 192, 209, 0.86);
-    padding: 4px 10px; border-radius: 999px;
-    background: rgba(255, 255, 255, 0.10);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f2f5f8;
+    padding: 4px 11px; border-radius: 999px;
+    background: rgba(12, 9, 6, 0.64);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
   }
   .sbh-hero-dots {
     position: absolute; z-index: 3; left: var(--sbh-gut); top: 16px;

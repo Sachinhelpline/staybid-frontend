@@ -19,6 +19,30 @@
 
 ## Session log
 
+### 2026-08-04 — Owner review: hero amenity chips + LocationGlobePicker theming (v698)
+Two owner-reported issues from live screenshots.
+- **ss1 — Stage hero amenity chips vanished (`components/home/DesktopHome.tsx` / `.sbh-amen`).** On MOBILE
+  the hero's bottom "foot-fade" (`.sbh-hero::before`, bottom 26%, melts artwork → page colour) sits right
+  over the amenity chips (last element). The old translucent-WHITE pill + steel text washed out against the
+  light fade. **Solution (redesign the chip, not reposition):** made each chip SELF-CONTAINED — a solid-dark
+  pill (`rgba(12,9,6,0.64)`) + near-white text (`#f2f5f8`) + light border + shadow — so it reads on the dark
+  scrim AND the light fade regardless of what's behind it. Chips lifted slightly (`margin-top 18→12px`).
+  Mobile-only (desktop has no foot-fade). Verified against the production build (dev server was serving stale
+  globals.css): chip now `#f2f5f8` on `rgba(12,9,6,0.64)`, both themes.
+- **ss2 — `components/LocationGlobePicker.tsx` city-picker was DARK-ONLY.** Converted the whole modal to the
+  app's theme tokens (`--bg-card`/`--text-base`/`--text-soft`/`--bg-pill`/`--bg-input`/`--border-soft`/
+  `--accent`) so it's a light card + dark text in light theme, dark in dark theme; the animated globe + green
+  GPS button + steel accents stay as fixed premium elements. `🔎` search-field icon → lucide `Search`; city/
+  destination glyphs (🛰🌏⛰🕉🌨🏂🐪 + `lib/cities` CITY_ICON) KEPT as content vocabulary (added to the harness
+  KEEP set). Font-floor: "Live" label + "Showing stays in" eyebrow 9.6/9.9px → `.63rem`.
+- **MEASURED:** the picker modal via a temporary `/loctest` render page against the **production build** →
+  **CLEAN 13 widths × 2 themes** (no contrast/overflow/emoji/tiny), temp page + harness route removed after.
+  ⚠ Note: the Turbopack **dev server served stale `globals.css`** across restarts + `.next` wipe this session,
+  so all v698 CSS was verified against `next build` + `next start`, not `next dev`.
+- **🔒 NO money/bid/auth logic touched** — pure presentation. `test:security` stays 385/0.
+- Badge v697→**v698** (`SB_BUILD v698-hero-chips-locpicker`), sw `HTML_CACHE` v493→**v494**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+
 ### 2026-08-04 — Agent support panel full-matrix + harness font-stub (v697)
 **Scope:** the customer-support agent panel — `/agent/login`, `/agent` (inbox), `/agent/metrics`,
 `/agent/[id]` (ticket thread) — measured 280→2560 × light+dark.
