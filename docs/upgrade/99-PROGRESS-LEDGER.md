@@ -19,6 +19,26 @@
 
 ## Session log
 
+### 2026-08-04 — Bucket B: token-aware unswept pages (workforce / trust / hotel sub-pages) (v702)
+**Second slice of the "kuch reh gaya?" audit** — the theme-token-aware pages that were never independently
+measured. `/privacy-policy`, and (after emoji-hybrid) `/hotels/[id]/feedback` + `/hotels/[id]/reviews` were
+already CLEAN; the rest needed small fixes. Presentation-only; `test:security` **385/0**.
+- **`/worker/dashboard`** — real 84px overflow at 360 (4 header ghost-buttons didn't wrap) → `flex-wrap` on the
+  header + button group; utilitarian emoji → lucide (🟢/⚪ availability → `Circle`, ✎ → `Pencil`, 💰→`Wallet`,
+  📅→`Calendar`, ⏱→`Clock`, 👤→`User`); status-badge text colors + the danger "Cancel" were fixed mid-tones
+  that failed on dark → **theme-safe `color-mix(… , var(--text-base))`** (keeps hue, guarantees contrast both
+  themes).
+- **`/worker`** (login) — 🧑‍🔧 → lucide `Wrench` (already imported).
+- **`/trust`** — the three category icons (green/gold/steel) failed contrast → `color-mix` toward `--text-base`;
+  sublabel font 0.6→0.63rem.
+- **Shared `components/hotel/HotelScoreBadge`** — compact-pill "/100" denom + meta were 0.56–0.62rem (9–9.9px) →
+  0.63rem (≥10px). Strict font-floor improvement everywhere the compact pill renders.
+- **Emoji-hybrid KEEP additions** (content-vocabulary): ⭐ (rating), 🙂 (sentiment), 🤝 / 🧼 (feedback
+  categories), 💭 — clears `/hotels/[id]/feedback` (💭) + `/reviews` (⭐) with no code churn.
+- **Verified:** `tsc` + `next build` clean; `test:security` **385/0**; responsive-audit **CLEAN full-matrix
+  (13 × 2)** on all 6 Bucket B routes. Badge **v702**, sw HTML_CACHE **v498**. (Bucket C — admin sub-pages
+  spot-check — still pending; host still owner-held.)
+
 ### 2026-08-04 — Bucket A: previously-unswept surfaces polished (v701)
 **Owner asked "host se alag aur kuch toh nahi reh gaya" — double-check.** A full `app/**/page.tsx`
 enumeration + theme-token/`.lux-*`-wrapper/harness-declared cross-reference found ~14 non-host surfaces

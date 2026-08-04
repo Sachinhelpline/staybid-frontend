@@ -44,7 +44,9 @@ const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔
   // city/destination + location-picker glyphs (lib/cities CITY_ICON + globe/GPS) (hybrid keep)
   '🏙','⛰','🏰','🕉','🌨','🏂','🐪','🛰','🌏','🌐',
   // food/hospitality/social content-vocabulary: F&B ordering + IG profile tabs (hybrid keep)
-  '🍽','🍴','🛎','📷','📖','🤷']);
+  '🍽','🍴','🛎','📷','📖','🤷',
+  // review/feedback content-vocabulary: rating star + sentiment + feedback categories (hybrid keep)
+  '⭐','🙂','🤝','🧼','💭']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
@@ -263,6 +265,17 @@ const ROUTES = [
   { route:'/u/user1', scope:'body', fixtures:{ 'social/profiles/user1':{ok:true,profile:{id:'p1',user_id:'u9',user_type:'PUBLIC',display_name:'Asha',username:'asha',follower_count:12}}, 'social/feed':{ok:true,posts:[]} } },
   { route:'/u/user1/posts', scope:'body', fixtures:{ 'social/feed':{ok:true,posts:[]} } },
   { route:'/saved/posts', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha"}'}, fixtures:{ 'discover/saves/enriched':{saves:[]} } },
+
+  // ── Bucket B: token-aware unswept pages (workforce / trust / hotel sub-pages) ──
+  { route:'/worker', scope:'body', fixtures:{} },
+  { route:'/worker/dashboard', scope:'body', ls:{ sb_worker_token:'t', sb_worker:'{"id":"w1","name":"Ravi Kumar","phone":"+919812345678","role":"housekeeping"}' },
+    fixtures:{ 'worker/jobs':{ ok:true, jobs:[{ id:'j1', title:'Room 204 cleaning', status:'assigned', hotel_name:'Cave View Resort', pay:300, scheduled_at:'2026-08-05 10:00:00' }] }, 'worker/me':{ ok:true, worker:{ id:'w1', name:'Ravi Kumar', role:'housekeeping', jobs_done:12, status:'approved' } } } },
+  { route:'/trust', scope:'body', fixtures:{ 'hotels/scorecards':{ ok:true, scores:{} } } },
+  { route:'/privacy-policy', scope:'body', fixtures:{} },
+  { route:'/hotels/h1/feedback', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'hotels/h1':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', images:['x'] } }, 'bookings/my':{ bookings:[{ id:'bk1', status:'CONFIRMED', hotelId:'h1', hotelName:'Cave View Resort', checkIn:'2026-07-10', checkOut:'2026-07-12' }] }, 'feedback/mine':{ feedback:[] } } },
+  { route:'/hotels/h1/reviews', scope:'body',
+    fixtures:{ 'hotels/h1':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', avgRating:4.6, totalReviews:128, images:['x'] } }, 'hotels/h1/reviews':{ reviews:[{ id:'rv1', rating:5, text:'Lovely stay, great views.', author:'Asha', createdAt:'2026-07-01' },{ id:'rv2', rating:4, text:'Clean and comfortable.', author:'Rahul', createdAt:'2026-06-20' }] } } },
 ];
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });

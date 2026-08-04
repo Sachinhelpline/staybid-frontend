@@ -6,16 +6,19 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
+import { Pencil, Calendar, Clock, User, Wallet, Circle } from "lucide-react";
+
+const mi = { display: "inline-block", verticalAlign: "-2px", marginRight: 4 } as const;
 
 const inr = (n: any) => (n == null || n === "" ? "—" : `₹${Number(n).toLocaleString("en-IN")}`);
 const when = (s?: string) => (s ? new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null);
 
 const STATUS_STYLE: Record<string, { bg: string; c: string; label: string }> = {
-  requested:  { bg: "rgba(245,158,11,0.16)", c: "#b5791f", label: "New request" },
-  assigned:   { bg: "rgba(61,156,245,0.16)", c: "#2f6bb0", label: "Accepted" },
-  in_progress:{ bg: "rgba(168,85,247,0.16)", c: "#7c3fb5", label: "In progress" },
-  completed:  { bg: "rgba(34,197,94,0.16)", c: "#2f8f52", label: "Completed" },
-  cancelled:  { bg: "rgba(212,149,131,0.16)", c: "#b5675a", label: "Cancelled" },
+  requested:  { bg: "rgba(245,158,11,0.16)", c: "color-mix(in srgb, #b5791f 62%, var(--text-base))", label: "New request" },
+  assigned:   { bg: "rgba(61,156,245,0.16)", c: "color-mix(in srgb, #2f6bb0 55%, var(--text-base))", label: "Accepted" },
+  in_progress:{ bg: "rgba(168,85,247,0.16)", c: "color-mix(in srgb, #7c3fb5 58%, var(--text-base))", label: "In progress" },
+  completed:  { bg: "rgba(34,197,94,0.16)", c: "color-mix(in srgb, #2f8f52 60%, var(--text-base))", label: "Completed" },
+  cancelled:  { bg: "rgba(212,149,131,0.16)", c: "color-mix(in srgb, #b5675a 60%, var(--text-base))", label: "Cancelled" },
 };
 
 // worker-side actions available per current status
@@ -83,15 +86,15 @@ export default function WorkerDashboard() {
     <div style={{ minHeight: "100dvh", background: "var(--bg-page)", padding: "18px 14px 90px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <div style={avatar}>{worker?.avatar_url ? <img src={worker.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : (worker?.name || "?").slice(0, 1)}</div>
             <div>
               <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text-base)" }}>{worker?.name || "Worker"}</div>
               <div style={{ fontSize: 12.5, color: "var(--text-soft)", textTransform: "capitalize" }}>{(worker?.skill || "").replace(/_/g, " ")}{worker?.city ? ` · ${worker.city}` : ""}{worker?.verified ? " · ✓ Verified" : ""}</div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <AppTourButton style={btnGhost} label="Tour" />
             <HelpSupportButton style={btnGhost} label="Help" />
             <SwitchExperienceButton style={btnGhost} label="Switch" />
@@ -104,9 +107,10 @@ export default function WorkerDashboard() {
         {/* Availability + edit */}
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <button onClick={toggleAvail} disabled={busy === "avail"} style={{ ...pill, background: worker?.available ? "rgba(34,197,94,0.16)" : "var(--bg-pill)", color: worker?.available ? "#2f8f52" : "var(--text-soft)", border: `1px solid ${worker?.available ? "rgba(34,197,94,0.4)" : "var(--border-strong)"}` }}>
-            {worker?.available ? "🟢 Available for jobs" : "⚪ Not available"} · tap to toggle
+            <Circle size={9} strokeWidth={0} fill={worker?.available ? "#22c55e" : "currentColor"} aria-hidden style={{ display: "inline-block", verticalAlign: "1px", marginRight: 5, opacity: worker?.available ? 1 : 0.5 }} />
+            {worker?.available ? "Available for jobs" : "Not available"} · tap to toggle
           </button>
-          <button onClick={() => setEditing(true)} style={{ ...pill, background: "var(--bg-pill)", color: "var(--text-base)", border: "1px solid var(--border-strong)" }}>✎ Edit profile</button>
+          <button onClick={() => setEditing(true)} style={{ ...pill, background: "var(--bg-pill)", color: "var(--text-base)", border: "1px solid var(--border-strong)" }}><Pencil size={13} strokeWidth={2.2} aria-hidden style={mi} />Edit profile</button>
         </div>
 
         {/* KPIs */}
@@ -137,10 +141,10 @@ export default function WorkerDashboard() {
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: st.bg, color: st.c, whiteSpace: "nowrap" }}>{st.label}</span>
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", marginTop: 8, fontSize: 12.5, color: "var(--text-soft)" }}>
-                    {j.amount != null && <span>💰 {inr(j.amount)}</span>}
-                    {when(j.scheduled_at) && <span>📅 {when(j.scheduled_at)}</span>}
-                    {j.duration_hint && <span>⏱ {j.duration_hint}</span>}
-                    {j.contact?.name && <span>👤 {j.contact.name}{j.contact.phone ? ` · ${j.contact.phone}` : ""}</span>}
+                    {j.amount != null && <span><Wallet size={12} strokeWidth={2.2} aria-hidden style={mi} />{inr(j.amount)}</span>}
+                    {when(j.scheduled_at) && <span><Calendar size={12} strokeWidth={2.2} aria-hidden style={mi} />{when(j.scheduled_at)}</span>}
+                    {j.duration_hint && <span><Clock size={12} strokeWidth={2.2} aria-hidden style={mi} />{j.duration_hint}</span>}
+                    {j.contact?.name && <span><User size={12} strokeWidth={2.2} aria-hidden style={mi} />{j.contact.name}{j.contact.phone ? ` · ${j.contact.phone}` : ""}</span>}
                   </div>
                   {j.notes && <div style={{ fontSize: 12.5, color: "var(--text-soft)", marginTop: 6, lineHeight: 1.5 }}>“{j.notes}”</div>}
                   {acts.length > 0 && (
@@ -230,6 +234,6 @@ const pill: React.CSSProperties = { padding: "9px 14px", borderRadius: 999, font
 const inp: React.CSSProperties = { width: "100%", padding: "9px 11px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-base)", fontSize: 13.5, outline: "none", boxSizing: "border-box" };
 const btnPrimarySm: React.CSSProperties = { padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", background: "linear-gradient(135deg,var(--accent),var(--accent-soft))", color: "#1F1A0F" };
 const btnGhostSm: React.CSSProperties = { padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-soft)" };
-const btnDangerSm: React.CSSProperties = { padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(212,149,131,0.5)", background: "transparent", color: "var(--cozy-rose,#b5675a)" };
+const btnDangerSm: React.CSSProperties = { padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(212,149,131,0.5)", background: "transparent", color: "color-mix(in srgb, #b5675a 60%, var(--text-base))" };
 const btnGhost: React.CSSProperties = { padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-soft)" };
 const errBox: React.CSSProperties = { background: "rgba(212,149,131,0.14)", border: "1px solid rgba(212,149,131,0.4)", color: "var(--cozy-rose,#b5675a)", padding: "9px 13px", borderRadius: 10, fontSize: 13, marginBottom: 14 };

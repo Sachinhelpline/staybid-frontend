@@ -56,14 +56,14 @@ export default function TrustReviewsPage() {
         {/* Explainer chips */}
         <div className="grid grid-cols-3 gap-2.5 mb-6 sb-stagger">
           {[
-            { icon: <BadgeCheck size={20} strokeWidth={2.2} aria-hidden style={{ color: "#7F9269" }} />, t: "Verified stays", s: "Video-checked rooms" },
-            { icon: <Trophy size={20} strokeWidth={2.2} aria-hidden style={{ color: "#c9a24a" }} />, t: "Stay Score", s: "0–100 + city rank" },
-            { icon: <Star size={20} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />, t: "Guest reviews", s: "Real · post-checkout" },
+            { icon: <BadgeCheck size={20} strokeWidth={2.2} aria-hidden style={{ color: "color-mix(in srgb, #7F9269 74%, var(--text-base))" }} />, t: "Verified stays", s: "Video-checked rooms" },
+            { icon: <Trophy size={20} strokeWidth={2.2} aria-hidden style={{ color: "color-mix(in srgb, #c9a24a 70%, var(--text-base))" }} />, t: "Stay Score", s: "0–100 + city rank" },
+            { icon: <Star size={20} strokeWidth={2.2} aria-hidden style={{ color: "color-mix(in srgb, #8198ae 74%, var(--text-base))" }} />, t: "Guest reviews", s: "Real · post-checkout" },
           ].map((c) => (
             <div key={c.t} className="card-luxury sb-card-lift p-3 text-center rounded-2xl">
               <div className="text-xl mb-1">{c.icon}</div>
               <div className="text-xs font-bold leading-tight" style={{ color: "var(--text-base)" }}>{c.t}</div>
-              <div className="text-[0.6rem] mt-0.5 leading-tight" style={{ color: "var(--text-muted)" }}>{c.s}</div>
+              <div className="text-[0.63rem] mt-0.5 leading-tight" style={{ color: "var(--text-muted)" }}>{c.s}</div>
             </div>
           ))}
         </div>

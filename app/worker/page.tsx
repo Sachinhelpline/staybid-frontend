@@ -84,7 +84,7 @@ export default function WorkerLogin() {
       {/* Desktop-only brand pane (fixed warm-walnut, reads in both themes). */}
       <aside className="wauth-brand" aria-hidden="true">
         <div className="wauth-brand-inner">
-          <div style={{ fontSize: 30, marginBottom: 18 }}>🧑‍🔧</div>
+          <div style={{ marginBottom: 18 }}><Wrench size={30} strokeWidth={2} aria-hidden style={{ color: "var(--accent)" }} /></div>
           <h2 className="wauth-brand-tag">Your jobs.<br />One place.</h2>
           <p className="wauth-brand-sub">Sign in to see the jobs hotels have assigned you, track your work, and manage your workforce profile.</p>
           <ul className="wauth-brand-list">
@@ -98,7 +98,7 @@ export default function WorkerLogin() {
       <div className="wauth-form">
       <div style={card} className="sb-fade-in">
         <div style={{ textAlign: "center", marginBottom: 18 }}>
-          <div style={{ fontSize: 34 }}>🧑‍🔧</div>
+          <div><Wrench size={34} strokeWidth={2} aria-hidden style={{ color: "var(--accent)" }} /></div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-base)", margin: "6px 0 2px" }}>Worker sign-in</h1>
           <p style={{ color: "var(--text-soft)", fontSize: 13, margin: 0 }}>See jobs hotels have assigned to you.</p>
         </div>
