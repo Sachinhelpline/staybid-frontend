@@ -119,6 +119,16 @@ export default function GuestsRoomsPicker({
           gap: 10px;
           align-items: stretch;
         }
+        /* v708 (owner ss9 — Samsung Fold) — the Guests(1fr) + Rooms(auto,
+           min 116px) row has a ~334px min-content, so on a Fold-cover width
+           (280–376px) AND a 360px phone it overflowed the availability card and
+           the Rooms stepper was cut off (measured: clipped at ≤360; clean at
+           ≥390). Stack the two cards at ≤389px so the picker fits every narrow
+           phone + all folded covers; 390px+ keeps the side-by-side layout. */
+        @media (max-width: 389px) {
+          .grp-wrap { grid-template-columns: 1fr; }
+          .grp-rooms { min-width: 0; }
+        }
         .grp-card {
           background: var(--bg-card, #fff);
           border: 1px solid var(--border-soft, rgba(106,133,160,0.22));

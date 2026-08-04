@@ -455,6 +455,11 @@ function BookInner() {
 
         .kb-scroll { flex:1; overflow-y:auto; overflow-x:hidden; }
         .kb-pane { padding:26px; max-width:1100px; margin:0 auto; }
+        /* v707 (owner ss7) — kiosk booking is a big-display device surface; the
+           1100px centred column wasted most of a large screen. Widen on large
+           screens so the city-select + tour grids fill with content. The focused
+           steps (.kb-pay 560 / .kb-done 460) keep their own tighter caps. */
+        @media (min-width:1280px){ .kb-pane{ max-width:min(1560px, 95vw); } }
         .kb-h1 { font-family:'Cormorant Garamond',Georgia,serif; font-size:42px; font-weight:700; line-height:1.05; }
         .kb-h1 span { color:#67839e; font-style:italic; }
         .kb-sub { color:#6E5430; font-size:15px; margin:6px 0 24px; }

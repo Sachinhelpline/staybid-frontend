@@ -307,31 +307,36 @@ function PropStyles() {
       .sbc2p-mkt-dot { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #1f1710; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #d5dce4; }
       .sbc2p-mkt-note { font-size: .7rem; color: #cde7b0; margin-top: 7px; }
       .sbc2p-mkt-note.dim { color: rgba(176, 192, 209,.55); }
-      /* premium dark-walnut calendar (deck look) */
-      .sbc2p-cal { background: linear-gradient(150deg, #1f1710, #2e2115); border: 1px solid rgba(140, 160, 182,.22); border-radius: 15px; padding: 13px; margin: 12px 0; color: #e4e9ee; }
+      /* v706 (owner ss4) — was a hardcoded dark-walnut calendar sitting on a
+         light page; now theme-token based so it reads in light AND dark. The
+         semantic green "available" hint is kept but pulled toward the theme text
+         via color-mix so it stays legible in both modes. */
+      .sbc2p-cal { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 15px; padding: 13px; margin: 12px 0; color: var(--text-base); }
       .sbc2p-cal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-      .sbc2p-cal-tip { font-size: .66rem; color: rgba(176, 192, 209,.6); }
-      .sbc2p-cal-clear { border: 1px solid rgba(140, 160, 182,.4); background: none; color: #cad4dd; font-size: .66rem; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 3px 10px; }
-      .sbc2p-cal-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: #e6ebef; font-size: .9rem; margin-bottom: 9px; }
-      .sbc2p-cal-head em { font-style: normal; font-size: .68rem; color: #9fc47a; font-weight: 700; }
-      .sbc2p-cal-head button { width: 30px; height: 30px; border-radius: 9px; border: 1px solid rgba(140, 160, 182,.3); background: rgba(255,255,255,.04); color: #cad4dd; font-size: 1.05rem; cursor: pointer; }
-      .sbc2p-cal-head button:disabled { opacity: .25; cursor: default; }
-      .sbc2p-cal-dow { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; font-size: .58rem; color: rgba(176, 192, 209,.45); text-align: center; margin-bottom: 4px; font-weight: 700; }
+      .sbc2p-cal-tip { font-size: .66rem; color: var(--text-muted); }
+      .sbc2p-cal-clear { border: 1px solid var(--border-soft); background: none; color: var(--text-soft); font-size: .66rem; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 3px 10px; }
+      .sbc2p-cal-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: var(--text-base); font-size: .9rem; margin-bottom: 9px; }
+      .sbc2p-cal-head em { font-style: normal; font-size: .68rem; color: color-mix(in srgb, #7FA968 62%, var(--text-base)); font-weight: 700; }
+      .sbc2p-cal-head button { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--border-soft); background: var(--bg-pill); color: var(--text-soft); font-size: 1.05rem; cursor: pointer; }
+      .sbc2p-cal-head button:disabled { opacity: .3; cursor: default; }
+      .sbc2p-cal-dow { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; font-size: .58rem; color: var(--text-muted); text-align: center; margin-bottom: 4px; font-weight: 700; }
       .sbc2p-cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
       .sbc2p-cal-empty { aspect-ratio: 1; }
-      .sbc2p-cal-day { aspect-ratio: 1; border: 1px solid rgba(140, 160, 182,.16); border-radius: 9px; background: rgba(255,255,255,.03); color: #e4e9ee; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform .08s; }
-      .sbc2p-cal-day:hover:not(.off):not(.on) { border-color: rgba(140, 160, 182,.55); }
-      .sbc2p-cal-day.off { background: repeating-linear-gradient(45deg, rgba(255,255,255,.02), rgba(255,255,255,.02) 3px, rgba(255,255,255,.05) 3px, rgba(255,255,255,.05) 6px); color: rgba(176, 192, 209,.22); cursor: default; border-color: transparent; }
-      .sbc2p-cal-day.on { background: linear-gradient(145deg, #a9b9c8, #c98f2e); color: #241a0d; border-color: #cad4dd; font-weight: 800; box-shadow: 0 3px 10px rgba(201,143,46,.4); }
-      .sbc2p-cal-legend { display: flex; align-items: center; gap: 6px; font-size: .58rem; color: rgba(176, 192, 209,.5); margin-top: 10px; flex-wrap: wrap; }
+      .sbc2p-cal-day { aspect-ratio: 1; border: 1px solid var(--border-soft); border-radius: 9px; background: var(--bg-pill); color: var(--text-base); font-size: .74rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform .08s; }
+      .sbc2p-cal-day:hover:not(.off):not(.on) { border-color: var(--accent); }
+      .sbc2p-cal-day.off { background: var(--bg-input); color: var(--text-muted); opacity: .55; cursor: default; border-color: transparent; }
+      .sbc2p-cal-day.on { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 800; box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 45%, transparent); }
+      .sbc2p-cal-legend { display: flex; align-items: center; gap: 6px; font-size: .58rem; color: var(--text-muted); margin-top: 10px; flex-wrap: wrap; }
       .sbc2p-cal-legend .lg { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-      .sbc2p-cal-legend .lg.on { background: #a9b9c8; } .sbc2p-cal-legend .lg.free { background: rgba(255,255,255,.08); margin-left: 8px; } .sbc2p-cal-legend .lg.off { background: rgba(255,255,255,.03); margin-left: 8px; }
-      .sbc2p-selbox { background: #fff; border: 1px solid rgba(139,105,20,.2); border-radius: 13px; padding: 12px 14px; margin-top: 9px; }
-      .sbc2p-sel-row { display: flex; justify-content: space-between; font-size: .84rem; font-weight: 800; color: var(--sbc-coffee); }
-      .sbc2p-sel-sub { font-size: .68rem; color: rgba(74,56,32,.6); margin-top: 2px; }
+      .sbc2p-cal-legend .lg.on { background: var(--accent); } .sbc2p-cal-legend .lg.free { background: var(--bg-pill); margin-left: 8px; } .sbc2p-cal-legend .lg.off { background: var(--bg-input); margin-left: 8px; }
+      .sbc2p-selbox { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 13px; padding: 12px 14px; margin-top: 9px; }
+      .sbc2p-sel-row { display: flex; justify-content: space-between; font-size: .84rem; font-weight: 800; color: var(--text-base); }
+      .sbc2p-sel-sub { font-size: .68rem; color: var(--text-muted); margin-top: 2px; }
       .sbc2p-upside { color: #6b8f4e; font-weight: 700; }
-      .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.94) 70%, rgba(255,255,255,0)); }
-      .sbc2b-basket-in { max-width: 940px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #f1f4f6; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+      /* v706 (owner ss4/ss5) — theme-token basket bar; compact bottom-right on desktop so it never floats over the content. */
+      .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, var(--bg-page) 62%, transparent); }
+      .sbc2b-basket-in { max-width: 940px; margin: 0 auto; background: var(--bg-card); color: var(--text-base); border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--border-strong); box-shadow: 0 12px 34px -12px rgba(0,0,0,.4); }
+      @media (min-width: 1024px) { .sbc2b-basket { left: auto; right: 22px; bottom: 22px; padding: 0; background: none; } .sbc2b-basket-in { max-width: 340px; box-shadow: 0 18px 44px -16px rgba(0,0,0,.5); } }
       /* ── Tablet / laptop / desktop: cap the content, size media natively, and
          stop the calendar from stretching into giant squares on wide screens ── */
       @media (min-width: 640px) {

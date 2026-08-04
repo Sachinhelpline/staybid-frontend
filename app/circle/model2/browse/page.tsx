@@ -193,11 +193,22 @@ export default function Model2BrowsePage() {
         .sbc2b-youpay { display: flex; flex-direction: column; line-height: 1.05; }
         .sbc2b-youpay b { color: var(--sbc-coffee); font-size: .92rem; }
         .sbc2b-youpay span { font-size: .63rem; color: rgba(74,56,32,.72); }
-        .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.94) 70%, rgba(255,255,255,0)); }
-        .sbc2b-basket-in { max-width: 720px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #f1f4f6; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
-        .sbc2b-basket-lines { font-size: .78rem; opacity: .92; }
+        /* v706 (owner ss5) — the basket bar was a 720px-wide WALNUT bar fixed at
+           the viewport centre, so on desktop it floated over the middle of the
+           card grid (overlap) and clashed with the app theme. Now it is
+           theme-token based and, on desktop, a compact bottom-RIGHT cart that
+           never sits over the grid; on mobile it stays a full-width bottom bar
+           above the dock. */
+        .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, var(--bg-page) 62%, transparent); }
+        .sbc2b-basket-in { max-width: 720px; margin: 0 auto; background: var(--bg-card); color: var(--text-base); border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border: 1px solid var(--border-strong); box-shadow: 0 12px 34px -12px rgba(0,0,0,.4); }
+        .sbc2b-basket-lines { font-size: .78rem; color: var(--text-soft); }
         .sbc2b-basket-cta { display: flex; align-items: center; gap: 12px; }
-        .sbc2b-basket-cta b { font-size: 1.05rem; }
+        .sbc2b-basket-cta b { font-size: 1.05rem; color: var(--text-base); font-variant-numeric: tabular-nums; }
+        @media (min-width: 1024px) {
+          /* off the grid: a self-contained card pinned bottom-right, no full-width scrim */
+          .sbc2b-basket { left: auto; right: 22px; bottom: 22px; padding: 0; background: none; }
+          .sbc2b-basket-in { max-width: 340px; box-shadow: 0 18px 44px -16px rgba(0,0,0,.5); }
+        }
       `}</style>
     </div>
   );

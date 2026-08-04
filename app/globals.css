@@ -3093,7 +3093,14 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 /* Layout shell (sticky-on-desktop two-column) */
 .hx-page-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  /* v708 (owner ss9 — Samsung Fold) — `1fr` is `minmax(auto,1fr)`, whose auto
+     minimum = the column's min-content. The room/hero swipe rails have a
+     ~403px min-content, so on a narrow Fold-cover width (280–344px) the single
+     column couldn't shrink below that and the content was clipped at the
+     `.hx-shell overflow-x:clip` edge ("cut on the side"). `minmax(0,1fr)` lets
+     the track shrink to the viewport so the swipe rails scroll inside their own
+     boxes instead of blowing out the column. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 @media (min-width: 1024px) {
@@ -11604,7 +11611,9 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-hero-price > em { font-style: normal; font-size: 0.78rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.78rem; width: 100%; }
   .sbh-hero-nudge b { font-size: inherit; font-weight: 700; color: var(--sbh-gold-lt); }
-  .sbh-hero-cta { display: flex; gap: 9px; margin-top: 2px; }
+  /* v704 (owner ss1) — amenity chips now sit ABOVE the CTAs, so the buttons
+     get their own top gap from the chips (they used to hug the price). */
+  .sbh-hero-cta { display: flex; gap: 9px; margin-top: 14px; }
   /* v607 — owner: the CTAs were too tall and hid the hero photo/content
      behind them. Trimmed padding + height + type so they sit lighter on the
      image while staying a comfortable ≥40px thumb target. */

@@ -2431,7 +2431,9 @@ body main textarea.input-luxury {
   .sbh-hero-price > em { font-style: normal; font-size: 0.86rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.88rem; }
   .sbh-hero-nudge b { font-size: inherit; font-weight: 700; color: var(--sbh-gold-lt); }
-  .sbh-hero-cta { display: flex; gap: 13px; flex-wrap: wrap; }
+  /* v704 (owner ss1) — chips sit ABOVE the CTAs now; give the buttons a gap
+     from the chip row (was flush under the price). */
+  .sbh-hero-cta { display: flex; gap: 13px; flex-wrap: wrap; margin-top: 20px; }
   .sbh-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     padding: 14px 30px; border-radius: 14px;

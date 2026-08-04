@@ -19,6 +19,112 @@
 
 ## Session log
 
+### 2026-08-04 — Phase 3 (part 2) / ss2: Circle dashboard multi-column card grid (v709)
+**Owner 9-screenshot round, Phase 3 completion.** ss2: the `/circle/dashboard` read as "dead space" on
+desktop. Investigation (part 1) showed the container is already wide (~1180–1340px) — the empty feel came
+from the stacked full-width **strips stretched edge-to-edge**. Owner chose the **multi-column card grid**.
+- **`app/circle/dashboard/page.tsx`** — wrapped everything below the profile (portfolio + rooms summary
+  strips + the Help/Switch, tiles, My-properties, Account sections) in a new `.sbc-dash-cols` container. The
+  header + profile stay full-width identity rows.
+- **`circle-premium.css`** — `.sbc-dash-cols` is a plain block on mobile (unchanged stack) and a balanced
+  **masonry: `column-count:2` ≥900px, `column-count:3` ≥1280px** with `break-inside:avoid` so each card/section
+  stays whole; the tiles grid reflows to the narrower column. So the wide desktop column now fills with content
+  instead of stretched bars.
+- **Measured** (headless): realized columns **1 (≤360) → 2 (900/1024) → 3 (1280/1440/1920)**, strips keep
+  `display:flex` (internal layout intact), **0px horizontal overflow** at 360→1920 in light AND dark.
+  `tsc` + `next build` clean; `test:security` **385/0**. Badge v708→**v709**, sw HTML_CACHE v504→**v505**.
+- **Phase 3 now complete:** ss5 browse bar + ss4 [id] bar/calendar themed (v706), ss2 dashboard grid (v709).
+  ss3 build is already a 1280px 2-col layout; its "Continue to review"/calendar concerns map to the model2
+  surfaces fixed in v706.
+
+### 2026-08-04 — Phase 5 / ss9: Samsung Fold — hotel detail no longer cut on the side (v708)
+**Owner 9-screenshot round, Phase 5.** ss9: on Samsung Fold the hotel-detail content was cut on the side.
+Fold cover ≈280–376px and Fold inner ≈884px sit BETWEEN the audit matrix points (which jump 320→360 and
+834→1024), so the bug slipped through. Root-caused with headless geometry at 280/344/884:
+- **`.hx-page-grid { grid-template-columns: 1fr }`** — `1fr` is `minmax(auto,1fr)`, whose auto minimum is the
+  column's min-content. The room/hero **swipe rails** have a ~403px min-content, so on a Fold-cover width the
+  single column couldn't shrink below ~403px and the content was clipped at the `.hx-shell overflow-x:clip`
+  edge = "cut on the side." Fixed with **`minmax(0, 1fr)`** so the track shrinks to the viewport and the swipe
+  rails scroll inside their own boxes. Document overflow: **404px-blowout → 0px** at 280/344/884.
+- **`GuestsRoomsPicker` `.grp-wrap`** — the Guests(1fr)+Rooms(auto, min 116px) row has a ~334px min-content, so
+  it clipped the **Rooms stepper** at ≤360px + all Fold covers. Now **stacks to one column at ≤389px** (Rooms
+  `min-width:0`); ≥390px keeps the side-by-side layout. Measured: clip 0 at 280/320/344/360/390/414.
+- **Fold sweep** (headless, 344 + 884): `/hotels`, `/hotels/[id]`, `/bid`, `/flash-deals`, `/my-bids`,
+  `/bookings` all **0px** document overflow. `/` shows a 4px sub-pixel figure from the Stage ticker, which is
+  already `overflow:hidden`-clipped (no visible cut, nothing lost) — left untouched (the Stage ticker is a
+  don't-touch-casually surface). `tsc` + `next build` clean; `test:security` **385/0**. Badge v707→**v708**,
+  sw HTML_CACHE v503→**v504**.
+
+### 2026-08-04 — Phase 4 / ss6+ss7: Kiosk hub + book fill the big display (v707)
+**Owner 9-screenshot round, Phase 4.** The kiosk is a big-display device surface, but the hub (`.kh-screen`)
+was a **920px** centred column and the booking pane (`.kb-pane`) a **1100px** one — most of a 43–55" screen
+(and a wide desktop) sat empty (ss6/ss7). Widened both on large screens so the content grids fill with real
+cards instead of dead side-margins; small screens (QR-scanned phones/tablets) keep the mobile column.
+- `.kh-screen` → `min(1360px, 94vw)` at ≥1200px; `.kb-pane` → `min(1560px, 95vw)` at ≥1280px. The focused
+  steps (`.kb-pay` 560 / `.kb-done` 460) keep their own tighter caps so payment/confirm stay centred.
+- **Measured** (headless): hub locations grid **3 → 5 columns** (920→1360px at 1440–2560), book city grid
+  **5 → 7 columns** (1024→1560px), **0px horizontal overflow** at 1024/1440/1920/2560 — content fills, not
+  stretch. `tsc` + `next build` clean; `test:security` **385/0**. Badge v706→**v707**, sw HTML_CACHE v502→**v503**.
+
+### 2026-08-04 — Phase 3 (part 1) / ss4+ss5: Circle floating bars + walnut calendar → theme (v706)
+**Owner 9-screenshot round, Phase 3 — first, measurable slice.** Study of the Circle surface found:
+- The **`.sbc2b-basket` "Review & pay" bar** (model2/browse ss5 AND model2/[id] ss4) was a 720/940px-wide
+  **walnut** bar fixed at the viewport centre → on desktop it floated over the middle of the card grid
+  (overlap) and clashed with the app theme. Now **theme-token** based (`--bg-card`/`--text-base`/
+  `--border-strong`) and, at ≥1024px, a **compact bottom-RIGHT cart** (`right:22px; bottom:22px;
+  max-width:340px`) that structurally can't sit over the grid; mobile keeps the full-width bottom bar.
+- The **model2/[id] availability calendar** (`.sbc2p-cal*`, ss4) was a hardcoded **dark-walnut**
+  (`#1f1710→#2e2115`) calendar on a light page → re-themed to app tokens so it reads in light AND dark;
+  selected night uses `--accent`, the semantic green "available" hint kept via `color-mix(#7FA968, text)`,
+  and the `.sbc2p-selbox` / sel-row / sel-sub moved off dark-only colors.
+- **Center-based dead space (investigated, NOT the container):** confirmed the shared
+  `.sbc-home > * / .sbc-dash > *` column is ALREADY widened on desktop by existing `@media (768px/1280px)`
+  rules to `min(96vw,1180–1280px)` / `min(94vw,1340px)`, so the outer container is not the problem — the
+  dead-space feel is the INNER strip/card layout stretching across that wide column. That is per-page visual
+  design (best reviewed on the live preview), so no blind container change was shipped.
+- **Measured:** 0px horizontal overflow on `/circle` + `/circle/dashboard` at 360→1920, light+dark. The
+  auth-gated model2 pages can't render headless (redirect to sign-in), so the basket/calendar changes are
+  verified at the CSS level (mechanical theme-token substitution + a corner-positioned bar). `tsc` +
+  `next build` clean; `test:security` **385/0**. Badge v705→**v706**, sw HTML_CACHE v501→**v502**.
+- **Still open in Phase 3:** the ss2 **dashboard internal card restructure** (dead space is inner layout,
+  not the container) + ss3 build polish — visual design best reviewed on the live preview, since headless
+  can measure geometry but can't show the rendered look.
+
+### 2026-08-04 — Phase 2 / ss8: Switch-experience never-stuck + alive splash (v705)
+**Owner 9-screenshot round, Phase 2.** ss8: switching between panels via the global "Switch experience" got
+STUCK ~90% of the time, and the "Switching to X…" splash looked FLAT. Root cause of the stuck: `go()` fired a
+single fire-and-forget `window.setTimeout(() => window.location.assign(dest), 620)` — **no watchdog, no retry,
+no escape hatch**. If that one hard-nav didn't commit (SW navigation stall, slow dynamic route, a swallowed
+timer), the splash was trapped forever with no way out.
+- **`components/PanelSwitcher.tsx`** — the splash now carries its own `{panel, dest}` and a dedicated effect
+  owns navigation with a layered escape hatch so it can NEVER hang:
+  • ~440ms → hard-nav (`location.assign`, `href` fallback); • ~3.2s → `stalled` state re-fires the nav AND
+  makes a prominent "Continue" affordance; • ~6s → last-resort `location.replace`. Timers cleared on unmount.
+  The **whole splash is tap-to-continue** (`goNow`) and a `.sbps-splash-cont` button fades in at 2.2s — the
+  user is never trapped even if every automatic attempt stalls.
+- **Alive/native splash** — replaced the flat card: a slow-drifting accent **glow**, a **breathing/floating
+  icon tile** with a pulsing **halo** ring, staggered rise-in title + "Opening your workspace…" sub, and a
+  shimmer progress bar — all keyed off the target panel's `--sbps-accent`, fully theme-token based. Escape
+  hatch stays visible under `prefers-reduced-motion` (its fade-in is animation-driven).
+- **Measured** (headless): splash renders alive in light+dark (themed bg, correct text contrast, halo+glow
+  present, escape-hatch button, 0px overflow); the hard-nav actually fires (`/kiosk` request observed). The
+  3.2s watchdog/stalled path is deterministic logic that by construction only surfaces on an un-committed nav
+  — un-observable in a headless probe once `assign` commits (same class of limit as the scrollbar note).
+  `tsc` + `next build` clean; `test:security` **385/0**. Badge v704→**v705**, sw HTML_CACHE v500→**v501**.
+
+### 2026-08-04 — Phase 1 / ss1: Home hero — amenity chips ABOVE the CTAs (v704)
+**Owner 9-screenshot round, Phase 1.** ss1: on the mobile hero the amenity chips (Valley View, Restaurant,
+Wi-Fi, Heating, Garden) sat BELOW the "Bid your stay"/"Watch reels" buttons, in the hero's bottom foot-fade
+band. Owner: shift them ABOVE the buttons so the CTAs move down a touch and sit more grounded.
+- **`components/home/DesktopHome.tsx`** — moved the `.sbh-hero-chips` block ABOVE the `.sbh-hero-cta` block
+  (order is now price → amenities → buttons). Shared JSX ⇒ applies to both viewports.
+- **CSS** — the CTA used to hug the price (`margin-top: 2px` mobile / none desktop); now that the chip row sits
+  between them, gave the buttons their own top gap: `.sbh-hero-cta` `margin-top: 14px` (globals/mobile) +
+  `20px` (desktop.css). Chip pill styling unchanged (still self-contained solid-dark pill from v698).
+- **Measured** (headless, computed geometry): chips.top < cta.top on 390/414/1440 light + 360 dark, `amen=5`,
+  **0px horizontal overflow** everywhere. `tsc` + `next build` clean; `test:security` **385/0**.
+  Badge v703→**v704**, sw HTML_CACHE v499→**v500**.
+
 ### 2026-08-04 — Bucket C: admin sub-pages emoji-hybrid + font-floor (dark-only) (v703)
 **Final slice of the "kuch reh gaya?" audit — the ~30 admin sub-pages never individually harnessed.** Admin is
 **dark-only** (owner decision 2). A real-KEEP-set emoji scan across every `app/admin/**` page found the only

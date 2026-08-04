@@ -1518,6 +1518,15 @@ export default function DesktopHome() {
               </span>
             </p>
           ) : null}
+          {/* v704 (owner ss1) — amenity chips ABOVE the CTAs so the foot-fade
+              never eats them and the buttons sit a touch lower / more grounded. */}
+          {featured?.amenities?.length ? (
+            <div className="sbh-hero-chips">
+              {featured.amenities.slice(0, 5).map((a) => (
+                <span key={a} className="sbh-amen">{a}</span>
+              ))}
+            </div>
+          ) : null}
           <div className="sbh-hero-cta">
             <Link href={featured ? `/hotels/${featured.id}` : "/hotels"} className="sbh-btn sbh-btn-primary">
               Bid your stay
@@ -1526,13 +1535,6 @@ export default function DesktopHome() {
               ▶ Watch reels
             </Link>
           </div>
-          {featured?.amenities?.length ? (
-            <div className="sbh-hero-chips">
-              {featured.amenities.slice(0, 5).map((a) => (
-                <span key={a} className="sbh-amen">{a}</span>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         {/* v584.1 — desktop paddle arrows (both sides). They jump the slide;

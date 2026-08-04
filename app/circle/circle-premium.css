@@ -1259,6 +1259,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
     linear-gradient(172deg, #f2f5f7 0%, var(--sbc-c-bg) 46%, var(--sbc-c-bg-2) 100%);
 }
 .sbc-home > *, .sbc-dash > * { width: 100%; max-width: 640px; }
+/* NOTE: the desktop widening of this column lives in the min-width:768px /
+   1280px blocks below (→ 1180–1340px). Don't add an earlier @media override
+   here — later source order wins, so it would be dead. */
 
 /* ---------- home : greeting ---------- */
 .sbc-home-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 2px 2px; }
@@ -1439,6 +1442,22 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-dash-sec-h { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; color: var(--sbc-c-sage-deep); margin-bottom: 11px; }
 .sbc-dash-sec-h.between { display: flex; align-items: center; justify-content: space-between; }
 .sbc-dash-seemore { font-size: .72rem; font-weight: 800; color: var(--sbc-c-sage-deep); text-decoration: none; text-transform: none; letter-spacing: 0; }
+
+/* v709 (owner ss2) — dashboard multi-column card grid on desktop. Mobile: a
+   plain block stack (every strip/section keeps its own top margin, unchanged).
+   Desktop: the summary strips + sections flow into balanced masonry columns so
+   the wide column fills with content instead of full-width strips stretched
+   edge-to-edge. `break-inside: avoid` keeps each card/section whole. */
+@media (min-width: 900px) {
+  .sbc-dash-cols { column-count: 2; column-gap: 16px; }
+  .sbc-dash-cols > * { break-inside: avoid; margin: 0 0 16px !important; }
+  /* the tiles + properties grids sit inside a narrower column now — let them
+     reflow to whatever fits the column width. */
+  .sbc-dash-cols .sbc-dash-tiles { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .sbc-dash-cols { column-count: 3; }
+}
 
 /* mode switch */
 .sbc-mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
