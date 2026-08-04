@@ -71,7 +71,7 @@ export default function AdminAuctionPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0E1120", color: "#E6E8F0", padding: "20px 16px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+      <div>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "#a9b9c8", display: "inline-flex", alignItems: "center", gap: 9 }}><Tag size={20} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Model 3 — Travel-Agent Auction</h1>
         <p style={{ color: "#8A8FA8", fontSize: 13, marginTop: 2 }}>Agent approvals · auction config · lots · awards · EMD refunds</p>
         {flash && <div style={{ marginTop: 10, background: "#12351f", color: "#5EE29B", padding: "8px 12px", borderRadius: 8, fontSize: 13 }}>{flash}</div>}

@@ -1413,8 +1413,11 @@ export default function PartnerDashboard() {
                   const ds = ai && demandKey in DEMAND_STYLE ? DEMAND_STYLE[demandKey] : null;
                   const img = getRoomImage(r.name || r.type || "", r.images);
                   const ep = editPrices[r.id] || {};
-                  const fl = Number(ep.floor ?? r.floorPrice ?? 0) || 0;
-                  const mp = Number(ep.mrp ?? r.mrp ?? 0) || 0;
+                  // v731 — use `||` (not `??`) so an in-progress edit that clears the
+                  // field ("") falls back to the saved value instead of collapsing the
+                  // ladder to ₹0 mid-type. "0" is a non-empty string, so an explicit 0 is respected.
+                  const fl = Number(ep.floor || r.floorPrice || 0) || 0;
+                  const mp = Number(ep.mrp || r.mrp || 0) || 0;
                   const aip = Math.round(ai?.price || 0);
                   const hasLadder = mp > fl && fl > 0 && aip > 0;
                   const pos = hasLadder ? Math.max(7, Math.min(93, ((aip - fl) / (mp - fl)) * 100)) : 50;
@@ -1460,7 +1463,7 @@ export default function PartnerDashboard() {
                           <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Bid Floor</label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 text-sm font-medium">₹</span>
-                            <input type="number" placeholder={String(r.floorPrice || "")} value={ep.floor ?? ""}
+                            <input type="number" aria-label={`Bid Floor for ${r.name || r.type || "room"}`} placeholder={String(r.floorPrice || "")} value={ep.floor ?? ""}
                               onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], floor: e.target.value } }))} className="inp-p pl-7" />
                           </div>
                           <p className="text-[0.6rem] text-luxury-400 mt-1">Now: {fmtCur(r.floorPrice || 0)}</p>
@@ -1469,7 +1472,7 @@ export default function PartnerDashboard() {
                           <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Rack / MRP</label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 text-sm font-medium">₹</span>
-                            <input type="number" placeholder={String(r.mrp || "")} value={ep.mrp ?? ""}
+                            <input type="number" aria-label={`Rack / MRP for ${r.name || r.type || "room"}`} placeholder={String(r.mrp || "")} value={ep.mrp ?? ""}
                               onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], mrp: e.target.value } }))} className="inp-p pl-7" />
                           </div>
                           <p className="text-[0.6rem] text-luxury-400 mt-1">Now: {fmtCur(r.mrp || 0)}</p>
@@ -1478,7 +1481,7 @@ export default function PartnerDashboard() {
                           <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Flash Deal Floor <span className="text-luxury-300 normal-case font-medium">· last-minute liquidation</span></label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 text-sm font-medium">₹</span>
-                            <input type="number" placeholder={String(r.flashFloorPrice || "")} value={ep.flash ?? ""}
+                            <input type="number" aria-label={`Flash deal floor for ${r.name || r.type || "room"}`} placeholder={String(r.flashFloorPrice || "")} value={ep.flash ?? ""}
                               onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], flash: e.target.value } }))} className="inp-p pl-7" />
                           </div>
                           <p className="text-[0.6rem] text-luxury-400 mt-1">Now: {fmtCur(r.flashFloorPrice || r.floorPrice || 0)}</p>

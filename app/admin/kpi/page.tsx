@@ -46,7 +46,7 @@ export default function AdminKpiPage() {
   }, [days]);
 
   return (
-    <div style={{ padding: "26px 22px 60px", maxWidth: 1080, margin: "0 auto" }}>
+    <div style={{ padding: "26px 22px 60px" }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: "italic", fontSize: "1.9rem", color: "#e5eaef", margin: 0, display: "inline-flex", alignItems: "center", gap: 10 }}>

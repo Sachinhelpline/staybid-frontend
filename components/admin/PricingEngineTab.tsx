@@ -4,9 +4,18 @@
 // %, the flash discount %, and an opt-in "cap live at MRP"). The AI formula is
 // unchanged — admin only adjusts the numbers it multiplies; the engine still
 // runs the full model on top of them. Reads/writes /api/admin/pricing-config.
-import { useEffect, useState, type CSSProperties } from "react";
-import { Loader2, RotateCcw } from "lucide-react";
-import { adminColors as C, btnGold, btnGhost, inputStyle } from "@/lib/admin/styles";
+//
+// v731 — MODERN CONTROL-PANEL REDESIGN (presentation only; all state/effects/API
+// calls are byte-identical). Full-width (no maxWidth), elevated section cards with
+// icon headers, NumField "control cards" in a responsive grid, styled multiplier
+// tiles, a segmented mode control, and a sticky glass save bar. Classes in admin.css
+// (.pe-*).
+import { useEffect, useState, type CSSProperties, type ComponentType } from "react";
+import {
+  Loader2, RotateCcw, Sliders, TrendingDown, Sparkles, CalendarRange, CalendarDays,
+  Gauge, Clock3, PartyPopper, CalendarClock, MapPin, Save,
+} from "lucide-react";
+import { adminColors as C } from "@/lib/admin/styles";
 
 function hdr() {
   const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "";
@@ -97,73 +106,81 @@ export default function PricingEngineTab() {
   if (!cfg) return <div style={{ color: C.red, padding: 24 }}>{msg || "No config"}</div>;
 
   return (
-    <div style={{ maxWidth: 1080 }}>
-      <div style={{ background: "rgba(140,160,182,0.08)", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 18, color: C.textDim, fontSize: 12.5, lineHeight: 1.6 }}>
-        These are the <b style={{ color: C.text }}>numbers inside the AI pricing formula</b>. The engine still runs the full demand model
-        (season × day × festival × lead-time × city × occupancy …) — you only tune the digits it multiplies. Changes take effect on the
-        next price recalc (~60s). A blank or out-of-range value is rejected on save. Use <b style={{ color: C.text }}>Reset to defaults</b> to restore the built-in values.
+    <div className="pe-wrap">
+      <div className="pe-intro">
+        <span className="pe-intro-ico"><Sliders size={17} strokeWidth={2.2} aria-hidden /></span>
+        <div>
+          These are the <b style={{ color: C.text }}>numbers inside the AI pricing formula</b>. The engine still runs the full demand model
+          (season × day × festival × lead-time × city × occupancy …) — you only tune the digits it multiplies. Changes take effect on the
+          next price recalc (~60s). A blank or out-of-range value is rejected on save. Use <b style={{ color: C.text }}>Reset to defaults</b> to restore the built-in values.
+        </div>
       </div>
 
       {/* ── Global price rules ─────────────────────────────────────── */}
-      <Section title="Global price rules">
-        <NumField label="OTA undercut %" hint="Live price is forced this far below the cheapest competitor" value={cfg.undercutPct} on={(v) => set("undercutPct", v)} def={defaults?.undercutPct} />
-        <NumField label="Flash discount %" hint="Flash-deal price = live − this %" value={cfg.flashDiscountPct} on={(v) => set("flashDiscountPct", v)} def={defaults?.flashDiscountPct} />
-        <NumField label="Multiplier floor (clamp min)" hint="Lowest the combined multiplier can go" value={cfg.clampMin} on={(v) => set("clampMin", v)} def={defaults?.clampMin} step={0.01} />
-        <NumField label="Multiplier ceiling (clamp max)" hint="Highest the combined multiplier can go" value={cfg.clampMax} on={(v) => set("clampMax", v)} def={defaults?.clampMax} step={0.01} />
-        <NumField label="Micro-variation ± %" hint="Small hourly jitter band" value={cfg.microAmplitudePct} on={(v) => set("microAmplitudePct", v)} def={defaults?.microAmplitudePct} step={0.1} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
-          <input type="checkbox" checked={!!cfg.capLiveAtMrp} onChange={(e) => set("capLiveAtMrp", e.target.checked)} id="capmrp" style={{ width: 16, height: 16 }} />
-          <label htmlFor="capmrp" style={{ color: C.text, fontSize: 13, cursor: "pointer" }}>
-            Cap live price at MRP <span style={{ color: C.textDim }}>— never let the dynamic price exceed the rack/MRP rate</span>
-          </label>
+      <Section title="Global price rules" icon={Sliders} accent={C.gold}>
+        <div className="pe-grid pe-num-grid">
+          <NumField label="OTA undercut %" hint="Live price is forced this far below the cheapest competitor" value={cfg.undercutPct} on={(v) => set("undercutPct", v)} def={defaults?.undercutPct} suffix="%" />
+          <NumField label="Flash discount %" hint="Flash-deal price = live − this %" value={cfg.flashDiscountPct} on={(v) => set("flashDiscountPct", v)} def={defaults?.flashDiscountPct} suffix="%" />
+          <NumField label="Multiplier floor (clamp min)" hint="Lowest the combined multiplier can go" value={cfg.clampMin} on={(v) => set("clampMin", v)} def={defaults?.clampMin} step={0.01} suffix="×" />
+          <NumField label="Multiplier ceiling (clamp max)" hint="Highest the combined multiplier can go" value={cfg.clampMax} on={(v) => set("clampMax", v)} def={defaults?.clampMax} step={0.01} suffix="×" />
+          <NumField label="Micro-variation ± %" hint="Small hourly jitter band" value={cfg.microAmplitudePct} on={(v) => set("microAmplitudePct", v)} def={defaults?.microAmplitudePct} step={0.1} suffix="%" />
         </div>
+        <label className="pe-toggle" htmlFor="capmrp" style={{ marginTop: 12, cursor: "pointer" }}>
+          <input type="checkbox" checked={!!cfg.capLiveAtMrp} onChange={(e) => set("capLiveAtMrp", e.target.checked)} id="capmrp" />
+          <span style={{ color: C.text, fontSize: 13 }}>
+            Cap live price at MRP <span style={{ color: C.textDim }}>— never let the dynamic price exceed the rack/MRP rate</span>
+          </span>
+        </label>
       </Section>
 
       {/* ── Customer bid floor (Gap-1) ─────────────────────────────── */}
-      <Section title="Customer bid floor" hint="How low a guest can auto-WIN a room in the bid arena. 'Static' = today (the hotel's set floor, unchanged). 'Dynamic' raises the win-floor with live demand in peak season, never below the hotel's floor.">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", flexWrap: "wrap" }}>
-          <span style={{ color: C.text, fontSize: 13, minWidth: 90 }}>Mode</span>
-          {(["static", "dynamic"] as const).map((m) => (
-            <button key={m} onClick={() => set("custFloorMode", m)} style={{
-              padding: "6px 14px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: "pointer",
-              border: `1px solid ${cfg.custFloorMode === m ? C.gold : C.border}`,
-              background: cfg.custFloorMode === m ? "rgba(140,160,182,0.16)" : "transparent",
-              color: cfg.custFloorMode === m ? C.gold : C.textDim,
-            }}>{m === "static" ? "Static (today)" : "Dynamic (season-linked)"}</button>
-          ))}
+      <Section title="Customer bid floor" icon={TrendingDown} accent={C.blue} hint="How low a guest can auto-WIN a room in the bid arena. 'Static' = today (the hotel's set floor, unchanged). 'Dynamic' raises the win-floor with live demand in peak season, never below the hotel's floor.">
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+          <span style={{ color: C.textDim, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Mode</span>
+          <div className="pe-seg">
+            {(["static", "dynamic"] as const).map((m) => (
+              <button key={m} className={cfg.custFloorMode === m ? "on" : ""} onClick={() => set("custFloorMode", m)}>
+                {m === "static" ? "Static (today)" : "Dynamic (season-linked)"}
+              </button>
+            ))}
+          </div>
         </div>
-        <NumField label="Max win-discount below live %" hint="Dynamic only — win-floor = live price − this %" value={cfg.custFloorMaxWinDiscountPct} on={(v) => set("custFloorMaxWinDiscountPct", v)} def={defaults?.custFloorMaxWinDiscountPct} />
-        <NumField label="Floor min fraction" hint="Dynamic only — floor never below the hotel's floorPrice × this (1.0 = never below the hotel's floor)" value={cfg.custFloorMinFraction} on={(v) => set("custFloorMinFraction", v)} def={defaults?.custFloorMinFraction} step={0.05} />
+        <div className="pe-grid pe-num-grid">
+          <NumField label="Max win-discount below live %" hint="Dynamic only — win-floor = live price − this %" value={cfg.custFloorMaxWinDiscountPct} on={(v) => set("custFloorMaxWinDiscountPct", v)} def={defaults?.custFloorMaxWinDiscountPct} suffix="%" />
+          <NumField label="Floor min fraction" hint="Dynamic only — floor never below the hotel's floorPrice × this (1.0 = never below the hotel's floor)" value={cfg.custFloorMinFraction} on={(v) => set("custFloorMinFraction", v)} def={defaults?.custFloorMinFraction} step={0.05} suffix="×" />
+        </div>
         {cfg.custFloorMode === "dynamic" && (
-          <div style={{ color: C.amber, fontSize: 11.5, marginTop: 6 }}>
+          <div style={{ color: C.amber, fontSize: 11.5, marginTop: 10 }}>
             ⚠ Dynamic mode changes which guest bids auto-win. Applies on the next price recalc (~60s).
           </div>
         )}
-        <div style={{ borderTop: `1px solid ${C.border}`, margin: "12px 0 4px" }} />
-        <NumField label="Below-floor offer ratio" hint="1.0 = OFF (guest can't bid below floor). Set below 1.0 (e.g. 0.85) to let a guest OFFER down to floor × this — forwarded to the owner PENDING, never auto-accepted." value={cfg.custBelowFloorRatio} on={(v) => set("custBelowFloorRatio", v)} def={defaults?.custBelowFloorRatio} step={0.05} />
+        <div style={{ borderTop: `1px solid ${C.border}`, margin: "14px 0 12px" }} />
+        <div className="pe-grid pe-num-grid">
+          <NumField label="Below-floor offer ratio" hint="1.0 = OFF (guest can't bid below floor). Set below 1.0 (e.g. 0.85) to let a guest OFFER down to floor × this — forwarded to the owner PENDING, never auto-accepted." value={cfg.custBelowFloorRatio} on={(v) => set("custBelowFloorRatio", v)} def={defaults?.custBelowFloorRatio} step={0.05} suffix="×" />
+        </div>
         {Number(cfg.custBelowFloorRatio) < 1 && (
-          <div style={{ color: C.amber, fontSize: 11.5, marginTop: 6 }}>
+          <div style={{ color: C.amber, fontSize: 11.5, marginTop: 10 }}>
             ⚠ Guests can now send offers below the floor (down to floor × {cfg.custBelowFloorRatio}). These are always owner-reviewed — never auto-confirmed.
           </div>
         )}
       </Section>
 
       {/* ── Yield optimizer (Gap-2) ────────────────────────────────── */}
-      <Section title="AI yield optimizer" hint="An expected-revenue layer on top of the demand model: it nudges the live price (guarded ±12%, never below floor, never above the OTA-undercut cap) to the price that maximises price × probability-of-booking. OFF = the proven rule price. Preview it before enabling.">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
-          <input type="checkbox" checked={!!cfg.yieldOptimizerEnabled} onChange={(e) => set("yieldOptimizerEnabled", e.target.checked)} id="yieldopt" style={{ width: 16, height: 16 }} />
-          <label htmlFor="yieldopt" style={{ color: C.text, fontSize: 13, cursor: "pointer" }}>
+      <Section title="AI yield optimizer" icon={Sparkles} accent={C.purple} hint="An expected-revenue layer on top of the demand model: it nudges the live price (guarded ±12%, never below floor, never above the OTA-undercut cap) to the price that maximises price × probability-of-booking. OFF = the proven rule price. Preview it before enabling.">
+        <label className="pe-toggle" htmlFor="yieldopt" style={{ cursor: "pointer" }}>
+          <input type="checkbox" checked={!!cfg.yieldOptimizerEnabled} onChange={(e) => set("yieldOptimizerEnabled", e.target.checked)} id="yieldopt" />
+          <span style={{ color: C.text, fontSize: 13 }}>
             Enable yield optimizer <span style={{ color: C.textDim }}>— applies the expected-revenue price on the next recalc</span>
-          </label>
-        </div>
-        <button onClick={loadPreview} disabled={previewLoading} style={{ ...btnGhost, marginTop: 6 }}>
-          {previewLoading ? "Computing…" : "Preview effect (no change)"}
+          </span>
+        </label>
+        <button onClick={loadPreview} disabled={previewLoading} className="pe-btn-ghost" style={{ marginTop: 12 }}>
+          {previewLoading ? <><Loader2 size={13} style={{ animation: "sb-halo-spin 0.9s linear infinite" }} aria-hidden />Computing…</> : "Preview effect (no change)"}
         </button>
         {preview && (
-          preview.error ? <div style={{ color: C.red, fontSize: 12, marginTop: 8 }}>{preview.error}</div> :
+          preview.error ? <div style={{ color: C.red, fontSize: 12, marginTop: 10 }}>{preview.error}</div> :
           preview.rows?.length ? (
-            <div style={{ overflowX: "auto", marginTop: 10 }}>
-              <div style={{ color: C.textDim, fontSize: 11, marginBottom: 6 }}>Sample of {preview.rows.length} rooms for {preview.date} · rule → optimized (Δ%) · expected-revenue lift. Low = near-empty date, High = nearly sold-out.</div>
+            <div style={{ overflowX: "auto", marginTop: 12, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)" }}>
+              <div style={{ color: C.textDim, fontSize: 11, marginBottom: 8 }}>Sample of {preview.rows.length} rooms for {preview.date} · rule → optimized (Δ%) · expected-revenue lift. Low = near-empty date, High = nearly sold-out.</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ color: C.textDim, textAlign: "left" }}>
@@ -186,60 +203,62 @@ export default function PricingEngineTab() {
                 </tbody>
               </table>
             </div>
-          ) : <div style={{ color: C.textDim, fontSize: 12, marginTop: 8 }}>No priced rooms to sample.</div>
+          ) : <div style={{ color: C.textDim, fontSize: 12, marginTop: 10 }}>No priced rooms to sample.</div>
         )}
       </Section>
 
       {/* ── Seasonal curve ─────────────────────────────────────────── */}
-      <Section title="Season multiplier (national curve · per month)" hint="Cities with their own real curve (Goa, Leh, …) are unaffected.">
+      <Section title="Season multiplier (national curve · per month)" icon={CalendarRange} accent={C.green} hint="Cities with their own real curve (Goa, Leh, …) are unaffected.">
         <Grid labels={MONTHS} arr={cfg.seasonMults} def={defaults?.seasonMults} on={(i, v) => setArr("seasonMults", i, v)} />
       </Section>
 
       {/* ── Day of week ────────────────────────────────────────────── */}
-      <Section title="Day-of-week multiplier">
+      <Section title="Day-of-week multiplier" icon={CalendarDays} accent={C.blue}>
         <Grid labels={DOW} arr={cfg.dowMults} def={defaults?.dowMults} on={(i, v) => setArr("dowMults", i, v)} />
       </Section>
 
       {/* ── Occupancy (yield) ──────────────────────────────────────── */}
-      <Section title="Live occupancy (yield) multiplier">
+      <Section title="Live occupancy (yield) multiplier" icon={Gauge} accent={C.gold}>
         <Grid labels={OCC_LABELS} arr={cfg.occupancyMults} def={defaults?.occupancyMults} on={(i, v) => setArr("occupancyMults", i, v)} />
       </Section>
 
       {/* ── Lead time ──────────────────────────────────────────────── */}
-      <Section title="Lead-time (how far ahead) multiplier">
+      <Section title="Lead-time (how far ahead) multiplier" icon={Clock3} accent={C.purple}>
         <Grid labels={LEAD_LABELS} arr={cfg.leadMults} def={defaults?.leadMults} on={(i, v) => setArr("leadMults", i, v)} />
       </Section>
 
       {/* ── Festivals / events ─────────────────────────────────────── */}
-      <Section title="Festival / event multiplier">
+      <Section title="Festival / event multiplier" icon={PartyPopper} accent={C.amber}>
         <Grid labels={eventNames} arr={cfg.eventMults} def={defaults?.eventMults} on={(i, v) => setArr("eventMults", i, v)} />
       </Section>
 
       {/* ── Calendar windows (single values) ───────────────────────── */}
-      <Section title="Calendar windows">
-        <NumField label="Monsoon (15 Jul–15 Sep)" value={cfg.monsoonMult} on={(v) => set("monsoonMult", v)} def={defaults?.monsoonMult} step={0.01} />
-        <NumField label="School vacation" value={cfg.schoolMult} on={(v) => set("schoolMult", v)} def={defaults?.schoolMult} step={0.01} />
-        <NumField label="Long weekend" value={cfg.longWeekendMult} on={(v) => set("longWeekendMult", v)} def={defaults?.longWeekendMult} step={0.01} />
-        <NumField label="Isolated holiday" value={cfg.longWeekendHolidayMult} on={(v) => set("longWeekendHolidayMult", v)} def={defaults?.longWeekendHolidayMult} step={0.01} />
+      <Section title="Calendar windows" icon={CalendarClock} accent={C.green}>
+        <div className="pe-grid pe-num-grid">
+          <NumField label="Monsoon (15 Jul–15 Sep)" value={cfg.monsoonMult} on={(v) => set("monsoonMult", v)} def={defaults?.monsoonMult} step={0.01} suffix="×" />
+          <NumField label="School vacation" value={cfg.schoolMult} on={(v) => set("schoolMult", v)} def={defaults?.schoolMult} step={0.01} suffix="×" />
+          <NumField label="Long weekend" value={cfg.longWeekendMult} on={(v) => set("longWeekendMult", v)} def={defaults?.longWeekendMult} step={0.01} suffix="×" />
+          <NumField label="Isolated holiday" value={cfg.longWeekendHolidayMult} on={(v) => set("longWeekendHolidayMult", v)} def={defaults?.longWeekendHolidayMult} step={0.01} suffix="×" />
+        </div>
       </Section>
 
       {/* ── City baseline demand ───────────────────────────────────── */}
-      <Section title="City baseline demand" hint="Baseline demand weight per city.">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+      <Section title="City baseline demand" icon={MapPin} accent={C.blue} hint="Baseline demand weight per city.">
+        <div className="pe-grid pe-cell-grid">
           {Object.keys(cfg.cityDemand || {}).sort().map((city) => (
-            <label key={city} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              <span style={{ color: C.textDim, fontSize: 11 }}>{city}</span>
-              <input type="number" step={0.01} value={cfg.cityDemand[city]} onChange={(e) => setCity(city, e.target.value)} style={{ ...inputStyle, width: "100%" }} />
+            <label key={city} className="pe-cell">
+              <span className="pe-cell-label" title={city}>{city}</span>
+              <input type="number" step={0.01} value={cfg.cityDemand[city]} onChange={(e) => setCity(city, e.target.value)} className="pe-cell-input" />
             </label>
           ))}
         </div>
       </Section>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-        <button onClick={save} disabled={saving} style={{ ...btnGold, opacity: saving ? 0.6 : 1 }}>
-          {saving ? "Saving…" : "Save pricing engine"}
+      <div className="pe-savebar">
+        <button onClick={save} disabled={saving} className="pe-btn-primary">
+          {saving ? <><Loader2 size={13} style={{ animation: "sb-halo-spin 0.9s linear infinite" }} aria-hidden />Saving…</> : <><Save size={14} strokeWidth={2.3} aria-hidden />Save pricing engine</>}
         </button>
-        <button onClick={resetToDefaults} disabled={saving} style={{ ...btnGhost, display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <button onClick={resetToDefaults} disabled={saving} className="pe-btn-ghost">
           <RotateCcw size={13} aria-hidden /> Reset to defaults
         </button>
         {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.startsWith("✗") ? C.red : C.green }}>{msg}</span>}
@@ -248,27 +267,35 @@ export default function PricingEngineTab() {
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: any }) {
+function Section({ title, hint, icon: Icon, accent, children }: { title: string; hint?: string; icon: ComponentType<any>; accent: string; children: any }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 14 }}>
-      <div style={{ color: C.text, fontSize: 13.5, fontWeight: 700, marginBottom: hint ? 2 : 12, fontFamily: "Syne, sans-serif" }}>{title}</div>
-      {hint && <div style={{ color: C.textDim, fontSize: 11.5, marginBottom: 12 }}>{hint}</div>}
-      {children}
+    <div className="pe-card">
+      <div className="pe-card-head">
+        <span className="pe-ico" style={{ background: accent + "1e", color: accent }}><Icon size={17} strokeWidth={2.2} aria-hidden /></span>
+        <div>
+          <div className="pe-title">{title}</div>
+          {hint && <div className="pe-hint">{hint}</div>}
+        </div>
+      </div>
+      <div className="pe-body">{children}</div>
     </div>
   );
 }
 
-function NumField({ label, hint, value, on, def, step = 0.5 }: { label: string; hint?: string; value: any; on: (v: any) => void; def?: any; step?: number }) {
+function NumField({ label, hint, value, on, def, step = 0.5, suffix }: { label: string; hint?: string; value: any; on: (v: any) => void; def?: any; step?: number; suffix?: string }) {
   const changed = def !== undefined && Number(value) !== Number(def);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 0", flexWrap: "wrap" }}>
-      <div style={{ minWidth: 220, flex: "1 1 220px" }}>
-        <div style={{ color: C.text, fontSize: 13 }}>{label}</div>
-        {hint && <div style={{ color: C.textDim, fontSize: 11 }}>{hint}</div>}
+    <div className="pe-field">
+      <div className="pe-field-label">
+        <div className="pe-field-name">{label}</div>
+        {hint && <div className="pe-field-hint">{hint}</div>}
       </div>
-      <input type="number" step={step} value={value ?? ""} onChange={(e) => on(e.target.value === "" ? "" : Number(e.target.value))} style={{ ...inputStyle, width: 110 }} />
+      <div className="pe-input-wrap">
+        <input type="number" step={step} value={value ?? ""} onChange={(e) => on(e.target.value === "" ? "" : Number(e.target.value))} className={`pe-input${changed ? " pe-changed" : ""}`} />
+        {suffix && <span className="pe-suffix">{suffix}</span>}
+      </div>
       {def !== undefined && (
-        <span style={{ fontSize: 11, color: changed ? C.amber : C.textDim, minWidth: 92 }}>default {def}</span>
+        <span className={`pe-def${changed ? " pe-changed-def" : ""}`}>def {def}</span>
       )}
     </div>
   );
@@ -276,13 +303,13 @@ function NumField({ label, hint, value, on, def, step = 0.5 }: { label: string; 
 
 function Grid({ labels, arr, def, on }: { labels: string[]; arr: any[]; def?: any[]; on: (i: number, v: string) => void }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+    <div className="pe-grid pe-cell-grid">
       {labels.map((lab, i) => {
         const changed = def && Number(arr?.[i]) !== Number(def[i]);
         return (
-          <label key={i} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ color: C.textDim, fontSize: 11 }}>{lab}</span>
-            <input type="number" step={0.01} value={arr?.[i] ?? ""} onChange={(e) => on(i, e.target.value)} style={{ ...inputStyle, width: "100%", borderColor: changed ? C.amber + "88" : undefined }} />
+          <label key={i} className={`pe-cell${changed ? " pe-changed" : ""}`}>
+            <span className="pe-cell-label" title={lab}>{lab}</span>
+            <input type="number" step={0.01} value={arr?.[i] ?? ""} onChange={(e) => on(i, e.target.value)} className="pe-cell-input" />
           </label>
         );
       })}
