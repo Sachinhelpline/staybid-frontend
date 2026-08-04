@@ -78,6 +78,7 @@ import {
   FileText, Heart, Star, X, Ban, Sparkles, Link2, RefreshCw, Bot, PartyPopper,
   Pencil, Trash2, Camera, Hash, Wrench, RotateCw,
   Globe, Grid3x3, Pin, CalendarDays, OctagonX,
+  Gauge, IndianRupee,
 } from "lucide-react";
 
 // Inline shell-chrome icon helper (partner dashboard) — matches BIc/InIc pattern.
@@ -89,7 +90,7 @@ const DIc = ({ I, size = 13, ...rest }: { I: any; size?: number; [k: string]: an
 // The legacy emoji in the config objects stay as a graceful fallback for any
 // id not in the map (e.g. myrooms/passport/circle only appear conditionally).
 const PICON: Record<string, any> = {
-  overview: LayoutDashboard, myrooms: BedDouble, bids: Inbox, rooms: Building2,
+  overview: LayoutDashboard, pricing: IndianRupee, myrooms: BedDouble, bids: Inbox, rooms: Building2,
   flash: Zap, bookings: CalendarCheck, reservations: ConciergeBell,
   availability: CalendarRange, housekeeping: SprayCan, billing: ReceiptText,
   menu: UtensilsCrossed, fnbqr: QrCode, guests: Users, passport: BookUser,
@@ -188,7 +189,7 @@ function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle
 // v170 — role-based tab visibility. The owner sees everything; staff
 // roles get a scoped subset. "staff" + "profile" stay owner-only.
 const STAFF_TAB_ALLOW: Record<string, Set<string>> = {
-  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","menu","fnbqr","guests","passport","reports","complaints","redeem","content","verification"]),
+  manager:      new Set(["overview","pricing","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","menu","fnbqr","guests","passport","reports","complaints","redeem","content","verification"]),
   front_desk:   new Set(["overview","bids","bookings","reservations","availability","redeem","guests","passport"]),
   housekeeping: new Set(["overview","housekeeping"]),
 };
@@ -214,7 +215,7 @@ export default function PartnerDashboard() {
   // so the mobile header never overflows past the right edge).
   const [acctOpen, setAcctOpen]   = useState(false);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms"|"agentauction">("overview");
+  const [tab, setTab]             = useState<"overview"|"pricing"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms"|"agentauction">("overview");
 
   // Deep-link support: honour a ?tab= query on first load so external surfaces
   // (e.g. a Circle investor bridging in to "Sell to Agents" / "My Rooms" / OTA)
@@ -275,7 +276,7 @@ export default function PartnerDashboard() {
   const [bidActDone, setBidActDone]     = useState(false);
 
   // Room pricing
-  const [editPrices, setEditPrices]   = useState<Record<string, { floor?: string; flash?: string }>>({});
+  const [editPrices, setEditPrices]   = useState<Record<string, { floor?: string; flash?: string; mrp?: string }>>({});
   const [savingRoom, setSavingRoom]   = useState("");
   const [savedRoom, setSavedRoom]     = useState("");
   const [aiPrices, setAiPrices]       = useState<Record<string, any>>({});
@@ -548,6 +549,8 @@ export default function PartnerDashboard() {
         body: JSON.stringify({
           floorPrice:      prices.floor ? parseFloat(prices.floor) : undefined,
           flashFloorPrice: prices.flash ? parseFloat(prices.flash) : undefined,
+          // v730 — the "Manage My Price" hub also edits Rack / MRP (optional).
+          mrp:             prices.mrp   ? parseFloat(prices.mrp)   : undefined,
         }),
       });
       const d = await res.json();
@@ -999,6 +1002,10 @@ export default function PartnerDashboard() {
 
   const TABS = [
     { id:"overview",  icon:"📊", label:"Overview"   },
+    // v730 — dedicated "Manage My Price" hub (per-room Bid Floor + Rack/MRP +
+    // live AI price + agent/OTA channel links). Placed 2nd so price control is
+    // discoverable without scrolling. Never a subscription-locked service.
+    { id:"pricing",   icon:"💰", label:"Manage My Price" },
     // Phase 3c — StayCircle operator: manage your OWN physical rooms
     // (per-unit price / listing). Only shown when the hotel is reached via
     // unit-ownership (isOperator), never for the classic hotel owner.
@@ -1348,6 +1355,157 @@ export default function PartnerDashboard() {
           </>
         )}
 
+        {/* ══════════════ MANAGE MY PRICE (v730 price hub) ══════════════ */}
+        {tab === "pricing" && (
+          <div className="fade-up">
+            <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+              <div>
+                <h2 className="sec-title text-xl inline-flex items-center gap-2"><IndianRupee size={20} strokeWidth={2.2} aria-hidden className="text-luxury-500" />Manage My Price</h2>
+                <div className="flex items-center gap-1.5 text-[0.63rem] text-luxury-400 font-bold uppercase tracking-widest mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />AI Live Engine · one place for every channel
+                </div>
+              </div>
+              <button onClick={() => setTab("rooms")} className="btn-ghost text-xs inline-flex items-center gap-1.5"><Building2 size={13} strokeWidth={2.3} aria-hidden /> Room details &amp; photos</button>
+            </div>
+
+            {/* Explainer + channel launcher */}
+            <div className="mb-5 rounded-2xl overflow-hidden border border-luxury-200" style={{ background: "radial-gradient(130% 150% at 8% -20%,rgba(129,152,174,0.16),transparent 55%),linear-gradient(180deg,#fbfcfd,#f3f6fa)" }}>
+              <div className="p-4 sm:p-5">
+                <p className="text-sm font-bold text-luxury-900 inline-flex items-center gap-1.5"><Gauge size={15} strokeWidth={2.4} aria-hidden className="text-[#6f8aa6]" />How your price works</p>
+                <p className="text-xs mt-1.5 text-luxury-500" style={{ lineHeight: 1.6 }}>
+                  You set two numbers per room — your <b className="text-luxury-700">Bid Floor</b> (the minimum you&apos;ll accept) and your <b className="text-luxury-700">Rack / MRP</b> (your reference rate).
+                  StayBid&apos;s AI prices guests dynamically <b>between</b> them by demand, and always stays <b>just below the lowest online (OTA) price</b> — never below your floor.
+                </p>
+                {/* Mini ladder legend */}
+                <div className="mt-3 relative h-2 rounded-full" style={{ background: "linear-gradient(90deg,#6f8aa6,#d4b778 52%,#e9463a22)" }}>
+                  <div className="absolute -top-0.5 left-0 w-3 h-3 rounded-full bg-[#42566d] border-2 border-white" />
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white" style={{ background: "linear-gradient(160deg,#ffd98a,#d69a1e)" }} />
+                  <div className="absolute -top-0.5 right-0 w-3 h-3 rounded-full bg-luxury-300 border-2 border-white" />
+                </div>
+                <div className="flex justify-between text-[0.6rem] font-bold uppercase tracking-widest text-luxury-400 mt-1.5">
+                  <span>Your floor</span><span className="text-gold-600">AI live price</span><span>Rack / MRP</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap px-4 sm:px-5 py-3 border-t border-luxury-100 bg-white/50">
+                <span className="text-[0.63rem] font-bold uppercase tracking-widest text-luxury-400">Also price for</span>
+                <button onClick={() => setTab("agentauction")} className="btn-ghost text-xs px-2.5! py-1!">🏷️ Travel agents</button>
+                {hotel?.isOperator && (
+                  <button onClick={() => setTab("myrooms")} className="btn-ghost text-xs px-2.5! py-1!">🛏️ B2B units &amp; MRP</button>
+                )}
+                {tabAllowed(role, "channels") && (
+                  <button onClick={() => setTab("channels")} className="btn-ghost text-xs px-2.5! py-1!">🔗 OTA channels</button>
+                )}
+              </div>
+            </div>
+
+            {rooms.length === 0 ? (
+              <div className="card-p text-center py-10">
+                <Building2 size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />
+                <p className="text-luxury-600 font-semibold text-sm">No room categories yet</p>
+                <p className="text-luxury-400 text-xs mt-0.5 mb-3">Add a room type first, then set its price here.</p>
+                <button onClick={() => setTab("rooms")} className="btn-gold"><DIc I={Plus} size={14} /> Add a room</button>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-5">
+                {rooms.map(r => {
+                  const ai = aiPrices[r.id];
+                  const demandKey = (ai?.demandLevel ?? "") as DemandLevel;
+                  const ds = ai && demandKey in DEMAND_STYLE ? DEMAND_STYLE[demandKey] : null;
+                  const img = getRoomImage(r.name || r.type || "", r.images);
+                  const ep = editPrices[r.id] || {};
+                  const fl = Number(ep.floor ?? r.floorPrice ?? 0) || 0;
+                  const mp = Number(ep.mrp ?? r.mrp ?? 0) || 0;
+                  const aip = Math.round(ai?.price || 0);
+                  const hasLadder = mp > fl && fl > 0 && aip > 0;
+                  const pos = hasLadder ? Math.max(7, Math.min(93, ((aip - fl) / (mp - fl)) * 100)) : 50;
+                  const saved = savedRoom === r.id;
+                  return (
+                    <div key={r.id} className="card-p">
+                      {/* Header: thumb + name + demand */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <img src={img} alt={r.name || r.type} className="w-12 h-12 rounded-xl object-cover border border-luxury-100 shrink-0"
+                          onError={(e: any) => { e.target.src = "https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=200&q=80"; }} />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display font-light text-luxury-900 text-lg leading-tight truncate">{r.name || r.type}</p>
+                          <p className="text-[0.68rem] text-luxury-400">Up to {r.capacity || 2} guests</p>
+                        </div>
+                        {ai && ds && (
+                          <span className={`shrink-0 text-[0.6rem] font-bold px-2 py-1 rounded-full border ${ds.bg} ${ds.text} ${ds.border}`}>
+                            <span className={`inline-block w-1.5 h-1.5 rounded-full ${ds.dot} mr-1 ${ai.demandLevel === "Surge" ? "animate-ping" : ""}`} />{ai.demandLevel}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* PRICE LADDER gauge */}
+                      <div className="rounded-2xl border border-luxury-100 p-3 mb-4" style={{ background: "linear-gradient(180deg,#fbfcfd,#f5f8fb)" }}>
+                        <div className="flex items-end justify-between mb-2">
+                          <div>
+                            <p className="text-[0.58rem] font-bold uppercase tracking-widest text-luxury-400">AI live price</p>
+                            <p className={`text-xl font-extrabold ${ds?.text || "text-luxury-900"}`}>{aip > 0 ? fmtCur(aip) : "—"}<span className="text-[0.62rem] font-normal text-luxury-400">/night</span></p>
+                          </div>
+                          <p className="text-[0.6rem] text-luxury-400 text-right max-w-[9rem] leading-snug">{ai?.factors?.[0] || "Priced between your floor & MRP by demand"}</p>
+                        </div>
+                        <div className="relative h-2.5 rounded-full" style={{ background: "linear-gradient(90deg,#6f8aa6,#d4b778 55%,#e5e9ee)" }}>
+                          <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow" style={{ left: `${pos}%`, background: "linear-gradient(160deg,#ffd98a,#d69a1e)" }} />
+                        </div>
+                        <div className="flex justify-between mt-1.5">
+                          <span className="text-[0.62rem] font-bold text-[#42566d]">Floor {fmtCur(fl)}</span>
+                          <span className="text-[0.62rem] font-bold text-luxury-500">MRP {mp > 0 ? fmtCur(mp) : "—"}</span>
+                        </div>
+                      </div>
+
+                      {/* Editable price inputs */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Bid Floor</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 text-sm font-medium">₹</span>
+                            <input type="number" placeholder={String(r.floorPrice || "")} value={ep.floor ?? ""}
+                              onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], floor: e.target.value } }))} className="inp-p pl-7" />
+                          </div>
+                          <p className="text-[0.6rem] text-luxury-400 mt-1">Now: {fmtCur(r.floorPrice || 0)}</p>
+                        </div>
+                        <div>
+                          <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Rack / MRP</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 text-sm font-medium">₹</span>
+                            <input type="number" placeholder={String(r.mrp || "")} value={ep.mrp ?? ""}
+                              onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], mrp: e.target.value } }))} className="inp-p pl-7" />
+                          </div>
+                          <p className="text-[0.6rem] text-luxury-400 mt-1">Now: {fmtCur(r.mrp || 0)}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Flash Deal Floor <span className="text-luxury-300 normal-case font-medium">· last-minute liquidation</span></label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 text-sm font-medium">₹</span>
+                            <input type="number" placeholder={String(r.flashFloorPrice || "")} value={ep.flash ?? ""}
+                              onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], flash: e.target.value } }))} className="inp-p pl-7" />
+                          </div>
+                          <p className="text-[0.6rem] text-luxury-400 mt-1">Now: {fmtCur(r.flashFloorPrice || r.floorPrice || 0)}</p>
+                        </div>
+                      </div>
+
+                      {ai && (
+                        <div className="flex gap-2 mt-3">
+                          <button onClick={() => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], floor: String(Math.round(ai.price)) } }))}
+                            className="flex-1 text-xs py-2 rounded-xl border border-luxury-200 text-luxury-600 hover:border-gold-300 hover:bg-gold-50 transition-all font-medium">Apply AI → Floor</button>
+                          <button onClick={() => setEditPrices(prev => ({ ...prev, [r.id]: { ...prev[r.id], flash: String(Math.round(ai.price * 0.82)) } }))}
+                            className="flex-1 text-xs py-2 rounded-xl border border-luxury-200 text-luxury-600 hover:border-gold-300 hover:bg-gold-50 transition-all font-medium">Apply AI → Flash</button>
+                        </div>
+                      )}
+
+                      <button onClick={() => saveRoomPricing(r.id)} disabled={savingRoom === r.id || (!ep.floor && !ep.flash && !ep.mrp)}
+                        className={`btn-gold w-full py-2.5 text-sm mt-3 ${saved ? "bg-emerald-500!" : ""}`}>
+                        {savingRoom === r.id ? "Saving…" : saved ? <><DIc I={Check} size={13} /> Saved!</> : "Save Price"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ══════════════ OVERVIEW ══════════════ */}
         {tab === "overview" && (() => {
           const todayISO = new Date().toISOString().slice(0,10);
@@ -1532,6 +1690,7 @@ export default function PartnerDashboard() {
               <p className="sec-title text-lg mb-2.5">Manage your property</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
                 {[
+                  { id:"pricing",     icon:"💰", label:"Manage My Price", hint:"Floor · MRP · AI · agents · OTA",                             c:"#a16207", bg:"#fdf0d5" },
                   { id:"bids",        icon:"📩", label:"Bids",            hint: pendingBids>0?`${pendingBids} to respond`:"All clear",        c:"#b45309", bg:"#f0f3f5" },
                   { id:"rooms",       icon:"🏨", label:"Rooms & Pricing", hint:`${rooms.length} room${rooms.length!==1?"s":""}`,             c:"#7c3aed", bg:"#f3e8ff" },
                   { id:"flash",       icon:"⚡", label:"Flash Deals",     hint: activeDeals.length>0?`${activeDeals.length} live`:"Create one", c:"#dc2626", bg:"#fee2e2" },
