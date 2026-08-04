@@ -19,6 +19,33 @@
 
 ## Session log
 
+### 2026-08-04 — Kiosk media quality: crisp 4K photo pipeline + cinematic video hero (v700)
+**Owner asked** whether kiosk photos/videos can be made to not look soft/stretched on a big display, after
+the v699 large-format work. Honest boundary set first: front-end can't invent pixels a low-res upload never
+had — but it CAN serve the largest crisp variant, never stretch, and handle low-res gracefully. Owner picked
+BOTH deliverables (photos crisp pipeline + video hero). Presentation-only; `test:security` **385/0**.
+- **`lib/sb-image.ts`** — NEW `SB_IMG_KIOSK` preset (width 2560, q82, WebP, cover). The transform CDN never
+  upscales past the source, so it only ever helps; benefit is full when `NEXT_PUBLIC_SB_IMAGE_TRANSFORM=1`
+  (Pro plan), and it safely returns the original when the flag is off.
+- **`app/kiosk/display` (big board)** — hero now routes `current.image` through `sbImage(…, SB_IMG_KIOSK)`;
+  a **blurred backdrop layer** (`.kd-hero-bg`, blur+scale) sits BEHIND the media so a low-res / odd-aspect
+  source reads cinematic instead of pixel-stretched; a genuinely small photo (`naturalWidth < 1600`, measured
+  onLoad) switches to `object-fit:contain` (whole photo, sharp) over the blur-fill. **Cinematic video hero:**
+  for the current deal's hotel we fetch approved `hotel_videos` (`s3_url` + `thumbnail_url` poster, cached per
+  hotel), and play a muted auto-loop cover-fit `<video>`; ANY failure (no video / blocked CDN) falls back to
+  the photo. Explicit z-index layering (bg 0 · media 1 · shade 2 · overlays 3) so the blur never covers the
+  sharp media and the caption/badges stay on top.
+- **`app/kiosk/book` (touchscreen)** — all five `backgroundImage` reads (card, gallery main, thumbs, pay-strip,
+  done card) routed through `sbImage` with size-matched presets (KIOSK / CARD / THUMB).
+- **Verified:** `tsc` + `next build` clean; `test:security` **385/0**; responsive-audit **CLEAN across 13
+  widths × 2 themes** on all 3 kiosk routes; a targeted headless probe confirms the hero layering
+  (bg/media/shade/cap = z 0/1/2/3, media cover) + **zero horizontal overflow at 4K landscape 3840×2160,
+  4K portrait 2160×3840, and laptop 1440×900**, with the video→photo graceful fallback firing when the
+  source can't load. ⚠ Sandbox blocks the image/video CDN, so the `contain`-for-low-res branch + real video
+  playback are reasoned (naturalWidth conditional only ever sharpens; video shares the img z-index rule), not
+  pixel-rendered here. Owner-side levers remain: high-res uploads + enabling the image-transform flag.
+  Badge **v700**, sw HTML_CACHE **v496**.
+
 ### 2026-08-04 — Offline kiosk surface: full-matrix + 43"–55" large-format fill (v699)
 **Owner caught a MISSED surface** — the offline-kiosk vertical (`app/kiosk/{page,book,display}`) was never
 swept, and it can run on 43"–55" large-format displays in BOTH orientations.

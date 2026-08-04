@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatINR, KioskDeal } from "@/lib/kiosk";
+import { sbImage, SB_IMG_KIOSK } from "@/lib/sb-image";
 
 const REFRESH_MS = 60000;   // re-pull deals every minute
 const SLIDE_MS = 8000;      // each hotel ad shows for 8s
@@ -146,8 +147,15 @@ function DisplayInner() {
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
   const [scoreOpen, setScoreOpen] = useState(false);
+  // Cinematic video hero — the current hotel's approved reel, played muted +
+  // looped over the photo. Falls back to the photo when there is no video or
+  // the source fails to load. `heroContain` sharpens genuinely low-res photos.
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoPoster, setVideoPoster] = useState("");
+  const [heroContain, setHeroContain] = useState(false);
   const dataTimer = useRef<any>(null);
   const slideTimer = useRef<any>(null);
+  const videoCache = useRef<Record<string, { url: string; poster: string }>>({});
 
   const load = useCallback(async () => {
     try {
@@ -180,6 +188,32 @@ function DisplayInner() {
 
   // Collapse the scorecard detail whenever the slide changes.
   useEffect(() => { setScoreOpen(false); }, [idx]);
+
+  // Pull the current hotel's cinematic reel (approved hotel_videos) for the
+  // hero. Cached per hotel; never throws — no video / blocked CDN → photo hero.
+  const currentHotelId = deals[idx]?.hotelId || "";
+  useEffect(() => {
+    setHeroContain(false);
+    if (!currentHotelId) { setVideoUrl(""); setVideoPoster(""); return; }
+    const cached = videoCache.current[currentHotelId];
+    if (cached) { setVideoUrl(cached.url); setVideoPoster(cached.poster); return; }
+    let cancelled = false;
+    setVideoUrl(""); setVideoPoster("");
+    (async () => {
+      try {
+        const r = await fetch(`/api/videos/${encodeURIComponent(currentHotelId)}?status=approved`, { cache: "no-store" });
+        const j = await r.json().catch(() => ({}));
+        const list = Array.isArray(j?.videos) ? j.videos : [];
+        const v = list.find((x: any) => x && x.s3_url) || null;
+        const found = { url: v ? String(v.s3_url) : "", poster: v && v.thumbnail_url ? String(v.thumbnail_url) : "" };
+        videoCache.current[currentHotelId] = found;
+        if (!cancelled) { setVideoUrl(found.url); setVideoPoster(found.poster); }
+      } catch {
+        if (!cancelled) { setVideoUrl(""); setVideoPoster(""); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentHotelId]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -235,8 +269,18 @@ function DisplayInner() {
           <>
             {/* Hero */}
             <div className="kd-hero">
-              <img key={current.id} src={current.image} alt={current.hotelName} className="kd-hero-img"
-                onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }} />
+              <div className="kd-hero-bg" style={{ backgroundImage: `url("${sbImage(current.image, SB_IMG_KIOSK)}")` }} aria-hidden />
+              {videoUrl ? (
+                <video key={videoUrl} className="kd-hero-vid" src={videoUrl}
+                  poster={videoPoster || sbImage(current.image, SB_IMG_KIOSK)}
+                  autoPlay muted loop playsInline
+                  onError={() => { setVideoUrl(""); }} />
+              ) : (
+                <img key={current.id} src={sbImage(current.image, SB_IMG_KIOSK)} alt={current.hotelName}
+                  className={`kd-hero-img${heroContain ? " kd-hero-fit" : ""}`}
+                  onLoad={(e) => { const w = (e.currentTarget as HTMLImageElement).naturalWidth; if (w && w < 1600) setHeroContain(true); }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }} />
+              )}
               <div className="kd-hero-shade" />
               {current.discount >= 8 ? <div className="kd-hero-disc">⚡ −{current.discount}%</div> : null}
               <div className="kd-hero-units"><span className="kd-units-dot" />{current.unitsFree} room{current.unitsFree !== 1 ? "s" : ""} left tonight</div>
@@ -363,15 +407,22 @@ function DisplayInner() {
         @media (orientation:portrait) { .kd-stage { flex-direction:column; } }
         .kd-empty { flex:1; display:flex; align-items:center; justify-content:center; font-size:clamp(16px,3vmin,30px); color:#9eafc1; text-align:center; }
 
-        .kd-hero { position:relative; flex:1.5 1 0; min-height:0; min-width:0; border-radius:2.2vmin; overflow:hidden; box-shadow:0 1.6vmin 4vmin rgba(0,0,0,.5); }
-        .kd-hero-img { width:100%; height:100%; object-fit:cover; animation:kdken 16s ease-in-out infinite alternate; }
+        .kd-hero { position:relative; flex:1.5 1 0; min-height:0; min-width:0; border-radius:2.2vmin; overflow:hidden; box-shadow:0 1.6vmin 4vmin rgba(0,0,0,.5); background:#0b0906; }
+        /* Blurred fill BEHIND the media — hides letterbox on a low-res /
+           odd-aspect source so it reads cinematic, never pixel-stretched. */
+        .kd-hero-bg { position:absolute; inset:0; z-index:0; background-size:cover; background-position:center; filter:blur(3vmin) saturate(1.15) brightness(.7); transform:scale(1.18); }
+        .kd-hero-img { position:relative; z-index:1; width:100%; height:100%; object-fit:cover; animation:kdken 16s ease-in-out infinite alternate; }
+        /* Genuinely low-res photo → show it whole + sharp (contain) over the
+           blur-fill instead of upscaling to fill. */
+        .kd-hero-img.kd-hero-fit { object-fit:contain; }
+        .kd-hero-vid { position:relative; z-index:1; width:100%; height:100%; object-fit:cover; display:block; background:#0b0906; }
         @keyframes kdken { from{transform:scale(1) translate(0,0)} to{transform:scale(1.08) translate(-1%,-1%)} }
-        .kd-hero-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(11,9,6,.85) 100%); }
-        .kd-hero-disc { position:absolute; top:2vmin; left:2vmin; background:linear-gradient(135deg,#E0A07B,#C24E4E); color:#fff; font-weight:800; font-size:clamp(13px,2.4vmin,26px); padding:.7vmin 1.6vmin; border-radius:99px; box-shadow:0 .6vmin 1.6vmin rgba(194,78,78,.5); animation:kdstamp 2.4s ease-in-out infinite; }
+        .kd-hero-shade { position:absolute; inset:0; z-index:2; background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(11,9,6,.85) 100%); }
+        .kd-hero-disc { position:absolute; z-index:3; top:2vmin; left:2vmin; background:linear-gradient(135deg,#E0A07B,#C24E4E); color:#fff; font-weight:800; font-size:clamp(13px,2.4vmin,26px); padding:.7vmin 1.6vmin; border-radius:99px; box-shadow:0 .6vmin 1.6vmin rgba(194,78,78,.5); animation:kdstamp 2.4s ease-in-out infinite; }
         @keyframes kdstamp { 0%,100%{transform:rotate(-4deg) scale(1)} 50%{transform:rotate(-4deg) scale(1.06)} }
-        .kd-hero-units { position:absolute; top:2vmin; right:2vmin; display:flex; align-items:center; gap:.8vmin; background:rgba(11,9,6,.7); border:1px solid rgba(157,176,127,.6); color:#A9BE88; font-size:clamp(10px,1.7vmin,18px); padding:.6vmin 1.4vmin; border-radius:99px; }
+        .kd-hero-units { position:absolute; z-index:3; top:2vmin; right:2vmin; display:flex; align-items:center; gap:.8vmin; background:rgba(11,9,6,.7); border:1px solid rgba(157,176,127,.6); color:#A9BE88; font-size:clamp(10px,1.7vmin,18px); padding:.6vmin 1.4vmin; border-radius:99px; }
         .kd-units-dot { width:1vmin; height:1vmin; min-width:6px; min-height:6px; border-radius:50%; background:#A9BE88; box-shadow:0 0 1.2vmin #A9BE88; animation:kdblink 1.6s infinite; }
-        .kd-hero-cap { position:absolute; left:2.4vmin; right:2.4vmin; bottom:2.2vmin; }
+        .kd-hero-cap { position:absolute; z-index:3; left:2.4vmin; right:2.4vmin; bottom:2.2vmin; }
         .kd-hero-name { font-family:'Cormorant Garamond',serif; font-weight:700; font-size:clamp(26px,6vmin,76px); line-height:1.02; color:#fdfdfd; text-shadow:0 .4vmin 2vmin rgba(0,0,0,.6); }
         .kd-hero-meta { display:flex; flex-wrap:wrap; align-items:center; gap:1.2vmin; margin-top:.8vmin; font-size:clamp(12px,2.1vmin,22px); color:#d7dfe6; }
         .kd-stars { color:#c0ccd7; letter-spacing:1px; }

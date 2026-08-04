@@ -20,6 +20,7 @@ import { useSearchParams } from "next/navigation";
 import { CreditCard } from "lucide-react";
 import { formatINR, KioskDeal, KIOSK_CITIES, resolveKioskLocation } from "@/lib/kiosk";
 import { useKioskFill } from "@/lib/useKioskFill";
+import { sbImage, SB_IMG_KIOSK, SB_IMG_CARD, SB_IMG_THUMB } from "@/lib/sb-image";
 
 type Step = "city" | "browse" | "tour" | "pay" | "done";
 
@@ -221,7 +222,7 @@ function BookInner() {
               <div className="kb-grid">
                 {deals.map((d) => (
                   <button key={d.id} className="kb-card" onClick={() => openTour(d)}>
-                    <div className="kb-card-img" style={{ backgroundImage: `url(${d.image})` }}>
+                    <div className="kb-card-img" style={{ backgroundImage: `url("${sbImage(d.image, SB_IMG_CARD)}")` }}>
                       {d.discount >= 10 ? <div className="kb-card-disc">−{d.discount}%</div> : null}
                       <div className="kb-card-left">{d.unitsFree} left</div>
                     </div>
@@ -257,13 +258,13 @@ function BookInner() {
             <div className="kb-tour">
               {/* Gallery */}
               <div className="kb-gallery">
-                <div className="kb-gallery-main" style={{ backgroundImage: `url(${picked.images[galleryIdx] || picked.image})` }}>
+                <div className="kb-gallery-main" style={{ backgroundImage: `url("${sbImage(picked.images[galleryIdx] || picked.image, SB_IMG_KIOSK)}")` }}>
                   <div className="kb-gallery-badge">⚡ Flash · −{picked.discount}%</div>
                 </div>
                 {picked.images.length > 1 && (
                   <div className="kb-thumbs">
                     {picked.images.slice(0, 6).map((im, i) => (
-                      <button key={i} className={`kb-thumb ${i === galleryIdx ? "on" : ""}`} style={{ backgroundImage: `url(${im})` }} onClick={() => setGalleryIdx(i)} />
+                      <button key={i} className={`kb-thumb ${i === galleryIdx ? "on" : ""}`} style={{ backgroundImage: `url("${sbImage(im, SB_IMG_THUMB)}")` }} onClick={() => setGalleryIdx(i)} />
                     ))}
                   </div>
                 )}
@@ -356,7 +357,7 @@ function BookInner() {
             </div>
             <div className="kb-pay">
               <div className="kb-pay-summary">
-                <div className="kb-ps-img" style={{ backgroundImage: `url(${picked.image})` }} />
+                <div className="kb-ps-img" style={{ backgroundImage: `url("${sbImage(picked.image, SB_IMG_CARD)}")` }} />
                 <div className="kb-ps-info">
                   <div className="kb-ps-name">{picked.hotelName}</div>
                   <div className="kb-ps-room">{selected.type} · {picked.city}</div>
@@ -412,7 +413,7 @@ function BookInner() {
             <div className="kb-doneh">Booking Confirmed!</div>
             <div className="kb-doneid">BOOKING ID · {result.bookingId}</div>
             <div className="kb-donecard">
-              <div className="kb-dc-img" style={{ backgroundImage: `url(${picked?.image})` }} />
+              <div className="kb-dc-img" style={{ backgroundImage: `url("${sbImage(picked?.image || "", SB_IMG_CARD)}")` }} />
               <div className="kb-dc-name">{picked?.hotelName}</div>
               <div className="kb-dc-room">{selected?.type} · {city}</div>
               <div className="kb-donerow"><span>Check-in</span><b>{fmtD(checkInDate)} · 2:00 PM</b></div>
