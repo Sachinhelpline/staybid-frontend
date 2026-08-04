@@ -46,7 +46,11 @@ export default function TradeTourPage() {
 
   const { lot, hotel, room, segments, depositPct } = data;
   const isLive = lot.sale_mode === "live";
-  const heroImgs: string[] = (hotel.images?.length ? hotel.images : room.images) || [];
+  // v711 (owner) — lead the tour hero with the ROOM's own photos, not the
+  // hotel's marketing/lifestyle shots (those carried wedding/couple stock that
+  // read wrong for a room-inventory lot). Fall back to hotel images only if the
+  // room has none.
+  const heroImgs: string[] = (room.images?.length ? room.images : hotel.images) || [];
   // Booking-price framing (live lots): the top strip shows the room's booking price
   // (rack/MRP), consistent with the coach — not the internal min-bid floor.
   const round100m = (n: number) => Math.max(100, Math.round(n / 100) * 100);

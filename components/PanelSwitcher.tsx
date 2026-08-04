@@ -423,6 +423,21 @@ function SwitcherStyles() {
 }
 [data-theme="dark"] .sbps-card-ic{ box-shadow:inset 0 1px 0 rgba(255,255,255,0.08); }
 
+/* v711 (owner) — on a desktop/tablet the splash read FLAT: a tiny tile lost in
+   a big empty screen. Scale the whole thing up on wide viewports so the
+   transition feels intentional and native (bigger tile + glyph + glow + type). */
+@media (min-width:768px){
+  .sbps-splash{ gap:22px; }
+  .sbps-splash-glow{ width:min(84vw,1000px); height:min(84vw,1000px); filter:blur(46px); }
+  .sbps-splash-ic{ width:136px; height:136px; border-radius:38px; }
+  .sbps-splash-glyph{ font-size:66px; }
+  .sbps-splash-halo{ inset:-8px; border-radius:46px; }
+  .sbps-splash-txt{ font-size:34px; }
+  .sbps-splash-sub{ font-size:14px; }
+  .sbps-splash-bar{ width:210px; height:5px; }
+  .sbps-splash-cont{ font-size:13.5px; padding:11px 20px; }
+}
+
 @media (prefers-reduced-motion:reduce){
   .sbps-backdrop,.sbps-sheet,.sbps-splash,.sbps-splash-ic,.sbps-splash-glyph,
   .sbps-splash-glow,.sbps-splash-halo,.sbps-splash-txt,.sbps-splash-sub{ animation:none !important; }

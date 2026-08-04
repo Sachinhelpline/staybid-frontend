@@ -19,6 +19,28 @@
 
 ## Session log
 
+### 2026-08-04 — Circle rebuild Phase A.2: marketplace + review/selling/browse + home + splash (v712)
+**Owner: "do it all, don't stop."** The full de-walnut sweep across the rest of the Circle vertical, all to the
+app/`--trd-*` theme tokens (light cards that match the page and flip in dark).
+- **`.sbc-mkt-*` marketplace** (the biggest offender — the ENTIRE `/circle/model3` pre-buy + `/circle/model4`
+  exchange): city chips, skeleton, property cards, panels, inputs (dropped the forced `color-scheme:dark`),
+  quote rows, avail note, buttons, success overlay, toast → tokens.
+- **model2 review** (`.sbc2r-*` incl. the dark COST & VALUE panel), **selling** (`.sbc2s-*` incl. the dark KPI
+  strip + cold-grey nudge), **browse** (`.sbc2b-*` steps/kpis/chips/cards + the inline header colors), and the
+  shared `.sbc-panel` → tokens.
+- **Model 3 `/trade`**: tour hero now leads with the **room's own photos**, not the hotel lifestyle/wedding
+  stock (`app/trade/[id]` `heroImgs` room-first). (browse/review/my-bids use Tailwind luxury utils that already
+  dark-flip via the globals patch.)
+- **`/circle` home**: the hero dead-space is gone — signed-out portfolio card enriched with 3 benefit chips +
+  `align-items:stretch` so both columns are equal height (**measured 394=394, Δ0** at 1024/1440 light+dark);
+  softened "15–32% annual returns" → "expected monthly income from real bookings" (Circle legal framing).
+- **Switch splash**: scaled up on ≥768px (bigger tile/glyph/glow/type) so it's premium on desktop, not a tiny
+  tile in a white void.
+- **Verified:** tokens flip (`--trd-card`/`--bg-card` #fff→#1a1610 etc); home columns balanced; 0 overflow;
+  `tsc` + `next build` clean; `test:security` **385/0**. Badge v711→**v712**, sw HTML_CACHE v507→**v508**.
+- **Left for final QA:** model-card hollow-middle polish, the trade dark header bar (a deliberate brand strip),
+  and a full per-page breakpoint sweep.
+
 ### 2026-08-04 — Circle rebuild Phase A.1: tour pages de-darkened (v711)
 **Owner: full god-level StayBid Circle rebuild** (home + Model 2 [code `/circle/model2` + legacy `model3`/
 `model4`] + Model 3 [`/trade/*`]), each redesigned to its own requirement, all breakpoints, both themes,

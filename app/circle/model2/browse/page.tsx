@@ -88,10 +88,10 @@ export default function Model2BrowsePage() {
   return (
     <div className="sbc-home">
       <div className="sbc-ms-wrap sbc2b">
-        <Link href="/circle" className="sbc-ms-back" style={{ color: "var(--sbc-gold-deep)" }}>← StayCircle</Link>
-        <div className="sbc-ms-eyebrow"><span className="sbc-ms-model">Model 2</span><span className="sbc-ms-tag" style={{ color: "var(--sbc-coffee)" }}>Multi-City Inventory Bundle</span></div>
-        <h1 className="sbc-ms-title" style={{ color: "var(--sbc-coffee)" }}>Browse released inventory</h1>
-        <p className="sbc-ms-sub" style={{ color: "rgba(74,56,32,.75)" }}>
+        <Link href="/circle" className="sbc-ms-back" style={{ color: "var(--accent)" }}>← StayCircle</Link>
+        <div className="sbc-ms-eyebrow"><span className="sbc-ms-model">Model 2</span><span className="sbc-ms-tag" style={{ color: "var(--text-base)" }}>Multi-City Inventory Bundle</span></div>
+        <h1 className="sbc-ms-title" style={{ color: "var(--text-base)" }}>Browse released inventory</h1>
+        <p className="sbc-ms-sub" style={{ color: "var(--text-soft)" }}>
           Tour any property, open a room’s <b>live availability calendar</b>, and pick the nights you want.
           Check each room against its real <b>market rate</b> — like a stock — and see your resale upside before you buy.
         </p>
@@ -119,9 +119,9 @@ export default function Model2BrowsePage() {
         </div>
 
         {loading ? (
-          <div className="sbc-panel" style={{ padding: 28, textAlign: "center", color: "rgba(74,56,32,.6)" }}>Loading inventory…</div>
+          <div className="sbc-panel" style={{ padding: 28, textAlign: "center", color: "var(--text-muted)" }}>Loading inventory…</div>
         ) : properties.length === 0 ? (
-          <div className="sbc-panel" style={{ padding: 24, color: "rgba(74,56,32,.6)", fontSize: ".9rem" }}>No released inventory here yet.</div>
+          <div className="sbc-panel" style={{ padding: 24, color: "var(--text-muted)", fontSize: ".9rem" }}>No released inventory here yet.</div>
         ) : (
           <div className="sbc2b-grid">
             {properties.map((p) => {
@@ -148,7 +148,7 @@ export default function Model2BrowsePage() {
           </div>
         )}
 
-        <p className="sbc-ms-note" style={{ marginTop: 16, color: "rgba(74,56,32,.55)" }}>{CIRCLE_B2B_RESALE_NOTE}</p>
+        <p className="sbc-ms-note" style={{ marginTop: 16, color: "var(--text-muted)" }}>{CIRCLE_B2B_RESALE_NOTE}</p>
       </div>
 
       {bCount > 0 && (
@@ -163,36 +163,38 @@ export default function Model2BrowsePage() {
       <style jsx global>{`
         .sbc2b { padding-bottom: 96px; }
         .sbc2b-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(126px, 45%), 1fr)); gap: 8px; margin: 16px 0 12px; }
-        .sbc2b-step { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid rgba(139,105,20,.16); border-radius: 12px; padding: 9px 10px; }
-        .sbc2b-step-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--sbc-gold-deep); color: #fff; font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
-        .sbc2b-step-t { font-size: .78rem; font-weight: 800; color: var(--sbc-coffee); line-height: 1.1; }
-        .sbc2b-step-d { font-size: .64rem; color: rgba(74,56,32,.72); }
+        /* v711 (owner Circle rebuild) — browse fully themed: steps/kpis/chips/
+           cards → app tokens (light that match + flip in dark). */
+        .sbc2b-step { display: flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 12px; padding: 9px 10px; }
+        .sbc2b-step-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
+        .sbc2b-step-t { font-size: .78rem; font-weight: 800; color: var(--text-base); line-height: 1.1; }
+        .sbc2b-step-d { font-size: .64rem; color: var(--text-muted); }
         .sbc2b-kpis { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 8px; }
-        .sbc2b-kpi { font-size: .7rem; font-weight: 700; color: rgba(74,56,32,.8); background: rgba(139,105,20,.08); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 5px 11px; }
-        .sbc2b-kpi-gold { color: #fff; background: var(--sbc-gold-deep); border-color: var(--sbc-gold-deep); }
+        .sbc2b-kpi { font-size: .7rem; font-weight: 700; color: var(--text-soft); background: var(--bg-pill); border: 1px solid var(--border-soft); border-radius: 999px; padding: 5px 11px; }
+        .sbc2b-kpi-gold { color: #fff; background: var(--accent); border-color: var(--accent); }
         .sbc2b-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
-        .sbc2b-chip { text-transform: capitalize; font-size: .82rem; font-weight: 700; padding: 7px 13px; border-radius: 999px; cursor: pointer; border: 1px solid rgba(139,105,20,.25); background: #fff; color: var(--sbc-ink); display: inline-flex; align-items: center; gap: 6px; }
-        .sbc2b-chip.on { border-color: var(--sbc-gold-deep); background: var(--sbc-gold-deep); color: #fff; }
-        .sbc2b-chip-ct { font-size: .64rem; opacity: .7; background: rgba(0,0,0,.08); border-radius: 999px; padding: 1px 6px; }
+        .sbc2b-chip { text-transform: capitalize; font-size: .82rem; font-weight: 700; padding: 7px 13px; border-radius: 999px; cursor: pointer; border: 1px solid var(--border-soft); background: var(--bg-card); color: var(--text-base); display: inline-flex; align-items: center; gap: 6px; }
+        .sbc2b-chip.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+        .sbc2b-chip-ct { font-size: .64rem; opacity: .7; background: color-mix(in srgb, var(--text-base) 10%, transparent); border-radius: 999px; padding: 1px 6px; }
         .sbc2b-chip.on .sbc2b-chip-ct { background: rgba(255,255,255,.22); }
         .sbc2b-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
-        .sbc2b-card { background: #fff; border: 1px solid rgba(139,105,20,.16); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 18px rgba(74,56,32,.06); transition: transform .15s, box-shadow .15s; display: flex; flex-direction: column; text-align: left; }
-        .sbc2b-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(74,56,32,.13); }
-        .sbc2b-card-img { position: relative; width: 100%; aspect-ratio: 4 / 3; background: linear-gradient(135deg, #e2e7ed, #cdd6df); overflow: hidden; }
+        .sbc2b-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 18px -6px rgba(31,26,15,.10); transition: transform .15s, box-shadow .15s; display: flex; flex-direction: column; text-align: left; }
+        .sbc2b-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px -8px rgba(31,26,15,.18); }
+        .sbc2b-card-img { position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--bg-pill); overflow: hidden; }
         .sbc2b-card-img img { width: 100%; height: 100%; object-fit: cover; }
         .sbc2b-noimg { display: grid; place-items: center; font-size: 2.4rem; width: 100%; height: 100%; }
-        .sbc2b-badge { position: absolute; font-size: .64rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(30,22,12,.72); color: #fff; }
+        .sbc2b-badge { position: absolute; font-size: .64rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(20,16,10,.72); color: #fff; }
         .sbc2b-badge-city { top: 8px; left: 8px; }
-        .sbc2b-badge-nights { top: 8px; right: 8px; background: rgba(139,105,20,.9); color: #e6ebef; }
-        .sbc2b-view { position: absolute; bottom: 8px; right: 8px; font-size: .66rem; font-weight: 800; color: #fff; background: rgba(30,22,12,.6); padding: 4px 9px; border-radius: 999px; opacity: 0; transition: opacity .15s; }
+        .sbc2b-badge-nights { top: 8px; right: 8px; background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
+        .sbc2b-view { position: absolute; bottom: 8px; right: 8px; font-size: .66rem; font-weight: 800; color: #fff; background: rgba(20,16,10,.6); padding: 4px 9px; border-radius: 999px; opacity: 0; transition: opacity .15s; }
         .sbc2b-card:hover .sbc2b-view { opacity: 1; }
         .sbc2b-card-body { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-        .sbc2b-card-title { font-weight: 800; color: var(--sbc-coffee); font-size: .92rem; line-height: 1.15; }
-        .sbc2b-card-room { font-size: .72rem; color: rgba(74,56,32,.62); }
+        .sbc2b-card-title { font-weight: 800; color: var(--text-base); font-size: .92rem; line-height: 1.15; }
+        .sbc2b-card-room { font-size: .72rem; color: var(--text-muted); }
         .sbc2b-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
         .sbc2b-youpay { display: flex; flex-direction: column; line-height: 1.05; }
-        .sbc2b-youpay b { color: var(--sbc-coffee); font-size: .92rem; }
-        .sbc2b-youpay span { font-size: .63rem; color: rgba(74,56,32,.72); }
+        .sbc2b-youpay b { color: var(--text-base); font-size: .92rem; }
+        .sbc2b-youpay span { font-size: .63rem; color: var(--text-muted); }
         /* v706 (owner ss5) — the basket bar was a 720px-wide WALNUT bar fixed at
            the viewport centre, so on desktop it floated over the middle of the
            card grid (overlap) and clashed with the app theme. Now it is
