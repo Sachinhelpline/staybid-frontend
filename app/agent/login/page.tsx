@@ -236,6 +236,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   phoneInput: {
     flex: 1,
+    minWidth: 0,
     background: "transparent",
     border: "none",
     padding: "14px 12px",
@@ -316,10 +317,10 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 28,
     paddingTop: 20,
     borderTop: "1px solid rgba(255,255,255,0.07)",
-    color: "#5E6273",
+    color: "#8A8FA8",
     fontSize: 11,
     textAlign: "center",
     lineHeight: 1.6,
   },
-  footerLink: { color: "#8A8FA8", textDecoration: "none", borderBottom: "1px dotted #5E6273" },
+  footerLink: { color: "#aeb9c8", textDecoration: "none", borderBottom: "1px dotted #8A8FA8" },
 };

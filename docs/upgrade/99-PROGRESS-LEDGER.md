@@ -19,6 +19,27 @@
 
 ## Session log
 
+### 2026-08-04 — Agent support panel full-matrix + harness font-stub (v697)
+**Scope:** the customer-support agent panel — `/agent/login`, `/agent` (inbox), `/agent/metrics`,
+`/agent/[id]` (ticket thread) — measured 280→2560 × light+dark.
+- **Harness unblocked (systemic):** `/agent/*` and `/admin/login` render a component-level
+  `<link rel=stylesheet href=fonts.googleapis…>`. React 19 treats that as a suspensey resource and
+  holds the subtree hidden until it loads; the sandbox proxy blocks the font CDN, so those pages
+  rendered EMPTY (and flooded SSL retries). The harness now stubs `fonts.googleapis/gstatic` with a
+  200 empty stylesheet, so React reveals the content and any such page is measurable (fallback fonts
+  are fine for geometry/contrast). This is the root reason v695 couldn't headless-measure agent.
+- **`/agent/login`:** the phone `<input>` (`flex:1`, default `min-width:auto`) couldn't shrink, forcing
+  a 346px min-content → overflow at 280/320px; added `minWidth:0` (standard flex fix). Footer text
+  `#5E6273` (3.12:1 on the dark card) → `#8A8FA8`; footer link → `#aeb9c8` to stay distinct.
+- **RESULT (MEASURED, 13 widths × 2 themes):** `/agent/login`, `/agent`, `/agent/metrics`,
+  `/agent/cv1` — **all CLEAN**. Added agent inbox/metrics/thread fixtures + routes. (Agent sidebar +
+  login emoji → lucide already landed in v695.)
+- **🔒 NO money/bid/auth logic touched** — pure presentation. `test:security` stays 385/0.
+- Badge v696→**v697** (`SB_BUILD v697-agent-fullmatrix`), sw `HTML_CACHE` v492→**v493**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- **Program status:** every non-host surface now measured full-matrix. Host vertical remains
+  owner-held (the one deliberately-deferred bucket).
+
 ### 2026-08-04 — Influencer / creator hub full-matrix (v696)
 **Scope:** all 7 creator-hub content routes, measured 280→2560 × light+dark with fixtures that pass the
 registered-creator gate (`influencer/me` → registered).

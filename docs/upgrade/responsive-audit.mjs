@@ -180,7 +180,12 @@ const ROUTES = [
 
   // ── Agent (customer-support panel) ───────────────────────────────────────
   { route:'/agent/login', scope:'body', fixtures:{} },
-  { route:'/agent/metrics', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' }, fixtures:{} },
+  { route:'/agent', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' },
+    fixtures:{ 'support/conversations':{ ok:true, conversations:[{ id:'cv1', subject:'Booking help', status:'open', last_message:'Need to change dates', updated_at:'2026-08-01 10:00:00', user_name:'Asha', unread:2, channel:'chat' }] }, 'support/metrics':{ ok:true, open:3, resolved:12, avgResponseMin:8 }, 'support/suggest':{ ok:true, suggestion:'' } } },
+  { route:'/agent/metrics', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' },
+    fixtures:{ 'support/metrics':{ ok:true, open:3, resolved:12, pending:1, avgResponseMin:8, avgResolutionHrs:4, byDay:[], byAgent:[{ name:'Support Agent', resolved:12, avgMin:8 }], totals:{ conversations:15, messages:120 } } } },
+  { route:'/agent/cv1', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' },
+    fixtures:{ 'support/ai-status':{ ok:true, enabled:false }, 'support/conversations/cv1':{ ok:true, conversation:{ id:'cv1', subject:'Booking help', status:'open', user_name:'Asha', channel:'chat', created_at:'2026-08-01 09:00:00' }, messages:[{ id:'m1', sender:'user', body:'Hi, I need to change my check-in date.', created_at:'2026-08-01 09:00:00' },{ id:'m2', sender:'agent', body:'Sure, I can help with that. Which booking?', created_at:'2026-08-01 09:02:00' }] }, 'support/suggest':{ ok:true, suggestion:'' } } },
 
   // ── Complaints (customer support) ────────────────────────────────────────
   { route:'/complaints', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
@@ -245,6 +250,13 @@ for (const cfg of ROUTES) {
       if (cfg.admin) { Object.assign(ls, { sb_admin_token:'t.t.t', sb_admin_user:'{"id":"a1","name":"Admin","role":"super_admin"}', sb_token:'t.t.t', sb_user:'{"id":"a1","name":"Admin","role":"super_admin"}' }); }
       await ctx.addInitScript((data)=>{ try{ for(const [k,v] of Object.entries(data.ls)) localStorage.setItem(k,v); sessionStorage.setItem('sb_welcome_shown','1'); }catch(e){} }, { ls });
       const page = await ctx.newPage();
+      // Stub Google Fonts (blocked by the sandbox proxy). React 19 treats a
+      // component-level <link rel=stylesheet>/@import as a "suspensey" resource
+      // and holds the subtree hidden until it loads; on the blocked CDN that
+      // never resolves, so pages like /agent/* /admin/login render empty. A 200
+      // empty stylesheet lets React reveal the content (fallback fonts are fine
+      // for geometry/contrast measurement).
+      await page.route(/fonts\.(googleapis|gstatic)\.com/, r=>r.fulfill({status:200,contentType:'text/css',body:'/* stub */'}));
       await page.route('**/api/**', route=>{
         const u = route.request().url();
         for (const [sub,json] of Object.entries(cfg.fixtures||{})) if (u.includes(sub)) return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(json)});
