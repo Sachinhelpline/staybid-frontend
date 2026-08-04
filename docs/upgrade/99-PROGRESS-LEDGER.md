@@ -19,6 +19,29 @@
 
 ## Session log
 
+### 2026-08-04 — Phase 3 (part 1) / ss4+ss5: Circle floating bars + walnut calendar → theme (v706)
+**Owner 9-screenshot round, Phase 3 — first, measurable slice.** Study of the Circle surface found:
+- The **`.sbc2b-basket` "Review & pay" bar** (model2/browse ss5 AND model2/[id] ss4) was a 720/940px-wide
+  **walnut** bar fixed at the viewport centre → on desktop it floated over the middle of the card grid
+  (overlap) and clashed with the app theme. Now **theme-token** based (`--bg-card`/`--text-base`/
+  `--border-strong`) and, at ≥1024px, a **compact bottom-RIGHT cart** (`right:22px; bottom:22px;
+  max-width:340px`) that structurally can't sit over the grid; mobile keeps the full-width bottom bar.
+- The **model2/[id] availability calendar** (`.sbc2p-cal*`, ss4) was a hardcoded **dark-walnut**
+  (`#1f1710→#2e2115`) calendar on a light page → re-themed to app tokens so it reads in light AND dark;
+  selected night uses `--accent`, the semantic green "available" hint kept via `color-mix(#7FA968, text)`,
+  and the `.sbc2p-selbox` / sel-row / sel-sub moved off dark-only colors.
+- **Center-based dead space:** the shared `.sbc-home > * / .sbc-dash > *` column was capped at **640px**
+  (mobile-first). Widened on desktop (`980px` ≥1024, `1140px` ≥1536) so any page still on that raw flex
+  layout fills more of the screen. (Measured: `/circle` + `/circle/dashboard` are already per-page
+  full-width overrides, so this mainly helps the raw-layout pages; 0px overflow at 360/1024/1440/1920.)
+- **Measured:** 0px horizontal overflow on `/circle` + `/circle/dashboard` at 360→1920, light+dark. The
+  auth-gated model2 pages can't render headless (redirect to sign-in), so the basket/calendar changes are
+  verified at the CSS level (mechanical theme-token substitution + a corner-positioned bar). `tsc` +
+  `next build` clean; `test:security` **385/0**. Badge v705→**v706**, sw HTML_CACHE v501→**v502**.
+- **Still open in Phase 3:** the ss2 **dashboard internal card restructure** (dead space is inner layout,
+  not the container) + ss3 build polish — visual design best reviewed on the live preview, since headless
+  can measure geometry but can't show the rendered look.
+
 ### 2026-08-04 — Phase 2 / ss8: Switch-experience never-stuck + alive splash (v705)
 **Owner 9-screenshot round, Phase 2.** ss8: switching between panels via the global "Switch experience" got
 STUCK ~90% of the time, and the "Switching to X…" splash looked FLAT. Root cause of the stuck: `go()` fired a
