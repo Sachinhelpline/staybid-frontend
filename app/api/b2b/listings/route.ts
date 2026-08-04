@@ -21,8 +21,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
-import { b2bTradeSplit, resaleAskPerNight } from "@/lib/b2b/engine";
-import { resolveB2bFeeConfig, clampOwnerMultiplier } from "@/lib/b2b/fee-config-store";
+import { b2bTradeSplit, resaleAskPerNight, wholesaleBuyPerNight } from "@/lib/b2b/engine";
+import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 import { unitsFreeForRange } from "@/lib/availability";
@@ -189,24 +189,30 @@ async function createHotelOwnerListing(
     return NextResponse.json({ error: "Couldn't price these nights right now — try again." }, { status: 422 });
   }
 
-  // v355 — the ask is the owner's OWN price/night × the resale multiplier
-  // (admin-global default, or a per-listing override in body.priceMultiplier).
-  // The owner's own price/night = the Spine wholesale cost (this is a hotel-owner
-  // supply listing, so their acquisition cost IS the Spine floor). Frozen fees.
+  // v733 — the buy price for HOTEL-OWNER supply is a WHOLESALE DISCOUNT below the
+  // room's retail floor, NOT `own × multiplier`. A hotel-owner listing has no real
+  // acquisition cost (unlike an investor_block resale, whose own = the block's
+  // frozen buy cost), so the old model substituted `own = the Spine floor` and
+  // `× 2` produced a buy price AT/ABOVE the live market → zero resale margin (the
+  // owner's report). Now: buy = retailFloor × (1 − wholesaleDiscount%) (admin-tunable),
+  // which is always below the live market (live_price is floored at the retail
+  // floor). Frozen so the engine reproduces it exactly: own = buy, multiplier = 1
+  // (the markup model doesn't apply here). The owner-multiplier band (v725) stays
+  // for the investor_block resale path below, where a real cost basis exists.
   const fee = await resolveB2bFeeConfig();
-  const ownPerNight = quote.avgBuyPerNight;
-  // v725 — owner may pick their own multiplier, clamped into the admin band.
-  // Absent/invalid → the global admin default (today's exact price, byte-identical).
-  const multiplier = (body?.priceMultiplier === undefined || body?.priceMultiplier === null || body?.priceMultiplier === "")
-    ? fee.resaleMultiplier
-    : clampOwnerMultiplier(body.priceMultiplier, fee);
-  const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
+  const retailFloorPerNight = quote.avgBuyPerNight;               // Spine retail floor
+  const buyPerNight = wholesaleBuyPerNight(retailFloorPerNight, fee.wholesaleDiscountPct);
+  const ownPerNight = buyPerNight;                               // frozen basis (= the wholesale price)
+  const multiplier = 1;                                          // no markup for hotel-owner supply
+  const askPerNight = resaleAskPerNight(ownPerNight, multiplier); // = buyPerNight
   const split = b2bTradeSplit({
     askPerNight,
     nights: quote.nights,
     buyerFeePct: fee.buyerFeePct,
     sellerFeePct: fee.sellerFeePct,
-    buyTotal: quote.buyTotal,
+    // wholesale cost basis = the wholesale price (margin sits in retail, not here)
+    // so the seller-margin display can never read a phantom negative.
+    buyTotal: askPerNight * quote.nights,
   });
 
   const row = {
@@ -222,14 +228,14 @@ async function createHotelOwnerListing(
     ask_per_night: split.askPerNight,
     ask_total: split.askTotal,
     buy_total: split.buyTotal,
-    own_per_night: ownPerNight,       // frozen basis (owner's own price/night)
-    price_multiplier: multiplier,     // frozen multiplier (per-listing)
+    own_per_night: ownPerNight,       // frozen basis (= the wholesale buy price)
+    price_multiplier: multiplier,     // frozen multiplier (1 — no markup for hotel-owner supply)
     platform_fee_pct: split.platformFeePct,
     buyer_fee_pct: split.buyerFeePct,
     seller_fee_pct: split.sellerFeePct,
     status: "listed",
     source: "hotel_owner",
-    metadata: { listedAt: new Date().toISOString(), spineBuyTotal: quote.buyTotal, ownPerNight, multiplier },
+    metadata: { listedAt: new Date().toISOString(), spineBuyTotal: quote.buyTotal, retailFloorPerNight, wholesaleDiscountPct: fee.wholesaleDiscountPct, ownPerNight, multiplier },
     updated_at: new Date().toISOString(),
   };
 

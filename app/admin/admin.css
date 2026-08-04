@@ -954,6 +954,10 @@ main span[style*="border-radius:999"] {
   font: 600 13px 'DM Sans', sans-serif; padding: 8px 10px; width: 82px;
   text-align: right; outline: none; font-variant-numeric: tabular-nums;
   transition: border-color .15s ease, box-shadow .15s ease;
+  /* v733 — the native number-spinner arrows were dark-on-dark (invisible on the
+     admin theme). color-scheme:dark tells the UA to paint the up/down arrows for
+     a dark surface so they're clearly visible + usable. */
+  color-scheme: dark;
 }
 .pe-input:focus { border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212,175,55,0.15); }
 .pe-input.pe-changed { border-color: rgba(245,158,11,0.6); }
@@ -972,8 +976,9 @@ main span[style*="border-radius:999"] {
 .pe-cell:hover { border-color: rgba(255,255,255,0.13); background: rgba(255,255,255,0.038); }
 .pe-cell.pe-changed { border-color: rgba(212,175,55,0.55); box-shadow: 0 0 0 1px rgba(212,175,55,0.22); }
 .pe-cell-label { color: #8A8FA8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pe-cell-input { background: transparent; border: none; color: #E8EAF0; font: 700 16px 'DM Sans', sans-serif; padding: 0; outline: none; width: 100%; font-variant-numeric: tabular-nums; }
-.pe-cell-input::-webkit-inner-spin-button { opacity: 0.35; }
+.pe-cell-input { background: transparent; border: none; color: #E8EAF0; font: 700 16px 'DM Sans', sans-serif; padding: 0; outline: none; width: 100%; font-variant-numeric: tabular-nums; color-scheme: dark; }
+/* v733 — light, visible spinner arrows on the dark tile (were invisible). */
+.pe-cell-input::-webkit-inner-spin-button { opacity: 0.85; }
 
 /* Toggle row + segmented control */
 .pe-toggle {

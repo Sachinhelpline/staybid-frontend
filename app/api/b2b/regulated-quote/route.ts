@@ -9,8 +9,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { decodeJwt } from "@/lib/sb-server";
-import { b2bTradeSplit, resaleAskPerNight } from "@/lib/b2b/engine";
-import { resolveB2bFeeConfig, clampOwnerMultiplier } from "@/lib/b2b/fee-config-store";
+import { b2bTradeSplit, resaleAskPerNight, wholesaleBuyPerNight } from "@/lib/b2b/engine";
+import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
 export const runtime = "nodejs";
@@ -33,31 +33,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Couldn't price these nights right now." }, { status: 422 });
   }
 
-  // v355 — preview the resale price = own price/night × multiplier, so the
-  // seller sees the exact listed price BEFORE listing (preview == listed price).
+  // v733 — preview the WHOLESALE price = retailFloor × (1 − wholesaleDiscount%),
+  // so the seller sees the exact listed price BEFORE listing (preview == charge).
+  // Hotel-owner supply has no cost basis, so it is priced as a wholesale discount
+  // below the retail floor, NOT `own × multiplier` (which used to land at/above the
+  // live market → no resale margin). The multiplier band (v725) no longer applies
+  // to this path; own = the wholesale buy, multiplier = 1.
   const fee = await resolveB2bFeeConfig();
-  const ownPerNight = quote.avgBuyPerNight;
-  // v725 — owner-chosen multiplier clamped into the admin band; absent → global default.
-  const rawMult = sp.get("mult");
-  const multiplier = (rawMult === null || rawMult === "")
-    ? fee.resaleMultiplier
-    : clampOwnerMultiplier(rawMult, fee);
-  const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
+  const retailFloorPerNight = quote.avgBuyPerNight;
+  const buyPerNight = wholesaleBuyPerNight(retailFloorPerNight, fee.wholesaleDiscountPct);
+  const ownPerNight = buyPerNight;
+  const multiplier = 1;
+  const askPerNight = resaleAskPerNight(ownPerNight, multiplier); // = buyPerNight
   const split = b2bTradeSplit({
     askPerNight,
     nights: quote.nights,
     buyerFeePct: fee.buyerFeePct,
     sellerFeePct: fee.sellerFeePct,
-    buyTotal: quote.buyTotal,
+    buyTotal: askPerNight * quote.nights,
   });
 
   return NextResponse.json({
     ok: true,
     regulatedMarkupPct: fee.regulatedMarkupPct,
+    wholesaleDiscountPct: fee.wholesaleDiscountPct,
+    retailFloorPerNight,
     resaleMultiplier: multiplier,
-    resaleMultiplierMin: fee.resaleMultiplierMin,
-    resaleMultiplierMax: fee.resaleMultiplierMax,
-    resaleMultiplierDefault: fee.resaleMultiplier,
+    // Band collapsed (min == max) so the owner-multiplier slider hides for this
+    // wholesale-priced path; the resale price is StayBid-regulated here.
+    resaleMultiplierMin: 1,
+    resaleMultiplierMax: 1,
+    resaleMultiplierDefault: multiplier,
     ownPerNight,
     askPerNight: split.askPerNight,
     askTotal: split.askTotal,

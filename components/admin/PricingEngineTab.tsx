@@ -14,6 +14,7 @@ import { useEffect, useState, type CSSProperties, type ComponentType } from "rea
 import {
   Loader2, RotateCcw, Sliders, TrendingDown, Sparkles, CalendarRange, CalendarDays,
   Gauge, Clock3, PartyPopper, CalendarClock, MapPin, Save,
+  Gem, Store, Gavel, Building2,
 } from "lucide-react";
 import { adminColors as C } from "@/lib/admin/styles";
 
@@ -263,6 +264,171 @@ export default function PricingEngineTab() {
         </button>
         {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.startsWith("✗") ? C.red : C.green }}>{msg}</span>}
       </div>
+
+      {/* ── StayBid Circle pricing (Model 1 / 2 / 3) ───────────────────
+          v733 — the Circle money knobs were only reachable from
+          /admin/circle-inventory (Model 2) and /admin/auction (Model 3) — never
+          from the Pricing Engine. Surfaced here so every price lever lives in one
+          place. Each model has its OWN save (separate config tables), so the AI
+          formula save above is untouched. */}
+      <CirclePricingSections />
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// v733 — StayBid Circle pricing (Model 1 / 2 / 3) surfaced in the Pricing Engine.
+// Self-contained: its own load + per-model save against the EXISTING admin routes
+// (/api/admin/b2b-fee, /api/admin/auction-config). No change to those contracts.
+// ════════════════════════════════════════════════════════════════════════
+function CirclePricingSections() {
+  const [m2, setM2] = useState<any | null>(null);   // b2b_fee_config (Model 2)
+  const [m3, setM3] = useState<any | null>(null);   // auction_config (Model 3)
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<"" | "m2" | "m3">("");
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      fetch("/api/admin/b2b-fee", { headers: hdr(), cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      fetch("/api/admin/auction-config", { headers: hdr(), cache: "no-store" }).then((r) => r.json()).catch(() => null),
+    ]).then(([a, b]) => {
+      if (!alive) return;
+      if (a?.config) setM2(a.config);
+      if (b?.config) setM3(b.config);
+      setLoading(false);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const flash = (t: string) => { setMsg(t); setTimeout(() => setMsg(""), 6000); };
+
+  async function saveM2() {
+    if (!m2) return;
+    setSaving("m2"); setMsg("");
+    try {
+      const r = await fetch("/api/admin/b2b-fee", {
+        method: "POST", headers: hdr(),
+        body: JSON.stringify({
+          buyerFeePct: Number(m2.buyerFeePct),
+          sellerFeePct: Number(m2.sellerFeePct),
+          wholesaleDiscountPct: Number(m2.wholesaleDiscountPct),
+          resaleMultiplier: Number(m2.resaleMultiplier),
+          cityAccessPrice: Number(m2.cityAccessPrice),
+        }),
+      });
+      const d = await r.json();
+      if (r.ok && d.config) { setM2(d.config); flash("✓ Model 2 pricing saved."); }
+      else flash(`✗ ${d.error || "Save failed"}`);
+    } catch (e: any) { flash(`✗ ${e?.message || "network"}`); }
+    finally { setSaving(""); }
+  }
+
+  async function saveM3() {
+    if (!m3) return;
+    setSaving("m3"); setMsg("");
+    try {
+      const r = await fetch("/api/admin/auction-config", {
+        method: "POST", headers: hdr(),
+        body: JSON.stringify({
+          buyerPremiumPct: Number(m3.buyerPremiumPct),
+          sellerFeePct: Number(m3.sellerFeePct),
+          depositPct: Number(m3.depositPct),
+          wholesaleDiscountPct: Number(m3.wholesaleDiscountPct),
+          circleFloorMultiplier: Number(m3.circleFloorMultiplier),
+        }),
+      });
+      const d = await r.json();
+      if (r.ok && d.config) { setM3(d.config); flash("✓ Model 3 pricing saved."); }
+      else flash(`✗ ${d.error || "Save failed"}`);
+    } catch (e: any) { flash(`✗ ${e?.message || "network"}`); }
+    finally { setSaving(""); }
+  }
+
+  return (
+    <>
+      <div className="pe-intro" style={{ marginTop: 26 }}>
+        <span className="pe-intro-ico"><Gem size={17} strokeWidth={2.2} aria-hidden /></span>
+        <div>
+          <b style={{ color: C.text }}>StayBid Circle pricing.</b> The money levers for the three investor models,
+          in one place. Each model saves on its own (separate config) and re-prices only <b style={{ color: C.text }}>NEW</b> listings —
+          live/frozen listings keep their locked price (tamper-safe). Model 1 fees are code-set (shown for reference).
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="pe-card"><div className="pe-body" style={{ color: C.textDim, padding: 8 }}>
+          <Loader2 size={14} style={{ animation: "sb-halo-spin 0.9s linear infinite", marginRight: 8, verticalAlign: "middle" }} />Loading Circle pricing…
+        </div></div>
+      ) : (
+        <>
+          {/* ── Model 1 — operated-property income (code-set, reference) ── */}
+          <Section title="Model 1 · Operated-property income" icon={Building2} accent={C.gold}
+            hint="The Model-1 settlement fees are set in code (lib/inventory/engine.ts + lib/circle/attribution.ts), not this panel. Shown here for reference — changing them is a dev task (they feed the locked settlement engine).">
+            <div className="pe-grid pe-num-grid">
+              <RefField label="Platform resale fee %" hint="Circle resale-margin commission (PLATFORM_RESALE_FEE_PCT_DEFAULT)" value="12%" />
+              <RefField label="Guest-booking fee %" hint="Owner payout fee on a guest booking (CIRCLE_BOOKING_FEE_PCT_DEFAULT)" value="12%" />
+            </div>
+          </Section>
+
+          {/* ── Model 2 — B2B multi-city inventory bundle ──────────────── */}
+          {m2 && (
+            <Section title="Model 2 · B2B inventory bundle" icon={Store} accent={C.blue}
+              hint="The multi-city B2B exchange. The WHOLESALE discount sets how far a hotel-owner supply listing's buy price sits below the room's floor — this is the resale margin an investor earns (v733 fix for buy == market).">
+              <div className="pe-grid pe-num-grid">
+                <NumField label="Wholesale discount %" hint="Hotel-owner supply buy price = room floor − this %. Higher = deeper investor margin. (0–90)" value={m2.wholesaleDiscountPct} on={(v) => setM2({ ...m2, wholesaleDiscountPct: v })} suffix="%" step={1} />
+                <NumField label="Buyer fee %" hint="Charged to the buyer on top of the ask (0–100)" value={m2.buyerFeePct} on={(v) => setM2({ ...m2, buyerFeePct: v })} suffix="%" step={0.5} />
+                <NumField label="Seller fee %" hint="Deducted from the seller's proceeds (0–100)" value={m2.sellerFeePct} on={(v) => setM2({ ...m2, sellerFeePct: v })} suffix="%" step={0.5} />
+                <NumField label="Resale multiplier" hint="Investor-block resale price = own cost × this (1–20). Does NOT apply to hotel-owner supply." value={m2.resaleMultiplier} on={(v) => setM2({ ...m2, resaleMultiplier: v })} suffix="×" step={0.1} />
+                <NumField label="City access ₹" hint="One-time per-city unlock fee" value={m2.cityAccessPrice} on={(v) => setM2({ ...m2, cityAccessPrice: v })} suffix="₹" step={100} />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <button onClick={saveM2} disabled={saving === "m2"} className="pe-btn-primary">
+                  {saving === "m2" ? <><Loader2 size={13} style={{ animation: "sb-halo-spin 0.9s linear infinite" }} aria-hidden />Saving…</> : <><Save size={14} strokeWidth={2.3} aria-hidden />Save Model 2 pricing</>}
+                </button>
+              </div>
+            </Section>
+          )}
+
+          {/* ── Model 3 — travel-agent inventory auction ──────────────── */}
+          {m3 && (
+            <Section title="Model 3 · Travel-agent auction" icon={Gavel} accent={C.purple}
+              hint="The B2B auction where owners sell spare inventory to travel agents. The wholesale discount sets the property-owner floor below the live market ADR; the circle floor multiplier sets a Circle owner's cost-plus floor.">
+              <div className="pe-grid pe-num-grid">
+                <NumField label="Wholesale discount %" hint="Property-owner floor = live market ADR − this % (0–40)" value={m3.wholesaleDiscountPct} on={(v) => setM3({ ...m3, wholesaleDiscountPct: v })} suffix="%" step={1} />
+                <NumField label="Circle floor ×" hint="Circle-owner floor = their purchase price/night × this (e.g. 1.20 = cost + 20%)" value={m3.circleFloorMultiplier} on={(v) => setM3({ ...m3, circleFloorMultiplier: v })} suffix="×" step={0.05} />
+                <NumField label="Buyer premium %" hint="Added to the winning agent's bid (0–100)" value={m3.buyerPremiumPct} on={(v) => setM3({ ...m3, buyerPremiumPct: v })} suffix="%" step={0.5} />
+                <NumField label="Seller fee %" hint="Owner's commission on the award (0–100)" value={m3.sellerFeePct} on={(v) => setM3({ ...m3, sellerFeePct: v })} suffix="%" step={0.5} />
+                <NumField label="EMD deposit %" hint="Refundable earnest-money deposit on a sealed bid (0–100)" value={m3.depositPct} on={(v) => setM3({ ...m3, depositPct: v })} suffix="%" step={0.5} />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <button onClick={saveM3} disabled={saving === "m3"} className="pe-btn-primary">
+                  {saving === "m3" ? <><Loader2 size={13} style={{ animation: "sb-halo-spin 0.9s linear infinite" }} aria-hidden />Saving…</> : <><Save size={14} strokeWidth={2.3} aria-hidden />Save Model 3 pricing</>}
+                </button>
+              </div>
+            </Section>
+          )}
+
+          {msg && <div style={{ fontSize: 12.5, fontWeight: 600, color: msg.startsWith("✗") ? C.red : C.green, marginTop: 6 }}>{msg}</div>}
+        </>
+      )}
+    </>
+  );
+}
+
+/** Read-only reference tile (a code-set value that isn't editable in this panel). */
+function RefField({ label, hint, value }: { label: string; hint?: string; value: string }) {
+  return (
+    <div className="pe-field">
+      <div className="pe-field-label">
+        <div className="pe-field-name">{label}</div>
+        {hint && <div className="pe-field-hint">{hint}</div>}
+      </div>
+      <div className="pe-input-wrap">
+        <div className="pe-input" style={{ opacity: 0.7, cursor: "not-allowed" }}>{value}</div>
+      </div>
+      <span className="pe-def">code-set</span>
     </div>
   );
 }
