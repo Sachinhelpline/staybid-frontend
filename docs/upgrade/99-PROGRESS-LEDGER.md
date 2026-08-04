@@ -2742,6 +2742,21 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
   owner pre-approved, to be built separately.
 - NEXT: (a) owner merge of PR #543 (v717-719) + this v720; (b) Gap 1/3 bidding-floor build on the owner's go.
 
+### 2026-08-04 — Friday = peak weekend day (v721)
+- **Owner (hotel domain) note:** in the day-of-week factor, Friday is a weekend night with the highest
+  demand, not a weekday. **Checked the code (zero blind):** `DOW_MULT` already treated Friday as
+  weekend (1.32×, above weekdays 0.88–0.98, already tagged "Weekend Surge" at ≥1.28) — it was NOT
+  excluded. But Friday (1.32) sat just BELOW Saturday (1.38). Per the owner, bumped **Friday 1.32 → 1.40**
+  so it is the top peak day (Fri 1.40 > Sat 1.38 > Sun 1.20).
+- Applied to all 3 sources of truth: hardcoded `DOW_MULT` (client fallback), the v720 migration seed, and
+  the LIVE `pricing_engine_config.dow_mults` row (the authoritative value the cron writer reads). Fully
+  admin-tunable now in the Pricing Engine tab — owner can set Fri/Sat to any exact values without code.
+- Badge v720→**v721** (`SB_BUILD v721-friday-weekend-peak`). sw HTML_CACHE unchanged (pure-logic default,
+  no HTML/UI change; hashed JS chunk re-serves automatically).
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- NEXT: Gap 1 (dynamic customer bid floor, mirroring trade's `dynamicWholesaleFloor`) + Gap 3 (customer
+  below-floor forwarded-offer band) — owner pre-approved; investigation launched.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

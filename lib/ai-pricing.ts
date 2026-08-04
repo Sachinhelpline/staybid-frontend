@@ -137,7 +137,10 @@ function seasonMultFor(city: string, month: number, cfg?: PricingEngineOverrides
 }
 
 // ── Day-of-week multiplier (0=Sun … 6=Sat) ───────────────────────────────────
-const DOW_MULT: number[] = [1.20, 0.90, 0.88, 0.92, 0.98, 1.32, 1.38];
+// v721 — hotel-industry weekend: Friday is a PEAK weekend night (leisure guests
+// arrive Fri), so it is weighted as the top day (≥ Saturday). Admin-tunable in
+// the Pricing Engine tab.
+const DOW_MULT: number[] = [1.20, 0.90, 0.88, 0.92, 0.98, 1.40, 1.38];
 
 // ── City baseline demand ──────────────────────────────────────────────────────
 const CITY_DEMAND: Record<string, number> = {
