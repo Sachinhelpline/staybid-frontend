@@ -23,7 +23,7 @@
 // additive); Phase C wires the hotel page / /bid / flash to it.
 // ════════════════════════════════════════════════════════════════
 
-import { calculateDynamicPrice } from "@/lib/ai-pricing";
+import { calculateDynamicPrice, type PricingEngineOverrides } from "@/lib/ai-pricing";
 import { snap100 } from "@/lib/price-snap";
 import { optimizePrice, optimizerEnabled } from "@/lib/pricing/optimizer";
 
@@ -42,6 +42,17 @@ export interface SpineInput {
   vacancyRatio?: number | null;
   /** Cheapest scraped competitor (OTA) price for this room, if known. */
   competitorMin?: number | null;
+  /**
+   * v720 — OPTIONAL admin-tuned pricing-engine config. When absent, every
+   * constant (undercut 5%, flash 20%, clamp, the 9 factors) stays at its
+   * hardcoded default → byte-identical to the pre-v720 spine. The server
+   * writers (cron price-spine + read-spine) load it once and pass it here.
+   */
+  engineCfg?: (PricingEngineOverrides & {
+    undercutPct?: number;      // OTA undercut (default 5)
+    flashDiscountPct?: number; // flash discount off live (default 20)
+    capLiveAtMrp?: boolean;    // Gap-6 opt-in: never let live exceed MRP
+  }) | null;
 }
 
 export interface SpinePrice {
@@ -88,19 +99,31 @@ export function computeRoomDatePrice(inp: SpineInput): SpinePrice {
   const vac = typeof inp.vacancyRatio === "number" && Number.isFinite(inp.vacancyRatio)
     ? Math.max(0, Math.min(1, inp.vacancyRatio))
     : undefined;
-  const dyn = calculateDynamicPrice(floor || 1000, inp.date, inp.city, vac);
+  const cfg = inp.engineCfg || undefined;
+  const dyn = calculateDynamicPrice(floor || 1000, inp.date, inp.city, vac, cfg);
 
   let live = Math.max(floor, dyn.price);
   const factors = [...dyn.factors];
 
   // ── THE PROMISE — always strictly below the cheapest competitor. ────
+  // Undercut % is admin-tunable; default 5% (COMPETITOR_UNDERCUT).
+  const undercut = (typeof cfg?.undercutPct === "number" && Number.isFinite(cfg.undercutPct))
+    ? Math.max(0, Math.min(1, cfg.undercutPct / 100))
+    : COMPETITOR_UNDERCUT;
   const comp = Number(inp.competitorMin) > 0 ? Number(inp.competitorMin) : null;
   if (comp) {
-    const cap = comp * (1 - COMPETITOR_UNDERCUT);
+    const cap = comp * (1 - undercut);
     if (live > cap) {
       live = cap;
       factors.unshift("Beats every competitor");
     }
+  }
+
+  // v720 Gap-6 (opt-in) — never let the live price exceed the MRP/rack rate.
+  // OFF by default so existing behaviour is unchanged; admin turns it on.
+  if (cfg?.capLiveAtMrp && baseRate > 0 && live > baseRate) {
+    live = baseRate;
+    factors.unshift("Capped at rack rate");
   }
 
   // Never below the negotiation floor — hard lower bound.
@@ -127,7 +150,11 @@ export function computeRoomDatePrice(inp: SpineInput): SpinePrice {
   // ── Flash price — a clear discount under the live price, never below
   //    the flash floor. ────────────────────────────────────────────────
   const flashFloor = snap100(Math.max(floor, Number(inp.flashFloorPrice) || floor));
-  let flash = snap100(live * (1 - FLASH_DISCOUNT));
+  // Flash discount off the live price is admin-tunable; default 20% (FLASH_DISCOUNT).
+  const flashDisc = (typeof cfg?.flashDiscountPct === "number" && Number.isFinite(cfg.flashDiscountPct))
+    ? Math.max(0, Math.min(1, cfg.flashDiscountPct / 100))
+    : FLASH_DISCOUNT;
+  let flash = snap100(live * (1 - flashDisc));
   if (flash < flashFloor) flash = flashFloor;
   if (flash > live) flash = live;
 

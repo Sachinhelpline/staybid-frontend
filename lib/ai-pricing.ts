@@ -35,6 +35,30 @@ export interface DynamicPriceResult {
   nextUpdateIn: number;    // seconds until next hourly update
 }
 
+// ── v720 — Admin-tunable pricing-engine overrides ────────────────────────────
+// The AI formula is UNCHANGED — only the "digits" inside it become admin-editable.
+// Every field is OPTIONAL: when absent the engine uses the exact hardcoded
+// constant it always did, so a caller that passes no cfg (every client-side
+// fallback + the security suite) stays byte-identical. The authoritative server
+// writers (cron price-spine + read-spine) load the admin config and pass it in,
+// so the WRITTEN prices reflect the admin's tuning. See
+// lib/pricing/engine-config-store.ts for the resolver + defaults.
+export interface PricingEngineOverrides {
+  seasonMults?: number[];               // 12 — national curve (city curves stay hardcoded)
+  dowMults?: number[];                  // 7  — Sun…Sat
+  occupancyMults?: number[];            // 5  — [<30, 30-50, 50-70, 70-85, >85]
+  leadMults?: number[];                 // 6  — [same-day, ≤2, ≤7, ≤14, ≤30, >30]
+  eventMults?: number[];                // ordered to EVENTS[]
+  cityDemand?: Record<string, number>;  // per-city baseline overrides (merged over defaults)
+  monsoonMult?: number;                 // 0.80
+  schoolMult?: number;                  // 1.15
+  longWeekendMult?: number;             // 1.20 (long weekend)
+  longWeekendHolidayMult?: number;      // 1.10 (isolated holiday)
+  microAmplitudePct?: number;           // 2.5 — ± band of the hourly micro-variation
+  clampMin?: number;                    // 0.55 — lower multiplier bound
+  clampMax?: number;                    // 2.20 — upper multiplier bound
+}
+
 // ── Seasonal demand for Uttarakhand/Himachal hill stations (month 0–11) ──────
 // v169 — June corrected: it is FULL (summer school vacation, monsoon does
 // not arrive until 15 Jul). The monsoon discount is now a date-precise
@@ -102,9 +126,14 @@ function hasCitySeasonCurve(city: string): boolean {
 }
 
 /** Seasonal multiplier for a city+month — real curve (own or hub's) if present, else the national curve. */
-function seasonMultFor(city: string, month: number): number {
-  const curve = cityCurve(city) || SEASON_MULT;
-  return curve[month] ?? 1.0;
+// The admin-tunable override applies ONLY to the NATIONAL curve (cities without
+// their own real curve) — per-city curves stay hardcoded for now.
+function seasonMultFor(city: string, month: number, cfg?: PricingEngineOverrides): number {
+  const own = cityCurve(city);
+  if (own) return own[month] ?? 1.0;
+  const nat = cfg?.seasonMults && cfg.seasonMults.length === SEASON_MULT.length ? cfg.seasonMults : SEASON_MULT;
+  const v = Number(nat[month]);
+  return Number.isFinite(v) ? v : (SEASON_MULT[month] ?? 1.0);
 }
 
 // ── Day-of-week multiplier (0=Sun … 6=Sat) ───────────────────────────────────
@@ -157,7 +186,7 @@ const GAZETTED_HOLIDAYS: { month: number; day: number; name: string }[] = [
 // When a holiday touches a weekend it forms a long weekend — the single
 // biggest demand driver for hill stations. Returns a surge for every
 // date inside that window (holiday + weekend + any bridge day).
-function getLongWeekendMult(date: Date): { mult: number; name: string | null } {
+function getLongWeekendMult(date: Date, cfg?: PricingEngineOverrides): { mult: number; name: string | null } {
   const y = date.getFullYear();
   const t = new Date(y, date.getMonth(), date.getDate()).getTime();
   for (const h of GAZETTED_HOLIDAYS) {
@@ -174,7 +203,7 @@ function getLongWeekendMult(date: Date): { mult: number; name: string | null } {
     const end   = new Date(y, h.month - 1, h.day + endOff).getTime();
     if (t >= start && t <= end) {
       return {
-        mult: isLong ? 1.20 : 1.10,
+        mult: isLong ? (cfg?.longWeekendMult ?? 1.20) : (cfg?.longWeekendHolidayMult ?? 1.10),
         name: `${h.name} ${isLong ? "Long Weekend" : "Holiday"}`,
       };
     }
@@ -184,48 +213,68 @@ function getLongWeekendMult(date: Date): { mult: number; name: string | null } {
 
 // ── School-vacation demand windows (peak travel for families) ────────────
 //   Summer: 15 Apr – 30 Jun   |   Winter: 20 Dec – 15 Jan
-function getSchoolSeasonMult(date: Date): { mult: number; name: string | null } {
+function getSchoolSeasonMult(date: Date, cfg?: PricingEngineOverrides): { mult: number; name: string | null } {
   const m = date.getMonth() + 1, d = date.getDate();
+  const sm = cfg?.schoolMult ?? 1.15;
   if ((m === 4 && d >= 15) || m === 5 || m === 6)
-    return { mult: 1.15, name: "Summer Vacation Season" };
+    return { mult: sm, name: "Summer Vacation Season" };
   if ((m === 12 && d >= 20) || (m === 1 && d <= 15))
-    return { mult: 1.15, name: "Winter Vacation Season" };
+    return { mult: sm, name: "Winter Vacation Season" };
   return { mult: 1.0, name: null };
 }
 
 // ── Monsoon window — hill-station travel dips (landslide risk) ───────────
 //   15 Jul – 15 Sep. June is intentionally NOT monsoon.
-function getMonsoonMult(date: Date): { mult: number; label: string | null } {
+function getMonsoonMult(date: Date, cfg?: PricingEngineOverrides): { mult: number; label: string | null } {
   const m = date.getMonth() + 1, d = date.getDate();
   if ((m === 7 && d >= 15) || m === 8 || (m === 9 && d <= 15))
-    return { mult: 0.80, label: "Monsoon Season" };
+    return { mult: cfg?.monsoonMult ?? 0.80, label: "Monsoon Season" };
   return { mult: 1.0, label: null };
 }
 
-function getEventMultiplier(date: Date): { mult: number; name: string | null } {
+function getEventMultiplier(date: Date, cfg?: PricingEngineOverrides): { mult: number; name: string | null } {
   const m = date.getMonth() + 1;
   const d = date.getDate();
-  for (const ev of EVENTS) {
-    if (ev.months.includes(m) && ev.days.includes(d)) return { mult: ev.mult, name: ev.name };
+  for (let i = 0; i < EVENTS.length; i++) {
+    const ev = EVENTS[i];
+    if (ev.months.includes(m) && ev.days.includes(d)) {
+      const ovr = cfg?.eventMults?.[i];
+      return { mult: (typeof ovr === "number" && Number.isFinite(ovr)) ? ovr : ev.mult, name: ev.name };
+    }
   }
   return { mult: 1.0, name: null };
 }
 
 // ── Lead-time urgency ─────────────────────────────────────────────────────────
-function getLeadMult(days: number): { mult: number; label: string } {
-  if (days === 0)   return { mult: 0.80, label: "Same-day (Last Minute)" };
-  if (days <= 2)    return { mult: 0.87, label: "Last Minute Deal" };
-  if (days <= 7)    return { mult: 1.06, label: "This Week" };
-  if (days <= 14)   return { mult: 1.12, label: "Advance Booking" };
-  if (days <= 30)   return { mult: 1.08, label: "Early Booking" };
-  return              { mult: 1.03, label: "Far Advance" };
+// Bands: [same-day, ≤2, ≤7, ≤14, ≤30, >30]. Extracted so the admin config store
+// shares the SAME defaults (single source of truth).
+export const LEAD_MULTS_DEFAULT: number[] = [0.80, 0.87, 1.06, 1.12, 1.08, 1.03];
+const LEAD_LABELS = ["Same-day (Last Minute)", "Last Minute Deal", "This Week", "Advance Booking", "Early Booking", "Far Advance"];
+function leadBand(days: number): number {
+  if (days === 0) return 0;
+  if (days <= 2)  return 1;
+  if (days <= 7)  return 2;
+  if (days <= 14) return 3;
+  if (days <= 30) return 4;
+  return 5;
+}
+function getLeadMult(days: number, cfg?: PricingEngineOverrides): { mult: number; label: string } {
+  const i = leadBand(days);
+  const arr = cfg?.leadMults && cfg.leadMults.length === LEAD_MULTS_DEFAULT.length ? cfg.leadMults : LEAD_MULTS_DEFAULT;
+  const v = Number(arr[i]);
+  return { mult: Number.isFinite(v) ? v : LEAD_MULTS_DEFAULT[i], label: LEAD_LABELS[i] };
 }
 
 // ── Micro-variation: deterministic, changes every hour ────────────────────────
-function getMicroMult(base: number, checkIn: string, city: string): number {
+function getMicroMult(base: number, checkIn: string, city: string, cfg?: PricingEngineOverrides): number {
   const h = new Date().getHours();
   const seed = (base % 100) * 3 + h * 17 + city.length * 7 + new Date(checkIn).getDate() * 5;
-  const variation = ((seed % 11) - 5) / 200; // ±2.5%
+  // Default path is byte-identical to the original ((seed%11)-5)/200 (±2.5%).
+  // When admin sets an amplitude, scale the same ±5 step to ±(amplitude).
+  const amp = cfg?.microAmplitudePct;
+  const variation = (typeof amp === "number" && Number.isFinite(amp))
+    ? ((seed % 11) - 5) / 5 * (amp / 100)
+    : ((seed % 11) - 5) / 200;
   return 1 + variation;
 }
 
@@ -238,14 +287,17 @@ function getMicroMult(base: number, checkIn: string, city: string): number {
 //   50-70% → 1.00× (neutral)
 //   70-85% → 1.12× (limited rooms — premium)
 //   >85%  → 1.28× (near sold-out — surge)
-function getOccupancyMult(ratio?: number): { mult: number; label: string | null } {
+// Bands: [<30%, 30-50%, 50-70%, 70-85%, >85%]. Extracted so the admin config
+// store shares the SAME defaults (single source of truth).
+export const OCCUPANCY_MULTS_DEFAULT: number[] = [0.88, 0.96, 1.00, 1.12, 1.28];
+const OCCUPANCY_LABELS: (string | null)[] = ["Low Occupancy — Deal", "Open Inventory", null, "Limited Rooms", "Near Sold-out — Surge"];
+function getOccupancyMult(ratio?: number, cfg?: PricingEngineOverrides): { mult: number; label: string | null } {
   if (typeof ratio !== "number" || !Number.isFinite(ratio)) return { mult: 1.0, label: null };
   const r = Math.max(0, Math.min(1, ratio));
-  if (r < 0.30) return { mult: 0.88, label: "Low Occupancy — Deal" };
-  if (r < 0.50) return { mult: 0.96, label: "Open Inventory" };
-  if (r < 0.70) return { mult: 1.00, label: null };
-  if (r < 0.85) return { mult: 1.12, label: "Limited Rooms" };
-  return            { mult: 1.28, label: "Near Sold-out — Surge" };
+  const i = r < 0.30 ? 0 : r < 0.50 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : 4;
+  const arr = cfg?.occupancyMults && cfg.occupancyMults.length === OCCUPANCY_MULTS_DEFAULT.length ? cfg.occupancyMults : OCCUPANCY_MULTS_DEFAULT;
+  const v = Number(arr[i]);
+  return { mult: Number.isFinite(v) ? v : OCCUPANCY_MULTS_DEFAULT[i], label: OCCUPANCY_LABELS[i] };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -260,6 +312,12 @@ export function calculateDynamicPrice(
    * behavior unchanged.
    */
   occupancyRatio?: number,
+  /**
+   * v720 — OPTIONAL admin-tuned overrides for the formula's constants. When
+   * absent every value falls back to the hardcoded default, so the result is
+   * byte-identical to the pre-v720 engine (every client fallback passes none).
+   */
+  cfg?: PricingEngineOverrides,
 ): DynamicPriceResult {
   const checkIn = new Date(checkInDate);
   const today   = new Date();
@@ -267,31 +325,33 @@ export function calculateDynamicPrice(
   // Clamp to today if date is in past
   const daysUntil = Math.max(0, Math.floor((checkIn.getTime() - today.setHours(0,0,0,0)) / 86400000));
 
-  const seasonMult = seasonMultFor(city, checkIn.getMonth());
-  const dowMult    = DOW_MULT[checkIn.getDay()] ?? 1.0;
-  const { mult: eventMult, name: eventName } = getEventMultiplier(checkIn);
-  const { mult: leadMult,  label: leadLabel } = getLeadMult(daysUntil);
-  const cityMult   = CITY_DEMAND[city] ?? 1.0;
-  const microMult  = getMicroMult(baseFloorPrice, checkInDate, city);
+  const seasonMult = seasonMultFor(city, checkIn.getMonth(), cfg);
+  const dowMult    = ((cfg?.dowMults && cfg.dowMults.length === DOW_MULT.length ? cfg.dowMults : DOW_MULT)[checkIn.getDay()]) ?? 1.0;
+  const { mult: eventMult, name: eventName } = getEventMultiplier(checkIn, cfg);
+  const { mult: leadMult,  label: leadLabel } = getLeadMult(daysUntil, cfg);
+  const cityMult   = (cfg?.cityDemand?.[city] ?? CITY_DEMAND[city]) ?? 1.0;
+  const microMult  = getMicroMult(baseFloorPrice, checkInDate, city, cfg);
   // v130 — yield-management. mult = 1.0 when ratio not supplied → legacy
   // callers preserved verbatim.
-  const { mult: occupancyMult, label: occupancyLabel } = getOccupancyMult(occupancyRatio);
+  const { mult: occupancyMult, label: occupancyLabel } = getOccupancyMult(occupancyRatio, cfg);
   // v169 — Indian-calendar demand windows: long weekends, school
   // vacations, and the date-precise monsoon discount.
-  const { mult: schoolMult,  name:  schoolName }   = getSchoolSeasonMult(checkIn);
+  const { mult: schoolMult,  name:  schoolName }   = getSchoolSeasonMult(checkIn, cfg);
   // The generic monsoon discount is Uttarakhand-calibrated (15 Jul–15 Sep). A
   // hub city with its own real seasonal curve already prices its own monsoon,
   // so skip it there to avoid double-discounting.
   const { mult: monsoonMult, label: monsoonLabel } = hasCitySeasonCurve(city)
     ? { mult: 1.0, label: null as string | null }
-    : getMonsoonMult(checkIn);
-  const { mult: lwMult,      name:  lwName }       = getLongWeekendMult(checkIn);
+    : getMonsoonMult(checkIn, cfg);
+  const { mult: lwMult,      name:  lwName }       = getLongWeekendMult(checkIn, cfg);
 
   let totalMult = seasonMult * dowMult * eventMult * leadMult * cityMult * microMult
                 * occupancyMult * schoolMult * monsoonMult * lwMult;
   // v169 — bulletproof clamp: however many surges/discounts stack, the
   // multiplier (and therefore the price) stays inside a sane band.
-  totalMult = Math.max(0.55, Math.min(2.20, totalMult));
+  const clampMin = (typeof cfg?.clampMin === "number" && Number.isFinite(cfg.clampMin)) ? cfg.clampMin : 0.55;
+  const clampMax = (typeof cfg?.clampMax === "number" && Number.isFinite(cfg.clampMax)) ? cfg.clampMax : 2.20;
+  totalMult = Math.max(clampMin, Math.min(clampMax, totalMult));
   const rawPrice  = baseFloorPrice * totalMult;
   // v130 — snap to ₹100 (was ₹50). Aligns with the platform-wide price-snap
   // rule (lib/price-snap.ts). Floor remains a hard lower bound.
@@ -299,7 +359,7 @@ export function calculateDynamicPrice(
 
   // Demand score 0-100
   // v169 — score band widened to match the clamped multiplier range.
-  const demandScore = Math.min(100, Math.max(0, Math.round((totalMult - 0.55) / (2.20 - 0.55) * 100)));
+  const demandScore = Math.min(100, Math.max(0, Math.round((totalMult - clampMin) / ((clampMax - clampMin) || 1) * 100)));
   const demandLevel: DemandLevel =
     demandScore >= 88 ? "Surge" :
     demandScore >= 72 ? "Very High" :
@@ -334,7 +394,7 @@ export function calculateDynamicPrice(
   const priceChangePct = Math.round((totalMult - 1) * 100);
 
   // Trend: compare with yesterday-same-time multiplier (approximate)
-  const yestMult = seasonMultFor(city, checkIn.getMonth()) * DOW_MULT[(checkIn.getDay() + 6) % 7] * cityMult;
+  const yestMult = seasonMultFor(city, checkIn.getMonth(), cfg) * ((cfg?.dowMults && cfg.dowMults.length === DOW_MULT.length ? cfg.dowMults : DOW_MULT)[(checkIn.getDay() + 6) % 7]) * cityMult;
   // v130 — trend reflects yield-adjusted total mult too: a hotel that filled
   // up overnight reads as "rising" even mid-week.
   const trend: PriceTrend = totalMult > yestMult * 1.03 ? "rising" : totalMult < yestMult * 0.97 ? "falling" : "stable";
@@ -353,6 +413,27 @@ export function calculateDynamicPrice(
     nextUpdateIn,
   };
 }
+
+// ── v720 — hardcoded pricing-engine defaults (single source of truth) ────────
+// The admin config store falls back to THESE exact values field-by-field, so a
+// missing/partial config row always resolves to today's behaviour. EVENTS is
+// surfaced as {name, mult} so the admin UI can label each festival knob.
+export const PRICING_ENGINE_HARDCODED = {
+  seasonMults: SEASON_MULT.slice(),
+  dowMults: DOW_MULT.slice(),
+  occupancyMults: OCCUPANCY_MULTS_DEFAULT.slice(),
+  leadMults: LEAD_MULTS_DEFAULT.slice(),
+  eventMults: EVENTS.map((e) => e.mult),
+  eventNames: EVENTS.map((e) => e.name),
+  cityDemand: { ...CITY_DEMAND },
+  monsoonMult: 0.80,
+  schoolMult: 1.15,
+  longWeekendMult: 1.20,
+  longWeekendHolidayMult: 1.10,
+  microAmplitudePct: 2.5,
+  clampMin: 0.55,
+  clampMax: 2.20,
+} as const;
 
 // ── Luxury room fallback images by type keyword ───────────────────────────────
 const ROOM_IMAGES: { keywords: string[]; url: string }[] = [

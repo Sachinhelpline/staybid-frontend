@@ -2713,6 +2713,35 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
 - NEXT: resolve the `/circle` + browse glass-topbar residuals (verify real vs harness artifact via a
   screenshot/opaque-bg check), then resume sweeping new routes.
 
+### 2026-08-04 — Admin Pricing Engine tuning (v720 — owner-approved "A")
+- **Owner ask:** make the "digits" inside the AI dynamic-pricing formula ADMIN-editable WITHOUT code
+  changes (the 9 demand factors, the multiplier clamp, the OTA-undercut %, the flash-discount %), while
+  the AI still runs the full formula. Answered the owner's 4 pricing questions first (MRP-fixed vs
+  dynamic OTA-undercut is independent; MRP≥live≥flash≥floor ranking; the "normal discounted" price is
+  `livePrice`; all knobs were HARDCODED). Then built the tuning surface.
+- **Architecture (safe):** `calculateDynamicPrice` + `computeRoomDatePrice` are PURE and called from
+  BOTH the server cron AND four client fallbacks — so I did NOT make them fetch a table. Instead added
+  an OPTIONAL `cfg`/`engineCfg` param that defaults, field-by-field, to the exact hardcoded constant.
+  Client fallbacks pass nothing → byte-identical. The authoritative server writers (cron `price-spine`
+  + `read-spine`) load the admin config once and pass it in, so WRITTEN prices reflect the tuning.
+- **New:** `pricing_engine_config` singleton (migration `2026-07-21-v720`, seeded with today's defaults),
+  resolver `lib/pricing/engine-config-store.ts` (60s cache, fail-open to `PRICING_ENGINE_HARDCODED`),
+  admin route `/api/admin/pricing-config` (GET/POST, `requireVerifiedAdmin`, per-field clamp + reject,
+  audit), and a new **"Pricing Engine" tab** in `/admin/pricing` (`components/admin/PricingEngineTab.tsx`)
+  — season[12], DOW[7], occupancy[5], lead[6], events[N], city-demand map, monsoon/school/long-weekend,
+  clamp min/max, micro±%, undercut %, flash %, and the **Gap-6 opt-in "cap live at MRP"**. Reset-to-defaults.
+- **MEASURED (real engine via Node type-strip, both paths):** byte-identical **48/48** (no-cfg == undefined
+  == empty `{}`); spine no-cfg identical true. Tuning moves numbers exactly: flash 20→30% (2700→2400),
+  undercut 5→15% (live 3400→3100), cap-at-MRP holds live→2500, clampMax 2.2→1.2 (peak 6600→3600),
+  Sat 1.38→2.0 (4100→5900). Live DB: table applied + seeded + row read-verified.
+- Badge v719→**v720** (`SB_BUILD v720-admin-pricing-engine`), sw `HTML_CACHE` v515→**v516**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- **Gaps closed:** #4 (9-factor % admin-editable), #5 (undercut/flash admin-editable), #6 (MRP-cap opt-in),
+  #7 (dead "Demand Multiplier Cap" superseded by a real control). **Remaining:** #1 (dynamic customer bid
+  floor) + #2 (yield optimizer OFF) + #3 (customer below-floor win band) — pure bidding-mechanics side,
+  owner pre-approved, to be built separately.
+- NEXT: (a) owner merge of PR #543 (v717-719) + this v720; (b) Gap 1/3 bidding-floor build on the owner's go.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbSelect, SB } from "@/lib/onboard/supabase-admin";
 import { computeRoomDatePrice } from "@/lib/pricing/spine";
+import { resolveEngineConfig } from "@/lib/pricing/engine-config-store";
 
 // ════════════════════════════════════════════════════════════════
 // v165 Phase A — pricing-spine recompute cron.
@@ -63,6 +64,11 @@ export async function GET(req: Request) {
   const out: any = { rooms: 0, dates: HORIZON_DAYS, rowsWritten: 0, errors: [] };
 
   try {
+    // ── 0. Admin-tuned pricing-engine config (fail-open to hardcoded
+    //       defaults). Loaded ONCE per run and passed into every compute so
+    //       the WRITTEN prices reflect the admin's tuning. ─────────────────
+    const engineCfg = await resolveEngineConfig();
+
     // ── 1. Load hotels (id → city) ──────────────────────────────────
     const hotels = await sbSelect<any>("hotels", `select=id,city&limit=500`);
     const cityOf: Record<string, string> = {};
@@ -142,6 +148,7 @@ export async function GET(req: Request) {
           date: dt.iso,
           vacancyRatio,
           competitorMin: compOf[r.id] ?? null,
+          engineCfg,
         });
         rows.push({
           room_id: r.id,
