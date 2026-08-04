@@ -85,8 +85,9 @@ async function stampUnitOwner(unitId: string, buyerPrimary: string, buyerIds: st
 // a hold hiccup must NOT fail a succeeded payment.
 async function writeHold(block: any): Promise<boolean> {
   try {
+    const hasUnit = !!block?.unit_id;
     let unitNumber: string | null = block?.metadata?.roomNumber || null;
-    if (!unitNumber && block?.unit_id) {
+    if (!unitNumber && hasUnit) {
       try {
         const ur = await fetch(
           `${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(String(block.unit_id))}&select=roomNumber`,
@@ -95,21 +96,28 @@ async function writeHold(block: any): Promise<boolean> {
         unitNumber = (await ur.json().catch(() => []))?.[0]?.roomNumber || null;
       } catch { /* optional */ }
     }
+    // v729 — a CLASSIC (unit-less) block holds inventory at the CATEGORY level:
+    // NO assignedUnitId, so the availability engine subtracts it from
+    // rooms.quantity (a bare room_blocks row counts as one unit for its roomId).
+    // A unit-assigned block still stamps the exact unit (per-unit clash guard).
+    const holdBody: Record<string, any> = {
+      id: `invhold_${block.id}`,
+      hotelId: String(block.hotel_id),
+      roomId: String(block.room_id),
+      fromDate: String(block.date_from),
+      toDate: String(block.date_to),
+      source: "inventory",
+      note: "StayBid Circle B2B pre-buy hold",
+      createdBy: String(block.investor_user_id),
+    };
+    if (hasUnit) {
+      holdBody.assignedUnitId = String(block.unit_id);
+      holdBody.assignedUnitNumber = unitNumber;
+    }
     const res = await fetch(`${SB_URL}/rest/v1/room_blocks?on_conflict=id`, {
       method: "POST",
       headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({
-        id: `invhold_${block.id}`,
-        hotelId: String(block.hotel_id),
-        roomId: String(block.room_id),
-        fromDate: String(block.date_from),
-        toDate: String(block.date_to),
-        source: "inventory",
-        assignedUnitId: String(block.unit_id),
-        assignedUnitNumber: unitNumber,
-        note: "StayBid Circle B2B pre-buy hold",
-        createdBy: String(block.investor_user_id),
-      }),
+      body: JSON.stringify(holdBody),
     });
     return res.ok;
   } catch {
@@ -232,7 +240,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         block = (gr.ok ? await gr.json().catch(() => []) : [])?.[0] || null;
       }
       if (block) {
-        stamped = await stampUnitOwner(String(block.unit_id), buyerId, buyerIds);
+        // v729 — a classic (unit-less) block has unit_id NULL: stampUnitOwner
+        // no-ops on an empty id; writeHold then records a category-level hold.
+        stamped = await stampUnitOwner(block.unit_id ? String(block.unit_id) : "", buyerId, buyerIds);
         held = await writeHold(block);
       }
     } catch { /* block may already be owned on a re-verify */ }
