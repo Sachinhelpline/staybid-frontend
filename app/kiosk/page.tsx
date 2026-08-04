@@ -77,6 +77,13 @@ export default function KioskHubPage() {
             linear-gradient(180deg,#fcfcfd 0%,#ecf0f3 55%,#f4f6f8 100%);
           color:#1F1A0F; font-family:'Inter',system-ui,sans-serif; max-width:920px; margin:0 auto;
         }
+        /* v707 (owner ss6) — the kiosk hub is a big-display device surface; a
+           920px centred column left most of a 43–55" screen (and a wide
+           desktop) empty. Widen on large screens so the action + locations
+           grids spread with real content instead of dead side-margins. Small
+           screens (QR-scanned phones/tablets) keep the mobile column. */
+        @media (min-width:1200px){ .kh-screen{ max-width:min(1360px, 94vw); padding-left:44px; padding-right:44px; } }
+        @media (min-width:1200px){ .kh-actions{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
         .kh-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
         .kh-tag { display:inline-block; background:#e7ebef; color:#67839e; font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; padding:6px 14px; border-radius:999px; }
         .kh-switch { background:#fcfcfd; border:1px solid #cbd4de; color:#67839e; font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px; cursor:pointer; transition:background .12s,box-shadow .12s; }

@@ -19,6 +19,17 @@
 
 ## Session log
 
+### 2026-08-04 — Phase 4 / ss6+ss7: Kiosk hub + book fill the big display (v707)
+**Owner 9-screenshot round, Phase 4.** The kiosk is a big-display device surface, but the hub (`.kh-screen`)
+was a **920px** centred column and the booking pane (`.kb-pane`) a **1100px** one — most of a 43–55" screen
+(and a wide desktop) sat empty (ss6/ss7). Widened both on large screens so the content grids fill with real
+cards instead of dead side-margins; small screens (QR-scanned phones/tablets) keep the mobile column.
+- `.kh-screen` → `min(1360px, 94vw)` at ≥1200px; `.kb-pane` → `min(1560px, 95vw)` at ≥1280px. The focused
+  steps (`.kb-pay` 560 / `.kb-done` 460) keep their own tighter caps so payment/confirm stay centred.
+- **Measured** (headless): hub locations grid **3 → 5 columns** (920→1360px at 1440–2560), book city grid
+  **5 → 7 columns** (1024→1560px), **0px horizontal overflow** at 1024/1440/1920/2560 — content fills, not
+  stretch. `tsc` + `next build` clean; `test:security` **385/0**. Badge v706→**v707**, sw HTML_CACHE v502→**v503**.
+
 ### 2026-08-04 — Phase 3 (part 1) / ss4+ss5: Circle floating bars + walnut calendar → theme (v706)
 **Owner 9-screenshot round, Phase 3 — first, measurable slice.** Study of the Circle surface found:
 - The **`.sbc2b-basket` "Review & pay" bar** (model2/browse ss5 AND model2/[id] ss4) was a 720/940px-wide
