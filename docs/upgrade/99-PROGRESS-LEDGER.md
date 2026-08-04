@@ -19,6 +19,22 @@
 
 ## Session log
 
+### 2026-08-04 — Hero: compact stack so the CTAs are never hidden by the cover panel (v710)
+**Owner follow-up (mobile hero screenshot).** The "Bid your stay" / "Watch reels" CTAs were partly HIDDEN —
+clipped by the rounded `.sbh-rails` cover panel. Root cause (measured): the cover panel tucks **-24px** up over
+the hero and paints above it (`.sbh-rails` z:1 > the hero's z:0), but `.sbh-hero-inner` had only **18px** bottom
+padding, so the button's bottom sat INSIDE that 24px overlap. Owner asked to shrink the hero content premium-ly
+device-to-device and trim the inter-element padding so the CTAs rise and clear the panel.
+- **`app/globals.css`** (mobile `@media max-width:1023px`): lifted the block above the tuck —
+  `.sbh-hero-inner` padding-bottom `18px → clamp(28px, 4.2vh, 34px)` (scales device-to-device) — and tightened
+  every inter-element gap so the stack SHRINKS rather than pushing the top up: eyebrow `9→6`, title `8→6`, meta
+  `12→8`, price `16→9`, chips `12→8`, CTA `14→10`.
+- **Measured** (headless, computed geometry): CTA-bottom→panel-top **clearance +7–10px** and
+  **btnUnderPanel = false** at 360×800, 390×844, 414×896, Fold-cover 344×882, short 360×740, light AND dark —
+  the buttons now clear the cover panel completely; eyebrow still visible up top on the short device. Desktop
+  (≥1024) untouched. `tsc` + `next build` clean; `test:security` **385/0**. Badge v709→**v710**, sw HTML_CACHE
+  v505→**v506**.
+
 ### 2026-08-04 — Phase 3 (part 2) / ss2: Circle dashboard multi-column card grid (v709)
 **Owner 9-screenshot round, Phase 3 completion.** ss2: the `/circle/dashboard` read as "dead space" on
 desktop. Investigation (part 1) showed the container is already wide (~1180–1340px) — the empty feel came
