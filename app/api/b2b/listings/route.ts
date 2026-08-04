@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit, resaleAskPerNight } from "@/lib/b2b/engine";
-import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
+import { resolveB2bFeeConfig, clampOwnerMultiplier } from "@/lib/b2b/fee-config-store";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 import { unitsFreeForRange } from "@/lib/availability";
@@ -195,8 +195,11 @@ async function createHotelOwnerListing(
   // supply listing, so their acquisition cost IS the Spine floor). Frozen fees.
   const fee = await resolveB2bFeeConfig();
   const ownPerNight = quote.avgBuyPerNight;
-  const multiplier = Number.isFinite(Number(body?.priceMultiplier)) && Number(body?.priceMultiplier) >= 1 && Number(body?.priceMultiplier) <= 20
-    ? Number(body.priceMultiplier) : fee.resaleMultiplier;
+  // v725 — owner may pick their own multiplier, clamped into the admin band.
+  // Absent/invalid → the global admin default (today's exact price, byte-identical).
+  const multiplier = (body?.priceMultiplier === undefined || body?.priceMultiplier === null || body?.priceMultiplier === "")
+    ? fee.resaleMultiplier
+    : clampOwnerMultiplier(body.priceMultiplier, fee);
   const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
   const split = b2bTradeSplit({
     askPerNight,

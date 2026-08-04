@@ -40,8 +40,8 @@ export default function AdminCircleInventory() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const [b2bFilter, setB2bFilter] = useState<(typeof B2B_FILTERS)[number]>("all");
   // v347 — admin-controlled dual B2B commission (5% buyer + 5% seller default).
-  const [feeCfg, setFeeCfg] = useState<{ buyerFeePct: number; sellerFeePct: number; cityAccessPrice?: number; regulatedMarkupPct?: number; resaleMultiplier?: number } | null>(null);
-  const [feeDraft, setFeeDraft] = useState<{ buyer: string; seller: string; city: string; mult: string }>({ buyer: "", seller: "", city: "", mult: "" });
+  const [feeCfg, setFeeCfg] = useState<{ buyerFeePct: number; sellerFeePct: number; cityAccessPrice?: number; regulatedMarkupPct?: number; resaleMultiplier?: number; resaleMultiplierMin?: number; resaleMultiplierMax?: number } | null>(null);
+  const [feeDraft, setFeeDraft] = useState<{ buyer: string; seller: string; city: string; mult: string; multMin: string; multMax: string }>({ buyer: "", seller: "", city: "", mult: "", multMin: "", multMax: "" });
   const [feeBusy, setFeeBusy] = useState(false);
   // v355 — per-listing resale multiplier drafts (keyed by listing id).
   const [multDraft, setMultDraft] = useState<Record<string, string>>({});
@@ -74,6 +74,8 @@ export default function AdminCircleInventory() {
             seller: String(d.config.sellerFeePct),
             city: String(d.config.cityAccessPrice ?? 999),
             mult: String(d.config.resaleMultiplier ?? 2),
+            multMin: String(d.config.resaleMultiplierMin ?? 1.5),
+            multMax: String(d.config.resaleMultiplierMax ?? 3),
           });
         }
       })
@@ -85,7 +87,7 @@ export default function AdminCircleInventory() {
     try {
       const r = await fetch("/api/admin/b2b-fee", {
         method: "POST", headers: { "Content-Type": "application/json", ...headers() },
-        body: JSON.stringify({ buyerFeePct: Number(feeDraft.buyer), sellerFeePct: Number(feeDraft.seller), cityAccessPrice: Number(feeDraft.city), resaleMultiplier: Number(feeDraft.mult) }),
+        body: JSON.stringify({ buyerFeePct: Number(feeDraft.buyer), sellerFeePct: Number(feeDraft.seller), cityAccessPrice: Number(feeDraft.city), resaleMultiplier: Number(feeDraft.mult), resaleMultiplierMin: Number(feeDraft.multMin), resaleMultiplierMax: Number(feeDraft.multMax) }),
       });
       const d = await r.json();
       if (!r.ok || d?.error) throw new Error(d?.error || "Save failed");
@@ -175,13 +177,26 @@ export default function AdminCircleInventory() {
             onChange={(e) => setFeeDraft((s) => ({ ...s, mult: e.target.value }))}
             style={{ width: 78, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 8, padding: "6px 8px", fontFamily: "inherit" }} />
         </label>
+        <label style={{ color: "#8A8FA8", fontSize: 12, display: "flex", flexDirection: "column", gap: 3 }}
+          title="Owner-choice band: on their own B2B listing the owner may pick a resale multiplier within [min,max]. Keeps Model-2 regulated (bounded, not free). The global default above must sit inside this band.">
+          Owner band ×
+          <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <input type="number" min={1} max={20} step={0.5} value={feeDraft.multMin}
+              onChange={(e) => setFeeDraft((s) => ({ ...s, multMin: e.target.value }))}
+              style={{ width: 56, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 8, padding: "6px 8px", fontFamily: "inherit" }} />
+            <span style={{ opacity: 0.6 }}>–</span>
+            <input type="number" min={1} max={20} step={0.5} value={feeDraft.multMax}
+              onChange={(e) => setFeeDraft((s) => ({ ...s, multMax: e.target.value }))}
+              style={{ width: 56, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 8, padding: "6px 8px", fontFamily: "inherit" }} />
+          </span>
+        </label>
         <button onClick={saveFee} disabled={feeBusy}
           style={{ background: "#3D9CF522", border: "1px solid #3D9CF555", color: "#3D9CF5", borderRadius: 8, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-end" }}>
           {feeBusy ? "Saving…" : "Save commission"}
         </button>
         {feeCfg && (
           <span style={{ color: "#8A8FA8", fontSize: 11.5, alignSelf: "flex-end" }}>
-            live: {feeCfg.buyerFeePct}% + {feeCfg.sellerFeePct}% · city ₹{feeCfg.cityAccessPrice ?? 999} · resale {feeCfg.resaleMultiplier ?? 2}× own price
+            live: {feeCfg.buyerFeePct}% + {feeCfg.sellerFeePct}% · city ₹{feeCfg.cityAccessPrice ?? 999} · resale {feeCfg.resaleMultiplier ?? 2}× own price · owner band {feeCfg.resaleMultiplierMin ?? 1.5}×–{feeCfg.resaleMultiplierMax ?? 3}×
           </span>
         )}
       </div>

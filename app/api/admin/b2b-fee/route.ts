@@ -76,6 +76,19 @@ export async function POST(req: NextRequest) {
   // Keep them consistent: if a multiplier was sent, derive the markup from it.
   if (resaleMultiplier !== undefined) regulatedMarkupPct = Math.round((resaleMultiplier - 1) * 100);
 
+  // v725 — owner-choice multiplier band [min,max].
+  const resaleMultiplierMin = body?.resaleMultiplierMin === undefined ? undefined : clampMult(body?.resaleMultiplierMin);
+  if (resaleMultiplierMin === null) {
+    return NextResponse.json({ error: "resaleMultiplierMin must be 1–20." }, { status: 400 });
+  }
+  const resaleMultiplierMax = body?.resaleMultiplierMax === undefined ? undefined : clampMult(body?.resaleMultiplierMax);
+  if (resaleMultiplierMax === null) {
+    return NextResponse.json({ error: "resaleMultiplierMax must be 1–20." }, { status: 400 });
+  }
+  if (resaleMultiplierMin !== undefined && resaleMultiplierMax !== undefined && resaleMultiplierMin > resaleMultiplierMax) {
+    return NextResponse.json({ error: "resaleMultiplierMin must be ≤ resaleMultiplierMax." }, { status: 400 });
+  }
+
   try {
     const r = await fetch(`${SB_URL}/rest/v1/b2b_fee_config?on_conflict=id`, {
       method: "POST",
@@ -87,6 +100,8 @@ export async function POST(req: NextRequest) {
         ...(cityAccessPrice === undefined ? {} : { city_access_price: cityAccessPrice }),
         ...(regulatedMarkupPct === undefined ? {} : { regulated_markup_pct: regulatedMarkupPct }),
         ...(resaleMultiplier === undefined ? {} : { resale_multiplier: resaleMultiplier }),
+        ...(resaleMultiplierMin === undefined ? {} : { resale_multiplier_min: resaleMultiplierMin }),
+        ...(resaleMultiplierMax === undefined ? {} : { resale_multiplier_max: resaleMultiplierMax }),
         updated_at: new Date().toISOString(),
       }),
     });

@@ -2826,6 +2826,31 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
   (preview first, watch outcomes) — the toggle + preview make that a safe, no-redeploy decision.
 - NEXT: nothing pending on the pricing/bid gap list. Awaiting owner: merge PR #543 (v717–v724).
 
+### 2026-08-04 — Owner price-control, Phase 1: B2B bounded owner multiplier (v725)
+- **Owner recommendation build (Phase 1 of the "bounded owner control per channel" plan).** Closed the
+  biggest gap the deep-search found: a classic owner had **ZERO price control on the B2B exchange**
+  (Model-2) — the ask was fixed at the admin global 2× and the owner form sent no price. Now the owner can
+  pick their OWN resale multiplier **within an admin-set band** — regulated (bounded), not free pricing,
+  so the Model-2 legal/positioning framing stays intact.
+- **Additive + default-preserving (byte-identical):** the server already accepted a per-listing
+  `priceMultiplier` (unbounded 1–20) and the preview already took `?mult=`; the owner UI just never used
+  them. New: admin band `resale_multiplier_min`/`resale_multiplier_max` on `b2b_fee_config` (migration
+  `2026-07-21-v725`, default **1.5×–3.0×**, contains the 2× global). `clampOwnerMultiplier(raw,cfg)`
+  clamps the owner's pick into the band; **absent/invalid → global default = today's exact price.**
+- Wired: `createHotelOwnerListing` + `/api/b2b/regulated-quote` clamp to the band (preview == listed);
+  owner UI (`CircleInventoryTab` supply form) gained a **resale-multiplier slider** (band-bounded, live
+  price preview, "reset to default"); admin UI (`/admin/circle-inventory` fee card) gained **Owner band ×
+  [min–max]** inputs + live label; `/api/admin/b2b-fee` accepts/validates the band (min ≤ max).
+- **MEASURED:** absent/invalid → 2× (₹2000 own ₹1000, byte-identical); within band honored
+  (1.5→₹1500 · 2.5→₹2500 · 3→₹3000); below-band clamped up to 1.5×, above-band clamped down to 3×. Live
+  SQL band round-trip green (set 1.6/2.8 → revert 1.5/3.0).
+- Badge v724→**v725** (`v725-b2b-owner-price-band`), sw HTML_CACHE v519→**v520**.
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live.
+- NEXT (owner-recommendation plan, remaining phases): OTA-cap guard for `price_override` (brand-critical
+  bug — a flat unit price can currently exceed OTA); a unified owner "Manage My Price" surface
+  (retail floor/MRP · agent discount · B2B band in one place); owner-facing AI preview. Each additive +
+  default-preserving, phase-by-phase.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

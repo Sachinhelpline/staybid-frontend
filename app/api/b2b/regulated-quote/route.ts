@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decodeJwt } from "@/lib/sb-server";
 import { b2bTradeSplit, resaleAskPerNight } from "@/lib/b2b/engine";
-import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
+import { resolveB2bFeeConfig, clampOwnerMultiplier } from "@/lib/b2b/fee-config-store";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
 export const runtime = "nodejs";
@@ -37,8 +37,11 @@ export async function GET(req: NextRequest) {
   // seller sees the exact listed price BEFORE listing (preview == listed price).
   const fee = await resolveB2bFeeConfig();
   const ownPerNight = quote.avgBuyPerNight;
-  const multiplier = Number.isFinite(Number(sp.get("mult"))) && Number(sp.get("mult")) >= 1 && Number(sp.get("mult")) <= 20
-    ? Number(sp.get("mult")) : fee.resaleMultiplier;
+  // v725 — owner-chosen multiplier clamped into the admin band; absent → global default.
+  const rawMult = sp.get("mult");
+  const multiplier = (rawMult === null || rawMult === "")
+    ? fee.resaleMultiplier
+    : clampOwnerMultiplier(rawMult, fee);
   const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
   const split = b2bTradeSplit({
     askPerNight,
@@ -52,6 +55,9 @@ export async function GET(req: NextRequest) {
     ok: true,
     regulatedMarkupPct: fee.regulatedMarkupPct,
     resaleMultiplier: multiplier,
+    resaleMultiplierMin: fee.resaleMultiplierMin,
+    resaleMultiplierMax: fee.resaleMultiplierMax,
+    resaleMultiplierDefault: fee.resaleMultiplier,
     ownPerNight,
     askPerNight: split.askPerNight,
     askTotal: split.askTotal,
