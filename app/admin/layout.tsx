@@ -122,10 +122,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main
           style={{
             marginLeft: sideW,
-            paddingTop: 64,
             minHeight: "100vh",
             transition: "margin-left 0.25s ease",
-            padding: isMobile ? "76px 14px 24px 14px" : `80px 32px 32px ${sideW + 32}px`,
+            // v731 — dead-space fix: marginLeft already clears the fixed sidebar,
+            // so the LEFT padding must be a normal gutter (NOT sideW+32). The old
+            // `sideW + 32` double-counted the sidebar width, pushing content ~272px
+            // past the sidebar (a dead gap on EVERY admin page). Now content fills
+            // the full width after the sidebar, edge-to-edge up to large monitors.
+            padding: isMobile ? "76px 14px 24px 14px" : "80px 32px 32px 32px",
           }}
         >
           {apiError && (

@@ -214,7 +214,7 @@ export default function AdminPassportPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: BG, color: TEXT, padding: "24px 20px 80px", fontFamily: "DM Sans, sans-serif" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+      <div>
         <h1 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 26, color: GOLD, margin: "0 0 4px", display: "inline-flex", alignItems: "center", gap: 9 }}>
           <BookUser size={23} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />Passports
         </h1>

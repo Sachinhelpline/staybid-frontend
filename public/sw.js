@@ -632,7 +632,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // v730 — HTML_CACHE bump (v522 -> v523). New partner "Manage My Price" hub tab +
 // redesigned "Sell to Agents" tab. Bumping drops the stale cached partner-dashboard
 // markup so the new tab + redesign show on first load.
-const HTML_CACHE = 'staybid-html-v523';
+const HTML_CACHE = 'staybid-html-v524';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -893,3 +893,123 @@ main span[style*="border-radius:999"] {
 }
 
 /* End v126 admin density */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Pricing Engine — v731 modern control-panel redesign (.pe-*)
+   Dark, high-tech config surface: elevated section cards with an icon header,
+   NumField "control cards" in a responsive grid, styled multiplier tiles, and
+   a sticky glass save bar. Full-width (no maxWidth) so it fills large monitors.
+   ═══════════════════════════════════════════════════════════════════════ */
+.pe-wrap { display: flex; flex-direction: column; gap: 16px; }
+
+.pe-intro {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: radial-gradient(120% 180% at 0% 0%, rgba(212,175,55,0.07), transparent 55%),
+              linear-gradient(180deg, rgba(23,26,34,0.9), rgba(15,17,23,0.9));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 15px 18px;
+  color: #8A8FA8; font-size: 12.5px; line-height: 1.6;
+}
+.pe-intro .pe-intro-ico {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: rgba(212,175,55,0.12); color: #D4AF37;
+}
+
+.pe-card {
+  background: linear-gradient(180deg, rgba(24,27,35,0.96), rgba(16,18,25,0.96));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 10px 34px rgba(0,0,0,0.30);
+}
+.pe-card-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.pe-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
+.pe-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14.5px; color: #E8EAF0; letter-spacing: -0.01em; }
+.pe-hint { color: #8A8FA8; font-size: 11.5px; line-height: 1.5; margin-top: 2px; }
+.pe-body { padding: 16px 18px; }
+
+.pe-grid { display: grid; gap: 12px; }
+.pe-num-grid  { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.pe-cell-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+
+/* NumField -> a control card */
+.pe-field {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.022);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; padding: 11px 13px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.pe-field:hover { border-color: rgba(255,255,255,0.13); background: rgba(255,255,255,0.038); }
+.pe-field-label { flex: 1; min-width: 0; }
+.pe-field-name { color: #E8EAF0; font-size: 13px; font-weight: 500; }
+.pe-field-hint { color: #8A8FA8; font-size: 10.5px; line-height: 1.45; margin-top: 2px; }
+.pe-input-wrap { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.pe-input {
+  background: #0d0f16; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9px; color: #E8EAF0;
+  font: 600 13px 'DM Sans', sans-serif; padding: 8px 10px; width: 82px;
+  text-align: right; outline: none; font-variant-numeric: tabular-nums;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.pe-input:focus { border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212,175,55,0.15); }
+.pe-input.pe-changed { border-color: rgba(245,158,11,0.6); }
+.pe-suffix { color: #8A8FA8; font-size: 12px; font-weight: 600; }
+.pe-def { font-size: 10.5px; color: #6b7089; white-space: nowrap; min-width: 60px; text-align: right; flex-shrink: 0; }
+.pe-def.pe-changed-def { color: #F59E0B; }
+
+/* Multiplier tile (months / dow / occupancy / lead / events / city) */
+.pe-cell {
+  display: flex; flex-direction: column; gap: 5px;
+  background: rgba(255,255,255,0.022);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; padding: 9px 11px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.pe-cell:hover { border-color: rgba(255,255,255,0.13); background: rgba(255,255,255,0.038); }
+.pe-cell.pe-changed { border-color: rgba(212,175,55,0.55); box-shadow: 0 0 0 1px rgba(212,175,55,0.22); }
+.pe-cell-label { color: #8A8FA8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pe-cell-input { background: transparent; border: none; color: #E8EAF0; font: 700 16px 'DM Sans', sans-serif; padding: 0; outline: none; width: 100%; font-variant-numeric: tabular-nums; }
+.pe-cell-input::-webkit-inner-spin-button { opacity: 0.35; }
+
+/* Toggle row + segmented control */
+.pe-toggle {
+  display: flex; align-items: center; gap: 11px;
+  background: rgba(255,255,255,0.022); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; padding: 12px 14px;
+}
+.pe-toggle input[type=checkbox] { width: 17px; height: 17px; accent-color: #D4AF37; cursor: pointer; }
+.pe-seg { display: inline-flex; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 3px; gap: 3px; }
+.pe-seg button { border: none; background: transparent; color: #8A8FA8; font: 700 12.5px 'DM Sans', sans-serif; padding: 7px 15px; border-radius: 8px; cursor: pointer; transition: all .15s ease; }
+.pe-seg button.on { background: linear-gradient(160deg,#d4dde6,#93a7bc); color: #12141b; box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+
+/* Sticky glass save bar */
+.pe-savebar {
+  position: sticky; bottom: 10px; z-index: 6;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 4px; padding: 12px 16px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(21,24,32,0.86), rgba(13,15,21,0.94));
+  border: 1px solid rgba(255,255,255,0.1);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: 0 12px 34px rgba(0,0,0,0.45);
+}
+.pe-btn-primary {
+  background: linear-gradient(160deg,#f0d060 0%,#d4af37 55%,#b8941f 100%);
+  color: #1a1205; border: none; border-radius: 10px;
+  padding: 10px 20px; font: 700 13px 'DM Sans', sans-serif; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+  box-shadow: 0 4px 14px rgba(212,175,55,0.28);
+}
+.pe-btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(212,175,55,0.4); }
+.pe-btn-primary:disabled { opacity: 0.55; cursor: default; }
+.pe-btn-ghost {
+  background: rgba(255,255,255,0.04); color: #E8EAF0;
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+  padding: 9px 16px; font: 600 13px 'DM Sans', sans-serif; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; transition: border-color .15s ease, background .15s ease;
+}
+.pe-btn-ghost:hover:not(:disabled) { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.07); }
