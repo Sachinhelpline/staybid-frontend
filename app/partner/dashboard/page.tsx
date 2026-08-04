@@ -1830,6 +1830,25 @@ export default function PartnerDashboard() {
               </button>
             </div>
 
+            {/* v727 — "Manage My Price" model explainer + cross-channel links. */}
+            <div className="card-p mb-5" style={{ padding: "14px 16px" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>How your price works</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
+                You set two numbers per room — your <b>Bid Floor</b> (the minimum you&apos;ll accept) and your <b>Rack / MRP</b> (your reference rate).
+                StayBid&apos;s AI prices guests dynamically <b>between</b> them by demand, and always keeps it <b>just below the lowest online (OTA) price</b> — so StayBid stays the cheapest. It never goes below your floor.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap mt-3">
+                <span className="text-[0.63rem] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Also set your price for</span>
+                <button onClick={() => setTab("agentauction")} className="btn-ghost text-xs px-2.5! py-1!">🏷️ Travel agents</button>
+                {hotel?.isOperator && (
+                  <button onClick={() => setTab("myrooms")} className="btn-ghost text-xs px-2.5! py-1!">🛏️ B2B exchange &amp; units</button>
+                )}
+                {tabAllowed(role, "channels") && (
+                  <button onClick={() => setTab("channels")} className="btn-ghost text-xs px-2.5! py-1!">🔗 OTA channels</button>
+                )}
+              </div>
+            </div>
+
             {rooms.length === 0 ? (
               <div className="card-p text-center py-10">
                 <Building2 size={30} strokeWidth={1.8} aria-hidden className="mx-auto mb-2 text-luxury-400" />

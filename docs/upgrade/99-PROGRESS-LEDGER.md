@@ -2874,6 +2874,24 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
 - NEXT (final phase): the unified owner **"Manage My Price"** surface (retail floor/MRP · agent discount ·
   B2B band in one place) + an owner-facing AI preview. Additive + default-preserving.
 
+### 2026-08-04 — Owner price-control, Phase 3: unified "Manage My Price" clarity (v727)
+- **Final phase — UX consolidation (functional control was already complete after Phases 1+2).** The
+  partner "Rooms & Pricing" tab is already the per-room price surface (floor + flash editors + a live
+  per-room AI-price panel). Zero-clash approach: added ONE additive **"How your price works"** banner at
+  the top of that tab (no duplicate editors, no new data path).
+- The banner: (1) plain-language model — "you set the Bid Floor (your minimum) + Rack/MRP; StayBid's AI
+  prices guests dynamically between them and always just below the lowest OTA; never below your floor";
+  (2) cross-channel links so the owner controls price everywhere from one place — **🏷️ Travel agents**
+  (`setTab("agentauction")`), **🛏️ B2B exchange & units** (`setTab("myrooms")`, operator-gated), **🔗 OTA
+  channels** (`setTab("channels")`, `tabAllowed`-gated). All confirmed real tab ids.
+- Badge v726→**v727** (`v727-pricing-hub-explainer`), sw HTML_CACHE v521→**v522**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- **Owner price-control program COMPLETE:** every channel (retail floor/MRP · agent discount · B2B band)
+  gives the owner real, bounded, admin-guardrailed, OTA-safe control, surfaced clearly from the Rooms tab.
+  Remaining owner idea earlier (a Circle-investor-facing "My Price" on `/circle/*`) is already served by
+  the same `price_override` lever (now OTA-guarded) reachable via the My-Rooms bridge — no separate build
+  needed unless the owner wants a dedicated `/circle` surface.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
