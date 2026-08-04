@@ -37,7 +37,10 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
   const payload = decodeJwt(token);
   if (!payload?.id) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
-  const { floorPrice, flashFloorPrice } = await req.json();
+  // v730 — the "Manage My Price" hub also lets an owner set their Rack / MRP
+  // (the ceiling the AI prices between). Additive + optional: legacy callers that
+  // send only floorPrice/flashFloorPrice are unaffected.
+  const { floorPrice, flashFloorPrice, mrp } = await req.json();
 
   // Verify room belongs to the logged-in owner's hotel
   const hotels = await sbGet(`hotels?ownerId=eq.${payload.id}&select=id`);
@@ -52,12 +55,16 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
   const updateData: Record<string, unknown> = {};
   if (floorPrice != null)      updateData.floorPrice      = parseFloat(String(floorPrice));
   if (flashFloorPrice != null) updateData.flashFloorPrice = parseFloat(String(flashFloorPrice));
+  // v730 — optional Rack / MRP (guard against NaN so a stray value never wipes it).
+  if (mrp != null) { const m = parseFloat(String(mrp)); if (!Number.isNaN(m) && m > 0) updateData.mrp = m; }
 
   let res = await sbPatch(`rooms?id=eq.${params.id}`, updateData);
 
-  // If flashFloorPrice column doesn't exist yet, retry with only floorPrice
+  // If flashFloorPrice column doesn't exist yet, retry with only floorPrice (+ mrp)
   if (!res.ok && flashFloorPrice != null && floorPrice != null) {
-    res = await sbPatch(`rooms?id=eq.${params.id}`, { floorPrice: parseFloat(String(floorPrice)) });
+    const retry: Record<string, unknown> = { floorPrice: parseFloat(String(floorPrice)) };
+    if (updateData.mrp != null) retry.mrp = updateData.mrp;
+    res = await sbPatch(`rooms?id=eq.${params.id}`, retry);
   }
 
   if (!res.ok) {
