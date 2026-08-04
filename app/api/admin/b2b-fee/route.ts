@@ -37,6 +37,11 @@ const clampMult = (v: any): number | null => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 1 && n <= 20 ? n : null;
 };
+// v733 — hotel-owner wholesale discount % (buy = retailFloor × (1 − this)). 0–90.
+const clampDisc = (v: any): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 90 ? n : null;
+};
 
 export async function GET(req: NextRequest) {
   const admin = await requireVerifiedAdmin(req);
@@ -89,6 +94,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "resaleMultiplierMin must be ≤ resaleMultiplierMax." }, { status: 400 });
   }
 
+  // v733 — hotel-owner supply wholesale discount % (buy = retailFloor × (1 − this)).
+  const wholesaleDiscountPct = body?.wholesaleDiscountPct === undefined ? undefined : clampDisc(body?.wholesaleDiscountPct);
+  if (wholesaleDiscountPct === null) {
+    return NextResponse.json({ error: "wholesaleDiscountPct must be 0–90." }, { status: 400 });
+  }
+
   try {
     const r = await fetch(`${SB_URL}/rest/v1/b2b_fee_config?on_conflict=id`, {
       method: "POST",
@@ -102,6 +113,7 @@ export async function POST(req: NextRequest) {
         ...(resaleMultiplier === undefined ? {} : { resale_multiplier: resaleMultiplier }),
         ...(resaleMultiplierMin === undefined ? {} : { resale_multiplier_min: resaleMultiplierMin }),
         ...(resaleMultiplierMax === undefined ? {} : { resale_multiplier_max: resaleMultiplierMax }),
+        ...(wholesaleDiscountPct === undefined ? {} : { wholesale_discount_pct: wholesaleDiscountPct }),
         updated_at: new Date().toISOString(),
       }),
     });
@@ -120,7 +132,7 @@ export async function POST(req: NextRequest) {
       action: "b2b_fee.set",
       targetType: "config",
       targetId: B2B_FEE_CONFIG_ID,
-      details: { buyerFeePct, sellerFeePct, cityAccessPrice, regulatedMarkupPct, resaleMultiplier },
+      details: { buyerFeePct, sellerFeePct, cityAccessPrice, regulatedMarkupPct, resaleMultiplier, wholesaleDiscountPct },
     });
   } catch { /* best-effort */ }
 

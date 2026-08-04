@@ -88,6 +88,44 @@ export function resaleAskPerNight(ownPerNight: number, multiplier?: number): num
   return Math.min(MAX_B2B_ASK_PER_NIGHT, Math.max(MIN_B2B_ASK_PER_NIGHT, ask));
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// v733 — Model-2 (B2B) WHOLESALE buy price for a HOTEL-OWNER supply listing.
+//
+// The `ownPerNight × multiplier` price above only makes sense when `own` is a
+// REAL below-market acquisition cost — which it is for an `investor_block`
+// resale (own = the block's frozen buy cost), but is NOT for a `hotel_owner`
+// supply listing: a hotel owner (or the platform, for the demo catalogue) has
+// no purchase price, so `own` was substituted with the room's RETAIL FLOOR.
+// `floor × 2` then lands the "buy" price AT or ABOVE the room's live market
+// (live_price is floored at the retail floor), so the buyer saw
+// buy == market → ZERO resale margin and no reason to buy (owner report, v733).
+//
+// The correct wholesale model — the same one Model-3 already uses for its
+// wholesale floor — is a genuine DISCOUNT below the retail floor. Because the
+// retail floor is the LOWEST price a guest ever pays, buying below it is
+// ALWAYS below the live market, so the resale margin is guaranteed ≥ the
+// discount %, every season, for every property (peak months only widen it):
+//     buy/night = snap100( retailFloor × (1 − wholesaleDiscount%) )
+// hard-anchored so an aggressive discount can never collapse the price below a
+// sane fraction of the floor (StayBid never sells absurdly under cost). Pure —
+// the listing endpoint, the pre-list preview, and the demo-seed migration all
+// share it so the wholesale price NEVER drifts (preview == charge == settle).
+export const B2B_WHOLESALE_DISCOUNT_PCT_DEFAULT = 25;
+// The wholesale buy is never below this fraction of the retail floor (safety net).
+export const B2B_WHOLESALE_MIN_FLOOR_FRACTION = 0.5;
+
+export function wholesaleBuyPerNight(retailFloorPerNight: number, discountPct?: number): number {
+  const floor = Math.max(0, Math.round(Number(retailFloorPerNight) || 0));
+  if (floor <= 0) return 0;
+  const disc = Number.isFinite(Number(discountPct)) && Number(discountPct) >= 0 && Number(discountPct) <= 90
+    ? Number(discountPct)
+    : B2B_WHOLESALE_DISCOUNT_PCT_DEFAULT;
+  const anchor = Math.round(floor * B2B_WHOLESALE_MIN_FLOOR_FRACTION);
+  const raw = Math.round((floor * (100 - disc)) / 100);
+  const snapped = Math.round(Math.max(anchor, raw) / 100) * 100; // ₹100 snap (platform rule)
+  return Math.min(MAX_B2B_ASK_PER_NIGHT, Math.max(MIN_B2B_ASK_PER_NIGHT, snapped));
+}
+
 /** Convert an admin multiplier (2 = double) to the legacy markup % (100). */
 export function multiplierToMarkupPct(multiplier: number): number {
   const m = clampMultiplier(multiplier, B2B_RESALE_MULTIPLIER_DEFAULT);

@@ -123,6 +123,17 @@ export default function PartnerLogin() {
         .gold-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         .fade-up { animation: fadeUp 0.4s ease-out both; }
+        /* v733 (owner) — the partner sign-in was STILL rendering as a narrow
+           ~480px centred column on desktop (not full-bleed like /auth, /admin
+           /login, /worker). Root cause: the global cap
+           "main > div[class*=auth] { max-width:480px; margin-inline:auto }"
+           (app/desktop.css, @media >=1024, layer utilities) ALSO catches
+           .pauth-root — the class literally contains "auth" (p-auth-root) — and
+           squeezed the whole page. This inline style block is UNLAYERED, so it
+           beats the layered utilities rule regardless of specificity (the exact
+           escape /auth uses via ".auth-root.lux-bg"). Now the split container
+           fills the viewport; the .max-w-sm card still constrains the form. */
+        .pauth-root { max-width: none; margin-inline: 0; width: 100%; }
         /* v693 — desktop split-screen. On <lg the brand pane hides and the form
            pane fills the width, centred (byte-identical to the old single card).
            Presentation only — no auth logic changed. */

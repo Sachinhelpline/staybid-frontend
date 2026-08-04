@@ -14,7 +14,7 @@
 import { SB_URL, SB_READ } from "@/lib/sb";
 import {
   B2B_BUYER_FEE_PCT_DEFAULT, B2B_SELLER_FEE_PCT_DEFAULT, B2B_REGULATED_MARKUP_PCT_DEFAULT,
-  B2B_RESALE_MULTIPLIER_DEFAULT,
+  B2B_RESALE_MULTIPLIER_DEFAULT, B2B_WHOLESALE_DISCOUNT_PCT_DEFAULT,
 } from "./engine";
 
 export const B2B_FEE_CONFIG_ID = "default";
@@ -34,6 +34,7 @@ export interface B2bFeeConfig {
   resaleMultiplier: number;     // v355 — sell price = ownPerNight × this (default 2× = double)
   resaleMultiplierMin: number;  // v725 — owner-choice band lower bound
   resaleMultiplierMax: number;  // v725 — owner-choice band upper bound
+  wholesaleDiscountPct: number; // v733 — hotel-owner supply wholesale buy = retailFloor × (1 − this%)
 }
 
 const DEFAULT: B2bFeeConfig = {
@@ -44,6 +45,7 @@ const DEFAULT: B2bFeeConfig = {
   resaleMultiplier: B2B_RESALE_MULTIPLIER_DEFAULT,
   resaleMultiplierMin: RESALE_MULT_MIN_DEFAULT,
   resaleMultiplierMax: RESALE_MULT_MAX_DEFAULT,
+  wholesaleDiscountPct: B2B_WHOLESALE_DISCOUNT_PCT_DEFAULT,
 };
 
 /**
@@ -77,6 +79,11 @@ const clampMult = (v: any, fallback: number) => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 1 && n <= 20 ? n : fallback;
 };
+// v733 — wholesale discount %: 0 (list at floor) up to 90 (deep discount).
+const clampDisc = (v: any, fallback: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 90 ? n : fallback;
+};
 
 let _cache: { at: number; cfg: B2bFeeConfig } | null = null;
 const TTL_MS = 60_000;
@@ -85,7 +92,7 @@ export async function resolveB2bFeeConfig(): Promise<B2bFeeConfig> {
   if (_cache && Date.now() - _cache.at < TTL_MS) return _cache.cfg;
   try {
     const r = await fetch(
-      `${SB_URL}/rest/v1/b2b_fee_config?id=eq.${B2B_FEE_CONFIG_ID}&select=buyer_fee_pct,seller_fee_pct,city_access_price,regulated_markup_pct,resale_multiplier,resale_multiplier_min,resale_multiplier_max`,
+      `${SB_URL}/rest/v1/b2b_fee_config?id=eq.${B2B_FEE_CONFIG_ID}&select=buyer_fee_pct,seller_fee_pct,city_access_price,regulated_markup_pct,resale_multiplier,resale_multiplier_min,resale_multiplier_max,wholesale_discount_pct`,
       { headers: SB_READ, cache: "no-store" },
     );
     if (r.ok) {
@@ -104,6 +111,7 @@ export async function resolveB2bFeeConfig(): Promise<B2bFeeConfig> {
         ),
         resaleMultiplierMin: clampMult(row?.resale_multiplier_min, DEFAULT.resaleMultiplierMin),
         resaleMultiplierMax: clampMult(row?.resale_multiplier_max, DEFAULT.resaleMultiplierMax),
+        wholesaleDiscountPct: clampDisc(row?.wholesale_discount_pct, DEFAULT.wholesaleDiscountPct),
       };
       _cache = { at: Date.now(), cfg };
       return cfg;

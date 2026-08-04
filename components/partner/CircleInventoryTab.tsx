@@ -714,7 +714,13 @@ export default function CircleInventoryTab({
                   className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
               </label>
               <div className="text-xs">
-                <span className="block mb-1 opacity-70">Your resale price · {(ownMult ?? ownQuote?.resaleMultiplier ?? 2).toFixed(1)}× your own price</span>
+                {/* v733 — hotel-owner supply is priced as a StayBid-regulated WHOLESALE
+                    discount below the room's floor (not `own × multiplier`), so a buyer
+                    always has genuine resale margin. */}
+                <span className="block mb-1 opacity-70">
+                  Wholesale price · StayBid-regulated
+                  {(ownQuote as any)?.wholesaleDiscountPct != null ? ` · ${(ownQuote as any).wholesaleDiscountPct}% below floor` : " (below the room's floor)"}
+                </span>
                 <div className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)", background: "var(--accent-soft)" }}>
                   {ownQuote ? <><b>{inr(ownQuote.askPerNight)}</b>/night · {inr(ownQuote.askTotal)} total</> : <span className="opacity-50">pick dates…</span>}
                 </div>
