@@ -2916,6 +2916,45 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
   the "never touch casually" list) → to be built as a careful, dedicated step with a live round-trip
   (seed classic room → hold → assert unitsFreeForRange drops + guest can't book → cleanup), NOT rushed.
 
+### 2026-08-04 — Cross-channel oversell CORE FIX, Phase 2: category-level hold for unit-less CLASSIC hotels (v729)
+- **The delicate core fix Phase 1 (v728) set up — done zero-blind with mandatory live round-trips.** CLASSIC
+  hotels (category + `rooms.quantity`, NO `hotel_room_units`) can't assign a physical unit (`assignFreeUnit`
+  → null), which broke BOTH channels for the same root cause: the Model-3 agent auction never wrote a hold →
+  **permanent oversell** (won allotment stayed guest/OTA-bookable); the B2B Model-2 classic checkout 409'd →
+  listing creatable but **UNBUYABLE dead-end**. Fixed at the RIGHT call-sites with a category-level `room_blocks`
+  hold (NO `assignedUnitId`) — the availability engine already counts every block as one unit against
+  `rooms.quantity` (`unitsFreeForRange`), so it fits with **NO engine change** (`assignFreeUnit` +
+  `lib/availability.ts` untouched, as directed).
+- **(a) Model-3 classic allotment hold at award-PAY** (`app/api/trade/awards/verify/route.ts`): after the
+  idempotent `voucher_issued` flip, BEST-EFFORT (never throws/blocks the verified payment), write N category-hold
+  `room_blocks` rows (`source='allotment'`, deterministic id `allot_<awardId>_<runFrom>_<slot>`) covering the
+  agent's exact allotment nights (`award.night_dates` grouped into contiguous runs; N = `rooms_awarded`). ONLY
+  for classic (`roomHasActiveUnits === false`); a hotel WITH units keeps the existing enable-selling unit hold
+  unchanged (a lookup error → skip, never over-block real guests). Idempotent (deterministic ids + merge-upsert).
+- **(b) B2B Model-2 classic buyability** (`app/api/b2b/listings/[id]/checkout` + `basket/checkout` + both verify
+  routes): when `assignFreeUnit` returns null AND the room is classic with free category capacity (new
+  `classicCategoryFree` gate — no units AND `unitsFreeForRange.free ≥ 1`; fail-CLOSED on the pre-pay buy path,
+  never oversell), the buy COMPLETES — the buyer `inventory_blocks` row is minted with `unit_id NULL`, and
+  verify's `writeHold` writes a category hold (`invhold_<blockId>`, `source='inventory'`, NO `assignedUnitId`);
+  `stampUnitOwner` no-ops on the null unit and the unit-level overlap re-guard is skipped for the unit-less buy.
+  A genuinely-full room (or a unit hotel with no free unit) still 409s. 4-key idempotent verify contract intact.
+- **NEW shared helpers** `lib/inventory/assign.ts`: `roomHasActiveUnits(hotelId,roomId)` (true/false/null) +
+  `classicCategoryFree({hotelId,roomId,from,to})` — the single tested place for the classic detection + gate.
+- **Migration `2026-08-04-v729-inventory-block-unit-optional.sql`** (applied live): `inventory_blocks.unit_id`
+  DROP NOT NULL (a classic block holds the room CATEGORY, not a unit) — mirrors the v343/M4 precedent that made
+  `b2b_listings`/`b2b_trades` `unit_id` nullable. Purely RELAXES a constraint (verified live: no CHECK/unique/FK
+  on `unit_id`, only a plain btree `idx_inv_blocks_unit_range` where NULLs are fine); every existing row + every
+  non-classic path still sets `unit_id` → byte-identical for hotels WITH units.
+- **Live SQL round-trips (0 leftover both):** (a) classic room quantity 3 → 2 category holds → free 3→1, guest
+  wanting 2 rooms BLOCKED / 1 room still ALLOWED, idempotent re-run = no double-hold. (b) classic buyer block
+  minted `unit_id NULL` (would've failed pre-migration) → verify category hold → free 2→1, guest-2 blocked, the
+  hold's `assignedUnitId` is NULL (a true category hold), idempotent.
+- **Gates:** tsc 0 · build 0 · `test:security` **385/0**. Badge v728→**v729** (`v729-classic-category-hold`).
+  sw HTML_CACHE UNCHANGED (server-only routes + migration; no UI/HTML change — Ship-checklist rule 2).
+- **NEXT:** cross-channel oversell hardening COMPLETE for classic hotels (both channels now clash-safe). Optional
+  refinement: a category-level concurrency re-guard for two simultaneous classic B2B buyers of the last room
+  (today best-effort, same profile as the rest of the buy path); per-unit-month auction rotation still open.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

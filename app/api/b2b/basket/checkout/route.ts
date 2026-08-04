@@ -19,7 +19,7 @@ import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
 import { resolveActiveCities, cityAccessId, normalizeCity } from "@/lib/circle/city-access";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
-import { assignFreeUnit } from "@/lib/inventory/assign";
+import { assignFreeUnit, classicCategoryFree } from "@/lib/inventory/assign";
 import { enumerateDates } from "@/lib/availability";
 
 export const runtime = "nodejs";
@@ -160,7 +160,18 @@ export async function POST(req: NextRequest) {
     // hotel_owner — assign a free unit for the CHOSEN nights + mint a fresh
     // pending buyer block over exactly those nights NOW.
     const freeUnit = await assignFreeUnit({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: useFrom, to: useTo, buyerIds });
-    if (!freeUnit) return NextResponse.json({ error: "One room is booked on those nights — pick different dates." }, { status: 409 });
+    // v729 — CLASSIC (unit-less) hotel with free category capacity: no physical
+    // unit to assign (was an unbuyable dead-end), so buy on a CATEGORY hold
+    // (unit_id NULL; verify writes the room_blocks category hold). A genuinely
+    // full room (or a unit hotel with no free unit) still 409s.
+    let itemUnitId: string | null = null;
+    let itemRoomNumber: string | null = null;
+    if (freeUnit) {
+      itemUnitId = freeUnit.unitId;
+      itemRoomNumber = freeUnit.roomNumber;
+    } else if (!(await classicCategoryFree({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: useFrom, to: useTo }))) {
+      return NextResponse.json({ error: "One room is booked on those nights — pick different dates." }, { status: 409 });
+    }
     // The buyer's acquisition cost basis = what they pay for the goods (the ask).
     const buyTotal = split.askTotal;
     const perNight = askPerNight;
@@ -171,10 +182,10 @@ export async function POST(req: NextRequest) {
         headers: SB_H_REPRESENT,
         body: JSON.stringify({
           id: newBlockId, investor_user_id: String(userId), hotel_id: String(listing.hotel_id),
-          unit_id: freeUnit.unitId, room_id: String(listing.room_id), date_from: useFrom, date_to: useTo,
+          unit_id: itemUnitId, room_id: String(listing.room_id), date_from: useFrom, date_to: useTo,
           nights, buy_price_per_night: perNight, buy_total: buyTotal,
           resale_price_per_night: 0, platform_fee_pct: split.platformFeePct,
-          status: "pending_payment", metadata: { source: "circle_b2b_basket", listingId: String(listing.id), roomNumber: freeUnit.roomNumber, checkoutAt: new Date().toISOString() },
+          status: "pending_payment", metadata: { source: "circle_b2b_basket", listingId: String(listing.id), roomNumber: itemRoomNumber, checkoutAt: new Date().toISOString() },
           updated_at: new Date().toISOString(),
         }),
       });
@@ -182,21 +193,24 @@ export async function POST(req: NextRequest) {
       if (!Array.isArray(rows) || !rows.length) return NextResponse.json({ error: "Could not reserve one room." }, { status: 500 });
     } catch { return NextResponse.json({ error: "Checkout failed" }, { status: 500 }); }
 
-    // self-excluding overlap re-guard
-    try {
-      const clashRes = await fetch(
-        `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(freeUnit.unitId)}&id=neq.${encodeURIComponent(newBlockId)}` +
-          `&status=not.in.(expired,cancelled,refunded)&date_from=lt.${useTo}&date_to=gt.${useFrom}&select=id&limit=1`,
-        { headers: SB_H },
-      );
-      const clash = clashRes.ok ? await clashRes.json().catch(() => []) : [];
-      if (Array.isArray(clash) && clash.length) {
-        await fetch(`${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(newBlockId)}&status=eq.pending_payment`, { method: "DELETE", headers: SB_H }).catch(() => {});
-        return NextResponse.json({ error: "One room was just taken — refresh." }, { status: 409 });
-      }
-    } catch { /* non-fatal */ }
+    // self-excluding overlap re-guard — unit-assigned buys only (a classic
+    // category buy has no unit; its capacity was pre-checked above).
+    if (itemUnitId) {
+      try {
+        const clashRes = await fetch(
+          `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(itemUnitId)}&id=neq.${encodeURIComponent(newBlockId)}` +
+            `&status=not.in.(expired,cancelled,refunded)&date_from=lt.${useTo}&date_to=gt.${useFrom}&select=id&limit=1`,
+          { headers: SB_H },
+        );
+        const clash = clashRes.ok ? await clashRes.json().catch(() => []) : [];
+        if (Array.isArray(clash) && clash.length) {
+          await fetch(`${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(newBlockId)}&status=eq.pending_payment`, { method: "DELETE", headers: SB_H }).catch(() => {});
+          return NextResponse.json({ error: "One room was just taken — refresh." }, { status: 409 });
+        }
+      } catch { /* non-fatal */ }
+    }
 
-    items.push({ listing, split, from: useFrom, to: useTo, unitId: freeUnit.unitId, blockId: newBlockId, source: "hotel_owner", newBlockId });
+    items.push({ listing, split, from: useFrom, to: useTo, unitId: itemUnitId, blockId: newBlockId, source: "hotel_owner", newBlockId });
   }
 
   const invTotal = items.reduce((s, it) => s + Number(it.split.buyerPays || 0), 0);

@@ -19,7 +19,7 @@ import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { hasCityAccess, normalizeCity, cityAccessId } from "@/lib/circle/city-access";
-import { assignFreeUnit } from "@/lib/inventory/assign";
+import { assignFreeUnit, classicCategoryFree } from "@/lib/inventory/assign";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
 export const runtime = "nodejs";
@@ -155,14 +155,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       to: lTo,
       buyerIds,
     });
-    if (!freeUnit) {
+    if (freeUnit) {
+      assignedUnitId = freeUnit.unitId;
+      buyerRoomNumber = freeUnit.roomNumber;
+    } else if (await classicCategoryFree({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: lFrom, to: lTo })) {
+      // v729 — CLASSIC (unit-less) hotel with free category capacity: there is
+      // no physical unit to assign (this was the unbuyable 409 dead-end). Complete
+      // the buy on a CATEGORY hold instead — the buyer block is minted with
+      // unit_id NULL and verify writes a room_blocks category hold (no
+      // assignedUnitId) that the availability engine subtracts from
+      // rooms.quantity. The per-unit stamp/hold simply no-op for a null unit.
+      assignedUnitId = null;
+      buyerRoomNumber = null;
+    } else {
       return NextResponse.json(
         { error: "No rooms free for these nights — try another offer." },
         { status: 409 },
       );
     }
-    assignedUnitId = freeUnit.unitId;
-    buyerRoomNumber = freeUnit.roomNumber;
 
     const quote = await quoteInventoryBlock({ roomId: String(listing.room_id), from: lFrom, to: lTo });
     buyerBlockBuyTotal = quote && quote.buyTotal > 0 ? quote.buyTotal : Number(split.buyTotal) || 0;
@@ -253,26 +263,31 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     // Self-excluding overlap re-guard — a DIFFERENT non-terminal block may have
     // grabbed the same unit/nights in the race window. Drop our orphan + 409.
-    try {
-      const clashRes = await fetch(
-        `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(String(assignedUnitId))}` +
-          `&id=neq.${encodeURIComponent(newBlockId)}` +
-          `&status=not.in.(expired,cancelled,refunded)` +
-          `&date_from=lt.${lTo}&date_to=gt.${lFrom}&select=id&limit=1`,
-        { headers: SB_H },
-      );
-      const clash = clashRes.ok ? await clashRes.json().catch(() => []) : [];
-      if (Array.isArray(clash) && clash.length) {
-        await fetch(
-          `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(newBlockId)}&status=eq.pending_payment`,
-          { method: "DELETE", headers: SB_H },
-        ).catch(() => {});
-        return NextResponse.json(
-          { error: "These nights were just taken — try another offer." },
-          { status: 409 },
+    // v729 — only for a UNIT-assigned buy. A classic category buy (unit_id NULL)
+    // has no unit to clash on; its category capacity was pre-checked
+    // (classicCategoryFree) and the category hold at verify is the reservation.
+    if (assignedUnitId) {
+      try {
+        const clashRes = await fetch(
+          `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(String(assignedUnitId))}` +
+            `&id=neq.${encodeURIComponent(newBlockId)}` +
+            `&status=not.in.(expired,cancelled,refunded)` +
+            `&date_from=lt.${lTo}&date_to=gt.${lFrom}&select=id&limit=1`,
+          { headers: SB_H },
         );
-      }
-    } catch { /* non-fatal — verify + hold write is the final integrity gate */ }
+        const clash = clashRes.ok ? await clashRes.json().catch(() => []) : [];
+        if (Array.isArray(clash) && clash.length) {
+          await fetch(
+            `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(newBlockId)}&status=eq.pending_payment`,
+            { method: "DELETE", headers: SB_H },
+          ).catch(() => {});
+          return NextResponse.json(
+            { error: "These nights were just taken — try another offer." },
+            { status: 409 },
+          );
+        }
+      } catch { /* non-fatal — verify + hold write is the final integrity gate */ }
+    }
 
     tradeBlockId = newBlockId;
   }

@@ -109,3 +109,66 @@ export async function assignFreeUnit(params: {
 
   return { unitId: String(pick.id), roomNumber: String(pick.roomNumber || pick.id) };
 }
+
+/**
+ * v729 — Cross-channel oversell CORE FIX (Phase 2) helper.
+ *
+ * Does this room category have ANY active physical unit? CLASSIC hotels store
+ * capacity as `rooms.quantity` (no `hotel_room_units` rows), so `assignFreeUnit`
+ * always returns null there — but a null could ALSO mean a unit hotel that is
+ * genuinely full. Callers use this to tell the two apart:
+ *   • true  → a unit hotel (a null from assignFreeUnit = full → keep the 409 /
+ *             let the existing enable-selling unit hold protect it).
+ *   • false → a classic (unit-less) room → a category-level room_blocks hold is
+ *             the correct reservation (the availability engine counts every
+ *             block against `rooms.quantity`, so it fits with NO engine change).
+ *   • null  → unknown (lookup error) → callers fail toward the SAFE side (never
+ *             over-block real guests, never oversell).
+ */
+export async function roomHasActiveUnits(hotelId: string, roomId: string): Promise<boolean | null> {
+  const h = String(hotelId || "");
+  const r = String(roomId || "");
+  if (!h || !r) return null;
+  try {
+    const ur = await fetch(
+      `${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${encodeURIComponent(h)}` +
+        `&roomId=eq.${encodeURIComponent(r)}&status=eq.active&select=id&limit=1`,
+      { headers: SB_H },
+    );
+    if (!ur.ok) return null;
+    const rows = await ur.json().catch(() => null);
+    if (!Array.isArray(rows)) return null;
+    return rows.length > 0;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * v729 — the category-hold fallback GATE for a B2B classic buy. Returns true
+ * ONLY when the room is CLASSIC (no active physical units) AND has free category
+ * capacity for [from, to) — i.e. exactly the case where `assignFreeUnit` returns
+ * null but the buy should still COMPLETE via a category-level hold (unit_id
+ * NULL). Returns false for a unit hotel (a null from assignFreeUnit there means
+ * genuinely full → the buy must 409, never over-sell), for a classic room with
+ * no free capacity, or on any lookup error (fail closed on the pre-payment buy
+ * path — never oversell).
+ */
+export async function classicCategoryFree(params: {
+  hotelId: string;
+  roomId: string;
+  from: string; // YYYY-MM-DD inclusive
+  to: string;   // YYYY-MM-DD exclusive
+}): Promise<boolean> {
+  const hotelId = String(params.hotelId || "");
+  const roomId = String(params.roomId || "");
+  const from = String(params.from || "").slice(0, 10);
+  const to = String(params.to || "").slice(0, 10);
+  if (!hotelId || !roomId || !from || !to || from >= to) return false;
+
+  const hasUnits = await roomHasActiveUnits(hotelId, roomId);
+  if (hasUnits !== false) return false; // unit hotel OR unknown → not a classic fallback
+
+  const avail = await unitsFreeForRange({ hotelId, roomId, from, to });
+  return !!avail && avail.free >= 1;
+}
