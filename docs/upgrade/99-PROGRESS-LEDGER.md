@@ -19,6 +19,24 @@
 
 ## Session log
 
+### 2026-08-04 — Phase 3 (part 2) / ss2: Circle dashboard multi-column card grid (v709)
+**Owner 9-screenshot round, Phase 3 completion.** ss2: the `/circle/dashboard` read as "dead space" on
+desktop. Investigation (part 1) showed the container is already wide (~1180–1340px) — the empty feel came
+from the stacked full-width **strips stretched edge-to-edge**. Owner chose the **multi-column card grid**.
+- **`app/circle/dashboard/page.tsx`** — wrapped everything below the profile (portfolio + rooms summary
+  strips + the Help/Switch, tiles, My-properties, Account sections) in a new `.sbc-dash-cols` container. The
+  header + profile stay full-width identity rows.
+- **`circle-premium.css`** — `.sbc-dash-cols` is a plain block on mobile (unchanged stack) and a balanced
+  **masonry: `column-count:2` ≥900px, `column-count:3` ≥1280px** with `break-inside:avoid` so each card/section
+  stays whole; the tiles grid reflows to the narrower column. So the wide desktop column now fills with content
+  instead of stretched bars.
+- **Measured** (headless): realized columns **1 (≤360) → 2 (900/1024) → 3 (1280/1440/1920)**, strips keep
+  `display:flex` (internal layout intact), **0px horizontal overflow** at 360→1920 in light AND dark.
+  `tsc` + `next build` clean; `test:security` **385/0**. Badge v708→**v709**, sw HTML_CACHE v504→**v505**.
+- **Phase 3 now complete:** ss5 browse bar + ss4 [id] bar/calendar themed (v706), ss2 dashboard grid (v709).
+  ss3 build is already a 1280px 2-col layout; its "Continue to review"/calendar concerns map to the model2
+  surfaces fixed in v706.
+
 ### 2026-08-04 — Phase 5 / ss9: Samsung Fold — hotel detail no longer cut on the side (v708)
 **Owner 9-screenshot round, Phase 5.** ss9: on Samsung Fold the hotel-detail content was cut on the side.
 Fold cover ≈280–376px and Fold inner ≈884px sit BETWEEN the audit matrix points (which jump 320→360 and

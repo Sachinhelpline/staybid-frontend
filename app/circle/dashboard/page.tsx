@@ -193,6 +193,11 @@ export default function CircleDashboardPage() {
         )}
       </section>
 
+      {/* v709 (owner ss2) — desktop multi-column card grid. On mobile this is a
+          plain vertical stack (unchanged); on desktop the summary strips + every
+          section flow into 2–3 masonry columns so the wide column fills with
+          content instead of full-width strips stretched edge-to-edge. */}
+      <div className="sbc-dash-cols">
       {/* portfolio strip */}
       <Link href="/circle/me" className="sbc-dash-strip">
         <div>
@@ -322,6 +327,7 @@ export default function CircleDashboardPage() {
           )}
         </div>
       </section>
+      </div>{/* /sbc-dash-cols */}
 
       <div style={{ height: "calc(84px + env(safe-area-inset-bottom, 0px))" }} />
     </div>
