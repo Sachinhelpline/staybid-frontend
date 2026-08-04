@@ -629,7 +629,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // its lg:grid-cols-4 grid breathes.
 // v623 — admin pages now attach their verified session token to every
 // same-origin /api/admin request and show honest failures instead of false 0s.
-const HTML_CACHE = 'staybid-html-v520';
+const HTML_CACHE = 'staybid-html-v521';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

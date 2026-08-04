@@ -27,6 +27,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { otaCapPrice } from "@/lib/pricing/ota-cap";
 
 export const dynamic = "force-dynamic";
 
@@ -101,10 +102,18 @@ export async function PATCH(req: NextRequest) {
     const n = Number(v);
     return Number.isFinite(n) && n >= 0 ? n : undefined;  // undefined → reject
   };
+  let priceCap: { cappedTo: number } | null = null;
   if ("price_override" in body) {
     const v = num(body.price_override);
     if (v === undefined) return NextResponse.json({ error: "price_override must be ≥ 0" }, { status: 400 });
-    patch.price_override = v;
+    // v726 — OTA "always cheapest" guard on the owner's flat unit price.
+    if (v !== null && v > 0 && unit?.roomId) {
+      const capRes = await otaCapPrice(String(unit.roomId), v);
+      patch.price_override = capRes.price;
+      if (capRes.capped) priceCap = { cappedTo: capRes.price };
+    } else {
+      patch.price_override = v;
+    }
   }
   if ("mrp_override" in body) {
     const v = num(body.mrp_override);
@@ -153,7 +162,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: err || "Update failed" }, { status: 500 });
     }
     const saved = await res.json().catch(() => []);
-    return NextResponse.json({ unit: Array.isArray(saved) ? saved[0] : saved });
+    return NextResponse.json({
+      unit: Array.isArray(saved) ? saved[0] : saved,
+      ...(priceCap
+        ? { priceCapped: true, listedPrice: priceCap.cappedTo, warning: `Your price was above the current lowest online rate, so it was set to ₹${priceCap.cappedTo}/night to keep StayBid the cheapest. (Never below your cost.)` }
+        : {}),
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Update failed" }, { status: 500 });
   }

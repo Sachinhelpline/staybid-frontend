@@ -95,7 +95,7 @@ export default function CircleUnitsTab({
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { flash(d?.error || "Save failed"); return false; }
     if (d.unit) setUnits((prev) => prev.map((u) => (u.id === unitId ? { ...u, ...d.unit } : u)));
-    flash("Saved ✓");
+    flash(d?.priceCapped && d?.warning ? d.warning : "Saved ✓");
     return true;
   }
 

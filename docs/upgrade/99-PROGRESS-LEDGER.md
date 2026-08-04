@@ -2851,6 +2851,29 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
   (retail floor/MRP · agent discount · B2B band in one place); owner-facing AI preview. Each additive +
   default-preserving, phase-by-phase.
 
+### 2026-08-04 — Owner price-control, Phase 2: OTA "always cheapest" guard on flat prices (v726)
+- **Brand-critical fix + real bug.** The deep-search found the "StayBid is always cheapest than OTA"
+  promise had a hole: a per-unit `hotel_room_units.price_override` (a Circle owner's flat guest price)
+  BYPASSES the pricing spine, so the spine's competitor-undercut cap never ran on it — an owner could
+  silently price a unit ABOVE the OTA. Now clamped.
+- **NEW `lib/pricing/ota-cap.ts` `otaCapPrice(roomId, price)`** (server-only, pure read): clamps an
+  owner-set flat price to `competitor_min × (1 − COMPETITOR_UNDERCUT=0.05)` when a competitor price is
+  known, but NEVER below the room's `floorPrice` (owner never sells below cost). **Fail-open** — no
+  competitor data / any error → price returned UNCHANGED, so where `competitor_min` is null the behaviour
+  is byte-identical.
+- Wired into BOTH flat-price setters: `/api/circle/inventory/sell` (`listBlockPublic`, single `list`) and
+  `/api/partner/circle-units` (PATCH `price_override`). Each returns `{ priceCapped, listedPrice, warning }`
+  when it clamps; the owner UIs (`CircleUnitsTab` save toast + `/circle/model2/selling` list toast) show
+  the transparent warning ("set to ₹X to keep StayBid the cheapest · never below your cost").
+- **MEASURED (arithmetic):** no-competitor → unchanged; under-OTA → unchanged; above-OTA 6000 vs OTA 5000
+  → 4750; above-OTA-but-below-cost → stops at cost. **Live DB:** 183/205 rooms HAVE a competitor price
+  (guard is genuinely protective) and **0 units currently carry a price_override** (no existing live price
+  disturbed — clean ship).
+- Badge v725→**v726** (`v726-ota-cap-owner-price`), sw HTML_CACHE v520→**v521**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- NEXT (final phase): the unified owner **"Manage My Price"** surface (retail floor/MRP · agent discount ·
+  B2B band in one place) + an owner-facing AI preview. Additive + default-preserving.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

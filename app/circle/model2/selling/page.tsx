@@ -72,7 +72,9 @@ export default function Model2SellingPage() {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d?.ok) { setFlash(d?.error || "Couldn't update — try again."); return; }
-      setFlash(action === "list" ? "Listed for public booking ✓ — guests can now book these nights." : "Paused — nights held back from guests.");
+      setFlash(action === "list"
+        ? (d?.priceCapped && d?.warning ? d.warning : "Listed for public booking ✓ — guests can now book these nights.")
+        : "Paused — nights held back from guests.");
       load();
     } catch { setFlash("Something went wrong."); }
     finally { setBusy(""); }
