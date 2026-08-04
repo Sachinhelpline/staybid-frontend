@@ -1718,7 +1718,7 @@ export default function HotelDetail() {
     }
     setNegRoom(r);
     // v129 — initial bid lands at 88% of floor, snapped to a ₹100 multiple.
-    setNegAmt(snap100(r.floorPrice * 0.88));
+    setNegAmt(snap100(r.floorPrice * 0.80)); // v718.1 (owner) — arena opens at 20% below floor (was 12%/0.88) for a stronger "deal" anchor.
     setNegIn(globalCheckIn);
     setNegOut(globalCheckOut);
     setNegSuccess(false);
@@ -4929,7 +4929,7 @@ export default function HotelDetail() {
         // step on the drag bar lands on the same indivisible billing unit the
         // platform uses end-to-end (Save Big chip, Smart chip, Instant chip,
         // hotel counter slider, /bid presets — all share PRICE_STEP).
-        const min     = Math.max(PRICE_MIN, floor100(floor * 0.65));
+        const min     = Math.max(PRICE_MIN, floor100(floor * 0.50)); // v718.1 (owner) — customer can bid down to 50% below floor (was 35%/0.65); below-floor bids are forwarded to the hotel, never auto-accepted, and the probability ring reads "Very Low · Will reject" that low.
         const max     = ceil100(floor * 1.05);
         const prob    = bidProb(negAmt, floor);
         const nights  = (negIn && negOut && negIn < negOut)

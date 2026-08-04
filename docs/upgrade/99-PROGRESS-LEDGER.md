@@ -19,6 +19,13 @@
 
 ## Session log
 
+### 2026-08-04 — Owner round 4c: customer bid-arena range widened (v719)
+**Owner decision after a full pricing-engine briefing. Presentation-only; tsc + build clean, `test:security` 385/0.**
+- **Arena slider minimum: `floor × 0.65` → `floor × 0.50`** (`app/hotels/[id]/page.tsx:4932`) — the customer can now drag down to 50% below the floor (was 35%). Safe: a below-floor submit is still clamped up to the floor (`submitAmt = negFloorEff`) and the guest's preferred price rides in the message → the hotel reviews/counters; the server still hard-rejects `amount < floor`. Nothing transacts below floor.
+- **Arena opens at `floor × 0.88` → `floor × 0.80`** (`:1721`) — a stronger 20%-below "deal" anchor.
+- **Pricing ground-truth briefed to owner (no code change):** 3 owner inputs (mrp/floorPrice/flashFloorPrice); market/live is the only truly AI-dynamic price (0.55×–2.20× × floor, capped 5% under OTA); **`bidFloor = snap100(floorPrice)` is STATIC despite "dynamic" comments** (GAP 1); Book-Now floor == bid floor (~0% diff); yield optimizer coded but shipped OFF (GAP 2); customers can't win below floor unlike agents' 0.85 band (GAP 3). Owner deciding whether to build a truly-dynamic customer bid floor / below-floor win band.
+- Badge v718→**v719**, sw HTML_CACHE v514→**v515**.
+
 ### 2026-08-04 — Owner round 4b: paid-row cleanup + paid subscriptions live + admin trade-bid oversight (v718)
 **Owner approved all 3 follow-ups. tsc + build clean, `test:security` 385/0.**
 - **ss4 legacy data cleanup (owner-approved, live DB):** the pre-fix below-floor bug had written **27 `bid_paid_amounts` rows** with a phantom `paid_total` summing **₹1,76,114** of never-paid "revenue". Ran a guarded corrective UPDATE (`paid_total → 0 WHERE flow='negotiate-below-floor' AND paid_total>0`) — 27 rows corrected, verified **0 remaining**. The `paid_per_night` (preferred-price context) was left intact. No deletes.
