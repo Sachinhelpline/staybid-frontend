@@ -19,6 +19,29 @@
 
 ## Session log
 
+### 2026-08-04 — Circle rebuild Phase A.1: tour pages de-darkened (v711)
+**Owner: full god-level StayBid Circle rebuild** (home + Model 2 [code `/circle/model2` + legacy `model3`/
+`model4`] + Model 3 [`/trade/*`]), each redesigned to its own requirement, all breakpoints, both themes,
+presentation-only. Two Explore agents deep-mapped both models first (zero blind assumption). **Root cause
+found:** `.sbc-home` was flipped to a LIGHT page (`circle-premium.css:2115`) but almost every Circle/Trade
+card still hardcodes DARK walnut built for the old dark shell — only the v706 calendar/basket used flipping
+tokens. So: dark cards on a light page that never flip for dark. The fix is to route every surface through the
+app/`--trd-*` theme tokens (one system, light cards that match + flip).
+- **Phase A.1 (this ship) — the two TOUR pages from the screenshots (ss2/ss4):**
+  `app/circle/model2/[id]` — `.sbc2p-metric` + `.sbc2p-mkt` (+ desc/h2/room/amen) walnut → app tokens
+  (`--bg-card`/`--bg-pill`/`--text-*`/`--border-soft`/`--accent`); `app/trade/[id]` — `.sbt-metric` +
+  `.sbt-preview` + `.sbt-basket-in` + amen/desc walnut → `--trd-*` tokens, and the sealed basket bar made a
+  compact bottom-right cart on desktop. Owner picked "light, match page".
+- **Verified:** the tokens flip correctly — `--trd-card`/`--bg-card` = #fff/#fefefe (light) → #1a1610/#1b212a
+  (dark), ink inverts — so the metric/market/preview cards are light-on-light in light and dark-flipping in
+  dark (same proven tokens as the working `.sbt-bidbox`/calendar). The tour pages hang on "Loading…" headless
+  (sandbox data-fetch stall), so verified at the token level + on `next build`. `tsc` + build clean;
+  `test:security` **385/0**. Badge v710→**v711**, sw HTML_CACHE v506→**v507**.
+- **Still pending (this rebuild):** model2 review `.sbc2r-panel` + selling `.sbc2s-kpi`; the entire dark
+  `.sbc-mkt-*` marketplace (model3/model4 — the biggest offender); trade browse/review/my-bids headers +
+  imagery (room-images-first); `/circle` home hero rebalance + dense cards; dead-space/footer-overlap; switch
+  splash desktop. See tasks #35–#39.
+
 ### 2026-08-04 — Hero: compact stack so the CTAs are never hidden by the cover panel (v710)
 **Owner follow-up (mobile hero screenshot).** The "Bid your stay" / "Watch reels" CTAs were partly HIDDEN —
 clipped by the rounded `.sbh-rails` cover panel. Root cause (measured): the cover panel tucks **-24px** up over

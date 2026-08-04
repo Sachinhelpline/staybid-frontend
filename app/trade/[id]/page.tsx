@@ -428,18 +428,21 @@ function TourStyles() {
       .sbt-thumb img { width: 100%; height: 100%; object-fit: cover; }
       .sbt-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0 14px; }
       @media (min-width: 560px) { .sbt-metrics { grid-template-columns: repeat(4, 1fr); } }
-      .sbt-metric { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(140, 160, 182,.25); border-radius: 13px; padding: 12px 13px; }
-      .sbt-metric b { display: block; color: #d5dce4; font-size: 1.02rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-      .sbt-metric span { font-size: .63rem; letter-spacing: .06em; color: rgba(176, 192, 209,.75); font-weight: 700; }
-      .sbt-desc { font-size: .84rem; line-height: 1.55; color: rgba(74,56,32,.75); margin: 0 0 16px; }
+      /* v711 (owner) — metric strip was a hardcoded dark-walnut card on the
+         light trade page (and never flipped for dark). Re-themed to the trd
+         tokens: a light card that matches the page AND flips in dark. */
+      .sbt-metric { background: var(--trd-card); border: 1px solid var(--trd-line); border-radius: 13px; padding: 12px 13px; }
+      .sbt-metric b { display: block; color: var(--trd-ink); font-size: 1.02rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+      .sbt-metric span { font-size: .63rem; letter-spacing: .06em; color: var(--trd-ink-3); font-weight: 700; }
+      .sbt-desc { font-size: .84rem; line-height: 1.55; color: var(--trd-ink-2); margin: 0 0 16px; }
       .sbt-desc.sm { font-size: .78rem; margin: 8px 0 14px; }
       .sbt-h2 { font-family: var(--font-display, "Cormorant Garamond", Georgia, serif); font-size: 1.5rem; font-weight: 600; letter-spacing: .005em; color: var(--trd-ink); margin-top: 6px; }
-      .sbt-h2sub { font-size: .82rem; color: rgba(74,56,32,.65); margin: 4px 0 14px; line-height: 1.5; }
+      .sbt-h2sub { font-size: .82rem; color: var(--trd-ink-2); margin: 4px 0 14px; line-height: 1.5; }
       .sbt-roomgal { position: relative; height: 190px; border-radius: 14px; overflow: hidden; margin: 6px 0 10px; background: var(--trd-soft); }
       .sbt-roomgal img { width: 100%; height: 100%; object-fit: cover; }
       .sbt-amen { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 4px; }
-      .sbt-amen-chip { font-size: .68rem; font-weight: 600; color: rgba(74,56,32,.8); background: rgba(139,105,20,.09); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
-      .sbt-bidbox { background: var(--trd-card); border: 1px solid rgba(139,105,20,.2); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
+      .sbt-amen-chip { font-size: .68rem; font-weight: 600; color: var(--trd-ink-2); background: var(--trd-soft); border: 1px solid var(--trd-line); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
+      .sbt-bidbox { background: var(--trd-card); border: 1px solid var(--trd-line); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(31,26,15,.06); }
       .sbt-live-pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 3px 11px; margin-bottom: 11px; }
       .sbt-live-ok { color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 8px 11px; font-size: .8rem; font-weight: 600; margin: 6px 0; }
       .sbt-mybids-link { display: block; margin-top: 6px; font-size: .78rem; font-weight: 800; color: #65819c; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -486,21 +489,28 @@ function TourStyles() {
       .sbt-step-btn:disabled { opacity: .4; cursor: default; }
       .sbt-step-in { flex: 1; min-width: 0; border: 0; text-align: center; font-size: 1rem; font-weight: 800; color: var(--trd-ink); background: transparent; -moz-appearance: textfield; }
       .sbt-step-in::-webkit-outer-spin-button, .sbt-step-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-      .sbt-err { color: #c0392b; font-size: .78rem; margin: 4px 0; }
-      .sbt-preview { background: linear-gradient(135deg,#1c140c,#2c2116); color: #e4e9ee; border-radius: 12px; padding: 12px 14px; margin: 10px 0; border: 1px solid rgba(140, 160, 182,.2); }
-      .sbt-preview-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; padding: 2px 0; }
-      .sbt-preview-row b { color: #d5dce4; }
-      .sbt-preview-note { font-size: .68rem; color: rgba(176, 192, 209,.6); margin-top: 6px; }
+      .sbt-err { color: color-mix(in srgb, #d64545 60%, var(--trd-ink)); font-size: .78rem; margin: 4px 0; }
+      /* v711 (owner) — cost-preview box was hardcoded dark on the light page; now
+         a subtle themed highlight card that flips in dark. */
+      .sbt-preview { background: var(--trd-soft); color: var(--trd-ink); border-radius: 12px; padding: 12px 14px; margin: 10px 0; border: 1px solid var(--trd-line); }
+      .sbt-preview-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; padding: 2px 0; color: var(--trd-ink-2); }
+      .sbt-preview-row b { color: var(--trd-ink); }
+      .sbt-preview-note { font-size: .68rem; color: var(--trd-ink-3); margin-top: 6px; }
       .sbt-btn-gold { background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); color: #ffffff; border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 800; font-size: .9rem; cursor: pointer; }
       .sbt-btn-gold.full { width: 100%; margin-top: 8px; }
       .sbt-btn-gold:disabled { opacity: .5; cursor: default; }
-      .sbt-btn-ghost { background: none; border: 1px solid rgba(139,105,20,.3); color: #65819c; border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: .85rem; cursor: pointer; }
+      .sbt-btn-ghost { background: none; border: 1px solid var(--trd-line-2); color: var(--accent); border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: .85rem; cursor: pointer; }
       .sbt-btn-ghost.full { width: 100%; margin-top: 8px; }
       .sbt-gate { background: var(--trd-card-2); border: 1px solid var(--trd-line-2); border-radius: 16px; padding: 15px; font-size: .85rem; color: var(--trd-ink-2); }
       .sbt-gate p { margin: 0 0 10px; line-height: 1.5; }
-      .sbt-gate-input { width: 100%; border: 1px solid #c0cbd7; border-radius: 10px; padding: 9px 11px; font-size: .9rem; margin-bottom: 8px; }
-      .sbt-basket { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.96) 70%, rgba(255,255,255,0)); }
-      .sbt-basket-in { max-width: 1080px; margin: 0 auto; background: #3a2c17; color: #f1f4f6; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); font-size: .82rem; font-weight: 600; }
+      .sbt-gate-input { width: 100%; border: 1px solid var(--trd-line-2); border-radius: 10px; padding: 9px 11px; font-size: .9rem; margin-bottom: 8px; background: var(--trd-card); color: var(--trd-ink); }
+      /* v711 (owner) — the sealed-bundle sticky bar: theme-token fade + card so
+         it matches the page and flips in dark (the globals dark-patch for the
+         fade stays harmless). Compact bottom-right on desktop so it never floats
+         over the content column. */
+      .sbt-basket { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, var(--trd-page-a) 62%, transparent); }
+      .sbt-basket-in { max-width: 1080px; margin: 0 auto; background: var(--trd-card); color: var(--trd-ink); border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--trd-line-2); box-shadow: 0 12px 34px -12px rgba(0,0,0,.4); font-size: .82rem; font-weight: 600; }
+      @media (min-width: 1024px) { .sbt-basket { left: auto; right: 22px; bottom: 22px; padding: 0; background: none; } .sbt-basket-in { max-width: 340px; box-shadow: 0 18px 44px -16px rgba(0,0,0,.5); } }
       /* ── Tablet: wider hero + 3-col metrics ── */
       @media (min-width: 640px) {
         .sbt-wrap { max-width: 760px; padding-left: 22px; padding-right: 22px; }

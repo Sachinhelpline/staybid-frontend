@@ -280,33 +280,37 @@ function PropStyles() {
       .sbc2p-thumb img { width: 100%; height: 100%; object-fit: cover; }
       .sbc2p-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0 14px; }
       @media (min-width: 560px) { .sbc2p-metrics { grid-template-columns: repeat(4, 1fr); } }
-      .sbc2p-metric { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(140, 160, 182,.25); border-radius: 13px; padding: 12px 13px; }
-      .sbc2p-metric b { display: block; color: #d5dce4; font-size: 1.05rem; font-weight: 800; }
-      .sbc2p-metric span { font-size: .56rem; letter-spacing: .06em; color: rgba(176, 192, 209,.55); font-weight: 700; }
-      .sbc2p-desc { font-size: .84rem; line-height: 1.55; color: rgba(74,56,32,.75); margin: 0 0 16px; }
-      .sbc2p-h2 { font-size: 1.4rem; font-weight: 800; color: var(--sbc-coffee); font-family: var(--font-syne, inherit); }
-      .sbc2p-h2sub { font-size: .82rem; color: rgba(74,56,32,.65); margin: 4px 0 14px; line-height: 1.5; }
-      .sbc2p-room { border: 1px solid rgba(139,105,20,.18); border-radius: 16px; margin-bottom: 12px; overflow: hidden; background: #fff; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
+      /* v711 (owner) — the tour's metric strip + market panel were hardcoded
+         dark-walnut cards sitting on the light page (and never flipped for dark).
+         Re-themed to app tokens: light cards that match the page AND flip in
+         dark. Same one-system grammar as the calendar/selbox above. */
+      .sbc2p-metric { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 13px; padding: 12px 13px; }
+      .sbc2p-metric b { display: block; color: var(--text-base); font-size: 1.05rem; font-weight: 800; }
+      .sbc2p-metric span { font-size: .56rem; letter-spacing: .06em; color: var(--text-muted); font-weight: 700; }
+      .sbc2p-desc { font-size: .84rem; line-height: 1.55; color: var(--text-soft); margin: 0 0 16px; }
+      .sbc2p-h2 { font-size: 1.4rem; font-weight: 800; color: var(--text-base); font-family: var(--font-syne, inherit); }
+      .sbc2p-h2sub { font-size: .82rem; color: var(--text-soft); margin: 4px 0 14px; line-height: 1.5; }
+      .sbc2p-room { border: 1px solid var(--border-soft); border-radius: 16px; margin-bottom: 12px; overflow: hidden; background: var(--bg-card); box-shadow: 0 4px 16px rgba(31,26,15,.06); }
       .sbc2p-room-top { display: flex; align-items: center; gap: 11px; padding: 11px 13px; cursor: pointer; width: 100%; border: 0; background: none; }
       .sbc2p-room-img { width: 58px; height: 58px; border-radius: 11px; object-fit: cover; flex: none; font-size: 1.4rem; }
-      .sbc2p-room-name { font-weight: 800; color: var(--sbc-coffee); font-size: .95rem; }
-      .sbc2p-room-sub { font-size: .74rem; color: rgba(74,56,32,.62); }
-      .sbc2p-room-mkt { font-size: .68rem; color: #6b8f4e; font-weight: 700; margin-top: 1px; }
-      .sbc2p-room-in { font-size: .66rem; color: var(--sbc-gold-deep); font-weight: 800; margin-top: 1px; }
-      .sbc2p-room-caret { color: var(--sbc-gold-deep); font-weight: 800; font-size: .8rem; white-space: nowrap; }
-      .sbc2p-room-body { padding: 4px 13px 14px; border-top: 1px solid rgba(139,105,20,.12); }
-      .sbc2p-roomgal { position: relative; height: 165px; border-radius: 12px; overflow: hidden; margin: 11px 0; background: #cdd6df; }
+      .sbc2p-room-name { font-weight: 800; color: var(--text-base); font-size: .95rem; }
+      .sbc2p-room-sub { font-size: .74rem; color: var(--text-muted); }
+      .sbc2p-room-mkt { font-size: .68rem; color: color-mix(in srgb, #7FA968 62%, var(--text-base)); font-weight: 700; margin-top: 1px; }
+      .sbc2p-room-in { font-size: .66rem; color: var(--accent); font-weight: 800; margin-top: 1px; }
+      .sbc2p-room-caret { color: var(--accent); font-weight: 800; font-size: .8rem; white-space: nowrap; }
+      .sbc2p-room-body { padding: 4px 13px 14px; border-top: 1px solid var(--border-soft); }
+      .sbc2p-roomgal { position: relative; height: 165px; border-radius: 12px; overflow: hidden; margin: 11px 0; background: var(--bg-pill); }
       .sbc2p-roomgal img { width: 100%; height: 100%; object-fit: cover; }
       .sbc2p-amen { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0; }
-      .sbc2p-amen-chip { font-size: .68rem; font-weight: 600; color: rgba(74,56,32,.8); background: rgba(139,105,20,.09); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
-      .sbc2p-mkt { background: linear-gradient(135deg, #1c140c, #2c2116); color: #e4e9ee; border-radius: 14px; padding: 13px 15px; margin: 12px 0; border: 1px solid rgba(140, 160, 182,.2); }
-      .sbc2p-mkt-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; padding: 2px 0; opacity: .95; }
-      .sbc2p-mkt-row b { color: #d5dce4; font-size: .98rem; } .sbc2p-mkt-row small { opacity: .6; font-size: .62rem; font-weight: 500; }
-      .sbc2p-mkt-bar { display: flex; align-items: center; gap: 8px; margin: 10px 0 3px; font-size: .58rem; opacity: .8; }
+      .sbc2p-amen-chip { font-size: .68rem; font-weight: 600; color: var(--text-soft); background: var(--bg-pill); border: 1px solid var(--border-soft); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
+      .sbc2p-mkt { background: var(--bg-pill); color: var(--text-base); border-radius: 14px; padding: 13px 15px; margin: 12px 0; border: 1px solid var(--border-soft); }
+      .sbc2p-mkt-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; padding: 2px 0; color: var(--text-soft); }
+      .sbc2p-mkt-row b { color: var(--text-base); font-size: .98rem; } .sbc2p-mkt-row small { color: var(--text-muted); font-size: .62rem; font-weight: 500; }
+      .sbc2p-mkt-bar { display: flex; align-items: center; gap: 8px; margin: 10px 0 3px; font-size: .58rem; color: var(--text-muted); }
       .sbc2p-mkt-track { position: relative; flex: 1; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #6b8f4e, #96a9bc, #c96f4a); }
-      .sbc2p-mkt-dot { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #1f1710; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #d5dce4; }
-      .sbc2p-mkt-note { font-size: .7rem; color: #cde7b0; margin-top: 7px; }
-      .sbc2p-mkt-note.dim { color: rgba(176, 192, 209,.55); }
+      .sbc2p-mkt-dot { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: var(--bg-card); border: 2px solid var(--accent); transform: translate(-50%, -50%); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+      .sbc2p-mkt-note { font-size: .7rem; color: color-mix(in srgb, #7FA968 60%, var(--text-base)); margin-top: 7px; }
+      .sbc2p-mkt-note.dim { color: var(--text-muted); }
       /* v706 (owner ss4) — was a hardcoded dark-walnut calendar sitting on a
          light page; now theme-token based so it reads in light AND dark. The
          semantic green "available" hint is kept but pulled toward the theme text
