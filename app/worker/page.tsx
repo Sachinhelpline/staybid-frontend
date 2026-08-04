@@ -61,7 +61,7 @@ export default function WorkerLogin() {
   };
 
   return (
-    <div style={wrap}>
+    <div style={wrap} className="wauth-root">
       {/* v693 — desktop split-screen. Below lg the brand pane hides and the
           card fills the width, centred (byte-identical to the old layout).
           Presentation only — no auth logic changed. */}
@@ -75,9 +75,23 @@ export default function WorkerLogin() {
         .wauth-brand-list li { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: rgba(240,233,220,0.9); }
         .wauth-brand-list li svg { color: #e6c98a; flex-shrink: 0; }
         @media (min-width: 1024px) {
-          .wauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
-            background: radial-gradient(120% 85% at 12% 8%, rgba(150,120,70,0.20), transparent 58%), linear-gradient(155deg,#2b2419 0%,#1c160d 55%,#120d07 100%); }
-          .wauth-form { flex: 1 1 46%; padding-top: 0; align-items: center; }
+          /* v716 (owner) — ONE seamless dark canvas on desktop: the walnut
+             gradient moves to the ROOT (full-bleed, beats the inline --bg-page),
+             both panes transparent (no centre divider), and the form subtree is
+             pinned to dark tokens so the card renders as frosted glass with light
+             text — not a white box on the dark half. Mobile (<1024) unchanged. */
+          .wauth-root { background: radial-gradient(120% 85% at 12% 8%, rgba(150,120,70,0.20), transparent 58%), linear-gradient(155deg,#2b2419 0%,#1c160d 55%,#120d07 100%) !important; }
+          .wauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden; background: transparent; }
+          .wauth-form {
+            flex: 1 1 46%; padding-top: 0; align-items: center;
+            --bg-card: rgba(255,255,255,0.05);
+            --bg-input: rgba(255,255,255,0.06);
+            --text-base: #f6f0e4;
+            --text-soft: rgba(240,233,220,0.82);
+            --border-soft: rgba(255,255,255,0.12);
+            --border-strong: rgba(255,255,255,0.2);
+          }
+          .wauth-form > div { -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); }
         }
       `}</style>
 

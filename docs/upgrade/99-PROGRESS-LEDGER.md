@@ -19,6 +19,20 @@
 
 ## Session log
 
+### 2026-08-04 — Owner round 3: seamless sign-in (kill the centre seam + glass card) across EVERY auth screen (v716)
+**Owner: the centre line still shows (2 portions), the Google-auth card looks like a separate ugly box, admin login still old-based — upgrade every sign-in/signup, zero left. tsc + build clean, `test:security` 385/0.**
+- **Root cause of the "centre line":** v714's frosted-column treatment on the FORM pane (a translucent wash + `border-left` + inner shadow) WAS the divider the owner saw. Fix everywhere: **both panes fully transparent on the single root canvas — no wash, no border, no shadow** → one seamless screen; the form card is the only distinct element.
+- **The "separate ugly white card":** on the dark desktop canvas the customer sign-in card was a stark white box. Now it's a **frosted dark glass** panel (`rgba(255,255,255,.05)` + blur + hairline) that melts into the canvas, matching the partner/admin look. Facebook button + OR-rule + captions lightened for the glass; the white Google + green WhatsApp buttons stay (they pop). Mobile (<1024) unchanged.
+- **Screens swept (all now one seamless canvas + integrated card):**
+  - `app/auth/page.tsx` + `app/globals.css` — customer: seam removed, card → glass.
+  - `app/partner/page.tsx` — partner: seam removed (card was already glass).
+  - `app/admin/login/page.tsx` — admin: gradient moved to the root (was `#07080C` form-side vs a lighter brand gradient = the seam), both panes transparent, card `#0F1117` → frosted glass.
+  - `app/worker/page.tsx` — worker (same split seam): root gradient full-bleed (`!important` over the inline `--bg-page`), panes transparent, `.wauth-form` pinned to dark tokens so the card renders as glass with light text.
+  - `app/agent/login/page.tsx` — agent (single dark card): canvas → steel gradient, card `#0F1117` → glass (matches admin).
+  - `app/partner/staff/page.tsx` — already a premium glass card, single column, no seam → unchanged.
+  - `app/onboard/signin|signup` — simple centred themed forms (no dark split / no seam) → left as-is, consistent with the app's normal light/dark theme.
+- Badge v715→**v716**, sw HTML_CACHE v511→**v512**.
+
 ### 2026-08-04 — Owner round 2: Circle large-display width, basket overlap, trade widen+speed, hero per-device (v715)
 **Owner sent 3 more photos. tsc + build clean, `test:security` 385/0.**
 - **ss1 — Circle capped ~1340px → empty on MacBook/2560px + floating basket bar overlapped the footer**

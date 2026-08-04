@@ -67,7 +67,12 @@ export default function AdminLogin() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#07080C",
+        // v716 (owner) — ONE seamless canvas: the premium steel gradient lives on
+        // the ROOT (full-bleed), so the brand half and the form half share the
+        // exact same background — no centre seam. (Was #07080C on the form side
+        // vs a lighter brand-pane gradient → a visible divider line.)
+        background:
+          "radial-gradient(120% 85% at 12% 8%, rgba(120,145,170,0.16), transparent 58%), linear-gradient(155deg,#111722 0%,#0b0f18 55%,#07080c 100%)",
         display: "flex",
         alignItems: "stretch",
         fontFamily: "DM Sans, sans-serif",
@@ -90,8 +95,10 @@ export default function AdminLogin() {
         .aauth-brand-list li { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: rgba(200,210,224,0.86); }
         .aauth-brand-list li svg { color: #9fb1c2; flex-shrink: 0; }
         @media (min-width: 1024px) {
+          /* v716 — brand + form panes BOTH transparent on the shared root canvas:
+             one seamless screen, no divider. The glass card is the only element. */
           .aauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
-            background: radial-gradient(120% 85% at 12% 8%, rgba(120,145,170,0.16), transparent 58%), linear-gradient(155deg,#111722 0%,#0b0f18 55%,#07080c 100%); }
+            background: transparent; }
           .aauth-form { flex: 1 1 46%; }
         }
       `}</style>
@@ -116,13 +123,17 @@ export default function AdminLogin() {
       <div className="aauth-form">
       <div
         style={{
-          background: "#0F1117",
-          border: "1px solid rgba(255,255,255,0.07)",
+          // v716 (owner) — frosted dark glass so the card melts into the canvas
+          // (matches the customer + partner sign-in), not a solid separate box.
+          background: "rgba(255,255,255,0.045)",
+          border: "1px solid rgba(255,255,255,0.12)",
           borderRadius: 20,
           padding: "48px 40px",
           width: "100%",
           maxWidth: 440,
-          boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+          boxShadow: "0 26px 64px -28px rgba(0,0,0,0.7)",
+          backdropFilter: "blur(16px) saturate(1.2)",
+          WebkitBackdropFilter: "blur(16px) saturate(1.2)",
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 28 }}>
