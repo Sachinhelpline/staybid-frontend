@@ -2892,6 +2892,30 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
   the same `price_override` lever (now OTA-guarded) reachable via the My-Rooms bridge — no separate build
   needed unless the owner wants a dedicated `/circle` surface.
 
+### 2026-08-04 — Cross-channel oversell hardening, Phase 1: agent-lot date-aware cap (v728)
+- **Investigation (both channels, code-verified):** a CLASSIC owner can publish to the Model-3 agent
+  auction (default wholesale branch, no owner_type gate) and *technically* list on B2B Model-2 (API
+  ungated; UI hidden behind `isOperator`). BUT both break on classic hotels for the same root cause —
+  `assignFreeUnit` (`lib/inventory/assign.ts:72 if(!units.length) return null`) needs `hotel_room_units`
+  rows, which classic (category+quantity) hotels don't have: B2B classic checkout 409s (unbuyable
+  dead-end); Model-3 classic never writes a hold → **permanent oversell** (agent allotment stays
+  guest/OTA-bookable). Where units exist, B2B is clash-free (holds at purchase-verify); Model-3 holds
+  only at the optional enable-selling step.
+- **Phase 1 (safe, read-only, shipped):** `/api/trade/owner/lots` publish now caps `numRooms` against the
+  rooms actually FREE across the auction month via `unitsFreeForRange` (capacity − existing
+  bookings/holds, tightest night) — closing the "auction rooms that are already booked" over-promise hole
+  for BOTH classic (capacity = `rooms.quantity`) and Circle. Fail-open (null capacity signal → no cap,
+  unchanged). The pre-existing raw unit-count guard is kept.
+- Badge v727→**v728** (`v728-agent-lot-availability-cap`). sw HTML_CACHE unchanged (server-only route).
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- **NEXT — Phase 2 (the core fix, DELICATE):** a category-level hold for unit-less classic hotels so an
+  agent's won allotment (and a classic B2B buy) reserves inventory (a `room_blocks` row with NO
+  assignedUnitId — the availability engine already counts every block as `numRooms:1` against
+  `rooms.quantity`, so it fits with no engine change). This closes the classic Model-3 oversell AND makes
+  classic B2B buyable. It touches the verified award money-path + the availability write surface (both on
+  the "never touch casually" list) → to be built as a careful, dedicated step with a live round-trip
+  (seed classic room → hold → assert unitsFreeForRange drops + guest can't book → cleanup), NOT rushed.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT
