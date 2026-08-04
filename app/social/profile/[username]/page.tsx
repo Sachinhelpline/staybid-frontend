@@ -90,7 +90,7 @@ export default function SocialProfilePage() {
   );
 
   return (
-    <div className="min-h-dvh bg-black text-white">
+    <div className="min-h-dvh bg-black text-white overflow-x-hidden">
       <ProfileHeader
         profile={profile}
         postCount={posts.length}
@@ -117,7 +117,7 @@ export default function SocialProfilePage() {
             key={t}
             onClick={() => setTab(t)}
             className="py-3 text-[0.72rem] font-bold tracking-wide uppercase relative"
-            style={{ color: tab === t ? "#fff" : "rgba(255,255,255,0.4)" }}
+            style={{ color: tab === t ? "#fff" : "rgba(255,255,255,0.62)" }}
           >
             {t === "reels" ? "▶ Reels" : t === "photos" ? "📷 Photos" : "📖 Stories"}
             {tab === t && (

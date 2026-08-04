@@ -5,7 +5,7 @@
 // the creator application form — lives in <UpgradeSection /> which is
 // shared with /profile so both pages stay in sync.
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UpgradeSection } from "@/components/upgrade/UpgradeSection";
 // v139 — Phase-3 earn tour. 3 steps walk through Creator path + Hotel
@@ -82,7 +82,7 @@ export default function UpgradePage() {
         {/* Approval & KYC explainer */}
         <div className="card-luxury sb-card-lift p-5 mt-5 sb-fade-in" style={{ animationDelay: "0.15s" }}>
           <h3 className="font-bold text-luxury-900 mb-3 flex items-center gap-2">
-            <span>🛡️</span> How approval works
+            <ShieldCheck size={17} strokeWidth={2.2} aria-hidden style={{ display: "inline-block", verticalAlign: "-3px", color: "#8198ae" }} /> How approval works
           </h3>
           <ol className="text-luxury-700 text-sm space-y-2.5 pl-1 sb-stagger">
             <li><b>1. Submit application</b> — fill the form for the path you want (Creator or Hotel).</li>

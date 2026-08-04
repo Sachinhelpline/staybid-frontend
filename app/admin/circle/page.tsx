@@ -7,7 +7,10 @@
 // Payouts (post monthly returns) · Locks (read-only).
 
 import { useEffect, useMemo, useState } from "react";
+import { Pencil, Save, Trash2 } from "lucide-react";
 import { CountUp } from "@/components/CountUp";
+
+const admIco = { verticalAlign: "-2px", marginRight: 4 } as const;
 import { fmtINR, DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig } from "@/lib/circle/engine";
 // v312 — the SINGLE StayCircle onboarding form, shared with /circle/onboard.
 // Carries the inline room-category builder (fixes the false-"Sold out" caused
@@ -186,10 +189,10 @@ export default function AdminCirclePage() {
                 >
                   {["pending", "active", "inactive", "sold_out", "coming_soon", "rejected"].map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <button style={btnS(C.blue)} onClick={() => setEditor({ entity: "property", row: p })}>✎ Edit</button>
+                <button style={btnS(C.blue)} onClick={() => setEditor({ entity: "property", row: p })}><Pencil size={12} strokeWidth={2.2} aria-hidden style={admIco} />Edit</button>
                 <button style={btnS(C.red, "#fff")} disabled={!!busy} onClick={() => {
                   if (confirm(`Delete "${p.title}" + its room types?`)) mutate("DELETE", undefined, `?entity=property&id=${p.id}`);
-                }}>🗑</button>
+                }}><Trash2 size={12} strokeWidth={2.2} aria-hidden /></button>
               </div>
             </div>
           ))}
@@ -203,7 +206,7 @@ export default function AdminCirclePage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <button style={btnS(C.blue)} onClick={() => setEditor({ entity: "room_type", row: rt })}>✎ Edit</button>
+                <button style={btnS(C.blue)} onClick={() => setEditor({ entity: "room_type", row: rt })}><Pencil size={12} strokeWidth={2.2} aria-hidden style={admIco} />Edit</button>
                 <button style={btnS(rt.active ? "#0F1117" : C.green, rt.active ? C.sub : "#07080C")} disabled={!!busy}
                   onClick={() => mutate("PATCH", { entity: "room_type", id: rt.id, data: { active: !rt.active } })}>
                   {rt.active ? "⏸ Deactivate" : "▶ Activate"}
@@ -400,7 +403,7 @@ function EditorModal({
               <CircleOnboardForm
                 variant="admin"
                 initial={propInitial}
-                submitLabel="💾 Save property"
+                submitLabel="Save property"
                 onCancel={onClose}
                 onSubmit={(p) => onSave({ ...p, status: row?.status || "active" })}
               />
@@ -458,7 +461,7 @@ function EditorModal({
               const { id, created_at, updated_at, user, ...payload } = form;
               void id; void created_at; void updated_at; void user;
               onSave(payload);
-            }}>💾 Save</button>
+            }}><Save size={12} strokeWidth={2.2} aria-hidden style={admIco} />Save</button>
           </div>
         )}
       </div>
@@ -523,7 +526,7 @@ function RevenueModelEditor({
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
-        <button style={btnS(C.gold)} disabled={busy} onClick={() => onSave(f)}>💾 Save revenue model</button>
+        <button style={btnS(C.gold)} disabled={busy} onClick={() => onSave(f)}><Save size={12} strokeWidth={2.2} aria-hidden style={admIco} />Save revenue model</button>
         <button
           style={btnS("#0F1117", C.sub)}
           disabled={busy}

@@ -263,7 +263,7 @@ function UpgradeCard({
           {config.emoji}
         </div>
         <div className="min-w-0">
-          <p className="text-[0.62rem] uppercase tracking-widest font-bold text-luxury-500">{config.tag}</p>
+          <p className="text-[0.63rem] uppercase tracking-widest font-bold text-luxury-500">{config.tag}</p>
           <h3 className="font-display text-lg font-bold text-luxury-900 leading-tight truncate">{config.title}</h3>
         </div>
       </div>
@@ -363,16 +363,16 @@ function CreatorApplicationForm({
       <div className="card-luxury p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-lg font-bold text-luxury-900">Creator application</h3>
-          <span className="text-[0.62rem] uppercase tracking-widest font-bold text-gold-700">Step 1 of 1</span>
+          <span className="text-[0.63rem] uppercase tracking-widest font-bold text-gold-700">Step 1 of 1</span>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="px-3 py-2 rounded-xl bg-luxury-50 border border-luxury-200">
-            <p className="text-[0.6rem] uppercase tracking-widest font-bold text-luxury-500">Mobile number</p>
+            <p className="text-[0.63rem] uppercase tracking-widest font-bold text-luxury-500">Mobile number</p>
             <p className="text-sm font-bold text-luxury-800 mt-0.5">{phone || "—"}</p>
           </div>
           <div className="px-3 py-2 rounded-xl bg-luxury-50 border border-luxury-200">
-            <p className="text-[0.6rem] uppercase tracking-widest font-bold text-luxury-500">Account name</p>
+            <p className="text-[0.63rem] uppercase tracking-widest font-bold text-luxury-500">Account name</p>
             <p className="text-sm font-bold text-luxury-800 mt-0.5">{displayName || "Guest"}</p>
           </div>
         </div>

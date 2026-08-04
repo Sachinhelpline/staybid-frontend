@@ -121,7 +121,7 @@ export default function SavedPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-2 sb-fade-in">
-          <Bookmark size={26} strokeWidth={2.2} aria-hidden style={{ color: "#8198ae" }} />
+          <Bookmark size={26} strokeWidth={2.2} aria-hidden style={{ color: "var(--text-soft)" }} />
           <div>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-luxury-900 leading-none">Saved</h1>
             <p className="text-luxury-500 text-sm mt-1">Your collection of reels, hotels & deals</p>
@@ -135,7 +135,7 @@ export default function SavedPage() {
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`shrink-0 px-4 py-2 rounded-2xl text-sm font-semibold border transition-all sb-card-lift ${
                 tab === t.id
-                  ? "bg-gold-500 text-white border-gold-600 shadow-gold"
+                  ? "bg-gold-700 text-white border-gold-700 shadow-gold"
                   : "bg-white text-luxury-700 border-luxury-200 hover:border-gold-400"
               }`}>
               <span className="mr-1.5">{t.icon}</span>{t.label}

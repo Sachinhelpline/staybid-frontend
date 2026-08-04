@@ -22,7 +22,7 @@ import { chromium } from 'playwright-core';
 
 const BASE = process.argv[2] || 'http://localhost:3960';
 const ONLY = process.argv[3] || '';
-const WIDTHS = [280, 320, 360, 390, 414, 768, 834, 1024, 1280, 1440, 1536, 1920, 2560];
+const WIDTHS = (process.env.AUDIT_WIDTHS ? process.env.AUDIT_WIDTHS.split(',').map(Number) : [280, 320, 360, 390, 414, 768, 834, 1024, 1280, 1440, 1536, 1920, 2560]);
 const THEMES = ['light', 'dark'];
 const MAX_LINE = 1500;   // a single text block wider than this reads as "stretched"
 const FONT_FLOOR = 10;   // px — flag genuinely-tiny text (< floor). 10px micro-labels
@@ -42,7 +42,14 @@ const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔
   // circle content vocabulary: property/destination types + season/weather glyphs (hybrid keep)
   '🏡','🏘','🏛','🛖','🌴','☁️','☁','☕','⬆','⛺','🌲','🌳','🌾','🏢','🪵',
   // city/destination + location-picker glyphs (lib/cities CITY_ICON + globe/GPS) (hybrid keep)
-  '🏙','⛰','🏰','🕉','🌨','🏂','🐪','🛰','🌏','🌐']);
+  '🏙','⛰','🏰','🕉','🌨','🏂','🐪','🛰','🌏','🌐',
+  // food/hospitality/social content-vocabulary: F&B ordering + IG profile tabs (hybrid keep)
+  '🍽','🍴','🛎','📷','📖','🤷',
+  // review/feedback content-vocabulary: rating star + sentiment + feedback categories (hybrid keep)
+  '⭐','🙂','🤝','🧼','💭',
+  // admin-panel status/domain/section vocabulary (dark-only internal tool; hybrid keep) — the
+  // CRUD-action trio (edit/save/delete) is still converted to lucide, not kept
+  '✗','⏸','⚠','🔒','🎟','🛋','🧺','🧑','🧮','🗂','💸','⏱','⏳','🔧']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
@@ -244,6 +251,39 @@ const ROUTES = [
     fixtures:{ 'videos/feed':{ok:true,videos:[{id:'v1',hotelId:'h1',hotelName:'Cave View',city:'Dehradun',s3_url:'x',thumbnail_url:'x',caption:'Tour',like_count:12,author_name:'Asha'}]}, 'hashtags/trending':{ok:true,tags:['#dehradun','#hills']} } },
   { route:'/me', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
     fixtures:{ 'social/profiles/me':{ok:true,profile:{display_name:'Asha Verma',username:'asha',follower_count:12,is_verified:false,bio:'Traveller'}}, 'influencer/my-videos':{ok:true,videos:[]}, 'social/feed':{ok:true,posts:[]} } },
+
+  // ── Bucket A: previously-unswept surfaces (dual-theme) ───────────────────
+  { route:'/upgrade', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'tier/status':{ok:true,tier:'PUBLIC'}, 'social/profiles/me':{ok:true,profile:{display_name:'Asha'}}, 'upgrade/status':{ok:true} } },
+  { route:'/verification', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'verification/status':{ok:true,status:'none'}, 'user/verification':{ok:true} } },
+  { route:'/verification/record', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'}, fixtures:{ 'verification/status':{ok:true,status:'none'} } },
+  { route:'/influencer/register', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'}, fixtures:{ 'influencer/me':{ok:true,influencer:null} } },
+  { route:'/saved', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'}, fixtures:{ 'discover/saves/enriched':{ saves:[] } } },
+  { route:'/tag/dehradun', scope:'body', fixtures:{ 'social/feed':{ok:true,posts:[]}, 'hashtags/dehradun':{ok:true,posts:[]} } },
+  { route:'/order/o1', scope:'body', fixtures:{ 'order/outlet/o1':{ok:true,outlet:{id:'o1',name:'Cafe Ridge',items:[]}} } },
+  { route:'/circle/c1', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'}, fixtures:{ 'circle/properties':CIRCLE_PROPS } },
+  // IG fixed-dark cluster (Instagram-style; verify responsive/font — dark aesthetic intended)
+  { route:'/social/profile/user1', scope:'body', fixtures:{ 'social/profiles/user1':{ok:true,profile:{id:'p1',user_id:'u9',user_type:'PUBLIC',display_name:'Asha',username:'asha',follower_count:12}}, 'social/feed':{ok:true,posts:[]} } },
+  { route:'/u/user1', scope:'body', fixtures:{ 'social/profiles/user1':{ok:true,profile:{id:'p1',user_id:'u9',user_type:'PUBLIC',display_name:'Asha',username:'asha',follower_count:12}}, 'social/feed':{ok:true,posts:[]} } },
+  { route:'/u/user1/posts', scope:'body', fixtures:{ 'social/feed':{ok:true,posts:[]} } },
+  { route:'/saved/posts', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha"}'}, fixtures:{ 'discover/saves/enriched':{saves:[]} } },
+
+  // ── Bucket B: token-aware unswept pages (workforce / trust / hotel sub-pages) ──
+  { route:'/worker', scope:'body', fixtures:{} },
+  { route:'/worker/dashboard', scope:'body', ls:{ sb_worker_token:'t', sb_worker:'{"id":"w1","name":"Ravi Kumar","phone":"+919812345678","role":"housekeeping"}' },
+    fixtures:{ 'worker/jobs':{ ok:true, jobs:[{ id:'j1', title:'Room 204 cleaning', status:'assigned', hotel_name:'Cave View Resort', pay:300, scheduled_at:'2026-08-05 10:00:00' }] }, 'worker/me':{ ok:true, worker:{ id:'w1', name:'Ravi Kumar', role:'housekeeping', jobs_done:12, status:'approved' } } } },
+  { route:'/trust', scope:'body', fixtures:{ 'hotels/scorecards':{ ok:true, scores:{} } } },
+  { route:'/privacy-policy', scope:'body', fixtures:{} },
+  { route:'/hotels/h1/feedback', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'hotels/h1':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', images:['x'] } }, 'bookings/my':{ bookings:[{ id:'bk1', status:'CONFIRMED', hotelId:'h1', hotelName:'Cave View Resort', checkIn:'2026-07-10', checkOut:'2026-07-12' }] }, 'feedback/mine':{ feedback:[] } } },
+  // ── Bucket C: admin sub-pages spot-check (dark-only per owner decision) ──
+  { route:'/admin/circle', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/circle':{ kpis:{properties:2,locks:1,bundles:1,monthlyGmv:120000,collected:80000,paidOut:20000}, properties:[{id:'p1',title:'Cave View Resort',city:'Dehradun'}], roomTypes:[{id:'rt1',name:'Deluxe',property_id:'p1'}], bundles:[], payouts:[], locks:[], ownedUnits:[] } } },
+  { route:'/admin/host/catalog', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/host/catalog':{ sections:{ amenities:[{id:'a1',name:'Wi-Fi'}], room_types:[{id:'r1',title:'Suite'}] }, items:[] } } },
+  { route:'/admin/creators', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/creators':{ creators:[{id:'c1',name:'Asha Verma',handle:'asha',status:'approved',followers:8200}] } } },
+
+  { route:'/hotels/h1/reviews', scope:'body',
+    fixtures:{ 'hotels/h1':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', avgRating:4.6, totalReviews:128, images:['x'] } }, 'hotels/h1/reviews':{ reviews:[{ id:'rv1', rating:5, text:'Lovely stay, great views.', author:'Asha', createdAt:'2026-07-01' },{ id:'rv2', rating:4, text:'Clean and comfortable.', author:'Rahul', createdAt:'2026-06-20' }] } } },
 ];
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });

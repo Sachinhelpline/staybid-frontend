@@ -813,7 +813,7 @@ const styles = `
 .hsb-compact-pill .hsb-cp-denom {
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
   font-style: normal;
-  font-size: 0.62rem;
+  font-size: 0.63rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--cozy-cocoa-soft, #6e5430);
@@ -833,8 +833,8 @@ const styles = `
   .hsb-compact-pill .hsb-cp-icon { font-size: 0.88rem; }
   .hsb-compact-pill .hsb-cp-text { font-size: 0.7rem; }
   .hsb-compact-pill .hsb-cp-score { font-size: 1rem; }
-  .hsb-compact-pill .hsb-cp-denom { font-size: 0.56rem; }
-  .hsb-compact-pill .hsb-cp-meta { font-size: 0.58rem; }
+  .hsb-compact-pill .hsb-cp-denom { font-size: 0.63rem; }
+  .hsb-compact-pill .hsb-cp-meta { font-size: 0.63rem; }
 }
 /* Compact pill — laptop */
 @media (min-width: 1024px) {
