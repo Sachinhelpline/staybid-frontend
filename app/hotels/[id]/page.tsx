@@ -2048,14 +2048,21 @@ export default function HotelDetail() {
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: negNumRooms, guests: globalTotalGuests || negRoom.capacity || 2, ...(negUnitId ? { assignedUnitId: negUnitId } : {}) });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
-      // Record customer intent (no payment for below-floor)
+      // Record customer intent (NO payment for below-floor — the guest has NOT
+      // paid; this bid is only forwarded to the hotel to counter/accept).
+      // v716.1 (owner ss4 BUG): this used to send `paidTotal: total` (the amount
+      // the guest WOULD pay), which wrote a real bid_paid_amounts row and made a
+      // PENDING, unpaid bid read as PAID in the admin timeline + Paid Total. It
+      // MUST be 0 — matching this flow's own "no payment" comment and the sibling
+      // recordAttribution({ paidTotal: 0 }) call just below. `paidPerNight` still
+      // carries the guest's preferred rate (for the hotel's counter context).
       try {
         await fetch("/api/bid/paid", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             bidId: bidRes.bid.id, hotelId: hotel.id, roomId: negRoom.id,
             customerId: user.id,
-            paidTotal: total, paidPerNight: negAmt, nights,
+            paidTotal: 0, paidPerNight: negAmt, nights,
             flow: "negotiate-below-floor",
           }),
         });

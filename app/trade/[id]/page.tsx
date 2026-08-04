@@ -108,6 +108,17 @@ export default function TradeTourPage() {
             </div>
           )}
           {room.description && <p className="sbt-desc sm">{room.description}</p>}
+
+          {/* v716.1 (owner ss1) — fill the left column (was dead space beside the
+              tall bid panel on desktop) with the genuinely-useful "how this works"
+              for an agent, so the two columns balance and nothing reads empty. It
+              is real context on mobile too (renders after the room details). */}
+          <div className="sbt-how">
+            <div className="sbt-how-h">How this works</div>
+            <div className="sbt-how-step"><span className="sbt-how-ic">💰</span><div><b>Bid wholesale</b><p>Set your price per room / night — {isLive ? "no deposit, pay only if it's accepted." : "one refundable EMD held until the month-end close."}</p></div></div>
+            <div className="sbt-how-step"><span className="sbt-how-ic">🏆</span><div><b>Win the allotment</b><p>{isLive ? "The owner accepts, counters, or you lock instantly — then you pay from your dashboard." : "Highest bids per room-night clear automatically at the close."}</p></div></div>
+            <div className="sbt-how-step"><span className="sbt-how-ic">📈</span><div><b>Resell to your guests</b><p>List the room up to its booking price on StayBid + your own channels and pocket the difference.</p></div></div>
+          </div>
         </div>
 
         <div className="sbt-right">
@@ -470,6 +481,13 @@ function TourStyles() {
       .sbt-roomgal img { width: 100%; height: 100%; object-fit: cover; }
       .sbt-amen { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 4px; }
       .sbt-amen-chip { font-size: .68rem; font-weight: 600; color: var(--trd-ink-2); background: var(--trd-soft); border: 1px solid var(--trd-line); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
+      /* v716.1 (owner ss1) — "how this works" fill for the left column */
+      .sbt-how { margin-top: 18px; background: var(--trd-card); border: 1px solid var(--trd-line); border-radius: 16px; padding: 16px 16px 6px; box-shadow: 0 4px 16px rgba(31,26,15,.05); }
+      .sbt-how-h { font-family: var(--font-display, "Cormorant Garamond", Georgia, serif); font-size: 1.2rem; font-weight: 600; color: var(--trd-ink); margin-bottom: 12px; }
+      .sbt-how-step { display: flex; gap: 12px; margin-bottom: 12px; }
+      .sbt-how-ic { font-size: 1.35rem; line-height: 1.2; flex: none; }
+      .sbt-how-step b { display: block; font-size: .9rem; color: var(--trd-ink); }
+      .sbt-how-step p { margin: 2px 0 0; font-size: .8rem; line-height: 1.5; color: var(--trd-ink-2); }
       .sbt-bidbox { background: var(--trd-card); border: 1px solid var(--trd-line); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(31,26,15,.06); }
       .sbt-live-pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 3px 11px; margin-bottom: 11px; }
       .sbt-live-ok { color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 8px 11px; font-size: .8rem; font-weight: 600; margin: 6px 0; }
