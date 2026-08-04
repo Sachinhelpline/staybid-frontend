@@ -1044,13 +1044,34 @@
 .auth-brandpane-list li { display: flex; align-items: center; gap: 12px; font-size: .95rem; color: rgba(243,237,225,.92); }
 .auth-brandpane-list li svg { color: #ffd98a; flex-shrink: 0; }
 @media (min-width: 1024px) {
-  .auth-brandpane {
-    display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
+  /* v714 (owner ss7) — ONE continuous premium canvas across the whole desktop
+     sign-in, so the brand half and the form half stop reading as two different
+     cards. The gradient now lives on the ROOT (full-bleed, both themes); the
+     brand pane is transparent (shows the shared canvas) and the form pane is a
+     faint translucent wash of the SAME colour with a hairline seam + inner
+     shadow — a gentle frosted column, not a second card. The sign-in card
+     floats on it. Mobile (<1024) is UNCHANGED (cozy light/dark, single pane). */
+  .auth-root.lux-bg {
     background:
       radial-gradient(120% 85% at 12% 8%, rgba(106,133,160,.20), transparent 58%),
       linear-gradient(155deg, #2b2419 0%, #1c160d 55%, #120d07 100%);
   }
-  .auth-formpane { flex: 1 1 46%; }
+  .auth-brandpane {
+    display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
+    background: transparent;
+  }
+  .auth-formpane {
+    flex: 1 1 46%;
+    background: linear-gradient(180deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.018) 100%);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    border-left: 1px solid rgba(255,255,255,.08);
+    box-shadow: inset 34px 0 62px -42px rgba(0,0,0,.5);
+  }
+  /* Copy that sits OUTSIDE the floating card, directly on the dark form wash
+     (the "Sign in to your account" brand subtitle + the "By continuing…"
+     footnote) — keep it a readable warm cream on the dark canvas. */
+  .auth-formpane .text-luxury-300,
+  .auth-formpane .text-luxury-400 { color: rgba(243,237,225,.66) !important; }
 }
 .auth-root .bg-white { background: var(--bg-card) !important; }
 /* v642 — auth card shells join the borderless 4-layer 3D grammar (same
@@ -3054,13 +3075,26 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 
 /* Tabs bar */
+/* v714 (owner ss6) — the 4 tabs (Rooms & Pricing · Guest Reviews · Guest
+   Feedback · About this stay) summed wider than a narrow/Flip viewport, and
+   with the old `display:flex` (nowrap default, no overflow) the last tab
+   ("About this stay") was simply clipped off-screen. Make the row a horizontal
+   scroller: tabs keep their width (no shrink/wrap) and the strip scrolls so
+   EVERY tab is reachable on any width; the scrollbar is hidden for cleanliness.
+   On wide screens all four fit, so nothing scrolls — no visual change there. */
 .hx-tabs {
   display: flex;
   border-bottom: 1px solid var(--border-soft);
   margin: 24px 0 22px;
   gap: 4px;
   position: relative;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.hx-tabs::-webkit-scrollbar { display: none; }
 .hx-tab {
   position: relative;
   background: transparent;
@@ -3073,6 +3107,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   letter-spacing: 0.01em;
   transition: color 0.22s ease;
   font-family: inherit;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .hx-tab::after {
   content: "";
@@ -4680,7 +4716,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   font-size: 0.73rem; font-weight: 600;
 }
 .bx-live-stat.is-live { color: var(--text-soft); }
-.bx-live-stat.is-ok { color: #5f7a4a; font-weight: 700; }
+.bx-live-stat.is-ok { color: #47702f; font-weight: 700; } /* v714 — deepened green: #5f7a4a olive read faint on the cream accepted card (owner ss3) */
 .bx-live-stat.is-counter { color: #7890a9; font-weight: 700; }
 .bx-live-stat.is-rej { color: var(--text-muted); }
 .bx-live-stat-tx { flex: 1; min-width: 0; }
@@ -4954,7 +4990,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   font-size: 0.62rem; font-weight: 900;
   flex-shrink: 0;
 }
-.bx-live-head-ok { color: #5f7a4a; font-weight: 800; }
+.bx-live-head-ok { color: #47702f; font-weight: 800; } /* v714 — deepened (see .is-ok) */
 .bx-live-card.is-expired { opacity: 0.5; }
 .bx-live-card.is-expired .bx-live-card-amt { color: var(--text-muted); }
 
@@ -4963,9 +4999,9 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 .bx-live-save-strike { font-size: 0.7rem; color: var(--text-muted); text-decoration: line-through; font-variant-numeric: tabular-nums; }
 .bx-live-save-tag {
   font-size: 0.64rem; font-weight: 800;
-  color: #5f7a4a;
-  background: rgba(127, 146, 105, 0.14);
-  border: 1px solid rgba(127, 146, 105, 0.3);
+  color: #3f6629; /* v714 — deepened from #5f7a4a for a clearer read on the cream card */
+  background: rgba(127, 146, 105, 0.18);
+  border: 1px solid rgba(127, 146, 105, 0.38);
   border-radius: 999px; padding: 2px 9px;
   font-variant-numeric: tabular-nums;
 }
@@ -11266,6 +11302,31 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 @keyframes cmmSheetIn {
   from { transform: translateY(28px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
+}
+/* v714 (owner ss2/ss3) — the .cmm-sheet is a HARDCODED light frosted panel in
+   BOTH themes ("translucent cream" above), but its .bx-* content reads the app
+   theme tokens. In DARK mode those tokens flip (--bg-card → navy, --text-* →
+   light), so the cozy-fixed labels/amounts went dark-on-dark and the muted
+   captions went light-on-cream — exactly the "kisi kisi phone main font visible
+   nhi hai" the owner hit (they run the app in dark mode). Pin the sheet's token
+   subtree to the LIGHT values so the whole sheet renders as the well-tested
+   light design in EITHER app theme. Light theme is byte-identical (same values
+   it already had); only dark mode is corrected. */
+[data-theme="dark"] .cmm-sheet {
+  --bg-card: var(--cozy-cream-50);
+  --bg-elevated: rgba(176, 192, 209, 0.94);
+  --bg-input: var(--cozy-cream-50);
+  --bg-pill: var(--cozy-cream-50);
+  --bg-pill-active: linear-gradient(135deg, #b4c1cf, #5f7c98);
+  --text-base: var(--cozy-warm-dark);
+  --text-soft: var(--cozy-cocoa);
+  --text-muted: color-mix(in srgb, var(--cozy-cocoa-soft) 55%, var(--cozy-cocoa));
+  --text-inverse: var(--cozy-warm-dark);
+  --border-soft: var(--cozy-taupe);
+  --border-strong: rgba(110, 84, 48, 0.3);
+  --accent: #4f6d8a;
+  --accent-soft: rgba(79, 109, 138, 0.14);
+  --link: var(--cozy-cocoa);
 }
 .cmm-sheet-handle {
   width: 44px;

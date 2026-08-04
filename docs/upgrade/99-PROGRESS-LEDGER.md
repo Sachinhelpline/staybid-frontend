@@ -19,6 +19,36 @@
 
 ## Session log
 
+### 2026-08-04 — Owner ss1–ss7 round: sign-in unify, dark-mode bid contrast, /bid nav, arena fit, tab clip (v714)
+**Owner sent 7 device photos. All presentation-only; `test:security` stayed 385/0, tsc + build clean.**
+- **ss1 + ss7 — split-screen sign-in read as "2 different cards"** (`app/partner/page.tsx`, `app/auth/page.tsx`
+  + `app/globals.css`). Desktop (≥1024) now shares ONE continuous premium canvas: the gradient moved to the
+  ROOT (full-bleed), the brand pane is transparent (shows the shared canvas), and the form pane is a faint
+  translucent same-colour wash + hairline seam + inner shadow — a gentle frosted column, not a second card. The
+  sign-in card floats on it; out-of-card copy (brand subtitle / "By continuing") kept cream on the dark wash.
+  Mobile (<1024) unchanged.
+- **ss2 + ss3 — "font visible nhi hai" in the /bid step sheets (owner runs DARK mode).** Root cause: `.cmm-sheet`
+  is a HARDCODED light frosted panel in both themes, but its `.bx-*` content reads the app theme tokens — in dark
+  mode those flip (`--bg-card`→navy, `--text-*`→light), so cozy-fixed labels went dark-on-dark and muted captions
+  went light-on-cream. Fix: **pin the sheet's token subtree to the LIGHT values in dark mode**
+  (`[data-theme="dark"] .cmm-sheet { … }`) so the whole sheet renders as the tested light design in either theme
+  (light theme byte-identical). Also deepened the accepted-card greens (`.bx-live-stat.is-ok` / `-head-ok` /
+  `-save-tag`: `#5f7a4a`→`#47702f`/`#3f6629`) for a clearer read on the cream card.
+- **ss4 — /bid climber buried the bottom nav (customer stuck).** The `.bgz-shell` is a fixed z-1000 fullscreen
+  overlay; the v614 carve reserved a dock band but on gesture-nav devices the dock still read as buried. Fix:
+  raise the dock ABOVE the shell on /bid (`body.sb-bid-immersive .ig-bottom-dock { z-index: 1001 }`) so it is
+  always visible + tappable; shell content stays clipped to the carve so the dock never overlaps a sheet's CTA.
+- **ss5 — AI Bidding Arena needed awkward scrolling / clipped the submit on Flip** (`app/hotels/[id]/page.tsx`).
+  The panel body used a hard-coded `maxHeight: calc(92vh - 70px)` (fixed-header assumption) + `overflow-hidden`
+  panel, so a taller-than-70px header on a short screen pushed the submit below the clipped panel. Fix: panel is
+  now a flex column (`flex flex-col`, `maxHeight: 92dvh`), header `shrink-0`, body `flex-1 min-h-0 overflow-y-auto`
+  — nothing is clipped on ANY height and dvh accounts for the mobile browser-UI band.
+- **ss6 — hotel tab strip clipped "About this stay" on narrow/Flip** (`.hx-tabs`/`.hx-tab`). The flex row had no
+  wrap/overflow, so the 4th tab fell off-screen. Fix: horizontal scroller (`flex-wrap:nowrap; overflow-x:auto`,
+  hidden scrollbar; tabs `white-space:nowrap; flex:0 0 auto`) so every tab is reachable; wide screens still fit
+  all four with no scroll.
+- Badge v713→**v714**, sw HTML_CACHE v509→**v510**.
+
 ### 2026-08-04 — Circle rebuild polish + exhaustive breakpoint QA (v713)
 **Owner: the 2 polish items, then a full QA sweep.**
 - **Home model cards** — the hollow middle is filled with a compact feature-chip row per model (Model 1

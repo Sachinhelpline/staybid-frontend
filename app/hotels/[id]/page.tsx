@@ -4958,12 +4958,19 @@ export default function HotelDetail() {
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center backdrop-blur-md"
             style={{ background:"rgba(2,4,12,0.78)" }}
             onClick={() => setNegRoom(null)}>
-            <div className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden relative"
+            {/* v714 (owner ss5) — flex COLUMN so the header keeps its natural
+                height and the body flexes to fill the rest + scrolls. The old
+                fixed header assumption (body maxHeight: calc(92vh - 70px)) made
+                the header taller than 70px on a short Flip screen push the
+                submit button below the clipped panel — unreachable. Now nothing
+                is clipped on ANY height, and dvh (not vh) accounts for the
+                mobile browser-UI band so the panel never exceeds the screen. */}
+            <div className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden relative flex flex-col"
               onClick={e => e.stopPropagation()}
               style={{
                 background:"linear-gradient(180deg,#07060d 0%,#0d0a18 50%,#07060d 100%)",
                 boxShadow:"0 30px 80px -10px rgba(120,150,182,0.24), 0 0 0 1px rgba(120,150,182,0.16)",
-                maxHeight:"92vh",
+                maxHeight:"92dvh",
               }}>
 
               <style>{`
@@ -4996,8 +5003,8 @@ export default function HotelDetail() {
                 .neg-ticker{animation:negTicker 12s ease-in-out infinite}
               `}</style>
 
-              {/* HEADER — dark gold with live pulse */}
-              <div className="relative px-6 py-4 flex items-center justify-between"
+              {/* HEADER — dark gold with live pulse. shrink-0 → never squeezed. */}
+              <div className="relative px-6 py-4 flex items-center justify-between shrink-0"
                 style={{ background:"linear-gradient(135deg,#0c0a14 0%,#1a1424 50%,#0c0a14 100%)", borderBottom:"1px solid rgba(120,150,182,0.24)" }}>
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.55rem] font-bold tracking-[0.18em] uppercase"
@@ -5013,8 +5020,9 @@ export default function HotelDetail() {
                 <ModalCloseButton onClose={() => setNegRoom(null)} tone="dark" />
               </div>
 
-              {/* BODY */}
-              <div className="relative p-5 space-y-4 overflow-y-auto" style={{ maxHeight:"calc(92vh - 70px)" }}>
+              {/* BODY — flex-1 + min-h-0 so it fills the remaining panel height
+                  and scrolls internally; no hard-coded header offset. */}
+              <div className="relative p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
                 {/* Floating particles (only above floor → green vibe) */}
                 {isInstant && (
                   <div className="neg-particles">
