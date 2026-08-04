@@ -376,8 +376,20 @@ export default function ClimberMilestoneMap({
     if (sheetIdx === null) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // v732 — the step sheet is a MODAL: hide the bottom nav dock (+ floating
+    // chrome) while it's open, exactly like every other modal (sb-modal-open).
+    // ROOT CAUSE of "har step ka CTA/content hide ho raha hai": the
+    // .cmm-sheet backdrop renders INSIDE .bgz-shell, which sets
+    // `isolation:isolate` (z-1000 stacking context), so the sheet's z-1080 is
+    // trapped at the shell's z-1000 level — BELOW the /bid dock's z-1001 — and
+    // the dock painted OVER the sheet's CTA + bottom content on every step.
+    // Hiding the dock while the sheet is open (the sheet already has its own X
+    // to escape) makes the CTA + content fully visible & tappable on every
+    // device. No layout/z-index alteration — reuses the app-wide modal flag.
+    document.body.classList.add("sb-modal-open");
     return () => {
       document.body.style.overflow = prev;
+      document.body.classList.remove("sb-modal-open");
     };
   }, [sheetIdx]);
 
