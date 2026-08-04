@@ -102,7 +102,7 @@ export default function AdminCreators() {
             )}
             {isUnknownPhone && (
               <span style={{
-                fontSize: 9, color: "#A855F7", letterSpacing: "0.08em",
+                fontSize: 10, color: "#A855F7", letterSpacing: "0.08em",
                 background: "rgba(168,85,247,0.12)", padding: "1px 6px",
                 borderRadius: 999, alignSelf: "flex-start", fontWeight: 700,
               }} title={`Firebase UID: ${uid}`}>

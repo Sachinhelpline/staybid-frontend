@@ -46,7 +46,10 @@ const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔
   // food/hospitality/social content-vocabulary: F&B ordering + IG profile tabs (hybrid keep)
   '🍽','🍴','🛎','📷','📖','🤷',
   // review/feedback content-vocabulary: rating star + sentiment + feedback categories (hybrid keep)
-  '⭐','🙂','🤝','🧼','💭']);
+  '⭐','🙂','🤝','🧼','💭',
+  // admin-panel status/domain/section vocabulary (dark-only internal tool; hybrid keep) — the
+  // CRUD-action trio (edit/save/delete) is still converted to lucide, not kept
+  '✗','⏸','⚠','🔒','🎟','🛋','🧺','🧑','🧮','🗂','💸','⏱','⏳','🔧']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
@@ -274,6 +277,11 @@ const ROUTES = [
   { route:'/privacy-policy', scope:'body', fixtures:{} },
   { route:'/hotels/h1/feedback', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
     fixtures:{ 'hotels/h1':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', images:['x'] } }, 'bookings/my':{ bookings:[{ id:'bk1', status:'CONFIRMED', hotelId:'h1', hotelName:'Cave View Resort', checkIn:'2026-07-10', checkOut:'2026-07-12' }] }, 'feedback/mine':{ feedback:[] } } },
+  // ── Bucket C: admin sub-pages spot-check (dark-only per owner decision) ──
+  { route:'/admin/circle', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/circle':{ kpis:{properties:2,locks:1,bundles:1,monthlyGmv:120000,collected:80000,paidOut:20000}, properties:[{id:'p1',title:'Cave View Resort',city:'Dehradun'}], roomTypes:[{id:'rt1',name:'Deluxe',property_id:'p1'}], bundles:[], payouts:[], locks:[], ownedUnits:[] } } },
+  { route:'/admin/host/catalog', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/host/catalog':{ sections:{ amenities:[{id:'a1',name:'Wi-Fi'}], room_types:[{id:'r1',title:'Suite'}] }, items:[] } } },
+  { route:'/admin/creators', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/creators':{ creators:[{id:'c1',name:'Asha Verma',handle:'asha',status:'approved',followers:8200}] } } },
+
   { route:'/hotels/h1/reviews', scope:'body',
     fixtures:{ 'hotels/h1':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', avgRating:4.6, totalReviews:128, images:['x'] } }, 'hotels/h1/reviews':{ reviews:[{ id:'rv1', rating:5, text:'Lovely stay, great views.', author:'Asha', createdAt:'2026-07-01' },{ id:'rv2', rating:4, text:'Clean and comfortable.', author:'Rahul', createdAt:'2026-06-20' }] } } },
 ];

@@ -5,6 +5,8 @@
 // Auth via x-admin-token. Backed by /api/admin/host/store + /listings.
 
 import { useEffect, useMemo, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
+const admIco = { verticalAlign: "-2px", marginRight: 4 } as const;
 import {
   PROPERTY_TYPES, PROPERTY_TYPE_MAP, ROOM_CATEGORIES, ROOM_CATEGORY_MAP,
   ROOM_CATEGORY_CAPACITY, MEAL_PLANS, ADDON_SERVICES, AMENITIES,
@@ -323,11 +325,11 @@ export default function AdminHostCatalog() {
                         {section === "workers" && r.status !== "suspended" && (
                           <button style={miniBtn} disabled={busy === r.id} onClick={() => setWorkerStatus(r, "suspended")}>⏸ Suspend</button>
                         )}
-                        <button style={miniBtn} disabled={busy === r.id} onClick={() => setEditor({ entity: section, row: r })}>✎ Edit</button>
+                        <button style={miniBtn} disabled={busy === r.id} onClick={() => setEditor({ entity: section, row: r })}><Pencil size={12} strokeWidth={2.2} aria-hidden style={admIco} />Edit</button>
                         {(section === "products" || section === "categories") && (
                           <button style={miniBtn} disabled={busy === r.id} onClick={() => toggle(section, r, "active")}>{r.active ? "⏸ Deactivate" : "▶ Activate"}</button>
                         )}
-                        <button style={{ ...miniBtn, borderColor: "rgba(255,71,87,0.4)", color: "#FF9AA8" }} disabled={busy === r.id} onClick={() => remove(section, r.id, r.name || r.title || r.id)}>🗑 Delete</button>
+                        <button style={{ ...miniBtn, borderColor: "rgba(255,71,87,0.4)", color: "#FF9AA8" }} disabled={busy === r.id} onClick={() => remove(section, r.id, r.name || r.title || r.id)}><Trash2 size={12} strokeWidth={2.2} aria-hidden style={admIco} />Delete</button>
                       </div>
                     </Td>
                   </tr>
@@ -509,7 +511,7 @@ function RoomBuilder({ value, onChange }: { value: RoomRow[]; onChange: (v: Room
         <div key={i} style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column", gap: 9 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "#9fb1c2", fontSize: 12, fontWeight: 700 }}>Room {i + 1}</span>
-            <button type="button" onClick={() => remove(i)} style={{ ...miniBtn, borderColor: "rgba(255,71,87,0.4)", color: "#FF9AA8" }}>🗑 Remove</button>
+            <button type="button" onClick={() => remove(i)} style={{ ...miniBtn, borderColor: "rgba(255,71,87,0.4)", color: "#FF9AA8" }}><Trash2 size={12} strokeWidth={2.2} aria-hidden style={admIco} />Remove</button>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <div style={{ width: "calc(50% - 4px)" }}>

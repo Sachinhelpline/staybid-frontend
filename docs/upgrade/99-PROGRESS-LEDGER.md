@@ -19,6 +19,24 @@
 
 ## Session log
 
+### 2026-08-04 — Bucket C: admin sub-pages emoji-hybrid + font-floor (dark-only) (v703)
+**Final slice of the "kuch reh gaya?" audit — the ~30 admin sub-pages never individually harnessed.** Admin is
+**dark-only** (owner decision 2). A real-KEEP-set emoji scan across every `app/admin/**` page found the only
+gaps were scattered emoji + one 9px label — no contrast/overflow (the dark panel is a cohesive design system,
+already pattern-verified in the v691 admin pass). Presentation-only; `test:security` **385/0**.
+- **Emoji policy for the internal admin tool:** the status/domain/section glyphs (⚠🔒🎟🛋🧺🧑🧮🗂💸✗⏸⏱⏳🔧)
+  are admin-panel **domain vocabulary** → added to the harness KEEP set; the **CRUD-action trio ✎/💾/🗑** stays
+  utilitarian → converted to lucide (`Pencil`/`Save`/`Trash2`), consistent with the whole program.
+  - `/admin/circle` — ✎ Edit / 💾 Save(×3) / 🗑 → lucide.
+  - `/admin/host/catalog` — ✎ Edit / 🗑 Delete / 🗑 Remove → lucide.
+- **Font-floor:** `/admin/creators` a 9px purple tag → 10px.
+- **Verified:** `tsc` + `next build` clean; `test:security` **385/0**; responsive-audit **CLEAN** on the three
+  edited routes (`/admin/circle`, `/admin/host/catalog`, `/admin/creators`); every other admin page's flagged
+  glyphs are now KEEP (domain vocabulary) and the scan showed no sub-10px font / no contrast issues. Badge
+  **v703**, sw HTML_CACHE **v499**.
+- **Audit complete (non-host):** Buckets A + B + C done. The **host vertical (11 pages) remains the one
+  deliberately owner-held bucket** — untouched pending explicit go-ahead.
+
 ### 2026-08-04 — Bucket B: token-aware unswept pages (workforce / trust / hotel sub-pages) (v702)
 **Second slice of the "kuch reh gaya?" audit** — the theme-token-aware pages that were never independently
 measured. `/privacy-policy`, and (after emoji-hybrid) `/hotels/[id]/feedback` + `/hotels/[id]/reviews` were
