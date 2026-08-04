@@ -1259,13 +1259,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
     linear-gradient(172deg, #f2f5f7 0%, var(--sbc-c-bg) 46%, var(--sbc-c-bg-2) 100%);
 }
 .sbc-home > *, .sbc-dash > * { width: 100%; max-width: 640px; }
-/* v706 (owner ss2/ss3/ss4) — the whole Circle surface was a mobile-first 640px
-   column, so on desktop it read center-based with wide dead space on both
-   sides. Widen the column on larger screens so grid sections fill the space and
-   the dead margins shrink, while staying a comfortable reading width (not a
-   full-bleed stretch that would blow up single cards). */
-@media (min-width: 1024px) { .sbc-home > *, .sbc-dash > * { max-width: 980px; } }
-@media (min-width: 1536px) { .sbc-home > *, .sbc-dash > * { max-width: 1140px; } }
+/* NOTE: the desktop widening of this column lives in the min-width:768px /
+   1280px blocks below (→ 1180–1340px). Don't add an earlier @media override
+   here — later source order wins, so it would be dead. */
 
 /* ---------- home : greeting ---------- */
 .sbc-home-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 2px 2px; }

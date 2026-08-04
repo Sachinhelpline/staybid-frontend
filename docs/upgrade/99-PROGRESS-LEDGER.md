@@ -30,10 +30,11 @@
   (`#1f1710→#2e2115`) calendar on a light page → re-themed to app tokens so it reads in light AND dark;
   selected night uses `--accent`, the semantic green "available" hint kept via `color-mix(#7FA968, text)`,
   and the `.sbc2p-selbox` / sel-row / sel-sub moved off dark-only colors.
-- **Center-based dead space:** the shared `.sbc-home > * / .sbc-dash > *` column was capped at **640px**
-  (mobile-first). Widened on desktop (`980px` ≥1024, `1140px` ≥1536) so any page still on that raw flex
-  layout fills more of the screen. (Measured: `/circle` + `/circle/dashboard` are already per-page
-  full-width overrides, so this mainly helps the raw-layout pages; 0px overflow at 360/1024/1440/1920.)
+- **Center-based dead space (investigated, NOT the container):** confirmed the shared
+  `.sbc-home > * / .sbc-dash > *` column is ALREADY widened on desktop by existing `@media (768px/1280px)`
+  rules to `min(96vw,1180–1280px)` / `min(94vw,1340px)`, so the outer container is not the problem — the
+  dead-space feel is the INNER strip/card layout stretching across that wide column. That is per-page visual
+  design (best reviewed on the live preview), so no blind container change was shipped.
 - **Measured:** 0px horizontal overflow on `/circle` + `/circle/dashboard` at 360→1920, light+dark. The
   auth-gated model2 pages can't render headless (redirect to sign-in), so the basket/calendar changes are
   verified at the CSS level (mechanical theme-token substitution + a corner-positioned bar). `tsc` +
