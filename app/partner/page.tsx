@@ -149,11 +149,11 @@ export default function PartnerLogin() {
           }
           .pauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
             background: transparent; }
-          .pauth-form { flex: 1 1 46%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.016) 100%);
-            backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-            border-left: 1px solid rgba(255,255,255,0.08);
-            box-shadow: inset 34px 0 62px -42px rgba(0,0,0,0.5); }
+          /* v716 (owner) — form pane fully transparent: no divider line / wash /
+             inner shadow, so the two halves read as ONE seamless canvas (v714's
+             frosted column WAS the centre line the owner saw). The glass sign-in
+             card is the only distinct element. */
+          .pauth-form { flex: 1 1 46%; background: none; border-left: none; box-shadow: none; }
         }
       `}</style>
 

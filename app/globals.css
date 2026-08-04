@@ -1044,13 +1044,13 @@
 .auth-brandpane-list li { display: flex; align-items: center; gap: 12px; font-size: .95rem; color: rgba(243,237,225,.92); }
 .auth-brandpane-list li svg { color: #ffd98a; flex-shrink: 0; }
 @media (min-width: 1024px) {
-  /* v714 (owner ss7) — ONE continuous premium canvas across the whole desktop
-     sign-in, so the brand half and the form half stop reading as two different
-     cards. The gradient now lives on the ROOT (full-bleed, both themes); the
-     brand pane is transparent (shows the shared canvas) and the form pane is a
-     faint translucent wash of the SAME colour with a hairline seam + inner
-     shadow — a gentle frosted column, not a second card. The sign-in card
-     floats on it. Mobile (<1024) is UNCHANGED (cozy light/dark, single pane). */
+  /* v716 (owner) — ONE SEAMLESS premium canvas. The whole desktop sign-in is a
+     single dark hero (gradient on the root, full-bleed) and BOTH panes are fully
+     transparent — NO divider line, NO wash, no "two portions" (v714's frosted
+     column was exactly the centre line the owner saw). The only distinct element
+     on the right is the sign-in card, and it is now a SUBTLE FROSTED DARK GLASS
+     panel that melts into the canvas — was a stark white box that read as a
+     separate, ugly card. Mobile (<1024) is UNCHANGED (cozy light/dark). */
   .auth-root.lux-bg {
     background:
       radial-gradient(120% 85% at 12% 8%, rgba(106,133,160,.20), transparent 58%),
@@ -1060,18 +1060,25 @@
     display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
     background: transparent;
   }
-  .auth-formpane {
-    flex: 1 1 46%;
-    background: linear-gradient(180deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.018) 100%);
-    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-    border-left: 1px solid rgba(255,255,255,.08);
-    box-shadow: inset 34px 0 62px -42px rgba(0,0,0,.5);
+  .auth-formpane { flex: 1 1 46%; background: none; border-left: none; box-shadow: none; }
+  /* the sign-in card = frosted dark glass, part of the canvas (not a white box) */
+  .auth-formpane .au-card {
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 26px 64px -30px rgba(0,0,0,.6) !important;
   }
-  /* Copy that sits OUTSIDE the floating card, directly on the dark form wash
-     (the "Sign in to your account" brand subtitle + the "By continuing…"
-     footnote) — keep it a readable warm cream on the dark canvas. */
+  /* On the glass card the light-theme dark text must read light. The white
+     Google hero button + the light-green WhatsApp button stay as-is (they pop);
+     only the transparent Facebook button, the OR rule + the captions/subtitle
+     that sit on the glass/canvas need lightening. */
+  .auth-formpane .au-card .text-luxury-800 { color: #eef2f6 !important; }
+  .auth-formpane .au-card button.border-luxury-200 {
+    background: rgba(255,255,255,.06) !important; border-color: rgba(255,255,255,.18) !important;
+  }
+  .auth-formpane .au-card .bg-luxury-100 { background: rgba(255,255,255,.14) !important; }
   .auth-formpane .text-luxury-300,
-  .auth-formpane .text-luxury-400 { color: rgba(243,237,225,.66) !important; }
+  .auth-formpane .text-luxury-400 { color: rgba(226,234,244,.62) !important; }
 }
 .auth-root .bg-white { background: var(--bg-card) !important; }
 /* v642 — auth card shells join the borderless 4-layer 3D grammar (same

@@ -187,7 +187,9 @@ export default function AgentLogin() {
 const styles: Record<string, React.CSSProperties> = {
   root: {
     minHeight: "100vh",
-    background: "#07080C",
+    // v716 (owner) — premium steel gradient canvas (matches admin/customer/partner).
+    background:
+      "radial-gradient(120% 85% at 12% 8%, rgba(120,145,170,0.16), transparent 58%), linear-gradient(155deg,#111722 0%,#0b0f18 55%,#07080c 100%)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -195,13 +197,16 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 20,
   },
   card: {
-    background: "#0F1117",
-    border: "1px solid rgba(255,255,255,0.07)",
+    // v716 — frosted dark glass card, part of the canvas (was a solid #0F1117 box).
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.12)",
     borderRadius: 20,
     padding: "48px 40px",
     width: "100%",
     maxWidth: 440,
-    boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+    boxShadow: "0 26px 64px -28px rgba(0,0,0,0.7)",
+    backdropFilter: "blur(16px) saturate(1.2)",
+    WebkitBackdropFilter: "blur(16px) saturate(1.2)",
   },
   brand: { textAlign: "center", marginBottom: 32 },
   title: {
