@@ -38,7 +38,7 @@ const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔
   // partner empty-state illustrations (36px, centred) + reload glyph (matches ↺) (hybrid keep)
   '📭','🛟','↻','🙌',
   // creator/referral share-channel + caption glyphs (brand vocabulary; lucide has no brand marks) (hybrid keep)
-  '💬','📸','📲','🌅','🎵','👆','👉','👇',
+  '💬','📸','📲','🌅','🎵','👆','👉','👇','🔗',
   // circle content vocabulary: property/destination types + season/weather glyphs (hybrid keep)
   '🏡','🏘','🏛','🛖','🌴','☁️','☁','☕','⬆','⛺','🌲','🌳','🌾','🏢','🪵']);
 
@@ -58,6 +58,11 @@ const HOTELS = [
 const ADMIN_FX = { kpis:{users:1240,bookings:380,revenue:1200000,hotels:42,complaints:3,pendingContent:2,payoutsOwed:14000}, ledger:[], payouts:[], bookings:[], holds:[], hotels:[], topCreators:[], codes:[], complaints:[], feedback:[], flags:[], users:[], creators:[], counts:{} };
 const CIRCLE_PROPS = { cities:['Dehradun'], properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',locationLabel:'Rajpur, Dehradun',images:[],monthlyRate:30000,roiMin:15,roiMax:28,occupancyLabel:'High',badges:['Trending'],operationModel:'managed',status:'open',roomTypes:[{id:'r1',name:'Deluxe',monthlyRate:30000,availableUnits:3}]}] };
 const CIRCLE_PORTFOLIO = { ownedBlocks:2, activeListings:1, inventoryValue:60000, b2bNetEarned:12000, payoutsReceived:4400, blocks:[{id:'b1',hotel_name:'Cave View',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,status:'owned'}], listings:[], trades:[], operatedHotels:[{id:'h1',name:'Cave View Resort'}] };
+const INF_ME = { registered:true, influencer:{ id:'i1', display_name:'Asha Verma', handle:'asha', bio:'Travel creator sharing hill-station gems.', verification_tier:2, aadhaar_verified:true, pan_verified:true, total_earnings:24500, status:'active', total_followers:8200, hotel_id:null, instagram:'asha.travels', avatar_url:null } };
+const INF_STATS = { derived:{ monthlyCommission:4200, monthlyBookings:6, pendingCommission:1800, totalBookings:34 } };
+const INF_EARN = { commissions:[ {id:'cm1',booking_amount:4800,commission_amount:480,commission_percentage:10,status:'cleared',hotel_id:'h1',created_at:'2026-07-20 10:00:00'}, {id:'cm2',booking_amount:3200,commission_amount:320,commission_percentage:10,status:'pending',hotel_id:'h2',created_at:'2026-07-25 10:00:00'} ] };
+const INF_CODES = { codes:[ {id:'rc1',code:'ASHA10',label:'Instagram bio',clicks_count:120,conversions_count:8}, {id:'rc2',code:'HILLS5',label:'YouTube',clicks_count:64,conversions_count:3} ] };
+const INF_BOOKINGS = { bookings:[ {bidId:'bid_abc123456',amount:4800,commission:480,status:'ACCEPTED',source:'reel',flow:'bid',paid:true,createdAt:'2026-07-20 10:00:00',checkIn:'2026-08-10',hotelName:'Cave View Resort'} ] };
 const ROUTES = [
   { route:'/', scope:'body',
     fixtures:{
@@ -181,6 +186,22 @@ const ROUTES = [
   { route:'/complaints', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
     fixtures:{ 'complaints':{ complaints:[{ id:'c1', subject:'AC not working', status:'OPEN', createdAt:'2026-08-01 10:00:00', hotelName:'Cave View Resort' }] }, 'complaints/mine':{ complaints:[] } } },
 
+  // ── Influencer / creator hub (registered creator) ────────────────────────
+  { route:'/influencer/dashboard', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/stats':INF_STATS, 'i1/earnings':INF_EARN } },
+  { route:'/influencer/profile', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME } },
+  { route:'/influencer/earnings', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/earnings':INF_EARN } },
+  { route:'/influencer/referrals', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/codes':INF_CODES } },
+  { route:'/influencer/bookings', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/bookings':INF_BOOKINGS } },
+  { route:'/influencer/upload', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'hotels':{ ok:true, hotels:HOTELS } } },
+  { route:'/influencer/public/pub1', scope:'body',
+    fixtures:{ 'influencer/public/pub1':{ ok:true, influencer:{ id:'pub1', display_name:'Asha Verma', handle:'asha', bio:'Travel creator sharing hill-station gems.', total_followers:8200, verification_tier:2, avatar_url:null, instagram:'asha.travels' }, videos:[], stats:{ videos:12, followers:8200 } } } },
+
   // ── Customer frontend (the main app) ─────────────────────────────────────
   { route:'/hotels', scope:'body',
     fixtures:{ 'hotels/scorecards':{ok:true,scores:{h1:{overall:8.6,tier:'gold'},h2:{overall:9.1,tier:'platinum'},h3:{overall:7.4,tier:'silver'}}}, 'hotels':{ok:true,hotels:HOTELS} } },
@@ -236,7 +257,9 @@ for (const cfg of ROUTES) {
       // still can't measure is recorded as NAVERR (never aborts the whole route).
       const EVAL_FN = (args)=>{
         const { scope, KEEParr, MAX_LINE, FONT_FLOOR } = args;
-        const KEEP = new Set(KEEParr);
+        // Strip the FE0F variation selector so '✈️' (kept) matches the base '✈'
+        // the emoji regex actually captures (it does not include U+FE0F).
+        const KEEP = new Set(KEEParr.map(s => s.replace(/️/g, '')));
         const root = document.querySelector(scope) || document.body;
         const de = document.documentElement;
         const overflow = de.scrollWidth > de.clientWidth + 1 ? { s:de.scrollWidth, c:de.clientWidth } : null;

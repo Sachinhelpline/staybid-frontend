@@ -19,6 +19,26 @@
 
 ## Session log
 
+### 2026-08-04 — Influencer / creator hub full-matrix (v696)
+**Scope:** all 7 creator-hub content routes, measured 280→2560 × light+dark with fixtures that pass the
+registered-creator gate (`influencer/me` → registered).
+- **Harness fix (systemic):** the decorative-emoji check extracted the base char (e.g. `✈`) but the KEEP
+  set stored the FE0F-qualified variant (`✈️`), so kept glyphs falsely flagged. The eval now strips U+FE0F
+  from KEEP entries before matching — `✈️`/`❄️`/`☀️`/etc. now match correctly.
+- **`/influencer/referrals`:** 4× `text-[0.6rem]` (9.6px) stat/label → `.63rem`; `✈️`/`🔗` share-channel
+  glyphs KEPT (brand set — lucide has no brand marks, `🔗` added to the KEEP share set); a 5px 280px bleed
+  clipped with `overflow-x-clip` on the page root (page content only; the layout's scrollable tab strip is
+  untouched).
+- **`/influencer/public/[id]`:** stat labels (Followers/Reels/Hotels/Rating) `text-[0.6rem]` → `.63rem`.
+- **RESULT (MEASURED, 13 widths × 2 themes):** `/influencer/{dashboard,profile,earnings,referrals,bookings,
+  upload}` + `/influencer/public/pub1` — **all CLEAN**. Added influencer fixtures (`INF_ME/STATS/EARN/CODES/
+  BOOKINGS`) + routes to the harness. (`/influencer` + `/influencer/register` are redirect shells → covered
+  destinations.) The layout tabs were already lucide from a prior pass.
+- **🔒 NO money/bid/auth logic touched** — pure presentation. `test:security` stays 385/0.
+- Badge v695→**v696** (`SB_BUILD v696-influencer-fullmatrix`), sw `HTML_CACHE` v491→**v492**.
+- **Gates:** tsc 0 · build 0 · security 385/0.
+- NEXT: agent panel headless measurement (still blocked by sandbox external-SSL) + host vertical (owner-held).
+
 ### 2026-08-03 — Onboard + agent + support emoji-hybrid + global HelpLauncher (v695)
 **Scope:** started the remaining non-customer surfaces (host held back by owner). Onboard wizard,
 agent support panel, complaints, plus a global shared-chrome fix.
