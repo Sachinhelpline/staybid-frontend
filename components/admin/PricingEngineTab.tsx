@@ -124,6 +124,13 @@ export default function PricingEngineTab() {
             ⚠ Dynamic mode changes which guest bids auto-win. Applies on the next price recalc (~60s).
           </div>
         )}
+        <div style={{ borderTop: `1px solid ${C.border}`, margin: "12px 0 4px" }} />
+        <NumField label="Below-floor offer ratio" hint="1.0 = OFF (guest can't bid below floor). Set below 1.0 (e.g. 0.85) to let a guest OFFER down to floor × this — forwarded to the owner PENDING, never auto-accepted." value={cfg.custBelowFloorRatio} on={(v) => set("custBelowFloorRatio", v)} def={defaults?.custBelowFloorRatio} step={0.05} />
+        {Number(cfg.custBelowFloorRatio) < 1 && (
+          <div style={{ color: C.amber, fontSize: 11.5, marginTop: 6 }}>
+            ⚠ Guests can now send offers below the floor (down to floor × {cfg.custBelowFloorRatio}). These are always owner-reviewed — never auto-confirmed.
+          </div>
+        )}
       </Section>
 
       {/* ── Seasonal curve ─────────────────────────────────────────── */}

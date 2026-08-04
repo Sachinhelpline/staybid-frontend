@@ -2781,6 +2781,30 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
 - NEXT: on owner confirm, build Gap 3 (real below-floor offer rows, bounded ratio, PENDING-only, admin
   default OFF). Then Gap 2 (yield optimizer) is an env-flag decision.
 
+### 2026-08-04 — Gap 3: customer below-floor forwarded offers (v723, admin, default OFF)
+- **Gap 3 closed:** a guest can now OFFER below the room floor and have the REAL offer forwarded to the
+  owner (PENDING, owner accepts/counters/declines) — the customer analogue of the Model-3 agent
+  below-floor band. Previously `bids/place` hard-rejected `amount < floorPrice`, and the arena's
+  below-floor drag was lossy (clamped to floor, real price only in the message → auto-counter-to-floor).
+- **SERVER-ONLY + default OFF (byte-identical):** one knob `cust_below_floor_ratio` on
+  `pricing_engine_config` (default **1.0 = OFF**, migration `2026-07-21-v723`). In `app/api/bids/place`:
+  (1) the floor reject relaxes from `amount < floor` to `amount < floor × ratio` (ratio 1.0 → identical);
+  (2) when ratio < 1.0 and the intent is below floor, the guest's REAL offer (from the arena's
+  preferred-price message, `extractPreferredPrice`) is stored on the bid — clamped into
+  `[floor×ratio, floor)` — with status **PENDING**, `pd.action='below_floor_offer'`. It is NEVER
+  auto-accepted or auto-countered; the owner reviews it in the existing partner Bids inbox and can accept
+  it at that price. No client change — the arena's existing "we'll forward your preferred price, hotel may
+  accept or counter on your terms" copy already supports it end-to-end, so bid MECHANICS stay hidden.
+- Resolver/store + admin route + a "Below-floor offer ratio" knob in the Pricing Engine tab's Customer
+  bid floor section (⚠ note when < 1.0).
+- **MEASURED:** reject-bound + clamp arithmetic (ratio 1.0 → reject at floor = byte-identical; ratio 0.85
+  → offers 1750/1500/1990 stored 1750/1700/1990, always within [1700,1999], never below band). Live SQL
+  round-trip: ratio 0.85 set → read → reverted to 1.0 (default OFF); Friday 1.4 + cust_floor_mode static intact.
+- Badge v722→**v723** (`v723-customer-below-floor-offers`), sw HTML_CACHE v517→**v518** (admin UI knob).
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live. No auto-accept anywhere — owner-reviewed only.
+- NEXT: Gap 2 (yield optimizer, currently OFF behind `PRICING_OPTIMIZER_ENABLED`) is an env-flag + testing
+  decision — the only remaining gap. All of #1/#3/#4/#5/#6/#7 now closed.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

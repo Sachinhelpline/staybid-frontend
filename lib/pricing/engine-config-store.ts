@@ -48,6 +48,10 @@ export interface PricingEngineConfig extends PricingEngineOverrides {
   custFloorMode: "static" | "dynamic"; // default 'static' (unchanged behaviour)
   custFloorMaxWinDiscountPct: number;  // how far below live the win-floor sits (default 25)
   custFloorMinFraction: number;        // hard lower bound = floorPrice × this (default 1.0)
+  // v723 Gap-3 — customer below-floor forwarded offers. 1.0 = OFF (today's hard
+  // reject at floor). < 1.0 lets a guest OFFER down to floor × this ratio; the
+  // real offer is stored + forwarded PENDING (never auto-accepted) for the owner.
+  custBelowFloorRatio: number;         // default 1.0 (off)
 }
 
 // Hardcoded defaults, assembled once from the engine's own constants.
@@ -71,6 +75,7 @@ export const PRICING_ENGINE_DEFAULTS: PricingEngineConfig = {
   custFloorMode: "static",
   custFloorMaxWinDiscountPct: 25,
   custFloorMinFraction: 1.0,
+  custBelowFloorRatio: 1.0,
 };
 
 // ── validators ───────────────────────────────────────────────────────────────
@@ -132,6 +137,7 @@ export async function resolveEngineConfig(): Promise<PricingEngineConfig> {
           custFloorMode: row.cust_floor_mode === "dynamic" ? "dynamic" : "static",
           custFloorMaxWinDiscountPct: num(row.cust_floor_max_win_discount_pct, 0, 90, D.custFloorMaxWinDiscountPct),
           custFloorMinFraction: num(row.cust_floor_min_fraction, 0.4, 1, D.custFloorMinFraction),
+          custBelowFloorRatio: num(row.cust_below_floor_ratio, 0.5, 1, D.custBelowFloorRatio),
         };
         // Guard: a clamp band must stay ordered.
         if (cfg.clampMin >= cfg.clampMax) { cfg.clampMin = D.clampMin; cfg.clampMax = D.clampMax; }

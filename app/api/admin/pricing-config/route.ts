@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
   }
   setNum("custFloorMaxWinDiscountPct", "cust_floor_max_win_discount_pct", 0, 90);
   setNum("custFloorMinFraction", "cust_floor_min_fraction", 0.4, 1);
+  setNum("custBelowFloorRatio", "cust_below_floor_ratio", 0.5, 1);
   if (body.cityDemand !== undefined) {
     const cd = body.cityDemand;
     if (!cd || typeof cd !== "object" || Array.isArray(cd)) {
