@@ -19,6 +19,28 @@
 
 ## Session log
 
+### 2026-08-04 — Phase 2 / ss8: Switch-experience never-stuck + alive splash (v705)
+**Owner 9-screenshot round, Phase 2.** ss8: switching between panels via the global "Switch experience" got
+STUCK ~90% of the time, and the "Switching to X…" splash looked FLAT. Root cause of the stuck: `go()` fired a
+single fire-and-forget `window.setTimeout(() => window.location.assign(dest), 620)` — **no watchdog, no retry,
+no escape hatch**. If that one hard-nav didn't commit (SW navigation stall, slow dynamic route, a swallowed
+timer), the splash was trapped forever with no way out.
+- **`components/PanelSwitcher.tsx`** — the splash now carries its own `{panel, dest}` and a dedicated effect
+  owns navigation with a layered escape hatch so it can NEVER hang:
+  • ~440ms → hard-nav (`location.assign`, `href` fallback); • ~3.2s → `stalled` state re-fires the nav AND
+  makes a prominent "Continue" affordance; • ~6s → last-resort `location.replace`. Timers cleared on unmount.
+  The **whole splash is tap-to-continue** (`goNow`) and a `.sbps-splash-cont` button fades in at 2.2s — the
+  user is never trapped even if every automatic attempt stalls.
+- **Alive/native splash** — replaced the flat card: a slow-drifting accent **glow**, a **breathing/floating
+  icon tile** with a pulsing **halo** ring, staggered rise-in title + "Opening your workspace…" sub, and a
+  shimmer progress bar — all keyed off the target panel's `--sbps-accent`, fully theme-token based. Escape
+  hatch stays visible under `prefers-reduced-motion` (its fade-in is animation-driven).
+- **Measured** (headless): splash renders alive in light+dark (themed bg, correct text contrast, halo+glow
+  present, escape-hatch button, 0px overflow); the hard-nav actually fires (`/kiosk` request observed). The
+  3.2s watchdog/stalled path is deterministic logic that by construction only surfaces on an un-committed nav
+  — un-observable in a headless probe once `assign` commits (same class of limit as the scrollbar note).
+  `tsc` + `next build` clean; `test:security` **385/0**. Badge v704→**v705**, sw HTML_CACHE v500→**v501**.
+
 ### 2026-08-04 — Phase 1 / ss1: Home hero — amenity chips ABOVE the CTAs (v704)
 **Owner 9-screenshot round, Phase 1.** ss1: on the mobile hero the amenity chips (Valley View, Restaurant,
 Wi-Fi, Heating, Garden) sat BELOW the "Bid your stay"/"Watch reels" buttons, in the hero's bottom foot-fade

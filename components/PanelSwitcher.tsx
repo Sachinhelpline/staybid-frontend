@@ -70,7 +70,13 @@ export default function PanelSwitcher() {
   const { isCreator, isHotelOwner } = useTier();
 
   const [open, setOpen] = useState(false);
-  const [switching, setSwitching] = useState<Panel | null>(null);
+  // v705 (owner ss8) — the splash now carries its OWN destination so a
+  // dedicated effect can own the hard-nav + a watchdog escape hatch (the old
+  // fire-and-forget setTimeout could leave the splash trapped forever if the
+  // single window.location.assign didn't take — SW nav stall, slow dynamic
+  // route, a swallowed timer). `stalled` reveals a prominent manual continue.
+  const [switching, setSwitching] = useState<{ panel: Panel; dest: string } | null>(null);
+  const [stalled, setStalled] = useState(false);
   // Token flags are read fresh each time the sheet opens (they can change in
   // another panel/tab). Kept in state so the card list re-renders on open.
   const [tokens, setTokens] = useState({
@@ -121,11 +127,42 @@ export default function PanelSwitcher() {
     // joined → auto-switch to home. join → the panel's own entry (auth intact).
     const dest = state === "joined" ? p.home : p.joinRoute;
     setOpen(false);
-    setSwitching(p);
-    // Brief premium splash, then a HARD nav so the destination panel boots
-    // fresh and re-reads its own credential + providers.
-    window.setTimeout(() => { window.location.assign(dest); }, 620);
+    setStalled(false);
+    setSwitching({ panel: p, dest });
   }, []);
+
+  // Force the hard nav right now (also wired to a tap anywhere on the splash so
+  // the user is NEVER trapped). A HARD nav re-boots the destination panel so it
+  // re-reads its own credential + providers cleanly.
+  const goNow = useCallback((dest: string) => {
+    try { window.location.assign(dest); }
+    catch { try { window.location.href = dest; } catch { /* noop */ } }
+  }, []);
+
+  // v705 (owner ss8) — own the navigation from an effect with a layered escape
+  // hatch so the "Switching to X…" splash can never hang:
+  //   • ~440ms: let the pop animation land, then hard-nav.
+  //   • ~3.2s : if we're STILL mounted (nav didn't take), reveal a prominent
+  //             "Continue" affordance AND re-fire the nav.
+  //   • ~6s   : last-resort location.replace.
+  // Timers are cleared on unmount (the normal case — the page navigates away).
+  useEffect(() => {
+    if (!switching) return;
+    const { dest } = switching;
+    const t1 = window.setTimeout(() => goNow(dest), 440);
+    const t2 = window.setTimeout(() => {
+      setStalled(true);
+      goNow(dest);
+    }, 3200);
+    const t3 = window.setTimeout(() => {
+      try { window.location.replace(dest); } catch { /* noop */ }
+    }, 6000);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [switching, goNow]);
 
   return (
     <>
@@ -193,14 +230,32 @@ export default function PanelSwitcher() {
         </div>
       )}
 
-      {/* "Switching to X…" full-screen splash */}
+      {/* "Switching to X…" full-screen splash — v705 (owner ss8): alive/native
+          (breathing icon + accent halo + moving glow), and tap-anywhere to
+          continue so it can never trap the user. */}
       {switching && (
-        <div className="sbps-splash" role="status" aria-live="polite">
-          <div className="sbps-splash-ic" style={{ ["--sbps-accent" as string]: switching.accent }}>
-            {panelIcon(switching)}
+        <div
+          className={`sbps-splash${stalled ? " sbps-splash-stalled" : ""}`}
+          role="status"
+          aria-live="polite"
+          style={{ ["--sbps-accent" as string]: switching.panel.accent }}
+          onClick={() => goNow(switching.dest)}
+        >
+          <span className="sbps-splash-glow" aria-hidden />
+          <div className="sbps-splash-ic">
+            <span className="sbps-splash-halo" aria-hidden />
+            <span className="sbps-splash-glyph">{panelIcon(switching.panel)}</span>
           </div>
-          <div className="sbps-splash-txt">Switching to {switching.label}…</div>
+          <div className="sbps-splash-txt">Switching to {switching.panel.label}</div>
+          <div className="sbps-splash-sub">Opening your workspace…</div>
           <div className="sbps-splash-bar"><span /></div>
+          <button
+            type="button"
+            className="sbps-splash-cont"
+            onClick={(e) => { e.stopPropagation(); goNow(switching.dest); }}
+          >
+            {stalled ? "Taking a moment — tap to continue →" : "Tap to continue →"}
+          </button>
         </div>
       )}
     </>
@@ -300,26 +355,65 @@ function SwitcherStyles() {
   color:var(--text-muted); text-align:center; }
 
 .sbps-splash{
-  position:fixed; inset:0; z-index:10000;
+  position:fixed; inset:0; z-index:10000; overflow:hidden; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:18px; background:radial-gradient(120% 120% at 50% 40%, color-mix(in srgb, var(--accent) 10%, var(--bg-page)), var(--bg-page));
-  animation:sbps-fade .16s ease both;
+  gap:16px; padding:24px;
+  background:
+    radial-gradient(130% 120% at 50% 38%, color-mix(in srgb, var(--sbps-accent) 12%, var(--bg-page)), var(--bg-page) 72%);
+  animation:sbps-fade .18s ease both;
 }
-.sbps-splash-ic{ width:88px; height:88px; border-radius:26px; font-size:44px;
+/* a slow-moving accent glow behind everything so the screen feels alive, not flat */
+.sbps-splash-glow{
+  position:absolute; left:50%; top:38%; width:min(120vw,760px); height:min(120vw,760px);
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--sbps-accent) 34%, transparent) 0%, transparent 62%);
+  filter:blur(30px); opacity:.7; pointer-events:none;
+  animation:sbps-drift 4.6s ease-in-out infinite;
+}
+@keyframes sbps-drift{
+  0%,100%{ transform:translate(-50%,-50%) scale(1); opacity:.55; }
+  50%{ transform:translate(-50%,-54%) scale(1.14); opacity:.85; }
+}
+.sbps-splash-ic{ position:relative; width:96px; height:96px; border-radius:28px;
   display:flex; align-items:center; justify-content:center; color:var(--text-base);
-  background:color-mix(in srgb, var(--sbps-accent) 22%, var(--bg-card));
-  border:1px solid color-mix(in srgb, var(--sbps-accent) 45%, transparent);
-  box-shadow:0 18px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-  animation:sbps-pop .5s cubic-bezier(.34,1.56,.5,1) both; }
+  background:color-mix(in srgb, var(--sbps-accent) 24%, var(--bg-card));
+  border:1px solid color-mix(in srgb, var(--sbps-accent) 52%, transparent);
+  box-shadow:0 22px 60px -14px color-mix(in srgb, var(--sbps-accent) 60%, rgba(0,0,0,0.5)), inset 0 1px 0 rgba(255,255,255,0.14);
+  animation:sbps-pop .52s cubic-bezier(.34,1.56,.5,1) both, sbps-breathe 2.8s ease-in-out .52s infinite; }
+.sbps-splash-glyph{ display:flex; font-size:46px; animation:sbps-float 2.8s ease-in-out .52s infinite; }
+/* a pulsing accent ring that radiates out from the tile */
+.sbps-splash-halo{ position:absolute; inset:-6px; border-radius:34px;
+  border:2px solid color-mix(in srgb, var(--sbps-accent) 60%, transparent);
+  opacity:0; animation:sbps-halo 2.2s ease-out .6s infinite; pointer-events:none; }
 @keyframes sbps-pop{ from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
-.sbps-splash-txt{ font-family:'Cormorant Garamond',Georgia,serif; font-style:italic;
-  font-size:22px; color:var(--text-base); letter-spacing:.3px; }
-.sbps-splash-bar{ width:140px; height:4px; border-radius:999px;
-  background:rgba(106,133,160,0.18); overflow:hidden; }
-.sbps-splash-bar span{ display:block; height:100%; width:40%; border-radius:999px;
-  background:linear-gradient(90deg,#5f7c98,#c6d0da);
-  animation:sbps-slide 1s ease-in-out infinite; }
-@keyframes sbps-slide{ 0%{transform:translateX(-120%)} 100%{transform:translateX(360%)} }
+@keyframes sbps-breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.05); } }
+@keyframes sbps-float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-4px); } }
+@keyframes sbps-halo{ 0%{ transform:scale(.9); opacity:.55; } 100%{ transform:scale(1.5); opacity:0; } }
+.sbps-splash-txt{ position:relative; font-family:'Cormorant Garamond',Georgia,serif; font-style:italic;
+  font-size:25px; color:var(--text-base); letter-spacing:.3px; text-align:center;
+  animation:sbps-rise .5s ease .12s both; }
+.sbps-splash-sub{ position:relative; margin-top:-6px; font-size:12.5px; font-weight:600;
+  letter-spacing:.02em; color:var(--text-muted); animation:sbps-rise .5s ease .2s both; }
+@keyframes sbps-rise{ from{ transform:translateY(8px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+.sbps-splash-bar{ position:relative; margin-top:4px; width:150px; height:4px; border-radius:999px;
+  background:color-mix(in srgb, var(--sbps-accent) 20%, transparent); overflow:hidden; }
+.sbps-splash-bar span{ display:block; height:100%; width:42%; border-radius:999px;
+  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--sbps-accent) 85%, var(--text-base)), transparent);
+  animation:sbps-slide 1.05s ease-in-out infinite; }
+@keyframes sbps-slide{ 0%{transform:translateX(-130%)} 100%{transform:translateX(360%)} }
+/* escape hatch — fades in after a beat so a slow/stalled nav is never a trap */
+.sbps-splash-cont{ position:relative; margin-top:10px; cursor:pointer;
+  font-size:12.5px; font-weight:700; letter-spacing:.01em;
+  color:var(--text-soft); background:var(--bg-pill);
+  border:1px solid var(--border-soft); border-radius:999px; padding:9px 16px;
+  opacity:0; animation:sbps-cont-in .4s ease 2.2s forwards; }
+.sbps-splash-cont:hover{ background:color-mix(in srgb, var(--sbps-accent) 14%, var(--bg-pill));
+  border-color:color-mix(in srgb, var(--sbps-accent) 45%, transparent); }
+@keyframes sbps-cont-in{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+/* stalled → make the continue affordance prominent immediately */
+.sbps-splash-stalled .sbps-splash-cont{ animation:none; opacity:1;
+  color:var(--text-base); border-color:color-mix(in srgb, var(--sbps-accent) 55%, transparent);
+  background:color-mix(in srgb, var(--sbps-accent) 12%, var(--bg-pill)); }
 
 [data-theme="dark"] .sbps-sheet{
   box-shadow:
@@ -330,8 +424,13 @@ function SwitcherStyles() {
 [data-theme="dark"] .sbps-card-ic{ box-shadow:inset 0 1px 0 rgba(255,255,255,0.08); }
 
 @media (prefers-reduced-motion:reduce){
-  .sbps-backdrop,.sbps-sheet,.sbps-splash,.sbps-splash-ic{ animation:none !important; }
+  .sbps-backdrop,.sbps-sheet,.sbps-splash,.sbps-splash-ic,.sbps-splash-glyph,
+  .sbps-splash-glow,.sbps-splash-halo,.sbps-splash-txt,.sbps-splash-sub{ animation:none !important; }
+  .sbps-splash-halo{ display:none; }
   .sbps-splash-bar span{ animation:none; width:100%; }
+  /* the escape hatch fades in via animation — keep it visible without motion so
+     the user is never trapped even with reduced-motion on. */
+  .sbps-splash-cont{ animation:none !important; opacity:1 !important; transform:none !important; }
 }
 `}}
     />
