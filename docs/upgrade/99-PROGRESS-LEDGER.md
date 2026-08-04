@@ -19,6 +19,29 @@
 
 ## Session log
 
+### 2026-08-04 — Offline kiosk surface: full-matrix + 43"–55" large-format fill (v699)
+**Owner caught a MISSED surface** — the offline-kiosk vertical (`app/kiosk/{page,book,display}`) was never
+swept, and it can run on 43"–55" large-format displays in BOTH orientations.
+- **`/kiosk/display`** (the actual cinematic ad board) — already `100dvh×100vw` + vmin/clamp scaled;
+  **verified it fills 4K landscape (3840×2160) AND portrait (2160×3840) with no overflow** — no change needed.
+- **`/kiosk` (hub) + `/kiosk/book` (touchscreen)** — were a fixed ~920–1100px centred column with fixed-px
+  type, so on a 4K/55" kiosk they showed a tiny column with huge empty sides. **Fix: `lib/useKioskFill.ts`** —
+  scales the page up via `zoom` on `<html>` by the SHORTER viewport side (like vmin), clamped `[1, 3]`, so the
+  fixed-px design FILLS a big display in either orientation and NEVER shrinks below 1 on normal phones/tablets.
+  `zoom` (not transform) keeps layout/scroll correct and `100vw`/`100dvh` filling; Chromium-only is fine (kiosks
+  run Chromium). Verified: laptop zoom 1; 4K landscape + portrait zoom 2.16, **no horizontal overflow**.
+- **Emoji-hybrid:** hub `📊` Big-Display button → lucide `Monitor`; book `💳` Pay-nav + UPI footer → lucide
+  `CreditCard`. Content/brand glyphs kept (🧭🏨⛰📍⚡🛏🎉📱✨💰👆📲⭐ — the destination/nature ones already in
+  the KEEP set).
+- **MEASURED CLEAN (13 widths × 2 themes):** `/kiosk`, `/kiosk/book`, `/kiosk/display`. Added kiosk routes +
+  feed fixtures to the harness; 4K large-format both-orientation fill verified by a dedicated probe (against
+  the production build — dev server still serves stale globals.css this session).
+- Kiosk pages are fixed-appearance device surfaces (hub/book light, display dark cinematic) — hardcoded, so
+  identical in both app themes by design; measured clean in both.
+- **🔒 NO money/bid/auth logic touched** — pure presentation. `test:security` stays 385/0.
+- Badge v698→**v699** (`SB_BUILD v699-kiosk-largeformat`), sw `HTML_CACHE` v494→**v495**.
+- **Gates:** tsc 0 · build 0 · security 385/0. **Every surface in the app is now swept** (host still owner-held).
+
 ### 2026-08-04 — Owner review: hero amenity chips + LocationGlobePicker theming (v698)
 Two owner-reported issues from live screenshots.
 - **ss1 — Stage hero amenity chips vanished (`components/home/DesktopHome.tsx` / `.sbh-amen`).** On MOBILE

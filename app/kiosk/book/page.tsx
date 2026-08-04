@@ -15,16 +15,18 @@
 //
 // Configure default city:  /kiosk/book?loc=mussoorie-mall
 //
-import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import { CreditCard } from "lucide-react";
 import { formatINR, KioskDeal, KIOSK_CITIES, resolveKioskLocation } from "@/lib/kiosk";
+import { useKioskFill } from "@/lib/useKioskFill";
 
 type Step = "city" | "browse" | "tour" | "pay" | "done";
 
-const NAV: { key: Step; label: string; icon: string }[] = [
+const NAV: { key: Step; label: string; icon: ReactNode }[] = [
   { key: "city", label: "Explore", icon: "🧭" },
   { key: "tour", label: "Book", icon: "🏨" },
-  { key: "pay", label: "Pay", icon: "💳" },
+  { key: "pay", label: "Pay", icon: <CreditCard size={15} strokeWidth={2.2} aria-hidden style={{ verticalAlign: "-2px" }} /> },
 ];
 
 function Stars({ n }: { n: number }) {
@@ -32,6 +34,7 @@ function Stars({ n }: { n: number }) {
 }
 
 function BookInner() {
+  useKioskFill();
   const params = useSearchParams();
   const loc = resolveKioskLocation(params.get("loc"));
 
@@ -423,7 +426,7 @@ function BookInner() {
         )}
       </div>
 
-      <div className="kb-footstrip"><span>💳 UPI</span><span>·</span><span>📱 Scan QR</span><span>·</span><span>StayBid Offline Kiosk · {loc.name}</span></div>
+      <div className="kb-footstrip"><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><CreditCard size={13} strokeWidth={2.2} aria-hidden /> UPI</span><span>·</span><span>📱 Scan QR</span><span>·</span><span>StayBid Offline Kiosk · {loc.name}</span></div>
 
       {/* Premium cozy theme — self-contained, cream + champagne (matches customer frontend) */}
       <style jsx global>{`
