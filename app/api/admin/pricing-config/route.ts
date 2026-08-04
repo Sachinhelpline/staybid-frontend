@@ -92,6 +92,13 @@ export async function POST(req: NextRequest) {
   if (body.capLiveAtMrp !== undefined) {
     patch.cap_live_at_mrp = body.capLiveAtMrp === true || body.capLiveAtMrp === "true";
   }
+  // v722 Gap-1 — dynamic customer bid floor.
+  if (body.custFloorMode !== undefined) {
+    if (body.custFloorMode !== "static" && body.custFloorMode !== "dynamic") errs.push("custFloorMode must be static|dynamic");
+    else patch.cust_floor_mode = body.custFloorMode;
+  }
+  setNum("custFloorMaxWinDiscountPct", "cust_floor_max_win_discount_pct", 0, 90);
+  setNum("custFloorMinFraction", "cust_floor_min_fraction", 0.4, 1);
   if (body.cityDemand !== undefined) {
     const cd = body.cityDemand;
     if (!cd || typeof cd !== "object" || Array.isArray(cd)) {

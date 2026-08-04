@@ -44,6 +44,10 @@ export interface PricingEngineConfig extends PricingEngineOverrides {
   undercutPct: number;      // OTA undercut % (default 5)
   flashDiscountPct: number; // flash discount % off live (default 20)
   capLiveAtMrp: boolean;    // Gap-6 opt-in
+  // v722 Gap-1 — dynamic customer bid floor
+  custFloorMode: "static" | "dynamic"; // default 'static' (unchanged behaviour)
+  custFloorMaxWinDiscountPct: number;  // how far below live the win-floor sits (default 25)
+  custFloorMinFraction: number;        // hard lower bound = floorPrice × this (default 1.0)
 }
 
 // Hardcoded defaults, assembled once from the engine's own constants.
@@ -64,6 +68,9 @@ export const PRICING_ENGINE_DEFAULTS: PricingEngineConfig = {
   undercutPct: COMPETITOR_UNDERCUT * 100,
   flashDiscountPct: FLASH_DISCOUNT * 100,
   capLiveAtMrp: false,
+  custFloorMode: "static",
+  custFloorMaxWinDiscountPct: 25,
+  custFloorMinFraction: 1.0,
 };
 
 // ── validators ───────────────────────────────────────────────────────────────
@@ -122,6 +129,9 @@ export async function resolveEngineConfig(): Promise<PricingEngineConfig> {
           undercutPct: num(row.undercut_pct, 0, 50, D.undercutPct),
           flashDiscountPct: num(row.flash_discount_pct, 0, 90, D.flashDiscountPct),
           capLiveAtMrp: row.cap_live_at_mrp === true || row.cap_live_at_mrp === "true",
+          custFloorMode: row.cust_floor_mode === "dynamic" ? "dynamic" : "static",
+          custFloorMaxWinDiscountPct: num(row.cust_floor_max_win_discount_pct, 0, 90, D.custFloorMaxWinDiscountPct),
+          custFloorMinFraction: num(row.cust_floor_min_fraction, 0.4, 1, D.custFloorMinFraction),
         };
         // Guard: a clamp band must stay ordered.
         if (cfg.clampMin >= cfg.clampMax) { cfg.clampMin = D.clampMin; cfg.clampMax = D.clampMax; }

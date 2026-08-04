@@ -52,6 +52,13 @@ export interface SpineInput {
     undercutPct?: number;      // OTA undercut (default 5)
     flashDiscountPct?: number; // flash discount off live (default 20)
     capLiveAtMrp?: boolean;    // Gap-6 opt-in: never let live exceed MRP
+    // v722 Gap-1 — dynamic customer bid floor (default 'static' = unchanged).
+    // When 'dynamic', the bid floor tracks the live (season-adjusted) price so a
+    // customer can't auto-win at the bare static floor when demand is high. It
+    // NEVER drops below the hotel's own floorPrice (× minFraction) — owner-safe.
+    custFloorMode?: "static" | "dynamic";
+    custFloorMaxWinDiscountPct?: number; // how far below live the win-floor sits (default 25)
+    custFloorMinFraction?: number;       // hard lower bound = floorPrice × this (default 1.0)
   }) | null;
 }
 
@@ -158,10 +165,29 @@ export function computeRoomDatePrice(inp: SpineInput): SpinePrice {
   if (flash < flashFloor) flash = flashFloor;
   if (flash > live) flash = live;
 
+  // ── v722 Gap-1 — dynamic customer bid floor (opt-in) ──────────────────
+  // Default 'static' → snap100(floor), byte-identical to before. When
+  // 'dynamic', the auto-win floor tracks the live (season-adjusted) price so a
+  // guest can't lock the room at the bare static floor in peak demand. It never
+  // drops below the hotel's own floorPrice × minFraction (owner-protected) and
+  // never exceeds today's live price.
+  let bidFloorOut = snap100(floor);
+  if (cfg?.custFloorMode === "dynamic" && live > 0) {
+    const disc = (typeof cfg.custFloorMaxWinDiscountPct === "number" && Number.isFinite(cfg.custFloorMaxWinDiscountPct))
+      ? Math.max(0, Math.min(0.9, cfg.custFloorMaxWinDiscountPct / 100))
+      : 0.25;
+    const minFrac = (typeof cfg.custFloorMinFraction === "number" && Number.isFinite(cfg.custFloorMinFraction))
+      ? Math.max(0.4, Math.min(1, cfg.custFloorMinFraction))
+      : 1.0;
+    const hardLow = snap100(Math.max(0, floor * minFrac));
+    const raised = snap100(live * (1 - disc));
+    bidFloorOut = Math.min(live, Math.max(hardLow, raised));
+  }
+
   return {
     baseRate: snap100(baseRate),
     livePrice: live,
-    bidFloor: snap100(floor),
+    bidFloor: bidFloorOut,
     flashPrice: flash,
     flashFloor,
     competitorMin: comp,

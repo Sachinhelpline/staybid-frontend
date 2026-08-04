@@ -2757,6 +2757,30 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
 - NEXT: Gap 1 (dynamic customer bid floor, mirroring trade's `dynamicWholesaleFloor`) + Gap 3 (customer
   below-floor forwarded-offer band) — owner pre-approved; investigation launched.
 
+### 2026-08-04 — Gap 1: dynamic customer bid floor (v722, admin, default OFF)
+- **Gap 1 closed:** the customer reverse-auction bid floor was STATIC (`bidFloor = snap100(floorPrice)`,
+  spine.ts) — a guest could auto-win at the bare floor even in peak demand. Now it can track the live
+  (season-adjusted) price, mirroring trade's `dynamicWholesaleFloor`.
+- **Safe architecture (reuses ALL v720 plumbing):** the spine already computes both `floor` and `live` in
+  one place, so the dynamic floor drops into `computeRoomDatePrice` via the SAME `engineCfg`. Three new
+  admin knobs on `pricing_engine_config` (migration `2026-07-21-v722`): `cust_floor_mode`
+  (static|**dynamic**, default static), `cust_floor_max_win_discount_pct` (25), `cust_floor_min_fraction`
+  (1.0). When dynamic: `bidFloor = clamp(snap100(live×(1−disc)), snap100(floor×minFrac), live)` — RAISES
+  in peak, NEVER below the hotel's own floorPrice. Default static → `snap100(floor)`, byte-identical.
+- Every reader auto-picks it up: cron writes `room_date_price.bid_floor`, the hotel-page arena reads it
+  via `roomSpineFloors`, and the `/bid` autopilot threshold already reads spine `bidFloor` (route:414).
+  The static hard-reject (`bids/place`:228, `rooms.floorPrice`) stays as the absolute anti-lowball guard.
+- Resolver + store (`engine-config-store.ts`), admin route (`/api/admin/pricing-config`), and a new
+  **"Customer bid floor"** section in the Pricing Engine tab (mode toggle + 2 knobs + ⚠ note).
+- **MEASURED (real engine):** static = 2000 in peak & off, undef-identical=true (byte-identical). Dynamic
+  PEAK: live 4400 → floor **3300**; dynamic OFF: live 2000 → floor **2000** (never below hotel floor).
+- Badge v721→**v722** (`v722-dynamic-customer-bid-floor`), sw HTML_CACHE v516→**v517** (new admin UI).
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live.
+- **Gap 3 (customer below-floor forwarded offers) — NOT built yet:** it modifies the core `bids/place`
+  accept logic (most money-sensitive route), so design presented for owner go-ahead before touching it.
+- NEXT: on owner confirm, build Gap 3 (real below-floor offer rows, bounded ratio, PENDING-only, admin
+  default OFF). Then Gap 2 (yield optimizer) is an env-flag decision.
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

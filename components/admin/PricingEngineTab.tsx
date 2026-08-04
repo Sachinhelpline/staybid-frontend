@@ -104,6 +104,28 @@ export default function PricingEngineTab() {
         </div>
       </Section>
 
+      {/* ── Customer bid floor (Gap-1) ─────────────────────────────── */}
+      <Section title="Customer bid floor" hint="How low a guest can auto-WIN a room in the bid arena. 'Static' = today (the hotel's set floor, unchanged). 'Dynamic' raises the win-floor with live demand in peak season, never below the hotel's floor.">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", flexWrap: "wrap" }}>
+          <span style={{ color: C.text, fontSize: 13, minWidth: 90 }}>Mode</span>
+          {(["static", "dynamic"] as const).map((m) => (
+            <button key={m} onClick={() => set("custFloorMode", m)} style={{
+              padding: "6px 14px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+              border: `1px solid ${cfg.custFloorMode === m ? C.gold : C.border}`,
+              background: cfg.custFloorMode === m ? "rgba(140,160,182,0.16)" : "transparent",
+              color: cfg.custFloorMode === m ? C.gold : C.textDim,
+            }}>{m === "static" ? "Static (today)" : "Dynamic (season-linked)"}</button>
+          ))}
+        </div>
+        <NumField label="Max win-discount below live %" hint="Dynamic only — win-floor = live price − this %" value={cfg.custFloorMaxWinDiscountPct} on={(v) => set("custFloorMaxWinDiscountPct", v)} def={defaults?.custFloorMaxWinDiscountPct} />
+        <NumField label="Floor min fraction" hint="Dynamic only — floor never below the hotel's floorPrice × this (1.0 = never below the hotel's floor)" value={cfg.custFloorMinFraction} on={(v) => set("custFloorMinFraction", v)} def={defaults?.custFloorMinFraction} step={0.05} />
+        {cfg.custFloorMode === "dynamic" && (
+          <div style={{ color: C.amber, fontSize: 11.5, marginTop: 6 }}>
+            ⚠ Dynamic mode changes which guest bids auto-win. Applies on the next price recalc (~60s).
+          </div>
+        )}
+      </Section>
+
       {/* ── Seasonal curve ─────────────────────────────────────────── */}
       <Section title="Season multiplier (national curve · per month)" hint="Cities with their own real curve (Goa, Leh, …) are unaffected.">
         <Grid labels={MONTHS} arr={cfg.seasonMults} def={defaults?.seasonMults} on={(i, v) => setArr("seasonMults", i, v)} />
