@@ -38,11 +38,16 @@ export async function monthMarket(roomId: string, from: string, to: string, maxS
       if (br > rack) rack = br;
     });
   } catch { /* fall through to Spine compute */ }
+  // v715 (owner ss2 — slow load) — each missing night's Spine compute is fully
+  // independent, so run the (bounded) fills CONCURRENTLY instead of one-await-
+  // at-a-time. Same results, but the dominant slow-load cost (up to 14 serial
+  // Spine round-trips on an un-cached month) collapses to one parallel batch.
   const missing = dates.filter((d) => !price[d]).slice(0, Math.max(0, maxSpineFills));
-  for (const d of missing) {
-    try { const sp = await resolveSpinePrices([roomId], d); const p = Math.round(Number(sp?.[roomId]?.livePrice) || 0); if (p > 0) price[d] = p; }
-    catch { /* skip this night */ }
-  }
+  const fills = await Promise.all(missing.map(async (d) => {
+    try { const sp = await resolveSpinePrices([roomId], d); return { d, p: Math.round(Number(sp?.[roomId]?.livePrice) || 0) }; }
+    catch { return { d, p: 0 }; }
+  }));
+  fills.forEach(({ d, p }) => { if (p > 0) price[d] = p; });
   const vals = dates.map((d) => price[d]).filter((v) => v > 0);
   if (!vals.length) return null;
   const high = Math.max(...vals);

@@ -13272,6 +13272,33 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 @media (min-width: 1024px) {
   .sbh-hero { height: clamp(380px, 54vh, 560px); }
 }
+/* v715 (owner ss3) — PER-DEVICE-HEIGHT hero fit. On short phones the hero
+   content (eyebrow + 2-line title + meta + price + 2-line nudge + 2 rows of
+   amenity chips + CTAs) summed to ~52svh+, so the hero grew to fill the screen
+   and the rails below never peeked ("neeche ka content dikhta hi nahi"). These
+   height-aware steps compress the type + gaps so the hero stays short enough
+   that the next section always shows — with the padding staying balanced. No
+   content is removed; tall phones (≥800h) and desktop are untouched. */
+@media (max-width: 1023px) and (max-height: 800px) {
+  .sbh-hero { min-height: 48svh; }
+  .sbh-hero-inner { padding-bottom: clamp(20px, 3vh, 28px); }
+  .sbh-hero-title { font-size: clamp(1.5rem, 6.6vw, 2.05rem); margin-bottom: 5px; }
+  .sbh-eyebrow { margin-bottom: 4px; }
+  .sbh-hero-meta { margin-bottom: 6px; }
+  .sbh-hero-price { margin-bottom: 6px; }
+  .sbh-hero-chips { margin-top: 6px; gap: 5px; }
+  .sbh-amen { padding: 3px 9px; font-size: 0.64rem; }
+  .sbh-hero-cta { margin-top: 8px; }
+}
+@media (max-width: 1023px) and (max-height: 680px) {
+  .sbh-hero { min-height: 44svh; }
+  .sbh-hero-title { font-size: clamp(1.35rem, 6vw, 1.8rem); }
+  .sbh-hero-meta { font-size: 0.76rem; margin-bottom: 5px; }
+  .sbh-hero-price { font-size: 0.8rem; }
+  .sbh-hero-nudge { font-size: 0.72rem; }
+  .sbh-amen { font-size: 0.62rem; padding: 3px 8px; }
+  .sbh-btn { padding: 9px 12px; font-size: 0.8rem; min-height: 38px; }
+}
 /* option pills — one notch smaller on every step, both viewports */
 .sbh-tf-opt { min-height: 38px; font-size: 0.6rem; padding: 4px 10px 4px 5px; gap: 6px; }
 .sbh-tf-coin { width: 26px; height: 26px; font-size: 0.82rem; }
