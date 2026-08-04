@@ -56,3 +56,7 @@ export const SB_IMG_CARD     = { width: 600,  quality: 70, format: "webp" as con
 export const SB_IMG_THUMB    = { width: 240,  quality: 65, format: "webp" as const, resize: "cover" as const };
 export const SB_IMG_AVATAR   = { width: 96,   quality: 70, format: "webp" as const, resize: "cover" as const };
 export const SB_IMG_HERO     = { width: 1280, quality: 75, format: "webp" as const, resize: "cover" as const };
+// Offline-kiosk BIG display (43"–75", often 4K). Request the largest crisp
+// variant + higher quality so a wide screen never upscales a downsized file.
+// The transform CDN never enlarges past the source, so this only ever helps.
+export const SB_IMG_KIOSK    = { width: 2560, quality: 82, format: "webp" as const, resize: "cover" as const };

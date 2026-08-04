@@ -158,7 +158,7 @@ export default function ServiceLockModal({
                         className="w-full flex items-center justify-between rounded-xl p-3 transition-all disabled:opacity-50 bg-luxury-50 border border-luxury-200">
                         <span className="text-left">
                           <span className="block text-[0.8rem] font-bold text-luxury-900">{PLAN_LABEL[pl]}</span>
-                          <span className="block text-[0.6rem] text-luxury-500">{PLAN_TERM[pl]} access</span>
+                          <span className="block text-[0.63rem] text-luxury-500">{PLAN_TERM[pl]} access</span>
                         </span>
                         <span className="text-[0.92rem] font-bold text-gold-700">
                           {busy === tag ? "…" : fmtCur(price)}
@@ -175,7 +175,7 @@ export default function ServiceLockModal({
                   {myBundles.map((b: any) => (
                     <div key={b.id} className="rounded-xl p-2.5 bg-luxury-50">
                       <p className="text-[0.74rem] font-bold text-luxury-900">{b.name}</p>
-                      <p className="text-[0.58rem] text-luxury-500 mb-1.5">
+                      <p className="text-[0.63rem] text-luxury-500 mb-1.5">
                         {(b.service_keys || []).map((k: string) => SERVICE_LABEL[k] || k).join(" · ")}
                       </p>
                       <div className="grid grid-cols-3 gap-1.5">
@@ -186,7 +186,7 @@ export default function ServiceLockModal({
                           return (
                             <button key={pl} onClick={() => pay(pl, b.id)} disabled={!!busy}
                               className="bg-white rounded-lg px-1.5 py-1.5 text-center transition-all disabled:opacity-50 border border-luxury-200">
-                              <span className="block text-[0.5rem] text-luxury-400 uppercase tracking-wide">{PLAN_LABEL[pl]}</span>
+                              <span className="block text-[0.63rem] text-luxury-400 uppercase tracking-wide">{PLAN_LABEL[pl]}</span>
                               <span className="block text-[0.72rem] font-bold text-gold-700">
                                 {busy === tag ? "…" : fmtCur(price)}
                               </span>
@@ -237,7 +237,7 @@ export default function ServiceLockModal({
                           <div className="grid grid-cols-3 gap-1.5">
                             {([["Monthly", pricing!.monthly], ["Quarterly", pricing!.quarterly], ["Yearly", pricing!.yearly]] as const).map(([k, v]) => (
                               <div key={k} className="bg-white rounded-lg px-1.5 py-1 text-center">
-                                <p className="text-[0.52rem] text-luxury-400 uppercase tracking-wide">{k}</p>
+                                <p className="text-[0.63rem] text-luxury-400 uppercase tracking-wide">{k}</p>
                                 <p className="text-[0.74rem] font-bold text-gold-700">{v != null ? fmtCur(v) : "—"}</p>
                               </div>
                             ))}
@@ -248,14 +248,14 @@ export default function ServiceLockModal({
                         <div className={hasPrice ? "mt-2" : ""}>
                           <p className="text-[0.66rem] font-bold text-luxury-700 mb-1">Bundle plans</p>
                           {myBundles.map((b: any) => (
-                            <p key={b.id} className="text-[0.62rem] text-luxury-600">
+                            <p key={b.id} className="text-[0.63rem] text-luxury-600">
                               <b>{b.name}</b> — {b.monthly != null ? `${fmtCur(b.monthly)}/mo` : ""}
                               {b.yearly != null ? ` · ${fmtCur(b.yearly)}/yr` : ""}
                             </p>
                           ))}
                         </div>
                       )}
-                      <p className="text-[0.58rem] text-luxury-400 mt-1.5">Tap Activate — pick a plan and pay.</p>
+                      <p className="text-[0.63rem] text-luxury-400 mt-1.5">Tap Activate — pick a plan and pay.</p>
                     </div>
                   );
                 })()}

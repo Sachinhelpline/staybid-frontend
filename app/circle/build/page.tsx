@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Lock, CreditCard } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
@@ -262,7 +263,7 @@ export default function CircleBuildPage() {
     return (
       <section className="sbc-section" style={{ maxWidth: 640 }}>
         <div className="sbc-panel-walnut" style={{ textAlign: "center", padding: 36 }}>
-          <div style={{ fontSize: 56 }}>{doneBundle?._payOption === "hold" ? "🔒" : "🎉"}</div>
+          <div style={{ fontSize: 56 }}>{doneBundle?._payOption === "hold" ? <Lock size={50} aria-hidden /> : "🎉"}</div>
           <h1 className="sbc-h2" style={{ color: "var(--sbc-c-ink)" }}>
             {doneBundle?._payOption === "hold" ? "Property Held for Your Visit!" : "Welcome to the Circle!"}
           </h1>
@@ -339,7 +340,7 @@ export default function CircleBuildPage() {
             ) : grouped.length === 0 ? (
               <div className="sbc-panel" style={{ padding: 32, textAlign: "center" }}>
                 <div style={{ fontSize: 34 }}>🏔️</div>
-                <p style={{ marginTop: 8, color: "rgba(74,56,32,.7)" }}>
+                <p style={{ marginTop: 8, color: "rgba(74,56,32,.82)" }}>
                   Your bundle is empty. Go to Discover and choose a property + rooms.
                 </p>
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
@@ -623,9 +624,9 @@ export default function CircleBuildPage() {
             <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
               {([
                 { key: "full", icon: "⚡", title: "Proceed & Pay", sub: "Full payment now — invest instantly", amt: bundle.payNow },
-                { key: "hold", icon: "🔒", title: "10% Visit-Access Hold", sub: "Reserve for a property visit · balance after visit + agreement", amt: holdNow },
-                { key: "emi", icon: "💳", title: "EMI / Pay Later", sub: "Razorpay EMI + BNPL (Home Credit · Snapmint · Bajaj Finserv · Mobikwik)", amt: bundle.payNow },
-              ] as { key: PayOption; icon: string; title: string; sub: string; amt: number }[]).map((o) => (
+                { key: "hold", icon: <Lock size={22} aria-hidden />, title: "10% Visit-Access Hold", sub: "Reserve for a property visit · balance after visit + agreement", amt: holdNow },
+                { key: "emi", icon: <CreditCard size={22} aria-hidden />, title: "EMI / Pay Later", sub: "Razorpay EMI + BNPL (Home Credit · Snapmint · Bajaj Finserv · Mobikwik)", amt: bundle.payNow },
+              ] as { key: PayOption; icon: React.ReactNode; title: string; sub: string; amt: number }[]).map((o) => (
                 <button
                   key={o.key}
                   onClick={() => setPayOption(o.key)}
@@ -727,9 +728,9 @@ export default function CircleBuildPage() {
               {pay === "paying"
                 ? "Processing payment…"
                 : payOption === "hold"
-                  ? `🔒 Hold for Visit · ${bundle.ok ? fmtINR(chargeNow) : ""}`
+                  ? <><Lock size={15} aria-hidden style={{verticalAlign:"-2px",marginRight:5}} />Hold for Visit · {bundle.ok ? fmtINR(chargeNow) : ""}</>
                   : payOption === "emi"
-                    ? `💳 Pay via EMI · ${bundle.ok ? fmtINR(chargeNow) : ""}`
+                    ? <><CreditCard size={15} aria-hidden style={{verticalAlign:"-2px",marginRight:5}} />Pay via EMI · {bundle.ok ? fmtINR(chargeNow) : ""}</>
                     : `⚡ Proceed & Pay ${bundle.ok ? fmtINR(chargeNow) : ""}`}
             </button>
             <p style={{ marginTop: 10, fontSize: ".68rem", color: "var(--sbc-c-ink-faint)", textAlign: "center" }}>

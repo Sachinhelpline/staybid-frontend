@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CalendarClock, Home, Receipt, Pencil, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -20,10 +21,10 @@ const PREFS_KEY = "sb_circle_prefs";
 type Prefs = { payoutReminders: boolean; propertyAlerts: boolean; returnsBeforeTax: boolean };
 const DEFAULT_PREFS: Prefs = { payoutReminders: true, propertyAlerts: true, returnsBeforeTax: false };
 
-const PREF_ROWS: { key: keyof Prefs; icon: string; label: string; sub: string }[] = [
-  { key: "payoutReminders", icon: "📅", label: "Monthly payout reminders", sub: "Get a nudge when your returns are credited" },
-  { key: "propertyAlerts",  icon: "🏡", label: "New property alerts", sub: "Fresh properties matching your interest" },
-  { key: "returnsBeforeTax", icon: "🧾", label: "Show returns before tax", sub: "Display indicative gross returns on cards" },
+const PREF_ROWS: { key: keyof Prefs; icon: React.ReactNode; label: string; sub: string }[] = [
+  { key: "payoutReminders", icon: <CalendarClock size={17} aria-hidden />, label: "Monthly payout reminders", sub: "Get a nudge when your returns are credited" },
+  { key: "propertyAlerts",  icon: <Home size={17} aria-hidden />, label: "New property alerts", sub: "Fresh properties matching your interest" },
+  { key: "returnsBeforeTax", icon: <Receipt size={17} aria-hidden />, label: "Show returns before tax", sub: "Display indicative gross returns on cards" },
 ];
 
 export default function CircleProfilePage() {
@@ -102,7 +103,7 @@ export default function CircleProfilePage() {
         </div>
         {user ? (
           <button className="sbc-dash-edit" onClick={() => setEditing((v) => !v)}>
-            {editing ? "Close" : "✎ Edit"}
+            {editing ? "Close" : <><Pencil size={13} aria-hidden style={{display:"inline",verticalAlign:"-2px",marginRight:3}} />Edit</>}
           </button>
         ) : (
           <Link href="/auth" className="sbc-dash-edit gold">Sign in</Link>
@@ -158,7 +159,7 @@ export default function CircleProfilePage() {
         <div className="sbc-dash-sec-h">Account</div>
         <div className="sbc-dash-links">
           <Link href="/profile" className="sbc-dash-link">
-            <span>⚙</span>Full StayBid account settings<em>›</em>
+            <span><Settings size={15} aria-hidden /></span>Full StayBid account settings<em>›</em>
           </Link>
           {user && (
             <button className="sbc-dash-link danger" onClick={doLogout}>

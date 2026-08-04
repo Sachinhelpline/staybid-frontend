@@ -29,12 +29,20 @@ const FONT_FLOOR = 10;   // px — flag genuinely-tiny text (< floor). 10px micr
                          // sit at the design's --fs-micro floor and pass.
 
 // brand/content glyphs intentionally kept program-wide (hybrid rule)
-const KEEP = new Set(['←','→','↗','↘','↩','⇅','⇄','↔','›','‹','·','–','—','✓','✕','×','★','☆','♥','♡',
-  '👋','✨','🔥','🏠','🔑','🏷','🏔','🏨','◎','📍','📱','🎉','🛏','●','○','▶','◀','🥇','🥈','🥉','😊','😐','😞',
+const KEEP = new Set(['←','→','↑','↓','↗','↘','↩','⇅','⇄','↔','›','‹','·','–','—','✓','✕','×','★','☆','♥','♡',
+  '👋','✨','🔥','🏠','🔑','🏷','🏔','🏨','◎','📍','📱','🎉','🛏','●','○','▶','◀','🥇','🥈','🥉','🏆','😊','😐','😞',
   // home "The Stage" brand/content/season glyphs (hybrid keep)
   '❄️','🌸','☀️','🌧️','🍂','🛕','⚡','🎬','💎','✦','🧭','🌟','💚','✈️','🚗','❄','🌧','💫','🎯','🛂','◆',
   // reel/profile content-vocabulary: story-highlight covers + nav menu glyph (hybrid keep)
-  '🌄','🏖','🍜','🎒','☰','↺']);
+  '🌄','🏖','🍜','🎒','☰','↺',
+  // partner empty-state illustrations (36px, centred) + reload glyph (matches ↺) (hybrid keep)
+  '📭','🛟','↻','🙌',
+  // creator/referral share-channel + caption glyphs (brand vocabulary; lucide has no brand marks) (hybrid keep)
+  '💬','📸','📲','🌅','🎵','👆','👉','👇','🔗',
+  // circle content vocabulary: property/destination types + season/weather glyphs (hybrid keep)
+  '🏡','🏘','🏛','🛖','🌴','☁️','☁','☕','⬆','⛺','🌲','🌳','🌾','🏢','🪵',
+  // city/destination + location-picker glyphs (lib/cities CITY_ICON + globe/GPS) (hybrid keep)
+  '🏙','⛰','🏰','🕉','🌨','🏂','🐪','🛰','🌏','🌐']);
 
 function lin(c){c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
 function lum({r,g,b}){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
@@ -49,6 +57,14 @@ const HOTELS = [
   {id:'h2',name:'Ridge Retreat',city:'Mussoorie',state:'UK',starRating:5,images:['x'],image:'x',fromPrice:3200,cheapestPrice:3200,rooms:[{id:'r2',name:'Suite'}]},
   {id:'h3',name:'Riverside Camp',city:'Rishikesh',state:'UK',starRating:3,images:['x'],image:'x',fromPrice:1800,cheapestPrice:1800,rooms:[{id:'r3',name:'Tent'}]},
 ];
+const ADMIN_FX = { kpis:{users:1240,bookings:380,revenue:1200000,hotels:42,complaints:3,pendingContent:2,payoutsOwed:14000}, ledger:[], payouts:[], bookings:[], holds:[], hotels:[], topCreators:[], codes:[], complaints:[], feedback:[], flags:[], users:[], creators:[], counts:{} };
+const CIRCLE_PROPS = { cities:['Dehradun'], properties:[{id:'p1',title:'Cave View Villa',city:'Dehradun',state:'UK',locationLabel:'Rajpur, Dehradun',images:[],monthlyRate:30000,roiMin:15,roiMax:28,occupancyLabel:'High',badges:['Trending'],operationModel:'managed',status:'open',roomTypes:[{id:'r1',name:'Deluxe',monthlyRate:30000,availableUnits:3}]}] };
+const CIRCLE_PORTFOLIO = { ownedBlocks:2, activeListings:1, inventoryValue:60000, b2bNetEarned:12000, payoutsReceived:4400, blocks:[{id:'b1',hotel_name:'Cave View',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,status:'owned'}], listings:[], trades:[], operatedHotels:[{id:'h1',name:'Cave View Resort'}] };
+const INF_ME = { registered:true, influencer:{ id:'i1', display_name:'Asha Verma', handle:'asha', bio:'Travel creator sharing hill-station gems.', verification_tier:2, aadhaar_verified:true, pan_verified:true, total_earnings:24500, status:'active', total_followers:8200, hotel_id:null, instagram:'asha.travels', avatar_url:null } };
+const INF_STATS = { derived:{ monthlyCommission:4200, monthlyBookings:6, pendingCommission:1800, totalBookings:34 } };
+const INF_EARN = { commissions:[ {id:'cm1',booking_amount:4800,commission_amount:480,commission_percentage:10,status:'cleared',hotel_id:'h1',created_at:'2026-07-20 10:00:00'}, {id:'cm2',booking_amount:3200,commission_amount:320,commission_percentage:10,status:'pending',hotel_id:'h2',created_at:'2026-07-25 10:00:00'} ] };
+const INF_CODES = { codes:[ {id:'rc1',code:'ASHA10',label:'Instagram bio',clicks_count:120,conversions_count:8}, {id:'rc2',code:'HILLS5',label:'YouTube',clicks_count:64,conversions_count:3} ] };
+const INF_BOOKINGS = { bookings:[ {bidId:'bid_abc123456',amount:4800,commission:480,status:'ACCEPTED',source:'reel',flow:'bid',paid:true,createdAt:'2026-07-20 10:00:00',checkIn:'2026-08-10',hotelName:'Cave View Resort'} ] };
 const ROUTES = [
   { route:'/', scope:'body',
     fixtures:{
@@ -78,6 +94,127 @@ const ROUTES = [
     fixtures:{ 'b2b/marketplace': { listings:[{id:'l1',hotel_name:'Cave View',hotel_city:'Dehradun',unit_number:'12',date_from:'2026-08-01',date_to:'2026-08-04',nights:3,ask_total:9000}] } } },
   { route:'/admin/host', scope:'body', admin:true,
     fixtures:{ 'admin/host':{ kpis:{leads:3,leadsNew:1,portfolios:2,portfoliosActive:1,portfolioRevenue:1000,propertySubmissions:2,propertySubmissionsPending:1,inquiries:1,inquiriesNew:1,projects:1,orders:1,storeGmv:1,jobs:1,jobsActive:1,workforceRevenue:1,channels:1,channelsNew:1}, leads:[], portfolios:[], propertySubmissions:[], inquiries:[], projects:[], orders:[], jobs:[], channels:[] } } },
+
+  // ── Admin panel (DARK-ONLY per owner decision 2 — judge the dark rows) ────
+  { route:'/admin', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX } },
+  { route:'/admin/users', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/users':{ users:[{id:'u1',name:'Asha Verma',phone:'+919812345678',role:'customer',isBlocked:false,createdAt:'2026-07-01'}], count:1 } } },
+  { route:'/admin/bookings', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/bookings':{ bookings:[{id:'bk1',status:'CONFIRMED',hotelName:'Cave View',guestName:'Asha',totalAmount:4800,checkIn:'2026-09-10',checkOut:'2026-09-12'}] } } },
+  { route:'/admin/hotels', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/hotels':{ hotels:[{id:'h1',name:'Cave View Resort',city:'Dehradun',approval_status:'approved',owner_type:'hotel_owner'}] } } },
+  { route:'/admin/finance', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/finance':{ ledger:[], payouts:[], kpis:{revenue:120000,commission:14000,payoutsOwed:3000} } } },
+  { route:'/admin/complaints', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/complaints':{ complaints:[{id:'c1',status:'open',subject:'AC not working',hotelName:'Cave View',createdAt:'2026-08-01'}] } } },
+  { route:'/admin/content', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/content':{ posts:[], pending:[] } } },
+  { route:'/admin/settings', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/settings':{ config:{} } } },
+  { route:'/admin/analytics', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/analytics':{ kpis:{}, series:[] } } },
+  { route:'/admin/verification', scope:'body', admin:true, fixtures:{ 'admin':ADMIN_FX, 'admin/verification':{ requests:[], videos:[] } } },
+
+  // ── Circle remaining pages (signed-in investor) ──────────────────────────
+  { route:'/circle/discover', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS, 'circle/locks':{locks:[{property_id:'p1'}]} } },
+  { route:'/circle/build', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}',sb_circle_build_v1:'{"propertyId":"p1","rooms":[{"roomTypeId":"r1","qty":1}]}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS, 'circle/revenue-config':{ config:{ occupancyPct:70, adr:4200 } } } },
+  { route:'/circle/me', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/me':{ bundles:[], payouts:[], locks:[] }, 'circle/portfolio':CIRCLE_PORTFOLIO, 'circle/city-access':{ activeCities:['Dehradun'], cityAccessPrice:999 }, 'circle/revenue-config':{ config:{occupancyPct:70,adr:4200} } } },
+  { route:'/circle/earnings', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/me':{ bundles:[], payouts:[{id:'py1',amount:4400,status:'paid',month:'2026-07'}], locks:[] }, 'circle/payout-account':{ account:{type:'upi',upi:'asha@okhdfc',status:'verified'} }, 'circle/projected-earnings':{ projectedNetOwed:5600, projectedGross:6400, bookingCount:2, nightsCount:5, feePct:12, items:[] } } },
+  { route:'/circle/kyc', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/kyc':{ status:'pending', kyc:null } } },
+  { route:'/circle/onboard', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/onboard':{ ok:true, application:null } } },
+  { route:'/circle/profile', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678","email":"asha@example.com"}'}, fixtures:{} },
+  { route:'/circle/support', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'}, fixtures:{} },
+  { route:'/circle/demand-cycle', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS } },
+  { route:'/circle/model2', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma"}'},
+    fixtures:{ 'circle/properties':CIRCLE_PROPS } },
+  { route:'/circle/model2/review', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}',sb_m2_basket_v1:'[{"listingId":"l1","hotelName":"Cave View","roomName":"Deluxe","city":"Dehradun","dates":["2026-08-01","2026-08-02"],"buyPerNight":2000}]'},
+    fixtures:{ 'circle/city-access':{ activeCities:['Dehradun'], cityAccessPrice:999 }, 'b2b/market-quote':{ window:true, blocked:[], ownPerNight:1000, buyPerNight:2000, buyerFeePct:5, market:{adr:2800,low:2400,high:3200} } } },
+  { route:'/circle/model2/selling', scope:'body', ls:{sb_token:'t',sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}'},
+    fixtures:{ 'circle/portfolio':CIRCLE_PORTFOLIO } },
+
+  // ── Partner surface ──────────────────────────────────────────────────────
+  { route:'/partner', scope:'body', fixtures:{} },
+  { route:'/partner/dashboard', scope:'body',
+    ls:{sb_partner_token:'t', sb_partner_user:'{"id":"p1","name":"Cave View Owner","hotelId":"h1","hotel":{"id":"h1","name":"Cave View Resort","city":"Dehradun"}}', sb_partner_active_hotel:'h1'},
+    fixtures:{
+      'partner/hotel':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', state:'UK', starRating:4, ownerId:'p1', account_type:'hotel_owner', images:['x'], amenities:['Wi-Fi','Pool'], approval_status:'approved', rooms:[{id:'r1',name:'Deluxe',floorPrice:2400,basePrice:3200,capacity:2,totalRooms:6}], isOperator:false, ownedUnits:[] }, bookings:[{id:'bk1',status:'CONFIRMED',guestName:'Asha',roomName:'Deluxe',checkIn:'2026-09-10',checkOut:'2026-09-12',totalAmount:4800,numRooms:1}] },
+      'partner/hotels':{ hotels:[{id:'h1',name:'Cave View Resort',city:'Dehradun'}], count:1 },
+      'partner/bids':{ bids:[{id:'b1',status:'PENDING',guestName:'Rin',roomName:'Deluxe',bidAmount:2400,checkIn:'2026-09-10',checkOut:'2026-09-12',numRooms:1,createdAt:'2026-08-03 10:00:00'}] },
+      'partner/services':{ services:[{service_key:'bids',status:'active'},{service_key:'rooms',status:'active'}] },
+      'partner/calendar':{ ok:true, days:[] }, 'partner/room-units':{ units:[] }, 'partner/room-pricing':{ ok:true, config:{} },
+      'partner/complaints':{ complaints:[] }, 'partner/flash-deals':{ deals:[] }, 'partner/ota-feeds':{ feeds:[] },
+      'partner/content/pending':{ posts:[] }, 'partner/autopilot':{ mode:'hybrid' }, 'partner/walk-in':{ ok:true },
+    } },
+  { route:'/partner/staff', scope:'body',
+    ls:{sb_partner_token:'t', sb_partner_user:'{"id":"p1","name":"Cave View Owner","hotelId":"h1","hotel":{"id":"h1","name":"Cave View Resort","city":"Dehradun"}}'},
+    fixtures:{ 'partner/hotel':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', ownerId:'p1', rooms:[], isOperator:false, ownedUnits:[] }, bookings:[] } } },
+  { route:'/partner/verification', scope:'body',
+    ls:{sb_partner_token:'t', sb_partner_user:'{"id":"p1","name":"Cave View Owner","hotelId":"h1","hotel":{"id":"h1","name":"Cave View Resort","city":"Dehradun"}}'},
+    fixtures:{ 'partner/hotel':{ hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', ownerId:'p1', rooms:[], isOperator:false, ownedUnits:[] }, bookings:[] } } },
+
+  // ── Trade (Model 3 travel-agent auction) ─────────────────────────────────
+  { route:'/trade', scope:'body',
+    fixtures:{ 'trade/lots':{ ok:true, cities:['Dehradun','Mussoorie'], lots:[
+      { id:'lot1', hotel_id:'h1', room_id:'r1', category:'Deluxe Valley', city:'Dehradun', month_key:'2026-09', num_rooms:6, min_bid_per_room_night:2300, window_close_at:'2026-09-30', sale_mode:'live', image:'x', metadata:{ hotel_name:'Cave View Resort' } },
+      { id:'lot2', hotel_id:'h2', room_id:'r2', category:'Ridge Suite', city:'Mussoorie', month_key:'2026-10', num_rooms:4, min_bid_per_room_night:3100, window_close_at:'2026-10-31', sale_mode:'sealed', image:'x', metadata:{ hotel_name:'Ridge Retreat' } },
+    ] } } },
+  { route:'/trade/lot1', scope:'body',
+    fixtures:{ 'trade/lots/lot1':{ ok:true, depositPct:10, buyerPremiumPct:5, roomsAvailable:6, live:{ autopilot:'hybrid' }, segments:[{ type:'full', label:'Full month' },{ type:'week', label:'A week' },{ type:'weekend', label:'Weekends' }], market:{ rack:4900, adr:2867, low:2400, high:3400 },
+      lot:{ id:'lot1', hotel_id:'h1', room_id:'r1', category:'Deluxe Valley', city:'Dehradun', month_key:'2026-09', num_rooms:6, min_bid_per_room_night:2300, window_close_at:'2026-09-30', sale_mode:'live', metadata:{} },
+      hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun', star:4, description:'A serene hillside retreat with valley views.', images:['x','x','x'] },
+      room:{ id:'r1', name:'Deluxe Valley', images:['x'], capacity:2 } } } },
+  { route:'/trade/my-bids', scope:'body',
+    ls:{ sb_trade_token:'t', sb_trade_user:'{"uid":"ag1","name":"Ravi Agent","email":"ravi@example.com"}' },
+    fixtures:{
+      'trade/awards/mine':{ ok:true, awards:[{ id:'aw1', bid_id:'bd1', hotel_id:'h1', city:'Dehradun', month_key:'2026-09', segment_label:'Full month', rooms_awarded:2, base_total:9600, buyer_fee:480, amount_due:10080, deposit_applied:0, status:'awarded', voucher_code:null, night_dates:[], metadata:{ hotel_name:'Cave View Resort' } }] },
+      'trade/bids/mine':{ ok:true, bids:[{ id:'bd2', lot_id:'lot2', status:'active', segment_label:'Weekends', per_room_per_night:3100, rooms_wanted:2, deposit_amount:1240, counter_per_room_per_night:null, lot:{ city:'Mussoorie', month_key:'2026-10', metadata:{ hotel_name:'Ridge Retreat' } }, metadata:{} }] },
+    } },
+  { route:'/trade/review', scope:'body',
+    ls:{ sb_trade_token:'t', sb_trade_user:'{"uid":"ag1","name":"Ravi Agent"}', sb_trade_bidbasket_v1:'[{"lotId":"lot1","segmentType":"full","weekIndex":null,"perRoomPerNight":2300,"roomsWanted":2,"segmentLabel":"Full month · Sep 2026","hotelName":"Cave View Resort","city":"Dehradun"}]' },
+    fixtures:{ 'trade/lots/lot1':{ ok:true, depositPct:10, buyerPremiumPct:5, lot:{ id:'lot1', city:'Dehradun', month_key:'2026-09', min_bid_per_room_night:2300, sale_mode:'live' }, hotel:{ id:'h1', name:'Cave View Resort', city:'Dehradun' }, room:{ id:'r1', name:'Deluxe Valley' } } } },
+
+  // ── Onboard (hotel self-signup wizard) ───────────────────────────────────
+  { route:'/onboard', scope:'body', fixtures:{} },
+  { route:'/onboard/signin', scope:'body', fixtures:{} },
+  { route:'/onboard/signup', scope:'body', fixtures:{} },
+  { route:'/onboard/verify', scope:'body', ls:{ sb_onboard_token:'t', sb_onboard_user:'{"id":"o1","name":"New Owner","phone":"+919812345678"}' }, fixtures:{} },
+  { route:'/onboard/wizard', scope:'body',
+    ls:{ sb_onboard_token:'t', sb_onboard_user:'{"id":"o1","name":"New Owner","phone":"+919812345678"}', sb_onboard_draft:'{"basics":{"name":"Cave View Resort","city":"Dehradun"}}' }, fixtures:{} },
+
+  // ── Agent (customer-support panel) ───────────────────────────────────────
+  { route:'/agent/login', scope:'body', fixtures:{} },
+  { route:'/agent', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' },
+    fixtures:{ 'support/conversations':{ ok:true, conversations:[{ id:'cv1', subject:'Booking help', status:'open', last_message:'Need to change dates', updated_at:'2026-08-01 10:00:00', user_name:'Asha', unread:2, channel:'chat' }] }, 'support/metrics':{ ok:true, open:3, resolved:12, avgResponseMin:8 }, 'support/suggest':{ ok:true, suggestion:'' } } },
+  { route:'/agent/metrics', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' },
+    fixtures:{ 'support/metrics':{ ok:true, open:3, resolved:12, pending:1, avgResponseMin:8, avgResolutionHrs:4, byDay:[], byAgent:[{ name:'Support Agent', resolved:12, avgMin:8 }], totals:{ conversations:15, messages:120 } } } },
+  { route:'/agent/cv1', scope:'body', ls:{ sb_agent_token:'t', sb_agent_user:'{"id":"a1","name":"Support Agent","role":"agent"}' },
+    fixtures:{ 'support/ai-status':{ ok:true, enabled:false }, 'support/conversations/cv1':{ ok:true, conversation:{ id:'cv1', subject:'Booking help', status:'open', user_name:'Asha', channel:'chat', created_at:'2026-08-01 09:00:00' }, messages:[{ id:'m1', sender:'user', body:'Hi, I need to change my check-in date.', created_at:'2026-08-01 09:00:00' },{ id:'m2', sender:'agent', body:'Sure, I can help with that. Which booking?', created_at:'2026-08-01 09:02:00' }] }, 'support/suggest':{ ok:true, suggestion:'' } } },
+
+  // ── Kiosk (offline kiosk: hub / touchscreen booking / big display board) ──
+  { route:'/kiosk', scope:'body', fixtures:{} },
+  { route:'/kiosk/book', scope:'body',
+    fixtures:{ 'kiosk/feed':{ ok:true, deals:[{ id:'d1', hotelId:'h1', hotelName:'Rishikesh Ganga View', hotel_name:'Rishikesh Ganga View', city:'Rishikesh', roomName:'Deluxe Valley', room_name:'Deluxe Valley', marketRate:5000, market_rate:5000, aiPrice:3200, ai_price:3200, price:3200, discount:36, starRating:4, star_rating:4, image:'x', images:['x'], distanceKm:2, rooms:[{ id:'r1', name:'Deluxe Valley', price:3200 }] }] } } },
+  { route:'/kiosk/display', scope:'body',
+    fixtures:{ 'kiosk/feed':{ ok:true, deals:[{ id:'d1', hotelName:'Rishikesh Ganga View', hotel_name:'Rishikesh Ganga View', city:'Rishikesh', roomName:'Deluxe Valley', marketRate:5000, aiPrice:3200, price:3200, discount:36, starRating:4, image:'x', images:['x'], badge_emoji:'⭐', delta:1800 }] } } },
+
+  // ── Complaints (customer support) ────────────────────────────────────────
+  { route:'/complaints', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'complaints':{ complaints:[{ id:'c1', subject:'AC not working', status:'OPEN', createdAt:'2026-08-01 10:00:00', hotelName:'Cave View Resort' }] }, 'complaints/mine':{ complaints:[] } } },
+
+  // ── Influencer / creator hub (registered creator) ────────────────────────
+  { route:'/influencer/dashboard', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/stats':INF_STATS, 'i1/earnings':INF_EARN } },
+  { route:'/influencer/profile', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME } },
+  { route:'/influencer/earnings', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/earnings':INF_EARN } },
+  { route:'/influencer/referrals', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/codes':INF_CODES } },
+  { route:'/influencer/bookings', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'i1/bookings':INF_BOOKINGS } },
+  { route:'/influencer/upload', scope:'body', ls:{ sb_token:'t', sb_user:'{"id":"u1","name":"Asha Verma","phone":"+919812345678"}' },
+    fixtures:{ 'influencer/me':INF_ME, 'hotels':{ ok:true, hotels:HOTELS } } },
+  { route:'/influencer/public/pub1', scope:'body',
+    fixtures:{ 'influencer/public/pub1':{ ok:true, influencer:{ id:'pub1', display_name:'Asha Verma', handle:'asha', bio:'Travel creator sharing hill-station gems.', total_followers:8200, verification_tier:2, avatar_url:null, instagram:'asha.travels' }, videos:[], stats:{ videos:12, followers:8200 } } } },
 
   // ── Customer frontend (the main app) ─────────────────────────────────────
   { route:'/hotels', scope:'body',
@@ -122,6 +259,13 @@ for (const cfg of ROUTES) {
       if (cfg.admin) { Object.assign(ls, { sb_admin_token:'t.t.t', sb_admin_user:'{"id":"a1","name":"Admin","role":"super_admin"}', sb_token:'t.t.t', sb_user:'{"id":"a1","name":"Admin","role":"super_admin"}' }); }
       await ctx.addInitScript((data)=>{ try{ for(const [k,v] of Object.entries(data.ls)) localStorage.setItem(k,v); sessionStorage.setItem('sb_welcome_shown','1'); }catch(e){} }, { ls });
       const page = await ctx.newPage();
+      // Stub Google Fonts (blocked by the sandbox proxy). React 19 treats a
+      // component-level <link rel=stylesheet>/@import as a "suspensey" resource
+      // and holds the subtree hidden until it loads; on the blocked CDN that
+      // never resolves, so pages like /agent/* /admin/login render empty. A 200
+      // empty stylesheet lets React reveal the content (fallback fonts are fine
+      // for geometry/contrast measurement).
+      await page.route(/fonts\.(googleapis|gstatic)\.com/, r=>r.fulfill({status:200,contentType:'text/css',body:'/* stub */'}));
       await page.route('**/api/**', route=>{
         const u = route.request().url();
         for (const [sub,json] of Object.entries(cfg.fixtures||{})) if (u.includes(sub)) return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(json)});
@@ -134,17 +278,28 @@ for (const cfg of ROUTES) {
       // still can't measure is recorded as NAVERR (never aborts the whole route).
       const EVAL_FN = (args)=>{
         const { scope, KEEParr, MAX_LINE, FONT_FLOOR } = args;
-        const KEEP = new Set(KEEParr);
+        // Strip the FE0F variation selector so '✈️' (kept) matches the base '✈'
+        // the emoji regex actually captures (it does not include U+FE0F).
+        const KEEP = new Set(KEEParr.map(s => s.replace(/️/g, '')));
         const root = document.querySelector(scope) || document.body;
         const de = document.documentElement;
         const overflow = de.scrollWidth > de.clientWidth + 1 ? { s:de.scrollWidth, c:de.clientWidth } : null;
         // helpers
-        const P=(str)=>{ if(!str)return null; const m=String(str).match(/rgba?\(([^)]+)\)/); if(!m)return null; const p=m[1].split(',').map(x=>parseFloat(x.trim())); return {r:p[0],g:p[1],b:p[2],a:p[3]===undefined?1:p[3]}; };
+        const P=(str)=>{ if(!str)return null; str=String(str);
+          // modern CSS color(srgb r g b / a) — values 0..1, space-separated (Tailwind 4 / color-mix output).
+          // The old rgb-only regex dropped these layers → mis-composited light text onto a white fallback.
+          const cs=str.match(/color\(srgb\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)(?:\s*\/\s*([0-9.]+))?\)/);
+          if(cs){ return {r:parseFloat(cs[1])*255, g:parseFloat(cs[2])*255, b:parseFloat(cs[3])*255, a:cs[4]===undefined?1:parseFloat(cs[4])}; }
+          const m=str.match(/rgba?\(([^)]+)\)/); if(!m)return null; const p=m[1].split(/[\s,\/]+/).map(x=>x.trim()).filter(Boolean).map(parseFloat); return {r:p[0],g:p[1],b:p[2],a:p[3]===undefined?1:p[3]}; };
         const bodyBg = P(getComputedStyle(document.body).backgroundColor) || {r:255,g:255,b:255,a:1};
         const emoji=[], tooWide=[], tiny=[];
         const RE=/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}✅✔✖]/gu;
         const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n;
         while((n=walk.nextNode())){ const t=n.textContent||''; const el=n.parentElement; if(!el||el.closest('script,style'))continue;
+          // Skip elements hidden by an ANCESTOR's display:none — getComputedStyle(el).display
+          // still returns 'inline' for them (display:none doesn't cascade to computed style),
+          // so the desktop nav measured at mobile widths (and vice versa) produced false fails.
+          if(el.getClientRects().length===0)continue;
           const cs=getComputedStyle(el); const fs=parseFloat(cs.fontSize)||16;
           if(cs.position==='fixed'&&cs.pointerEvents==='none')continue; // fixed dev-version chip
           const bad=[...(t.match(RE)||[])].filter(ch=>!KEEP.has(ch));
@@ -157,6 +312,7 @@ for (const cfg of ROUTES) {
         for(const el of els){ if(!el.childNodes)continue; if(el.tagName==='OPTION'||el.tagName==='SELECT')continue;
           const direct=Array.from(el.childNodes).some(c=>c.nodeType===3&&c.textContent.trim().length>0); if(!direct)continue;
           const cs=getComputedStyle(el); if(cs.visibility==='hidden'||cs.display==='none'||parseFloat(cs.opacity)===0)continue;
+          if(el.getClientRects().length===0)continue; // ancestor display:none (not caught by cs.display)
           if(cs.position==='fixed'&&cs.pointerEvents==='none')continue;
           // A gradient OR a backdrop-filter (frosted glass) ancestor cannot be flat-composited,
           // so a computed contrast number would be wrong — skip those (documented limitation).
@@ -174,6 +330,7 @@ for (const cfg of ROUTES) {
         // so an icon on a faint same-hue tint reads against the real card, not the tint.
         const L=(c)=>{const f=(v)=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b);};
         const ifails=[]; root.querySelectorAll('svg').forEach(svg=>{
+          if(svg.getClientRects().length===0)return; // ancestor display:none
           const col=P(getComputedStyle(svg).color); if(!col)return;
           const stk=[]; let cur=svg.parentElement, grad=false;
           while(cur){const s=getComputedStyle(cur); if(s.backgroundImage&&s.backgroundImage!=='none')grad=true; if((s.backdropFilter&&s.backdropFilter!=='none')||(s.webkitBackdropFilter&&s.webkitBackdropFilter!=='none'))grad=true; stk.push(s.backgroundColor); cur=cur.parentElement;}
@@ -187,7 +344,7 @@ for (const cfg of ROUTES) {
       };
       const measure = async () => {
         await page.evaluate((th)=>document.documentElement.setAttribute('data-theme',th), theme);
-        await page.waitForTimeout(900);
+        await page.waitForTimeout(2000);
         return page.evaluate(EVAL_FN, { scope: cfg.scope, KEEParr:[...KEEP], MAX_LINE, FONT_FLOOR });
       };
       let r;

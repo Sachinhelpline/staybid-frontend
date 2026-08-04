@@ -208,11 +208,11 @@ export default function OtaFeedManager({
                       <span className="w-2 h-2 rounded-full" style={{ background: dot }} />
                       {paused ? "PAUSED" : errored ? "ERROR" : f.lastSyncAt ? "SYNCED" : "PENDING"}
                     </span>
-                    <span className="text-[0.62rem] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm uppercase">
+                    <span className="text-[0.63rem] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm uppercase">
                       {PROVIDER_LABEL[f.provider] || f.provider}
                     </span>
                     {f.unitId && (
-                      <span className="text-[0.62rem] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm inline-flex items-center gap-1">
+                      <span className="text-[0.63rem] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm inline-flex items-center gap-1">
                         <Key size={10} strokeWidth={2.4} aria-hidden /> {unitChip(f.unitId)}
                       </span>
                     )}
@@ -253,7 +253,7 @@ export default function OtaFeedManager({
           // v326 — StayBid Circle investor: pick which OWN physical unit this
           // OTA feed is for. Server derives the roomId from the unit.
           <div>
-            <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-2">
               Your room {nf.unitId && <span className="text-luxury-600 normal-case">· {unitLabel(units.find((u) => u.id === nf.unitId)!)}</span>}
             </label>
             <div className="flex flex-wrap gap-2">
@@ -270,7 +270,7 @@ export default function OtaFeedManager({
                     <Key size={15} strokeWidth={2.2} aria-hidden className={active ? "text-amber-700" : "text-luxury-500"} />
                     <span className="flex flex-col items-start leading-tight">
                       <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{roomName(u.roomId)}</span>
-                      {u.roomNumber && <span className="text-[0.6rem] text-luxury-500">Unit #{u.roomNumber}</span>}
+                      {u.roomNumber && <span className="text-[0.63rem] text-luxury-500">Unit #{u.roomNumber}</span>}
                     </span>
                     {active && <span className="ml-1 text-amber-700 text-xs font-bold">✓</span>}
                   </button>
@@ -280,7 +280,7 @@ export default function OtaFeedManager({
           </div>
         ) : (
           <div>
-            <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-2">
               Room {nf.roomId && <span className="text-luxury-600 normal-case">· {roomName(nf.roomId)}</span>}
             </label>
             <div className="flex flex-wrap gap-2">
@@ -297,7 +297,7 @@ export default function OtaFeedManager({
                     <BedDouble size={15} strokeWidth={2.2} aria-hidden className={active ? "text-amber-700" : "text-luxury-500"} />
                     <span className="flex flex-col items-start leading-tight">
                       <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{r.type || r.name || "Room"}</span>
-                      {r.capacity != null && <span className="text-[0.6rem] text-luxury-500">cap {r.capacity}</span>}
+                      {r.capacity != null && <span className="text-[0.63rem] text-luxury-500">cap {r.capacity}</span>}
                     </span>
                     {active && <span className="ml-1 text-amber-700 text-xs font-bold">✓</span>}
                   </button>
@@ -308,7 +308,7 @@ export default function OtaFeedManager({
         )}
 
         <div>
-          <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">Channel</label>
+          <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-2">Channel</label>
           <div className="flex flex-wrap gap-2">
             {(compact ? OTA_PROVIDERS.slice(0, 6) : OTA_PROVIDERS).map((p) => {
               const active = nf.provider === p.id;
@@ -327,7 +327,7 @@ export default function OtaFeedManager({
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
           <div className="md:col-span-3">
-            <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">
+            <label className="text-[0.63rem] font-bold text-luxury-400 uppercase block mb-1">
               iCal URL from the OTA extranet
             </label>
             <input className="inp-p" placeholder="https://…/calendar.ics" value={nf.icalUrl}

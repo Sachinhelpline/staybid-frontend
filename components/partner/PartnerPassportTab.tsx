@@ -86,7 +86,7 @@ export default function PartnerPassportTab() {
             <div key={s.label} className="rounded-2xl p-3 text-center border border-gold-200 bg-gold-50">
               <s.Ic size={18} strokeWidth={2.1} aria-hidden className="mx-auto text-gold-600" />
               <p className="font-display text-xl font-bold text-luxury-900 mt-1">{s.value}</p>
-              <p className="text-[0.58rem] uppercase tracking-widest font-bold text-gold-700">{s.label}</p>
+              <p className="text-[0.63rem] uppercase tracking-widest font-bold text-gold-700">{s.label}</p>
             </div>
           ))}
         </div>
@@ -119,14 +119,14 @@ export default function PartnerPassportTab() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold text-sm text-luxury-900 leading-tight">{g.name}</p>
-                  <span className="text-[0.6rem] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: g.rankGradient }}>
+                  <span className="text-[0.63rem] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: g.rankGradient }}>
                     {g.rankEmoji} {g.rankLabel}
                   </span>
                 </div>
-                <p className="text-[0.62rem] text-luxury-400 mt-0.5 font-mono">
+                <p className="text-[0.66rem] text-luxury-400 mt-0.5 font-mono">
                   {g.explorerId || g.phoneMasked || "—"}
                 </p>
-                <p className="text-[0.62rem] text-luxury-500 mt-0.5">
+                <p className="text-[0.66rem] text-luxury-500 mt-0.5">
                   Last visit {fmtDate(g.lastVisit)}
                 </p>
               </div>
@@ -134,8 +134,8 @@ export default function PartnerPassportTab() {
               {/* Stats */}
               <div className="text-right shrink-0">
                 <p className="font-display text-xl font-bold text-gold-600 leading-none">{g.stampsHere}</p>
-                <p className="text-[0.55rem] uppercase tracking-widest font-bold text-luxury-400">stamps here</p>
-                <p className="text-[0.6rem] text-luxury-500 mt-1">{g.lifetimeStamps} lifetime · {g.xp} XP</p>
+                <p className="text-[0.63rem] uppercase tracking-widest font-bold text-luxury-400">stamps here</p>
+                <p className="text-[0.63rem] text-luxury-500 mt-1">{g.lifetimeStamps} lifetime · {g.xp} XP</p>
               </div>
             </div>
           ))}

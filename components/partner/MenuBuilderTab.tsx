@@ -220,7 +220,7 @@ function MenuItemRow({ it, onEdit, onDelete, onToggle }: any) {
         </p>
       </div>
       <button onClick={onToggle}
-        className={`text-[0.56rem] font-bold px-1.5 py-1 rounded-md shrink-0 ${
+        className={`text-[0.63rem] font-bold px-1.5 py-1 rounded-md shrink-0 ${
           it.available ? "bg-emerald-100 text-emerald-700" : "bg-luxury-100 text-luxury-500"
         }`}>
         {it.available ? "ON" : "OFF"}
@@ -267,7 +267,7 @@ function CategoryEditor({ mode, cat, hotelId, onClose, onSaved }: any) {
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
-          <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Category name</label>
+          <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1">Category name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} autoFocus
             placeholder="e.g. Starters · Main Course · Beverages" className="inp-p"
             onKeyDown={(e) => e.key === "Enter" && save()} />
@@ -300,7 +300,7 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
-  const lbl = "text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
+  const lbl = "text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
 
   function setPortion(i: number, k: "label" | "price", v: string) {
     setPortions((p) => p.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
@@ -366,7 +366,7 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
                   const on = f.foodType === t;
                   return (
                     <button key={t} type="button" onClick={() => set("foodType", t)}
-                      className={`flex-1 rounded-lg py-1.5 text-[0.62rem] font-bold transition-all border ${on ? "" : "bg-white text-luxury-500 border-luxury-200"}`}
+                      className={`flex-1 rounded-lg py-1.5 text-[0.63rem] font-bold transition-all border ${on ? "" : "bg-white text-luxury-500 border-luxury-200"}`}
                       style={on ? { borderColor: FOOD[t].c, color: FOOD[t].c, background: FOOD[t].c + "14" } : undefined}>
                       {FOOD[t].label}
                     </button>

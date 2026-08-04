@@ -111,10 +111,10 @@ export default function StaffTab({ hotelId }: { hotelId: string }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{s.name}</p>
-                      <span className={`text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full ${m.bg} ${m.text}`}>
+                      <span className={`text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full ${m.bg} ${m.text}`}>
                         {m.label}
                       </span>
-                      {!s.active && <span className="text-[0.54rem] font-bold px-1.5 py-0.5 rounded-full bg-luxury-100 text-luxury-500">Disabled</span>}
+                      {!s.active && <span className="text-[0.63rem] font-bold px-1.5 py-0.5 rounded-full bg-luxury-100 text-luxury-500">Disabled</span>}
                     </div>
                     <p className="text-[0.66rem] text-luxury-500">
                       Code <span className="font-mono font-bold text-luxury-700">{s.login_code}</span>
@@ -188,7 +188,7 @@ function StaffEditor({
     finally { setSaving(false); }
   }
 
-  const lbl = "text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
+  const lbl = "text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
 
   return modalPortal(
     <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
@@ -218,7 +218,7 @@ function StaffEditor({
                 <span className="font-mono font-extrabold text-luxury-900 tracking-wider">{created.pin}</span>
               </div>
             </div>
-            <p className="text-[0.62rem] text-luxury-400 mb-3 inline-flex items-start gap-1"><TriangleAlert size={11} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" /> <span>The PIN won't be shown again — note it now. You can reset it later from Edit.</span></p>
+            <p className="text-[0.63rem] text-luxury-400 mb-3 inline-flex items-start gap-1"><TriangleAlert size={11} strokeWidth={2.3} aria-hidden className="mt-0.5 shrink-0" /> <span>The PIN won't be shown again — note it now. You can reset it later from Edit.</span></p>
             <button onClick={onSaved} className="btn-gold w-full">Done</button>
           </div>
         ) : (
@@ -239,7 +239,7 @@ function StaffEditor({
                         className={`w-full text-left rounded-xl p-2.5 transition-all border ${on ? `${m.bg} border-transparent` : "bg-white border-luxury-200"}`}
                         style={on ? { boxShadow: "0 0 0 1.5px currentColor" } : undefined}>
                         <p className={`text-[0.78rem] font-bold inline-flex items-center gap-1.5 ${on ? m.text : "text-luxury-700"}`}>{on ? <CircleDot size={13} strokeWidth={2.3} aria-hidden /> : <Circle size={13} strokeWidth={2.3} aria-hidden />} {m.label}</p>
-                        <p className="text-[0.62rem] text-luxury-500 mt-0.5">{m.desc}</p>
+                        <p className="text-[0.63rem] text-luxury-500 mt-0.5">{m.desc}</p>
                       </button>
                     );
                   })}

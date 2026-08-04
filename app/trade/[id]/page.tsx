@@ -430,7 +430,7 @@ function TourStyles() {
       @media (min-width: 560px) { .sbt-metrics { grid-template-columns: repeat(4, 1fr); } }
       .sbt-metric { background: linear-gradient(150deg, #241a11, #35271a); border: 1px solid rgba(140, 160, 182,.25); border-radius: 13px; padding: 12px 13px; }
       .sbt-metric b { display: block; color: #d5dce4; font-size: 1.02rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-      .sbt-metric span { font-size: .54rem; letter-spacing: .06em; color: rgba(176, 192, 209,.55); font-weight: 700; }
+      .sbt-metric span { font-size: .63rem; letter-spacing: .06em; color: rgba(176, 192, 209,.75); font-weight: 700; }
       .sbt-desc { font-size: .84rem; line-height: 1.55; color: rgba(74,56,32,.75); margin: 0 0 16px; }
       .sbt-desc.sm { font-size: .78rem; margin: 8px 0 14px; }
       .sbt-h2 { font-family: var(--font-display, "Cormorant Garamond", Georgia, serif); font-size: 1.5rem; font-weight: 600; letter-spacing: .005em; color: var(--trd-ink); margin-top: 6px; }
@@ -468,7 +468,7 @@ function TourStyles() {
       .sbt-pick-sub { display: block; font-size: .56rem; color: rgba(74,56,32,.5); font-weight: 700; line-height: 1.15; }
       .sbt-mkt { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .sbt-mkt-cell { background: var(--trd-card); border: 1px solid rgba(139,105,20,.14); border-radius: 10px; padding: 7px 9px; }
-      .sbt-mkt-cell span { display: block; font-size: .54rem; letter-spacing: .05em; color: rgba(74,56,32,.5); font-weight: 800; }
+      .sbt-mkt-cell span { display: block; font-size: .63rem; letter-spacing: .05em; color: rgba(74,56,32,.72); font-weight: 800; }
       .sbt-mkt-cell b { font-size: .92rem; color: var(--trd-ink); font-weight: 800; }
       .sbt-mkt-profit { background: #ecfdf5; border-color: #a7f3d0; }
       .sbt-mkt-profit b { color: #047857; }

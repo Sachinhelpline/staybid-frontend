@@ -125,7 +125,7 @@ export default function InfluencerReferralsPage() {
   const cvr = totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(1) + "%" : "—";
 
   return (
-    <div className="space-y-5 relative">
+    <div className="space-y-5 relative overflow-x-clip">
       <div className="grid grid-cols-3 gap-3 sb-stagger">
         <Stat label="Codes"           rawValue={codes.length} />
         <Stat label="Clicks"          rawValue={totalClicks} />
@@ -219,18 +219,18 @@ function CodeCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono text-base md:text-lg font-bold text-gold-700">{code.code}</span>
             {code.label && <span className="text-xs text-luxury-500 truncate">· {code.label}</span>}
-            {code.hotel_id && <span className="text-[0.6rem] uppercase tracking-wider font-bold text-luxury-500 px-2 py-0.5 rounded-full bg-luxury-100">hotel-locked</span>}
+            {code.hotel_id && <span className="text-[0.63rem] uppercase tracking-wider font-bold text-luxury-500 px-2 py-0.5 rounded-full bg-luxury-100">hotel-locked</span>}
           </div>
           <p className="text-xs text-luxury-500 mt-1.5 truncate font-mono">{shareUrl}</p>
         </div>
         <div className="flex items-center gap-4 text-xs shrink-0">
           <div className="text-center">
             <p className="font-bold text-luxury-800 text-base">{code.clicks_count || 0}</p>
-            <p className="text-[0.6rem] uppercase tracking-wider text-luxury-500">clicks</p>
+            <p className="text-[0.63rem] uppercase tracking-wider text-luxury-500">clicks</p>
           </div>
           <div className="text-center">
             <p className="font-bold text-luxury-800 text-base">{code.conversions_count || 0}</p>
-            <p className="text-[0.6rem] uppercase tracking-wider text-luxury-500">bookings</p>
+            <p className="text-[0.63rem] uppercase tracking-wider text-luxury-500">bookings</p>
           </div>
         </div>
       </div>
@@ -266,7 +266,7 @@ function ShareBtn({ onClick, bg, color, border, icon, label }: { onClick: () => 
 function Stat({ label, rawValue, formatted }: { label: string; rawValue?: number; formatted?: string }) {
   return (
     <div className="card-luxury sb-card-lift p-4 text-center">
-      <p className="text-[0.6rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
+      <p className="text-[0.63rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
       <p className="font-display text-xl md:text-2xl font-bold text-luxury-900 mt-1 leading-none">
         {rawValue !== undefined
           ? <CountUp value={rawValue} duration={900} />

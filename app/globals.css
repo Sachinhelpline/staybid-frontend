@@ -725,12 +725,21 @@
 .fd-root .text-luxury-800               { color: var(--text-base) !important; }
 .lux-bg .text-luxury-700,
 .fd-root .text-luxury-700,
+.pdash-root .text-luxury-700,
 .lux-bg .text-luxury-600,
-.fd-root .text-luxury-600               { color: var(--text-soft) !important; }
+.fd-root .text-luxury-600,
+.pdash-root .text-luxury-600            { color: var(--text-soft) !important; }
 .lux-bg .text-luxury-500,
 .fd-root .text-luxury-500,
+.pdash-root .text-luxury-500,
 .lux-bg .text-luxury-400,
-.fd-root .text-luxury-400               { color: var(--text-muted) !important; }
+.fd-root .text-luxury-400,
+.pdash-root .text-luxury-400,
+.pdash-root .text-luxury-300            { color: var(--text-muted) !important; }
+/* v691 — the partner dashboard (.pdash-root) was NOT in the light-theme luxury
+   remap above (only .lux-bg/.fd-root were), so raw #9caec0/#8a7e68 muted labels
+   failed WCAG on its cream surface. Now remapped for both themes (the dark
+   [data-theme="dark"] .pdash-root rules keep higher specificity in dark). */
 /* Status colors — gentle remap for light surfaces (the bright Tailwind
    defaults vanish on cream); dark mode keeps the original intent. */
 [data-theme="light"] .lux-bg .text-emerald-300,
@@ -908,6 +917,20 @@
 [data-theme="dark"] .pdash-root .text-luxury-600 { color: var(--text-soft) !important; }
 [data-theme="dark"] .pdash-root .text-luxury-500,
 [data-theme="dark"] .pdash-root .text-luxury-400 { color: var(--text-muted) !important; }
+/* v691 — the Overview KPI cards + quick-launch hub carry INLINE semantic colours
+   tuned for the light card; on the dark card bg they drop below WCAG AA. Force the
+   value/icon/hint to readable neutrals in dark (the text label still carries the
+   meaning, and the hub-ico tint chip keeps the colour cue). !important beats the
+   inline style. Also darken the raw luxury-300 (NOT remapped on .pdash-root). */
+[data-theme="dark"] .pdash-root .pdash-kpi p[style] { color: var(--text-base) !important; }
+[data-theme="dark"] .pdash-root .pdash-kpi svg[style] { color: var(--text-soft) !important; }
+[data-theme="dark"] .pdash-root .text-luxury-300 { color: var(--text-muted) !important; }
+/* The hub-tile HINT carries an inline per-tile colour (h.c) tuned to sit on the
+   light tile; several of those (teal/cyan/pewter) + the locked "#768fa7" fall
+   below WCAG on white in LIGHT theme too, and all fail on the dark tile. Force
+   the hint to the theme-aware readable soft neutral in BOTH themes (the hub-ico
+   tint chip still carries the colour cue). */
+.pdash-root .hub-tile p[style] { color: var(--text-soft) !important; }
 [data-theme="dark"] .pdash-root .border-luxury-100,
 [data-theme="dark"] .pdash-root .border-luxury-200,
 [data-theme="dark"] .pdash-root .border-luxury-300 { border-color: var(--border-soft) !important; }
@@ -1000,6 +1023,35 @@
    dark), and gives the branded provider tints (Google/Facebook/WhatsApp
    blue/green, and the red error box) dark-appropriate translucent
    surfaces so they read on the dark card. Scoped to `.auth-root`. */
+/* v693 — desktop split-screen sign-in. The form used to sit in a lonely
+   ~480px centred column on a 1440–1920px screen (⅔–¾ empty). On ≥lg a brand
+   pane now fills that space; below lg the brand pane is hidden and the form
+   pane fills the width, centred — byte-identical to the old single column.
+   Presentation only; no auth logic changed. */
+/* The desktop.css rule `main > div[class*="auth"] { max-width:480px }`
+   (specificity 0,1,2, in layer utilities) used to cap the whole page at
+   480px. This two-class selector (0,2,0) out-specifies it, letting the split
+   container fill the viewport; the form pane + max-w-sm still constrain the
+   actual form to its old width. */
+.auth-root.lux-bg { width: 100%; max-width: none; margin-inline: 0; }
+.auth-formpane { flex: 1 1 100%; display: flex; align-items: center; justify-content: center; padding: 40px 16px; min-width: 0; }
+.auth-brandpane { display: none; }
+.auth-brandpane-inner { max-width: 460px; }
+.auth-brandpane-logo { font-family: var(--font-display, "Cormorant Garamond", serif); font-size: 2rem; font-weight: 700; letter-spacing: .01em; color: #ffd98a; margin-bottom: 26px; }
+.auth-brandpane-tag { font-family: var(--font-display, "Cormorant Garamond", serif); font-size: clamp(2.2rem, 3vw, 3.1rem); line-height: 1.06; font-weight: 600; margin: 0 0 16px; color: #fbf6ec; }
+.auth-brandpane-sub { font-size: 1rem; line-height: 1.6; color: rgba(243,237,225,.82); margin: 0 0 30px; max-width: 400px; }
+.auth-brandpane-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 15px; }
+.auth-brandpane-list li { display: flex; align-items: center; gap: 12px; font-size: .95rem; color: rgba(243,237,225,.92); }
+.auth-brandpane-list li svg { color: #ffd98a; flex-shrink: 0; }
+@media (min-width: 1024px) {
+  .auth-brandpane {
+    display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
+    background:
+      radial-gradient(120% 85% at 12% 8%, rgba(106,133,160,.20), transparent 58%),
+      linear-gradient(155deg, #2b2419 0%, #1c160d 55%, #120d07 100%);
+  }
+  .auth-formpane { flex: 1 1 46%; }
+}
 .auth-root .bg-white { background: var(--bg-card) !important; }
 /* v642 — auth card shells join the borderless 4-layer 3D grammar (same
    family as .hx-room-card / .mb-card / .bk-card / .ppx-card). The v458
@@ -11576,13 +11628,20 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   /* v607 — owner: shift the amenity chips down to fill the dead space that
      sat below them at the hero's bottom edge. */
-  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+  .sbh-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  /* v698 — the amenity chips sit in the hero's bottom "foot-fade" band (the
+     artwork melts to the page colour there), so the old translucent-WHITE pill
+     + steel text washed out and vanished against the light fade. Make each chip
+     SELF-CONTAINED instead: a solid-dark pill + near-white text reads on the
+     dark scrim AND on the light fade, so it no longer depends on what's behind
+     it. (Mobile only — desktop has no foot-fade.) */
   .sbh-amen {
     font-size: 0.68rem; font-weight: 600;
-    color: rgba(176, 192, 209, 0.86);
-    padding: 4px 10px; border-radius: 999px;
-    background: rgba(255, 255, 255, 0.10);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f2f5f8;
+    padding: 4px 11px; border-radius: 999px;
+    background: rgba(12, 9, 6, 0.64);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
   }
   .sbh-hero-dots {
     position: absolute; z-index: 3; left: var(--sbh-gut); top: 16px;

@@ -205,7 +205,7 @@ export default function ReportsTab({
         {KPIS.map((k) => (
           <div key={k.label} className={`card-p card-tight ${k.bg}`}>
             <p className={`text-lg font-bold ${k.text}`}>{k.value}</p>
-            <p className="text-[0.62rem] text-luxury-500 font-semibold mt-0.5">{k.label}</p>
+            <p className="text-[0.63rem] text-luxury-500 font-semibold mt-0.5">{k.label}</p>
           </div>
         ))}
       </div>
@@ -219,12 +219,12 @@ export default function ReportsTab({
           <div className="flex items-end gap-1 h-32">
             {m.buckets.map((b, i) => (
               <div key={i} className="flex-1 flex flex-col items-center justify-end group min-w-0">
-                <div className="text-[0.5rem] font-bold text-luxury-500 opacity-0 group-hover:opacity-100 transition mb-0.5 whitespace-nowrap">{fmtK(b.rev)}</div>
+                <div className="text-[0.63rem] font-bold text-luxury-500 opacity-0 group-hover:opacity-100 transition mb-0.5 whitespace-nowrap">{fmtK(b.rev)}</div>
                 <div className="w-full rounded-t" style={{
                   height: `${Math.max(2, (b.rev / maxBar) * 100)}%`,
                   background: "linear-gradient(180deg,#a9b9c8,#8198ae)",
                 }} />
-                <div className="text-[0.46rem] text-luxury-400 mt-1 truncate w-full text-center">{b.label}</div>
+                <div className="text-[0.63rem] text-luxury-400 mt-1 truncate w-full text-center">{b.label}</div>
               </div>
             ))}
           </div>
@@ -267,10 +267,10 @@ export default function ReportsTab({
             <div className="space-y-1.5">
               {m.topRooms.map((r, i) => (
                 <div key={r.roomId} className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-md bg-gold-100 text-gold-700 text-[0.62rem] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                  <span className="w-5 h-5 rounded-md bg-gold-100 text-gold-700 text-[0.63rem] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-[0.74rem] font-semibold text-luxury-900 truncate">{r.name}</p>
-                    <p className="text-[0.58rem] text-luxury-400">{r.n} room-night{r.n !== 1 ? "s" : ""}</p>
+                    <p className="text-[0.63rem] text-luxury-400">{r.n} room-night{r.n !== 1 ? "s" : ""}</p>
                   </div>
                   <p className="text-[0.76rem] font-bold text-luxury-900 shrink-0">{fmtCur(r.rev)}</p>
                 </div>

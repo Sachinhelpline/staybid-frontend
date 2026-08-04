@@ -182,7 +182,7 @@ export default function Model2ReviewPage() {
         .sbc2r-edit { font-size: .78rem; font-weight: 700; color: var(--sbc-gold-deep); }
         .sbc2r-city { background: #fff; border: 1px solid rgba(139,105,20,.16); border-radius: 15px; padding: 12px 14px; margin-bottom: 12px; }
         .sbc2r-cityhead { font-size: .84rem; font-weight: 800; color: var(--sbc-coffee); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-        .sbc2r-newcity { font-size: .62rem; font-weight: 700; color: #8a6914; background: rgba(139,105,20,.1); border-radius: 999px; padding: 2px 8px; }
+        .sbc2r-newcity { font-size: .63rem; font-weight: 700; color: #8a6914; background: rgba(139,105,20,.1); border-radius: 999px; padding: 2px 8px; }
         .sbc2r-unlocked { font-size: .62rem; font-weight: 700; color: #6b8f4e; }
         .sbc2r-item { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-top: 1px solid rgba(139,105,20,.1); }
         .sbc2r-item img { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; flex: none; }
@@ -191,7 +191,7 @@ export default function Model2ReviewPage() {
         .sbc2r-isub { font-size: .68rem; color: rgba(74,56,32,.6); }
         .sbc2r-idates { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
         .sbc2r-dchip { font-size: .64rem; font-weight: 600; color: #7a5c1e; background: rgba(140, 160, 182,.12); border: 1px solid rgba(140, 160, 182,.28); border-radius: 7px; padding: 3px 7px; }
-        .sbc2r-rm { display: block; font-size: .6rem; color: #c96f4a; background: none; border: 0; cursor: pointer; margin-top: 2px; margin-left: auto; }
+        .sbc2r-rm { display: block; font-size: .63rem; color: #c96f4a; background: none; border: 0; cursor: pointer; margin-top: 2px; margin-left: auto; }
         .sbc2r-panel { background: linear-gradient(150deg, #1f1710, #33251a); border: 1px solid rgba(140, 160, 182,.28); border-radius: 16px; padding: 16px 17px; margin: 6px 0 14px; color: #e4e9ee; box-shadow: 0 8px 26px rgba(40,26,12,.2); }
         .sbc2r-panel-h { font-size: .66rem; font-weight: 800; letter-spacing: .1em; color: rgba(176, 192, 209,.55); margin-bottom: 10px; }
         .sbc2r-prow { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; color: rgba(176, 192, 209,.85); padding: 4px 0; }

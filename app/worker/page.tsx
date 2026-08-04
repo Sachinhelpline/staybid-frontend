@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Wrench, ClipboardList, BadgeCheck } from "lucide-react";
 
 export default function WorkerLogin() {
   const router = useRouter();
@@ -61,6 +62,40 @@ export default function WorkerLogin() {
 
   return (
     <div style={wrap}>
+      {/* v693 — desktop split-screen. Below lg the brand pane hides and the
+          card fills the width, centred (byte-identical to the old layout).
+          Presentation only — no auth logic changed. */}
+      <style>{`
+        .wauth-form { flex: 1 1 100%; display: flex; align-items: flex-start; justify-content: center; padding: 40px 14px; min-width: 0; }
+        .wauth-brand { display: none; }
+        .wauth-brand-inner { max-width: 420px; }
+        .wauth-brand-tag { font-family: var(--font-display,'Cormorant Garamond',serif); font-size: clamp(1.9rem,2.7vw,2.7rem); line-height: 1.1; font-weight: 600; margin: 0 0 15px; color: #f6f0e4; }
+        .wauth-brand-sub { font-size: 0.95rem; line-height: 1.6; color: rgba(240,233,220,0.8); margin: 0 0 26px; max-width: 360px; }
+        .wauth-brand-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
+        .wauth-brand-list li { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: rgba(240,233,220,0.9); }
+        .wauth-brand-list li svg { color: #e6c98a; flex-shrink: 0; }
+        @media (min-width: 1024px) {
+          .wauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
+            background: radial-gradient(120% 85% at 12% 8%, rgba(150,120,70,0.20), transparent 58%), linear-gradient(155deg,#2b2419 0%,#1c160d 55%,#120d07 100%); }
+          .wauth-form { flex: 1 1 46%; padding-top: 0; align-items: center; }
+        }
+      `}</style>
+
+      {/* Desktop-only brand pane (fixed warm-walnut, reads in both themes). */}
+      <aside className="wauth-brand" aria-hidden="true">
+        <div className="wauth-brand-inner">
+          <div style={{ fontSize: 30, marginBottom: 18 }}>🧑‍🔧</div>
+          <h2 className="wauth-brand-tag">Your jobs.<br />One place.</h2>
+          <p className="wauth-brand-sub">Sign in to see the jobs hotels have assigned you, track your work, and manage your workforce profile.</p>
+          <ul className="wauth-brand-list">
+            <li><ClipboardList size={18} aria-hidden /><span>See every job hotels assign to you</span></li>
+            <li><Wrench size={18} aria-hidden /><span>Track work &amp; update your status</span></li>
+            <li><BadgeCheck size={18} aria-hidden /><span>Build your verified worker profile</span></li>
+          </ul>
+        </div>
+      </aside>
+
+      <div className="wauth-form">
       <div style={card} className="sb-fade-in">
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 34 }}>🧑‍🔧</div>
@@ -108,11 +143,12 @@ export default function WorkerLogin() {
           New here? <Link href="/host/workforce/join" style={{ color: "var(--accent)", fontWeight: 600 }}>Apply to join the workforce →</Link>
         </p>
       </div>
+      </div>
     </div>
   );
 }
 
-const wrap: React.CSSProperties = { minHeight: "100dvh", background: "var(--bg-page)", padding: "40px 14px", display: "flex", justifyContent: "center", alignItems: "flex-start" };
+const wrap: React.CSSProperties = { minHeight: "100dvh", background: "var(--bg-page)", display: "flex", alignItems: "stretch" };
 const card: React.CSSProperties = { width: "100%", maxWidth: 400, background: "var(--bg-card)", border: "1px solid var(--border-soft)", borderRadius: 18, padding: 24, boxShadow: "var(--shadow-card)" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 6 };
 const inp: React.CSSProperties = { width: "100%", padding: "11px 13px", borderRadius: 11, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-base)", fontSize: 15, outline: "none", boxSizing: "border-box" };

@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import { useTradeAuth, getTradeToken } from "@/lib/trade/use-trade-auth";
 import { onBidBasketChange, bidBasketList } from "@/lib/trade/bid-basket";
 import { CIRCLE_AUCTION_NOTE } from "@/lib/circle/disclosure";
@@ -95,10 +96,11 @@ export default function TradeBrowsePage() {
       {/* Filters: sale-mode chips + sort */}
       <div className="max-w-6xl mx-auto px-4 pt-3 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex gap-2">
-          {([["all", "All"], ["live", "⚡ Live"], ["sealed", "🔒 Sealed"]] as const).map(([m, label]) => (
+          {([["all", "All"], ["live", "⚡ Live"], ["sealed", "Sealed"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)}
-              className="shrink-0 px-3 py-1.5 rounded-full text-[0.8rem] font-semibold"
+              className="shrink-0 px-3 py-1.5 rounded-full text-[0.8rem] font-semibold inline-flex items-center gap-1"
               style={mode === m ? { background: "#33251a", color: "#d5dce4" } : { background: "var(--trd-card)", color: "var(--trd-ink-2)", border: "1px solid var(--trd-line)" }}>
+              {m === "sealed" && <Lock size={12} strokeWidth={2.2} aria-hidden />}
               {label}
             </button>
           ))}
@@ -134,9 +136,9 @@ export default function TradeBrowsePage() {
                 ? <img src={l.image} alt={l.category || l.room_id} className="w-full aspect-[4/3] object-cover" />
                 : <div className="w-full aspect-[4/3] grid place-items-center text-3xl" style={{ background: "var(--trd-soft)" }}>🏔️</div>}
               <div className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(15,12,6,0.28), transparent)" }} />
-              <span className="absolute top-2 left-2 text-[0.66rem] font-bold px-2.5 py-1 rounded-full"
+              <span className="absolute top-2 left-2 text-[0.66rem] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
                 style={l.sale_mode === "live" ? { background: "#ecfdf5", color: "#047857" } : { background: "#f5f3ff", color: "#6d28d9" }}>
-                {l.sale_mode === "live" ? "⚡ Live · bid now" : "🔒 Sealed · month-end"}
+                {l.sale_mode === "live" ? "⚡ Live · bid now" : <><Lock size={11} strokeWidth={2.2} aria-hidden /> Sealed · month-end</>}
               </span>
             </div>
             <div className="p-3.5 flex-1 flex flex-col">

@@ -167,7 +167,7 @@ export default function ReservationsTab({ hotelId, rooms }: { hotelId: string; r
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-[0.84rem] font-bold text-luxury-900 truncate">{r.guestName || "Guest"}</p>
-                    <span className={`text-[0.56rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+                    <span className={`text-[0.63rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
                   </div>
                   <p className="text-[0.68rem] text-luxury-500 truncate">
                     {room?.name || room?.type || "Room"}
@@ -273,7 +273,7 @@ function ReservationForm({
     } finally { setSaving(false); }
   }
 
-  const lbl = "text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
+  const lbl = "text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
 
   return modalPortal(
     <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
@@ -336,7 +336,7 @@ function ReservationForm({
                 className="inp-p pl-7" />
             </div>
             {f.amount && (
-              <p className="text-[0.6rem] text-luxury-500 mt-1">
+              <p className="text-[0.63rem] text-luxury-500 mt-1">
                 {n} night{n > 1 ? "s" : ""} · total {fmtCur(Number(f.amount) * n)}
               </p>
             )}

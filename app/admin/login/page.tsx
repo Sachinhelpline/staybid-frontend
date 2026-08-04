@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Zap, Lock } from "lucide-react";
+import { Zap, Lock, ShieldCheck, ScrollText, LayoutDashboard } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Admin login — Google/Gmail ONLY (hotfix v621 security).
@@ -69,17 +69,51 @@ export default function AdminLogin() {
         minHeight: "100vh",
         background: "#07080C",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        alignItems: "stretch",
         fontFamily: "DM Sans, sans-serif",
-        padding: 20,
       }}
     >
       <link
         href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap"
         rel="stylesheet"
       />
+      {/* v693 — desktop split-screen. Below lg the brand pane hides and the
+          card fills the width, centred (byte-identical to the old layout).
+          Admin is dark-only. Presentation only — no auth logic changed. */}
+      <style>{`
+        .aauth-form { flex: 1 1 100%; display: flex; align-items: center; justify-content: center; padding: 40px 20px; min-width: 0; }
+        .aauth-brand { display: none; }
+        .aauth-brand-inner { max-width: 440px; }
+        .aauth-brand-tag { font-family: 'Syne', sans-serif; font-size: clamp(1.9rem,2.7vw,2.7rem); line-height: 1.12; font-weight: 700; margin: 0 0 15px; color: #e7edf3; }
+        .aauth-brand-sub { font-size: 0.95rem; line-height: 1.6; color: rgba(200,210,224,0.7); margin: 0 0 26px; max-width: 380px; }
+        .aauth-brand-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
+        .aauth-brand-list li { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: rgba(200,210,224,0.86); }
+        .aauth-brand-list li svg { color: #9fb1c2; flex-shrink: 0; }
+        @media (min-width: 1024px) {
+          .aauth-brand { display: flex; align-items: center; flex: 1 1 54%; min-width: 0; padding: 48px 5vw; position: relative; overflow: hidden;
+            background: radial-gradient(120% 85% at 12% 8%, rgba(120,145,170,0.16), transparent 58%), linear-gradient(155deg,#111722 0%,#0b0f18 55%,#07080c 100%); }
+          .aauth-form { flex: 1 1 46%; }
+        }
+      `}</style>
 
+      {/* Desktop-only brand pane (steel, dark-only). */}
+      <aside className="aauth-brand" aria-hidden="true">
+        <div className="aauth-brand-inner">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, color: "#9fb1c2" }}>
+            <Zap size={30} strokeWidth={2} aria-hidden />
+            <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 20, color: "#9fb1c2" }}>StayBid Admin</span>
+          </div>
+          <h2 className="aauth-brand-tag">The control panel<br />behind StayBid.</h2>
+          <p className="aauth-brand-sub">Manage properties, bids, payouts, and the whole platform — secured by Google sign-in and a server-side role check.</p>
+          <ul className="aauth-brand-list">
+            <li><LayoutDashboard size={18} aria-hidden /><span>Operate every surface from one dashboard</span></li>
+            <li><ShieldCheck size={18} aria-hidden /><span>Google sign-in + verified admin role</span></li>
+            <li><ScrollText size={18} aria-hidden /><span>Every action is audit-logged</span></li>
+          </ul>
+        </div>
+      </aside>
+
+      <div className="aauth-form">
       <div
         style={{
           background: "#0F1117",
@@ -171,6 +205,7 @@ export default function AdminLogin() {
         >
           Admin access only · Unauthorized attempts are logged
         </p>
+      </div>
       </div>
     </div>
   );

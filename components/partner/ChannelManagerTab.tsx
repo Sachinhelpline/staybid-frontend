@@ -235,7 +235,7 @@ export default function ChannelManagerTab({
               </div>
             ))}
             {overbook.length > 6 && (
-              <p className="text-[0.62rem] text-red-400">…and {overbook.length - 6} more</p>
+              <p className="text-[0.66rem] text-red-400">…and {overbook.length - 6} more</p>
             )}
           </div>
         </div>
@@ -255,7 +255,7 @@ export default function ChannelManagerTab({
                 <div className="w-9 h-9 rounded-lg bg-luxury-50 flex items-center justify-center text-base shrink-0">{m.icon}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[0.82rem] font-bold text-luxury-900">{m.label}</p>
-                  <p className="text-[0.62rem] font-semibold inline-flex items-center gap-1" style={{ color: st.color }}>
+                  <p className="text-[0.66rem] font-semibold inline-flex items-center gap-1" style={{ color: st.color }}>
                     <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: st.dot }} />
                     {st.label}
                   </p>
@@ -308,7 +308,7 @@ export default function ChannelManagerTab({
         <>
           <div className="flex items-center justify-between gap-2 mb-1">
             <p className="text-[0.78rem] font-bold text-luxury-900">OTA reservations</p>
-            <span className="text-[0.62rem] font-semibold text-luxury-400">
+            <span className="text-[0.66rem] font-semibold text-luxury-400">
               {resTotals.upcoming} upcoming · {resTotals.count} total
             </span>
           </div>
@@ -320,7 +320,7 @@ export default function ChannelManagerTab({
             {resByChannel.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2.5">
                 {resByChannel.map((c) => (
-                  <span key={c.provider} className="text-[0.62rem] font-semibold rounded-full px-2 py-0.5 bg-luxury-50 text-luxury-700 inline-flex items-center gap-1">
+                  <span key={c.provider} className="text-[0.66rem] font-semibold rounded-full px-2 py-0.5 bg-luxury-50 text-luxury-700 inline-flex items-center gap-1">
                     <span>{OTA_META[c.provider]?.icon || "🔗"}</span>
                     {OTA_META[c.provider]?.label || c.provider}
                     <b className="text-luxury-900">{c.count}</b>
@@ -374,7 +374,7 @@ export default function ChannelManagerTab({
             <div key={x.roomId} className="card-p card-tight">
               <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">{x.name}</p>
               <div className="flex items-center gap-1.5">
-                <code className="flex-1 min-w-0 truncate text-[0.62rem] bg-luxury-50 rounded-lg px-2 py-1.5 text-luxury-600">{x.url}</code>
+                <code className="flex-1 min-w-0 truncate text-[0.66rem] bg-luxury-50 rounded-lg px-2 py-1.5 text-luxury-600">{x.url}</code>
                 <button onClick={() => copy(x.url, "iCal link")} className="btn-gold px-2.5! py-1.5! text-[0.7rem]">Copy</button>
               </div>
             </div>
@@ -421,7 +421,7 @@ export default function ChannelManagerTab({
               <span className="leading-none mt-0.5">{c.ok ? <CircleCheck size={14} strokeWidth={2.2} aria-hidden className="text-emerald-600" /> : <TriangleAlert size={14} strokeWidth={2.2} aria-hidden className="text-amber-600" />}</span>
               <div className="min-w-0">
                 <p className="text-[0.74rem] font-semibold text-luxury-800 leading-tight">{c.label}</p>
-                {!c.ok && c.hint && <p className="text-[0.6rem] text-amber-600 leading-tight">{c.hint}</p>}
+                {!c.ok && c.hint && <p className="text-[0.63rem] text-amber-600 leading-tight">{c.hint}</p>}
               </div>
             </div>
           ))}
@@ -586,7 +586,7 @@ function RoomMappingSection({
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <p className="text-[0.76rem] font-bold text-luxury-900 truncate">
                       {rm.name || rm.type || rm.id}
-                      {mapped && <span className="ml-1.5 text-[0.58rem] font-semibold text-emerald-600 inline-flex items-center gap-0.5"><Check size={10} strokeWidth={2.6} aria-hidden /> mapped</span>}
+                      {mapped && <span className="ml-1.5 text-[0.63rem] font-semibold text-emerald-600 inline-flex items-center gap-0.5"><Check size={10} strokeWidth={2.6} aria-hidden /> mapped</span>}
                     </p>
                     <p className="text-[0.66rem] text-luxury-500 shrink-0">
                       StayBid <b className="text-luxury-800">{live > 0 ? `₹${live.toLocaleString("en-IN")}` : "—"}</b>
@@ -596,14 +596,14 @@ function RoomMappingSection({
                   </div>
                   <div className="flex items-end gap-1.5">
                     <div className="flex-1 min-w-0">
-                      <label className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest block mb-0.5">OTA room ID</label>
+                      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-0.5">OTA room ID</label>
                       <input
                         value={d.ref} onChange={(e) => setDraft(rm.id, "ref", e.target.value)}
                         placeholder="OTA room / listing ref"
                         className="w-full text-[0.72rem] rounded-lg border border-luxury-200 bg-white px-2 py-1.5 text-luxury-700" />
                     </div>
                     <div className="w-20 shrink-0">
-                      <label className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest block mb-0.5">Markup %</label>
+                      <label className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest block mb-0.5">Markup %</label>
                       <input
                         value={d.markup} onChange={(e) => setDraft(rm.id, "markup", e.target.value)}
                         type="number" step="0.5" inputMode="decimal"
@@ -634,7 +634,7 @@ function Stat({ n, label, cls }: { n: number; label: string; cls: string }) {
   return (
     <div>
       <p className={`text-lg font-bold leading-none ${cls}`}>{n}</p>
-      <p className="text-[0.58rem] font-semibold text-luxury-400 uppercase tracking-wide mt-0.5">{label}</p>
+      <p className="text-[0.63rem] font-semibold text-luxury-400 uppercase tracking-wide mt-0.5">{label}</p>
     </div>
   );
 }
@@ -644,13 +644,13 @@ function Instructions({ ota }: { ota: string }) {
   return (
     <div className="mt-2.5 pt-2.5 border-t border-luxury-100 grid sm:grid-cols-2 gap-2.5">
       <div>
-        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase mb-1 inline-flex items-center gap-1">Import their bookings <ArrowDown size={10} strokeWidth={2.6} aria-hidden /></p>
+        <p className="text-[0.63rem] font-bold text-luxury-400 uppercase mb-1 inline-flex items-center gap-1">Import their bookings <ArrowDown size={10} strokeWidth={2.6} aria-hidden /></p>
         <ol className="list-decimal list-inside space-y-0.5">
           {info.export.map((s, i) => <li key={i} className="text-[0.66rem] text-luxury-600 leading-snug">{s}</li>)}
         </ol>
       </div>
       <div>
-        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase mb-1 inline-flex items-center gap-1">Send them StayBid dates <ArrowUp size={10} strokeWidth={2.6} aria-hidden /></p>
+        <p className="text-[0.63rem] font-bold text-luxury-400 uppercase mb-1 inline-flex items-center gap-1">Send them StayBid dates <ArrowUp size={10} strokeWidth={2.6} aria-hidden /></p>
         <ol className="list-decimal list-inside space-y-0.5">
           {info.import.map((s, i) => <li key={i} className="text-[0.66rem] text-luxury-600 leading-snug">{s}</li>)}
         </ol>
@@ -677,7 +677,7 @@ function ChannelEditor({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
-  const lbl = "text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
+  const lbl = "text-[0.66rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
 
   async function save() {
     if (!f.propertyId.trim() && !f.apiKey.trim() && !f.endpointUrl.trim()) {
@@ -731,7 +731,7 @@ function ChannelEditor({
             <input value={f.endpointUrl} onChange={(e) => set("endpointUrl", e.target.value)} placeholder="https://… (OTA connectivity URL)" className="inp-p" /></div>
           <div><label className={lbl}>Label / note (optional)</label>
             <input value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="e.g. main property account" className="inp-p" /></div>
-          <p className="text-[0.62rem] text-luxury-400 leading-relaxed">
+          <p className="text-[0.66rem] text-luxury-400 leading-relaxed">
             Credentials are saved securely. As soon as this OTA's live connector is activated, these same details are used — you won't have to do anything again.
           </p>
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}

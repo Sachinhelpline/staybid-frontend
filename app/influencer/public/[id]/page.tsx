@@ -190,7 +190,7 @@ export default function PublicInfluencerPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="card-luxury p-3 text-center">
-      <p className="text-[0.6rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
+      <p className="text-[0.63rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
       <p className="font-display text-lg font-bold text-luxury-900 mt-1 leading-none">{value}</p>
     </div>
   );

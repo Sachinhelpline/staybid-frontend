@@ -10,9 +10,12 @@ import { useState } from "react";
 import Link from "next/link";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
+import { Monitor } from "lucide-react";
 import { KIOSK_LOCATIONS, DEFAULT_KIOSK_LOC } from "@/lib/kiosk";
+import { useKioskFill } from "@/lib/useKioskFill";
 
 export default function KioskHubPage() {
+  useKioskFill();
   const [loc, setLoc] = useState(DEFAULT_KIOSK_LOC);
   const locs = Object.values(KIOSK_LOCATIONS);
 
@@ -37,7 +40,7 @@ export default function KioskHubPage() {
 
         <div className="kh-actions">
           <Link className="kh-btn kh-display" href={`/kiosk/display?loc=${loc}`}>
-            <div className="kh-bicon">📊</div>
+            <div className="kh-bicon"><Monitor size={26} strokeWidth={2} aria-hidden style={{ color: "#1F1A0F" }} /></div>
             <div className="kh-btxt"><b>Big Display Board</b><span>Live price ticker · auto-refresh</span></div>
           </Link>
           <Link className="kh-btn kh-book" href={`/kiosk/book?loc=${loc}`}>

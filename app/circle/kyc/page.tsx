@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { IdCard, Clock, CheckCircle2, AlertTriangle, Lock } from "lucide-react";
 
 type Kyc = {
   status: "not_started" | "submitted" | "verified" | "rejected";
@@ -22,11 +23,11 @@ type Kyc = {
   review_note?: string | null;
 };
 
-const STATUS_UI: Record<Kyc["status"], { icon: string; title: string; sub: string; cls: string }> = {
-  not_started: { icon: "🪪", title: "Complete your KYC", sub: "Verify your identity to receive monthly payouts securely.", cls: "" },
-  submitted:   { icon: "⏳", title: "Under review", sub: "We're verifying your details. This usually takes 1–2 working days.", cls: "wait" },
-  verified:    { icon: "✅", title: "KYC verified", sub: "You're all set — payouts will reach your verified bank account.", cls: "ok" },
-  rejected:    { icon: "⚠️", title: "Needs your attention", sub: "Something didn't match. Please review and resubmit.", cls: "bad" },
+const STATUS_UI: Record<Kyc["status"], { icon: React.ReactNode; title: string; sub: string; cls: string }> = {
+  not_started: { icon: <IdCard size={30} aria-hidden />, title: "Complete your KYC", sub: "Verify your identity to receive monthly payouts securely.", cls: "" },
+  submitted:   { icon: <Clock size={30} aria-hidden />, title: "Under review", sub: "We're verifying your details. This usually takes 1–2 working days.", cls: "wait" },
+  verified:    { icon: <CheckCircle2 size={30} aria-hidden />, title: "KYC verified", sub: "You're all set — payouts will reach your verified bank account.", cls: "ok" },
+  rejected:    { icon: <AlertTriangle size={30} aria-hidden />, title: "Needs your attention", sub: "Something didn't match. Please review and resubmit.", cls: "bad" },
 };
 
 export default function CircleKycPage() {
@@ -109,7 +110,7 @@ export default function CircleKycPage() {
           </section>
 
           <p className="sbc-kyc-note">
-            🔒 This is your <b>StayCircle investor KYC</b> — for identity &amp; secure payouts. It is separate from any hotel video verification.
+            <Lock size={13} aria-hidden style={{display:"inline",verticalAlign:"-1px",marginRight:4}} />This is your <b>StayCircle investor KYC</b> — for identity &amp; secure payouts. It is separate from any hotel video verification.
           </p>
 
           {editable ? (
@@ -153,7 +154,7 @@ export default function CircleKycPage() {
             <section className="sbc-dash-sec">
               <div className="sbc-dash-sec-h">Submitted details</div>
               <div className="sbc-dash-links">
-                <div className="sbc-dash-link" style={{ cursor: "default" }}><span>🪪</span>{kyc.full_name || "—"}<em></em></div>
+                <div className="sbc-dash-link" style={{ cursor: "default" }}><span><IdCard size={14} aria-hidden /></span>{kyc.full_name || "—"}<em></em></div>
                 {kyc.pan ? <div className="sbc-dash-link" style={{ cursor: "default" }}><span>#</span>PAN {kyc.pan}<em></em></div> : null}
                 {kyc.aadhaar_last4 ? <div className="sbc-dash-link" style={{ cursor: "default" }}><span>🆔</span>Aadhaar ••••{kyc.aadhaar_last4}<em></em></div> : null}
                 {kyc.bank_account ? <div className="sbc-dash-link" style={{ cursor: "default" }}><span>🏦</span>A/c ••••{String(kyc.bank_account).slice(-4)} · {kyc.bank_ifsc || ""}<em></em></div> : null}
