@@ -2805,6 +2805,27 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
 - NEXT: Gap 2 (yield optimizer, currently OFF behind `PRICING_OPTIMIZER_ENABLED`) is an env-flag + testing
   decision — the only remaining gap. All of #1/#3/#4/#5/#6/#7 now closed.
 
+### 2026-08-04 — Gap 2: AI yield optimizer — admin toggle + preview (v724, default OFF)
+- **Gap 2 closed (the LAST gap):** the expected-revenue optimizer (`lib/pricing/optimizer.ts`) was
+  flag-gated by env `PRICING_OPTIMIZER_ENABLED` only (unset → off, always computed for observability). It
+  is now ALSO admin-toggleable from the Pricing Engine tab, and — crucially — **previewable** before enabling.
+- **Spine:** `optimizerApplied = optimizerEnabled() || cfg.yieldOptimizerEnabled === true`. Both default
+  OFF → livePrice byte-identical. When on, the spine applies the optimizer's guarded price (±12% of the
+  proven rule price, ≥ floor, ≤ competitor-undercut cap, snap100) — a NUDGE, never a divergence.
+- **New:** `yield_optimizer_enabled` on `pricing_engine_config` (migration `2026-07-21-v724`, default
+  false, applied live); resolver + admin-route field + a toggle in the tab.
+- **The "test" tool — NEW read-only `GET /api/admin/pricing-config/optimizer-preview`:** samples 8 real
+  priced rooms and, at BOTH low (0.15) and high (0.85) occupancy, computes rule→optimized price + Δ% +
+  accept-probability + expected-revenue lift. Pure reads + pure engine math (writes nothing, moves no
+  money). The tab renders it as a table so the owner SEES the effect before committing.
+- **MEASURED (real engine):** OFF (default) == cfg-false → byte-identical; ON nudges live 4300→4800 (low
+  occ) / 4400→4900 (high occ) — within ±12%, ≥ floor. Guard holds.
+- Badge v723→**v724** (`v724-yield-optimizer-toggle`), sw HTML_CACHE v518→**v519** (admin UI + preview).
+- **Gates:** tsc 0 · build 0 · security 385/0. Migration applied live.
+- **ALL pricing/bid gaps (1–7) now closed.** Enabling the optimizer in production stays the owner's call
+  (preview first, watch outcomes) — the toggle + preview make that a safe, no-redeploy decision.
+- NEXT: nothing pending on the pricing/bid gap list. Awaiting owner: merge PR #543 (v717–v724).
+
 <!-- Append new sessions ABOVE this line’s template:
 ### YYYY-MM-DD — Session N (Phase X)
 - done / verified / decided / NEXT

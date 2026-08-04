@@ -52,6 +52,10 @@ export interface PricingEngineConfig extends PricingEngineOverrides {
   // reject at floor). < 1.0 lets a guest OFFER down to floor × this ratio; the
   // real offer is stored + forwarded PENDING (never auto-accepted) for the owner.
   custBelowFloorRatio: number;         // default 1.0 (off)
+  // v724 Gap-2 — AI yield optimizer. false = rule price (default). true applies
+  // the expected-revenue-max nudge (±12% guarded). Env PRICING_OPTIMIZER_ENABLED
+  // also forces it on.
+  yieldOptimizerEnabled: boolean;
 }
 
 // Hardcoded defaults, assembled once from the engine's own constants.
@@ -76,6 +80,7 @@ export const PRICING_ENGINE_DEFAULTS: PricingEngineConfig = {
   custFloorMaxWinDiscountPct: 25,
   custFloorMinFraction: 1.0,
   custBelowFloorRatio: 1.0,
+  yieldOptimizerEnabled: false,
 };
 
 // ── validators ───────────────────────────────────────────────────────────────
@@ -138,6 +143,7 @@ export async function resolveEngineConfig(): Promise<PricingEngineConfig> {
           custFloorMaxWinDiscountPct: num(row.cust_floor_max_win_discount_pct, 0, 90, D.custFloorMaxWinDiscountPct),
           custFloorMinFraction: num(row.cust_floor_min_fraction, 0.4, 1, D.custFloorMinFraction),
           custBelowFloorRatio: num(row.cust_below_floor_ratio, 0.5, 1, D.custBelowFloorRatio),
+          yieldOptimizerEnabled: row.yield_optimizer_enabled === true || row.yield_optimizer_enabled === "true",
         };
         // Guard: a clamp band must stay ordered.
         if (cfg.clampMin >= cfg.clampMax) { cfg.clampMin = D.clampMin; cfg.clampMax = D.clampMax; }

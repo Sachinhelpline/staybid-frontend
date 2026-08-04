@@ -4,7 +4,7 @@
 // %, the flash discount %, and an opt-in "cap live at MRP"). The AI formula is
 // unchanged — admin only adjusts the numbers it multiplies; the engine still
 // runs the full model on top of them. Reads/writes /api/admin/pricing-config.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { adminColors as C, btnGold, btnGhost, inputStyle } from "@/lib/admin/styles";
 
@@ -12,6 +12,9 @@ function hdr() {
   const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "";
   return { "x-admin-token": t, "Content-Type": "application/json" };
 }
+
+const thc: CSSProperties = { padding: "4px 8px", fontWeight: 600, whiteSpace: "nowrap" };
+const tdc: CSSProperties = { padding: "6px 8px", whiteSpace: "nowrap", verticalAlign: "top" };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -27,6 +30,18 @@ export default function PricingEngineTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [preview, setPreview] = useState<any | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  async function loadPreview() {
+    setPreviewLoading(true);
+    try {
+      const r = await fetch("/api/admin/pricing-config/optimizer-preview", { headers: hdr(), cache: "no-store" });
+      const d = await r.json();
+      setPreview(d?.rows ? d : { rows: [], error: d?.error });
+    } catch (e: any) { setPreview({ rows: [], error: e?.message || "network" }); }
+    finally { setPreviewLoading(false); }
+  }
 
   function load() {
     setLoading(true);
@@ -130,6 +145,48 @@ export default function PricingEngineTab() {
           <div style={{ color: C.amber, fontSize: 11.5, marginTop: 6 }}>
             ⚠ Guests can now send offers below the floor (down to floor × {cfg.custBelowFloorRatio}). These are always owner-reviewed — never auto-confirmed.
           </div>
+        )}
+      </Section>
+
+      {/* ── Yield optimizer (Gap-2) ────────────────────────────────── */}
+      <Section title="AI yield optimizer" hint="An expected-revenue layer on top of the demand model: it nudges the live price (guarded ±12%, never below floor, never above the OTA-undercut cap) to the price that maximises price × probability-of-booking. OFF = the proven rule price. Preview it before enabling.">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+          <input type="checkbox" checked={!!cfg.yieldOptimizerEnabled} onChange={(e) => set("yieldOptimizerEnabled", e.target.checked)} id="yieldopt" style={{ width: 16, height: 16 }} />
+          <label htmlFor="yieldopt" style={{ color: C.text, fontSize: 13, cursor: "pointer" }}>
+            Enable yield optimizer <span style={{ color: C.textDim }}>— applies the expected-revenue price on the next recalc</span>
+          </label>
+        </div>
+        <button onClick={loadPreview} disabled={previewLoading} style={{ ...btnGhost, marginTop: 6 }}>
+          {previewLoading ? "Computing…" : "Preview effect (no change)"}
+        </button>
+        {preview && (
+          preview.error ? <div style={{ color: C.red, fontSize: 12, marginTop: 8 }}>{preview.error}</div> :
+          preview.rows?.length ? (
+            <div style={{ overflowX: "auto", marginTop: 10 }}>
+              <div style={{ color: C.textDim, fontSize: 11, marginBottom: 6 }}>Sample of {preview.rows.length} rooms for {preview.date} · rule → optimized (Δ%) · expected-revenue lift. Low = near-empty date, High = nearly sold-out.</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ color: C.textDim, textAlign: "left" }}>
+                    <th style={thc}>Room</th><th style={thc}>Floor</th>
+                    <th style={thc}>Low occ: rule→opt (Δ)</th><th style={thc}>ER lift</th>
+                    <th style={thc}>High occ: rule→opt (Δ)</th><th style={thc}>ER lift</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.rows.map((row: any, i: number) => (
+                    <tr key={i} style={{ borderTop: `1px solid ${C.border}` }}>
+                      <td style={tdc}><span style={{ color: C.text }}>{String(row.room).slice(0, 22)}</span><br /><span style={{ color: C.textDim, fontSize: 10 }}>{String(row.hotel).slice(0, 24)}</span></td>
+                      <td style={tdc}>₹{row.floor}</td>
+                      <td style={tdc}>₹{row.low.rule} → <b style={{ color: row.low.deltaPct === 0 ? C.textDim : C.gold }}>₹{row.low.optimized}</b> ({row.low.deltaPct > 0 ? "+" : ""}{row.low.deltaPct}%)</td>
+                      <td style={{ ...tdc, color: row.low.erLiftPct > 0 ? C.green : C.textDim }}>{row.low.erLiftPct > 0 ? "+" : ""}{row.low.erLiftPct}%</td>
+                      <td style={tdc}>₹{row.high.rule} → <b style={{ color: row.high.deltaPct === 0 ? C.textDim : C.gold }}>₹{row.high.optimized}</b> ({row.high.deltaPct > 0 ? "+" : ""}{row.high.deltaPct}%)</td>
+                      <td style={{ ...tdc, color: row.high.erLiftPct > 0 ? C.green : C.textDim }}>{row.high.erLiftPct > 0 ? "+" : ""}{row.high.erLiftPct}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <div style={{ color: C.textDim, fontSize: 12, marginTop: 8 }}>No priced rooms to sample.</div>
         )}
       </Section>
 

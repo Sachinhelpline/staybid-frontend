@@ -92,6 +92,9 @@ export async function POST(req: NextRequest) {
   if (body.capLiveAtMrp !== undefined) {
     patch.cap_live_at_mrp = body.capLiveAtMrp === true || body.capLiveAtMrp === "true";
   }
+  if (body.yieldOptimizerEnabled !== undefined) {
+    patch.yield_optimizer_enabled = body.yieldOptimizerEnabled === true || body.yieldOptimizerEnabled === "true";
+  }
   // v722 Gap-1 — dynamic customer bid floor.
   if (body.custFloorMode !== undefined) {
     if (body.custFloorMode !== "static" && body.custFloorMode !== "dynamic") errs.push("custFloorMode must be static|dynamic");

@@ -59,6 +59,8 @@ export interface SpineInput {
     custFloorMode?: "static" | "dynamic";
     custFloorMaxWinDiscountPct?: number; // how far below live the win-floor sits (default 25)
     custFloorMinFraction?: number;       // hard lower bound = floorPrice × this (default 1.0)
+    // v724 Gap-2 — admin toggle for the yield optimizer (default off = rule price).
+    yieldOptimizerEnabled?: boolean;
   }) | null;
 }
 
@@ -148,7 +150,11 @@ export function computeRoomDatePrice(inp: SpineInput): SpinePrice {
     competitorMin: comp,
     vacancyRatio: vac ?? null,
   });
-  const optimizerApplied = optimizerEnabled();
+  // v724 Gap-2 — the yield optimizer applies when EITHER the env flag
+  // (PRICING_OPTIMIZER_ENABLED=1) OR the admin toggle (cfg.yieldOptimizerEnabled)
+  // is on. Both default OFF → livePrice byte-identical. The optimizer only
+  // NUDGES within ±12% of the proven rule price (guarded), never diverges.
+  const optimizerApplied = optimizerEnabled() || cfg?.yieldOptimizerEnabled === true;
   if (optimizerApplied) {
     live = opt.optimizedLive;
     factors.push("AI yield optimized");
