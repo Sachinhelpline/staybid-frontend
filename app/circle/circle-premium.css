@@ -2461,9 +2461,18 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-model-num   { position: relative; margin-top: 12px; font-size: .64rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--sbc-gold-deep); }
 .sbc-model-title { position: relative; margin-top: 3px; font-size: 1.06rem; font-weight: 800; color: var(--sbc-c-ink); font-family: var(--font-display, serif); }
-.sbc-model-desc  { position: relative; margin-top: 6px; font-size: .78rem; line-height: 1.5; color: var(--sbc-c-ink-soft); flex: 1; }
+.sbc-model-desc  { position: relative; margin-top: 6px; font-size: .78rem; line-height: 1.5; color: var(--sbc-c-ink-soft); }
 .sbc-model-desc b { color: var(--sbc-gold-deep); font-weight: 800; }
-.sbc-model-cta   { position: relative; margin-top: 13px; display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 800; color: var(--sbc-gold-deep); }
+/* v713 (owner) — a compact feature-chip row fills what used to be a hollow
+   middle with real value; the CTA then pins to the card base (margin-top:auto)
+   so all three CTAs align across the row without a big empty gap. */
+.sbc-model-feats { position: relative; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+.sbc-model-feats span {
+  font-size: .64rem; font-weight: 700; color: var(--sbc-c-ink-soft);
+  background: var(--sbc-c-sage-tint); border: 1px solid var(--sbc-c-line);
+  border-radius: 999px; padding: 4px 9px;
+}
+.sbc-model-cta   { position: relative; margin-top: auto; padding-top: 13px; display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 800; color: var(--sbc-gold-deep); }
 .sbc-model-fine  { position: relative; margin-top: 10px; font-size: .64rem; line-height: 1.45; color: var(--sbc-c-ink-faint); }
 
 /* Model-3 card is a div (has a nested secondary link) → full-card stretch link */

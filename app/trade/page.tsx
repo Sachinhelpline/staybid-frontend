@@ -64,14 +64,16 @@ export default function TradeBrowsePage() {
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,var(--trd-page-a),var(--trd-page-b))" }}>
       {/* Header */}
-      <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
+      {/* v713 (owner) — trade header was a hardcoded dark walnut bar on the light
+          page; now a themed light bar (flips in dark) with a hairline base. */}
+      <div className="sticky top-0 z-30" style={{ background: "var(--trd-card)", color: "var(--trd-ink)", borderBottom: "1px solid var(--trd-line)" }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-xl font-semibold" style={{ color: "#d5dce4", fontFamily: "var(--font-display, 'Cormorant Garamond', serif)" }}>StayBid Trade</div>
-            <div className="text-[0.72rem] opacity-80">Monthly inventory auction · for travel agents</div>
+            <div className="text-xl font-semibold" style={{ color: "var(--trd-ink)", fontFamily: "var(--font-display, 'Cormorant Garamond', serif)" }}>StayBid Trade</div>
+            <div className="text-[0.72rem]" style={{ color: "var(--trd-ink-2)" }}>Monthly inventory auction · for travel agents</div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => router.push("/trade/my-bids")} className="text-[0.75rem] px-3 py-1.5 rounded-lg" style={{ background: "rgba(176, 192, 209,0.14)", color: "#d5dce4" }}>My Bids</button>
+            <button onClick={() => router.push("/trade/my-bids")} className="text-[0.75rem] px-3 py-1.5 rounded-lg" style={{ background: "var(--trd-soft)", color: "var(--trd-ink)", border: "1px solid var(--trd-line)" }}>My Bids</button>
             <button onClick={() => router.push("/trade/review")} className="text-[0.75rem] px-3 py-1.5 rounded-lg font-bold" style={{ background: "radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%)", color: "#ffffff" }}>
               Bundle {basketN > 0 ? `(${basketN})` : ""}
             </button>

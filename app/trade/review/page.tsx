@@ -83,10 +83,11 @@ export default function TradeReviewPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,var(--trd-page-a),var(--trd-page-b))" }}>
-      <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
+      {/* v713 (owner) — themed light header + a real ≥40px back-button hit area. */}
+      <div className="sticky top-0 z-30" style={{ background: "var(--trd-card)", color: "var(--trd-ink)", borderBottom: "1px solid var(--trd-line)" }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => router.push("/trade")} className="text-lg">‹</button>
-          <div className="font-extrabold" style={{ color: "#d5dce4" }}>Your bid bundle</div>
+          <button onClick={() => router.push("/trade")} aria-label="Back" className="text-lg" style={{ minWidth: 40, minHeight: 40, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: -8, color: "var(--trd-ink)" }}>‹</button>
+          <div className="font-extrabold" style={{ color: "var(--trd-ink)" }}>Your bid bundle</div>
         </div>
       </div>
 

@@ -19,6 +19,22 @@
 
 ## Session log
 
+### 2026-08-04 — Circle rebuild polish + exhaustive breakpoint QA (v713)
+**Owner: the 2 polish items, then a full QA sweep.**
+- **Home model cards** — the hollow middle is filled with a compact feature-chip row per model (Model 1
+  Hands-off/Monthly income/Verified · Model 2 Buy wholesale/Resell anywhere/Multi-city · Model 3 Wholesale
+  rooms/Refundable EMD/Monthly) and the CTA now pins to the card base (`margin-top:auto`) so all three CTAs
+  align without a gap.
+- **Trade headers** — the dark walnut header bar on `/trade`, `/trade/review`, `/trade/my-bids` → themed light
+  bar (`--trd-card`/`--trd-ink`, hairline base, flips in dark); the bare `‹` back buttons on review/my-bids got
+  a real ≥40px hit area (WCAG).
+- **Exhaustive breakpoint QA** — headless sweep of the renderable Circle/Trade routes (`/circle`, `/dashboard`,
+  `/model3`, `/model4`, `/trade`) across **9 widths (320→1920) × light + dark = 90 checks**: **0 horizontal
+  overflow** on every one. (The probe's card-luminance "clash" flags were false positives from transparent
+  elements; the real dark→light flips were confirmed by targeted probes: marketplace card lum 254 light→32 dark,
+  home columns 394=394, tokens `--trd-card`/`--bg-card` #fff→#1a1610.)
+- `tsc` + `next build` clean; `test:security` **385/0**. Badge v712→**v713**, sw HTML_CACHE v508→**v509**.
+
 ### 2026-08-04 — Circle rebuild Phase A.2: marketplace + review/selling/browse + home + splash (v712)
 **Owner: "do it all, don't stop."** The full de-walnut sweep across the rest of the Circle vertical, all to the
 app/`--trd-*` theme tokens (light cards that match the page and flip in dark).

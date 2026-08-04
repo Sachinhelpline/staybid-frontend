@@ -325,6 +325,7 @@ export default function CircleHomePage() {
             <div className="sbc-model-num">Model 1</div>
             <div className="sbc-model-title">Managed Income</div>
             <p className="sbc-model-desc">Own hotel rooms — StayBid finds, designs &amp; runs them. Earn <b>expected monthly income</b> from real bookings, fully hands-off.</p>
+            <div className="sbc-model-feats" aria-hidden><span>Hands-off</span><span>Monthly income</span><span>Verified</span></div>
             <span className="sbc-model-cta">Start investing →</span>
             <p className="sbc-model-fine">{CIRCLE_INCOME_SHORT}</p>
           </Link>
@@ -339,6 +340,7 @@ export default function CircleHomePage() {
             <div className="sbc-model-num">Model 2</div>
             <div className="sbc-model-title">Multi-City Inventory Bundle</div>
             <p className="sbc-model-desc">Buy owner-released room-nights at <b>StayBid-regulated B2B prices</b> across cities, then sell through your own inventory — StayBid, your OTA listings or direct.</p>
+            <div className="sbc-model-feats" aria-hidden><span>Buy wholesale</span><span>Resell anywhere</span><span>Multi-city</span></div>
             <span className="sbc-model-cta">Open inventory marketplace →</span>
             <p className="sbc-model-fine">{CIRCLE_RESALE_RISK_NOTE}</p>
           </Link>
@@ -353,6 +355,7 @@ export default function CircleHomePage() {
             <div className="sbc-model-num">Model 3</div>
             <div className="sbc-model-title">Monthly Inventory Auction</div>
             <p className="sbc-model-desc">Owners auction spare rooms for the <b>upcoming month</b>. Approved travel agents bid per-room (full month / week / weekends) — <b>highest bid wins</b>, refundable EMD.</p>
+            <div className="sbc-model-feats" aria-hidden><span>Wholesale rooms</span><span>Refundable EMD</span><span>Monthly</span></div>
             <span className="sbc-model-cta">Enter the agent auction →</span>
             <p className="sbc-model-fine">{CIRCLE_AUCTION_NOTE}</p>
           </Link>
