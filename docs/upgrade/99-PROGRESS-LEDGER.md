@@ -19,6 +19,19 @@
 
 ## Session log
 
+### 2026-08-04 — Phase 1 / ss1: Home hero — amenity chips ABOVE the CTAs (v704)
+**Owner 9-screenshot round, Phase 1.** ss1: on the mobile hero the amenity chips (Valley View, Restaurant,
+Wi-Fi, Heating, Garden) sat BELOW the "Bid your stay"/"Watch reels" buttons, in the hero's bottom foot-fade
+band. Owner: shift them ABOVE the buttons so the CTAs move down a touch and sit more grounded.
+- **`components/home/DesktopHome.tsx`** — moved the `.sbh-hero-chips` block ABOVE the `.sbh-hero-cta` block
+  (order is now price → amenities → buttons). Shared JSX ⇒ applies to both viewports.
+- **CSS** — the CTA used to hug the price (`margin-top: 2px` mobile / none desktop); now that the chip row sits
+  between them, gave the buttons their own top gap: `.sbh-hero-cta` `margin-top: 14px` (globals/mobile) +
+  `20px` (desktop.css). Chip pill styling unchanged (still self-contained solid-dark pill from v698).
+- **Measured** (headless, computed geometry): chips.top < cta.top on 390/414/1440 light + 360 dark, `amen=5`,
+  **0px horizontal overflow** everywhere. `tsc` + `next build` clean; `test:security` **385/0**.
+  Badge v703→**v704**, sw HTML_CACHE v499→**v500**.
+
 ### 2026-08-04 — Bucket C: admin sub-pages emoji-hybrid + font-floor (dark-only) (v703)
 **Final slice of the "kuch reh gaya?" audit — the ~30 admin sub-pages never individually harnessed.** Admin is
 **dark-only** (owner decision 2). A real-KEEP-set emoji scan across every `app/admin/**` page found the only

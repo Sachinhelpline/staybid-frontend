@@ -11604,7 +11604,9 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-hero-price > em { font-style: normal; font-size: 0.78rem; }
   .sbh-hero-nudge { color: var(--sbh-gold-lt); font-size: 0.78rem; width: 100%; }
   .sbh-hero-nudge b { font-size: inherit; font-weight: 700; color: var(--sbh-gold-lt); }
-  .sbh-hero-cta { display: flex; gap: 9px; margin-top: 2px; }
+  /* v704 (owner ss1) — amenity chips now sit ABOVE the CTAs, so the buttons
+     get their own top gap from the chips (they used to hug the price). */
+  .sbh-hero-cta { display: flex; gap: 9px; margin-top: 14px; }
   /* v607 — owner: the CTAs were too tall and hid the hero photo/content
      behind them. Trimmed padding + height + type so they sit lighter on the
      image while staying a comfortable ≥40px thumb target. */
