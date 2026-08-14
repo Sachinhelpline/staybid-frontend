@@ -2,6 +2,24 @@
 
 > Read `00-MASTER-ROADMAP.md` first. This file says where we ARE.
 
+---
+
+## 🚨 SINGLE SOURCE OF TRUTH / MULTI-AGENT CONTINUITY
+
+**CANONICAL CURRENT STATE:** This ledger is the authoritative live project record. Every session updates it post-merge.
+
+**Multi-agent must verify current state from:**
+1. **Latest ledger entry** (the most recent date + version in this file)
+2. **Actual git status** (`git branch`, `git log --oneline -5`, `git status`)
+3. **Current branch + commit** (verify the local/remote align with the ledger's stated v-number)
+4. **Actual code + deployed state** (CLAUDE.md "current production state" sections are HISTORICAL GUIDANCE ONLY and may lag behind this ledger)
+
+**Critical rule:** Stale version references in `CLAUDE.md`, `CLAUDE-HISTORY.md`, or historical documents must NEVER override the latest ledger entry or actual repository state. If `CLAUDE.md` says "v621 current state" and the ledger shows "v733", **the ledger is authoritative**.
+
+**Next agent starting work:** Read this section + the v733 entry first (or the latest date entry at the time you read this). Then `git status` to confirm branches/commits align. Then proceed.
+
+---
+
 ## Coverage matrix (summary — detail per panel added as phases run)
 
 | Surface | Pages | Redesigned | Light ✓ | Dark ✓ | Devices ✓ | Icons ✓ | English ✓ |
@@ -2986,7 +3004,68 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
 - **(#18) Stepper arrows:** `color-scheme: dark` on `.pe-input`/`.pe-cell-input` + `::-webkit-inner-spin-button { opacity:.85 }` (`app/admin/admin.css`) — the native number-spinner up/down arrows were dark-on-dark; now light + visible on the dark tiles.
 - **Gates:** tsc 0 · build 0 · `test:security` **385/0**. Badge v732→**v733** (`v733-b2b-wholesale-partner-fullbleed-circle-pricing`), sw HTML_CACHE v525→**v526** (partner + admin markup changed). Migration `2026-08-04-v733-b2b-wholesale-discount.sql` applied live.
 
-<!-- Append new sessions ABOVE this line’s template:
-### YYYY-MM-DD — Session N (Phase X)
-- done / verified / decided / NEXT
+---
+
+## SESSION HANDOFF Template
+
+When ending a development session, append an entry to the log above following this structure. The next agent reads from this section before starting work.
+
+```
+### YYYY-MM-DD — Session N: [Brief title, max 10 words]
+
+**Owner context (if any):** [owner decision / problem statement / reason for this session]
+
+**Starting state:** [git branch, version badge, known blockers, what was handed off from the previous session]
+
+**Work completed:**
+- [What was shipped: feature/bugfix/refactor + files touched]
+- [Reasoning: why this approach, relevant trade-offs]
+- [Measurements: before/after; headless audit if UI]
+
+**Verification:**
+- tsc 0 · build 0 · `test:security` [N/M]
+- Migrations (if any): round-trip verified, 0 leftover
+- Responsive audit: [devices/breakpoints tested]
+
+**Known blockers / Follow-ups (for NEXT session):**
+- [Incomplete work: what was intended but deferred]
+- [Known bugs: what’s still broken]
+- [Owner decisions pending]
+- [Risky assumptions: what needs reverification]
+
+**Next agent start here:** [1-2 sentences: what to tackle next, git state to verify, any quick setup]
+```
+
+### Example handoff (fictional):
+
+```
+### 2026-08-05 — Session 7: Admin onboard panel dark-mode + Hinglish sweep pass 3
+
+**Owner context:** owner rejected the admin onboard UI as "too plain"; chose dark-luxury redesign + full English sweep
+
+**Starting state:** v733, main branch, admin panel (5 sub-routes) untouched in UI/UX work; Hinglish remains in admin/onboard copy
+
+**Work completed:**
+- **`app/admin/onboard/page.tsx` dark-mode + redesign (421 lines):** emoji → lucide (16 icons), inline-hex colour cards → `bg-luxury-50`/`text-luxury-900` + pdash bridge, Hinglish copy (intro/form labels/error captions/buttons) → English (40 strings). Tested light+dark @ 320/390/768/1280; responsive grid scales 1→2→3 columns; tab stops cover form + buttons (a11y sweep).
+- **Hinglish sweep pass 3 (admin + onboard + host):** 47 user-facing strings (errors, helpers, labels, section titles) converted to English; verified no Hinglish remains in public surfaces; chat-bot exception kept (support/complaints Hinglish option still available).
+- Reasoning: admin is a backend tool, so dark-mode polish is lower priority than compliance (English everywhere). Proceeded in 2 parts to isolate the Hinglish work (reusable across all panels).
+
+**Verification:**
+- tsc 0 · build 0 · `test:security` 385/0
+- Headless audit: form focus order + screen-reader labels verified on a real SR emulator; dark bg avg=34
+- Migration: none (presentation-only)
+
+**Known blockers / Follow-ups:**
+- Admin `model3/model4` panels (18 routes) still Hinglish + old colors (next session)
+- `app/admin/support/*` dark-mode not yet scoped (was intended but de-scoped as too large)
+- Owner decision pending: admin sidebar auto-collapse on narrow (<1024px) — needs UX workshop
+
+**Next agent start here:** git pull origin main; v733 confirmed. Remaining work: the 18 model3/model4 admin routes + support routes. Check CLAUDE.md "Things to Avoid" for admin-layer rules before starting.
+```
+
+---
+
+<!-- Append new sessions ABOVE this line:
+### YYYY-MM-DD — Session N: [brief title]
+[follow the template above]
 -->
