@@ -31,6 +31,14 @@ const MARKDOWN_HORIZON_DAYS = 14; // only blocks ≤ 14 days out can be marked d
 const MAX_PER_PASS = 200;
 const TIME_BUDGET_MS = 24_000;    // return well inside cron-job.org's window
 
+// v734 — how long a pre-payment classic reservation may sit before the cron
+// releases its capacity. Matches the codebase-canonical
+// ACCEPTED_UNPAID_WINDOW_MIN=30 (lib/bid-expiry.ts) — the same "customer had
+// a room held pending payment and didn't pay" window used by the reverse
+// auction. A live Razorpay checkout completes verify well inside this window;
+// abandoned checkouts release capacity here.
+const PENDING_TTL_MINUTES = 30;
+
 
 const round0 = (n: any) => Math.round(Number(n) || 0);
 const isoDatePlus = (days: number) =>
@@ -249,14 +257,71 @@ async function b2bExpiryPass(startedAt: number): Promise<{ expired: number }> {
   return { expired };
 }
 
+// ── Pass 5 (v734): abandoned pre-payment classic reservation expiry ─────────
+// A classic reservation writes a pending inventory_blocks row + an
+// invhold_<blockId> room_blocks category hold at checkout, BEFORE the buyer
+// pays. A live Razorpay checkout completes verify within minutes; abandoned
+// checkouts must not permanently hold capacity. After PENDING_TTL_MINUTES the
+// block is flipped `expired` (guarded on status=eq.pending_payment so a
+// simultaneous verify that just flipped it to `owned` is never clobbered) and
+// the deterministic invhold row is DELETED via releaseHold(id) — same helper
+// the existing Pass 2 uses, so nothing else can be collateral damage.
+//
+// Idempotent: a re-run finds no matching rows because either they've already
+// been flipped or the guard blocks them. The verify-vs-expiry race is
+// documented in migration 2026-08-14-v734 and tested in
+// tests/concurrency/classic-reservation.pg.test.js Test I.5.
+async function abandonedPendingPass(startedAt: number): Promise<{ expired: number; holdsReleased: number }> {
+  let expired = 0, holdsReleased = 0;
+  const cutoffIso = new Date(Date.now() - PENDING_TTL_MINUTES * 60_000).toISOString();
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/inventory_blocks?status=eq.pending_payment` +
+        `&created_at=lt.${encodeURIComponent(cutoffIso)}` +
+        `&select=id,metadata&order=created_at.asc&limit=${MAX_PER_PASS}`,
+      { headers: SB_H },
+    );
+    const blocks: any[] = r.ok ? await r.json().catch(() => []) : [];
+    for (const b of blocks) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) break;
+      const meta = (b.metadata && typeof b.metadata === "object") ? b.metadata : {};
+      try {
+        const pr = await fetch(
+          `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(String(b.id))}&status=eq.pending_payment`,
+          {
+            method: "PATCH",
+            headers: { ...SB_H, Prefer: "return=minimal" },
+            body: JSON.stringify({
+              status: "expired",
+              metadata: {
+                ...meta,
+                expiredAt: new Date().toISOString(),
+                expiredReason: "pending_payment_abandoned",
+              },
+              updated_at: new Date().toISOString(),
+            }),
+          },
+        );
+        if (pr.ok) {
+          expired++;
+          if (await releaseHold(String(b.id))) holdsReleased++;
+        }
+      } catch { /* skip this block */ }
+    }
+  } catch { /* pass is best-effort */ }
+  return { expired, holdsReleased };
+}
+
 async function runAll(req: NextRequest) {
   const startedAt = Date.now();
+  const abandoned = await abandonedPendingPass(startedAt);
   const md = await markdownPass(startedAt);
   const ex = await expiryPass(startedAt);
   const b2bMd = await b2bMarkdownPass(startedAt);
   const b2bEx = await b2bExpiryPass(startedAt);
   return {
     ok: true,
+    abandonedPending: abandoned,
     markdown: md,
     expiry: ex,
     b2bMarkdown: b2bMd,

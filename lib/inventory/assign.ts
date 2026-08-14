@@ -153,6 +153,14 @@ export async function roomHasActiveUnits(hotelId: string, roomId: string): Promi
  * genuinely full → the buy must 409, never over-sell), for a classic room with
  * no free capacity, or on any lookup error (fail closed on the pre-payment buy
  * path — never oversell).
+ *
+ * ⚠ v734 — DEPRECATED for new callers. The classic pre-payment reservation is
+ * now handled atomically by `reserveClassicAtomically` (below), which combines
+ * the capacity check, the inventory_blocks INSERT, and the room_blocks hold
+ * WRITE under a single pg_advisory_xact_lock. This function is kept for
+ * back-compat (any external reader that peeks classic availability) and stays
+ * usable, but the checkout paths must NOT gate on it — they'd re-open the
+ * concurrency race this RPC was designed to close.
  */
 export async function classicCategoryFree(params: {
   hotelId: string;
@@ -171,4 +179,161 @@ export async function classicCategoryFree(params: {
 
   const avail = await unitsFreeForRange({ hotelId, roomId, from, to });
   return !!avail && avail.free >= 1;
+}
+
+/**
+ * v734 — atomic classic reservation at the pre-payment boundary.
+ *
+ * Thin wrapper around the Supabase RPC `reserve_classic_block` (migration
+ * 2026-08-14-v734). The RPC runs a single transaction under a per-room
+ * advisory lock and does everything the classic branch used to do in
+ * two non-atomic steps (`classicCategoryFree` + separate `inventory_blocks`
+ * POST + verify-time `writeHold` upsert):
+ *   • idempotent-replay short-circuit for the same blockId (inside the lock)
+ *   • diagnostic invhold conflict check (409 on shape mismatch)
+ *   • capacity read (rooms.quantity) + peak-occupancy union of
+ *     room_blocks + hard-blocking bids (matches unitsFreeForRange EXACTLY)
+ *   • INSERT inventory_blocks(status='pending_payment', unit_id=NULL)
+ *   • INSERT room_blocks(id='invhold_<blockId>', source='inventory', assignedUnitId=NULL)
+ *
+ * Callers use this ONLY when `assignFreeUnit` returned null. The RPC
+ * additionally refuses if the room is a unit-inventory hotel (defence-in-depth).
+ *
+ * Return codes (`code` field):
+ *   reserved           → success, new reservation written
+ *   already_reserved   → success, same blockId+shape already reserved (idempotent)
+ *   category_full      → capacity exhausted; caller MUST 409 pre-payment
+ *   not_classic        → room has active hotel_room_units; caller should use assignFreeUnit
+ *   no_capacity_signal → rooms.quantity is 0/NULL; caller MUST 409 (no capacity)
+ *   block_id_conflict  → blockId already exists with a different reservation shape
+ *   hold_id_conflict   → invhold row exists with a different shape
+ *   bad_request        → malformed input
+ *   rpc_error          → transport / DB error; caller MUST fail closed (409)
+ */
+export interface ReserveClassicResult {
+  ok: boolean;
+  code:
+    | "reserved"
+    | "already_reserved"
+    | "category_full"
+    | "not_classic"
+    | "no_capacity_signal"
+    | "block_id_conflict"
+    | "hold_id_conflict"
+    | "bad_request"
+    | "rpc_error";
+  blockId?: string;
+  holdId?: string;
+  capacity?: number;
+  occupied?: number;
+  detail?: string;
+}
+
+export async function reserveClassicAtomically(params: {
+  blockId: string;
+  hotelId: string;
+  roomId: string;
+  investorUserId: string;
+  from: string; // YYYY-MM-DD inclusive
+  to: string;   // YYYY-MM-DD exclusive
+  buyPricePerNight: number;
+  buyTotal: number;
+  metadata?: Record<string, any>;
+  razorpayOrderId?: string | null;
+}): Promise<ReserveClassicResult> {
+  const blockId = String(params.blockId || "").trim();
+  const hotelId = String(params.hotelId || "").trim();
+  const roomId = String(params.roomId || "").trim();
+  const investorUserId = String(params.investorUserId || "").trim();
+  const from = String(params.from || "").slice(0, 10);
+  const to = String(params.to || "").slice(0, 10);
+  if (!blockId || !hotelId || !roomId || !investorUserId || !from || !to || from >= to) {
+    return { ok: false, code: "bad_request" };
+  }
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/reserve_classic_block`, {
+      method: "POST",
+      headers: { ...SB_H, Prefer: "return=representation" },
+      body: JSON.stringify({
+        p_block_id: blockId,
+        p_hotel_id: hotelId,
+        p_room_id: roomId,
+        p_investor_user_id: investorUserId,
+        p_date_from: from,
+        p_date_to: to,
+        p_buy_price_per_night: Number(params.buyPricePerNight) || 0,
+        p_buy_total: Number(params.buyTotal) || 0,
+        p_metadata: params.metadata || {},
+        p_razorpay_order_id: params.razorpayOrderId || null,
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      return { ok: false, code: "rpc_error", detail: detail.slice(0, 240) };
+    }
+    const body = await res.json().catch(() => null);
+    // PostgREST wraps a scalar-returning function as either the value itself
+    // (jsonb) or a single-key row; handle both shapes defensively.
+    const payload: any = Array.isArray(body) ? body[0] : body;
+    if (!payload || typeof payload !== "object") {
+      return { ok: false, code: "rpc_error", detail: "empty_response" };
+    }
+    const code = String(payload.code || "");
+    return {
+      ok: !!payload.ok,
+      code: (code as ReserveClassicResult["code"]) || "rpc_error",
+      blockId: payload.block_id ? String(payload.block_id) : undefined,
+      holdId: payload.hold_id ? String(payload.hold_id) : undefined,
+      capacity: typeof payload.capacity === "number" ? payload.capacity : undefined,
+      occupied: typeof payload.occupied === "number" ? payload.occupied : undefined,
+    };
+  } catch (e: any) {
+    return { ok: false, code: "rpc_error", detail: String(e?.message || e).slice(0, 240) };
+  }
+}
+
+/**
+ * v734 — pure-read helper the classic verify path uses INSTEAD of
+ * `writeHold` (which would silently recreate a released hold post-payment
+ * and reintroduce the concurrency race).
+ *
+ * Returns:
+ *   { ok:true, held:true }  — invhold exists AND matches the block's shape
+ *   { ok:true, held:false } — invhold is missing or shape-drifted; verify
+ *                             must record needsOpsReview + NOT recreate it
+ *   { ok:false }            — the classic assert path does not apply (unit
+ *                             block / missing block / transport error); the
+ *                             caller may fall through to its unit-branch
+ *                             writeHold or to a soft-failure
+ */
+export interface ClassicHoldAssertion {
+  ok: boolean;
+  held: boolean;
+  mismatch?: boolean;
+  reason?: string;
+}
+
+export async function assertClassicHoldStillOurs(blockId: string): Promise<ClassicHoldAssertion> {
+  const id = String(blockId || "").trim();
+  if (!id) return { ok: false, held: false, reason: "bad_request" };
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/assert_classic_hold_still_ours`, {
+      method: "POST",
+      headers: { ...SB_H, Prefer: "return=representation" },
+      body: JSON.stringify({ p_block_id: id }),
+    });
+    if (!res.ok) return { ok: false, held: false, reason: "rpc_error" };
+    const body = await res.json().catch(() => null);
+    const payload: any = Array.isArray(body) ? body[0] : body;
+    if (!payload || typeof payload !== "object") return { ok: false, held: false, reason: "empty_response" };
+    return {
+      ok: !!payload.ok,
+      held: !!payload.held,
+      mismatch: payload.mismatch === true || undefined,
+      reason: payload.reason ? String(payload.reason) : undefined,
+    };
+  } catch {
+    return { ok: false, held: false, reason: "rpc_exception" };
+  }
 }
