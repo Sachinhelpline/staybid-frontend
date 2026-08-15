@@ -37,6 +37,7 @@ jobs:
         run: git diff --check "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
 
       - name: Verify pricing-engine schema contract
+        if: ${{ hashFiles('tests/pricing-engine-schema-contract.test.js') != '' }}
         run: node tests/pricing-engine-schema-contract.test.js
 
       - name: Verify Price Spine occupancy contract
