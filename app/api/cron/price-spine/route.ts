@@ -3,6 +3,7 @@ import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbSelect, SB } from "@/lib/onboard/supabase-admin";
 import { computeRoomDatePrice } from "@/lib/pricing/spine";
 import { resolveEngineConfig } from "@/lib/pricing/engine-config-store";
+import { calculateOccupancyForDate } from "@/lib/pricing/occupancy";
 
 // ════════════════════════════════════════════════════════════════
 // v165 Phase A — pricing-spine recompute cron.
@@ -31,22 +32,6 @@ const UPSERT_BATCH = 500;  // rows per PostgREST upsert call
 const OCCUPANCY_PAGE_SIZE = 500;  // deterministic pagination window size
 
 const OCCUPIED_STATUSES = ["ACCEPTED", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT"];
-
-// Pure occupancy calculation helper — testable in isolation.
-// Returns SUM(bid.numRooms) for all bids overlapping the given date.
-// A bid overlaps [date, date+1) if bid.checkIn <= date AND date < bid.checkOut.
-export function calculateOccupancyForDate(
-  windows: Array<{ ci: number; co: number; numRooms: number }>,
-  dateMs: number
-): number {
-  let occupied = 0;
-  for (const w of windows) {
-    if (w.ci <= dateMs && dateMs < w.co) {
-      occupied += w.numRooms;
-    }
-  }
-  return occupied;
-}
 
 function dayStr(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -150,7 +135,7 @@ export async function GET(req: Request) {
           `&order=id.asc` +
           `&limit=${OCCUPANCY_PAGE_SIZE}` +
           `&offset=${pageOffset}`
-      ).catch(() => []);
+      );
 
       if (bidsWithRequests.length === 0) {
         hasMore = false;
