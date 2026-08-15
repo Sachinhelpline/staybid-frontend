@@ -3,6 +3,7 @@ import { cronAuthGuard } from "@/lib/cron/auth";
 import { sbSelect, SB } from "@/lib/onboard/supabase-admin";
 import { computeRoomDatePrice } from "@/lib/pricing/spine";
 import { resolveEngineConfig } from "@/lib/pricing/engine-config-store";
+import { calculateOccupancyForDate } from "@/lib/pricing/occupancy";
 
 // ════════════════════════════════════════════════════════════════
 // v165 Phase A — pricing-spine recompute cron.
@@ -28,6 +29,7 @@ export const dynamic = "force-dynamic";
 
 const HORIZON_DAYS = 75;   // how far ahead to price (nobody books past this)
 const UPSERT_BATCH = 500;  // rows per PostgREST upsert call
+const OCCUPANCY_PAGE_SIZE = 500;  // deterministic pagination window size
 
 const OCCUPIED_STATUSES = ["ACCEPTED", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT"];
 
@@ -97,24 +99,75 @@ export async function GET(req: Request) {
     }
 
     // ── 4. Hotel total units + occupied-bid windows for per-date
-    //       vacancy. One bids query, then everything is in-memory. ────
+    //       vacancy. Load bids with FK-joined bid_requests for dates,
+    //       then everything is in-memory. FAIL-CLOSED on integrity failure. ──
     const unitsOf: Record<string, number> = {};
     for (const r of rooms) {
       unitsOf[r.hotelId] = (unitsOf[r.hotelId] || 0) + (Number(r.quantity) || 1);
     }
     const todayStr = dayStr(new Date());
-    const bids = await sbSelect<any>(
+    const today = Date.parse(todayStr);
+
+    // Preflight integrity check: fail-closed if any occupied-status bid has no requestId.
+    // This prevents silent occupancy undercounting BEFORE we load occupancy windows.
+    const orphanedBids = await sbSelect<any>(
       "bids",
-      `select=hotelId,checkIn,checkOut,status&status=in.(${OCCUPIED_STATUSES.join(",")})` +
-        `&checkOut=gte.${todayStr}&limit=5000`
-    ).catch(() => []);
-    // bidsByHotel[hotelId] = [{ ci: ms, co: ms }]
-    const bidsByHotel: Record<string, { ci: number; co: number }[]> = {};
-    for (const b of bids) {
-      const ci = Date.parse(b.checkIn);
-      const co = Date.parse(b.checkOut);
-      if (!Number.isFinite(ci) || !Number.isFinite(co)) continue;
-      (bidsByHotel[b.hotelId] ||= []).push({ ci, co });
+      `select=id&status=in.(${OCCUPIED_STATUSES.join(",")})&requestId=is.null&limit=1`
+    );
+    if (orphanedBids.length > 0) {
+      throw new Error(`Occupancy integrity violation: occupied bid ${orphanedBids[0].id} has no requestId`);
+    }
+
+    // Load bids with their linked bid_requests via FK embedding, with deterministic pagination.
+    // Use !inner syntax to enforce INNER join semantics (not LEFT join default).
+    // Filter bid_requests.checkOut >= today at database level to avoid silent truncation.
+    // Pagination: load in bounded pages, ordered by bid ID for determinism.
+    const bidsByHotel: Record<string, { ci: number; co: number; numRooms: number }[]> = {};
+    let pageOffset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const bidsWithRequests = await sbSelect<any>(
+        "bids",
+        `select=id,hotelId,requestId,status,numRooms,bid_requests!inner(id,checkIn,checkOut)` +
+          `&status=in.(${OCCUPIED_STATUSES.join(",")})` +
+          `&bid_requests.checkOut=gte.${todayStr}` +
+          `&order=id.asc` +
+          `&limit=${OCCUPANCY_PAGE_SIZE}` +
+          `&offset=${pageOffset}`
+      );
+
+      if (bidsWithRequests.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const b of bidsWithRequests) {
+        if (!b.requestId || !b.bid_requests) {
+          throw new Error(`Occupancy integrity violation: bid ${b.id} missing requestId or bid_requests (should not reach here after preflight)`);
+        }
+
+        const req = b.bid_requests;
+        const ci = Date.parse(req.checkIn);
+        const co = Date.parse(req.checkOut);
+
+        if (!Number.isFinite(ci) || !Number.isFinite(co)) {
+          throw new Error(`Occupancy date parse failure: bid ${b.id} checkIn=${req.checkIn} checkOut=${req.checkOut}`);
+        }
+
+        // Redundant check (database already filtered checkOut >= today), kept for safety.
+        if (co <= today) continue;
+
+        // Normalize numRooms: default 1 for legacy bids, but prevent non-positive values.
+        const numRooms = Math.max(1, Number(b.numRooms) || 1);
+        (bidsByHotel[b.hotelId] ||= []).push({ ci, co, numRooms });
+      }
+
+      if (bidsWithRequests.length < OCCUPANCY_PAGE_SIZE) {
+        hasMore = false;
+      } else {
+        pageOffset += OCCUPANCY_PAGE_SIZE;
+      }
     }
 
     // ── 5. Build the date list (next HORIZON_DAYS, from today) ──────
@@ -134,11 +187,9 @@ export async function GET(req: Request) {
       const totalUnits = Math.max(1, unitsOf[r.hotelId] || 1);
       const hotelBids = bidsByHotel[r.hotelId] || [];
       for (const dt of dates) {
-        // occupied units on this date = overlapping accepted bids
-        let occupied = 0;
-        for (const w of hotelBids) {
-          if (w.ci <= dt.ms && dt.ms < w.co) occupied++;
-        }
+        // occupied units on this date = SUM(bid.numRooms for overlapping bids)
+        // This accounts for multi-room bids; single-room bids default to numRooms=1.
+        const occupied = calculateOccupancyForDate(hotelBids, dt.ms);
         const vacancyRatio = Math.min(1, occupied / totalUnits);
         const spine = computeRoomDatePrice({
           floorPrice: Number(r.floorPrice) || 0,
