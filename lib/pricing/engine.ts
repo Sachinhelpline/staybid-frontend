@@ -12,7 +12,7 @@ export async function getDemandScore(roomId: string): Promise<number> {
     const now = Date.now();
     const since2h = new Date(now - 2 * 3600_000).toISOString();
     const since24h = new Date(now - 24 * 3600_000).toISOString();
-    const url = `${SB.url}/rest/v1/app_events?meta->>roomId=eq.${roomId}&created_at=gte.${since2h}&select=count`;
+    const url = `${SB.url}/rest/v1/app_events?roomId=eq.${roomId}&createdAt=gte.${since2h}&select=count`;
     const r = await fetch(url, { headers: { apikey: SB.key, Authorization: `Bearer ${SB.key}`, Prefer: "count=exact" } });
     const total = parseInt(r.headers.get("content-range")?.split("/")[1] || "0", 10);
     return Math.min(100, total * 0.5 + 35);
@@ -27,7 +27,7 @@ export async function getVacancyRate(hotelId: string): Promise<number> {
     const today = new Date().toISOString().slice(0, 10);
     const bids = await sbSelect<any>(
       "bids",
-      `"hotelId"=eq.${hotelId}&status=eq.ACCEPTED&"checkIn"=gte.${today}&select=id&limit=500`
+      `select=id,bid_requests!inner(id,checkIn)&"hotelId"=eq.${hotelId}&status=eq.ACCEPTED&bid_requests.checkIn=gte.${today}&limit=500`
     );
     const booked = bids.length;
     return Math.max(0, ((total - booked) / total) * 100);
