@@ -19,7 +19,7 @@ import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
 import { resolveActiveCities, cityAccessId, normalizeCity } from "@/lib/circle/city-access";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
-import { assignFreeUnit, classicCategoryFree } from "@/lib/inventory/assign";
+import { assignFreeUnit, reserveClassicAtomically } from "@/lib/inventory/assign";
 import { enumerateDates } from "@/lib/availability";
 
 export const runtime = "nodejs";
@@ -158,44 +158,40 @@ export async function POST(req: NextRequest) {
     }
 
     // hotel_owner — assign a free unit for the CHOSEN nights + mint a fresh
-    // pending buyer block over exactly those nights NOW.
+    // pending buyer block over exactly those nights NOW. Branch on assignment:
+    //   • unit found → existing race-safe INSERT + self-excluding overlap re-guard
+    //   • classic (no active units) → v734 atomic RPC reserves capacity + writes
+    //     invhold in ONE transaction under a per-room advisory lock
     const freeUnit = await assignFreeUnit({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: useFrom, to: useTo, buyerIds });
-    // v729 — CLASSIC (unit-less) hotel with free category capacity: no physical
-    // unit to assign (was an unbuyable dead-end), so buy on a CATEGORY hold
-    // (unit_id NULL; verify writes the room_blocks category hold). A genuinely
-    // full room (or a unit hotel with no free unit) still 409s.
     let itemUnitId: string | null = null;
     let itemRoomNumber: string | null = null;
-    if (freeUnit) {
-      itemUnitId = freeUnit.unitId;
-      itemRoomNumber = freeUnit.roomNumber;
-    } else if (!(await classicCategoryFree({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: useFrom, to: useTo }))) {
-      return NextResponse.json({ error: "One room is booked on those nights — pick different dates." }, { status: 409 });
-    }
-    // The buyer's acquisition cost basis = what they pay for the goods (the ask).
     const buyTotal = split.askTotal;
     const perNight = askPerNight;
     const newBlockId = genId("inv");
-    try {
-      const res = await fetch(`${SB_URL}/rest/v1/inventory_blocks`, {
-        method: "POST",
-        headers: SB_H_REPRESENT,
-        body: JSON.stringify({
-          id: newBlockId, investor_user_id: String(userId), hotel_id: String(listing.hotel_id),
-          unit_id: itemUnitId, room_id: String(listing.room_id), date_from: useFrom, date_to: useTo,
-          nights, buy_price_per_night: perNight, buy_total: buyTotal,
-          resale_price_per_night: 0, platform_fee_pct: split.platformFeePct,
-          status: "pending_payment", metadata: { source: "circle_b2b_basket", listingId: String(listing.id), roomNumber: itemRoomNumber, checkoutAt: new Date().toISOString() },
-          updated_at: new Date().toISOString(),
-        }),
-      });
-      const rows = res.ok ? await res.json().catch(() => []) : [];
-      if (!Array.isArray(rows) || !rows.length) return NextResponse.json({ error: "Could not reserve one room." }, { status: 500 });
-    } catch { return NextResponse.json({ error: "Checkout failed" }, { status: 500 }); }
 
-    // self-excluding overlap re-guard — unit-assigned buys only (a classic
-    // category buy has no unit; its capacity was pre-checked above).
-    if (itemUnitId) {
+    if (freeUnit) {
+      itemUnitId = freeUnit.unitId;
+      itemRoomNumber = freeUnit.roomNumber;
+
+      try {
+        const res = await fetch(`${SB_URL}/rest/v1/inventory_blocks`, {
+          method: "POST",
+          headers: SB_H_REPRESENT,
+          body: JSON.stringify({
+            id: newBlockId, investor_user_id: String(userId), hotel_id: String(listing.hotel_id),
+            unit_id: itemUnitId, room_id: String(listing.room_id), date_from: useFrom, date_to: useTo,
+            nights, buy_price_per_night: perNight, buy_total: buyTotal,
+            resale_price_per_night: 0, platform_fee_pct: split.platformFeePct,
+            status: "pending_payment", metadata: { source: "circle_b2b_basket", listingId: String(listing.id), roomNumber: itemRoomNumber, checkoutAt: new Date().toISOString() },
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        const rows = res.ok ? await res.json().catch(() => []) : [];
+        if (!Array.isArray(rows) || !rows.length) return NextResponse.json({ error: "Could not reserve one room." }, { status: 500 });
+      } catch { return NextResponse.json({ error: "Checkout failed" }, { status: 500 }); }
+
+      // self-excluding overlap re-guard — a DIFFERENT non-terminal block may
+      // have grabbed the same unit/nights in the race window. Drop the orphan + 409.
       try {
         const clashRes = await fetch(
           `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(itemUnitId)}&id=neq.${encodeURIComponent(newBlockId)}` +
@@ -208,6 +204,39 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "One room was just taken — refresh." }, { status: 409 });
         }
       } catch { /* non-fatal */ }
+    } else {
+      // CLASSIC branch (v734) — atomic RPC. Reserves capacity + writes the
+      // invhold in one transaction under a per-room advisory lock. Two
+      // concurrent classic buyers on the same room/nights can never both win.
+      // razorpay_order_id is PATCHed on later (same loop below) once the ONE
+      // basket order is minted; the RPC accepts null here.
+      const rc = await reserveClassicAtomically({
+        blockId: newBlockId,
+        hotelId: String(listing.hotel_id),
+        roomId: String(listing.room_id),
+        investorUserId: String(userId),
+        from: useFrom,
+        to: useTo,
+        buyPricePerNight: perNight,
+        buyTotal,
+        razorpayOrderId: null,
+        metadata: {
+          source: "circle_b2b_basket_classic",
+          listingId: String(listing.id),
+          resale_price_per_night: 0,
+          platform_fee_pct: split.platformFeePct,
+          checkoutAt: new Date().toISOString(),
+        },
+      });
+      if (!rc.ok) {
+        if (rc.code === "category_full" || rc.code === "no_capacity_signal") {
+          return NextResponse.json({ error: "One room is booked on those nights — pick different dates." }, { status: 409 });
+        }
+        if (rc.code === "block_id_conflict" || rc.code === "hold_id_conflict" || rc.code === "not_classic") {
+          return NextResponse.json({ error: "One room was just taken — refresh.", detail: rc.code }, { status: 409 });
+        }
+        return NextResponse.json({ error: "Could not reserve one room.", detail: rc.detail || rc.code }, { status: 500 });
+      }
     }
 
     items.push({ listing, split, from: useFrom, to: useTo, unitId: itemUnitId, blockId: newBlockId, source: "hotel_owner", newBlockId });

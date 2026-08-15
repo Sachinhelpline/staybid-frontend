@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { assertClassicHoldStillOurs } from "@/lib/inventory/assign";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,14 +81,43 @@ async function stampUnitOwner(unitId: string, buyerPrimary: string, buyerIds: st
   }
 }
 
-// Write (or refresh) the room-nights HOLD so availability subtracts them.
-// Deterministic invhold_<blockId> id → idempotent on re-verify. Best-effort:
-// a hold hiccup must NOT fail a succeeded payment.
-async function writeHold(block: any): Promise<boolean> {
+// Verify-time hold handling. Branches on assignment shape:
+//
+//   • UNIT block (unit_id set) — the pre-payment reservation for a unit
+//     buy is enforced by assignFreeUnit + the self-excluding overlap
+//     re-guard at checkout. Verify UPSERTs the deterministic
+//     invhold_<blockId> row (id + on_conflict=merge-duplicates ⇒
+//     idempotent on re-verify). This path is unchanged.
+//
+//   • CLASSIC block (unit_id NULL, v734) — the invhold was written by
+//     `reserve_classic_block` at checkout, under a per-room advisory
+//     lock. Verify must NOT upsert it: if the hold has been released
+//     (e.g. by the inventory-lifecycle abandoned-pending expiry pass),
+//     silently recreating it AFTER the buyer paid would trivially
+//     bypass the pre-payment reservation and reintroduce the
+//     concurrency race the RPC was designed to close. Instead, verify
+//     ASSERTS the hold still exists with the same shape. A missing or
+//     shape-drifted hold lands in ops reconciliation
+//     (`needsOpsReview:true`) — payment is already captured, so the
+//     trade + block still flip to their terminal states, but the
+//     response signals that a human must reconcile the room.
+//
+// Returns { held, needsOpsReview } — a re-verify sees the same shape.
+async function writeHold(block: any): Promise<{ held: boolean; needsOpsReview: boolean; reason?: string }> {
+  const hasUnit = !!block?.unit_id;
+  if (!hasUnit) {
+    // v734 — classic branch: pure read, never write.
+    const assertion = await assertClassicHoldStillOurs(String(block?.id || ""));
+    if (assertion.ok && assertion.held) {
+      return { held: true, needsOpsReview: false };
+    }
+    return { held: false, needsOpsReview: true, reason: assertion.reason || "hold_missing" };
+  }
+
+  // UNIT branch — existing upsert path, unchanged.
   try {
-    const hasUnit = !!block?.unit_id;
     let unitNumber: string | null = block?.metadata?.roomNumber || null;
-    if (!unitNumber && hasUnit) {
+    if (!unitNumber) {
       try {
         const ur = await fetch(
           `${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(String(block.unit_id))}&select=roomNumber`,
@@ -96,10 +126,6 @@ async function writeHold(block: any): Promise<boolean> {
         unitNumber = (await ur.json().catch(() => []))?.[0]?.roomNumber || null;
       } catch { /* optional */ }
     }
-    // v729 — a CLASSIC (unit-less) block holds inventory at the CATEGORY level:
-    // NO assignedUnitId, so the availability engine subtracts it from
-    // rooms.quantity (a bare room_blocks row counts as one unit for its roomId).
-    // A unit-assigned block still stamps the exact unit (per-unit clash guard).
     const holdBody: Record<string, any> = {
       id: `invhold_${block.id}`,
       hotelId: String(block.hotel_id),
@@ -109,19 +135,17 @@ async function writeHold(block: any): Promise<boolean> {
       source: "inventory",
       note: "StayBid Circle B2B pre-buy hold",
       createdBy: String(block.investor_user_id),
+      assignedUnitId: String(block.unit_id),
+      assignedUnitNumber: unitNumber,
     };
-    if (hasUnit) {
-      holdBody.assignedUnitId = String(block.unit_id);
-      holdBody.assignedUnitNumber = unitNumber;
-    }
     const res = await fetch(`${SB_URL}/rest/v1/room_blocks?on_conflict=id`, {
       method: "POST",
       headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify(holdBody),
     });
-    return res.ok;
+    return { held: res.ok, needsOpsReview: !res.ok };
   } catch {
-    return false;
+    return { held: false, needsOpsReview: true, reason: "hold_write_exception" };
   }
 }
 
@@ -209,6 +233,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   let transferred = false;
   let stamped = false;
   let held = false;
+  let needsOpsReview = false;
+  let opsReason: string | undefined;
   if (source === "hotel_owner") {
     try {
       const br = await fetch(
@@ -240,10 +266,40 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         block = (gr.ok ? await gr.json().catch(() => []) : [])?.[0] || null;
       }
       if (block) {
-        // v729 — a classic (unit-less) block has unit_id NULL: stampUnitOwner
-        // no-ops on an empty id; writeHold then records a category-level hold.
+        // v729/v734 — unit branch: stampUnitOwner + writeHold upsert (unchanged).
+        // Classic branch: stampUnitOwner is a no-op on empty id; writeHold
+        // ASSERTS the pre-payment hold and reports needsOpsReview if it's
+        // missing (never silently recreates it).
         stamped = await stampUnitOwner(block.unit_id ? String(block.unit_id) : "", buyerId, buyerIds);
-        held = await writeHold(block);
+        const result = await writeHold(block);
+        held = result.held;
+        needsOpsReview = result.needsOpsReview;
+        opsReason = result.reason;
+        // Record the ops-review flag on the block metadata so
+        // /admin/circle-inventory can surface it. Best-effort; a metadata
+        // write hiccup must NEVER fail a succeeded payment.
+        if (needsOpsReview) {
+          try {
+            const meta = (block.metadata && typeof block.metadata === "object") ? block.metadata : {};
+            await fetch(
+              `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}`,
+              {
+                method: "PATCH",
+                headers: { ...SB_H, Prefer: "return=minimal" },
+                body: JSON.stringify({
+                  metadata: {
+                    ...meta,
+                    holdLostAtVerify: true,
+                    holdLostReason: opsReason || "hold_missing",
+                    needsOpsReview: true,
+                    holdLostAt: nowIso,
+                  },
+                  updated_at: nowIso,
+                }),
+              },
+            );
+          } catch { /* best-effort */ }
+        }
       }
     } catch { /* block may already be owned on a re-verify */ }
   } else {
@@ -329,6 +385,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     transferred,
     stamped,
     held,
+    needsOpsReview,
+    ...(opsReason ? { opsReason } : {}),
     trade: {
       id: trade.id,
       dateFrom: trade.date_from,

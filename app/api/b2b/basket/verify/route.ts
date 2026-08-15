@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { assertClassicHoldStillOurs } from "@/lib/inventory/assign";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,33 +27,44 @@ async function stampUnitOwner(unitId: string, buyerPrimary: string, buyerIds: st
     });
   } catch { /* best-effort */ }
 }
-async function writeHold(block: any): Promise<void> {
+// v734 — branches on assignment shape:
+//   • UNIT block  → existing upsert path (unchanged, race-safe via unit_id).
+//   • CLASSIC block (unit_id NULL) → ASSERT-ONLY. The invhold was written by
+//     reserve_classic_block at checkout; verify must never silently recreate
+//     a released hold (that would reintroduce the post-payment race the RPC
+//     was designed to close). Returns {held, needsOpsReview} so the caller
+//     records the ops-review flag on the block metadata.
+// See sibling app/api/b2b/listings/[id]/verify/route.ts for the fuller
+// comment on the reasoning.
+async function writeHold(block: any): Promise<{ held: boolean; needsOpsReview: boolean; reason?: string }> {
+  const hasUnit = !!block?.unit_id;
+  if (!hasUnit) {
+    const assertion = await assertClassicHoldStillOurs(String(block?.id || ""));
+    if (assertion.ok && assertion.held) return { held: true, needsOpsReview: false };
+    return { held: false, needsOpsReview: true, reason: assertion.reason || "hold_missing" };
+  }
   try {
-    const hasUnit = !!block?.unit_id;
     let unitNumber: string | null = block?.metadata?.roomNumber || null;
-    if (!unitNumber && hasUnit) {
+    if (!unitNumber) {
       try {
         const ur = await fetch(`${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(String(block.unit_id))}&select=roomNumber`, { headers: SB_H });
         unitNumber = (await ur.json().catch(() => []))?.[0]?.roomNumber || null;
       } catch { /* optional */ }
     }
-    // v729 — a CLASSIC (unit-less) block holds inventory at the CATEGORY level:
-    // NO assignedUnitId, so the availability engine subtracts it from
-    // rooms.quantity. A unit-assigned block still stamps the exact unit.
     const holdBody: Record<string, any> = {
       id: `invhold_${block.id}`, hotelId: String(block.hotel_id), roomId: String(block.room_id),
       fromDate: String(block.date_from), toDate: String(block.date_to), source: "inventory",
       note: "StayBid Circle B2B pre-buy hold", createdBy: String(block.investor_user_id),
+      assignedUnitId: String(block.unit_id), assignedUnitNumber: unitNumber,
     };
-    if (hasUnit) {
-      holdBody.assignedUnitId = String(block.unit_id);
-      holdBody.assignedUnitNumber = unitNumber;
-    }
-    await fetch(`${SB_URL}/rest/v1/room_blocks?on_conflict=id`, {
+    const r = await fetch(`${SB_URL}/rest/v1/room_blocks?on_conflict=id`, {
       method: "POST", headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify(holdBody),
     });
-  } catch { /* best-effort */ }
+    return { held: r.ok, needsOpsReview: !r.ok };
+  } catch {
+    return { held: false, needsOpsReview: true, reason: "hold_write_exception" };
+  }
 }
 async function grantModel2Service(hotelId: string, grantedBy: string): Promise<void> {
   if (!hotelId) return;
@@ -130,9 +142,32 @@ export async function POST(req: NextRequest) {
           const gr = await fetch(`${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}&status=eq.owned&investor_user_id=in.(${idsCsv})&select=*`, { headers: SB_H });
           block = (gr.ok ? await gr.json().catch(() => []) : [])?.[0] || null;
         }
-        // v729 — a classic (unit-less) block has unit_id NULL: stampUnitOwner
-        // no-ops on an empty id; writeHold records a category-level hold.
-        if (block) { await stampUnitOwner(block.unit_id ? String(block.unit_id) : "", buyerId, buyerIds); await writeHold(block); }
+        // v729/v734 — unit: stampUnitOwner + writeHold upsert (unchanged).
+        // Classic: stampUnitOwner no-ops on empty id; writeHold ASSERTS the
+        // pre-payment hold and returns needsOpsReview when it's missing.
+        // Record the ops-review flag on the block metadata (best-effort).
+        if (block) {
+          await stampUnitOwner(block.unit_id ? String(block.unit_id) : "", buyerId, buyerIds);
+          const holdResult = await writeHold(block);
+          if (holdResult.needsOpsReview) {
+            try {
+              const meta = (block.metadata && typeof block.metadata === "object") ? block.metadata : {};
+              await fetch(`${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}`, {
+                method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+                body: JSON.stringify({
+                  metadata: {
+                    ...meta,
+                    holdLostAtVerify: true,
+                    holdLostReason: holdResult.reason || "hold_missing",
+                    needsOpsReview: true,
+                    holdLostAt: nowIso,
+                  },
+                  updated_at: nowIso,
+                }),
+              });
+            } catch { /* best-effort */ }
+          }
+        }
       } catch { /* already owned */ }
     } else {
       try {

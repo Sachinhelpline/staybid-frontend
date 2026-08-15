@@ -19,7 +19,7 @@ import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { hasCityAccess, normalizeCity, cityAccessId } from "@/lib/circle/city-access";
-import { assignFreeUnit, classicCategoryFree } from "@/lib/inventory/assign";
+import { assignFreeUnit, reserveClassicAtomically } from "@/lib/inventory/assign";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
 export const runtime = "nodejs";
@@ -158,20 +158,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (freeUnit) {
       assignedUnitId = freeUnit.unitId;
       buyerRoomNumber = freeUnit.roomNumber;
-    } else if (await classicCategoryFree({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: lFrom, to: lTo })) {
-      // v729 — CLASSIC (unit-less) hotel with free category capacity: there is
-      // no physical unit to assign (this was the unbuyable 409 dead-end). Complete
-      // the buy on a CATEGORY hold instead — the buyer block is minted with
-      // unit_id NULL and verify writes a room_blocks category hold (no
-      // assignedUnitId) that the availability engine subtracts from
-      // rooms.quantity. The per-unit stamp/hold simply no-op for a null unit.
+    } else {
+      // v729/v734 — no free physical unit. Fall through to the CLASSIC branch
+      // (unit_id NULL). The pre-flight `classicCategoryFree` gate is REMOVED:
+      // the atomic `reserveClassicAtomically` RPC below is the single gate. It
+      // refuses (returns `not_classic`) if the room actually has active
+      // hotel_room_units — that case then 409s below, matching the prior
+      // "no rooms free" behaviour without any capacity race.
       assignedUnitId = null;
       buyerRoomNumber = null;
-    } else {
-      return NextResponse.json(
-        { error: "No rooms free for these nights — try another offer." },
-        { status: 409 },
-      );
     }
 
     const quote = await quoteInventoryBlock({ roomId: String(listing.room_id), from: lFrom, to: lTo });
@@ -218,55 +213,63 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   // ── M4 hotel_owner: mint a NEW buyer pending_payment inventory_block (the
-  //    buyer owns nothing yet — mirror the M1 marketplace checkout), then a
-  //    self-excluding overlap re-guard drops the orphan on a concurrent race.
+  //    buyer owns nothing yet — mirror the M1 marketplace checkout). Branch on
+  //    assignment shape:
+  //      • assignedUnitId set  → UNIT-inventory buy. Existing plain INSERT +
+  //        self-excluding overlap re-guard (unchanged, race-safe via unit_id).
+  //      • assignedUnitId null → CLASSIC (v734) buy. Atomic RPC
+  //        `reserveClassicAtomically` INSERTs the pending block AND writes the
+  //        deterministic invhold_<blockId> hold under one advisory lock. Two
+  //        concurrent classic buyers on the same room/nights can never both
+  //        reserve when capacity is full — the loser 409s BEFORE the browser
+  //        opens the Razorpay widget (no captured payment, no refund needed).
   //    investor_block keeps the seller's existing block (transferred at verify).
   let tradeBlockId: string | null = isHotelOwner ? null : String(listing.block_id);
   if (isHotelOwner) {
     const newBlockId = genId("inv");
-    try {
-      const res = await fetch(`${SB_URL}/rest/v1/inventory_blocks`, {
-        method: "POST",
-        headers: SB_H_REPRESENT,
-        body: JSON.stringify({
-          id: newBlockId,
-          investor_user_id: String(userId),
-          hotel_id: String(listing.hotel_id),
-          unit_id: assignedUnitId,
-          room_id: String(listing.room_id),
-          date_from: lFrom,
-          date_to: lTo,
-          nights: split.nights,
-          buy_price_per_night: buyerBlockBuyPerNight,
-          buy_total: buyerBlockBuyTotal,
-          resale_price_per_night: buyerBlockResalePerNight,
-          platform_fee_pct: split.platformFeePct,
-          status: "pending_payment",
-          razorpay_order_id: rzp.id,
-          metadata: {
-            source: "circle_b2b_hotel_owner",
-            listingId,
-            roomNumber: buyerRoomNumber,
-            checkoutAt: new Date().toISOString(),
-          },
-          updated_at: new Date().toISOString(),
-        }),
-      });
-      const rows = res.ok ? await res.json().catch(() => []) : [];
-      if (!Array.isArray(rows) || !rows.length) {
-        const err = await res.text().catch(() => "");
-        return NextResponse.json({ error: "Could not start the trade.", detail: err.slice(0, 160) }, { status: 500 });
-      }
-    } catch (e: any) {
-      return NextResponse.json({ error: e?.message || "Checkout failed" }, { status: 500 });
-    }
 
-    // Self-excluding overlap re-guard — a DIFFERENT non-terminal block may have
-    // grabbed the same unit/nights in the race window. Drop our orphan + 409.
-    // v729 — only for a UNIT-assigned buy. A classic category buy (unit_id NULL)
-    // has no unit to clash on; its category capacity was pre-checked
-    // (classicCategoryFree) and the category hold at verify is the reservation.
     if (assignedUnitId) {
+      // UNIT branch — existing race-safe path, unchanged.
+      try {
+        const res = await fetch(`${SB_URL}/rest/v1/inventory_blocks`, {
+          method: "POST",
+          headers: SB_H_REPRESENT,
+          body: JSON.stringify({
+            id: newBlockId,
+            investor_user_id: String(userId),
+            hotel_id: String(listing.hotel_id),
+            unit_id: assignedUnitId,
+            room_id: String(listing.room_id),
+            date_from: lFrom,
+            date_to: lTo,
+            nights: split.nights,
+            buy_price_per_night: buyerBlockBuyPerNight,
+            buy_total: buyerBlockBuyTotal,
+            resale_price_per_night: buyerBlockResalePerNight,
+            platform_fee_pct: split.platformFeePct,
+            status: "pending_payment",
+            razorpay_order_id: rzp.id,
+            metadata: {
+              source: "circle_b2b_hotel_owner",
+              listingId,
+              roomNumber: buyerRoomNumber,
+              checkoutAt: new Date().toISOString(),
+            },
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        const rows = res.ok ? await res.json().catch(() => []) : [];
+        if (!Array.isArray(rows) || !rows.length) {
+          const err = await res.text().catch(() => "");
+          return NextResponse.json({ error: "Could not start the trade.", detail: err.slice(0, 160) }, { status: 500 });
+        }
+      } catch (e: any) {
+        return NextResponse.json({ error: e?.message || "Checkout failed" }, { status: 500 });
+      }
+
+      // Self-excluding overlap re-guard — a DIFFERENT non-terminal block may
+      // have grabbed the same unit/nights in the race window. Drop our orphan
+      // + 409.
       try {
         const clashRes = await fetch(
           `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(String(assignedUnitId))}` +
@@ -287,6 +290,48 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           );
         }
       } catch { /* non-fatal — verify + hold write is the final integrity gate */ }
+    } else {
+      // CLASSIC branch (v734) — atomic RPC. Reserves capacity + writes the
+      // invhold in one transaction under a per-room advisory lock. On
+      // category_full we've already created a Razorpay order that the client
+      // will never pay against; the order simply expires (Razorpay doesn't
+      // capture until the widget confirms).
+      const rc = await reserveClassicAtomically({
+        blockId: newBlockId,
+        hotelId: String(listing.hotel_id),
+        roomId: String(listing.room_id),
+        investorUserId: String(userId),
+        from: lFrom,
+        to: lTo,
+        buyPricePerNight: buyerBlockBuyPerNight,
+        buyTotal: buyerBlockBuyTotal,
+        razorpayOrderId: rzp.id,
+        metadata: {
+          source: "circle_b2b_hotel_owner_classic",
+          listingId,
+          resale_price_per_night: buyerBlockResalePerNight,
+          platform_fee_pct: split.platformFeePct,
+          checkoutAt: new Date().toISOString(),
+        },
+      });
+      if (!rc.ok) {
+        if (rc.code === "category_full" || rc.code === "no_capacity_signal") {
+          return NextResponse.json(
+            { error: "No rooms free for these nights — try another offer." },
+            { status: 409 },
+          );
+        }
+        if (rc.code === "block_id_conflict" || rc.code === "hold_id_conflict" || rc.code === "not_classic") {
+          return NextResponse.json(
+            { error: "These nights were just taken — try another offer.", detail: rc.code },
+            { status: 409 },
+          );
+        }
+        return NextResponse.json(
+          { error: "Could not start the trade.", detail: rc.detail || rc.code },
+          { status: 500 },
+        );
+      }
     }
 
     tradeBlockId = newBlockId;

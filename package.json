@@ -10,6 +10,7 @@
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build",
     "start": "next start",
     "test:security": "node tests/security/security.test.js",
+    "test:concurrency": "node tests/concurrency/classic-reservation.pg.test.js",
     "vr": "playwright test",
     "vr:update": "playwright test --update-snapshots",
     "audit:responsive": "bash responsive-audit/run.sh"
@@ -44,6 +45,7 @@
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.5.0",
     "cross-env": "^10.1.0",
+    "pg": "^8.11.5",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3"
