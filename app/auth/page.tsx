@@ -11,6 +11,16 @@ import {
   clearAdminSessionKeys,
   ADMIN_EXCHANGE_FAILED_MSG,
 } from "@/lib/auth-return";
+import {
+  AUTH_BROKER_TTL_MS,
+  buildBrokerUrl,
+  createBrokerState,
+  isAuthBrokerEnabled,
+  validateBrokerMessage,
+  type BrokerCredential,
+  type BrokerIdentity,
+  type PendingBrokerAuth,
+} from "@/lib/auth-broker";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
 
@@ -124,8 +134,7 @@ function AuthPage() {
   // RS256 token can never pass /api/admin/check-role, and widening the
   // customer fallback to admin flows would be an admin-session bypass.
   // The customer fallback below is UNCHANGED for non-admin destinations.
-  const syncAndLogin = async (firebaseUser: any, provider: string) => {
-    const idToken = await firebaseUser.getIdToken();
+  const completeLogin = async (idToken: string, identity: BrokerIdentity) => {
     const dest = returnRoute(); // already sanitized (safeReturnRoute)
     const adminIntent = isAdminIntentRoute(dest);
     try {
@@ -168,13 +177,74 @@ function AuthPage() {
 
     // Fallback: store Firebase token — tagged "firebase" so booking actions show inline phone verify
     login(idToken, {
-      id: firebaseUser.uid,
-      name: firebaseUser.displayName || firebaseUser.phoneNumber || "Guest",
-      email: firebaseUser.email || "",
-      phone: firebaseUser.phoneNumber || "",
+      id: identity.uid,
+      name: identity.name || identity.phone || "Guest",
+      email: identity.email,
+      phone: identity.phone,
       role: "customer",
     }, "firebase");
     router.push(dest);
+  };
+
+  const syncAndLogin = async (firebaseUser: any, _provider: string) => {
+    await completeLogin(await firebaseUser.getIdToken(), {
+      uid: firebaseUser.uid,
+      name: firebaseUser.displayName || "",
+      email: firebaseUser.email || "",
+      phone: firebaseUser.phoneNumber || "",
+    });
+  };
+
+  const runBrokerGoogleSignIn = async (): Promise<BrokerCredential> => {
+    const configured = process.env.NEXT_PUBLIC_AUTH_BROKER_ORIGIN;
+    if (!isAuthBrokerEnabled(configured, window.location.origin)) {
+      throw new Error("broker-disabled");
+    }
+    const state = createBrokerState();
+    const url = buildBrokerUrl(configured, state, "google");
+    if (!url) throw new Error("broker-invalid");
+
+    const pending: PendingBrokerAuth = { state, provider: "google", createdAt: Date.now() };
+    const popup = window.open(
+      url,
+      "staybid-auth-broker",
+      "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes",
+    );
+    if (!popup) throw new Error("broker-popup-blocked");
+
+    return await new Promise<BrokerCredential>((resolve, reject) => {
+      let settled = false;
+      const finish = (error?: Error, credential?: BrokerCredential) => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener("message", onMessage);
+        window.clearTimeout(timeout);
+        window.clearInterval(closedCheck);
+        try { if (!popup.closed) popup.close(); } catch {}
+        if (credential) resolve(credential);
+        else reject(error || new Error("broker-failed"));
+      };
+      const onMessage = (event: MessageEvent) => {
+        const credential = validateBrokerMessage(
+          event.origin,
+          event.source,
+          popup,
+          event.data,
+          pending,
+        );
+        if (credential) finish(undefined, credential);
+      };
+      window.addEventListener("message", onMessage);
+      const timeout = window.setTimeout(
+        () => finish(new Error("broker-timeout")),
+        AUTH_BROKER_TTL_MS,
+      );
+      const closedCheck = window.setInterval(() => {
+        try {
+          if (popup.closed) finish(new Error("broker-closed"));
+        } catch {}
+      }, 500);
+    });
   };
 
   // ── v620 — Bulletproof provider sign-in ────────────────────────────────────
@@ -228,6 +298,19 @@ function AuthPage() {
     setError("");
     const label = kind === "google" ? "Google" : "Facebook";
     try {
+      const brokerConfigured =
+        kind === "google" &&
+        isAuthBrokerEnabled(process.env.NEXT_PUBLIC_AUTH_BROKER_ORIGIN, window.location.origin);
+      if (brokerConfigured) {
+        try {
+          const credential = await runBrokerGoogleSignIn();
+          await completeLogin(credential.idToken, credential.user);
+        } catch {
+          setError("Secure Google sign-in did not complete. Please close any sign-in window and try again.");
+        }
+        return;
+      }
+
       const { firebaseAuth } = await import("@/lib/firebase");
       const { signInWithPopup, signInWithRedirect, GoogleAuthProvider, FacebookAuthProvider } =
         await import("firebase/auth");

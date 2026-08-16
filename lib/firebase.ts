@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { configuredBrokerOrigin } from "@/lib/auth-broker";
 
 // v620 — SAME-ORIGIN AUTH DOMAIN (env-gated, default OFF).
 // ─────────────────────────────────────────────────────────────────────────
@@ -21,9 +22,23 @@ const SAME_ORIGIN_AUTH =
   typeof window !== "undefined" &&
   window.location.hostname === "staybids.in";
 
+// P0.1-F — inert dedicated-host proof. The broker is accepted only when the
+// public env name contains the exact audited origin. On that host the Firebase
+// helper remains same-origin, while the installed Android app (whose compiled
+// manifest matches only staybids.in) cannot claim the auth subdomain.
+const BROKER_ORIGIN = configuredBrokerOrigin(process.env.NEXT_PUBLIC_AUTH_BROKER_ORIGIN);
+const BROKER_AUTH =
+  typeof window !== "undefined" &&
+  BROKER_ORIGIN !== null &&
+  window.location.origin === BROKER_ORIGIN;
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: SAME_ORIGIN_AUTH ? "staybids.in" : process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  authDomain: BROKER_AUTH
+    ? new URL(BROKER_ORIGIN).hostname
+    : SAME_ORIGIN_AUTH
+      ? "staybids.in"
+      : process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
