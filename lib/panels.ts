@@ -241,8 +241,7 @@ export function panelState(p: Panel, ctx: SwitchCtx): PanelState {
       // Public launcher (no auth); only ever reached when its card is visible.
       return "joined";
     case "admin":
-      // Only ever reached when the admin card is visible (has token).
-      return "joined";
+      return ctx.hasAdminToken ? "joined" : "join";
     default:
       return "join";
   }
