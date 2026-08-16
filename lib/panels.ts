@@ -241,18 +241,18 @@ export function panelState(p: Panel, ctx: SwitchCtx): PanelState {
       // Public launcher (no auth); only ever reached when its card is visible.
       return "joined";
     case "admin":
-      // Only ever reached when the admin card is visible (has token).
-      return "joined";
+      return ctx.hasAdminToken ? "joined" : "join";
     default:
       return "join";
   }
 }
 
 /** The panels to show in the switcher for this context.
- *  Only Admin (the god-mode door) is gated — advertised solely when an admin
- *  credential is present, so we never surface it to a random signed-in user.
+ *  All panels are visible; the Admin panel always routes to /admin/login where
+ *  server-side auth gates actual access. This removes the deadlock where a new
+ *  device has no admin token yet but can't see the Admin panel to sign in.
  *  The Offline Kiosk is a customer-facing offline-booking surface and is shown
  *  to everyone (like the offline kiosk machine offers booking to walk-ins). */
 export function visiblePanels(ctx: SwitchCtx): Panel[] {
-  return PANELS.filter((p) => (p.key === "admin" ? ctx.hasAdminToken : true));
+  return PANELS;
 }
