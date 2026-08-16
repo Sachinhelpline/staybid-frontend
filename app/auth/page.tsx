@@ -211,6 +211,29 @@ function AuthPage() {
     } catch { return false; }
   };
 
+  const isLikelyPartitioned = () => {
+    // Android Chrome PWA / iOS PWA: sessionStorage is partitioned (isolated
+    // per origin), so Firebase's cross-origin auth iframe handoff fails.
+    // signInWithPopup throws network-request-failed on cold auth iframe;
+    // signInWithRedirect also fails identically on the return handoff.
+    // Detect these environments: if partitioned, do NOT redirect (both paths
+    // will fail); show error instead.
+    try {
+      const ua = navigator.userAgent || "";
+      // Android: presence of "Android" + PWA markers
+      const isAndroidPWA = /Android/i.test(ua) && (
+        navigator.standalone === true ||
+        (typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches)
+      );
+      // iOS: presence of "iPhone|iPad|iPod" + PWA markers
+      const isIOSPWA = /iPhone|iPad|iPod/i.test(ua) && (
+        navigator.standalone === true ||
+        (typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches)
+      );
+      return isAndroidPWA || isIOSPWA;
+    } catch { return false; }
+  };
+
   const friendlyAuthError = (code: string, label: string) => {
     if (code === "auth/account-exists-with-different-credential")
       return "This email is already registered with a different sign-in method — please try Google.";
@@ -265,23 +288,32 @@ function AuthPage() {
         return;
       } catch (e: any) {
         let code = e?.code || "";
+        const partitioned = isLikelyPartitioned();
         if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
           // User dismissed it (or superseded it with a second tap) — silent.
           return;
         }
         if (code === "auth/network-request-failed" || code === "auth/internal-error") {
-          // Transient cold-iframe failure — retry once automatically, fast
-          // enough to stay inside the browser's transient-activation window.
-          await new Promise((r) => setTimeout(r, 450));
-          try {
-            const result = await attempt();
-            await syncAndLogin(result.user, kind);
-            return;
-          } catch (e2: any) { code = e2?.code || code; }
+          // Transient cold-iframe failure. On partitioned-storage browsers
+          // (Android/iOS PWA), sessionStorage isolation breaks the redirect
+          // handoff identically, so retry only once, then show error.
+          if (!partitioned) {
+            // Retry once automatically on non-partitioned browsers.
+            await new Promise((r) => setTimeout(r, 450));
+            try {
+              const result = await attempt();
+              await syncAndLogin(result.user, kind);
+              return;
+            } catch (e2: any) { code = e2?.code || code; }
+          }
         }
         if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment" || code === "sb/popup-timeout") {
-          // This environment can't do popups — full-page redirect instead.
-          try { await doRedirect(); return; } catch {}
+          // This environment can't do popups. On partitioned-storage browsers,
+          // redirect also fails identically → show error. On normal browsers,
+          // full-page redirect is safe.
+          if (!partitioned) {
+            try { await doRedirect(); return; } catch {}
+          }
         }
         setError(friendlyAuthError(code, label));
       }

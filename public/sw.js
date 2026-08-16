@@ -694,6 +694,9 @@ self.addEventListener('fetch', (event) => {
   // 1. RSC data → never cache
   if (url.pathname.startsWith('/_next/data/')) return;
 
+  // 1b. Firebase auth endpoints → network-only (auth must never be stale)
+  if (url.pathname.startsWith('/__/auth/') || url.pathname.startsWith('/__/firebase/')) return;
+
   // 2. Safe GET feed APIs → SWR (v107 new lane)
   //    Cache hit returns in ~30 ms; background refresh keeps data ≤ 30 s old.
   if (url.pathname.startsWith('/api/') && isSwrApi(url, req)) {
