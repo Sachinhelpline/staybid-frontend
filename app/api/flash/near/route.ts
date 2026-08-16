@@ -44,19 +44,9 @@ export async function GET(req: NextRequest) {
 
   // ─── 1) Pull raw deals + parallel side-load ───────────────────────────
   const baseSelect = `select=*${city ? `&city=ilike.${encodeURIComponent(city)}` : ""}`;
-  const tries = [
-    `${baseSelect}&isActive=eq.true`,
-    `${baseSelect}&is_active=eq.true`,
-    `${baseSelect}&active=eq.true`,
-    `${baseSelect}`,
-  ];
   // flash_deals is parameterised on city so it gets keyed per city (still cached
   // per warm Lambda for TTL_INVENTORY).
-  let dealsRaw: any[] = [];
-  for (const f of tries) {
-    const r = await sbCachedFetch(`flash_deals?${f}`, TTL_INVENTORY);
-    if (Array.isArray(r) && r.length > 0) { dealsRaw = r; break; }
-  }
+  const dealsRaw = await sbCachedFetch(`flash_deals?${baseSelect}&isActive=eq.true`, TTL_INVENTORY);
   // hotels + rooms are shared across every caller and rarely change → long TTL.
   // Narrowed selects (was select=*). Drops description/address/internal
   // columns from every hotel + room row. ~75–85% payload reduction.
@@ -83,11 +73,7 @@ export async function GET(req: NextRequest) {
   ).catch(() => ({}));
 
   const now = Date.now();
-  const activeOnly = dealsRaw.filter((d: any) => {
-    const v = d?.isActive ?? d?.is_active ?? d?.active;
-    return v === undefined || v === null || v === true || v === "true" || v === 1;
-  });
-  const liveDeals = activeOnly.filter((d: any) => {
+  const liveDeals = dealsRaw.filter((d: any) => {
     const raw = d?.validUntil ?? d?.valid_until ?? d?.expiresAt ?? d?.expires_at;
     if (!raw) return true;
     const t = new Date(String(raw)).getTime();
