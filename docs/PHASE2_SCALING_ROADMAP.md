@@ -1,8 +1,8 @@
 # StayBid Circle Model 1 — Phase 2: Scaling Roadmap (Nov 15–Dec 31)
 
-**Status:** Pre-launch documentation  
-**Timeline:** Nov 15 – Dec 31, 2026 (6 weeks)  
-**Goal:** Scale from 25 investors + 3 properties → 50 investors + 5 properties + Q4 holiday revenue peak  
+**Status:** Pre-launch documentation
+**Timeline:** Nov 15 – Dec 31, 2026 (6 weeks)
+**Goal:** Scale from 25 investors + 3 properties → 50 investors + 5 properties + Q4 holiday revenue peak
 **Owner:** Ayushi P (Investors) + Kaaju (Properties) + Claude (Tech) + Prince (Ops) + Sachin (Finance)
 
 ---
@@ -378,5 +378,5 @@ If Dec 31 checkpoint is GREEN, Model 1 is **ready for 2027 scale-up:**
 
 ---
 
-*Scaling Roadmap — Version 1 (August 17, 2026)*  
+*Scaling Roadmap — Version 1 (August 17, 2026)*
 *StayBid Circle Model 1 — Phase 2 Growth Plan*

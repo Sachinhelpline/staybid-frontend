@@ -1,8 +1,8 @@
 # StayBid Circle Model 1 — Phase 2: Investor Features (Nov 1)
 
-**Status:** Pre-launch documentation  
-**Target Go-Live:** November 1, 2026  
-**Scope:** Pricing controls, B2B marketplace integration, dashboard analytics  
+**Status:** Pre-launch documentation
+**Target Go-Live:** November 1, 2026
+**Scope:** Pricing controls, B2B marketplace integration, dashboard analytics
 **Owner:** Claude (Tech) + Ayushi P (Product) + Prince (Ops)
 
 ---
@@ -410,5 +410,5 @@ Response:
 
 ---
 
-*Investor Features Playbook — Version 1 (August 17, 2026)*  
+*Investor Features Playbook — Version 1 (August 17, 2026)*
 *StayBid Circle Model 1 — Phase 2 Product Launch Guide*

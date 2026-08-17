@@ -1,8 +1,8 @@
 # StayBid Circle Model 1 — Phase 1: Investor Onboarding Manual
 
-**Target Audience:** First 5-10 investors (Instagram leads)  
-**Timeline:** 2-3 weeks pre-launch (start outreach August 20)  
-**Owner:** Ayushi P (Investor Relations) + Prince (Ops Support)  
+**Target Audience:** First 5-10 investors (Instagram leads)
+**Timeline:** 2-3 weeks pre-launch (start outreach August 20)
+**Owner:** Ayushi P (Investor Relations) + Prince (Ops Support)
 
 ---
 
@@ -58,7 +58,7 @@ This manual guides investors through the COMPLETE journey: from awareness → qu
 
 ```
 [0:00-0:15] Hook
-"You invest ₹3 lakhs. StayBid operates a premium hill resort. 
+"You invest ₹3 lakhs. StayBid operates a premium hill resort.
 Guests book. You earn from every booking. That's it."
 
 [0:15-0:45] The Model
@@ -189,7 +189,7 @@ We've built the operator layer — you get the returns without the headache."
 > Questions? Reply to this email or call me.
 >
 > Cheers,
-> Ayushi Prabhu  
+> Ayushi Prabhu
 > Investor Relations, StayBid Circle
 
 ### KYC Verification (Prince's Checklist)

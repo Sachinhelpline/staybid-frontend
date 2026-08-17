@@ -1,8 +1,8 @@
 # StayBid Circle Model 1 — Phase 1: Settlement & Payout Guide
 
-**Owner:** Prince (Operations) + Claude (Technical)  
-**Timeline:** Automated cron + manual interim admin payout  
-**Audience:** Admin team, Prince (Ops), Investors (payouts)  
+**Owner:** Prince (Operations) + Claude (Technical)
+**Timeline:** Automated cron + manual interim admin payout
+**Audience:** Admin team, Prince (Ops), Investors (payouts)
 
 ---
 
@@ -21,21 +21,21 @@ This guide covers the **interim phase** (manual payout) and the **full automatio
 ```
 1. GUEST BOOKS
    Guest picks room → Pays via Razorpay → Booking confirmed (status=paid)
-   
+
 2. GUEST CHECKS OUT (after stay)
    Checkout date passes → Booking fulfilled
-   
+
 3. CRON SETTLEMENT (*/30 min)
    /api/cron/circle-settlement runs
    → Finds confirmed bookings (checkOut ≥ today−120d)
    → For each booking: resolves per-night payee
    → Creates settlement_ledger rows (kind='guest_booking')
-   
+
 4. ADMIN MARKS PAID (manual interim)
    Prince reviews settlement ledger
    → Confirms accuracy + bank details
    → Marks ledger rows as payout_status='paid'
-   
+
 5. INVESTOR RECEIVES MONEY (interim manual → future RazorpayX)
    Payout executed (RazorpayX batch or manual bank transfer)
    → Investor gets ₹[net] in their account
@@ -75,9 +75,9 @@ ON CONFLICT DO NOTHING;
 
 ### Cron: `/api/cron/circle-settlement`
 
-**Trigger:** Every 30 minutes (*/30 * * * *)  
-**Auth:** Bearer token (CRON_SECRET)  
-**Idempotency:** Per-booking via `uniq_settlement_kind_ref`  
+**Trigger:** Every 30 minutes (*/30 * * * *)
+**Auth:** Bearer token (CRON_SECRET)
+**Idempotency:** Per-booking via `uniq_settlement_kind_ref`
 
 ### Two-Pass Process
 
@@ -88,8 +88,8 @@ For each CONFIRMED, PAID booking from the past 120 days:
 ```
 1. Fetch booking
    SELECT id, bidId, checkOut, paidAmount, ... FROM bookings
-   WHERE status = 'confirmed' 
-   AND paidAmount IS NOT NULL 
+   WHERE status = 'confirmed'
+   AND paidAmount IS NOT NULL
    AND checkOut >= now() - interval '120 days'
    LIMIT 200;  -- Batch limit
 
@@ -97,13 +97,13 @@ For each CONFIRMED, PAID booking from the past 120 days:
    FOR each booking:
      FOR each night in the stay:
        payee = resolveNightlyPayees(bookingId, night);
-       // Returns: investor_user_id (if owned block) 
+       // Returns: investor_user_id (if owned block)
        //        OR owner_user_id (if hotel owner)
-       
+
 3. Create settlement_ledger row
-   INSERT INTO settlement_ledger 
+   INSERT INTO settlement_ledger
      (kind, user_id, ref_id, amount_owed, payout_status, metadata)
-   VALUES 
+   VALUES
      ('guest_booking', payee, 'booking_xyz:payee', net_amount, 'owed', {...})
    ON CONFLICT (kind, ref_id) DO NOTHING;  // Idempotent
 ```
@@ -131,16 +131,16 @@ For each NOW-CANCELLED or REFUNDED booking with still-owed ledger rows:
 
 ```
 1. Find cancelled bookings
-   SELECT id FROM bookings 
+   SELECT id FROM bookings
    WHERE status IN ('cancelled', 'refunded')
    AND checkOut >= now() - interval '120 days';
 
 2. Flip ledger rows to cancelled
-   UPDATE settlement_ledger 
+   UPDATE settlement_ledger
    SET payout_status = 'cancelled'
-   WHERE ref_id LIKE 'booking_xyz:%' 
+   WHERE ref_id LIKE 'booking_xyz:%'
    AND payout_status = 'owed';
-   
+
    // Net result: originally-owed ₹8,800 is now cancelled (no payout)
 ```
 
@@ -185,8 +185,8 @@ For each NOW-CANCELLED or REFUNDED booking with still-owed ledger rows:
 **Action:** "Mark Paid"
 
 ```
-SELECT settlement_ledger 
-WHERE payout_status = 'owed' 
+SELECT settlement_ledger
+WHERE payout_status = 'owed'
 AND status NOT IN ('cancelled');
 
 [Investor] [Booking] [Amount] [Mark Paid] [Action Log]
@@ -466,7 +466,7 @@ Database: investor_bank_details table
 **Cause:** Cron ran twice (shouldn't happen, but manual intervention might trigger it)
 
 **Fix:**
-1. Check: `SELECT COUNT(*) FROM settlement_ledger WHERE ref_id LIKE 'booking_xyz%'` 
+1. Check: `SELECT COUNT(*) FROM settlement_ledger WHERE ref_id LIKE 'booking_xyz%'`
 2. Should be 1 row per booking. If >1, it's a bug (report to Claude)
 3. Workaround: Manually DELETE duplicate rows (keep the first by created_at)
 4. Mark the keeper row as 'paid', ignore the duplicate

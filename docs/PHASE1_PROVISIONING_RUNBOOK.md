@@ -1,8 +1,8 @@
 # StayBid Circle Model 1 — Phase 1: Property Provisioning Runbook
 
-**Status:** Ready for execution once Properties 2 & 3 confirmed  
-**Timeline:** 5-7 business days (complete by August 25)  
-**Owner:** Kaaju (Property Operations) + Claude (Technical Guidance)  
+**Status:** Ready for execution once Properties 2 & 3 confirmed
+**Timeline:** 5-7 business days (complete by August 25)
+**Owner:** Kaaju (Property Operations) + Claude (Technical Guidance)
 
 ---
 

@@ -1,7 +1,7 @@
 # StayBid Circle Model 1 — Aug 20 Execution Kickoff Checklist
 
-**Launch Date:** August 20, 2026, 10:00 AM IST  
-**Pre-Launch Window:** Aug 8–19 (12 days)  
+**Launch Date:** August 20, 2026, 10:00 AM IST
+**Pre-Launch Window:** Aug 8–19 (12 days)
 **Owner:** Sachin (Executive) + Prince (Ops) + Kaaju (Properties) + Ayushi P (Investors) + Claude (Tech)
 
 ---
@@ -289,5 +289,5 @@
 
 ---
 
-*Aug 20 Execution Checklist — Version 1 (August 17, 2026)*  
+*Aug 20 Execution Checklist — Version 1 (August 17, 2026)*
 *StayBid Circle Model 1 — Launch Readiness & GO/NO-GO Gating*

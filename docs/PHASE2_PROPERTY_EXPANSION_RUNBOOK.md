@@ -1,8 +1,8 @@
 # StayBid Circle Model 1 — Phase 2: Property Expansion (Oct 15)
 
-**Status:** Pre-launch documentation  
-**Target Go-Live:** October 15, 2026  
-**Scope:** Onboard Properties 4 (Rishikesh expansion) + Property 5 (Mussoorie new)  
+**Status:** Pre-launch documentation
+**Target Go-Live:** October 15, 2026
+**Scope:** Onboard Properties 4 (Rishikesh expansion) + Property 5 (Mussoorie new)
 **Owner:** Kaaju (Properties) + Claude (Technical) + Prince (Ops)
 
 ---
@@ -208,5 +208,5 @@ If Phase 1 success metrics miss targets (e.g., <3/5 GREEN by Oct 1):
 
 ---
 
-*Property Expansion Runbook — Version 1 (August 17, 2026)*  
+*Property Expansion Runbook — Version 1 (August 17, 2026)*
 *StayBid Circle Model 1 — Phase 2 Operational Guide*

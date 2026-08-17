@@ -1,9 +1,9 @@
 # StayBid Circle Model 1 — Phase 1: Launch Day Playbook
 
-**Launch Date:** September 8, 2026 (Sunday) ☀️  
-**Launch Time:** 10:00 AM IST  
-**Primary Owner:** Prince (Operations Lead)  
-**Backup Leads:** Kaaju (Properties), Ayushi P (Investor Relations)  
+**Launch Date:** September 8, 2026 (Sunday) ☀️
+**Launch Time:** 10:00 AM IST
+**Primary Owner:** Prince (Operations Lead)
+**Backup Leads:** Kaaju (Properties), Ayushi P (Investor Relations)
 
 ---
 
@@ -75,7 +75,7 @@ September 8 is the day 3 properties go LIVE and 10+ investors start earning from
 6. Final Q&A (5 min)
 7. GO/NO-GO decision (5 min)
 
-**Decision:** 
+**Decision:**
 - [ ] **GO** — Proceed to launch Sep 8, 10:00 AM
 - [ ] **NO-GO** — Defer, reason: [____________________]
 
@@ -218,7 +218,7 @@ Authorization: Bearer <CRON_SECRET>
 }
 ```
 
-**If Cron Fails:** 
+**If Cron Fails:**
 - [ ] Check `CRON_SECRET` in env
 - [ ] Check DB connectivity
 - [ ] Escalate (see Incident Response below)

@@ -1,7 +1,7 @@
 # StayBid Circle Model 1 — Phase 2: Pre-Launch Validation
 
-**Status:** Ready for Oct 1 launch (pending Phase 1 success metrics)  
-**Timeline:** Sep 8–30 (validation window)  
+**Status:** Ready for Oct 1 launch (pending Phase 1 success metrics)
+**Timeline:** Sep 8–30 (validation window)
 **Owner:** Sachin (Executive) + Prince (Operations) + Claude (Tech)
 
 ---
@@ -78,7 +78,7 @@ Phase 2 scales Model 1 from 3 properties + 10 investors to 5 properties + 25–5
 ## PHASE 2 FEATURE GATES
 
 ### Gate 1: RazorpayX Auto-Payouts (Oct 1)
-**Precondition:** Phase 1 settlement ledger proved reliable (30 days, zero data loss)  
+**Precondition:** Phase 1 settlement ledger proved reliable (30 days, zero data loss)
 **Action:** Flip manual payout process to RazorpayX batch processor
 
 | Precondition | Status | Owner |
@@ -89,7 +89,7 @@ Phase 2 scales Model 1 from 3 properties + 10 investors to 5 properties + 25–5
 | Bank reconciliation 100% match (sample audit 10 payments) | ☐ | Prince |
 
 ### Gate 2: Property Expansion (Oct 15)
-**Precondition:** Properties 1–3 at ≥50% occupancy average, investor retention ≥90%  
+**Precondition:** Properties 1–3 at ≥50% occupancy average, investor retention ≥90%
 **Action:** Onboard Properties 4–5 (Rishikesh expansion, Manali new)
 
 | Precondition | Status | Owner |
@@ -100,7 +100,7 @@ Phase 2 scales Model 1 from 3 properties + 10 investors to 5 properties + 25–5
 | Staff training completion 100% (all 3 properties) | ☐ | Kaaju |
 
 ### Gate 3: Investor Features (Nov 1)
-**Precondition:** ≥25 investors committed to Phase 2, B2B marketplace SQL schema approved  
+**Precondition:** ≥25 investors committed to Phase 2, B2B marketplace SQL schema approved
 **Action:** Enable pricing controls, B2B listing, dashboard analytics
 
 | Precondition | Status | Owner |
@@ -111,7 +111,7 @@ Phase 2 scales Model 1 from 3 properties + 10 investors to 5 properties + 25–5
 | Dashboard performance test ≥50 concurrent users | ☐ | Claude |
 
 ### Gate 4: Scaling (Nov 15)
-**Precondition:** Features stable (0 critical bugs, <5% error rate), ≥40 investors, Properties 4–5 live  
+**Precondition:** Features stable (0 critical bugs, <5% error rate), ≥40 investors, Properties 4–5 live
 **Action:** Ramp to 50 investors, launch holiday season campaign
 
 | Precondition | Status | Owner |
@@ -180,5 +180,5 @@ Phase 1 (Sep 8–30) Metrics
 
 ---
 
-*Phase 2 Validation — Version 1 (August 17, 2026)*  
+*Phase 2 Validation — Version 1 (August 17, 2026)*
 *StayBid Circle Model 1 — Phase 2 Planning*

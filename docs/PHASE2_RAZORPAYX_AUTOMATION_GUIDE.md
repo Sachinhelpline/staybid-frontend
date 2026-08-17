@@ -1,8 +1,8 @@
 # StayBid Circle Model 1 — Phase 2: RazorpayX Auto-Payouts (Oct 1)
 
-**Status:** Pre-launch documentation  
-**Target Go-Live:** October 1, 2026  
-**Scope:** Automated investor payouts via RazorpayX Batch API  
+**Status:** Pre-launch documentation
+**Target Go-Live:** October 1, 2026
+**Scope:** Automated investor payouts via RazorpayX Batch API
 **Owner:** Prince (Ops) + Claude (Tech) + Sachin (Finance)
 
 ---
@@ -489,5 +489,5 @@ If Phase 1 settlement metrics miss targets (e.g., <3/4 GREEN by Sep 25):
 
 ---
 
-*RazorpayX Automation Guide — Version 1 (August 17, 2026)*  
+*RazorpayX Automation Guide — Version 1 (August 17, 2026)*
 *StayBid Circle Model 1 — Phase 2 Payout Orchestration*
