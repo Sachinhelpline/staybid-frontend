@@ -48,7 +48,7 @@ function AuthBrokerPage() {
         return;
       }
 
-      const { firebaseAuth } = await import("@/lib/firebase");
+      const { firebaseAuth } = await import("@/lib/firebase-broker");
       const { getRedirectResult, GoogleAuthProvider, signInWithRedirect } =
         await import("firebase/auth");
 
