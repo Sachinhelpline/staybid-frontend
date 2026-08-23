@@ -11,6 +11,14 @@ export async function GET(req: Request) {
     `${SB_URL}/rest/v1/admin_action_logs?select=*&order=timestamp.desc&limit=200`,
     { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
   );
-  const data = res.ok ? await res.json() : [];
+  const raw: any[] = res.ok ? await res.json() : [];
+  const data = raw.map((log: any) => ({
+    ...log,
+    details: log.details == null
+      ? null
+      : typeof log.details === "string"
+        ? log.details
+        : JSON.stringify(log.details),
+  }));
   return NextResponse.json({ logs: data, total: data.length });
 }
