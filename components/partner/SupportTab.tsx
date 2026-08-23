@@ -64,6 +64,7 @@ export default function SupportTab({ hotelId }: { hotelId?: string }) {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const threadEnd = useRef<HTMLDivElement>(null);
+  const chatFileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,6 +127,18 @@ export default function SupportTab({ hotelId }: { hotelId?: string }) {
     } catch { /* ignore */ }
   }
 
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (chatFileInput.current) chatFileInput.current.value = "";
+    if (!f || !openId) return;
+    if (f.size > 15 * 1024 * 1024) { alert("File 15 MB se badi hai"); return; }
+    setSending(true);
+    try {
+      await fetch(`/api/partner/support/${openId}/file?fileName=${encodeURIComponent(f.name)}&mimeType=${encodeURIComponent(f.type || "application/octet-stream")}`, { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/octet-stream" }, body: f });
+      await loadDetail(openId);
+    } catch { /* ignore */ } finally { setSending(false); }
+  }
+
   // ── Thread view ──
   if (openId && detail) {
     return (
@@ -161,6 +174,8 @@ export default function SupportTab({ hotelId }: { hotelId?: string }) {
             <div ref={threadEnd} />
           </div>
           <div className="p-3 border-t border-luxury-100 flex items-center gap-2">
+            <input ref={chatFileInput} type="file" className="hidden" onChange={onPickFile} />
+            <button onClick={() => chatFileInput.current?.click()} disabled={sending} title="Attach file" className="rounded-lg border border-luxury-200 bg-white px-3 py-2 text-base leading-none disabled:opacity-50">📎</button>
             <input
               value={reply}
               onChange={(e) => setReply(e.target.value)}

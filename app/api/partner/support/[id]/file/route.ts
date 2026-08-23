@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { uploadMyFile } from "@/lib/support/desk";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } as const;
 const BUCKET = "hq-support-files";
@@ -45,4 +46,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const s = await sign.json().catch(() => null);
   if (!s?.signedURL) return NextResponse.json({ error: "sign_failed" }, { status: 500 });
   return NextResponse.json({ url: `${SB_URL}/storage/v1${s.signedURL}`, fileName: msg.file_name });
+}
+
+// Upload a file into the ticket (partner attaches a file for HQ).
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
+  const payload = token ? decodeJwt(token) : null;
+  if (!payload?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ownerIds = await resolveOwnerIdsCrossPool(payload.id, payload.phone || req.headers.get("x-phone") || "", payload.email || req.headers.get("x-email") || "");
+  const buf = Buffer.from(await req.arrayBuffer());
+  const fileName = req.nextUrl.searchParams.get("fileName") || "file";
+  const mimeType = req.nextUrl.searchParams.get("mimeType") || "application/octet-stream";
+  const r = await uploadMyFile(id, ownerIds, { authorId: payload.id, authorName: payload.name || payload.email || null }, { buf, fileName, mimeType });
+  if ("error" in r) return NextResponse.json(r, { status: r.error === "not_found" ? 404 : r.error === "empty_file" ? 400 : 500 });
+  return NextResponse.json(r);
 }

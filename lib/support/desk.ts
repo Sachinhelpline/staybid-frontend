@@ -121,3 +121,34 @@ export async function signMyFile(id: string, ownerIds: string[], msgId: string) 
   if (!s?.signedURL) return null;
   return { url: `${SB_URL}/storage/v1${s.signedURL}`, fileName: msg.file_name };
 }
+
+// Party uploads a file into their ticket (anon key → the bucket's anon INSERT
+// policy, same convention as social-media/verification-videos). Adds a partner
+// message row and reopens a resolved/closed ticket.
+export async function uploadMyFile(
+  id: string, ownerIds: string[],
+  author: { authorId: string; authorName: string | null },
+  file: { buf: Buffer; fileName: string; mimeType: string },
+): Promise<{ ok: true; fileName: string } | { error: string; detail?: string }> {
+  const t = await ownedTicket(id, ownerIds);
+  if (!t) return { error: "not_found" };
+  if (!file.buf.length) return { error: "empty_file" };
+  const safeName = (file.fileName || "file").replace(/[\/\\]+/g, "_").slice(0, 200) || "file";
+  const ext = safeName.includes(".") ? safeName.slice(safeName.lastIndexOf(".")) : "";
+  const path = `${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+  const up = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${path}`, {
+    method: "POST",
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": file.mimeType || "application/octet-stream", "x-upsert": "false" },
+    body: file.buf as any,
+  });
+  if (!up.ok) return { error: "upload_failed", detail: (await up.text().catch(() => "")).slice(0, 200) };
+  const now = new Date().toISOString();
+  await fetch(MESSAGES, {
+    method: "POST", headers: { ...H, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ id: randomUUID(), ticket_id: id, author_id: author.authorId, author_kind: "partner", author_name: author.authorName, file_name: safeName, storage_path: path, mime_type: file.mimeType || null, size: file.buf.length, created_at: now }),
+  });
+  const patch: any = { updated_at: now };
+  if (t.status === "resolved" || t.status === "closed") { patch.status = "open"; patch.closed_at = null; }
+  await fetch(`${TICKETS}?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { ...H, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(patch) });
+  return { ok: true, fileName: safeName };
+}
