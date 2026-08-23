@@ -25,14 +25,31 @@ export interface DeskIdentity {
   contactRef: string | null;
 }
 
+// A ticket is "unread" (needs the party's attention) when the LATEST message on an
+// open/in-progress ticket is from HQ (an employee) — i.e. HQ replied and the party
+// hasn't answered yet. No per-user seen-state needed; it clears when the party replies.
+export async function unreadTicketIds(tickets: { id: string; status: string }[]): Promise<Set<string>> {
+  const openIds = tickets.filter((t) => t.status === "open" || t.status === "in_progress").map((t) => t.id);
+  if (!openIds.length) return new Set();
+  const inList = openIds.map(encodeURIComponent).join(",");
+  const r = await fetch(`${MESSAGES}?ticket_id=in.(${inList})&select=ticket_id,author_kind,created_at&order=created_at.asc&limit=2000`, { headers: H, cache: "no-store" });
+  const rows: any[] = r.ok ? await r.json() : [];
+  const last = new Map<string, string>();
+  for (const m of rows) last.set(m.ticket_id, m.author_kind); // asc order → last write wins
+  const unread = new Set<string>();
+  last.forEach((kind, tid) => { if (kind === "employee") unread.add(tid); });
+  return unread;
+}
+
 export async function listMyTickets(ownerIds: string[]) {
   const inList = ownerIds.map(encodeURIComponent).join(",");
   const r = await fetch(`${TICKETS}?owner_scope=in.(${inList})&select=*&order=updated_at.desc&limit=200`, { headers: H, cache: "no-store" });
   const rows: any[] = r.ok ? await r.json() : [];
   const open = rows.filter((t) => t.status === "open" || t.status === "in_progress").length;
+  const unread = await unreadTicketIds(rows);
   return {
-    tickets: rows.map((t) => ({ id: t.id, subject: t.subject, category: t.category, priority: t.priority, status: t.status, updatedAt: t.updated_at, createdAt: t.created_at })),
-    stats: { open, total: rows.length },
+    tickets: rows.map((t) => ({ id: t.id, subject: t.subject, category: t.category, priority: t.priority, status: t.status, updatedAt: t.updated_at, createdAt: t.created_at, unread: unread.has(t.id) })),
+    stats: { open, total: rows.length, unread: unread.size },
   };
 }
 

@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-interface Ticket { id: string; subject: string; category: string | null; priority: string; status: string; updatedAt: string; createdAt: string }
+interface Ticket { id: string; subject: string; category: string | null; priority: string; status: string; updatedAt: string; createdAt: string; unread?: boolean }
 interface Msg { id: string; body: string | null; fileName: string | null; mine: boolean; authorName: string; createdAt: string }
 interface Detail extends Ticket { closedAt: string | null; messages: Msg[] }
 
@@ -158,8 +158,11 @@ export default function CircleSupportDesk() {
                 {tickets.map((t) => (
                   <button key={t.id} onClick={() => setOpenId(t.id)} style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", textAlign: "left", cursor: "pointer" }}>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontWeight: 500, color: "#4a3820", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.subject}</p>
-                      <p style={{ fontSize: 12, color: "rgba(74,56,32,0.6)", margin: "2px 0 0" }}>{t.category ? `${t.category} · ` : ""}{fmt(t.updatedAt)}{t.priority === "high" ? " · 🔴 Urgent" : ""}</p>
+                      <p style={{ fontWeight: 500, color: "#4a3820", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {t.unread && <span title="New reply from HQ" style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, background: "#dc2626", marginRight: 6, verticalAlign: "middle" }} />}
+                        {t.subject}
+                      </p>
+                      <p style={{ fontSize: 12, color: "rgba(74,56,32,0.6)", margin: "2px 0 0" }}>{t.category ? `${t.category} · ` : ""}{fmt(t.updatedAt)}{t.priority === "high" ? " · 🔴 Urgent" : ""}{t.unread ? " · 🟢 New reply" : ""}</p>
                     </div>
                     {pill(t.status)}
                   </button>

@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { unreadTicketIds } from "@/lib/support/desk";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } as const;
 const TICKETS = `${SB_URL}/rest/v1/hq_support_tickets`;
@@ -53,7 +54,11 @@ export async function GET(req: NextRequest) {
   );
   const rows: any[] = r.ok ? await r.json() : [];
   const open = rows.filter((t) => t.status === "open" || t.status === "in_progress").length;
-  return NextResponse.json({ tickets: rows.map(listItem), stats: { open, total: rows.length } });
+  const unread = await unreadTicketIds(rows);
+  return NextResponse.json({
+    tickets: rows.map((t) => ({ ...listItem(t), unread: unread.has(t.id) })),
+    stats: { open, total: rows.length, unread: unread.size },
+  });
 }
 
 export async function POST(req: NextRequest) {

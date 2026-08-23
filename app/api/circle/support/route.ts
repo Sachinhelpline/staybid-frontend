@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { SB_URL, SB_H, decodeJwt } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { unreadTicketIds } from "@/lib/support/desk";
 
 const TICKETS = `${SB_URL}/rest/v1/hq_support_tickets`;
 const MESSAGES = `${SB_URL}/rest/v1/hq_support_messages`;
@@ -42,7 +43,11 @@ export async function GET(req: NextRequest) {
   const r = await fetch(`${TICKETS}?owner_scope=in.(${inList})&select=*&order=updated_at.desc&limit=200`, { headers: SB_H, cache: "no-store" });
   const rows: any[] = r.ok ? await r.json() : [];
   const open = rows.filter((t) => t.status === "open" || t.status === "in_progress").length;
-  return NextResponse.json({ tickets: rows.map(listItem), stats: { open, total: rows.length } });
+  const unread = await unreadTicketIds(rows);
+  return NextResponse.json({
+    tickets: rows.map((t) => ({ ...listItem(t), unread: unread.has(t.id) })),
+    stats: { open, total: rows.length, unread: unread.size },
+  });
 }
 
 export async function POST(req: NextRequest) {

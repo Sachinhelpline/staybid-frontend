@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 interface Ticket {
   id: string; subject: string; category: string | null; priority: string;
-  status: string; hotelId: string | null; updatedAt: string; createdAt: string;
+  status: string; hotelId: string | null; updatedAt: string; createdAt: string; unread?: boolean;
 }
 interface Msg {
   id: string; body: string | null; fileName: string | null; mimeType: string | null;
@@ -247,10 +247,14 @@ export default function SupportTab({ hotelId }: { hotelId?: string }) {
               <button key={t.id} onClick={() => setOpenId(t.id)}
                 className="flex items-center justify-between gap-3 rounded-xl border border-luxury-200 bg-white px-4 py-3 text-left hover:border-amber-300 transition-colors">
                 <div className="min-w-0">
-                  <p className="font-medium text-luxury-900 truncate">{t.subject}</p>
+                  <p className="font-medium text-luxury-900 truncate">
+                    {t.unread && <span title="New reply from HQ" className="inline-block w-2 h-2 rounded-full bg-red-600 mr-1.5 align-middle" />}
+                    {t.subject}
+                  </p>
                   <p className="text-xs text-luxury-500 mt-0.5">
                     {t.category ? `${t.category} · ` : ""}{fmt(t.updatedAt)}
                     {t.priority === "high" ? " · 🔴 Urgent" : ""}
+                    {t.unread ? " · 🟢 New reply" : ""}
                   </p>
                 </div>
                 {statusPill(t.status)}
