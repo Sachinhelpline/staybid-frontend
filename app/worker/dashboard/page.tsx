@@ -96,6 +96,7 @@ export default function WorkerDashboard() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <AppTourButton style={btnGhost} label="Tour" />
+            <button onClick={() => router.push("/worker/support")} style={btnGhost}>🛟 Support</button>
             <HelpSupportButton style={btnGhost} label="Help" />
             <SwitchExperienceButton style={btnGhost} label="Switch" />
             <button onClick={signOut} style={btnGhost}>Sign out</button>
