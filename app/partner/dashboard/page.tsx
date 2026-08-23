@@ -48,6 +48,7 @@ import GuestsTab from "@/components/partner/GuestsTab";
 import StaffTab from "@/components/partner/StaffTab";
 // v170 — channel manager / OTA connections (Phase 3).
 import ChannelManagerTab from "@/components/partner/ChannelManagerTab";
+import SupportTab from "@/components/partner/SupportTab";
 import OtaFeedManager from "@/components/partner/OtaFeedManager";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
@@ -215,7 +216,7 @@ export default function PartnerDashboard() {
   // so the mobile header never overflows past the right edge).
   const [acctOpen, setAcctOpen]   = useState(false);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"pricing"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms"|"agentauction">("overview");
+  const [tab, setTab]             = useState<"overview"|"pricing"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms"|"agentauction"|"support">("overview");
 
   // Deep-link support: honour a ?tab= query on first load so external surfaces
   // (e.g. a Circle investor bridging in to "Sell to Agents" / "My Rooms" / OTA)
@@ -1037,6 +1038,8 @@ export default function PartnerDashboard() {
     { id:"reports", icon:"📈", label:"Reports" },
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
     { id:"complaints", icon:"🚩", label:`Complaints${complaintStats.open ? ` (${complaintStats.open})` : ""}` },
+    // Support Desk — raise + track tickets with StayBid HQ (payment/booking/payout/etc.).
+    { id:"support", icon:"🛟", label:"Support" },
     // v124 — StayPoints redemption fulfilment (scan / enter coupon at check-in)
     { id:"redeem", icon:"🎟️", label:"Redeem Codes" },
     // Phase 5 (tier-system) — Pending content moderation queue. Hotel
@@ -2903,6 +2906,11 @@ export default function PartnerDashboard() {
         {/* ══════════════ CONTENT REVIEWS (Phase 5 tier-system) ══════════════ */}
         {tab === "content" && hotel?.id && (
           <PartnerContentTab hotelId={hotel.id} />
+        )}
+
+        {/* ══════════════ SUPPORT DESK (tickets → StayBid HQ) ══════════════ */}
+        {tab === "support" && (
+          <SupportTab hotelId={hotel?.id} />
         )}
 
         {tab === "passport" && hotel?.id && (
