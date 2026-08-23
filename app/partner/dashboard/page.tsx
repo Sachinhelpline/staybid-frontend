@@ -232,6 +232,7 @@ export default function PartnerDashboard() {
   const [complaints, setComplaints]   = useState<any[]>([]);
   const [vpComplaints, setVpComplaints] = useState<any[]>([]);
   const [complaintStats, setComplaintStats] = useState<any>({ open: 0, total: 0 });
+  const [supportUnread, setSupportUnread] = useState(0);
   const [complaintsLoading, setComplaintsLoading] = useState(false);
 
   // ── Booking detail modal ─────────────────────────────────────────────────
@@ -785,6 +786,15 @@ export default function PartnerDashboard() {
     } catch {}
   }
 
+  // Support Desk unread badge — refresh on mount + when the tab changes (so it
+  // clears after the owner reads/answers HQ in the Support tab).
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch("/api/partner/support", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => setSupportUnread(d?.stats?.unread || 0)).catch(() => {});
+  }, [tab]);
+
   useEffect(() => {
     if (tab === "availability" && hotel?.id) {
       loadCalendar();
@@ -1039,7 +1049,7 @@ export default function PartnerDashboard() {
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
     { id:"complaints", icon:"🚩", label:`Complaints${complaintStats.open ? ` (${complaintStats.open})` : ""}` },
     // Support Desk — raise + track tickets with StayBid HQ (payment/booking/payout/etc.).
-    { id:"support", icon:"🛟", label:"Support" },
+    { id:"support", icon:"🛟", label:`Support${supportUnread > 0 ? ` (${supportUnread})` : ""}` },
     // v124 — StayPoints redemption fulfilment (scan / enter coupon at check-in)
     { id:"redeem", icon:"🎟️", label:"Redeem Codes" },
     // Phase 5 (tier-system) — Pending content moderation queue. Hotel
