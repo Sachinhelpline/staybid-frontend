@@ -15,6 +15,7 @@ import Link from "next/link";
 import { MessageCircle, Mail, Wallet, CheckCircle2, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
+import CircleSupportDesk from "@/components/circle/CircleSupportDesk";
 
 const WA = "https://wa.me/918881555188?text=";
 const wa = (msg: string) => `${WA}${encodeURIComponent(msg)}`;
@@ -76,6 +77,14 @@ export default function CircleSupportPage() {
           <span>support@staybid.in</span>
         </a>
       </div>
+
+      {/* In-app ticket + 2-way chat with StayBid HQ (lands on the HQ Support Desk) */}
+      {user && (
+        <section className="sbc-dash-sec">
+          <div className="sbc-dash-sec-h">Message our team</div>
+          <CircleSupportDesk />
+        </section>
+      )}
 
       {/* FAQ */}
       <section className="sbc-dash-sec">
