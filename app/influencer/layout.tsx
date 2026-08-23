@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { LayoutDashboard, Clapperboard, ClipboardList, Link2, Wallet, UserRound, Sparkles } from "lucide-react";
+import { LayoutDashboard, Clapperboard, ClipboardList, Link2, Wallet, UserRound, Sparkles, LifeBuoy } from "lucide-react";
 
 const tabIc = (I: any) => <I size={15} strokeWidth={2.2} aria-hidden style={{ display: "inline-block", verticalAlign: "-3px", marginRight: 6 }} />;
 
@@ -15,6 +15,7 @@ const TABS: { href: string; label: string; icon: React.ReactNode }[] = [
   { href: "/influencer/referrals", label: "Referrals", icon: tabIc(Link2) },
   { href: "/influencer/earnings",  label: "Earnings",  icon: tabIc(Wallet) },
   { href: "/influencer/profile",   label: "Profile",   icon: tabIc(UserRound) },
+  { href: "/influencer/support",   label: "Support",   icon: tabIc(LifeBuoy) },
 ];
 
 export default function InfluencerLayout({ children }: { children: React.ReactNode }) {
