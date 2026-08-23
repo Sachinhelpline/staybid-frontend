@@ -5,8 +5,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, decodeJwt } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { uploadMyFile } from "@/lib/support/desk";
 
 const BUCKET = "hq-support-files";
+
+async function investorOwnerIds(req: NextRequest) {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  const p = token ? decodeJwt(token) : null;
+  if (!p?.id) return null;
+  const ownerIds = await resolveOwnerIdsCrossPool(p.id, p.phone || req.headers.get("x-phone") || "", p.email || req.headers.get("x-email") || "");
+  return { p, ownerIds };
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const ctx = await investorOwnerIds(req);
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const buf = Buffer.from(await req.arrayBuffer());
+  const fileName = req.nextUrl.searchParams.get("fileName") || "file";
+  const mimeType = req.nextUrl.searchParams.get("mimeType") || "application/octet-stream";
+  const r = await uploadMyFile(id, ctx.ownerIds, { authorId: ctx.p.id, authorName: ctx.p.name || ctx.p.email || null }, { buf, fileName, mimeType });
+  if ("error" in r) return NextResponse.json(r, { status: r.error === "not_found" ? 404 : r.error === "empty_file" ? 400 : 500 });
+  return NextResponse.json(r);
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

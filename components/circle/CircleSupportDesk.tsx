@@ -45,6 +45,7 @@ export default function CircleSupportDesk() {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const end = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +81,17 @@ export default function CircleSupportDesk() {
     if (!openId) return;
     try { const r = await fetch(`/api/circle/support/${openId}/file?msgId=${encodeURIComponent(msgId)}`, { headers: H() }); const d = await r.json(); if (d?.url) window.open(d.url, "_blank", "noopener"); } catch { /* ignore */ }
   }
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (fileInput.current) fileInput.current.value = "";
+    if (!f || !openId) return;
+    if (f.size > 15 * 1024 * 1024) { alert("File 15 MB se badi hai"); return; }
+    setSending(true);
+    try {
+      await fetch(`/api/circle/support/${openId}/file?fileName=${encodeURIComponent(f.name)}&mimeType=${encodeURIComponent(f.type || "application/octet-stream")}`, { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/octet-stream" }, body: f });
+      await loadDetail(openId);
+    } catch { /* ignore */ } finally { setSending(false); }
+  }
 
   const card: React.CSSProperties = { border: "1px solid rgba(74,56,32,0.15)", background: "#fff", borderRadius: 16 };
   const input: React.CSSProperties = { border: "1px solid rgba(74,56,32,0.2)", borderRadius: 10, padding: "8px 12px", fontSize: 14, width: "100%", color: "#4a3820" };
@@ -108,6 +120,8 @@ export default function CircleSupportDesk() {
             <div ref={end} />
           </div>
           <div style={{ padding: 12, borderTop: "1px solid rgba(74,56,32,0.1)", display: "flex", gap: 8 }}>
+            <input ref={fileInput} type="file" style={{ display: "none" }} onChange={onPickFile} />
+            <button onClick={() => fileInput.current?.click()} disabled={sending} title="Attach file" style={{ borderRadius: 10, border: "1px solid rgba(74,56,32,0.2)", background: "#fff", padding: "8px 12px", fontSize: 16, lineHeight: 1, cursor: "pointer" }}>📎</button>
             <input value={reply} onChange={(e) => setReply(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder="Apna message likhein…" style={{ ...input, flex: 1 }} />
             <button onClick={send} disabled={sending || !reply.trim()} style={{ borderRadius: 10, background: GOLD, color: "#fff", padding: "8px 16px", fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", opacity: sending || !reply.trim() ? 0.5 : 1 }}>{sending ? "…" : "Send"}</button>
           </div>
