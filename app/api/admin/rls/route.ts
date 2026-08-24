@@ -12,22 +12,20 @@
 //                      {action:"drop_policy", table, policy}
 import { NextResponse } from "next/server";
 import { requireVerifiedAdmin, auditIdentity } from "@/lib/admin/verify";
-import { SB_URL, SB_H, hasServiceRole } from "@/lib/sb";
+import { hasServiceRole } from "@/lib/sb";
+import { adminRlsRpc as rpc } from "@/lib/admin/admin-rls-service-role";
 import { logAdminAction } from "@/lib/admin/audit";
 
 // Same string lives inside the four SECURITY DEFINER functions in the
 // v99 migration. Rotate both at once if/when needed.
 const RLS_SECRET = process.env.SB_RLS_SECRET || "STAYBID_RLS_SECRET_v99_change_me";
 
-async function rpc(name: string, args: Record<string, any>) {
-  const res = await fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
-    method: "POST",
-    headers: SB_H,
-    body: JSON.stringify(args),
-  });
-  const json = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, json };
-}
+// All six Admin-RLS RPCs route through the single fail-closed service-role
+// sender (`lib/admin/admin-rls-service-role.ts`). It uses the service-role
+// key as the ONLY Authorization identity and fails closed — with ZERO
+// outbound request — when that key is missing/empty/whitespace. There is no
+// service-role-to-anon fallback here (the generic shared-header path with its
+// anon key fallback is deliberately not used).
 
 export async function GET(req: Request) {
   const admin = await requireVerifiedAdmin(req);

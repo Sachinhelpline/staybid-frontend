@@ -37,6 +37,11 @@ fs.mkdirSync(path.join(SRC, "lib", "cron"), { recursive: true });
 fs.copyFileSync(path.join(REPO, "lib/admin/verify.ts"), path.join(SRC, "lib/admin/verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/admin/client-fetch.ts"), path.join(SRC, "lib/admin/client-fetch.ts"));
 fs.copyFileSync(path.join(REPO, "lib/admin/supabase-admin-store.ts"), path.join(SRC, "lib/admin/supabase-admin-store.ts"));
+fs.copyFileSync(path.join(REPO, "lib/admin/admin-rls-service-role.ts"), path.join(SRC, "lib/admin/admin-rls-service-role.ts"));
+// CP-01 route-runtime: compile the ACTUAL Admin-RLS route so its GET/POST
+// handlers can be executed (deps mocked via Module._resolveFilename below).
+fs.mkdirSync(path.join(SRC, "app", "api", "admin", "rls"), { recursive: true });
+fs.copyFileSync(path.join(REPO, "app/api/admin/rls/route.ts"), path.join(SRC, "app/api/admin/rls/route.ts"));
 fs.copyFileSync(path.join(REPO, "lib/auth/customer-verify.ts"), path.join(SRC, "lib/auth/customer-verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/cron/auth.ts"), path.join(SRC, "lib/cron/auth.ts"));
 fs.copyFileSync(path.join(REPO, "lib/razorpay-server.ts"), path.join(SRC, "lib/razorpay-server.ts"));
@@ -50,7 +55,7 @@ fs.writeFileSync(
       skipLibCheck: true, moduleResolution: "node", ignoreDeprecations: "6.0",
       rootDir: ".", outDir: "../out", types: [],
     },
-    include: ["lib/**/*.ts"],
+    include: ["lib/**/*.ts", "app/**/*.ts"],
   }),
 );
 // The `@/lib/sb` import is stubbed at runtime, so tsc emits a TS2307 and exits
@@ -59,12 +64,14 @@ try { cp.execSync(`npx tsc -p "${path.join(SRC, "tsconfig.json")}"`, { cwd: REPO
 const adminJs = path.join(OUT, "lib/admin/verify.js");
 const adminClientFetchJs = path.join(OUT, "lib/admin/client-fetch.js");
 const storeJs = path.join(OUT, "lib/admin/supabase-admin-store.js");
+const adminRlsSrJs = path.join(OUT, "lib/admin/admin-rls-service-role.js");
+const rlsRouteJs = path.join(OUT, "app/api/admin/rls/route.js");
 const custJs = path.join(OUT, "lib/auth/customer-verify.js");
 const cronJs = path.join(OUT, "lib/cron/auth.js");
 const rzpCfgJs = path.join(OUT, "lib/razorpay-server.js");
 const rzpClientJs = path.join(OUT, "lib/razorpay.js");
 const authReturnJs = path.join(OUT, "lib/auth-return.js");
-if (!fs.existsSync(adminJs) || !fs.existsSync(adminClientFetchJs) || !fs.existsSync(storeJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
+if (!fs.existsSync(adminJs) || !fs.existsSync(adminClientFetchJs) || !fs.existsSync(storeJs) || !fs.existsSync(adminRlsSrJs) || !fs.existsSync(rlsRouteJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
   console.error("COMPILE FAILED — helper JS not emitted");
   process.exit(2);
 }
@@ -97,21 +104,39 @@ global.fetch = async (url) => {
 };
 
 const STUB = path.join(OUT, "_sb_stub.js");
-fs.writeFileSync(STUB, 'module.exports = { SB_URL: "http://mock", SB_READ: {} };');
+// SB_KEY + hasServiceRole added for the CP-01 route-runtime tests. hasServiceRole
+// reproduces lib/sb.ts EXACTLY: `!!(process.env.SUPABASE_SERVICE_ROLE_KEY || null)`
+// — plain truthiness, so a whitespace-only value is treated as PRESENT (the 412
+// pre-guard does NOT fire for it), letting the tests prove the new sender still
+// independently trims/rejects it with ZERO outbound RPC. Production sb.ts untouched.
+fs.writeFileSync(STUB, 'module.exports = { SB_URL: "http://mock", SB_KEY: "SYNTH-ANON-STUB-KEY", SB_READ: {}, hasServiceRole: () => { const k = process.env.SUPABASE_SERVICE_ROLE_KEY || null; return !!k; } };');
 const NEXTSTUB = path.join(OUT, "_next_server_stub.js");
 fs.writeFileSync(NEXTSTUB, 'module.exports = { NextResponse: { json: (body, init) => ({ status: (init && init.status) || 200, body }) } };');
+// CP-01 route-runtime: mocked route dependencies. The admin gate is controllable
+// via global.__CP01_ADMIN__ so the ACTUAL route handlers can be driven for both
+// authorized and unauthorized cases; audit logging is a no-op.
+const VERIFYSTUB = path.join(OUT, "_verify_stub.js");
+fs.writeFileSync(VERIFYSTUB, 'module.exports = { requireVerifiedAdmin: async () => (global.__CP01_ADMIN__ || null), auditIdentity: () => "cp01-audit" };');
+const AUDITSTUB = path.join(OUT, "_audit_stub.js");
+fs.writeFileSync(AUDITSTUB, 'module.exports = { logAdminAction: () => {} };');
 const JWT_PATH = require.resolve(path.join(REPO, "node_modules/jsonwebtoken"));
 const origResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, ...rest) {
   if (request === "@/lib/sb") return STUB;
   if (request === "next/server") return NEXTSTUB;
   if (request === "jsonwebtoken") return JWT_PATH;
+  // CP-01 route-runtime aliases (used only by the compiled Admin-RLS route):
+  if (request === "@/lib/admin/verify") return VERIFYSTUB;
+  if (request === "@/lib/admin/audit") return AUDITSTUB;
+  if (request === "@/lib/admin/admin-rls-service-role") return adminRlsSrJs;
   return origResolve.call(this, request, ...rest);
 };
 
 const adminV = require(adminJs);
 const adminClientFetch = require(adminClientFetchJs);
 const adminStoreMod = require(storeJs);
+const adminRlsSr = require(adminRlsSrJs);
+const rlsRoute = require(rlsRouteJs); // actual GET/POST handlers (deps mocked above)
 const custV = require(custJs);
 const cronV = require(cronJs);
 const rzpCfg = require(rzpCfgJs);
@@ -956,6 +981,262 @@ function reqWith(headers) {
     check("admin-cleanup: ADMIN_SESSION_KEYS are admin-only", JSON.stringify(authReturn.ADMIN_SESSION_KEYS) === JSON.stringify(["sb_admin_token", "sb_admin_user"]));
     // The failure message must NOT claim there is no session at all.
     check("admin-cleanup: failure message scoped to ADMIN session", /admin session/i.test(authReturn.ADMIN_EXCHANGE_FAILED_MSG) && !/no session was created/i.test(authReturn.ADMIN_EXCHANGE_FAILED_MSG));
+  }
+
+  // ===== CP-01-PRE-TS-01 — Admin-RLS service-role fail-closed caller boundary
+  // The six Admin-RLS RPCs must authorize ONLY with the service-role key, must
+  // fail closed (zero outbound RPC) on missing/empty/whitespace config, and
+  // must never substitute the anon/public key into Authorization or retry with
+  // an alternate credential.
+  {
+    const savedSR = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const savedFetch = global.fetch;
+
+    const H = adminRlsSr.buildAdminRlsHeaders;
+    const ANON = "SYNTH-ANON-PUBLIC-KEY";
+
+    // (1) non-empty synthetic service-role input → privileged Authorization.
+    const h1 = H({ serviceRoleKey: "SYNTH-SR-1", apiKey: ANON });
+    check("cp01: non-empty service-role → Authorization is that Bearer identity",
+      h1.Authorization === "Bearer SYNTH-SR-1");
+    check("cp01: public key sits in apikey slot only",
+      h1.apikey === ANON && !h1.Authorization.includes(ANON));
+
+    // (2)(3)(4) undefined / empty / whitespace service-role → header build fails closed.
+    const buildThrows = (v) => {
+      try { H({ serviceRoleKey: v, apiKey: ANON }); return false; } catch (_) { return true; }
+    };
+    check("cp01: undefined service-role → header build fails closed", buildThrows(undefined));
+    check("cp01: empty service-role → header build fails closed", buildThrows(""));
+    check("cp01: whitespace-only service-role → header build fails closed", buildThrows("   "));
+
+    // readServiceRoleKey/serviceRoleConfigured reject empty + whitespace env too.
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "   ";
+    check("cp01: whitespace-only env → serviceRoleConfigured() false", adminRlsSr.serviceRoleConfigured() === false);
+    check("cp01: whitespace-only env → readServiceRoleKey() null", adminRlsSr.readServiceRoleKey() === null);
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    check("cp01: undefined env → serviceRoleConfigured() false", adminRlsSr.serviceRoleConfigured() === false);
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "  SYNTH-SR-TRIM  ";
+    check("cp01: env is trimmed to the non-empty identity", adminRlsSr.readServiceRoleKey() === "SYNTH-SR-TRIM");
+
+    // (5) missing/empty/whitespace cases cause ZERO outbound RPC fetches.
+    let rpcFetches = 0;
+    global.fetch = async () => { rpcFetches++; return { ok: true, status: 200, json: async () => ({}) }; };
+    for (const bad of [undefined, "", "   "]) {
+      if (bad === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = bad;
+      const r = await adminRlsSr.adminRlsRpc("admin_list_rls", { secret: "x" });
+      check(`cp01: unconfigured (${JSON.stringify(bad)}) → fails closed (503, failClosed)`,
+        r.ok === false && r.status === 503 && r.failClosed === true);
+    }
+    check("cp01: missing/empty/whitespace → ZERO outbound RPC fetches", rpcFetches === 0);
+
+    // (6) a non-empty but invalid credential is NOT replaced by the anon/public key.
+    const hInvalid = H({ serviceRoleKey: "invalid-but-nonempty", apiKey: ANON });
+    check("cp01: invalid non-empty credential still used as Authorization (no anon swap)",
+      hInvalid.Authorization === "Bearer invalid-but-nonempty" && !hInvalid.Authorization.includes(ANON));
+
+    // (7) mocked 401/403 causes NO retry and NO alternate-credential request.
+    for (const code of [401, 403]) {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "SYNTH-SR-VALID-SHAPE";
+      let calls = 0;
+      const seen = [];
+      global.fetch = async (url, init) => {
+        calls++;
+        seen.push((init && init.headers && init.headers.Authorization) || "");
+        return { ok: false, status: code, json: async () => ({ error: "denied" }) };
+      };
+      const r = await adminRlsSr.adminRlsRpc("admin_set_rls", { secret: "x", tbl: "t", enable: true });
+      check(`cp01: upstream ${code} → exactly ONE fetch (no retry)`, calls === 1);
+      check(`cp01: upstream ${code} → result returned as-is (ok=false, status)`, r.ok === false && r.status === code);
+      check(`cp01: upstream ${code} → the one request used the service-role Bearer only`,
+        seen.length === 1 && seen[0] === "Bearer SYNTH-SR-VALID-SHAPE");
+    }
+
+    global.fetch = savedFetch;
+    if (savedSR === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = savedSR;
+
+    // ---- static: the ROUTE routes all six RPCs through the single sender ----
+    const rlsRouteSrc = fs.readFileSync(path.join(REPO, "app/api/admin/rls/route.ts"), "utf8");
+    // (8) all six action mappings use the single protected sender.
+    check("cp01: route imports the protected sender", /from\s+["']@\/lib\/admin\/admin-rls-service-role["']/.test(rlsRouteSrc));
+    for (const name of ["admin_list_rls", "admin_set_rls", "admin_add_permissive_policy", "admin_lockdown_table", "admin_apply_policy_template", "admin_drop_policy"]) {
+      check(`cp01: route invokes ${name} via the sender`, new RegExp(`rpc\\(["']${name}["']`).test(rlsRouteSrc));
+    }
+    check("cp01: route issues no direct Supabase fetch of its own", !/fetch\(/.test(rlsRouteSrc));
+    check("cp01: route defines no local rpc() sender of its own", !/async\s+function\s+rpc\(/.test(rlsRouteSrc));
+    // (9) unauthorized/non-admin blocked BEFORE any RPC activity.
+    check("cp01: route retains requireVerifiedAdmin gate", rlsRouteSrc.includes("requireVerifiedAdmin(req)"));
+    for (const fn of ["GET", "POST"]) {
+      const i = rlsRouteSrc.indexOf(`export async function ${fn}(`);
+      const j = rlsRouteSrc.indexOf("export async function", i + 1);
+      const body = rlsRouteSrc.slice(i, j === -1 ? undefined : j);
+      const gate = body.indexOf("requireVerifiedAdmin(req)");
+      const firstRpc = body.search(/rpc\(["']admin_/);
+      const unauth = body.indexOf('{ status: 401 }');
+      check(`cp01: ${fn} runs requireVerifiedAdmin before any RPC`, gate > -1 && firstRpc > -1 && gate < firstRpc);
+      check(`cp01: ${fn} returns 401 (before RPC) on no admin`, unauth > -1 && unauth < firstRpc);
+    }
+    // (10) route does not use SB_H / SB_ADMIN_KEY / SB_H_ANON_ONLY.
+    check("cp01: route does not use SB_H", !/\bSB_H\b/.test(rlsRouteSrc));
+    check("cp01: route does not use SB_ADMIN_KEY", !/\bSB_ADMIN_KEY\b/.test(rlsRouteSrc));
+    check("cp01: route does not use SB_H_ANON_ONLY", !/\bSB_H_ANON_ONLY\b/.test(rlsRouteSrc));
+
+    // ---- static: the HELPER has no public-key authorization fallback -------
+    const srcHelper = fs.readFileSync(path.join(REPO, "lib/admin/admin-rls-service-role.ts"), "utf8");
+    const authLines = srcHelper.split("\n").filter((l) => /Authorization/.test(l) && !/^\s*\/\//.test(l));
+    // (11) the only Authorization construction is the service-role Bearer.
+    check("cp01(helper): Authorization is built from serviceRoleKey only",
+      authLines.length >= 1 && authLines.every((l) => /serviceRoleKey/.test(l)));
+    check("cp01(helper): no anon/public key reaches Authorization",
+      authLines.every((l) => !/SB_KEY|SB_ADMIN_KEY|apiKey|apikey|anon/i.test(l)));
+    const helperCodeLines = srcHelper.split("\n").filter((l) => !/^\s*\/\//.test(l));
+    check("cp01(helper): does not import or use SB_H / SB_ADMIN_KEY",
+      helperCodeLines.every((l) => !/\bSB_H\b/.test(l) && !/\bSB_ADMIN_KEY\b/.test(l)));
+    // (12) helper remains server-only.
+    check("cp01(helper): carries a server-only runtime guard", /typeof window !== ["']undefined["']/.test(srcHelper));
+    check("cp01(helper): is not a client module", !/^\s*["']use client["']/m.test(srcHelper));
+    check("cp01(helper): never reads a NEXT_PUBLIC_ env var", !/NEXT_PUBLIC_/.test(srcHelper));
+  }
+
+  // ===== CP-01-PRE-TS-01 (route-runtime) — ACTUAL GET/POST handlers, mocked deps
+  // Drives the real app/api/admin/rls/route.ts handlers with a controllable admin
+  // gate (global.__CP01_ADMIN__), the real compiled fail-closed sender, and a
+  // mocked global.fetch. Proves: unauthorized → zero RPC; unconfigured service
+  // role → zero RPC (recording the ACTUAL route status, which may legitimately be
+  // 412/403/503); configured → the intended RPC endpoint only; 401/403 → no retry.
+  {
+    const savedSR = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const savedFetch = global.fetch;
+    const savedAdmin = global.__CP01_ADMIN__;
+    const CONFIGURED = "SYNTH-SR-ROUTE";
+
+    const mkReq = (body, headers = {}) => ({
+      headers: { get: (k) => headers[k.toLowerCase()] ?? null },
+      json: async () => body,
+    });
+    let calls = 0, seen = [];
+    const setFetch = (resp) => {
+      calls = 0; seen = [];
+      global.fetch = async (url, init) => {
+        calls++;
+        seen.push({ url: String(url), auth: (init && init.headers && init.headers.Authorization) || "" });
+        return { ok: resp.ok, status: resp.status, json: async () => (resp.body || {}) };
+      };
+    };
+    const setAdmin = (a) => { global.__CP01_ADMIN__ = a; };
+    const setEnv = (v) => { if (v === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = v; };
+
+    // (3) UNAUTHORIZED → rejected before any RPC, across GET + every POST action.
+    setAdmin(null); setEnv(CONFIGURED); setFetch({ ok: true, status: 200, body: {} });
+    const gUn = await rlsRoute.GET(mkReq(null, {}));
+    check("cp01-route: GET unauthorized → 401", gUn && gUn.status === 401);
+    const actions = [
+      { action: "toggle", table: "t", enable: true },
+      { action: "add_policy", table: "t" },
+      { action: "lockdown", table: "t" },
+      { action: "apply_template", table: "t", template: "service_role_only" },
+      { action: "drop_policy", table: "t", policy: "p" },
+    ];
+    let unauthAll401 = true;
+    for (const a of actions) {
+      const r = await rlsRoute.POST(mkReq(a, {}));
+      if (!(r && r.status === 401)) unauthAll401 = false;
+    }
+    check("cp01-route: every POST action unauthorized → 401", unauthAll401);
+    check("cp01-route: UNAUTHORIZED performed ZERO outbound RPC fetches", calls === 0);
+
+    // (1)(2)(6) AUTHORIZED + configured → exactly the intended RPC endpoint, once,
+    // with the service-role Bearer. Covers GET + all five POST actions.
+    setAdmin({ id: "admin1", role: "super_admin" });
+    setEnv(CONFIGURED);
+    const mapping = [
+      { rpc: "admin_list_rls", call: () => rlsRoute.GET(mkReq(null, {})) },
+      { rpc: "admin_set_rls", call: () => rlsRoute.POST(mkReq({ action: "toggle", table: "t", enable: true })) },
+      { rpc: "admin_add_permissive_policy", call: () => rlsRoute.POST(mkReq({ action: "add_policy", table: "t" })) },
+      { rpc: "admin_lockdown_table", call: () => rlsRoute.POST(mkReq({ action: "lockdown", table: "t" })) },
+      { rpc: "admin_apply_policy_template", call: () => rlsRoute.POST(mkReq({ action: "apply_template", table: "t", template: "service_role_only" })) },
+      { rpc: "admin_drop_policy", call: () => rlsRoute.POST(mkReq({ action: "drop_policy", table: "t", policy: "p" })) },
+    ];
+    for (const m of mapping) {
+      setFetch({ ok: true, status: 200, body: { ok: true } });
+      const r = await m.call();
+      check(`cp01-route: authorized ${m.rpc} → exactly ONE fetch`, calls === 1);
+      check(`cp01-route: authorized ${m.rpc} → hits ONLY that RPC endpoint`, seen.length === 1 && seen[0].url.endsWith("/rest/v1/rpc/" + m.rpc));
+      check(`cp01-route: authorized ${m.rpc} → Authorization is the service-role Bearer`, seen[0] && seen[0].auth === "Bearer " + CONFIGURED);
+      check(`cp01-route: authorized ${m.rpc} → 200`, r && r.status === 200);
+    }
+
+    // (4)(5) AUTHORIZED + UNCONFIGURED service role → ZERO outbound RPC through the
+    // actual route for missing/empty/whitespace; record the real route status.
+    const fcActions = [
+      { key: "GET/list", call: () => rlsRoute.GET(mkReq(null, {})) },
+      { key: "toggle", call: () => rlsRoute.POST(mkReq({ action: "toggle", table: "t", enable: true })) },
+      { key: "add_policy", call: () => rlsRoute.POST(mkReq({ action: "add_policy", table: "t" })) },
+      { key: "lockdown", call: () => rlsRoute.POST(mkReq({ action: "lockdown", table: "t" })) },
+      { key: "apply_template(service_role_only)", call: () => rlsRoute.POST(mkReq({ action: "apply_template", table: "t", template: "service_role_only" })) },
+      { key: "apply_template(other)", call: () => rlsRoute.POST(mkReq({ action: "apply_template", table: "t", template: "owner_only" })) },
+      { key: "drop_policy", call: () => rlsRoute.POST(mkReq({ action: "drop_policy", table: "t", policy: "p" })) },
+    ];
+    const fcStatus = {};
+    for (const v of ["   ", "", undefined]) {
+      for (const fa of fcActions) {
+        setEnv(v); setFetch({ ok: true, status: 200, body: {} });
+        const r = await fa.call();
+        fcStatus[`${JSON.stringify(v)}::${fa.key}`] = r && r.status;
+        check(`cp01-route: unconfigured (${JSON.stringify(v)}) ${fa.key} → ZERO outbound RPC`, calls === 0);
+      }
+    }
+    // Observed fail-closed statuses under a PRODUCTION-FAITHFUL hasServiceRole()
+    // (plain truthiness). All cases performed ZERO outbound RPC; the status is
+    // recorded, not forced.
+    //  • GET has no hasServiceRole pre-guard → the helper's fail-closed 503 surfaces
+    //    for every unconfigured value.
+    check("cp01-route: unconfigured GET status is 503 (helper fail-closed surfaced)",
+      fcStatus['"   "::GET/list'] === 503 && fcStatus['""::GET/list'] === 503 && fcStatus['undefined::GET/list'] === 503);
+    //  • EMPTY / UNDEFINED → hasServiceRole() is falsy → the route's 412 pre-guard
+    //    fires first for the guarded actions (lockdown, service_role_only template).
+    check("cp01-route: empty/undefined lockdown → 412 (route guard fires first)",
+      fcStatus['""::lockdown'] === 412 && fcStatus['undefined::lockdown'] === 412);
+    check("cp01-route: empty/undefined apply_template(service_role_only) → 412",
+      fcStatus['""::apply_template(service_role_only)'] === 412 && fcStatus['undefined::apply_template(service_role_only)'] === 412);
+    //  • WHITESPACE-ONLY → production-faithful hasServiceRole() treats it as PRESENT
+    //    (plain truthiness), so the 412 pre-guard does NOT fire — yet the new sender
+    //    independently trims/rejects the blank value → helper fail-closed → the route
+    //    returns 403, with ZERO outbound RPC. This is the key sender-enforced proof.
+    check("cp01-route: WHITESPACE lockdown → 403 (guard sees it present; sender rejects) + ZERO RPC",
+      fcStatus['"   "::lockdown'] === 403);
+    check("cp01-route: WHITESPACE apply_template(service_role_only) → 403 (sender rejects) + ZERO RPC",
+      fcStatus['"   "::apply_template(service_role_only)'] === 403);
+    //  • Non-guarded POST actions (no hasServiceRole guard) → the route error-branch
+    //    403 from the helper's fail-closed body, for every unconfigured value.
+    check("cp01-route: non-guarded POST actions → 403 for missing/empty/whitespace (still ZERO RPC)",
+      ['"   "', '""', 'undefined'].every((v) =>
+        fcStatus[`${v}::toggle`] === 403 && fcStatus[`${v}::add_policy`] === 403 &&
+        fcStatus[`${v}::drop_policy`] === 403 && fcStatus[`${v}::apply_template(other)`] === 403));
+
+    // (7) AUTHORIZED + configured + mocked upstream 401/403 → exactly ONE fetch,
+    // no retry, no alternate credential; the real route surfaces the upstream code.
+    setAdmin({ id: "admin1", role: "super_admin" });
+    setEnv(CONFIGURED);
+    for (const code of [401, 403]) {
+      setFetch({ ok: false, status: code, body: { error: "denied" } });
+      const rg = await rlsRoute.GET(mkReq(null, {}));
+      check(`cp01-route: GET upstream ${code} → exactly ONE fetch (no retry)`, calls === 1);
+      check(`cp01-route: GET upstream ${code} → surfaced ${code}, single service-role request`,
+        rg && rg.status === code && seen.length === 1 && seen[0].auth === "Bearer " + CONFIGURED);
+      setFetch({ ok: false, status: code, body: { error: "denied" } });
+      await rlsRoute.POST(mkReq({ action: "toggle", table: "t", enable: true }));
+      check(`cp01-route: POST toggle upstream ${code} → exactly ONE fetch (no retry)`, calls === 1);
+      check(`cp01-route: POST toggle upstream ${code} → single service-role request only`,
+        seen.length === 1 && seen[0].auth === "Bearer " + CONFIGURED);
+    }
+
+    // restore harness globals/env
+    global.fetch = savedFetch;
+    if (savedAdmin === undefined) delete global.__CP01_ADMIN__; else global.__CP01_ADMIN__ = savedAdmin;
+    if (savedSR === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = savedSR;
   }
 
   console.log(results.join("\n"));
