@@ -8,6 +8,10 @@ import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelSco
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import StaySearchSheet from "@/components/hotel/StaySearchSheet";
+// Voice AI (VOICE-AI-SB-01) — isolated /hotels seam. Disabled by default
+// (NEXT_PUBLIC_VOICE_AI_BETA === "1"); renders null otherwise, so the normal
+// search path is untouched. No mic/STT/model/TTS in this packet.
+import VoiceSearchControl from "@/components/voice/VoiceSearchControl";
 // v141 — Phase-5 explore tour. 4 steps: search → city filter →
 // sort+stars → first hotel card.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
@@ -758,6 +762,19 @@ function HotelList() {
                 )}
               </button>
             </div>
+
+            {/* Voice AI seam (VOICE-AI-SB-01) — fail-closed; renders null unless
+                NEXT_PUBLIC_VOICE_AI_BETA === "1". Wired to this page's own
+                setters + router; no global mount, no mic/model in this packet. */}
+            <VoiceSearchControl
+              setCity={setCity}
+              setSearch={setSearch}
+              setSearchOpen={setSearchOpen}
+              setSortBy={setSortBy}
+              setSelectedStars={setSelectedStars}
+              setFilterOpen={setFilterOpen}
+              router={router}
+            />
 
             {/* Filter popover — sort options + star toggles */}
             {filterOpen && (
