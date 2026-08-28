@@ -27,16 +27,25 @@ import { useEffect, useRef, useState } from "react";
 import {
   createVoiceInteraction,
   createAudioCapture,
+  createGatewayClient,
+  createGatewayTurnRouter,
+  createAttemptOwner,
   voiceReduce,
   isBusy,
   INITIAL_VOICE_STATE,
   detectSupport,
   type VoiceState,
+  type VoiceServerStatus,
   type VoiceSession,
   type AudioCapture,
+  type GatewayClient,
+  type GatewayTurnRouter,
   type VoiceInteraction,
   type DispatchOutcome,
 } from "@/lib/voice";
+// The native WebRTC media client is imported directly (not via the barrel) so the
+// barrel stays free of provider naming — see lib/voice/index.ts.
+import { createWebrtcSession, type WebrtcSession } from "@/lib/voice/openai-webrtc";
 
 export interface VoiceBidDraft {
   hotelId: string;
@@ -52,7 +61,26 @@ export interface VoicePanelProps {
   draft: VoiceBidDraft | null;
   /** Clear the local draft preview (on reset / new turn). */
   onClearDraft: () => void;
+  /**
+   * SB-04: opt into the OpenAI-Realtime + gateway path (native WebRTC media +
+   * gateway control socket). DEFAULT false — the SB-02 text/mic-demo path is
+   * unchanged. The realtime path fails closed when the same-origin broker is
+   * unconfigured (503), so this stays dormant until a future preview enables it.
+   */
+  realtime?: boolean;
 }
+
+/** Map a provider-neutral gateway status to the local UX state (realtime path). */
+const STATUS_TO_STATE: Record<VoiceServerStatus, VoiceState> = {
+  listening: "LISTENING",
+  transcribing: "TRANSCRIBING",
+  thinking: "THINKING",
+  executing: "EXECUTING_ACTION",
+  speaking: "SPEAKING",
+  interrupted: "INTERRUPTED",
+  cancelled: "CANCELLED",
+  idle: "IDLE",
+};
 
 const STATE_LABEL: Record<VoiceState, string> = {
   IDLE: "Ready",
@@ -68,7 +96,14 @@ const STATE_LABEL: Record<VoiceState, string> = {
   RESET: "Reset",
 };
 
-export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, onClearDraft }: VoicePanelProps) {
+export default function VoicePanel({
+  session,
+  dispatch,
+  visibleHotelIds,
+  draft,
+  onClearDraft,
+  realtime = false,
+}: VoicePanelProps) {
   const [state, setState] = useState<VoiceState>(INITIAL_VOICE_STATE);
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState<string | null>(null);
@@ -77,6 +112,19 @@ export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, 
 
   const interactionRef = useRef<VoiceInteraction | null>(null);
   const captureRef = useRef<AudioCapture | null>(null);
+  // SB-04 realtime refs (created lazily, only when the realtime path is used).
+  const webrtcRef = useRef<WebrtcSession | null>(null);
+  const gatewayRef = useRef<GatewayClient | null>(null);
+  const routerRef = useRef<GatewayTurnRouter | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // R2/R3 (SB04-R2-REREV-09/11): the component attempt-ownership STATE MACHINE —
+  // the tested `createAttemptOwner` from lib/voice (VoicePanel delegates the actual
+  // runtime decision to that exact tested code). Every realtime start begins a new
+  // attempt; a Stop / re-start / teardown invalidates, so an in-flight start whose
+  // attempt is superseded aborts silently — it never enters LISTENING and never
+  // tears down the NEWER attempt's resources.
+  const attemptOwnerRef = useRef<ReturnType<typeof createAttemptOwner> | null>(null);
+  if (!attemptOwnerRef.current) attemptOwnerRef.current = createAttemptOwner();
 
   if (!interactionRef.current) {
     // nullTransport by default — SB-02 wires NO provider. Same-origin fetch for
@@ -94,8 +142,36 @@ export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, 
     return () => {
       if (captureRef.current) captureRef.current.dispose();
       if (interactionRef.current) interactionRef.current.reset();
+      teardownRealtime();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Tear down every SB-04 realtime resource (WebRTC media, control socket, turn
+  // router). Idempotent; a stale gateway frame after this can never mutate the UI.
+  function teardownRealtime() {
+    // Invalidate any in-flight realtime start (REREV-07/09) via the tested owner.
+    attemptOwnerRef.current?.invalidate();
+    if (gatewayRef.current) {
+      gatewayRef.current.dispose();
+      gatewayRef.current = null;
+    }
+    if (webrtcRef.current) {
+      webrtcRef.current.dispose();
+      webrtcRef.current = null;
+    }
+    if (routerRef.current) {
+      routerRef.current.reset();
+      routerRef.current = null;
+    }
+    if (audioRef.current) {
+      try {
+        (audioRef.current as any).srcObject = null;
+      } catch {
+        /* no-op */
+      }
+    }
+  }
 
   function apply(event: Parameters<typeof voiceReduce>[1]) {
     setState((prev) => voiceReduce(prev, event).state);
@@ -158,6 +234,19 @@ export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, 
   }
 
   function stopVoice() {
+    // Realtime path: Stop ends the live Voice session (closes the socket + media).
+    // A single mic path owns the mic at a time — realtime uses WebRTC, the SB-02
+    // demo uses MediaRecorder; the two never run together (one Start handler wins).
+    if (realtime) {
+      const activeTurn = routerRef.current?.activeTurnId() ?? -1;
+      if (gatewayRef.current && activeTurn >= 0) gatewayRef.current.cancelTurn(activeTurn);
+      if (gatewayRef.current) gatewayRef.current.closeSession();
+      if (routerRef.current) routerRef.current.cancel();
+      teardownRealtime();
+      apply("STOP");
+      apply("CLEANUP");
+      return;
+    }
     // Drive the post-recording transition from the capture promise resolution.
     if (captureRef.current) captureRef.current.stop();
   }
@@ -168,6 +257,13 @@ export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, 
     // REREV-03 + R1-NEW-02: invalidate any in-flight interaction turn AND release
     // the active submission slot so a fresh submission can start.
     if (interactionRef.current) interactionRef.current.cancel();
+    // SB-04: signal the gateway to cancel the active turn (capture the id BEFORE
+    // the local cancel bumps it to no-turn), invalidate the router so a later
+    // frame is stale, then tear the media/socket down.
+    const activeTurn = routerRef.current?.activeTurnId() ?? -1;
+    if (gatewayRef.current && activeTurn >= 0) gatewayRef.current.cancelTurn(activeTurn);
+    if (routerRef.current) routerRef.current.cancel();
+    teardownRealtime();
     setTranscript("");
     apply("CLEANUP"); // → IDLE
   }
@@ -177,12 +273,151 @@ export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, 
     if (captureRef.current) captureRef.current.dispose();
     captureRef.current = null;
     if (interactionRef.current) interactionRef.current.reset();
+    teardownRealtime();
     setTranscript("");
     setResponse(null);
     setNote(null);
     setTextInput("");
     onClearDraft();
     apply("CLEANUP"); // → IDLE
+  }
+
+  // ── SB-04 realtime path (native WebRTC media + gateway control socket) ──────
+  // Dormant by default (realtime === false). When enabled AND the same-origin
+  // broker is configured, it: acquires the mic (gesture), builds a WebRTC offer,
+  // exchanges it via /api/voice/session, opens the ONE control socket, and routes
+  // validated control frames through the SB-01 dispatcher with turn ownership.
+  async function startRealtimeVoice() {
+    if (isBusy(state)) return;
+    if (typeof window === "undefined") return;
+    const t = voiceReduce(state, state === "ERROR" ? "RETRY" : "START");
+    if (t.state !== "REQUESTING_PERMISSION") return;
+    setResponse(null);
+    setNote(null);
+    setState(t.state);
+    teardownRealtime(); // invalidates prior attempts; begin the NEW one
+    const attempt = attemptOwnerRef.current!.begin();
+    const superseded = () => attempt.superseded();
+
+    const webrtc = createWebrtcSession();
+    webrtcRef.current = webrtc;
+    const started = await webrtc.start({
+      onTranscript: (line) => setTranscript(line.text),
+      onRemoteAudio: (stream) => {
+        if (audioRef.current) {
+          try {
+            (audioRef.current as any).srcObject = stream;
+          } catch {
+            /* no-op */
+          }
+        }
+      },
+    });
+    // A newer attempt / Stop took over during mic acquisition → drop THIS webrtc
+    // (never the newer attempt's ref) and abort silently.
+    if (superseded()) {
+      webrtc.dispose();
+      return;
+    }
+    if (!started || !started.ok) {
+      setNote("Couldn't start the microphone. You can type your request instead.");
+      apply("PERMISSION_DENIED");
+      teardownRealtime();
+      return;
+    }
+
+    const router = createGatewayTurnRouter({
+      session,
+      dispatch,
+      hooks: {
+        onStatus: (status) => setState(STATUS_TO_STATE[status]),
+        onTranscript: (line) => setTranscript(line.text),
+        onResult: (r) => setResponse(r.text),
+        onAction: (outcome) => {
+          if (outcome.ok) setResponse(`Applied: ${outcome.action}`);
+          else setNote(`That action was not allowed (${outcome.reason}).`);
+        },
+        onTurnComplete: () => setState("IDLE"),
+        onError: (code) => {
+          setNote(`Voice error (${code}).`);
+          setState("ERROR");
+        },
+      },
+    });
+    routerRef.current = router;
+    router.beginTurn();
+
+    const gateway = createGatewayClient(
+      {
+        fetchImpl: (path, init) => window.fetch(path, init as any) as any,
+        WebSocketCtor: (url, protocols) => new WebSocket(url, protocols) as any,
+      },
+      {
+        // R4 (SB04-R3-REREV-09): control frames are ATTEMPT-BOUND. This callback
+        // belongs to THIS attempt's GatewayClient, so it (a) drops every frame the
+        // moment the attempt is superseded and (b) routes ONLY to the router
+        // captured for this attempt (`router`, a closure local) — never to a newer
+        // attempt's router via routerRef.current. A delayed frame from old attempt
+        // A can therefore never mutate attempt B's router/UI/allowlist/turn.
+        onServerControl: (msg) => {
+          if (superseded()) return;
+          router.handleServerControl(msg);
+        },
+        // R3 (SB04-R2-REREV-09): losing the authoritative control socket after the
+        // session is live is FATAL. If THIS attempt is still current, tear down all
+        // realtime resources (media/tracks/remote audio/gateway) and surface an error;
+        // a STALE (older-generation) socket close never tears down a newer attempt.
+        onClose: () => {
+          if (superseded()) return;
+          teardownRealtime();
+          setNote("Voice connection closed. You can type your request instead.");
+          setState("ERROR");
+        },
+        onError: () => {
+          if (superseded()) return;
+          teardownRealtime();
+          setNote("Voice connection error. You can type your request instead.");
+          setState("ERROR");
+        },
+      },
+    );
+    gatewayRef.current = gateway;
+    // R3 (REREV-10): forward the bounded on-screen hotel ids so the gateway can
+    // server-verify them and let the model resolve "the second one" without a search.
+    const res = await gateway.start(started.offerSdp, visibleHotelIds);
+    if (superseded()) {
+      // A newer attempt / Stop took over during the broker exchange.
+      gateway.dispose();
+      webrtc.dispose();
+      return;
+    }
+    if (!res.ok) {
+      setNote(
+        res.code === "broker_failed"
+          ? "Voice assistant isn't connected in this beta yet."
+          : "Couldn't connect the voice assistant. You can type instead.",
+      );
+      apply("PERMISSION_DENIED");
+      teardownRealtime();
+      return;
+    }
+    // LISTENING only when the answer is applied to the CURRENT attempt (a late /
+    // superseded answer returns false and never enters LISTENING). Double-guard:
+    // the WebRTC session re-checks ownership internally AND the component generation
+    // must still be current.
+    const applied = await webrtc.acceptAnswer(res.broker.answerSdp);
+    if (superseded()) {
+      gateway.dispose();
+      webrtc.dispose();
+      return;
+    }
+    if (!applied) {
+      setNote("Voice connection was interrupted. You can type your request instead.");
+      apply("PERMISSION_DENIED");
+      teardownRealtime();
+      return;
+    }
+    setState("LISTENING");
   }
 
   async function submitText() {
@@ -237,9 +472,17 @@ export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, 
 
   return (
     <div className="sb-vp" aria-label="Voice assistant (beta)">
+      {/* SB-04: remote provider audio sink (realtime path). Muted/inert until a
+          real WebRTC answer attaches a stream — no audio is ever persisted. */}
+      {realtime && <audio ref={audioRef} autoPlay aria-hidden className="sb-vp-audio" />}
       <div className="sb-vp-row">
         {!listening ? (
-          <button type="button" className="sb-vp-btn sb-vp-mic" onClick={startVoice} aria-label="Start voice">
+          <button
+            type="button"
+            className="sb-vp-btn sb-vp-mic"
+            onClick={realtime ? startRealtimeVoice : startVoice}
+            aria-label="Start voice"
+          >
             <span aria-hidden>🎙️</span> Start voice
           </button>
         ) : (
@@ -415,6 +658,9 @@ export default function VoicePanel({ session, dispatch, visibleHotelIds, draft, 
           border-radius: 10px;
           border: 1px solid rgba(0, 0, 0, 0.16);
           font-size: 0.86rem;
+        }
+        .sb-vp-audio {
+          display: none;
         }
       `}</style>
     </div>

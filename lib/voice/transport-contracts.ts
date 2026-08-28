@@ -159,8 +159,19 @@ export function isTransportErrorCode(x: unknown): x is TransportErrorCode {
   return typeof x === "string" && (TRANSPORT_ERROR_CODES as readonly string[]).includes(x);
 }
 
-/** LOCAL-only control error codes — NEVER accepted from a transport/provider. */
-export type LocalErrorCode = "action_rejected" | "stale_result" | "too_many_actions" | "busy" | "transport_invalid";
+/** LOCAL-only control error codes — NEVER accepted from a transport/provider.
+ *  (SB-04 R1: session_ended / turn_timeout are gateway-runtime control codes the
+ *  gateway may surface to the browser over the control channel — still local, i.e.
+ *  never valid on a provider transport response.) */
+export type LocalErrorCode =
+  | "action_rejected"
+  | "stale_result"
+  | "too_many_actions"
+  | "busy"
+  | "transport_invalid"
+  | "session_ended"
+  | "turn_timeout"
+  | "cost_limit";
 
 export type VoiceErrorCode = TransportErrorCode | LocalErrorCode;
 
@@ -171,6 +182,9 @@ const ERROR_CODES: readonly VoiceErrorCode[] = Object.freeze([
   "too_many_actions",
   "busy",
   "transport_invalid",
+  "session_ended",
+  "turn_timeout",
+  "cost_limit",
 ]);
 export function isVoiceErrorCode(x: unknown): x is VoiceErrorCode {
   return typeof x === "string" && (ERROR_CODES as readonly string[]).includes(x);
@@ -236,4 +250,150 @@ export function validateTransportResponse(x: unknown): VoiceTransportResponse | 
     default:
       return null;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VOICE-AI-SB-04 — browser ↔ gateway CONTROL-CHANNEL contracts.
+//
+// SB-04 adds a dedicated Railway Voice gateway. Media (audio) rides a native
+// WebRTC peer connection straight to the provider; the ONLY StayBid control that
+// crosses browser↔gateway is a small, typed, provider-NEUTRAL control channel.
+// This section defines those closed message unions + their runtime validators.
+//
+// TWO independent trust domains, mirroring the transport rule above:
+//   • CLIENT control (browser → gateway): only cancel/reset/close a turn/session.
+//     The browser can never inject a provider capability or a raw URL/tool.
+//   • SERVER control (gateway → browser): status / a bounded transcript line for
+//     DISPLAY / a validated UI action / a bounded answer|clarify / turn-complete /
+//     a bounded error. A `ui_action` is re-validated by the SB-01 validateUiAction
+//     closed union HERE, and MUST be re-validated AGAIN by the browser SB-01
+//     dispatcher before it can touch the /hotels UI (defense in depth).
+//
+// Every message is size-bounded and closed. There is deliberately NO field for a
+// url / method / headers / script / selector / provider key / tool definition on
+// ANY variant. A malformed / unknown / oversized frame fails CLOSED → null.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Hard byte ceiling for a single control frame (both directions). */
+export const MAX_CONTROL_FRAME_BYTES = 8 * 1024;
+/** Bounded transcript line surfaced to the browser for DISPLAY only. */
+export const MAX_CONTROL_TRANSCRIPT_LEN = MAX_TRANSCRIPT_LEN;
+
+// ---- CLIENT → GATEWAY (browser control) — closed union ----------------------
+export type VoiceClientControl =
+  | { t: "cancel_turn"; turnId: number }
+  | { t: "reset_session" }
+  | { t: "close_session" };
+
+export function validateClientControl(x: unknown): VoiceClientControl | null {
+  if (!x || typeof x !== "object") return null;
+  const m = x as Record<string, unknown>;
+  switch (m.t) {
+    case "cancel_turn":
+      if (!Number.isFinite(m.turnId)) return null;
+      return { t: "cancel_turn", turnId: m.turnId as number };
+    case "reset_session":
+      return { t: "reset_session" };
+    case "close_session":
+      return { t: "close_session" };
+    default:
+      return null;
+  }
+}
+
+// ---- GATEWAY → BROWSER (server control) — closed union -----------------------
+// The fixed, provider-neutral status vocabulary (mirrors the SB-02 UX states the
+// browser already knows; the browser maps these to its own state machine).
+export type VoiceServerStatus =
+  | "listening"
+  | "transcribing"
+  | "thinking"
+  | "executing"
+  | "speaking"
+  | "interrupted"
+  | "cancelled"
+  | "idle";
+
+const SERVER_STATUSES: readonly VoiceServerStatus[] = Object.freeze([
+  "listening",
+  "transcribing",
+  "thinking",
+  "executing",
+  "speaking",
+  "interrupted",
+  "cancelled",
+  "idle",
+]);
+export function isServerStatus(x: unknown): x is VoiceServerStatus {
+  return typeof x === "string" && (SERVER_STATUSES as readonly string[]).includes(x);
+}
+
+export type VoiceServerControl =
+  | { t: "status"; status: VoiceServerStatus; turnId: number }
+  | { t: "transcript"; role: "user" | "assistant"; text: string; turnId: number }
+  | { t: "result"; kind: "answer" | "clarify"; text: string; turnId: number }
+  | { t: "ui_action"; action: VoiceUiAction; turnId: number }
+  | { t: "turn_complete"; turnId: number }
+  | { t: "error"; code: VoiceErrorCode; turnId: number };
+
+function boundedTurnId(v: unknown): number | null {
+  if (!Number.isFinite(v)) return null;
+  const n = Math.floor(v as number);
+  if (n < 0) return null;
+  return n;
+}
+
+/**
+ * Validate an untrusted GATEWAY→browser control frame into the closed union, or
+ * null. Fail closed on unknown `t`, missing/mis-typed fields, over-long text, a
+ * bad turn id, or a UI action the SB-01 validator rejects. Only declared fields
+ * are ever carried. Byte-size is enforced separately by the socket layer.
+ */
+export function validateServerControl(x: unknown): VoiceServerControl | null {
+  if (!x || typeof x !== "object") return null;
+  const m = x as Record<string, unknown>;
+  const turnId = boundedTurnId(m.turnId);
+  if (turnId === null) return null;
+  switch (m.t) {
+    case "status": {
+      if (!isServerStatus(m.status)) return null;
+      return { t: "status", status: m.status, turnId };
+    }
+    case "transcript": {
+      if (m.role !== "user" && m.role !== "assistant") return null;
+      if (typeof m.text !== "string") return null;
+      const text = m.text.slice(0, MAX_CONTROL_TRANSCRIPT_LEN);
+      if (!text.trim()) return null;
+      return { t: "transcript", role: m.role, text, turnId };
+    }
+    case "result": {
+      if (m.kind !== "answer" && m.kind !== "clarify") return null;
+      if (typeof m.text !== "string") return null;
+      const text = m.text.slice(0, MAX_RESPONSE_TEXT_LEN);
+      if (!text.trim()) return null;
+      return { t: "result", kind: m.kind, text, turnId };
+    }
+    case "ui_action": {
+      const action = validateUiAction(m.action);
+      if (!action) return null;
+      return { t: "ui_action", action, turnId };
+    }
+    case "turn_complete":
+      return { t: "turn_complete", turnId };
+    case "error": {
+      if (!isVoiceErrorCode(m.code)) return null;
+      return { t: "error", code: m.code, turnId };
+    }
+    default:
+      return null;
+  }
+}
+
+/** Serialize + size-guard a client control frame (fail closed if oversized). */
+export function encodeClientControl(msg: VoiceClientControl): string | null {
+  const validated = validateClientControl(msg);
+  if (!validated) return null;
+  const s = JSON.stringify(validated);
+  if (typeof s !== "string" || s.length > MAX_CONTROL_FRAME_BYTES) return null;
+  return s;
 }
