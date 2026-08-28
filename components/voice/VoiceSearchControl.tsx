@@ -1,25 +1,43 @@
 "use client";
 // ─────────────────────────────────────────────────────────────────────────
-// StayBid Voice AI — VOICE-AI-SB-01 — isolated /hotels UI seam.
+// StayBid Voice AI — VOICE-AI-SB-02 — isolated /hotels Voice container.
 //
-// This packet builds the INTEGRATION SEAM ONLY. There is NO microphone, NO STT,
-// NO model, NO TTS, NO provider here — those are future packets. The control:
-//   • is DISABLED by default and mounts nothing unless NEXT_PUBLIC_VOICE_AI_BETA
-//     === "1" (fail closed) — so the normal /hotels search is untouched;
-//   • owns a per-session hotel-id allowlist + turn foundation (createVoiceSession);
-//   • wires the typed dispatchVoiceAction() to the page's OWN setters + router.
+// FAIL-CLOSED FLAG (UNCHANGED from SB-01): this component renders NOTHING at all
+// unless NEXT_PUBLIC_VOICE_AI_BETA === "1" (exact string). With the flag off the
+// normal /hotels search is completely untouched — no session, no mic, no work.
 //
-// It is mounted ONLY on /hotels (never globally in app/layout.tsx). It forwards
-// NO customer auth token into any Voice handler (catalogue reads are anonymous).
+// When enabled it:
+//   • owns the per-session hotel-id ALLOWLIST + turn foundation (createVoiceSession);
+//   • seeds the allowlist with the bounded (≤24) currently-visible hotel ids;
+//   • builds the typed SB-01 dispatchVoiceAction() over the page's OWN setters +
+//     router (OPEN_HOTEL allowlisted, PREPARE_BID_DRAFT local-only, no write path);
+//   • mounts the SB-02 stateful VoicePanel (mic/state-machine/transcript/response/
+//     text-fallback). SB-02 wires NO STT/LLM/TTS provider.
+//
+// Mounted ONLY on /hotels (never globally). Forwards NO customer auth token into
+// any Voice handler (catalogue reads are anonymous).
 // ─────────────────────────────────────────────────────────────────────────
 import { useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   createVoiceSession,
   makeVoiceActionDispatcher,
   isVoiceBetaEnabled,
+  isValidHotelId,
+  MAX_VISIBLE_HOTEL_IDS,
   type VoiceSession,
   type RouterShim,
 } from "@/lib/voice";
+
+interface LocalBidDraft {
+  hotelId: string;
+  pricePerNight: number | null;
+}
+
+// Client-only: the Voice panel owns the microphone + state machine, which only
+// exist in the browser. `ssr:false` keeps it out of SSR (and out of any isolated
+// module-level require of this container), so it loads only after hydration.
+const VoicePanel = dynamic(() => import("./VoicePanel"), { ssr: false });
 
 export interface VoiceSearchControlProps {
   setCity: (v: string) => void;
@@ -29,6 +47,8 @@ export interface VoiceSearchControlProps {
   setSelectedStars: (v: Set<number>) => void;
   setFilterOpen?: (v: boolean) => void;
   router: RouterShim;
+  /** The hotel ids currently visible on the page (bounded to ≤24 here). */
+  visibleHotelIds?: string[];
 }
 
 export default function VoiceSearchControl(props: VoiceSearchControlProps) {
@@ -38,7 +58,17 @@ export default function VoiceSearchControl(props: VoiceSearchControlProps) {
   const sessionRef = useRef<VoiceSession | null>(null);
   if (enabled && !sessionRef.current) sessionRef.current = createVoiceSession();
 
-  const [draftNote, setDraftNote] = useState<string | null>(null);
+  // LOCAL-ONLY bid draft preview (REREV-05): in-memory, never network/persisted.
+  // Populated ONLY by the dispatcher AFTER it validates + allowlist-checks the
+  // action, so a rejected draft can never populate the preview.
+  const [draft, setDraft] = useState<LocalBidDraft | null>(null);
+
+  // Bound + validate the visible ids ONCE per identity change.
+  const visibleHotelIds = useMemo(() => {
+    const raw = Array.isArray(props.visibleHotelIds) ? props.visibleHotelIds : [];
+    return Array.from(new Set(raw.filter(isValidHotelId) as string[])).slice(0, MAX_VISIBLE_HOTEL_IDS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, (props.visibleHotelIds || []).join(",")]);
 
   const dispatch = useMemo(() => {
     if (!enabled || !sessionRef.current) return null;
@@ -52,60 +82,30 @@ export default function VoiceSearchControl(props: VoiceSearchControlProps) {
       setFilterOpen: props.setFilterOpen,
       router: props.router,
       isHotelAllowlisted: (id: string) => session.hasHotelId(id),
-      onPrepareBidDraft: (draft) =>
-        // LOCAL preview state only — nothing is submitted, paid, or persisted.
-        setDraftNote(`Draft ready: ${draft.hotelId}${draft.pricePerNight != null ? ` @ ₹${draft.pricePerNight}` : ""}`),
+      // PREPARE_BID_DRAFT stays local-only — the dispatcher hands us the already
+      // validated + allowlist-checked draft; we only mirror it into preview state.
+      // NO network, NO persistence, NO submission.
+      onPrepareBidDraft: (d) => setDraft({ hotelId: d.hotelId, pricePerNight: d.pricePerNight }),
     });
-    // props are stable setters from the page; intentionally recompute only on enable.
+    // props are stable setters from the page; recompute only on enable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
-  if (!enabled || !dispatch) return null;
+  if (!enabled || !dispatch || !sessionRef.current) return null;
 
   return (
     <div className="sb-voice-seam" aria-label="Voice search (beta)">
-      <button
-        type="button"
-        className="sb-voice-seam-btn"
-        // No mic/STT in this packet — the seam routes a typed action through the
-        // same validated dispatcher a future provider will use.
-        onClick={() => dispatch({ type: "FOCUS_SEARCH" })}
-        title="Voice search (beta)"
-      >
-        <span aria-hidden>🎙️</span>
-        <span>Voice search</span>
-        <span className="sb-voice-seam-tag">beta</span>
-      </button>
-      {draftNote && <span className="sb-voice-seam-note">{draftNote}</span>}
+      <VoicePanel
+        session={sessionRef.current}
+        dispatch={dispatch}
+        visibleHotelIds={visibleHotelIds}
+        draft={draft}
+        onClearDraft={() => setDraft(null)}
+      />
       <style jsx>{`
         .sb-voice-seam {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .sb-voice-seam-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          min-height: 40px;
-          padding: 0 14px;
-          border-radius: 999px;
-          border: 1px solid rgba(0, 0, 0, 0.12);
-          background: #fff;
-          font-size: 0.86rem;
-          font-weight: 600;
-          cursor: pointer;
-        }
-        .sb-voice-seam-tag {
-          font-size: 0.62rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          color: #b26a00;
-        }
-        .sb-voice-seam-note {
-          font-size: 0.72rem;
-          color: rgba(0, 0, 0, 0.6);
+          display: block;
+          margin-top: 8px;
         }
       `}</style>
     </div>

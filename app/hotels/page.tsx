@@ -774,6 +774,7 @@ function HotelList() {
               setSelectedStars={setSelectedStars}
               setFilterOpen={setFilterOpen}
               router={router}
+              visibleHotelIds={displayHotels.slice(0, 24).map((h: any) => String(h.id))}
             />
 
             {/* Filter popover — sort options + star toggles */}

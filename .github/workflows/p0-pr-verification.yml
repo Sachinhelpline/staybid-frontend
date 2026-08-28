@@ -52,5 +52,11 @@ jobs:
       - name: Run security regression suite
         run: npm run test:security
 
+      - name: Run Voice AI foundation suite (SB-01)
+        run: node tests/voice/voice-ai.test.js
+
+      - name: Run Voice AI interaction-shell suite (SB-02)
+        run: node tests/voice/voice-ux.test.js
+
       - name: Run concurrency regression suite
         run: npm run test:concurrency
