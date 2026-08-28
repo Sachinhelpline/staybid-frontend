@@ -16,3 +16,10 @@ export * from "./ux-machine";
 export * from "./audio-capture";
 export * from "./transport-contracts";
 export * from "./interaction";
+// SB-04 additions (additive — the dormant realtime-provider + gateway seam:
+// provider abstraction + broker helpers, browser gateway control client). No
+// provider is wired; all fail closed by default. The native WebRTC media client
+// module is imported directly by the panel, NOT re-exported here, so this barrel
+// stays free of provider naming.
+export * from "./provider";
+export * from "./gateway-client";

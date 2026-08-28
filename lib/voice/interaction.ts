@@ -247,3 +247,180 @@ export function createVoiceInteraction(deps: InteractionDeps) {
 }
 
 export type VoiceInteraction = ReturnType<typeof createVoiceInteraction>;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VOICE-AI-SB-04 — gateway-driven turn router.
+//
+// SB-04 moves the authoritative reason→act loop to the Railway gateway sideband;
+// the browser receives only bounded, validated VoiceServerControl frames over the
+// control socket. This router applies those frames to the /hotels UI THROUGH the
+// SB-01 dispatcher, while PRESERVING the SB-02 turn-ownership + stale-rejection
+// guarantees:
+//   • each spoken turn is an SB-01 session turn (monotonic id + generation);
+//   • a `ui_action` frame is re-validated by the SB-01 dispatcher AND dropped
+//     unless it belongs to the CURRENT (non-stale) turn/generation — a provider
+//     result that resolves after cancel/reset can never mutate the UI;
+//   • cancel()/reset() bump the generation so every later frame is stale.
+//
+// The router NEVER trusts a frame as authority: the dispatcher's allowlist +
+// closed-union re-validation is the gate, exactly as in SB-02.
+// ═══════════════════════════════════════════════════════════════════════════
+import { type VoiceServerControl, type VoiceServerStatus } from "./transport-contracts";
+
+export interface GatewayRouterDeps {
+  session: VoiceSession;
+  dispatch: (candidate: unknown) => DispatchOutcome;
+  hooks?: {
+    onStatus?: (status: VoiceServerStatus, turnId: number) => void;
+    onTranscript?: (line: { role: "user" | "assistant"; text: string }, turnId: number) => void;
+    onResult?: (r: { kind: "answer" | "clarify"; text: string }, turnId: number) => void;
+    onAction?: (outcome: DispatchOutcome, turnId: number) => void;
+    onTurnComplete?: (turnId: number) => void;
+    onError?: (code: VoiceErrorCode, turnId: number) => void;
+  };
+}
+
+export type GatewayFrameOutcome =
+  | { handled: true; kind: VoiceServerControl["t"]; dispatch?: DispatchOutcome }
+  | { handled: false; reason: "stale" | "no_active_turn" };
+
+export function createGatewayTurnRouter(deps: GatewayRouterDeps) {
+  // The GATEWAY assigns authoritative monotonic turn ids; the browser only TRACKS
+  // them. A frame is fresh iff its turnId is the current-or-newer turn AND that
+  // turn has not been cancelled/reset. cancel()/reset() raise a `cancelledThrough`
+  // watermark so every frame for the cancelled turn (and older) is stale — a
+  // provider result that resolves after cancel can never mutate the UI.
+  let generation = 0;
+  let currentTurnId = -1;
+  let cancelledThrough = -1;
+  let started = false; // a spoken turn has begun (guards ui_action before any turn)
+
+  function fresh(turnId: number): boolean {
+    if (turnId <= cancelledThrough) return false; // cancelled/reset turn (or older)
+    if (currentTurnId >= 0 && turnId < currentTurnId) return false; // a superseded older turn
+    return true;
+  }
+  function advance(turnId: number) {
+    if (turnId > currentTurnId) currentTurnId = turnId;
+    started = true;
+  }
+
+  return {
+    currentGeneration: () => generation,
+    activeTurnId: () => currentTurnId,
+
+    /** Mark the intent to speak. The gateway still owns turn numbering; this only
+     *  arms the router so a ui_action arriving before any turn is refused. */
+    beginTurn(): number {
+      started = true;
+      return currentTurnId;
+    },
+
+    /** Apply ONE validated server-control frame. Every turn-scoped state mutation
+     *  (status/transcript/result/ui_action) is dropped when stale; a ui_action is
+     *  re-validated by the SB-01 dispatcher AND ownership-checked BEFORE dispatch. */
+    handleServerControl(msg: VoiceServerControl): GatewayFrameOutcome {
+      switch (msg.t) {
+        case "status":
+          if (!fresh(msg.turnId)) return { handled: false, reason: "stale" };
+          advance(msg.turnId);
+          deps.hooks?.onStatus?.(msg.status, msg.turnId);
+          return { handled: true, kind: "status" };
+        case "transcript":
+          if (!fresh(msg.turnId)) return { handled: false, reason: "stale" };
+          advance(msg.turnId);
+          deps.hooks?.onTranscript?.({ role: msg.role, text: msg.text }, msg.turnId);
+          return { handled: true, kind: "transcript" };
+        case "result":
+          if (!fresh(msg.turnId)) return { handled: false, reason: "stale" };
+          advance(msg.turnId);
+          deps.hooks?.onResult?.({ kind: msg.kind, text: msg.text }, msg.turnId);
+          return { handled: true, kind: "result" };
+        case "ui_action": {
+          if (!started) return { handled: false, reason: "no_active_turn" };
+          if (!fresh(msg.turnId)) return { handled: false, reason: "stale" };
+          advance(msg.turnId);
+          // The SB-01 dispatcher re-validates the action + rechecks the allowlist.
+          const dispatch = deps.dispatch(msg.action);
+          deps.hooks?.onAction?.(dispatch, msg.turnId);
+          return { handled: true, kind: "ui_action", dispatch };
+        }
+        case "turn_complete":
+          // R3 (SB04-R2-REREV-05): a STALE turn_complete must NOT invoke the hook. A
+          // fresh turn_complete surfaces once and then PERMANENTLY SEALS its turn id
+          // (terminal watermark) — a later frame for the same turn can never become
+          // fresh again.
+          if (!fresh(msg.turnId)) return { handled: false, reason: "stale" };
+          advance(msg.turnId);
+          deps.hooks?.onTurnComplete?.(msg.turnId);
+          cancelledThrough = Math.max(cancelledThrough, msg.turnId); // seal
+          return { handled: true, kind: "turn_complete" };
+        case "error":
+          // R3 (REREV-05): a SESSION-terminal error (session_ended) always surfaces —
+          // it invalidates the whole session, not one turn. A TURN-scoped error
+          // (turn_timeout/cost_limit/action_rejected/…) must be FRESH to surface; a
+          // stale turn's error is dropped.
+          if (msg.code === "session_ended") {
+            cancelledThrough = Math.max(cancelledThrough, currentTurnId);
+            deps.hooks?.onError?.(msg.code, msg.turnId);
+            return { handled: true, kind: "error" };
+          }
+          if (!fresh(msg.turnId)) return { handled: false, reason: "stale" };
+          advance(msg.turnId);
+          deps.hooks?.onError?.(msg.code, msg.turnId);
+          cancelledThrough = Math.max(cancelledThrough, msg.turnId); // an errored turn is terminal
+          return { handled: true, kind: "error" };
+        default:
+          return { handled: false, reason: "stale" };
+      }
+    },
+
+    /** Cancel the current turn — every frame for it (and older) becomes stale. */
+    cancel() {
+      generation += 1;
+      cancelledThrough = Math.max(cancelledThrough, currentTurnId);
+      started = false;
+    },
+
+    /** Reset — cancel + clear the SB-01 session allowlist/turn. */
+    reset() {
+      generation += 1;
+      cancelledThrough = Math.max(cancelledThrough, currentTurnId);
+      started = false;
+      deps.session.reset();
+    },
+  };
+}
+
+export type GatewayTurnRouter = ReturnType<typeof createGatewayTurnRouter>;
+
+// ─── R3 (SB04-R2-REREV-09/11): the component attempt-ownership state machine ──
+// The EXACT ownership logic VoicePanel's realtime path runs — extracted here so a
+// plain Node test can drive the same code the component uses (no React test dep).
+// One attempt is current at a time; `begin()` supersedes every older attempt, and
+// each async stage re-checks `isCurrent()` before mutating UI or tearing down a
+// NEWER attempt's resources. `invalidate()` (Stop/unmount/teardown) makes every
+// outstanding attempt stale without starting a new one.
+export function createAttemptOwner() {
+  let generation = 0;
+  return {
+    /** Start a NEW attempt: supersedes all prior attempts; returns its handle. */
+    begin() {
+      generation += 1;
+      const my = generation;
+      return {
+        id: my,
+        /** True while THIS attempt is still the current one. */
+        isCurrent: () => generation === my,
+        /** True when a newer attempt / an invalidate has superseded this one. */
+        superseded: () => generation !== my,
+      };
+    },
+    /** Invalidate every outstanding attempt (Stop / teardown / unmount). */
+    invalidate() {
+      generation += 1;
+    },
+    current: () => generation,
+  };
+}
+export type AttemptOwner = ReturnType<typeof createAttemptOwner>;

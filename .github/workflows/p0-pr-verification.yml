@@ -58,5 +58,20 @@ jobs:
       - name: Run Voice AI interaction-shell suite (SB-02)
         run: node tests/voice/voice-ux.test.js
 
+      - name: Type-check Voice gateway (SB-04)
+        run: npx tsc -p server/voice-gateway/tsconfig.json --noEmit
+
+      - name: Run Voice AI provider/client suite (SB-04)
+        run: node tests/voice/voice-provider.test.js
+
+      - name: Run Voice AI session-broker suite (SB-04)
+        run: node tests/voice/voice-session-broker.test.js
+
+      - name: Run Voice AI gateway suite (SB-04)
+        run: node tests/voice/voice-gateway.test.js
+
+      - name: Run Voice AI gateway security suite (SB-04)
+        run: node tests/voice/voice-gateway-security.test.js
+
       - name: Run concurrency regression suite
         run: npm run test:concurrency

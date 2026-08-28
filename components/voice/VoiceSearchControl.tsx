@@ -101,6 +101,17 @@ export default function VoiceSearchControl(props: VoiceSearchControlProps) {
         visibleHotelIds={visibleHotelIds}
         draft={draft}
         onClearDraft={() => setDraft(null)}
+        // SB-04 R2 (SB04-R1-REREV-09): the interim NEXT_PUBLIC_VOICE_AI_REALTIME flag
+        // is REMOVED. The realtime + gateway path is structurally reachable whenever
+        // the outer BETA gate is on, but stays fully DORMANT and fails closed at the
+        // SERVER: the same-origin /api/voice/session broker returns 503 unless the
+        // gateway URL + signing/issuer/audience env are all configured, and the
+        // gateway itself refuses every session unless VOICE_AI_RUNTIME_ENABLED === "1"
+        // with valid provider/security config. With nothing configured (today) the
+        // broker 503s and VoicePanel uses the SB-02 text/mic path. So the effective
+        // gate is: BETA (UI) AND RUNTIME_ENABLED + valid config (server) — no public
+        // client flag can activate it.
+        realtime
       />
       <style jsx>{`
         .sb-voice-seam {
