@@ -113,10 +113,19 @@ const RATING_DATA_INCOMPLETE =
 const FACT_UNAVAILABLE =
   "Is hotel ke current data mein ye information available nahi hai.";
 
-// ---- known destinations (keyword match, then canonicalCity-gated) -----------
-const KNOWN_CITIES = [
-  "dhanaulti", "mussoorie", "dehradun", "rishikesh", "manali", "shimla", "nainital",
-] as const;
+// ---- known destinations (bounded alias match → canonical English city) ------
+// Each entry maps real-device SpeechRecognition spelling/script variants (roman
+// misspellings + Devanagari) to ONE canonical English city that the hotel API
+// understands. Bounded + deterministic — NOT open NLP.
+const CITY_ALIASES: Array<{ re: RegExp; canon: string }> = [
+  { re: /dhanaulti|dhanolti|dhanoli|dhanolty|dhanaulty|dhanauli|धनौल्टी|धनौली|धनोल्टी|धनौलती/i, canon: "dhanaulti" },
+  { re: /mussoorie|masoori|mussorie|मसूरी/i, canon: "mussoorie" },
+  { re: /dehradun|देहरादून/i, canon: "dehradun" },
+  { re: /rishikesh|hrishikesh|ऋषिकेश|रिशिकेश/i, canon: "rishikesh" },
+  { re: /manali|मनाली/i, canon: "manali" },
+  { re: /shimla|शिमला/i, canon: "shimla" },
+  { re: /nainital|नैनीताल/i, canon: "nainital" },
+];
 
 // amenity keywords → canonical amenity label used for filtering
 const AMENITY_KEYWORDS: Array<{ re: RegExp; label: string }> = [
@@ -130,9 +139,8 @@ const AMENITY_KEYWORDS: Array<{ re: RegExp; label: string }> = [
 ];
 
 function findCity(text: string): string | null {
-  const lower = text.toLowerCase();
-  for (const c of KNOWN_CITIES) {
-    if (lower.includes(c)) return canonicalCity(c);
+  for (const c of CITY_ALIASES) {
+    if (c.re.test(text)) return canonicalCity(c.canon);
   }
   return null;
 }
@@ -193,7 +201,15 @@ function findBudget(text: string): number | null {
 }
 
 function hasBudgetCue(text: string): boolean {
-  return /\b(under|below|budget|se ?kam|kam|less than|upto|up to|<=?|within|andar|ke andar)\b/i.test(text);
+  // explicit cue words (English + Hinglish), incl. "tak" (= up to), "ke liye" (= for)
+  const hasWord = /\b(under|below|budget|se ?kam|kam|less than|upto|up to|<=?|within|andar|ke andar|tak|ke liye)\b/i.test(text);
+  // natural "<amount> wala" forms: "5000 wala", "5k wala", "paanch hazaar wala"
+  const hasWala =
+    /\d[\d,]*\s*k?\s*(wala|waala|wale|walaa)\b/i.test(text) ||
+    /\b(hazaar|hazar|thousand|sau|hundred|lakh|lac)\s+(wala|waala|wale)\b/i.test(text);
+  if (!hasWord && !hasWala) return false;
+  // a cue only counts as a budget when an actual amount is parseable
+  return findBudget(text) != null;
 }
 
 // ---- intent model -----------------------------------------------------------
