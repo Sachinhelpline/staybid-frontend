@@ -83,6 +83,51 @@ export function createTurnGate(): TurnGate {
   };
 }
 
+// ---- DEMO-REV-06: mic listening lifecycle (pure, shared with the page) ------
+// IDLE → LISTENING → PROCESSING → SPEAKING → IDLE. The page wires real browser
+// SpeechRecognition / speechSynthesis / timers to these pure primitives; the
+// test drives the SAME primitives with fakes so the contract is proven, not
+// merely mirrored.
+export type MicPhase = "idle" | "listening" | "processing" | "speaking";
+
+// Hard listening cap — recognition is force-stopped after this long (DEMO-REV-06 D).
+export const MIC_CAP_MS = 7000;
+
+// Canned replies (no controller turn, no write). D: capped with no usable speech.
+export const MIC_NO_SPEECH_REPLY =
+  "Main clearly sun nahi paya. Ek baar phir boliye.";
+// B: manual stop with no usable transcript → a concise retry prompt.
+export const MIC_RETRY_REPLY =
+  "Kuch sunai nahi diya. Mic tap karke dobara boliye.";
+
+/** Button label for the current phase (single source for the UI + tests). PURE. */
+export function micButtonLabel(phase: MicPhase): string {
+  switch (phase) {
+    case "listening": return "Listening… Tap to stop";
+    case "processing": return "Processing…";
+    case "speaking": return "🔊 Bol raha hoon…";
+    default: return "🎤 Tap to speak";
+  }
+}
+
+/**
+ * DEMO-REV-06 (F): exactly ONE outcome per mic interaction. result+onend,
+ * manual-stop+onend, and timeout+onend all race to finalize a single turn;
+ * only the FIRST claim wins, so no interaction ever produces two controller
+ * turns (or a turn AND a retry). A fresh latch is created per interaction. PURE.
+ */
+export interface OnceLatch {
+  claim(): boolean; // true only the first time; false forever after
+  spent(): boolean;
+}
+export function createOnceLatch(): OnceLatch {
+  let used = false;
+  return {
+    claim() { if (used) return false; used = true; return true; },
+    spent() { return used; },
+  };
+}
+
 // ---- injected read-only data layer -----------------------------------------
 export interface DemoDeps {
   // Reads the existing /api/hotels?city=&q= route and returns NORMALIZED hotels.
@@ -97,6 +142,10 @@ export interface DemoTurn {
   reply: string;
   cards: NormalizedHotel[]; // hotel result cards to render (the displayed set)
   detail: NormalizedHotelDetails | null;
+  // DEMO-REV-05: when set, the UI must navigate to /hotels/<openHotelId>. It is
+  // ALWAYS a validated id drawn from the AUTHORITATIVE displayed set (never an
+  // arbitrary route/id from transcript/model/user). Defaults null (no navigation).
+  openHotelId?: string | null;
 }
 
 // ---- static copy (English + light Hinglish, demo-safe) ----------------------
@@ -113,10 +162,19 @@ const RATING_DATA_INCOMPLETE =
 const FACT_UNAVAILABLE =
   "Is hotel ke current data mein ye information available nahi hai.";
 
-// ---- known destinations (keyword match, then canonicalCity-gated) -----------
-const KNOWN_CITIES = [
-  "dhanaulti", "mussoorie", "dehradun", "rishikesh", "manali", "shimla", "nainital",
-] as const;
+// ---- known destinations (bounded alias match → canonical English city) ------
+// Each entry maps real-device SpeechRecognition spelling/script variants (roman
+// misspellings + Devanagari) to ONE canonical English city that the hotel API
+// understands. Bounded + deterministic — NOT open NLP.
+const CITY_ALIASES: Array<{ re: RegExp; canon: string }> = [
+  { re: /dhanaulti|dhanolti|dhanoli|dhanolty|dhanaulty|dhanauli|धनौल्टी|धनौली|धनोल्टी|धनौलती/i, canon: "dhanaulti" },
+  { re: /mussoorie|masoori|mussorie|मसूरी/i, canon: "mussoorie" },
+  { re: /dehradun|देहरादून/i, canon: "dehradun" },
+  { re: /rishikesh|hrishikesh|ऋषिकेश|रिशिकेश/i, canon: "rishikesh" },
+  { re: /manali|मनाली/i, canon: "manali" },
+  { re: /shimla|शिमला/i, canon: "shimla" },
+  { re: /nainital|नैनीताल/i, canon: "nainital" },
+];
 
 // amenity keywords → canonical amenity label used for filtering
 const AMENITY_KEYWORDS: Array<{ re: RegExp; label: string }> = [
@@ -130,9 +188,8 @@ const AMENITY_KEYWORDS: Array<{ re: RegExp; label: string }> = [
 ];
 
 function findCity(text: string): string | null {
-  const lower = text.toLowerCase();
-  for (const c of KNOWN_CITIES) {
-    if (lower.includes(c)) return canonicalCity(c);
+  for (const c of CITY_ALIASES) {
+    if (c.re.test(text)) return canonicalCity(c.canon);
   }
   return null;
 }
@@ -193,7 +250,15 @@ function findBudget(text: string): number | null {
 }
 
 function hasBudgetCue(text: string): boolean {
-  return /\b(under|below|budget|se ?kam|kam|less than|upto|up to|<=?|within|andar|ke andar)\b/i.test(text);
+  // explicit cue words (English + Hinglish), incl. "tak" (= up to), "ke liye" (= for)
+  const hasWord = /\b(under|below|budget|se ?kam|kam|less than|upto|up to|<=?|within|andar|ke andar|tak|ke liye)\b/i.test(text);
+  // natural "<amount> wala" forms: "5000 wala", "5k wala", "paanch hazaar wala"
+  const hasWala =
+    /\d[\d,]*\s*k?\s*(wala|waala|wale|walaa)\b/i.test(text) ||
+    /\b(hazaar|hazar|thousand|sau|hundred|lakh|lac)\s+(wala|waala|wale)\b/i.test(text);
+  if (!hasWord && !hasWala) return false;
+  // a cue only counts as a budget when an actual amount is parseable
+  return findBudget(text) != null;
 }
 
 // ---- intent model -----------------------------------------------------------
@@ -201,6 +266,7 @@ export type DemoIntent =
   | { kind: "search"; city: string | null; budget: number | null; amenity: string | null }
   | { kind: "filter"; budget: number | null; amenity: string | null } // narrow displayed set
   | { kind: "details"; ref: string | null }
+  | { kind: "open"; ref: string | null } // DEMO-REV-05: navigate to a displayed hotel
   | { kind: "compare" }
   | { kind: "followup"; topic: "breakfast" | "rating" | "location" }
   | { kind: "booking_decline" }
@@ -230,6 +296,25 @@ export function parseIntent(raw: string): DemoIntent {
   // 2) compare / top two
   if (/\b(compare|comparison|dono|top ?2|top two|vs|versus|behtar kaun)\b/i.test(text)) {
     return { kind: "compare" };
+  }
+
+  // 2.5) OPEN / navigate to a displayed hotel — DEMO-REV-05 (read-only navigation).
+  //   Fires on an explicit open verb (kholo / khol do / khol / open [karo]) OR on a
+  //   "show/dikhao ... hotel <ordinal>" phrasing. The ordinal (if any) is resolved
+  //   ONLY against the current displayed set inside runTurn; ref=null → the currently
+  //   selected/first displayed hotel. Placed BEFORE details so "pehla hotel kholo"
+  //   navigates rather than just describing.
+  const hasOpenVerb = /\b(kholo|khol\s?do|khol|open)\b/i.test(text);
+  // An explicit ordinal CUE — ordinal words or "#N" / "number N" — NOT the loose
+  // bare-number fallback (which would mis-read a budget like "5000" as an ordinal).
+  const hasExplicitOrdinal =
+    /\b(pehla|pehle|first|dusra|doosra|second|teesra|third)\b/i.test(text) ||
+    /#\s?\d+|number\s+\d+/i.test(text);
+  const wantsOpen =
+    hasOpenVerb ||
+    (/\b(show|dikhao|dikha do)\b/i.test(text) && /\bhotel\b/i.test(text) && hasExplicitOrdinal);
+  if (wantsOpen) {
+    return { kind: "open", ref: extractOrdinal(text) };
   }
 
   const city = findCity(text);
@@ -332,7 +417,7 @@ export function pickTopTwo(hotels: NormalizedHotel[]): NormalizedHotel[] {
 // ---- main turn --------------------------------------------------------------
 export async function runTurn(state: DemoState, raw: string, deps: DemoDeps): Promise<DemoTurn> {
   const intent = parseIntent(raw);
-  const base: DemoTurn = { state, reply: "", cards: [], detail: null };
+  const base: DemoTurn = { state, reply: "", cards: [], detail: null, openHotelId: null };
 
   switch (intent.kind) {
     case "booking_decline":
@@ -397,6 +482,42 @@ export async function runTurn(state: DemoState, raw: string, deps: DemoDeps): Pr
         `From ${money(d.minPrice)}/night\n` +
         `Amenities: ${am}`;
       return { state: next, reply, cards: [], detail: d };
+    }
+
+    case "open": {
+      // DEMO-REV-05 — navigate ONLY to a validated id from the AUTHORITATIVE
+      // displayed set. Never accepts an arbitrary route/id from user/model text.
+      if (state.displayed.length === 0) return { ...base, reply: NO_RESULTS_YET };
+      const n = state.displayed.length;
+      let idx: number;
+      if (intent.ref != null) {
+        idx = Math.max(1, parseInt(intent.ref, 10)) - 1;
+      } else if (state.selectedId) {
+        const sIdx = state.displayed.findIndex((h) => h.id === state.selectedId);
+        idx = sIdx >= 0 ? sIdx : 0;
+      } else {
+        idx = 0;
+      }
+      const target = state.displayed[idx];
+      if (!target) {
+        // Requested ordinal does not exist → respond naturally, DO NOT navigate.
+        const nWord = n === 1 ? "ek" : String(n);
+        const verb = n === 1 ? "hai" : "hain";
+        const tail = n === 1
+          ? "Aap isi hotel ko open kar sakte hain."
+          : `Aap 1 se ${n} tak koi bhi hotel open kar sakte hain.`;
+        return { ...base, reply: `Abhi sirf ${nWord} hotel result ${verb}. ${tail}` };
+      }
+      // Validate the id BEFORE navigation (defense in depth).
+      if (!isValidHotelId(target.id)) return { ...base, reply: NO_RESULTS_YET };
+      const next: DemoState = { ...state, selectedId: target.id };
+      return {
+        state: next,
+        reply: `${target.name} open kar raha hoon…`,
+        cards: [],
+        detail: null,
+        openHotelId: target.id,
+      };
     }
 
     case "compare": {
