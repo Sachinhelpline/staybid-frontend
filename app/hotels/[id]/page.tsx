@@ -79,6 +79,13 @@ import UpdateBudgetInline from "@/components/UpdateBudgetInline";
 // on the same hotel. Anti-friction guard so customers can't insta-rebid
 // at lower amounts the moment one resolves.
 import { computeBidCooldown, cooldownReasonLabel, formatCooldownRemaining } from "@/lib/bid-cooldown";
+// StayBid Live AI (LIVE-AI-01A) — hotel-detail page bridge. Registers the
+// current VALIDATED hotel's bounded semantic context (route id + normalized
+// current id, load state, rooms|about section, safe summary + room-type
+// summaries + tri-state breakfast/parking facts) with the global session and
+// exposes ONLY the existing rooms|about tab as a UI_LOCAL action — no booking/
+// bid/payment/write handler. Renders nothing; fail-closed when the flag is off.
+import HotelDetailPageBridge from "@/components/live-ai/HotelDetailPageBridge";
 // v182 — Phase 1 hotel-page bid-lock completeness: live 15-min timer
 // inside the locked-room status banner so the customer sees how long
 // they have to confirm payment before auto-cancel kicks in.
@@ -2575,6 +2582,20 @@ export default function HotelDetail() {
 
   return (
     <div className="hx-shell">
+      {/* LIVE-AI-01A — hotel-detail Live-AI bridge. Registers ONLY the current
+          validated hotel's bounded semantic context (route id + normalized
+          current id, rooms|about section, safe summary + room-type summaries +
+          tri-state breakfast/parking facts) and the existing rooms|about tab as
+          a UI_LOCAL action. No booking/bid/payment/write handler is exposed.
+          Renders nothing; fully fail-closed when the feature flag is off. */}
+      <HotelDetailPageBridge
+        routeId={String(id ?? "")}
+        hotel={hotel}
+        loading={loading}
+        loadErr={loadErr}
+        tab={tab}
+        setTab={setTab}
+      />
       {/* v500 — dark-mode adaptive ambient: the near-black canvas softly reflects
           this hotel's own photo colours. Renders nothing in light mode. */}
       <AmbientBackdrop image={Array.isArray(hotel?.images) ? hotel.images[0] : null} />

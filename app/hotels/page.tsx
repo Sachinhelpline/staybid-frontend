@@ -8,10 +8,16 @@ import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelSco
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import StaySearchSheet from "@/components/hotel/StaySearchSheet";
-// Voice AI (VOICE-AI-SB-01) — isolated /hotels seam. Disabled by default
-// (NEXT_PUBLIC_VOICE_AI_BETA === "1"); renders null otherwise, so the normal
-// search path is untouched. No mic/STT/model/TTS in this packet.
-import VoiceSearchControl from "@/components/voice/VoiceSearchControl";
+// StayBid Live AI (LIVE-AI-01A) — the /hotels page bridge. Replaces the SB-02
+// VoiceSearchControl production mount. It registers this page's bounded semantic
+// context + the existing setters with the global Live-AI session (a route-aware
+// companion), renders NOTHING, and is fully fail-closed when the feature flag is
+// off. No mic/STT/model/TTS in this packet; the orb is mounted globally in the
+// layout, not here. No duplicate hotel-result UI is introduced.
+import HotelsPageBridge from "@/components/live-ai/HotelsPageBridge";
+// LIVE-AI-01A REV-12 — the shared, testable catalogue request-coordinator
+// primitive (the tests import + execute the same functions).
+import { nextRequestId, catalogueResponseUpdate } from "@/lib/live-ai/contracts";
 // v141 — Phase-5 explore tour. 4 steps: search → city filter →
 // sort+stars → first hotel card.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
@@ -154,6 +160,15 @@ function HotelList() {
   const [hydrated, setHydrated] = useState(false);
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
   const [recentIds, setRecentIds] = useState<string[]>([]);
+  // LIVE-AI-01A REV-02 — request-identity-safe catalogue fetch. Each fetch gets
+  // a monotonic id; ONLY the current winning request may publish hotels /
+  // transition loading / stamp the "resolved" receipt (what displayHotels
+  // actually correspond to). A late response for an older city/query can never
+  // overwrite newer results or mark a newer request ready.
+  const reqIdRef = useRef(0);
+  const [resolvedCity, setResolvedCity] = useState("");
+  const [resolvedQuery, setResolvedQuery] = useState("");
+  const [resolvedStatus, setResolvedStatus] = useState<"ready" | "error">("ready");
 
   // v159.8 — Multi-level search sheet state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -225,6 +240,15 @@ function HotelList() {
   }, [search]);
 
   const fetchHotels = useCallback((params: Record<string, string>) => {
+    // REV-02 / REV-12 — claim a unique request id via the SHARED production
+    // coordinator primitive (lib/live-ai/contracts). Only the current (latest)
+    // request may publish results / a resolved receipt / an error / clear the
+    // loading flag; a superseded late response publishes nothing. The tests
+    // import + execute the SAME primitive (no duplicated race algorithm).
+    const myId = nextRequestId(reqIdRef.current);
+    reqIdRef.current = myId;
+    const reqCity = params.city || "";
+    const reqQuery = params.q || "";
     setLoading(true);
     setApiError("");
     Promise.all([
@@ -262,14 +286,30 @@ function HotelList() {
           flashDeals: dealsByHotel[h.id] || [],
           competitor_min: compMins[i],
         }));
-        setHotels(enriched);
-        setTotal(hotelsRes.total || enriched.length);
+        // Only the current winning request may publish (production primitive).
+        const u = catalogueResponseUpdate(myId, reqIdRef.current, "success");
+        if (u.publishResults) {
+          setHotels(enriched);
+          setTotal(hotelsRes.total || enriched.length);
+        }
+        if (u.publishReceipt) {
+          setResolvedCity(reqCity);
+          setResolvedQuery(reqQuery);
+          setResolvedStatus("ready");
+        }
+        if (u.clearLoading) setLoading(false);
       })
       .catch((e) => {
-        setHotels([]);
-        setApiError(e.message || "We couldn't load hotels right now. Please try again in a moment.");
-      })
-      .finally(() => setLoading(false));
+        const u = catalogueResponseUpdate(myId, reqIdRef.current, "error");
+        if (u.setError) {
+          setHotels([]);
+          setApiError(e.message || "We couldn't load hotels right now. Please try again in a moment.");
+          setResolvedCity(reqCity);
+          setResolvedQuery(reqQuery);
+          setResolvedStatus("error");
+        }
+        if (u.clearLoading) setLoading(false);
+      });
   }, []);
 
   // Hydrate city from sb_city + listen for globe-picker changes.
@@ -763,18 +803,41 @@ function HotelList() {
               </button>
             </div>
 
-            {/* Voice AI seam (VOICE-AI-SB-01) — fail-closed; renders null unless
-                NEXT_PUBLIC_VOICE_AI_BETA === "1". Wired to this page's own
-                setters + router; no global mount, no mic/model in this packet. */}
-            <VoiceSearchControl
+            {/* Live AI seam (LIVE-AI-01A) — fail-closed; a no-op that renders
+                NOTHING unless NEXT_PUBLIC_VOICE_AI_BETA === "1". Registers this
+                page's bounded semantic context (destination/query/dates/guests/
+                max-price/parking/sort/stars + a resolved catalogue receipt +
+                the ≤24 current visible summaries in exact displayHotels order)
+                and the existing setters with the global session. It never
+                duplicates displayHotels or adds AI result UI; the floating orb
+                is mounted once in the layout. The `loading`/`city`/
+                `debouncedSearch` props are the catalogue-resolution receipt
+                metadata that prevents stale/unresolved explanations. */}
+            <HotelsPageBridge
+              displayHotels={displayHotels}
+              city={city}
+              query={debouncedSearch}
+              checkIn={searchCheckIn}
+              checkOut={searchCheckOut}
+              guests={totalGuests}
+              maxPrice={priceMax}
+              sort={sortBy}
+              stars={Array.from(selectedStars)}
+              amenities={Array.from(amenitySel)}
+              amenityOpts={amenityOpts}
+              loading={loading}
+              error={apiError}
+              resolvedCity={resolvedCity}
+              resolvedQuery={resolvedQuery}
+              resolvedStatus={resolvedStatus}
+              searchUrlParams={searchUrlParams}
               setCity={setCity}
               setSearch={setSearch}
-              setSearchOpen={setSearchOpen}
+              setPriceMax={setPriceMax}
               setSortBy={setSortBy}
               setSelectedStars={setSelectedStars}
-              setFilterOpen={setFilterOpen}
+              setAmenitySel={setAmenitySel}
               router={router}
-              visibleHotelIds={displayHotels.slice(0, 24).map((h: any) => String(h.id))}
             />
 
             {/* Filter popover — sort options + star toggles */}

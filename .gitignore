@@ -11,6 +11,7 @@ responsive-audit/report.md
 # security regression test build artifacts
 tests/security/.build/
 tests/voice/.build/
+tests/live-ai/.build/
 
 # concurrency suite throwaway Postgres cluster
 tests/concurrency/.pg/
