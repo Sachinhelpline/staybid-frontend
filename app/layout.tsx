@@ -31,6 +31,13 @@ import SupportWidget from "@/components/support/SupportWidget";
 // matching `[data-autonext="<key>"]` section into view on click. No
 // per-page handler wiring needed; just attributes.
 import { AutoNextMount } from "@/components/AutoNextMount";
+// StayBid Live AI (LIVE-AI-01A) — global floating-companion session mounted
+// above the pages so a conversation can survive supported route changes. It is
+// FAIL-CLOSED: constructs no runtime / session / transport and renders no orb
+// unless NEXT_PUBLIC_VOICE_AI_BETA === "1". The existing app UI is unchanged;
+// the orb only appears on the registered /hotels + /hotels/[id] pages.
+import { LiveAiProvider } from "@/components/live-ai/LiveAiProvider";
+import LiveAiShell from "@/components/live-ai/LiveAiShell";
 export const viewport: Viewport = {
   // Black theme color so the OS status-bar / app-switcher chrome blends
   // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
@@ -242,7 +249,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 facing page. Self-hides only on admin / partner / onboard.
                 DialerNav (left-edge crown wheel) was retired in v80. */}
             <BottomDock />
+            {/* LIVE-AI-01A — global session provider wraps the page content so
+                the companion survives supported route changes; the minimal
+                floating orb (LiveAiShell) renders only when a supported page is
+                registered AND the feature flag is on. Existing UI unchanged. */}
+            <LiveAiProvider>
             <main className="min-h-screen">{children}</main>
+            <LiveAiShell />
+            </LiveAiProvider>
             {/* Global in-app toaster — subscribes to "sb:notify" events
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
