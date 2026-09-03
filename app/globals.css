@@ -11791,7 +11791,12 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   @keyframes sbhTickerM { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
   /* ── rails (swipe, no arrows) ─────────────────────────────────────── */
-  .sbh-rails { margin-top: 22px; display: flex; flex-direction: column; gap: 26px; }
+  /* CX-V01-B1 — editorial rhythm: section spacing now snaps to the shared
+     --sbui-space-* scale (was 22px/26px hard values). A touch more breathing
+     room between the browse rails, deliberate rather than ad-hoc. Mobile keeps
+     its own tokens (desktop.css keeps its larger responsive clamp — the two
+     viewports do NOT share a rhythm). */
+  .sbh-rails { margin-top: var(--sbui-space-xl); display: flex; flex-direction: column; gap: var(--sbui-space-2xl); }
   .sbh-rail-head {
     display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
     padding: 0 var(--sbh-gut) 10px;
@@ -11951,6 +11956,52 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     .sbh-hero-bg { animation: none !important; }
     .sbh-ticker-track { animation: none !important; }
     .sbh-card, .sbh-card-media, .sbh-hero-dot { transition: none !important; }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CX-V01-B1 — CONTROLLED REVEAL-ON-SCROLL (BOTH viewports; shared + UNLAYERED)
+   ---------------------------------------------------------------------------
+   The below-hero rails settle in as they enter the viewport: a soft fade + a
+   small upward rise, ONCE, in ~240ms (the existing 240ms reveal-motion language).
+   The rail's card shell rises a beat after its heading for a subtle "assemble"
+   — a section-level stagger, never per-word/per-icon.
+   PROGRESSIVE ENHANCEMENT: the start-hidden state applies ONLY under `.sbh-anim`,
+   which DesktopHome adds at runtime and ONLY when prefers-reduced-motion is off.
+   With no JS, or under reduced motion, every section is fully visible (the CSS
+   guard below is belt-and-suspenders to the JS bail). Transform/opacity only —
+   no layout, no CLS. This is a dual-viewport module, so it is written ONCE here,
+   unlayered (globals.css beats desktop.css/layer(utilities)), never split.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sbh-root.sbh-anim .sbh-rail-wrap,
+.sbh-root.sbh-anim .sbh-circ-ways {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 240ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: opacity, transform;
+}
+.sbh-root.sbh-anim .sbh-rail-wrap .sbh-rail-shell {
+  transform: translateY(8px);
+  transition: transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1) 70ms;
+}
+.sbh-root.sbh-anim .sbh-rail-wrap.is-rv,
+.sbh-root.sbh-anim .sbh-circ-ways.is-rv {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+.sbh-root.sbh-anim .sbh-rail-wrap.is-rv .sbh-rail-shell {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sbh-root.sbh-anim .sbh-rail-wrap,
+  .sbh-root.sbh-anim .sbh-circ-ways,
+  .sbh-root.sbh-anim .sbh-rail-wrap .sbh-rail-shell {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
 }
 

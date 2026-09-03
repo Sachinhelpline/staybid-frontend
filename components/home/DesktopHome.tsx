@@ -1458,6 +1458,35 @@ export default function DesktopHome() {
     };
   }, [on]);
 
+  // CX-V01-B1 — controlled reveal-on-scroll for the below-hero rails. Progressive
+  // enhancement: the start-hidden state (globals.css) is gated on `.sbh-anim`, which
+  // is added ONLY here, and ONLY when JS runs and prefers-reduced-motion is off — so
+  // with no JS or reduced motion every section is fully visible. Each section reveals
+  // ONCE as it enters (transform/opacity only — no layout, no CLS). The effect re-runs
+  // as rails mount (deps) so a late-arriving rail is always observed, never left hidden.
+  useEffect(() => {
+    const root = depthRef.current;
+    if (!on || !root) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    root.classList.add("sbh-anim");
+    const io = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-rv");
+            obs.unobserve(e.target);
+          }
+        });
+      },
+      { rootMargin: "0px 0px -6% 0px", threshold: 0.05 }
+    );
+    root
+      .querySelectorAll(".sbh-rail-wrap:not(.is-rv), .sbh-circ-ways:not(.is-rv)")
+      .forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [on, hotels.length, deals.length, reels.length, circleProps.length, zoneRails.length]);
+
   if (!on) return null;
 
   const fScore = featured ? scores[featured.id] : undefined;
