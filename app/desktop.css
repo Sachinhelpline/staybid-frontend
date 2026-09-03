@@ -2376,7 +2376,7 @@ body main textarea.input-luxury {
   }
   .sbh-eyebrow {
     display: inline-flex; align-items: center; gap: 9px;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-size: 0.7rem; font-weight: 600;
     letter-spacing: 0.24em; text-transform: uppercase;
     color: var(--sbh-gold-lt);
@@ -2410,9 +2410,9 @@ body main textarea.input-luxury {
   }
   .sbh-stars { color: #b8c5d2; letter-spacing: 2px; }
   .sbh-hero-score {
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
-    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
+    font-size: var(--fs-caption); font-weight: 700; letter-spacing: 0.06em;
     padding: 4px 11px; border-radius: 999px;
     color: #1d1608;
     background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
@@ -2424,7 +2424,7 @@ body main textarea.input-luxury {
   }
   /* `>` — see the note in globals.css: the nudge has its own <b>. */
   .sbh-hero-price > b {
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
     font-size: 2rem; font-weight: 700; color: #f9fafb; letter-spacing: -0.01em;
   }
@@ -2481,7 +2481,7 @@ body main textarea.input-luxury {
     font-size: 0.82rem; color: var(--text-soft, #4a3820); opacity: 0.78;
   }
   .sbh-rail-all {
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
     color: var(--text-soft, #4a3820); opacity: 0.8;
     white-space: nowrap; transition: opacity 0.15s ease, color 0.15s ease;
@@ -2593,8 +2593,8 @@ body main textarea.input-luxury {
   .sbh-card-rank { color: #536b82; font-weight: 600; opacity: 0.95; }
   .sbh-card-price {
     margin: 5px 0 0; display: flex; align-items: baseline; gap: 5px;
-    font-size: 0.78rem; color: var(--text-soft, #4a3820);
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-size: var(--fs-caption); color: var(--text-soft, #4a3820);
+    font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
   }
   .sbh-card-price b { font-size: 1.06rem; font-weight: 700; color: var(--text-base, #1f1a0f); }
@@ -2604,8 +2604,8 @@ body main textarea.input-luxury {
   /* chips over media */
   .sbh-chip {
     position: absolute; z-index: 4;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
+    font-family: var(--font-body);
+    font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.08em;
     padding: 5px 10px; border-radius: 999px;
     -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
   }
@@ -2702,8 +2702,8 @@ body main textarea.input-luxury {
   }
   .sbh-hero-count {
     margin-left: 6px;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.66rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    font-family: var(--font-body);
+    font-size: var(--fs-micro); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
     color: rgba(176, 192, 209, 0.72);
   }
 
@@ -2734,8 +2734,8 @@ body main textarea.input-luxury {
     display: inline-flex; align-items: center; gap: 9px;
     padding: 9px 16px; border-radius: 999px;
     text-decoration: none; white-space: nowrap;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
+    font-family: var(--font-body);
+    font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.01em;
     color: var(--text-base, #1f1a0f);
     background: var(--bg-page, #f4f6f8);
     border: 1px solid rgba(79, 109, 138, 0.22);
@@ -2751,7 +2751,7 @@ body main textarea.input-luxury {
   /* v625 — same deal-GOLD as the flash-deal stamp — one deal, one colour */
   .sbh-tk-accent {
     padding: 3px 10px; border-radius: 999px;
-    font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; color: #2a1e06;
+    font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.03em; color: #2a1e06;
     background: linear-gradient(140deg, #ffe9ad 0%, #f2c650 44%, #d69a1e 100%);
     box-shadow: 0 6px 14px -9px rgba(130, 90, 12, 0.6);
   }
