@@ -13730,6 +13730,38 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   --sbui-success: #2f8f5b;
   --sbui-warning: #c07a1e;
   --sbui-danger: #c0392b;
+
+  /* spacing scale (CX-01-R foundation gap — 4px base, semantic, theme-neutral).
+     INERT: defined here for later per-surface adoption; no current component
+     consumes these yet. Extends the existing --sbui-* foundation family. */
+  --sbui-space-2xs: 2px;
+  --sbui-space-xs: 4px;
+  --sbui-space-sm: 8px;
+  --sbui-space-md: 12px;
+  --sbui-space-lg: 16px;
+  --sbui-space-xl: 24px;
+  --sbui-space-2xl: 32px;
+  --sbui-space-3xl: 48px;
+
+  /* semantic z-index / layer scale (CX-01-R foundation gap — theme-neutral).
+     DEFINE-ONLY: no current z-index consumer is migrated in this packet. The
+     anchors 50/60/900/1200 match existing usage (nav/dock/drawer/dialog); the
+     companion layer is a forward reservation for the future global Live-AI orb
+     (which currently sits at 60 and is NOT changed here). */
+  --sbui-z-hide: -1;
+  --sbui-z-base: 0;
+  --sbui-z-raised: 1;
+  --sbui-z-sticky: 10;
+  --sbui-z-nav: 50;
+  --sbui-z-dock: 60;
+  --sbui-z-dropdown: 800;
+  --sbui-z-drawer: 900;
+  --sbui-z-sheet: 1000;
+  --sbui-z-dialog: 1200;
+  --sbui-z-toast: 1300;
+  --sbui-z-companion: 1400;
+  --sbui-z-tutorial: 1500;
+  --sbui-z-critical: 1600;
 }
 :root[data-theme="dark"] {
   --sbui-elev-1: 0 8px 26px rgba(0, 0, 0, 0.5);
