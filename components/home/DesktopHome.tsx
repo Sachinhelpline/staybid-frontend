@@ -46,6 +46,9 @@ import { readSegment, recordFormatChoice } from "@/lib/browse/segment";
 // v582 — Decision Engine P2: the 3-tap Trip Finder for the traveller who
 // cannot name a destination (engine: lib/browse/trip-finder.ts).
 import TripFinder from "@/components/home/TripFinder";
+// A-LITE (CX-V01) — section-title chrome emoji → lucide icons (decision #3: chrome
+// uses the professional icon set; personality/content emoji are kept). No new dep.
+import { Zap, Clapperboard, Car, Gem } from "lucide-react";
 // v583 — P3: drive-time labels share the Finder's distance engine.
 import { driveLabelFor } from "@/lib/browse/trip-finder";
 // v583.1 — the season PREFERENCE: every season-aware ranking reads
@@ -255,6 +258,7 @@ function reelPoster(r: Reel): string {
 /* ── horizontal rail with arrow controls ───────────────────────────────── */
 function Rail({
   title,
+  icon,
   sub,
   href,
   children,
@@ -263,6 +267,7 @@ function Rail({
   actionBtn,
 }: {
   title: string;
+  icon?: React.ReactNode;
   sub?: string;
   href?: string;
   children: React.ReactNode;
@@ -305,7 +310,7 @@ function Rail({
     <section className="sbh-rail-wrap">
       <div className="sbh-rail-head">
         <div>
-          <h2 className="sbh-rail-title">{title}</h2>
+          <h2 className="sbh-rail-title" style={icon ? { display: "inline-flex", alignItems: "center", gap: "0.4em" } : undefined}>{icon ? <span aria-hidden style={{ display: "inline-flex", flex: "0 0 auto" }}>{icon}</span> : null}{title}</h2>
           {sub ? <p className="sbh-rail-sub">{sub}</p> : null}
         </div>
         <div className="sbh-rail-acts">
@@ -899,7 +904,8 @@ function CircleRow({ props: items, counts }: { props: CircleProp[]; counts: Circ
   return (
     <>
       <Rail
-        title="💎 StayBid Circle"
+        title="StayBid Circle"
+        icon={<Gem size={18} strokeWidth={2} />}
         sub="Own a share of an operated property — or trade its room-nights"
         href="/circle"
       >
@@ -1644,7 +1650,8 @@ export default function DesktopHome() {
             two tall flat cards eating the first screen). */}
         {deals.length ? (
           <Rail
-            title="⚡ Flash Deals"
+            title="Flash Deals"
+            icon={<Zap size={18} strokeWidth={2} />}
             sub={countdown ? `Resets in ${countdown} — live prices, limited rooms` : "Tonight only — live prices, limited rooms"}
             href="/flash-deals"
           >
@@ -1654,7 +1661,8 @@ export default function DesktopHome() {
 
         {reels.length ? (
           <Rail
-            title="🎬 Reels"
+            title="Reels"
+            icon={<Clapperboard size={18} strokeWidth={2} />}
             sub="Real stays, filmed by real guests"
             href="/discover"
             variant="tall"
@@ -1680,7 +1688,8 @@ export default function DesktopHome() {
             taps 📍 (the ONLY place the location prompt can fire). */}
         {reachRail.length ? (
           <Rail
-            title="🚗 Easy getaways near you"
+            title="Easy getaways near you"
+            icon={<Car size={18} strokeWidth={2} />}
             sub={
               geoDenied
                 ? "Location unavailable — showing Delhi NCR picks · short drives first"

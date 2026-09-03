@@ -11640,8 +11640,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   .sbh-eyebrow {
     display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.6rem; font-weight: 600;
+    font-family: var(--font-body);
+    font-size: var(--fs-micro); font-weight: 600;
     letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--sbh-gold-lt);
     margin: 0 0 6px;
@@ -11662,9 +11662,9 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   .sbh-stars { color: #b8c5d2; letter-spacing: 1.5px; }
   .sbh-hero-score {
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
-    font-size: 0.68rem; font-weight: 700;
+    font-size: var(--fs-micro); font-weight: 700;
     padding: 3px 9px; border-radius: 999px; color: #1d1608;
     background: linear-gradient(135deg, var(--sbh-gold-lt), var(--sbh-gold));
   }
@@ -11676,7 +11676,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   /* `>` — the nudge below carries its own <b>, and an unscoped
      `.sbh-hero-price b` swallowed it into the 1.4rem price style. */
   .sbh-hero-price > b {
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
     font-size: 1.4rem; font-weight: 700; color: #f9fafb;
   }
@@ -11717,7 +11717,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
      dark scrim AND on the light fade, so it no longer depends on what's behind
      it. (Mobile only — desktop has no foot-fade.) */
   .sbh-amen {
-    font-size: 0.68rem; font-weight: 600;
+    font-size: var(--fs-micro); font-weight: 600;
     color: #f2f5f8;
     padding: 4px 11px; border-radius: 999px;
     background: rgba(12, 9, 6, 0.64);
@@ -11773,7 +11773,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     display: inline-flex; align-items: center; gap: 7px;
     padding: 8px 13px; border-radius: 999px;
     text-decoration: none; white-space: nowrap;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-size: 0.74rem; font-weight: 600;
     color: var(--text-base, #1f1a0f);
     background: var(--bg-page, #f4f6f8);
@@ -11784,7 +11784,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   /* same gold as the flash-deal stamp — one deal, one colour */
   .sbh-tk-accent {
     padding: 3px 8px; border-radius: 999px;
-    font-size: 0.66rem; font-weight: 800; letter-spacing: 0.03em; color: #ffffff;
+    font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.03em; color: #ffffff;
     background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
     box-shadow: 0 4px 10px -6px rgba(106, 133, 160, 0.8);
   }
@@ -11803,8 +11803,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   .sbh-rail-sub { margin: 2px 0 0; font-size: 0.74rem; color: var(--text-soft, #4a3820); opacity: 0.75; }
   .sbh-rail-all {
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    font-family: var(--font-body);
+    font-size: var(--fs-micro); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
     color: #536b82; white-space: nowrap;
     /* padding grows the hit box to ~36px tall; the negative margin cancels it
        so the text does not move. Measured at 71x16 before this. */
@@ -11893,7 +11893,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-card-price {
     margin: 2px 0 0; display: flex; align-items: baseline; gap: 4px;
     font-size: 0.7rem; color: var(--text-soft, #4a3820);
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
+    font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
   }
   .sbh-card-price b { font-size: 0.9rem; font-weight: 700; color: var(--text-base, #1f1a0f); }
@@ -11901,8 +11901,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   .sbh-card-price em { font-style: normal; opacity: 0.85; }
   .sbh-chip {
     position: absolute; z-index: 4;
-    font-family: "Space Grotesk", var(--font-sans), sans-serif;
-    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+    font-family: var(--font-body);
+    font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.06em;
     padding: 4px 8px; border-radius: 999px;
   }
   .sbh-chip em { font-style: normal; opacity: 0.7; }
@@ -11926,7 +11926,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   }
   .sbh-reel-foot strong { font-size: 0.76rem; font-weight: 700; text-shadow: 0 1px 7px rgba(0, 0, 0, 0.75); }
   .sbh-reel-foot span {
-    font-size: 0.64rem; opacity: 0.88; text-shadow: 0 1px 7px rgba(0, 0, 0, 0.75);
+    font-size: var(--fs-micro); opacity: 0.88; text-shadow: 0 1px 7px rgba(0, 0, 0, 0.75);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .sbh-loading { padding: 40px var(--sbh-gut); color: var(--text-soft, #4a3820); opacity: 0.7; }
@@ -11982,8 +11982,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 .sbh-bid-kicker {
   display: inline-flex; align-items: center; gap: 7px;
   margin: 0 0 10px;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.66rem; font-weight: 600;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 600;
   letter-spacing: 0.16em; text-transform: uppercase;
   color: #a9b9c8;
 }
@@ -12021,7 +12021,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .sbh-bid-stat b {
   display: block; white-space: nowrap;      /* "9 min" must never wrap mid-value */
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
   font-size: 1.5rem; font-weight: 700; line-height: 1;
   color: var(--sbh-gold-lt, #96a9bc);
@@ -12031,7 +12031,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
    `.sbh-bid-stat span` swallowed the number into the label style. */
 .sbh-bid-stat > span {
   display: block; margin-top: 6px;
-  font-size: 0.66rem; letter-spacing: 0.09em; text-transform: uppercase;
+  font-size: var(--fs-micro); letter-spacing: 0.09em; text-transform: uppercase;
   color: rgba(176, 192, 209, 0.55);
 }
 
@@ -12042,13 +12042,13 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   padding: 9px 12px; border-radius: 12px;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  font-size: 0.78rem; color: rgba(176, 192, 209, 0.8);
+  font-size: var(--fs-caption); color: rgba(176, 192, 209, 0.8);
 }
 .sbh-bid-who {
   flex: 0 0 auto;
   width: 25px; height: 25px; border-radius: 50%;
   display: grid; place-items: center;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-size: 0.72rem; font-weight: 700; color: #1a1208;
   background: linear-gradient(135deg, var(--sbh-gold-lt, #96a9bc), var(--sbh-gold, #5f7c98));
 }
@@ -12058,7 +12058,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 .sbh-bid-what b { font-weight: 700; color: var(--sbh-gold-lt, #96a9bc); font-variant-numeric: tabular-nums; }
 .sbh-bid-when {
   flex: 0 0 auto;
-  font-size: 0.66rem; letter-spacing: 0.05em;
+  font-size: var(--fs-micro); letter-spacing: 0.05em;
   color: rgba(176, 192, 209, 0.42);
 }
 .sbh-bid-who { margin-top: 1px; }
@@ -12082,7 +12082,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   flex: 0 0 auto;
   width: 30px; height: 30px; border-radius: 50%;
   display: grid; place-items: center;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-size: 0.8rem; font-weight: 700; color: #2a1c08;
   background: linear-gradient(160deg, #e1e7ec, var(--sbh-gold, #5f7c98));
   box-shadow:
@@ -12099,7 +12099,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .sbh-bid-step-b em {
   display: block; margin-top: 2px; font-style: normal;
-  font-size: 0.78rem; line-height: 1.45; color: rgba(176, 192, 209, 0.6);
+  font-size: var(--fs-caption); line-height: 1.45; color: rgba(176, 192, 209, 0.6);
 }
 .sbh-bid-listening {
   display: flex; align-items: center; gap: 8px;
@@ -12107,7 +12107,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   font-size: 0.8rem; color: rgba(176, 192, 209, 0.66);
 }
 .sbh-bid-listening b {
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
   font-size: 0.95rem; font-weight: 700; color: var(--sbh-gold-lt, #96a9bc);
 }
@@ -12205,8 +12205,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 .sbh-circ-body { flex: 1 1 auto; min-width: 0; }
 .sbh-circ-n {
   display: block;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.58rem; font-weight: 700;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 700;
   letter-spacing: 0.18em; text-transform: uppercase;
   color: #536b82;
 }
@@ -12218,7 +12218,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .sbh-circ-way em {
   display: block; margin-top: 3px; font-style: normal;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
   font-size: 0.76rem; font-weight: 600;
   color: var(--text-soft, #4a3820); opacity: 0.82;
@@ -12233,7 +12233,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .sbh-circ-note {
   margin: 4px 0 0;
-  font-size: 0.68rem; line-height: 1.5;
+  font-size: var(--fs-micro); line-height: 1.5;
   color: var(--text-soft, #4a3820); opacity: 0.6;
 }
 
@@ -12335,8 +12335,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .sbh-pp-kicker {
   display: block;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.6rem; font-weight: 700;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 700;
   letter-spacing: 0.19em; text-transform: uppercase;
   color: rgba(176, 192, 209, 0.75);
 }
@@ -12370,9 +12370,9 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .sbh-pp-id i {
   display: block; margin-top: 2px; font-style: normal;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
-  font-size: 0.78rem; font-weight: 700;
+  font-size: var(--fs-caption); font-weight: 700;
   color: var(--sbh-gold-lt, #96a9bc);
 }
 
@@ -12389,17 +12389,17 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 }
 .sbh-pp-sub {
   display: block; margin-top: 9px;
-  font-size: 0.78rem; line-height: 1.45;
+  font-size: var(--fs-caption); line-height: 1.45;
   color: rgba(176, 192, 209, 0.72);
 }
 .sbh-pp-stats { display: flex; gap: 22px; margin-top: 14px; }
 .sbh-pp-stats > span {
-  font-size: 0.64rem; letter-spacing: 0.11em; text-transform: uppercase;
+  font-size: var(--fs-micro); letter-spacing: 0.11em; text-transform: uppercase;
   color: rgba(176, 192, 209, 0.5);
 }
 .sbh-pp-stats b {
   display: block;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
   font-size: 1.4rem; font-weight: 700; line-height: 1;
   color: #f6f8f9;
@@ -12407,7 +12407,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 .sbh-pp-go {
   display: inline-flex; align-items: center; gap: 7px;
   margin-top: 16px; padding: 9px 15px; border-radius: 999px;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-family: var(--font-body);
   font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
   color: #2a1c08;
   background: linear-gradient(135deg, #d7dee5, var(--sbh-gold, #5f7c98));
@@ -12485,8 +12485,8 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
    ═════════════════════════════════════════════════════════════════════════ */
 .sbh-rail-acts { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .sbh-rail-act {
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.06em;
   white-space: nowrap;
   color: #ffffff; text-shadow: 0 1px 1px rgba(20,30,44,0.35);
   padding: 7px 12px;
@@ -12500,7 +12500,7 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
 .sbh-rail-act:active { transform: scale(0.96); }
 /* v580 — the reach rail's 📍 chip is a BUTTON in the same slot; strip the UA
    button chrome so it renders identically to the Link version. */
-button.sbh-rail-act { border: 0; cursor: pointer; font-family: "Space Grotesk", var(--font-sans), sans-serif; }
+button.sbh-rail-act { border: 0; cursor: pointer; font-family: var(--font-body); }
 button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 
 @media (min-width: 1024px) {
@@ -12690,12 +12690,12 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-card-rating {
   display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; opacity: 1;
   color: #4f6d8a; font-weight: 700;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif; font-variant-numeric: tabular-nums;
+  font-family: var(--font-body); font-variant-numeric: tabular-nums;
 }
 .sbh-card-rating em { font-style: normal; font-weight: 600; opacity: 0.82; }
 .sbh-card-below {
-  margin-top: 2px; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em;
-  color: #4f6d8a; font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  margin-top: 2px; font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.02em;
+  color: #4f6d8a; font-family: var(--font-body);
 }
 .sbh-chip-rank {
   font-weight: 800; margin-right: 5px; padding-right: 5px;
@@ -12740,7 +12740,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .sbh-reelx-dp {
   flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
-  display: grid; place-items: center; font-size: 0.6rem; font-weight: 800; color: #1a1208;
+  display: grid; place-items: center; font-size: var(--fs-micro); font-weight: 800; color: #1a1208;
   background: linear-gradient(135deg, #899eb3, #607b96); border: 1.5px solid rgba(255, 255, 255, 0.6);
 }
 .sbh-reelx-dp img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -12892,10 +12892,10 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 700;
   font-size: 1.06rem; line-height: 1.15; color: #e5eaef; margin: 0;
 }
-.sbh-season-tag { font-size: 0.66rem; color: rgba(176, 192, 209, 0.72); margin: 2px 0 0; }
+.sbh-season-tag { font-size: var(--fs-caption); color: rgba(176, 192, 209, 0.72); margin: 2px 0 0; }
 .sbh-season-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .sbh-season-pill {
-  font-size: 0.56rem; font-weight: 600; letter-spacing: 0.02em;
+  font-size: var(--fs-micro); font-weight: 600; letter-spacing: 0.02em;
   color: rgba(176, 192, 209, 0.88);
   padding: 3px 8px; border-radius: 999px;
   background: rgba(176, 192, 209, 0.10);
@@ -12904,8 +12904,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .sbh-season-cta {
   flex: 0 0 auto; border: 0; cursor: pointer;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.05em; white-space: nowrap;
   color: #ffffff; padding: 9px 13px; border-radius: 999px;
   background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 9px -4px rgba(0, 0, 0, 0.55);
@@ -12923,8 +12923,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-trip-chip {
   flex: 0 0 auto; cursor: pointer;
   display: inline-flex; align-items: center; gap: 5px;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.66rem; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 650; letter-spacing: 0.02em; white-space: nowrap;
   padding: 8px 12px; min-height: 32px;
   border-radius: 999px;
   /* v607 — theme-aware slate (was fixed old-brown --cozy-cocoa → dull in dark,
@@ -12948,7 +12948,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-season-ico { font-size: 2.1rem; }
   .sbh-season-title { font-size: 1.35rem; }
   .sbh-season-tag { font-size: 0.78rem; }
-  .sbh-season-pill { font-size: 0.64rem; padding: 4px 10px; }
+  .sbh-season-pill { font-size: var(--fs-micro); padding: 4px 10px; }
   .sbh-season-cta { font-size: 0.74rem; padding: 11px 18px; transition: transform 0.15s ease, box-shadow 0.15s ease; }
   .sbh-season-cta:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 6px 16px -7px rgba(79, 109, 138, 0.8); }
   .sbh-trip { margin: 26px 0 4px; }
@@ -13015,7 +13015,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   font-size: 1.18rem; line-height: 1.08; color: #e5eaef; margin: 0;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
 }
-.sbh-tf-sub { font-size: 0.62rem; color: rgba(176, 192, 209, 0.7); margin: 3px 0 0; }
+.sbh-tf-sub { font-size: var(--fs-micro); color: rgba(176, 192, 209, 0.7); margin: 3px 0 0; }
 /* ── the seasonal program, folded into a slim glass ribbon ── */
 .sbh-tf-ribbon {
   flex: 0 1 auto; min-width: 0; max-width: 100%;
@@ -13032,11 +13032,11 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-tf-ribbon-txt { display: flex; flex-direction: column; min-width: 0; }
 .sbh-tf-ribbon-txt b {
   font-family: "Cormorant Garamond", serif; font-style: italic;
-  font-size: 0.78rem; font-weight: 700; color: #e5eaef; line-height: 1.1;
+  font-size: var(--fs-caption); font-weight: 700; color: #e5eaef; line-height: 1.1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sbh-tf-ribbon-txt i {
-  font-style: normal; font-size: 0.52rem; color: rgba(176, 192, 209, 0.62);
+  font-style: normal; font-size: var(--fs-micro); color: rgba(176, 192, 209, 0.62);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sbh-tf-ribbon-go { font-size: 0.72rem; color: rgba(176, 192, 209, 0.8); }
@@ -13048,7 +13048,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .sbh-tf-change {
   margin-top: 7px; cursor: pointer;
-  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em;
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.04em;
   color: rgba(176, 192, 209, 0.85);
   background: rgba(176, 192, 209, 0.12);
   border: 1px solid rgba(176, 192, 209, 0.26);
@@ -13066,8 +13066,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   flex: 0 0 auto; scroll-snap-align: start;
   display: inline-flex; align-items: center; gap: 7px;
   cursor: pointer; min-height: 44px;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em; color: #eaedf1;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.02em; color: #eaedf1;
   padding: 6px 12px 6px 6px; border-radius: 999px;
   background: linear-gradient(180deg, rgba(176, 192, 209, 0.09), rgba(176, 192, 209, 0.03));
   border: 1px solid rgba(176, 192, 209, 0.3);
@@ -13134,14 +13134,14 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
 }
 .sbh-tf-ans-name {
-  font-style: normal; font-size: 0.54rem; color: rgba(176, 192, 209, 0.8);
+  font-style: normal; font-size: var(--fs-micro); color: rgba(176, 192, 209, 0.8);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 .sbh-tf-ans-body { padding: 8px 9px 9px; }
 .sbh-tf-ans-why { display: flex; flex-wrap: wrap; gap: 4px; }
 .sbh-tf-why {
-  font-size: 0.5rem; font-weight: 650; letter-spacing: 0.02em;
+  font-size: var(--fs-micro); font-weight: 650; letter-spacing: 0.02em;
   color: rgba(176, 192, 209, 0.9);
   padding: 2.5px 7px; border-radius: 999px;
   background: rgba(176, 192, 209, 0.1);
@@ -13153,12 +13153,12 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   margin-top: 8px;
 }
 .sbh-tf-ans-price { font-size: 0.7rem; font-weight: 800; color: #f1f4f6; white-space: nowrap; }
-.sbh-tf-ans-price i { font-style: normal; font-weight: 600; font-size: 0.52rem; color: rgba(176, 192, 209, 0.6); }
+.sbh-tf-ans-price i { font-style: normal; font-weight: 600; font-size: var(--fs-micro); color: rgba(176, 192, 209, 0.6); }
 .sbh-tf-ans-ctas { display: flex; gap: 5px; flex: 0 0 auto; }
 .sbh-tf-go, .sbh-tf-bid {
   cursor: pointer; white-space: nowrap;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.56rem; font-weight: 750; letter-spacing: 0.04em;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 750; letter-spacing: 0.04em;
   padding: 6px 9px; border-radius: 999px; min-height: 26px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -13181,7 +13181,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-tf-sub { font-size: 0.74rem; }
   .sbh-tf-ribbon { padding: 7px 12px; }
   .sbh-tf-ribbon-txt b { font-size: 0.9rem; }
-  .sbh-tf-ribbon-txt i { font-size: 0.6rem; }
+  .sbh-tf-ribbon-txt i { font-size: var(--fs-micro); }
   .sbh-tf-ribbon:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(176, 192, 209,0.25), 0 6px 14px -7px rgba(0,0,0,0.7); }
   .sbh-tf-opt { font-size: 0.74rem; min-height: 48px; padding: 6px 15px 6px 7px; }
   .sbh-tf-opt:hover {
@@ -13195,10 +13195,10 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-tf-ans:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.75); }
   .sbh-tf-ans-media { height: 128px; }
   .sbh-tf-ans-city { font-size: 1.2rem; }
-  .sbh-tf-ans-name { font-size: 0.62rem; }
-  .sbh-tf-why { font-size: 0.58rem; }
+  .sbh-tf-ans-name { font-size: var(--fs-micro); }
+  .sbh-tf-why { font-size: var(--fs-micro); }
   .sbh-tf-ans-price { font-size: 0.78rem; }
-  .sbh-tf-go, .sbh-tf-bid { font-size: 0.62rem; padding: 7px 12px; }
+  .sbh-tf-go, .sbh-tf-bid { font-size: var(--fs-micro); padding: 7px 12px; }
   .sbh-tf-go:hover { transform: translateY(-1px); }
   .sbh-tf-bid:hover { background: rgba(106, 133, 160, 0.18); }
 }
@@ -13228,7 +13228,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
    ═════════════════════════════════════════════════════════════════════════ */
 .sbh-card-drive {
   display: inline-flex; align-items: center;
-  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.01em;
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.01em;
   color: var(--cozy-cocoa, #4a3820);
   background: rgba(106, 133, 160, 0.14);
   border: 1px solid rgba(106, 133, 160, 0.3);
@@ -13244,7 +13244,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   display: flex; align-items: center; justify-content: center; gap: 5px;
   margin-top: 9px; padding: 9px 14px; min-height: 34px;
   border-radius: 999px; text-decoration: none;
-  font-size: 0.62rem; font-weight: 700; color: #ffffff;
+  font-size: var(--fs-micro); font-weight: 700; color: #ffffff;
   text-shadow: 0 1px 1px rgba(20,30,44,0.35);
   background: linear-gradient(150deg, #9db0c4 0%, #5f7c98 50%, #3f5369 100%);
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -13255,7 +13255,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-tf-wa:active { transform: scale(0.97); }
 .sbh-tf-wa-inline { color: #4f6d8a; font-weight: 700; text-decoration: underline; }
 @media (min-width: 1024px) {
-  .sbh-card-drive { font-size: 0.62rem; padding: 2px 8px; }
+  .sbh-card-drive { font-size: var(--fs-micro); padding: 2px 8px; }
   .sbh-tf-wa { font-size: 0.68rem; }
   .sbh-tf-wa:hover { filter: brightness(1.05); transform: translateY(-1px); }
 }
@@ -13294,7 +13294,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-hero-meta { margin-bottom: 6px; }
   .sbh-hero-price { margin-bottom: 6px; }
   .sbh-hero-chips { margin-top: 6px; gap: 5px; }
-  .sbh-amen { padding: 3px 9px; font-size: 0.64rem; }
+  .sbh-amen { padding: 3px 9px; font-size: var(--fs-micro); }
   .sbh-hero-cta { margin-top: 8px; }
 }
 @media (max-width: 1023px) and (max-height: 680px) {
@@ -13303,11 +13303,11 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   .sbh-hero-meta { font-size: 0.76rem; margin-bottom: 5px; }
   .sbh-hero-price { font-size: 0.8rem; }
   .sbh-hero-nudge { font-size: 0.72rem; }
-  .sbh-amen { font-size: 0.62rem; padding: 3px 8px; }
+  .sbh-amen { font-size: var(--fs-micro); padding: 3px 8px; }
   .sbh-btn { padding: 9px 12px; font-size: 0.8rem; min-height: 38px; }
 }
 /* option pills — one notch smaller on every step, both viewports */
-.sbh-tf-opt { min-height: 38px; font-size: 0.6rem; padding: 4px 10px 4px 5px; gap: 6px; }
+.sbh-tf-opt { min-height: 38px; font-size: var(--fs-micro); padding: 4px 10px 4px 5px; gap: 6px; }
 .sbh-tf-coin { width: 26px; height: 26px; font-size: 0.82rem; }
 .sbh-tf-opts { padding: 3px 2px 6px; }
 .sbh-tf-title { font-size: 1.06rem; }
@@ -13323,8 +13323,8 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-tf-season {
   display: inline-flex; align-items: center; gap: 5px;
   cursor: pointer; min-height: 30px;
-  font-family: "Space Grotesk", var(--font-sans), sans-serif;
-  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.02em; color: #eaedf1;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.02em; color: #eaedf1;
   padding: 5px 10px; border-radius: 999px;
   background: rgba(176, 192, 209, 0.08);
   border: 1px solid rgba(176, 192, 209, 0.28);
@@ -13338,7 +13338,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 }
 .sbh-tf-season.is-auto { color: rgba(176, 192, 209, 0.7); border-style: dashed; }
 @media (min-width: 1024px) {
-  .sbh-tf-season { font-size: 0.64rem; min-height: 32px; }
+  .sbh-tf-season { font-size: var(--fs-micro); min-height: 32px; }
   .sbh-tf-season:hover { background: rgba(176, 192, 209, 0.16); }
   .sbh-tf-season.is-on:hover { background: radial-gradient(88% 64% at 32% 4%,rgba(240,247,253,0.24),transparent 58%),linear-gradient(160deg,#a0b2c6 0%,#6f8aa6 50%,#42566d 100%); }
 }
@@ -13350,7 +13350,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-card-whyrow { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 .sbh-card-why {
   display: inline-flex; align-items: center;
-  font-size: 0.54rem; font-weight: 700; letter-spacing: 0.01em;
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.01em;
   /* v607 — slate theme (was old gold/brown). Emoji carries the meaning. */
   color: var(--accent);
   background: rgba(106, 133, 160, 0.12);
@@ -13371,7 +13371,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   color: #bcd0e4; background: rgba(157, 184, 210, 0.16); border-color: rgba(157, 184, 210, 0.34);
 }
 @media (min-width: 1024px) {
-  .sbh-card-why { font-size: 0.6rem; padding: 2px 8px; }
+  .sbh-card-why { font-size: var(--fs-micro); padding: 2px 8px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -13397,7 +13397,7 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
 .sbh-tf-gstep {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 10px; border-radius: 999px;
-  font-size: 0.6rem; font-weight: 800;
+  font-size: var(--fs-micro); font-weight: 800;
   letter-spacing: 0.05em; text-transform: uppercase;
   color: rgba(176, 192, 209, 0.5);
   background: rgba(176, 192, 209, 0.07);
@@ -13417,14 +13417,14 @@ button.sbh-rail-act:disabled { opacity: 0.6; cursor: default; }
   border-style: solid; border-color: rgba(126, 200, 120, 0.4);
   color: #9fdf9a; background: rgba(126, 200, 120, 0.1);
 }
-.sbh-tf-garrow { font-size: 0.66rem; color: rgba(176, 192, 209, 0.45); }
+.sbh-tf-garrow { font-size: var(--fs-micro); color: rgba(176, 192, 209, 0.45); }
 @keyframes sbhTfGnow {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-2px); }
 }
 .sbh-tf-ribbon-go {
   flex: 0 0 auto;
-  font-size: 0.52rem; font-weight: 800;
+  font-size: var(--fs-micro); font-weight: 800;
   letter-spacing: 0.05em; text-transform: uppercase;
   color: #3a2606;
   background: linear-gradient(140deg, #92a5b9, #6a85a0 60%, #536b82);
