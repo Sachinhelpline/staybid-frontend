@@ -534,6 +534,12 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   const isVideo = preview && String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
   const [hot, setHot] = useState(false);
   const [playing, setPlaying] = useState(false);
+  // HOME_REEL_PRE_INTENT_VIDEO_GATING — `armed` is the post-threshold intent
+  // gate. The <video> (and therefore its media_url src) is MOUNTED only once
+  // the pointer has rested on this card for the deliberate-hover delay. An
+  // idle Home and a casual sweep across the rail attach NO video source, so
+  // the browser never starts an MP4 range fetch before real intent.
+  const [armed, setArmed] = useState(false);
   const vid = useRef<HTMLVideoElement>(null);
   const router = useRouter();
   const hotelId = r.hotel?.id || "";
@@ -558,24 +564,31 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
     else navigator.clipboard?.writeText(url).catch(() => {});
   }, [r.id]);
   useEffect(() => {
-    const v = vid.current;
-    if (!v) return;
     if (!hot) {
-      v.pause();
+      // Pointer left: disarm → the <video> unmounts, which releases its source
+      // so no continued transfer is encouraged; the poster/card stays intact.
+      setArmed(false);
       setPlaying(false);
       return;
     }
     // Small debounce so a casual mouse sweep across the rail doesn't kick off
-    // a dozen video fetches; a deliberate hover starts loading + playing.
-    let cancelled = false;
-    const t = setTimeout(() => {
-      if (cancelled || !vid.current) return;
-      const el = vid.current;
-      el.muted = true;                       // belt-and-braces for autoplay policy
-      el.play().then(() => { if (cancelled) el.pause(); }).catch(() => {});
-    }, 180);
-    return () => { cancelled = true; clearTimeout(t); };
+    // a dozen video fetches; only a DELIBERATE hover arms the card (attaches
+    // the source). A sweep shorter than this clears the timer before it fires,
+    // so no src is ever attached. Playback is handled by the `armed` effect.
+    const t = setTimeout(() => setArmed(true), 180);
+    return () => clearTimeout(t);
   }, [hot]);
+  useEffect(() => {
+    if (!armed) return;
+    // Runs after the commit that mounted the <video>, so the ref is attached.
+    const el = vid.current;
+    if (!el) return;
+    let cancelled = false;
+    el.muted = true;                       // belt-and-braces for autoplay policy
+    el.play().then(() => { if (cancelled) el.pause(); }).catch(() => {});
+    // Disarm/unmount: cancel any in-flight play promise and pause the element.
+    return () => { cancelled = true; el.pause(); };
+  }, [armed]);
   return (
     <div
       className="sbh-card sbh-card-tall sbh-reelx"
@@ -587,7 +600,7 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
     >
       <div className="sbh-card-media">
         {poster ? <img src={poster} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
-        {isVideo ? (
+        {isVideo && armed ? (
           <video
             ref={vid}
             className={`sbh-reel-vid${hot && playing ? " is-on" : ""}`}
