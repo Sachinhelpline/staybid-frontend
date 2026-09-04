@@ -2534,12 +2534,14 @@ body main textarea.input-luxury {
     overflow: visible;
     transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .sbh-card:hover { transform: translateY(-6px); }
+  .sbh-card:hover { transform: translateY(-8px); }
+  /* RC2 — a stronger, clearer lift on hover: a brighter gold ring and a deeper
+     cast so the hovered tile reads as decisively raised toward the viewer. */
   .sbh-card:hover .sbh-card-media {
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--sbh-gold) 46%, transparent),
-      0 6px 14px -8px rgba(31, 26, 15, 0.5),
-      0 30px 52px -24px rgba(31, 26, 15, 0.72);
+      0 0 0 1px color-mix(in srgb, var(--sbh-gold) 52%, transparent),
+      0 10px 20px -10px rgba(31, 26, 15, 0.5),
+      0 40px 64px -28px rgba(31, 26, 15, 0.72);
   }
   /* v572 — was clamp(258px, 20.5vw, 336px) at 16/10. Once the name and price
      moved out onto the page (v571), that left a 336x210 landscape plate: wide,
@@ -2553,10 +2555,13 @@ body main textarea.input-luxury {
     position: relative; overflow: hidden;
     border-radius: 18px;                  /* the image IS the card */
     background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
+    /* RC2 — a more dimensional resting float: hairline ring + crisp contact +
+       mid shadow + broad soft cast so the tile clearly lifts off the page */
     box-shadow:
-      0 0 0 1px rgba(79, 109, 138, 0.14),
-      0 3px 8px -4px rgba(31, 26, 15, 0.42),
-      0 18px 32px -20px rgba(31, 26, 15, 0.6);
+      0 0 0 1px rgba(79, 109, 138, 0.16),
+      0 2px 4px -1px rgba(31, 26, 15, 0.22),
+      0 8px 18px -8px rgba(31, 26, 15, 0.42),
+      0 26px 44px -22px rgba(31, 26, 15, 0.58);
     transition: box-shadow 0.28s ease;
   }
   .sbh-card-wide .sbh-card-media { aspect-ratio: 1 / 1; }
@@ -2652,10 +2657,12 @@ body main textarea.input-luxury {
   }
   [data-theme="dark"] .sbh-rail-nav:hover:not(:disabled) { background: rgba(42, 34, 22, 0.96); }
   [data-theme="dark"] .sbh-card-media {
+    /* RC2 — a deeper, more dimensional cast on the dark ground */
     box-shadow:
-      0 0 0 1px rgba(176, 192, 209, 0.16),
-      0 3px 8px -4px rgba(0, 0, 0, 0.8),
-      0 20px 34px -20px rgba(0, 0, 0, 0.95);
+      0 0 0 1px rgba(176, 192, 209, 0.18),
+      0 2px 4px -1px rgba(0, 0, 0, 0.85),
+      0 8px 18px -8px rgba(0, 0, 0, 0.82),
+      0 28px 46px -22px rgba(0, 0, 0, 0.98);
   }
 
   /* ── reduced motion ───────────────────────────────────────────────── */

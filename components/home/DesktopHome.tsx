@@ -258,6 +258,7 @@ function reelPoster(r: Reel): string {
 /* ── horizontal rail with arrow controls ───────────────────────────────── */
 function Rail({
   title,
+  className,
   icon,
   sub,
   href,
@@ -267,6 +268,7 @@ function Rail({
   actionBtn,
 }: {
   title: string;
+  className?: string;
   icon?: React.ReactNode;
   sub?: string;
   href?: string;
@@ -307,7 +309,7 @@ function Rail({
   };
 
   return (
-    <section className="sbh-rail-wrap">
+    <section className={className ? `sbh-rail-wrap ${className}` : "sbh-rail-wrap"}>
       <div className="sbh-rail-head">
         <div>
           <h2 className="sbh-rail-title" style={icon ? { display: "inline-flex", alignItems: "center", gap: "0.4em" } : undefined}>{icon ? <span aria-hidden style={{ display: "inline-flex", flex: "0 0 auto" }}>{icon}</span> : null}{title}</h2>
@@ -905,6 +907,7 @@ function CircleRow({ props: items, counts }: { props: CircleProp[]; counts: Circ
     <>
       <Rail
         title="StayBid Circle"
+        className="sbh-rail-circle"
         icon={<Gem size={18} strokeWidth={2} />}
         sub="Own a share of an operated property — or trade its room-nights"
         href="/circle"

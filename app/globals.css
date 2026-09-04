@@ -11851,24 +11851,28 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     overflow: visible;
     transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .sbh-card:active { transform: scale(0.965); }
+  .sbh-card:active { transform: scale(0.955); }
+  /* RC2 — the broad float collapses to a tight contact on press, so a tap reads
+     as the tile pressing INTO the page (a felt, native-feeling response). */
   .sbh-card:active .sbh-card-media {
     box-shadow:
-      0 0 0 1px rgba(79, 109, 138, 0.14),
-      0 2px 5px -3px rgba(31, 26, 15, 0.5);
+      0 0 0 1px rgba(79, 109, 138, 0.16),
+      0 1px 3px -1px rgba(31, 26, 15, 0.45);
   }
   .sbh-card-wide { width: 46vw; max-width: 196px; }
   .sbh-card-tall { width: 30vw; max-width: 132px; }
   .sbh-card-media {
     position: relative; overflow: hidden;
-    border-radius: 16px;
+    border-radius: 18px;
     background: linear-gradient(160deg,#eef2f6 0%,#d4dde5 52%,#b7c5d3 100%);
-    /* the tile: a hairline ring, a close contact shadow, and a soft cast */
+    /* RC2 — a more dimensional float: a hairline ring, a crisp contact line, a
+       mid shadow, and a broad soft cast so the tile clearly lifts off the page */
     box-shadow:
-      0 0 0 1px rgba(79, 109, 138, 0.14),
-      0 2px 6px -3px rgba(31, 26, 15, 0.45),
-      0 12px 22px -14px rgba(31, 26, 15, 0.65);
-    transition: box-shadow 0.18s ease;
+      0 0 0 1px rgba(79, 109, 138, 0.16),
+      0 1px 2px rgba(31, 26, 15, 0.20),
+      0 6px 13px -6px rgba(31, 26, 15, 0.42),
+      0 22px 34px -16px rgba(31, 26, 15, 0.60);
+    transition: box-shadow 0.2s ease;
   }
   /* 1:1. The WIDTH is what was oversized (56vw -> 46vw above); the height was
      never the problem. Cutting the crop to 4/3 as well left a squat, wide-and-
@@ -11940,14 +11944,16 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
   [data-theme="dark"] .sbh-card-media {
     background: linear-gradient(135deg, #2a2119, #1a1510);
     /* the light-mode ring/shadow disappears on a dark ground — swap for a
-       gold hairline and a deeper cast so the tile still reads as raised */
+       cool hairline and a deeper, more dimensional cast (RC2) so the tile
+       reads as clearly raised off the dark ground */
     box-shadow:
-      0 0 0 1px rgba(176, 192, 209, 0.16),
-      0 2px 6px -3px rgba(0, 0, 0, 0.8),
-      0 14px 24px -14px rgba(0, 0, 0, 0.95);
+      0 0 0 1px rgba(176, 192, 209, 0.18),
+      0 1px 2px rgba(0, 0, 0, 0.85),
+      0 6px 13px -6px rgba(0, 0, 0, 0.80),
+      0 24px 36px -16px rgba(0, 0, 0, 0.98);
   }
   [data-theme="dark"] .sbh-card:active .sbh-card-media {
-    box-shadow: 0 0 0 1px rgba(176, 192, 209, 0.16), 0 2px 5px -3px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 0 0 1px rgba(176, 192, 209, 0.18), 0 1px 3px -1px rgba(0, 0, 0, 0.92);
   }
   [data-theme="dark"] .sbh-chip-price { background: rgba(28, 22, 14, 0.92); color: #e7ebf0; }
   [data-theme="dark"] .sbh-ticker { background: var(--bg-card, #1a1610); }
@@ -12003,6 +12009,44 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     transform: none !important;
     transition: none !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CX-V01-B1-IMP-A-RC2 — CIRCLE RAIL PREMIUM TIER (BOTH viewports; shared + UNLAYERED)
+   ---------------------------------------------------------------------------
+   The "StayBid Circle" rail carries the luxury "own a share of a property" tier,
+   so its tiles get a warm gold-touched ring + a soft gold cast that sets them
+   apart from the plain browse rails at a glance. STATIC presentation only (no
+   motion). The depth contract is honoured — the treatment lives on
+   .sbh-card-media (the tile), never on the card shell. Written ONCE, unlayered,
+   so it beats both the mobile block (higher specificity: 0,2,0 > 0,1,0) and
+   desktop.css (unlayered > layer(utilities)) on either viewport. --sbh-gold is
+   the same gold the score chip + desktop hover ring already use.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sbh-rail-circle .sbh-card-media {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--sbh-gold) 40%, transparent),
+    0 1px 2px rgba(31, 26, 15, 0.20),
+    0 6px 14px -6px rgba(31, 26, 15, 0.40),
+    0 22px 36px -16px rgba(130, 96, 22, 0.42);
+}
+.sbh-rail-circle .sbh-card:hover .sbh-card-media {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--sbh-gold) 64%, transparent),
+    0 10px 20px -10px rgba(31, 26, 15, 0.48),
+    0 40px 64px -26px rgba(130, 96, 22, 0.50);
+}
+.sbh-rail-circle .sbh-card:active .sbh-card-media {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--sbh-gold) 52%, transparent),
+    0 1px 3px -1px rgba(31, 26, 15, 0.45);
+}
+[data-theme="dark"] .sbh-rail-circle .sbh-card-media {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--sbh-gold) 46%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 6px 14px -6px rgba(0, 0, 0, 0.80),
+    0 24px 40px -16px rgba(120, 88, 20, 0.55);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
