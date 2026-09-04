@@ -21,6 +21,7 @@
 //     /api/flash/near, scores + cohort rank from /api/hotels/scorecards.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LAUNCH_ZONES, zoneForCity } from "@/lib/launch/curation";
@@ -281,32 +282,50 @@ function Rail({
       must be a real user gesture, not a navigation). */
   actionBtn?: { label: string; onClick: () => void; disabled?: boolean };
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [atStart, setAtStart] = useState(true);
-  const [atEnd, setAtEnd] = useState(false);
+  // RC3-1E — Embla v8 is the rail INTERACTION engine (drag / momentum / position /
+  // arrow mechanics) ONLY. It owns none of the business data: the slide children,
+  // their order, hrefs and actions are exactly the React children passed in.
+  // dragFree = free native-feeling momentum (no card-by-card snap lock); loop=false
+  // keeps inventory order truthful; trimSnaps + align:start give clean edges.
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    containScroll: "trimSnaps",
+    dragFree: true,
+    loop: false,
+    watchDrag: true,
+  });
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+  const reduceRef = useRef(false);
 
-  const sync = () => {
-    const el = ref.current;
-    if (!el) return;
-    setAtStart(el.scrollLeft < 8);
-    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 8);
-  };
+  // Arrow enabled-state derives from Embla's own capability (no scrollLeft math,
+  // no polling); refreshed on select + reInit (resize/layout) per the public API.
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCanPrev(emblaApi.canScrollPrev());
+    setCanNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
   useEffect(() => {
-    sync();
-    const el = ref.current;
-    if (!el) return;
-    el.addEventListener("scroll", sync, { passive: true });
-    window.addEventListener("resize", sync);
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect).on("reInit", onSelect);
     return () => {
-      el.removeEventListener("scroll", sync);
-      window.removeEventListener("resize", sync);
+      emblaApi.off("select", onSelect).off("reInit", onSelect);
     };
+  }, [emblaApi, onSelect]);
+
+  // Reduced-motion: arrow navigation jumps instantly (Embla's documented `jump`
+  // arg) instead of animating; direct finger drag stays fully functional.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reduceRef.current = mq.matches;
+    const h = () => { reduceRef.current = mq.matches; };
+    mq.addEventListener?.("change", h);
+    return () => mq.removeEventListener?.("change", h);
   }, []);
-  const nudge = (dir: 1 | -1) => {
-    const el = ref.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.82), behavior: "smooth" });
-  };
+  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(reduceRef.current), [emblaApi]);
+  const scrollNext = useCallback(() => emblaApi?.scrollNext(reduceRef.current), [emblaApi]);
 
   return (
     <section className={className ? `sbh-rail-wrap ${className}` : "sbh-rail-wrap"}>
@@ -335,20 +354,23 @@ function Rail({
         <button
           type="button"
           className="sbh-rail-nav sbh-rail-nav-l"
-          onClick={() => nudge(-1)}
-          disabled={atStart}
+          onClick={scrollPrev}
+          disabled={!canPrev}
           aria-label={`Scroll ${title} left`}
         >
           ‹
         </button>
-        <div ref={ref} className={`sbh-rail sbh-rail-${variant}`}>
-          {children}
+        {/* Embla viewport (overflow-hidden) → track (flex) → existing card children */}
+        <div className={`sbh-rail sbh-rail-${variant}`} ref={emblaRef}>
+          <div className="sbh-rail-track">
+            {children}
+          </div>
         </div>
         <button
           type="button"
           className="sbh-rail-nav sbh-rail-nav-r"
-          onClick={() => nudge(1)}
-          disabled={atEnd}
+          onClick={scrollNext}
+          disabled={!canNext}
           aria-label={`Scroll ${title} right`}
         >
           ›

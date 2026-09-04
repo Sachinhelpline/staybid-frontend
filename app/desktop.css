@@ -2490,16 +2490,16 @@ body main textarea.input-luxury {
   .sbh-rail-all { padding: 10px 4px; margin: -10px -4px; }
   .sbh-rail-all:hover { opacity: 1; color: #536b82; }
   .sbh-rail-shell { position: relative; }
+  /* RC3-1E — Embla viewport (see globals.css). Embla owns drag/momentum/position;
+     the ‹ › arrows call the Embla API (canScrollPrev/Next + scrollPrev/Next). */
   .sbh-rail {
-    display: flex; gap: 18px;
     padding: 6px var(--sbh-gut) 22px;
-    overflow-x: auto; overflow-y: hidden;
-    /* RC3 — match mobile: free momentum, no scroll-snap (trackpad / shift-wheel
-       free-scroll; the ‹ › arrow nudges still scrollBy smoothly). */
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
+    overflow: hidden;
   }
-  .sbh-rail::-webkit-scrollbar { display: none; }
+  .sbh-rail-track {
+    display: flex;
+    gap: 18px;
+  }
   .sbh-rail-nav {
     position: absolute; top: 50%; transform: translateY(-50%);
     z-index: 6; width: 44px; height: 44px; border-radius: 999px;
