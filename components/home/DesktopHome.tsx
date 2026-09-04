@@ -255,6 +255,13 @@ function reelPoster(r: Reel): string {
   const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE";
   return (isVideo ? r.thumbnail_url : r.media_url) || r.media_url || "";
 }
+/** The hover-preview SOURCE for a reel. Today this is the legacy DIRECT media
+    URL the feed already returns; it is the one seam a future provider-neutral
+    preview (e.g. a low-rendition stream URL) replaces, without touching the
+    intent timer, failure state, visibility rule or cleanup in ReelCard. */
+function reelPreviewSource(r: Reel): string {
+  return r.media_url || "";
+}
 
 /* ── horizontal rail with arrow controls ───────────────────────────────── */
 function Rail({
@@ -529,9 +536,11 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   const who = r.author?.display_name || r.display_name || "StayBid";
   // Netflix-style hover preview: the reel's own clip plays muted on hover.
   // Motion happens exactly where the pointer already is — never on its own.
-  // Hover preview is a pointer affordance — never mounted on touch, so phones
-  // don't fetch a dozen video headers they can never trigger.
+  // The preview is gated by the existing wide-viewport path (`preview` comes
+  // from useWide: min-width 1024px); pointer/touch capability itself is NOT
+  // detected. Below that width no preview video is ever mounted.
   const isVideo = preview && String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
+  const previewSrc = isVideo ? reelPreviewSource(r) : "";
   const [hot, setHot] = useState(false);
   const [playing, setPlaying] = useState(false);
   // HOME_REEL_PRE_INTENT_VIDEO_GATING — `armed` is the post-threshold intent
@@ -540,7 +549,56 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   // idle Home and a casual sweep across the rail attach NO video source, so
   // the browser never starts an MP4 range fetch before real intent.
   const [armed, setArmed] = useState(false);
-  const vid = useRef<HTMLVideoElement>(null);
+  // `failed` = this hover's ONE preview attempt was rejected (autoplay policy)
+  // or the media errored. It unmounts the <video> (releasing the source) and
+  // leaves the poster + the card's CSS hover motion as the zero-network
+  // fallback. It is reset only by pointer leave, so the same hover never
+  // retries; the next deliberate hover gets exactly one fresh attempt.
+  const [failed, setFailed] = useState(false);
+  const vid = useRef<HTMLVideoElement | null>(null);
+  // One token per mounted preview element: bounds the explicit play() to a
+  // single call per hover and lets a late promise recognise it is stale.
+  const attempt = useRef<{ played: boolean } | null>(null);
+  // Callback ref = the mute-before-src lifecycle. React creates the element
+  // with the autoplay/playsinline/poster/preload attributes and the muted
+  // PROPERTY already set (no src prop), inserts it, then hands it here. We
+  // (1) make the mute durable — defaultMuted + muted + the content attribute
+  // — and only THEN (2) attach the real source, so the browser first sees a
+  // muted, inline, autoplay element and may start it itself. On unmount we
+  // pause, drop the source and reset the element so no transfer continues.
+  const attachPreview = useCallback((el: HTMLVideoElement | null) => {
+    if (!el) {
+      const prev = vid.current;
+      attempt.current = null;
+      vid.current = null;
+      if (prev) {
+        try { prev.pause(); } catch {}
+        prev.removeAttribute("src");
+        try { prev.load(); } catch {}
+      }
+      return;
+    }
+    vid.current = el;
+    attempt.current = { played: false };
+    el.defaultMuted = true;
+    el.muted = true;
+    el.setAttribute("muted", "");
+    el.src = previewSrc;
+  }, [previewSrc]);
+  // Single bounded start path: when the element reports it can play, and the
+  // autoplay attribute has NOT already started it, make ONE explicit play()
+  // call. A rejection marks this hover failed (no retry, no console noise).
+  const onCanPlay = useCallback(() => {
+    const el = vid.current;
+    const token = attempt.current;
+    if (!el || !token || token.played) return;
+    token.played = true;
+    if (!el.paused) return;                 // autoplay attribute already started it
+    const p = el.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(() => { if (attempt.current === token) setFailed(true); });
+    }
+  }, []);
   const router = useRouter();
   const hotelId = r.hotel?.id || "";
   const openReel = useCallback(() => { router.push(`/discover?start=${encodeURIComponent(r.id)}`); }, [router, r.id]);
@@ -565,30 +623,22 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
   }, [r.id]);
   useEffect(() => {
     if (!hot) {
-      // Pointer left: disarm → the <video> unmounts, which releases its source
-      // so no continued transfer is encouraged; the poster/card stays intact.
+      // Pointer left: disarm → the <video> unmounts (the callback ref pauses
+      // it and drops the source, so no continued transfer is encouraged); the
+      // failed flag resets so the NEXT deliberate hover gets one new attempt.
       setArmed(false);
       setPlaying(false);
+      setFailed(false);
       return;
     }
     // Small debounce so a casual mouse sweep across the rail doesn't kick off
-    // a dozen video fetches; only a DELIBERATE hover arms the card (attaches
-    // the source). A sweep shorter than this clears the timer before it fires,
-    // so no src is ever attached. Playback is handled by the `armed` effect.
+    // a dozen video fetches; only a DELIBERATE hover arms the card (mounts the
+    // element, which attaches the source). A sweep shorter than this clears
+    // the timer before it fires, so no src is ever attached. Starting the
+    // video is the element's own autoplay + the single onCanPlay fallback.
     const t = setTimeout(() => setArmed(true), 180);
     return () => clearTimeout(t);
   }, [hot]);
-  useEffect(() => {
-    if (!armed) return;
-    // Runs after the commit that mounted the <video>, so the ref is attached.
-    const el = vid.current;
-    if (!el) return;
-    let cancelled = false;
-    el.muted = true;                       // belt-and-braces for autoplay policy
-    el.play().then(() => { if (cancelled) el.pause(); }).catch(() => {});
-    // Disarm/unmount: cancel any in-flight play promise and pause the element.
-    return () => { cancelled = true; el.pause(); };
-  }, [armed]);
   return (
     <div
       className="sbh-card sbh-card-tall sbh-reelx"
@@ -600,14 +650,18 @@ function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: num
     >
       <div className="sbh-card-media">
         {poster ? <img src={poster} alt="" loading="lazy" /> : <div className="sbh-card-ph" />}
-        {isVideo && armed ? (
+        {isVideo && armed && !failed ? (
           <video
-            ref={vid}
+            ref={attachPreview}
             className={`sbh-reel-vid${hot && playing ? " is-on" : ""}`}
-            src={r.media_url || undefined}
-            muted loop playsInline preload="metadata"
+            /* NO src here — attachPreview sets it only after the mute is
+               established on the element (mute-before-src). */
+            autoPlay muted loop playsInline preload="auto"
+            poster={poster || undefined}
+            onCanPlay={onCanPlay}
             onPlaying={() => setPlaying(true)}
             onEnded={() => setPlaying(false)}
+            onError={() => setFailed(true)}
             tabIndex={-1} aria-hidden
           />
         ) : null}
