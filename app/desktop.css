@@ -2494,12 +2494,12 @@ body main textarea.input-luxury {
     display: flex; gap: 18px;
     padding: 6px var(--sbh-gut) 22px;
     overflow-x: auto; overflow-y: hidden;
-    scroll-snap-type: x proximity;
-    scroll-padding-inline: var(--sbh-gut);   /* see the note in globals.css */
+    /* RC3 — match mobile: free momentum, no scroll-snap (trackpad / shift-wheel
+       free-scroll; the ‹ › arrow nudges still scrollBy smoothly). */
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
   .sbh-rail::-webkit-scrollbar { display: none; }
-  .sbh-rail > * { scroll-snap-align: start; }
   .sbh-rail-nav {
     position: absolute; top: 50%; transform: translateY(-50%);
     z-index: 6; width: 44px; height: 44px; border-radius: 999px;

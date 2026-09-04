@@ -11820,17 +11820,21 @@ html.is-reel-page :focus-visible { outline-color: #d5dce4; }
     display: flex; gap: 12px;
     padding: 4px var(--sbh-gut) 20px;    /* room for the tile's cast shadow */
     overflow-x: auto; overflow-y: hidden;
-    scroll-snap-type: x proximity;
-    /* v572 — without this the snapport starts at the PADDING edge, so the
-       browser's first snap position is scrollLeft = gutter: the rail settles
-       one gutter in and card 1 sits half off the left edge. Matching the
-       scroll padding to the layout padding makes scrollLeft 0 the snap. */
-    scroll-padding-inline: var(--sbh-gut);
-    -webkit-overflow-scrolling: touch;
+    /* RC3 (owner real-device finding 1B) — FREE NATIVE MOMENTUM, no scroll-snap.
+       Proximity snap + a snap-align on every card (~208px apart) was arresting
+       the flick at each card: iOS decelerates to the nearest snap point even for
+       `proximity`, which read as "stuck / momentum cut / card catching". A content
+       browse shelf should carry the flick on the browser's own inertia (App Store /
+       Netflix shelves free-scroll). No JS engine, no fake physics — the native
+       overflow scroller is the momentum. touch-action stays default `auto` so the
+       browser still disambiguates a vertical page swipe that starts on the rail. */
+    overscroll-behavior-x: contain;      /* rail-local horizontal boundary: a flick
+       to the end never chains to the page or the browser back-gesture. Does NOT
+       touch the global body overscroll rule (layout.tsx, protected). */
+    -webkit-overflow-scrolling: touch;   /* native momentum on legacy iOS */
     scrollbar-width: none;
   }
   .sbh-rail::-webkit-scrollbar { display: none; }
-  .sbh-rail > * { scroll-snap-align: start; }
 
   /* ── cards ────────────────────────────────────────────────────────── */
   /* v568. The card stays CONTAINER-LESS (text on the page, not in a box) but
