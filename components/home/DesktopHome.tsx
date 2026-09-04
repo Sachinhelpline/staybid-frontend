@@ -32,6 +32,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelScoreBadge";
 import { useFollow } from "@/lib/follow-store";
+import { resolveLegacySocialMedia } from "@/lib/social/media-contract";
 // v580 — the shared browsing-affinity engine: season (existing wheel) +
 // reach-from-viewer (owner's Origin-to-Destination Fit Matrix + distance) +
 // taste (the existing sb_disco_signals store). One engine orders the hero,
@@ -251,17 +252,10 @@ function SaveHeart({ kind, id, target }: { kind: "hotel" | "video"; id: string; 
     </button>
   );
 }
-function reelPoster(r: Reel): string {
-  const isVideo = String(r.media_type || "").toUpperCase() !== "IMAGE";
-  return (isVideo ? r.thumbnail_url : r.media_url) || r.media_url || "";
-}
-/** The hover-preview SOURCE for a reel. Today this is the legacy DIRECT media
-    URL the feed already returns; it is the one seam a future provider-neutral
-    preview (e.g. a low-rendition stream URL) replaces, without touching the
-    intent timer, failure state, visibility rule or cleanup in ReelCard. */
-function reelPreviewSource(r: Reel): string {
-  return r.media_url || "";
-}
+// Poster + hover-preview source now come from the provider-neutral media
+// contract (lib/social/media-contract). resolveLegacySocialMedia is the single
+// seam a future managed-video provider plugs into; ReelCard's intent timer,
+// failure state, visibility rule and cleanup are unchanged.
 
 /* ── horizontal rail with arrow controls ───────────────────────────────── */
 function Rail({
@@ -532,15 +526,19 @@ function FlashCard({ d, left, score }: { d: Deal; left: string; score?: Scorecar
    swipe is the feed's own, and Back returns you to this page because it is a
    real navigation rather than an overlay. */
 function ReelCard({ r, preview, price }: { r: Reel; preview: boolean; price: number | null }) {
-  const poster = reelPoster(r);
+  // Provider-neutral read contract (lib/social/media-contract). Today this
+  // resolves the legacy Supabase DIRECT media; a future managed provider swaps
+  // only preview/playback type+url, never this consumer's lifecycle.
+  const media = useMemo(() => resolveLegacySocialMedia(r), [r]);
+  const poster = media.poster.source === "placeholder" ? "" : media.poster.url;
   const who = r.author?.display_name || r.display_name || "StayBid";
   // Netflix-style hover preview: the reel's own clip plays muted on hover.
   // Motion happens exactly where the pointer already is — never on its own.
   // The preview is gated by the existing wide-viewport path (`preview` comes
   // from useWide: min-width 1024px); pointer/touch capability itself is NOT
   // detected. Below that width no preview video is ever mounted.
-  const isVideo = preview && String(r.media_type || "").toUpperCase() !== "IMAGE" && !!r.media_url;
-  const previewSrc = isVideo ? reelPreviewSource(r) : "";
+  const isVideo = preview && media.kind === "video" && media.preview.type === "DIRECT";
+  const previewSrc = media.preview.type === "DIRECT" ? media.preview.url : "";
   const [hot, setHot] = useState(false);
   const [playing, setPlaying] = useState(false);
   // HOME_REEL_PRE_INTENT_VIDEO_GATING — `armed` is the post-threshold intent
