@@ -8,6 +8,7 @@ import { SB_URL, SB_KEY } from "@/lib/sb";
 import { sbCacheInvalidate } from "@/lib/sb-cache";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
 import { getProfileByUserId, canDeletePost } from "@/lib/social/social-profile.service";
+import { validateOptionalSoundUrl } from "@/lib/social/media-url-policy";
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -175,6 +176,12 @@ export async function PATCH(req: Request, props: { params: Promise<{ postId: str
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // SEC-00A — fail-closed C2 containment for the edit path: an existing
+  // post must not be convertible to an arbitrary external sound URL.
+  if (typeof body.sound_url === "string" && body.sound_url.length > 0) {
+    const soundError = validateOptionalSoundUrl(body.sound_url);
+    if (soundError) return NextResponse.json({ error: soundError }, { status: 400 });
+  }
   const patch: Record<string, any> = {};
   if (typeof body.caption === "string")        patch.caption        = body.caption.slice(0, 2200) || null;
   if (typeof body.location_name === "string")  patch.location_name  = body.location_name.slice(0, 120) || null;

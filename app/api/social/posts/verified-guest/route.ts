@@ -13,6 +13,7 @@
 //
 // Auth: any signed-in customer. Existing /api/social/posts is untouched.
 import { NextResponse } from "next/server";
+import { validatePostMediaUrls } from "@/lib/social/media-url-policy";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
 import { ensureForUser } from "@/lib/social/social-profile.service";
@@ -49,6 +50,12 @@ export async function POST(req: Request) {
   }
   if (!body.mediaUrl) {
     return NextResponse.json({ error: "mediaUrl required" }, { status: 400 });
+  }
+  // SEC-00A — fail-closed C2 containment BEFORE insertion. Verified Guest
+  // AUTO_APPROVES, so URL safety must be enforced ahead of the DB insert.
+  {
+    const mediaUrlError = validatePostMediaUrls({ mediaUrl: body.mediaUrl, thumbnailUrl: body.thumbnailUrl, soundUrl: body.soundUrl });
+    if (mediaUrlError) return NextResponse.json({ error: mediaUrlError }, { status: 400 });
   }
   if (!body.hotelId || !body.bookingId) {
     return NextResponse.json(
