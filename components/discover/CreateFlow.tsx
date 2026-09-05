@@ -24,6 +24,9 @@ import { api } from "@/lib/api";
 // reload, logout, device switch). See post() handler below.
 import { uploadSocialMedia, uploadSocialAudio } from "@/lib/social/storage-upload";
 import { compressVideo } from "@/lib/social/video-compress";
+// N0 — final outbound video safety gate (classify → normalize if required →
+// validate → allow / FAIL CLOSED). Lazy: mediabunny is never imported here.
+import { prepareOutboundVideo, isUnsafeVideoContainerError, UNSAFE_VIDEO_CREATOR_MESSAGE, type OutboundOrigin } from "@/lib/social/video-normalize";
 import {
   compositeImageWithOverlays,
   type Overlay,
@@ -2263,6 +2266,16 @@ export function Composer({
   };
   type RunUploadFail = { ok: false; error: string };
   const runUpload = useCallback(async (tempId: string, post: UserPost): Promise<RunUploadOk | RunUploadFail> => {
+    // N0 remediation (Correction 2) — single-ownership lifecycle for the
+    // temporary object URLs THIS function creates for intermediate
+    // compression / normalization blobs. Declared BEFORE the try so the
+    // finally can always release them on EVERY exit path (success, gate
+    // fail-closed, upload failure, post-API failure). post.mediaUrl is the
+    // durable/original media created by the composer OUTSIDE runUpload — it
+    // is NEVER tracked here and NEVER revoked, so retry() re-runs against it.
+    // Audio URL handling is unchanged.
+    const ownedObjectUrls: string[] = [];
+    const trackObjectUrl = (blob: Blob): string => { const u = URL.createObjectURL(blob); ownedObjectUrls.push(u); return u; };
     try {
       const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
       if (!tok)    return { ok: false, error: "Not signed in. Saved on this device only." };
@@ -2284,6 +2297,9 @@ export function Composer({
       // even on India 3G. Failure falls through to the original file.
       let uploadBlobUrl = post.mediaUrl;
       let uploadMime    = post.mediaMime;
+      // N0 — provenance of the FINAL outbound blob: "compressor" only when
+      // compressVideo actually replaced the source; otherwise "original".
+      let outboundOrigin: OutboundOrigin = "original";
       const isVideoPost = mediaType === "REEL" || mediaType === "STORY" || (post.mediaMime || "").startsWith("video/");
       // v119 — overlay composite. Photos get a synchronous canvas
       // re-render with overlays burned in; videos route their overlays
@@ -2298,7 +2314,7 @@ export function Composer({
           setCompressionProgress(0);
           const srcBlob = await fetch(post.mediaUrl).then((r) => r.blob());
           const result = await compositeImageWithOverlays(srcBlob, overlaysSnapshot);
-          const newUrl = URL.createObjectURL(result.blob);
+          const newUrl = trackObjectUrl(result.blob);
           uploadBlobUrl = newUrl;
           uploadMime    = result.mime;
           setCompressedInfo({ before: srcBlob.size, after: result.blob.size });
@@ -2330,9 +2346,10 @@ export function Composer({
             { maxDurationS },
           );
           if (result.compressed && result.blob !== srcBlob) {
-            const newUrl = URL.createObjectURL(result.blob);
+            const newUrl = trackObjectUrl(result.blob);
             uploadBlobUrl = newUrl;
             uploadMime    = result.mime;
+            outboundOrigin = "compressor";
             setCompressedInfo({ before: result.originalBytes, after: result.finalBytes });
           } else {
             setCompressedInfo({ before: result.originalBytes, after: result.finalBytes });
@@ -2347,6 +2364,32 @@ export function Composer({
           // Storage will accept whatever the phone produced.
         } finally {
           setCompressing(false);
+        }
+      }
+
+      // N0 — FINAL OUTBOUND VIDEO SAFETY GATE. Runs on the FINAL candidate
+      // (compressed or original) AFTER the compression try/catch above and
+      // BEFORE any Storage upload, so an ordinary compression soft-fallback
+      // can never carry a known-unsafe container to public playback:
+      //   SAFE progressive MP4      → upload unchanged
+      //   known Chromium fMP4       → lazy one-shot Worker remux → validate
+      //   anything unsafe/unproven  → FAIL CLOSED (creator sees the existing
+      //                                error channel + Retry; nothing uploads)
+      // prepareOutboundVideo throws ONLY UnsafeVideoContainerError; it is
+      // deliberately NOT inside the compression catch above.
+      if (isVideoPost) {
+        try {
+          const candidate = await fetch(uploadBlobUrl).then((r) => r.blob());
+          const prepared = await prepareOutboundVideo({ blob: candidate, mime: uploadMime, origin: outboundOrigin });
+          if (prepared.normalized) {
+            uploadBlobUrl = trackObjectUrl(prepared.blob);
+            uploadMime    = prepared.mime;
+          }
+        } catch (e: any) {
+          // Every failure here is FAIL CLOSED — never fall back to the
+          // unverified blob. Non-technical message, existing error channel.
+          const msg = isUnsafeVideoContainerError(e) ? e.creatorMessage : UNSAFE_VIDEO_CREATOR_MESSAGE;
+          return { ok: false, error: msg };
         }
       }
 
@@ -2440,6 +2483,13 @@ export function Composer({
         ? "Couldn't upload media (network / file format)."
         : (err?.message || "Upload failed.");
       return { ok: false, error: msg };
+    } finally {
+      // N0 remediation (Correction 2) — release ONLY the URLs this function
+      // created, AFTER every await (compression, normalization,
+      // uploadSocialMedia, the social-post API call) has completed. Runs on
+      // success AND every failure / early-return path. Never touches
+      // post.mediaUrl or the audio URL.
+      for (const u of ownedObjectUrls) { try { URL.revokeObjectURL(u); } catch {} }
     }
     // v119 — `overlays` in deps so the callback captures the latest set
     // every time the user adds/drags/resizes. Recreating the callback is
