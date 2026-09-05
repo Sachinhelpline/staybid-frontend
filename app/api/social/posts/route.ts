@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
 import { ensureForUser, canPost } from "@/lib/social/social-profile.service";
+import { validatePostMediaUrls } from "@/lib/social/media-url-policy";
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -38,6 +39,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "mediaType must be PHOTO | REEL | STORY" }, { status: 400 });
   }
   if (!body.mediaUrl) return NextResponse.json({ error: "mediaUrl required" }, { status: 400 });
+  // SEC-00A — fail-closed C2 containment: reject arbitrary client media URLs
+  // BEFORE any DB mutation (interim allow-list; not ownership/safety/READY).
+  {
+    const mediaUrlError = validatePostMediaUrls({ mediaUrl: body.mediaUrl, thumbnailUrl: body.thumbnailUrl, soundUrl: body.soundUrl });
+    if (mediaUrlError) return NextResponse.json({ error: mediaUrlError }, { status: 400 });
+  }
 
   // Hotels can tag their own hotel only
   let hotelId: string | null = null;

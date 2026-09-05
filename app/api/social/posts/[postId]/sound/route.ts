@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
 import { getProfileByUserId, canChangeSound } from "@/lib/social/social-profile.service";
+import { validateOptionalSoundUrl } from "@/lib/social/media-url-policy";
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -33,6 +34,11 @@ export async function PATCH(req: Request, props: { params: Promise<{ postId: str
   if (!canChangeSound(post, profile)) {
     return NextResponse.json({ error: "Only the sound owner can change the soundtrack" }, { status: 403 });
   }
+
+  // SEC-00A — fail-closed C2 containment: reject an arbitrary external
+  // sound URL before mutating the post.
+  const soundError = validateOptionalSoundUrl(body.soundUrl);
+  if (soundError) return NextResponse.json({ error: soundError }, { status: 400 });
 
   await fetch(`${SB_URL}/rest/v1/social_posts?id=eq.${encodeURIComponent(postId)}`, {
     method: "PATCH", headers: HEADERS,

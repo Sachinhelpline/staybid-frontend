@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
+import { validatePostMediaUrls } from "@/lib/social/media-url-policy";
 import { ensureForUser } from "@/lib/social/social-profile.service";
 import { maybePromoteToTier, queueTierPromotionNudge } from "@/lib/tier/promote";
 import type { ContentTier } from "@/lib/tier/types";
@@ -46,6 +47,12 @@ export async function POST(req: Request) {
   }
   if (!body.mediaUrl) {
     return NextResponse.json({ error: "mediaUrl required" }, { status: 400 });
+  }
+  // SEC-00A — fail-closed C2 containment BEFORE insertion (moderation is
+  // NOT a security boundary; PENDING content is still validated here).
+  {
+    const mediaUrlError = validatePostMediaUrls({ mediaUrl: body.mediaUrl, thumbnailUrl: body.thumbnailUrl, soundUrl: body.soundUrl });
+    if (mediaUrlError) return NextResponse.json({ error: mediaUrlError }, { status: 400 });
   }
   if (!body.hotelId || !body.locationVerificationId) {
     return NextResponse.json(
