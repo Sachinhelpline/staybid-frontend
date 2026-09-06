@@ -326,7 +326,10 @@ async function main() {
     ok(!/from\s+["']@supabase/.test(pureSrc) && !/require\(/.test(pureSrc), "upload-session.ts dependency-free");
     ok(/no-store/.test(pureSrc), "responses set no-store");
     const routeSrc = read("app/api/social/upload-session/route.ts");
-    ok(/verifiedCustomerFromReq/.test(routeSrc) && !/socialUserFromReq|userFromReq|decodeJwt/.test(routeSrc), "route cryptographic auth, no decode-only");
+    // SEC-00B-P1E-R1: the route now consumes the STRICT customer-domain media gate
+    // (resolveVerifiedMediaCustomer / createMediaCustomerAuthority) instead of the
+    // generic verifiedCustomerFromReq; decode-only helpers remain forbidden.
+    ok(/resolveVerifiedMediaCustomer/.test(routeSrc) && /createMediaCustomerAuthority/.test(routeSrc) && !/socialUserFromReq|userFromReq|decodeJwt/.test(routeSrc), "route strict media customer-domain gate, no decode-only");
     ok(/runtime\s*=\s*["']nodejs["']/.test(routeSrc), "route nodejs runtime");
     const storeSrc = read("lib/social/upload-session-store.ts");
     const storeCode = storeSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
