@@ -34,10 +34,20 @@ const OKBODY = { mediaClass: "photo", contentType: "image/jpeg", byteSize: 1024,
 const freshOk = (sub) => async () => ({ id: sub, role: "customer", isBlocked: false });
 
 // Minimal upload-session store fake (for handler wiring T21/T22).
+// SEC-00B-P1F-1 — the non-atomic count/insert trio is replaced by the single
+// atomic reserveNewSession; the fake returns a matching canonical row so the
+// reserved-row invariant passes and the enabled+valid path reaches 200.
 function baseStore() {
   return {
     configured: () => true, bucketReady: async () => true, findByOwnerIdem: async () => null,
-    countRecentSessions: async () => 0, countActiveSessions: async () => 0, insertCreated: async () => "ok",
+    reserveNewSession: async (i) => ({
+      outcome: "reserved",
+      row: {
+        id: i.id, owner_user_id: i.owner_user_id, media_class: i.media_class,
+        content_type: i.content_type, declared_byte_size: i.declared_byte_size,
+        object_key: i.object_key, status: "created",
+      },
+    }),
     mintSignedUpload: async (k) => ({ token: "tkn", path: k }), authorizeCreated: async () => true,
     refreshAuthorized: async () => true, rejectCreated: async () => true,
   };

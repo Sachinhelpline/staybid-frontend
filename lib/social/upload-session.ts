@@ -173,20 +173,40 @@ export type UploadSessionRow = {
   status: string;
 };
 
+// SEC-00B-P1F-1 — the four bounded business outcomes of the atomic reservation
+// RPC. `reserved` / `idempotent_existing` carry the canonical row; the two quota
+// rejections carry no row.
+export type ReserveOutcome =
+  | "reserved"
+  | "idempotent_existing"
+  | "rate_limited"
+  | "concurrency_limited";
+
+// Single-literal discriminants (one per member) so the handler narrows the
+// union reliably by `reservation.outcome`.
+export type ReserveResult =
+  | { outcome: "reserved"; row: UploadSessionRow }
+  | { outcome: "idempotent_existing"; row: UploadSessionRow }
+  | { outcome: "rate_limited" }
+  | { outcome: "concurrency_limited" };
+
 export interface UploadSessionStore {
   configured(): boolean;
   /** True ONLY when the private quarantine bucket exists with the exact safe
    *  metadata (id, public===false, file_size_limit===MAX_BYTE_SIZE). */
   bucketReady(): Promise<boolean>;
   findByOwnerIdem(ownerId: string, idempotencyKey: string): Promise<UploadSessionRow | null>;
-  countRecentSessions(ownerId: string, sinceIso: string): Promise<number>;
-  /** Active = status in {created,upload_authorized} AND not expired at nowIso
-   *  (expires_at IS NULL counts active, fail-closed). */
-  countActiveSessions(ownerId: string, nowIso: string): Promise<number>;
-  /** Insert a CREATED row (with a bounded server-owned expiry so an orphaned
-   *  CREATED row cannot permanently consume the active quota); 'conflict' on the
-   *  (owner,idempotency) unique race. */
-  insertCreated(input: {
+  /** SEC-00B-P1F-1 — ATOMIC new-session reservation. ONE privileged RPC runs the
+   *  idempotency check + the rate (12/60s) & active (6) quota counts + the
+   *  CREATED insert (bounded 2h TTL) inside ONE transaction under a per-owner
+   *  advisory lock, on a single authoritative DB clock. The caller passes NO
+   *  limit / window / TTL / clock — they are DB-FIXED security invariants.
+   *  Replaces the former NON-ATOMIC countRecentSessions → countActiveSessions →
+   *  insertCreated trio, closing the per-owner quota TOCTOU race. Fails closed
+   *  (throws) on any provider error, unknown outcome, or a reserved /
+   *  idempotent_existing result whose row is not structurally valid; the handler
+   *  maps a throw to 503 (never a new public error surface). */
+  reserveNewSession(input: {
     id: string;
     owner_user_id: string;
     media_class: string;
@@ -194,9 +214,7 @@ export interface UploadSessionStore {
     declared_byte_size: number;
     object_key: string;
     idempotency_key: string;
-    nowIso: string;
-    expiresAtIso: string;
-  }): Promise<"ok" | "conflict">;
+  }): Promise<ReserveResult>;
   /** Standard signed upload for the exact object key (upsert=false). */
   mintSignedUpload(objectKey: string): Promise<{ token: string; path: string } | null>;
   /** CAS: created -> upload_authorized. true ONLY when exactly one row whose
@@ -291,8 +309,8 @@ export async function handleUploadSession(req: Request, deps: UploadSessionDeps)
   }
   if (existing) return authorizeExisting(existing, v.value, deps);
 
-  // 6) NEW session only — quarantine readiness (R1) BEFORE any row insert (no
-  //    dormant garbage), then the new-session abuse bounds.
+  // 6) NEW session only — quarantine readiness (R1) BEFORE any reservation (no
+  //    dormant garbage), regardless of the atomic quota gate below.
   let bucketOk = false;
   try {
     bucketOk = await deps.store.bucketReady();
@@ -301,29 +319,18 @@ export async function handleUploadSession(req: Request, deps: UploadSessionDeps)
   }
   if (!bucketOk) return err(503, "quarantine_unavailable");
 
-  try {
-    const nowMs = deps.now().getTime();
-    const sinceIso = new Date(nowMs - 60_000).toISOString();
-    const nowIso = new Date(nowMs).toISOString();
-    if ((await deps.store.countRecentSessions(owner, sinceIso)) >= MAX_NEW_SESSIONS_PER_60S) {
-      return err(429, "upload_session_rate_limited");
-    }
-    // Active quota excludes expired created/upload_authorized rows (F2), so a
-    // handful of stale orphans can never permanently block new sessions.
-    if ((await deps.store.countActiveSessions(owner, nowIso)) >= MAX_ACTIVE_SESSIONS) {
-      return err(429, "upload_session_concurrency_limited");
-    }
-  } catch {
-    return err(503, "upload_session_service_unavailable");
-  }
-
-  // 7) New session — server-owned id + object key + bounded created expiry.
+  // 7) Server-owned id + object key (never client-supplied).
   const sessionId = deps.genId();
   const objectKey = objectKeyForSession(sessionId);
-  let ins: "ok" | "conflict";
+
+  // 8) SEC-00B-P1F-1 — ONE atomic reservation RPC does the idempotency check +
+  //    rate (12/60s) & active (6) quota + CREATED insert in a single txn under a
+  //    per-owner advisory lock on a single DB clock. The former non-atomic
+  //    countRecent → countActive → insert trio (a TOCTOU race) is gone. The
+  //    handler supplies NO limit / window / TTL / clock — they are DB-fixed.
+  let reservation: ReserveResult;
   try {
-    const nowMs = deps.now().getTime();
-    ins = await deps.store.insertCreated({
+    reservation = await deps.store.reserveNewSession({
       id: sessionId,
       owner_user_id: owner,
       media_class: v.value.mediaClass,
@@ -331,27 +338,38 @@ export async function handleUploadSession(req: Request, deps: UploadSessionDeps)
       declared_byte_size: v.value.byteSize,
       object_key: objectKey,
       idempotency_key: v.value.idempotencyKey,
-      nowIso: new Date(nowMs).toISOString(),
-      // Bounded orphan lifetime = same 2h horizon as the signed-upload window.
-      expiresAtIso: new Date(nowMs + SIGNED_UPLOAD_TTL_MS).toISOString(),
     });
   } catch {
     return err(503, "upload_session_service_unavailable");
   }
 
-  if (ins === "conflict") {
-    // Unique-race: the DB is the arbiter — re-read + apply idempotency rules.
-    let row: UploadSessionRow | null = null;
-    try {
-      row = await deps.store.findByOwnerIdem(owner, v.value.idempotencyKey);
-    } catch {
-      return err(503, "upload_session_service_unavailable");
-    }
-    if (!row) return err(503, "upload_session_service_unavailable");
-    return authorizeExisting(row, v.value, deps);
+  // 9) Handle the bounded reservation outcome.
+  if (reservation.outcome === "rate_limited") return err(429, "upload_session_rate_limited");
+  if (reservation.outcome === "concurrency_limited") return err(429, "upload_session_concurrency_limited");
+
+  if (reservation.outcome === "idempotent_existing") {
+    // A concurrent / prior reservation under the SAME (owner, idempotency) key
+    // resolved to this canonical row — the DB is the arbiter. Apply the same
+    // idempotency rules as a direct findByOwnerIdem hit.
+    return authorizeExisting(reservation.row, v.value, deps);
   }
 
-  // Fresh CREATED row → created->upload_authorized CAS path.
+  // outcome === 'reserved' — a fresh CREATED row was atomically inserted.
+  // RESERVED-ROW INVARIANT (§19): the canonical row MUST match the exact
+  // reservation the server requested before any signed-upload token is minted.
+  const row = reservation.row;
+  if (
+    row.id !== sessionId ||
+    row.owner_user_id !== owner ||
+    row.object_key !== objectKey ||
+    row.status !== "created" ||
+    !factsMatch(row, v.value)
+  ) {
+    return err(503, "upload_session_service_unavailable");
+  }
+
+  // Fresh CREATED row → created->upload_authorized CAS path (provider mint runs
+  // only AFTER the DB reservation committed).
   return mintAndTransition(sessionId, objectKey, "created", deps);
 }
 

@@ -23,7 +23,11 @@
 //     update's returned row set (exactly one matching row). A later state can
 //     never be regressed.
 //   • Reads/writes ONLY public.media_upload_sessions + the quarantine bucket's
-//     read/ signed-upload authorization. No other table, no RPC, no SECURITY DEFINER.
+//     read / signed-upload authorization, plus EXACTLY ONE atomic reservation
+//     RPC (public.reserve_media_upload_session — SEC-00B-P1F-1). No other table.
+//     That RPC is SECURITY INVOKER with EXECUTE granted to service_role ONLY
+//     (this privileged store is the only caller); there is still NO SECURITY
+//     DEFINER function and NO anon fallback anywhere in this module.
 //   • The service-role key + signed token + signed URL are never returned to the
 //     caller, never logged, never persisted. Requester Authorization is never
 //     forwarded to Supabase. No file bytes pass through this module.
@@ -34,9 +38,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   QUARANTINE_BUCKET,
   MAX_BYTE_SIZE,
-  ACTIVE_STATES,
   type UploadSessionRow,
   type UploadSessionStore,
+  type ReserveResult,
 } from "./upload-session";
 
 // Server-only guard — this module holds the privileged client.
@@ -86,7 +90,28 @@ type StorageLike = {
   getBucket(id: string): Promise<{ data: any; error: any }>;
   from(bucket: string): { createSignedUploadUrl(path: string, opts: { upsert: boolean }): Promise<{ data: any; error: any }> };
 };
-type SupabaseLike = { from(table: string): any; storage: StorageLike };
+type SupabaseLike = {
+  from(table: string): any;
+  storage: StorageLike;
+  // SEC-00B-P1F-1 — the single atomic reservation RPC surface. Awaiting the
+  // call resolves to { data, error } (PostgREST shape), exactly like the real
+  // @supabase/supabase-js .rpc().
+  rpc(fn: string, params: Record<string, unknown>): Promise<{ data: any; error: any }>;
+};
+
+// SEC-00B-P1F-1 — structural validation of a canonical row returned by the
+// reservation RPC for a reserved / idempotent_existing outcome. Fail-closed: a
+// missing/blank id, owner, object_key or status is not a usable reservation.
+function isValidRow(r: any): boolean {
+  return (
+    !!r &&
+    typeof r === "object" &&
+    typeof r.id === "string" && r.id.length > 0 &&
+    typeof r.owner_user_id === "string" && r.owner_user_id.length > 0 &&
+    typeof r.object_key === "string" && r.object_key.length > 0 &&
+    typeof r.status === "string" && r.status.length > 0
+  );
+}
 
 function shapeRow(r: any): UploadSessionRow {
   return {
@@ -157,54 +182,39 @@ export function createUploadSessionStore(
       return data ? shapeRow(data) : null;
     },
 
-    async countRecentSessions(ownerId: string, sinceIso: string): Promise<number> {
-      const { count, error } = await getClient()
-        .from(TABLE)
-        .select("id", { count: "exact", head: true })
-        .eq("owner_user_id", ownerId)
-        .gte("created_at", sinceIso);
-      if (error) throw new Error("upload_session_store_count_failed");
-      return count ?? 0;
-    },
-
-    // F2 — active = an ACTIVE lifecycle status AND not yet expired at nowIso.
-    // `expires_at IS NULL` counts as active (fail-closed — a row with no bound
-    // still consumes the quota), and any row expired at/before nowIso is excluded
-    // so a handful of orphaned created/authorized rows can never permanently
-    // block a legitimate owner.
-    async countActiveSessions(ownerId: string, nowIso: string): Promise<number> {
-      const { count, error } = await getClient()
-        .from(TABLE)
-        .select("id", { count: "exact", head: true })
-        .eq("owner_user_id", ownerId)
-        .in("status", ACTIVE_STATES)
-        .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
-      if (error) throw new Error("upload_session_store_count_failed");
-      return count ?? 0;
-    },
-
-    async insertCreated(input): Promise<"ok" | "conflict"> {
-      const { error } = await getClient().from(TABLE).insert({
-        id: input.id,
-        owner_user_id: input.owner_user_id,
-        media_class: input.media_class,
-        content_type: input.content_type,
-        declared_byte_size: input.declared_byte_size,
-        quarantine_bucket: QUARANTINE_BUCKET,
-        object_key: input.object_key,
-        idempotency_key: input.idempotency_key,
-        status: "created",
-        // F2 — bounded server-owned expiry so an orphaned CREATED row cannot
-        // permanently consume the owner's active quota.
-        expires_at: input.expiresAtIso,
-        created_at: input.nowIso,
-        updated_at: input.nowIso,
+    // SEC-00B-P1F-1 — ATOMIC new-session reservation via the single privileged
+    // RPC. The former non-atomic countRecentSessions → countActiveSessions →
+    // insertCreated trio is REMOVED (it left a per-owner quota TOCTOU race); the
+    // idempotency check + rate (12/60s) & active (6) quota + CREATED insert now
+    // run in ONE transaction under a per-owner advisory lock on a single DB
+    // clock. Only the trusted server-owned reservation inputs are passed — NO
+    // rate / window / TTL / now (they are DB-fixed security invariants). Fails
+    // closed on any provider error, unknown outcome, or a reserved /
+    // idempotent_existing result whose row is not structurally valid.
+    async reserveNewSession(input): Promise<ReserveResult> {
+      const { data, error } = await getClient().rpc("reserve_media_upload_session", {
+        p_session_id: input.id,
+        p_owner_user_id: input.owner_user_id,
+        p_media_class: input.media_class,
+        p_content_type: input.content_type,
+        p_declared_byte_size: input.declared_byte_size,
+        p_object_key: input.object_key,
+        p_idempotency_key: input.idempotency_key,
       });
-      if (error) {
-        if ((error as any).code === "23505") return "conflict";
-        throw new Error("upload_session_store_insert_failed");
+      if (error || !data || typeof data !== "object") {
+        throw new Error("upload_session_store_reserve_failed");
       }
-      return "ok";
+      const outcome = (data as any).outcome;
+      if (outcome === "rate_limited" || outcome === "concurrency_limited") {
+        return { outcome };
+      }
+      if (outcome === "reserved" || outcome === "idempotent_existing") {
+        const raw = (data as any).row;
+        if (!isValidRow(raw)) throw new Error("upload_session_store_reserve_failed");
+        return { outcome, row: shapeRow(raw) };
+      }
+      // Unknown / malformed outcome → fail closed.
+      throw new Error("upload_session_store_reserve_failed");
     },
 
     // F1 — the signed-upload mint is authoritative ONLY when the provider
