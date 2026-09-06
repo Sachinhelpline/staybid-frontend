@@ -213,7 +213,10 @@ export interface UploadSessionStore {
 export type VerifiedRequester = { id: string } | null;
 
 export interface UploadSessionDeps {
-  verify: (req: Request) => VerifiedRequester;
+  // May be async: the strict media customer gate performs a fresh Railway
+  // customer lookup. It is awaited AFTER the activation-flag gate, so a disabled
+  // flag still performs ZERO authority/network work.
+  verify: (req: Request) => VerifiedRequester | Promise<VerifiedRequester>;
   store: UploadSessionStore;
   env: Record<string, string | undefined>;
   now: () => Date;
@@ -257,7 +260,7 @@ export async function handleUploadSession(req: Request, deps: UploadSessionDeps)
 
   // 2) Cryptographic customer auth (HS256-only verifier injected). Firebase
   //    RS256 / forged / expired / missing all resolve to null here.
-  const user = deps.verify(req);
+  const user = await deps.verify(req);
   if (!user || typeof user.id !== "string" || user.id.length === 0) {
     return err(401, "unauthorized");
   }
