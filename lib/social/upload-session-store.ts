@@ -149,9 +149,10 @@ function isValidExpiresAt(v: unknown): v is string {
 // SEC-00B-P1F-2 — the SINGLE privileged lifecycle CAS invocation. Sends ONLY the
 // session id + the fixed action (never a clock / TTL / expiry / reason / expected
 // status). Fails closed (throws) on any provider error, non-object data, or an
-// unknown/malformed outcome. Returns the bounded business result; the caller
-// validates any expires_at.
-type CasApplied = { outcome: "applied"; status: string; expires_at?: unknown };
+// unknown/malformed outcome. Returns the bounded business result with the RAW
+// `status` value from the RPC (NO coercion / trimming / case-folding) so each
+// caller can enforce the EXACT expected-status contract itself (SEC-00B-P1F-2-R2).
+type CasApplied = { outcome: "applied"; status: unknown; expires_at?: unknown };
 type CasResult = CasApplied | { outcome: "state_conflict" };
 async function applyAuthorizationCas(
   client: SupabaseLike,
@@ -168,7 +169,10 @@ async function applyAuthorizationCas(
   const outcome = (data as any).outcome;
   if (outcome === "state_conflict") return { outcome: "state_conflict" };
   if (outcome === "applied") {
-    return { outcome: "applied", status: String((data as any).status ?? ""), expires_at: (data as any).expires_at };
+    // Carry the RAW status (not String()-coerced) so the caller's exact ===
+    // check catches a missing / null / non-string / blank / wrong / wrong-case
+    // status as a fail-closed mismatch rather than a silently coerced string.
+    return { outcome: "applied", status: (data as any).status, expires_at: (data as any).expires_at };
   }
   // Unknown / malformed outcome → fail closed.
   throw new Error("upload_session_lifecycle_cas_failed");
@@ -284,32 +288,42 @@ export function createUploadSessionStore(
     // SEC-00B-P1F-2 — DB-time CAS: created -> upload_authorized via the single
     // privileged RPC. NO application clock / TTL / expiry is sent; the DB stamps
     // upload_authorized_at/updated_at/expires_at from one post-lock instant and
-    // RETURNS the authoritative expiry. `applied` carries that DB expires_at
-    // (validated non-empty/parseable, else fail-closed throw); `state_conflict`
-    // means the row was not still 'created' (later-state race, zero mutation).
+    // RETURNS the authoritative expiry. `applied` requires BOTH the EXACT returned
+    // status "upload_authorized" (SEC-00B-P1F-2-R2: no coercion / trim / case) AND
+    // a valid non-empty parseable DB expires_at — any mismatch fails closed
+    // (throw). `state_conflict` means the row was not still 'created' (later-state
+    // race, zero mutation).
     async authorizeCreated(id: string): Promise<AuthorizeCasResult> {
       const r = await applyAuthorizationCas(getClient(), id, "authorize_created");
       if (r.outcome !== "applied") return { outcome: "state_conflict" };
+      if (r.status !== "upload_authorized") throw new Error("upload_session_lifecycle_cas_failed");
       if (!isValidExpiresAt(r.expires_at)) throw new Error("upload_session_lifecycle_cas_failed");
       return { outcome: "applied", expiresAt: r.expires_at };
     },
 
     // SEC-00B-P1F-2 — DB-time CAS: refresh expiry while status is still
     // 'upload_authorized' (state + upload_authorized_at unchanged). Session id
-    // only; the DB owns updated_at/expires_at and returns the fresh expiry.
+    // only; the DB owns updated_at/expires_at and returns the fresh expiry. R2:
+    // `applied` requires the EXACT returned status "upload_authorized" AND a valid
+    // DB expires_at, else fail closed (throw).
     async refreshAuthorized(id: string): Promise<AuthorizeCasResult> {
       const r = await applyAuthorizationCas(getClient(), id, "refresh_authorized");
       if (r.outcome !== "applied") return { outcome: "state_conflict" };
+      if (r.status !== "upload_authorized") throw new Error("upload_session_lifecycle_cas_failed");
       if (!isValidExpiresAt(r.expires_at)) throw new Error("upload_session_lifecycle_cas_failed");
       return { outcome: "applied", expiresAt: r.expires_at };
     },
 
     // SEC-00B-P1F-2 — DB-time CAS: created -> rejected via the same RPC. Session
     // id ONLY — the rejection reason and timestamp are DB-owned, never
-    // caller-supplied. Only a still-'created' row is ever rejected.
+    // caller-supplied. Only a still-'created' row is ever rejected. R2: `applied`
+    // requires the EXACT returned status "rejected" (no coercion / trim / case),
+    // else fail closed (throw). No expiry is required for reject.
     async rejectCreated(id: string): Promise<RejectCasResult> {
       const r = await applyAuthorizationCas(getClient(), id, "reject_created");
-      return r.outcome === "applied" ? { outcome: "applied" } : { outcome: "state_conflict" };
+      if (r.outcome !== "applied") return { outcome: "state_conflict" };
+      if (r.status !== "rejected") throw new Error("upload_session_lifecycle_cas_failed");
+      return { outcome: "applied" };
     },
   };
 }

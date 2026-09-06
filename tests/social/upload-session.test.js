@@ -281,6 +281,26 @@ async function main() {
     { const { store } = casStore({ data: { outcome: "state_conflict" }, error: null }); eqv((await store.rejectCreated("S3")).outcome, "state_conflict", "rejectCreated state_conflict"); }
     { const { store } = casStore({ data: null, error: { message: "x" } }); let threw = false; try { await store.rejectCreated("S3"); } catch { threw = true; } ok(threw, "rejectCreated rpc error -> throws"); }
 
+    // ── P1F-2-R2: EXACT returned-status contract (fail closed on mismatch) ──
+    // authorize_created / refresh_authorized applied is valid ONLY with status
+    // === "upload_authorized" AND a valid expires_at; reject_created applied ONLY
+    // with status === "rejected". No coercion / trim / case-fold — any other
+    // status (missing/null/blank/wrong/wrong-case/non-string) MUST throw.
+    section("P1F-2-R2 exact returned-status fail-closed");
+    const VALID_TS = "2026-09-07T10:00:00+00:00";
+    // authorizeCreated PASS only with exact status + valid ts
+    { const { store } = casStore({ data: { outcome: "applied", status: "upload_authorized", expires_at: VALID_TS }, error: null }); const res = await store.authorizeCreated("S1"); eqv(res.outcome, "applied", "authorizeCreated exact status + ts -> applied"); eqv(res.expiresAt, VALID_TS, "authorizeCreated returns DB expiry"); }
+    for (const [l, st] of [["missing status", undefined], ['status="rejected"', "rejected"], ['status=""', ""], ["blank status", "   "], ["wrong-case status", "UPLOAD_AUTHORIZED"], ["non-string status", 123], ["null status", null]])
+    { const { store } = casStore({ data: { outcome: "applied", status: st, expires_at: VALID_TS }, error: null }); let threw = false; try { await store.authorizeCreated("S1"); } catch { threw = true; } ok(threw, `authorizeCreated applied + ${l} -> throws (fail closed)`); }
+    // refreshAuthorized PASS only with exact status + valid ts
+    { const { store } = casStore({ data: { outcome: "applied", status: "upload_authorized", expires_at: VALID_TS }, error: null }); const res = await store.refreshAuthorized("S2"); eqv(res.outcome, "applied", "refreshAuthorized exact status + ts -> applied"); }
+    for (const [l, st] of [["missing status", undefined], ['status="rejected"', "rejected"], ['status=""', ""], ["wrong-case status", "Upload_Authorized"], ["non-string status", 0]])
+    { const { store } = casStore({ data: { outcome: "applied", status: st, expires_at: VALID_TS }, error: null }); let threw = false; try { await store.refreshAuthorized("S2"); } catch { threw = true; } ok(threw, `refreshAuthorized applied + ${l} -> throws (fail closed)`); }
+    // rejectCreated PASS only with exact status "rejected" (no expiry required)
+    { const { store } = casStore({ data: { outcome: "applied", status: "rejected" }, error: null }); const res = await store.rejectCreated("S3"); eqv(res.outcome, "applied", "rejectCreated exact status rejected -> applied"); }
+    for (const [l, st] of [["missing status", undefined], ['status="upload_authorized"', "upload_authorized"], ['status=""', ""], ["blank status", "  "], ["wrong-case status", "Rejected"], ["non-string status", 1]])
+    { const { store } = casStore({ data: { outcome: "applied", status: st }, error: null }); let threw = false; try { await store.rejectCreated("S3"); } catch { threw = true; } ok(threw, `rejectCreated applied + ${l} -> throws (fail closed)`); }
+
     // handler-level CAS wiring (P1F-2 DB-time)
     section("R2 CAS wiring (handler — P1F-2 DB-time)");
     { const store = baseStore(); store.authorizeCreated = async () => ({ outcome: "state_conflict" }); const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); const j = await r.json(); eqv(r.status, 503, "created CAS state_conflict -> 503"); ok(!("token" in j), "no token when created CAS state_conflict (later-state race safe)"); }
