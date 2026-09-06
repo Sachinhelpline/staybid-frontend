@@ -16,6 +16,15 @@
 // handler supplies NO limit / window / TTL / clock; the reserved-row invariant is
 // verified before any provider mint. Per-owner quota/insert concurrency is proven
 // separately against real Postgres in tests/concurrency/media-upload-reservation.pg.test.js.
+//
+// SEC-00B-P1F-2: the three lifecycle CAS methods (authorizeCreated / refreshAuthorized
+// / rejectCreated) no longer take/emit an application clock, TTL, or reason — they call
+// ONE privileged DB-time RPC (public.apply_media_upload_authorization_cas) with ONLY the
+// session id + a fixed action. authorize/refresh return the DB-generated expiry (echoed
+// verbatim to the client); a poisoned deps.now is never called in the lifecycle path; no
+// direct lifecycle .update(...) survives in store code. DB-time / clock-after-session-lock
+// concurrency is proven against real Postgres in
+// tests/concurrency/media-upload-lifecycle.pg.test.js.
 // ─────────────────────────────────────────────────────────────────────────
 const path = require("path"), fs = require("fs"), os = require("os"), cp = require("child_process"), crypto = require("crypto");
 const REPO = path.resolve(__dirname, "..", "..");
@@ -54,9 +63,11 @@ function baseStore() {
     // P1F-1 atomic reservation — default returns a matching `reserved` row.
     reserveNewSession: async (i) => ({ outcome: "reserved", row: reservedRow(i) }),
     mintSignedUpload: async (k) => ({ token: "tkn-xyz", path: k }),
-    authorizeCreated: async () => true,
-    refreshAuthorized: async () => true,
-    rejectCreated: async () => true,
+    // P1F-2 DB-time lifecycle CAS shapes: authorize/refresh carry the DB-generated
+    // expiry; reject carries only the outcome. (No app clock / TTL / reason.)
+    authorizeCreated: async () => ({ outcome: "applied", expiresAt: "2026-09-05T15:00:00.000Z" }),
+    refreshAuthorized: async () => ({ outcome: "applied", expiresAt: "2026-09-05T15:00:00.000Z" }),
+    rejectCreated: async () => ({ outcome: "applied" }),
   };
 }
 function baseDeps(over = {}) {
@@ -199,12 +210,15 @@ async function main() {
     { let insId = null, mintKey = null, authId = null; const store = baseStore();
       store.reserveNewSession = async (i) => { insId = i.id; return { outcome: "reserved", row: reservedRow(i) }; };
       store.mintSignedUpload = async (k) => { mintKey = k; return { token: "T", path: k }; };
-      store.authorizeCreated = async (id) => { authId = id; return true; };
+      // P1F-2: authorizeCreated takes ONLY the id and RETURNS the DB-generated
+      // expiry. Use a value that is NOT deps.now()+2h (13:00→15:00) so the test
+      // proves the handler echoes the DB expiry, never an app-computed one.
+      store.authorizeCreated = async (id) => { authId = id; return { outcome: "applied", expiresAt: "2026-09-07T09:09:09.000Z" }; };
       const attempt = { ...OKBODY, ownerId: "evil", bucket: "evil", objectKey: "evil/x", path: "evil", sessionId: "evil" };
       const r = await P.handleUploadSession(mkReq(null, attempt), baseDeps({ store, genId: () => "srv" }));
       const j = await r.json();
       eqv(r.status, 200, "authorize 200"); eqv(insId, "srv", "server-generated id"); eqv(mintKey, "sessions/srv/raw", "server-derived key");
-      eqv(authId, "srv", "CAS on server id"); eqv(j.path, "sessions/srv/raw", "response path server-owned"); eqv(j.token, "T", "token returned"); eqv(j.expiresAt, "2026-09-05T15:00:00.000Z", "expiry now+2h"); }
+      eqv(authId, "srv", "CAS on server id"); eqv(j.path, "sessions/srv/raw", "response path server-owned"); eqv(j.token, "T", "token returned"); eqv(j.expiresAt, "2026-09-07T09:09:09.000Z", "expiry is the DB-returned CAS value (not app now+2h)"); }
 
     // ── R1 BUCKET SUITABILITY (real store, injected client) ─────────────
     section("R1 bucket suitability (real store runtime)");
@@ -220,25 +234,90 @@ async function main() {
     { let reserved = false, minted = false; const store = baseStore(); store.bucketReady = async () => false; store.reserveNewSession = async (i) => { reserved = true; return { outcome: "reserved", row: reservedRow(i) }; }; store.mintSignedUpload = async (k) => { minted = true; return { token: "T", path: k }; };
       const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); eqv(r.status, 503, "new + unsafe bucket -> 503"); eqv((await r.json()).error, "quarantine_unavailable", "quarantine code"); ok(!reserved && !minted, "no reserve, no mint when bucket unsafe"); }
 
-    // ── R2 CAS TRANSITIONS (real store runtime) ─────────────────────────
-    section("R2 CAS transitions (real store runtime)");
-    const casStore = (cas) => { const plan = { cas }; return { store: ST.createUploadSessionStore({ SUPABASE_SERVICE_ROLE_KEY: "svc" }, { client: fakeSupabase(plan) }), plan }; };
-    { const { store, plan } = casStore({ data: [{ id: "S1" }], error: null }); ok((await store.authorizeCreated("S1", "e", "n")) === true, "authorizeCreated 1-row -> true");
-      ok(plan.cap.updateEqs.some((e) => e[0] === "status" && e[1] === "created"), "authorizeCreated CAS guards status=created"); eqv(plan.cap.updateObj.status, "upload_authorized", "authorizeCreated sets upload_authorized"); }
-    { const { store } = casStore({ data: [], error: null }); ok((await store.authorizeCreated("S1", "e", "n")) === false, "authorizeCreated 0-row -> false"); }
-    { const { store } = casStore({ data: null, error: { message: "x" } }); ok((await store.authorizeCreated("S1", "e", "n")) === false, "authorizeCreated error -> false"); }
-    { const { store, plan } = casStore({ data: [{ id: "S1" }], error: null }); ok((await store.refreshAuthorized("S1", "e", "n")) === true, "refreshAuthorized 1-row -> true");
-      ok(plan.cap.updateEqs.some((e) => e[0] === "status" && e[1] === "upload_authorized"), "refreshAuthorized CAS guards status=upload_authorized"); ok(!("status" in plan.cap.updateObj), "refreshAuthorized does NOT change status"); }
-    { const { store } = casStore({ data: [], error: null }); ok((await store.refreshAuthorized("S1", "e", "n")) === false, "refreshAuthorized 0-row -> false"); }
-    { const { store, plan } = casStore({ data: [{ id: "S1" }], error: null }); ok((await store.rejectCreated("S1", "r", "n")) === true, "rejectCreated 1-row -> true");
-      ok(plan.cap.updateEqs.some((e) => e[0] === "status" && e[1] === "created"), "rejectCreated CAS guards status=created"); eqv(plan.cap.updateObj.status, "rejected", "rejectCreated sets rejected"); }
+    // ── R2 CAS TRANSITIONS (real store runtime — P1F-2 DB-time lifecycle RPC) ─
+    // The three lifecycle methods now call ONE privileged RPC
+    // (apply_media_upload_authorization_cas) with ONLY the session id + a fixed
+    // action. authorize/refresh return the DB-generated expiry; a bad/absent
+    // expiry, an rpc error, an unknown outcome, or non-object data fail closed.
+    section("R2 CAS transitions (real store runtime — P1F-2 lifecycle RPC)");
+    const casStore = (rpc) => { const plan = { rpc }; return { store: ST.createUploadSessionStore({ SUPABASE_SERVICE_ROLE_KEY: "svc" }, { client: fakeSupabase(plan) }), plan }; };
+    const casArgsClean = (args) =>
+      !!args &&
+      Object.keys(args).sort().join(",") === "p_action,p_session_id" &&
+      !Object.keys(args).some((k) => /(token|expires|ttl|reason|now|since|status|updated|authorized|created_at|limit)/i.test(k));
 
-    // handler-level CAS wiring
-    section("R2 CAS wiring (handler)");
-    { const store = baseStore(); store.authorizeCreated = async () => false; const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); const j = await r.json(); eqv(r.status, 503, "created CAS 0-row -> 503"); ok(!("token" in j), "no token when created CAS fails (later-state race safe)"); }
-    { const store = baseStore(); store.findByOwnerIdem = async () => existingRow({ status: "upload_authorized" }); store.refreshAuthorized = async () => false; const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); const j = await r.json(); eqv(r.status, 503, "refresh CAS 0-row -> 503"); ok(!("token" in j), "no token when refresh CAS fails"); }
-    { let rejectedCalled = false; const store = baseStore(); store.findByOwnerIdem = async () => existingRow({ status: "upload_authorized" }); store.mintSignedUpload = async () => null; store.rejectCreated = async () => { rejectedCalled = true; return true; }; const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); eqv(r.status, 503, "existing authorized + mint fail -> 503"); ok(!rejectedCalled, "authorized-refresh mint failure does NOT reject the session"); }
-    { let rejectedCalled = false; const store = baseStore(); store.mintSignedUpload = async () => null; store.rejectCreated = async (id, r2) => { rejectedCalled = true; ok(r2 === "upload_authorization_failed", "reject reason static"); return true; }; const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); eqv(r.status, 503, "new + mint fail -> 503"); ok(rejectedCalled, "new-created mint failure marks rejected via CAS"); }
+    // authorizeCreated: applied -> {outcome, expiresAt}; exact RPC name/action; only id+action.
+    { const { store, plan } = casStore({ data: { outcome: "applied", status: "upload_authorized", expires_at: "2026-09-07T10:00:00+00:00" }, error: null });
+      const res = await store.authorizeCreated("S1");
+      eqv(res.outcome, "applied", "authorizeCreated applied");
+      eqv(res.expiresAt, "2026-09-07T10:00:00+00:00", "authorizeCreated returns DB expires_at");
+      eqv(plan.cap.rpcName, "apply_media_upload_authorization_cas", "authorizeCreated calls the lifecycle CAS RPC");
+      eqv(plan.cap.rpcArgs.p_session_id, "S1", "authorizeCreated passes session id");
+      eqv(plan.cap.rpcArgs.p_action, "authorize_created", "authorizeCreated passes authorize_created action");
+      ok(casArgsClean(plan.cap.rpcArgs), "authorizeCreated passes ONLY session id + action (no time/expiry/reason/status)"); }
+    // authorizeCreated: state_conflict -> {outcome:"state_conflict"} (no throw), no expiry
+    { const { store } = casStore({ data: { outcome: "state_conflict" }, error: null }); const res = await store.authorizeCreated("S1"); eqv(res.outcome, "state_conflict", "authorizeCreated state_conflict"); ok(!("expiresAt" in res), "state_conflict carries no expiresAt"); }
+    // authorizeCreated: applied but unusable expires_at -> fail-closed throw (no synthesized expiry)
+    for (const [l, exp] of [["missing", undefined], ["empty", ""], ["blank", "   "], ["garbage", "not-a-timestamp"], ["non-string", 12345]])
+    { const { store } = casStore({ data: { outcome: "applied", status: "upload_authorized", expires_at: exp }, error: null }); let threw = false; try { await store.authorizeCreated("S1"); } catch { threw = true; } ok(threw, `authorizeCreated applied + ${l} expires_at -> throws (fail closed)`); }
+    // authorizeCreated: rpc error / unknown outcome / non-object -> throw
+    { const { store } = casStore({ data: null, error: { message: "boom" } }); let threw = false; try { await store.authorizeCreated("S1"); } catch { threw = true; } ok(threw, "authorizeCreated rpc error -> throws"); }
+    { const { store } = casStore({ data: { outcome: "weird" }, error: null }); let threw = false; try { await store.authorizeCreated("S1"); } catch { threw = true; } ok(threw, "authorizeCreated unknown outcome -> throws (fail closed)"); }
+    { const { store } = casStore({ data: null, error: null }); let threw = false; try { await store.authorizeCreated("S1"); } catch { threw = true; } ok(threw, "authorizeCreated null data -> throws"); }
+    // refreshAuthorized: applied -> {outcome, expiresAt}; action refresh_authorized
+    { const { store, plan } = casStore({ data: { outcome: "applied", status: "upload_authorized", expires_at: "2026-09-07T11:00:00+00:00" }, error: null });
+      const res = await store.refreshAuthorized("S2");
+      eqv(res.outcome, "applied", "refreshAuthorized applied"); eqv(res.expiresAt, "2026-09-07T11:00:00+00:00", "refreshAuthorized returns DB expires_at");
+      eqv(plan.cap.rpcArgs.p_action, "refresh_authorized", "refreshAuthorized passes refresh_authorized action");
+      ok(casArgsClean(plan.cap.rpcArgs), "refreshAuthorized passes ONLY session id + action"); }
+    { const { store } = casStore({ data: { outcome: "state_conflict" }, error: null }); eqv((await store.refreshAuthorized("S2")).outcome, "state_conflict", "refreshAuthorized state_conflict"); }
+    { const { store } = casStore({ data: { outcome: "applied", status: "upload_authorized", expires_at: "" }, error: null }); let threw = false; try { await store.refreshAuthorized("S2"); } catch { threw = true; } ok(threw, "refreshAuthorized applied + blank expires_at -> throws"); }
+    // rejectCreated: applied -> {outcome:"applied"} (no expiry); action reject_created; no reason sent
+    { const { store, plan } = casStore({ data: { outcome: "applied", status: "rejected" }, error: null });
+      const res = await store.rejectCreated("S3");
+      eqv(res.outcome, "applied", "rejectCreated applied"); ok(!("expiresAt" in res), "rejectCreated carries no expiresAt");
+      eqv(plan.cap.rpcArgs.p_action, "reject_created", "rejectCreated passes reject_created action");
+      ok(casArgsClean(plan.cap.rpcArgs), "rejectCreated passes ONLY session id + action (reason is DB-owned, never sent)"); }
+    { const { store } = casStore({ data: { outcome: "state_conflict" }, error: null }); eqv((await store.rejectCreated("S3")).outcome, "state_conflict", "rejectCreated state_conflict"); }
+    { const { store } = casStore({ data: null, error: { message: "x" } }); let threw = false; try { await store.rejectCreated("S3"); } catch { threw = true; } ok(threw, "rejectCreated rpc error -> throws"); }
+
+    // handler-level CAS wiring (P1F-2 DB-time)
+    section("R2 CAS wiring (handler — P1F-2 DB-time)");
+    { const store = baseStore(); store.authorizeCreated = async () => ({ outcome: "state_conflict" }); const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); const j = await r.json(); eqv(r.status, 503, "created CAS state_conflict -> 503"); ok(!("token" in j), "no token when created CAS state_conflict (later-state race safe)"); }
+    { const store = baseStore(); store.findByOwnerIdem = async () => existingRow({ status: "upload_authorized" }); store.refreshAuthorized = async () => ({ outcome: "state_conflict" }); const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); const j = await r.json(); eqv(r.status, 503, "refresh CAS state_conflict -> 503"); ok(!("token" in j), "no token when refresh CAS state_conflict"); }
+    { const store = baseStore(); store.authorizeCreated = async () => { throw new Error("bad db expiry"); }; const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); const j = await r.json(); eqv(r.status, 503, "authorizeCreated fail-closed throw -> 503"); ok(!("token" in j), "no token when authorizeCreated throws"); }
+    { let rejectedCalled = false; const store = baseStore(); store.findByOwnerIdem = async () => existingRow({ status: "upload_authorized" }); store.mintSignedUpload = async () => null; store.rejectCreated = async () => { rejectedCalled = true; return { outcome: "applied" }; }; const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); eqv(r.status, 503, "existing authorized + mint fail -> 503"); ok(!rejectedCalled, "authorized-refresh mint failure does NOT reject the session"); }
+    { let rejectArgs = null; const store = baseStore(); store.mintSignedUpload = async () => null; store.rejectCreated = async (...args) => { rejectArgs = args; return { outcome: "applied" }; }; const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store, genId: () => "srv" })); eqv(r.status, 503, "new + mint fail -> 503"); ok(rejectArgs && rejectArgs.length === 1, "rejectCreated called with EXACTLY one arg (session id only)"); eqv(rejectArgs && rejectArgs[0], "srv", "rejectCreated gets the server session id"); ok(rejectArgs && rejectArgs[1] === undefined, "no reason/clock passed to rejectCreated (DB-owned)"); }
+
+    // ── P1F-2 DB-TIME LIFECYCLE (handler: only-id args, DB expiry, poison now) ─
+    section("P1F-2 DB-time lifecycle (handler)");
+    // authorizeCreated receives ONLY the session id (new-created flow); response expiry is the DB value.
+    { let authArgs = null; const store = baseStore(); store.authorizeCreated = async (...args) => { authArgs = args; return { outcome: "applied", expiresAt: "2026-09-07T12:00:00.000Z" }; };
+      const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store, genId: () => "srv" })); const j = await r.json();
+      eqv(r.status, 200, "new-created flow -> 200");
+      ok(authArgs && authArgs.length === 1, "authorizeCreated called with EXACTLY one arg");
+      eqv(authArgs && authArgs[0], "srv", "authorizeCreated gets the server session id (only)");
+      ok(authArgs && authArgs[1] === undefined, "no expiry/clock passed to authorizeCreated (DB-owned)");
+      eqv(j.expiresAt, "2026-09-07T12:00:00.000Z", "response expiresAt is the DB CAS value"); }
+    // refreshAuthorized receives ONLY the session id (existing upload_authorized flow).
+    { let refArgs = null; const store = baseStore(); store.findByOwnerIdem = async () => existingRow({ status: "upload_authorized" }); store.refreshAuthorized = async (...args) => { refArgs = args; return { outcome: "applied", expiresAt: "2026-09-07T13:30:00.000Z" }; };
+      const r = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store })); const j = await r.json();
+      eqv(r.status, 200, "existing authorized refresh -> 200");
+      ok(refArgs && refArgs.length === 1, "refreshAuthorized called with EXACTLY one arg");
+      eqv(refArgs && refArgs[0], "S1", "refreshAuthorized gets the canonical session id (only)");
+      ok(refArgs && refArgs[1] === undefined, "no expiry/clock passed to refreshAuthorized (DB-owned)");
+      eqv(j.expiresAt, "2026-09-07T13:30:00.000Z", "refresh response expiresAt is the DB CAS value"); }
+    // POISON deps.now: the P1F-2 lifecycle path must NEVER call deps.now().
+    const poisonNow = () => { throw new Error("deps.now() must NOT be called in the P1F-2 lifecycle path"); };
+    { let threw = false, res = null; const store = baseStore();
+      try { res = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store, now: poisonNow, genId: () => "srv" })); } catch { threw = true; }
+      ok(!threw, "poison deps.now NOT called in successful new-created P1F-2 flow"); ok(res && res.status === 200, "poison-now new-created flow still 200"); }
+    { let threw = false, res = null; const store = baseStore(); store.findByOwnerIdem = async () => existingRow({ status: "upload_authorized" });
+      try { res = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store, now: poisonNow })); } catch { threw = true; }
+      ok(!threw, "poison deps.now NOT called in successful refresh P1F-2 flow"); ok(res && res.status === 200, "poison-now refresh flow still 200"); }
+    { let threw = false, res = null; const store = baseStore(); store.mintSignedUpload = async () => null;
+      try { res = await P.handleUploadSession(mkReq(null, OKBODY), baseDeps({ store, now: poisonNow, genId: () => "srv" })); } catch { threw = true; }
+      ok(!threw, "poison deps.now NOT called in mint-failure reject P1F-2 flow"); ok(res && res.status === 503, "poison-now reject flow -> 503"); }
 
     // ── R3 IDEMPOTENCY ORDER ────────────────────────────────────────────
     section("R3 idempotency before the atomic reservation");
@@ -414,13 +493,19 @@ async function main() {
     ok(/SUPABASE_SERVICE_ROLE_KEY/.test(storeCode) && !/\b(SB_ADMIN_KEY|SB_H|SB_READ|SB_KEY)\b/.test(storeCode), "store service-role only, no anon fallback");
     ok(/createSignedUploadUrl\(/.test(storeCode) && /upsert:\s*false/.test(storeCode) && !/\bcreateResumableUpload\b|x-signature|\btus\b/i.test(storeCode), "standard signed upload, no TUS");
     ok(/typeof window/.test(storeCode), "store server-only guard");
-    ok(/\.eq\("status",\s*"created"\)/.test(storeCode) && /\.eq\("status",\s*"upload_authorized"\)/.test(storeCode), "store uses CAS status guards");
+    // P1F-2: lifecycle CAS status guards moved OUT of the store into the DB RPC.
+    ok(/apply_media_upload_authorization_cas/.test(storeCode), "P1F-2 store calls the DB-time lifecycle CAS RPC");
+    ok(!/\.eq\("status",\s*"created"\)/.test(storeCode) && !/\.eq\("status",\s*"upload_authorized"\)/.test(storeCode), "P1F-2 no direct status-guarded lifecycle update in store code (guards are DB-side)");
+    ok(!/\.update\(/.test(storeCode), "P1F-2 no direct lifecycle .update(...) path survives in executable store code");
+    { const casCall = storeCode.match(/apply_media_upload_authorization_cas[\s\S]{0,180}?\)/); ok(casCall && /p_session_id/.test(casCall[0]) && /p_action/.test(casCall[0]) && !/(token|expires|ttl|reason|now|since|status|updated_at|upload_authorized_at|created_at|limit)/i.test(casCall[0]), "P1F-2 CAS rpc passes ONLY session id + action (no time/expiry/reason/status)"); }
     // P1F-1: the non-atomic count/insert trio is gone; reservation goes through the RPC.
     ok(!/\b(insertCreated|countRecentSessions|countActiveSessions)\b/.test(storeCode), "P1F-1 non-atomic count/insert trio removed from store code");
     ok(/\.rpc\("reserve_media_upload_session"/.test(storeCode), "P1F-1 store calls the atomic reservation RPC");
-    ok(!/p_(rate|window|ttl|now|since|expires|limit|active)/i.test(storeCode), "P1F-1 store passes no rate/window/TTL/now RPC params");
-    const wb = storeCode.match(/\.(insert|update)\(\{[\s\S]*?\}\)/g) || [];
-    ok(wb.length >= 3 && wb.every((b) => !/token|signed|service_role|secret/i.test(b)), "no token/signed/secret persisted to DB (CAS updates only)");
+    ok(!/p_(rate|window|ttl|now|since|expires|limit|active)/i.test(storeCode), "store passes no rate/window/TTL/now RPC params");
+    // P1F-2: DB writes flow through the two privileged RPCs (reservation + lifecycle CAS);
+    // no direct .insert/.update remains. Neither RPC payload carries a token/secret.
+    { const rpcParams = storeCode.match(/\.rpc\([\s\S]*?\}\s*\)/g) || []; ok(rpcParams.length >= 2 && rpcParams.every((b) => !/token|signed|service_role|secret/i.test(b)), "no token/signed/secret passed to any privileged RPC (reservation + lifecycle CAS)"); }
+    ok(!/\.insert\(\{/.test(storeCode), "P1F-2 store performs no direct table insert (reservation is DB-side)");
     for (const p of ["lib/social/storage-upload.ts", "components/discover/CreateFlow.tsx", "components/circle/CircleOnboardForm.tsx"]) ok(!/upload-session/.test(read(p)), `no cutover: ${p}`);
     // Migration source presence + shape.
     const mig = read("migrations/2026-09-06-sec00b-p1f-1-media-upload-atomic-reservation.sql");
@@ -428,6 +513,17 @@ async function main() {
     ok(/SECURITY INVOKER/.test(mig) && !/SECURITY DEFINER/.test(mig), "migration SECURITY INVOKER, never DEFINER");
     ok(/pg_advisory_xact_lock/.test(mig) && /hashtextextended\('sec00b:media_upload_reservation:'/.test(mig), "migration uses per-owner advisory xact lock");
     ok(/GRANT EXECUTE ON FUNCTION public\.reserve_media_upload_session[\s\S]*TO service_role/.test(mig) && /REVOKE ALL ON FUNCTION public\.reserve_media_upload_session[\s\S]*FROM PUBLIC/.test(mig), "migration REVOKEs PUBLIC + GRANTs service_role");
+    // P1F-2 migration source presence + shape.
+    const mig2 = read("migrations/2026-09-07-sec00b-p1f-2-media-upload-lifecycle-cas.sql");
+    const mig2Code = mig2.replace(/--[^\n]*/g, ""); // strip SQL line comments for clock-source checks
+    ok(/CREATE OR REPLACE FUNCTION public\.apply_media_upload_authorization_cas/.test(mig2), "P1F-2 migration creates apply_media_upload_authorization_cas");
+    ok(/SECURITY INVOKER/.test(mig2) && !/SECURITY DEFINER/.test(mig2), "P1F-2 migration SECURITY INVOKER, never DEFINER");
+    ok(/pg_advisory_xact_lock/.test(mig2) && /hashtextextended\('sec00b:media_upload_lifecycle:'/.test(mig2), "P1F-2 migration uses per-session advisory xact lock");
+    ok(/clock_timestamp\(\)/.test(mig2Code) && !/\bnow\(\)/.test(mig2Code) && !/transaction_timestamp\(\)/.test(mig2Code), "P1F-2 migration clock = clock_timestamp() (never now()/transaction_timestamp())");
+    ok(/INTERVAL '2 hours'/.test(mig2), "P1F-2 migration DB-fixed 2h TTL");
+    ok(/status\s*=\s*'created'/.test(mig2) && /status\s*=\s*'upload_authorized'/.test(mig2), "P1F-2 migration CAS status guards (created / upload_authorized)");
+    ok(/'upload_authorization_failed'/.test(mig2), "P1F-2 migration DB-owned fixed rejection reason");
+    ok(/GRANT EXECUTE ON FUNCTION public\.apply_media_upload_authorization_cas[\s\S]*TO service_role/.test(mig2) && /REVOKE ALL ON FUNCTION public\.apply_media_upload_authorization_cas[\s\S]*FROM PUBLIC/.test(mig2), "P1F-2 migration REVOKEs PUBLIC + GRANTs service_role");
   } catch (err) { fatal = err; console.error("\n• FATAL: " + (err && err.message ? err.message : String(err))); }
   finally { fs.rmSync(tempRoot, { recursive: true, force: true }); console.log("\n• Temp dir removed: " + tempRoot + " (exists=" + fs.existsSync(tempRoot) + ")"); }
   section("RESULT"); console.log(`  ${pass} passed, ${fail} failed`);

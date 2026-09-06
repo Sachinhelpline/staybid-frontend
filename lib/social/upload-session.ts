@@ -190,6 +190,25 @@ export type ReserveResult =
   | { outcome: "rate_limited" }
   | { outcome: "concurrency_limited" };
 
+// SEC-00B-P1F-2 — DB-time lifecycle CAS outcomes. The three security-sensitive
+// lifecycle transitions run through a single privileged RPC that OWNS the clock,
+// the 2h TTL, and the rejection reason (none is caller-supplied). `applied` means
+// exactly one row in the expected status transitioned; `state_conflict` means a
+// later / wrong state (zero mutation), never a throw.
+export type LifecycleCasOutcome = "applied" | "state_conflict";
+
+// authorize_created / refresh_authorized: an `applied` result carries the
+// DB-GENERATED expiry (a validated, non-empty timestamp string) — the handler
+// echoes exactly this value to the client, never an application-computed one.
+export type AuthorizeCasResult =
+  | { outcome: "applied"; expiresAt: string }
+  | { outcome: "state_conflict" };
+
+// reject_created: no expiry — only whether the still-CREATED row transitioned.
+export type RejectCasResult =
+  | { outcome: "applied" }
+  | { outcome: "state_conflict" };
+
 export interface UploadSessionStore {
   configured(): boolean;
   /** True ONLY when the private quarantine bucket exists with the exact safe
@@ -217,15 +236,26 @@ export interface UploadSessionStore {
   }): Promise<ReserveResult>;
   /** Standard signed upload for the exact object key (upsert=false). */
   mintSignedUpload(objectKey: string): Promise<{ token: string; path: string } | null>;
-  /** CAS: created -> upload_authorized. true ONLY when exactly one row whose
-   *  status was still 'created' transitioned (proven by the update's returned
-   *  row set). A later lifecycle state can never be regressed by this call. */
-  authorizeCreated(id: string, expiresAtIso: string, nowIso: string): Promise<boolean>;
-  /** CAS: refresh expiry while status is still 'upload_authorized' (state
-   *  unchanged). true ONLY when exactly one matching row was updated. */
-  refreshAuthorized(id: string, expiresAtIso: string, nowIso: string): Promise<boolean>;
-  /** CAS: created -> rejected. Only a still-'created' row is ever rejected. */
-  rejectCreated(id: string, reason: string, nowIso: string): Promise<boolean>;
+  /** SEC-00B-P1F-2 — DB-time CAS: created -> upload_authorized via the single
+   *  privileged RPC public.apply_media_upload_authorization_cas. The caller
+   *  passes ONLY the session id — NO clock / TTL / expiry: the DB stamps
+   *  upload_authorized_at/updated_at/expires_at from one post-lock instant and
+   *  RETURNS the authoritative expiry. `applied` carries that DB expires_at;
+   *  `state_conflict` means the row was not still 'created' (later-state race,
+   *  zero mutation). Fails closed (throws) on any provider error, unknown /
+   *  malformed outcome, or an applied result whose DB expires_at is not a usable
+   *  non-empty timestamp string. */
+  authorizeCreated(id: string): Promise<AuthorizeCasResult>;
+  /** SEC-00B-P1F-2 — DB-time CAS: refresh expiry while status is still
+   *  'upload_authorized' (state + upload_authorized_at unchanged). Session id
+   *  only; the DB owns updated_at/expires_at. `applied` carries the DB expiry;
+   *  `state_conflict` = no matching row. Same fail-closed contract as above. */
+  refreshAuthorized(id: string): Promise<AuthorizeCasResult>;
+  /** SEC-00B-P1F-2 — DB-time CAS: created -> rejected via the same RPC. Session
+   *  id ONLY — the rejection reason ('upload_authorization_failed') and the
+   *  timestamp are DB-owned, never caller-supplied. Only a still-'created' row is
+   *  ever rejected. Fails closed (throws) on provider error / unknown outcome. */
+  rejectCreated(id: string): Promise<RejectCasResult>;
 }
 
 export type VerifiedRequester = { id: string } | null;
@@ -410,6 +440,13 @@ async function authorizeExisting(
  *   'upload_authorized' -> refreshAuthorized (expiry refresh, state unchanged)
  * A minted token is returned ONLY when the provider path exactly matches the
  * server object key AND the CAS transitioned exactly one row.
+ *
+ * SEC-00B-P1F-2: the lifecycle transition is DB-time. This function passes NO
+ * clock / TTL / expiry / reason to the store — `deps.now()` is NEVER called in
+ * this lifecycle path. The DB CAS RPC stamps updated_at/expires_at from a single
+ * post-lock instant and RETURNS the authoritative expiry, which is the ONLY
+ * value echoed to the client. (Provider signed-upload token behaviour is a
+ * separate boundary, unchanged.)
  */
 async function mintAndTransition(
   id: string,
@@ -429,9 +466,11 @@ async function mintAndTransition(
   if (mintBad) {
     // Only a still-CREATED session is marked rejected; an already-authorized
     // session's lifecycle state is never mutated by a refresh mint failure.
+    // P1F-2: reject authority (status + timestamp + reason) is DB-owned — the
+    // handler passes ONLY the session id (no app clock, no reason).
     if (currentStatus === "created") {
       try {
-        await deps.store.rejectCreated(id, "upload_authorization_failed", deps.now().toISOString());
+        await deps.store.rejectCreated(id);
       } catch {
         // best-effort; never leak provider detail
       }
@@ -440,21 +479,23 @@ async function mintAndTransition(
   }
   if (!mint) return err(503, "upload_authorization_failed"); // narrow (unreachable: mintBad covered it)
 
-  const nowIso = deps.now().toISOString();
-  const expiresAtIso = new Date(deps.now().getTime() + SIGNED_UPLOAD_TTL_MS).toISOString();
-  let ok = false;
+  // P1F-2: DB-time lifecycle CAS. No `deps.now()`, no SIGNED_UPLOAD_TTL_MS, no
+  // application-computed expiry in this path — the DB RPC owns the clock + 2h TTL.
+  let result: AuthorizeCasResult;
   try {
-    ok =
+    result =
       currentStatus === "created"
-        ? await deps.store.authorizeCreated(id, expiresAtIso, nowIso)
-        : await deps.store.refreshAuthorized(id, expiresAtIso, nowIso);
+        ? await deps.store.authorizeCreated(id)
+        : await deps.store.refreshAuthorized(id);
   } catch {
-    ok = false;
+    return err(503, "upload_session_service_unavailable");
   }
   // Security-critical: if the CAS did not transition exactly one matching row
-  // (conflict / later-state race / no match), the minted token is NEVER
-  // returned — it simply expires unused.
-  if (!ok) return err(503, "upload_session_service_unavailable");
+  // (state_conflict / later-state race), the minted token is NEVER returned — it
+  // simply expires unused.
+  if (result.outcome !== "applied") return err(503, "upload_session_service_unavailable");
 
-  return json(200, { sessionId: id, path: objectKey, token: mint.token, expiresAt: expiresAtIso });
+  // The response expiry is the DB-GENERATED instant returned by the CAS (the
+  // store has already validated it is a non-empty valid timestamp string).
+  return json(200, { sessionId: id, path: objectKey, token: mint.token, expiresAt: result.expiresAt });
 }

@@ -48,8 +48,13 @@ function baseStore() {
         object_key: i.object_key, status: "created",
       },
     }),
-    mintSignedUpload: async (k) => ({ token: "tkn", path: k }), authorizeCreated: async () => true,
-    refreshAuthorized: async () => true, rejectCreated: async () => true,
+    mintSignedUpload: async (k) => ({ token: "tkn", path: k }),
+    // SEC-00B-P1F-2 — DB-time lifecycle CAS shapes (was boolean true). authorize/
+    // refresh return { outcome:"applied", expiresAt:<DB ISO> }; reject returns
+    // { outcome:"applied" }. Deterministic timestamp for the test.
+    authorizeCreated: async () => ({ outcome: "applied", expiresAt: "2026-09-07T15:00:00.000Z" }),
+    refreshAuthorized: async () => ({ outcome: "applied", expiresAt: "2026-09-07T15:00:00.000Z" }),
+    rejectCreated: async () => ({ outcome: "applied" }),
   };
 }
 
