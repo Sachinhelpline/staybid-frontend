@@ -251,6 +251,56 @@ async function main() {
       eqv(r.counts.completed, 0, "missing object NOT completed"); eqv(r.counts.deleteRetryable, 1, "missing object retryable");
       eqv(completeRpcCount(plan.cap), 0, "completion RPC NEVER called on missing/ambiguous"); }
 
+    // ── R1 — EXACT delete-ack identity (name must equal the exact objectKey) ──
+    // Default explicit success shape is { data: [{ name: paths[0] }], error: null }.
+    // A one-item ack for the WRONG object (or malformed shape) must NEVER confirm
+    // and therefore must NEVER call completeCleanup().
+    section("R1 exact delete-ack identity fail-closed");
+    const validClaimAndKey = () => { const id = uuid(); return { claim: { sessionId: id, quarantineBucket: BUCKET, objectKey: keyFor(id) } }; };
+    async function runWorkerOne(removeFn) {
+      const id = uuid(); const plan = { claim: { data: [claimRow(id)], error: null }, remove: removeFn }; const store = mkStore(plan);
+      const r = await P.runQuarantineJanitor({ store, env: ENABLED });
+      return { r, cap: plan.cap };
+    }
+    async function ackCase(label, removeFn, expect) {
+      // store-level: deleteClaimedObject returns the exact outcome
+      const { claim } = validClaimAndKey();
+      const outcome = await mkStore({ remove: removeFn }).deleteClaimedObject(claim);
+      eqv(outcome, expect, `${label}: store deleteClaimedObject -> ${expect}`);
+      // worker-level: completion is gated on a confirmed delete
+      const w = await runWorkerOne(removeFn);
+      if (expect === "confirmed") {
+        eqv(w.r.counts.deleteConfirmed, 1, `${label}: worker deleteConfirmed 1`);
+        eqv(w.r.counts.completed, 1, `${label}: worker completed 1`);
+        eqv(completeRpcCount(w.cap), 1, `${label}: completion called once`);
+      } else {
+        eqv(w.r.counts.deleteRetryable, 1, `${label}: worker retryable 1`);
+        eqv(w.r.counts.completed, 0, `${label}: worker completed 0`);
+        eqv(completeRpcCount(w.cap), 0, `${label}: completion NOT called`);
+      }
+    }
+    await ackCase("R1-A exact name", (paths) => ({ data: [{ name: paths[0] }], error: null }), "confirmed");
+    await ackCase("R1-B wrong name", (paths) => ({ data: [{ name: paths[0] + "-WRONG" }], error: null }), "retryable");
+    await ackCase("R1-C missing name", () => ({ data: [{}], error: null }), "retryable");
+    await ackCase("R1-D null name", () => ({ data: [{ name: null }], error: null }), "retryable");
+    await ackCase("R1-E non-string name", () => ({ data: [{ name: 123 }], error: null }), "retryable");
+    await ackCase("R1-F blank name", () => ({ data: [{ name: "" }], error: null }), "retryable");
+    await ackCase("R1-G correct key + suffix", (paths) => ({ data: [{ name: paths[0] + ".jpg" }], error: null }), "retryable");
+    await ackCase("R1-H case-changed name", (paths) => ({ data: [{ name: paths[0].toUpperCase() }], error: null }), "retryable");
+    await ackCase("R1-I encoded/alternate path", (paths) => ({ data: [{ name: encodeURIComponent(paths[0]) }], error: null }), "retryable");
+    await ackCase("R1-J single primitive ack", () => ({ data: ["sessions/x/raw"], error: null }), "retryable");
+    await ackCase("R1-K correct name + matching bucket_id", (paths) => ({ data: [{ name: paths[0], bucket_id: BUCKET }], error: null }), "confirmed");
+    await ackCase("R1-L correct name + wrong bucket_id", (paths) => ({ data: [{ name: paths[0], bucket_id: "evil-bucket" }], error: null }), "retryable");
+    await ackCase("R1-M correct name + non-string bucket_id", (paths) => ({ data: [{ name: paths[0], bucket_id: 123 }], error: null }), "retryable");
+    await ackCase("R1-N correct name + bucket_id absent", (paths) => ({ data: [{ name: paths[0] }], error: null }), "confirmed");
+    // extra bucket_id defence variants: present-but-blank / wrong-case → retryable
+    await ackCase("R1-L2 blank bucket_id", (paths) => ({ data: [{ name: paths[0], bucket_id: "" }], error: null }), "retryable");
+    await ackCase("R1-L3 wrong-case bucket_id", (paths) => ({ data: [{ name: paths[0], bucket_id: "Social-Media-Quarantine" }], error: null }), "retryable");
+    // null bucket_id is treated as absent (not a failure) → confirmed
+    await ackCase("R1-N2 null bucket_id (absent) ", (paths) => ({ data: [{ name: paths[0], bucket_id: null }], error: null }), "confirmed");
+    // ack item is null → retryable
+    await ackCase("R1-J2 null ack item", () => ({ data: [null], error: null }), "retryable");
+
   } catch (err) { fatal = err; console.error("\n• FATAL: " + (err && err.message ? err.message : String(err))); }
   finally { fs.rmSync(tempRoot, { recursive: true, force: true }); console.log("\n• Temp dir removed: " + tempRoot + " (exists=" + fs.existsSync(tempRoot) + ")"); }
   section("RESULT"); console.log(`  ${pass} passed, ${fail} failed`);

@@ -93,6 +93,33 @@ ok(!/media_upload_sessions/.test(store), "store has NO direct media_upload_sessi
 ok(!/storage\.objects/.test(store) && !/DELETE\s+FROM/i.test(store), "store has NO storage.objects / SQL DELETE");
 ok(!/\.list\(|\.download\(|createSignedUrl|createSignedUploadUrl|\.upload\(|\.info\(/.test(store), "store performs NO list/download/signed-url/upload/info existence precheck");
 
+// ── P1G-2-R1: EXACT delete-ack identity (name === objectKey; no coercion) ─
+section("R1 exact delete-ack identity contract");
+{
+  const m = store.match(/deleteClaimedObject\(claim[\s\S]*?\n {4}\},/);
+  const del = m ? m[0] : "";
+  ok(del.length > 0, "found deleteClaimedObject method body");
+  // length===1 alone is NOT sufficient: an item-object + exact name identity are also required.
+  ok(/data\.length\s*!==\s*1/.test(del) && /!==\s*objectKey/.test(del), "length===1 alone is NOT sufficient (exact name identity also required)");
+  ok(/typeof\s+ack\s*!==\s*["']object["']/.test(del) && /!ack\s*\|\|/.test(del), "acknowledgement item must be a non-null object");
+  ok(/\.name\s*!==\s*objectKey/.test(del), "acknowledgement .name must EXACTLY equal the server objectKey");
+  ok(/typeof[\s\S]{0,24}\.name\s*!==\s*["']string["']/.test(del), "acknowledgement .name must be a string");
+  // No normalization / coercion of the acknowledgement name inside the delete block.
+  ok(!/String\(/.test(del), "no String() coercion of the acknowledgement name");
+  ok(!/\.trim\(/.test(del), "no trim() normalization of the acknowledgement name");
+  ok(!/\.toLowerCase\(|\.toUpperCase\(/.test(del), "no case-folding of the acknowledgement name");
+  ok(!/decodeURIComponent|encodeURIComponent|normalize\(/.test(del), "no URL-decode / path-normalization of the acknowledgement name");
+  ok(!/\.endsWith\(|\.includes\(|\.split\(|basename/.test(del), "no basename / suffix-only / substring match of the acknowledgement name");
+  // Optional bucket_id defence: present bucket_id must equal QUARANTINE_BUCKET; absence not a failure.
+  ok(/bucket_id/.test(del) && /!==\s*QUARANTINE_BUCKET/.test(del), "present bucket_id must equal QUARANTINE_BUCKET exactly");
+  ok(/bucketId\s*!==\s*undefined\s*&&\s*bucketId\s*!==\s*null/.test(del), "absent (undefined/null) bucket_id is NOT a failure");
+  // "confirmed" is returned ONLY after every retryable guard (identity + bucket).
+  const iConfirmed = del.lastIndexOf('return "confirmed"');
+  ok(iConfirmed > del.indexOf("!== objectKey") && iConfirmed > del.indexOf("bucket_id"), "confirmed returned ONLY after exact-name + bucket_id checks");
+  // A malformed/missing/wrong acknowledgement returns retryable (never confirmed).
+  ok((del.match(/return "retryable"/g) || []).length >= 4, "multiple fail-closed retryable returns guard the ack");
+}
+
 // ── No scheduler / no env mutation / no activation across all three ──────
 section("no scheduler / env mutation / activation");
 for (const [name, code] of [["route", route], ["worker", worker], ["store", store]]) {

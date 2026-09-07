@@ -157,9 +157,30 @@ export function createQuarantineJanitorStore(
       // Server-derived key + server-constant bucket (never claim-supplied).
       const objectKey = quarantineObjectKeyForSession(claim.sessionId);
       const { data, error } = await getClient().storage.from(QUARANTINE_BUCKET).remove([objectKey]);
-      // Explicit single-object deletion acknowledgement required.
+      // SEC-00B-P1G-2-R1 — EXACT single-object deletion acknowledgement IDENTITY.
+      // Confirmed ONLY when: error absent + data is an Array + exactly one item +
+      // that item is a non-null object + item.name is a STRING that EXACTLY equals
+      // the server-derived key (no trim / lowercase / URL-decode / basename /
+      // suffix / coercion). A one-item ack for the WRONG object must NEVER confirm.
       if (error || !Array.isArray(data) || data.length !== 1) {
         return "retryable";
+      }
+      const ack = data[0];
+      if (!ack || typeof ack !== "object") {
+        return "retryable";
+      }
+      if (typeof (ack as any).name !== "string" || (ack as any).name !== objectKey) {
+        return "retryable";
+      }
+      // Optional bucket_id defence: absence is NOT a failure (the authoritative
+      // bucket is the server-constant delete call above). But a PRESENT bucket_id
+      // MUST be the exact quarantine bucket (string, exact case) — a present
+      // non-string / blank / wrong / wrong-case bucket_id ⇒ retryable.
+      const bucketId = (ack as any).bucket_id;
+      if (bucketId !== undefined && bucketId !== null) {
+        if (typeof bucketId !== "string" || bucketId !== QUARANTINE_BUCKET) {
+          return "retryable";
+        }
       }
       return "confirmed";
     },
