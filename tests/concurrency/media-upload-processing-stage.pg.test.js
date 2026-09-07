@@ -100,6 +100,7 @@ async function seedQuarantined(c, o) {
 }
 
 // Drive quarantined -> file_safety/passed (P1I-1) -> media_processing/clean (P1I-3).
+// media_class: 'photo'|'avatar'|'circle_image' (image) | 'reel' (video) | 'audio'.
 async function seedMediaProcessing(c, o) {
   o = o || {};
   const id = await seedQuarantined(c, o);
@@ -107,9 +108,11 @@ async function seedMediaProcessing(c, o) {
   // P1I-1 validate
   const g1 = (await c.query("SELECT validation_claim_generation AS g FROM public.claim_media_upload_validation()")).rows[0].g;
   eq(String(g1), "1", "seed: P1I-1 claim gen 1 for " + id);
-  const isAudio = (o.mediaClass || "photo") === "audio";
-  const passArgs = isAudio
+  const cls = o.mediaClass || "photo";
+  const passArgs = cls === "audio"
     ? [id, 1, sha, o.ctype || "audio/mpeg", "mp3", null, null, 1045, null, "mp3"]
+    : cls === "reel"
+    ? [id, 1, sha, o.ctype || "video/mp4", "mp4", 1280, 720, 5000, "h264", null]
     : [id, 1, sha, "image/jpeg", "jpeg", 48, 24, null, null, null];
   const p = (await c.query(
     `SELECT public.complete_media_upload_validation_pass($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) AS o`, passArgs)).rows[0].o;
@@ -390,6 +393,152 @@ async function main() {
       `UPDATE public.media_upload_sessions
           SET processing_outcome='ready', processing_completed_at=now() WHERE id='${id}'`),
       "ready without evidence must violate the constraint");
+  });
+
+  // ═══ MATERIAL HARDENING R1 — Gap 1/2/3 adversarial DB proofs ═══════════════
+
+  // ── §18.19 READY bound to the DB-owned destination (bucket/key/extension) ────
+  await t("§18.19 wrong bucket / wrong key / wrong extension cannot READY (state_conflict, zero mutation)", async () => {
+    // wrong (non-blank) bucket
+    await reset(admin);
+    let s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, bucket: "social-media-public" })).outcome, "state_conflict", "wrong bucket -> conflict");
+    eq(await statusOf(admin, s.id), "media_processing||", "unchanged after wrong bucket");
+    // wrong key (different path)
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g1/attacker.jpg" })).outcome, "state_conflict", "wrong key -> conflict");
+    // traversal key
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g1/../../../etc/final.jpg" })).outcome, "state_conflict", "traversal key -> conflict");
+    // wrong extension (png ext for a jpeg lot)
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g1/final.png" })).outcome, "state_conflict", "wrong extension -> conflict");
+    // wrong generation-path (g2 key on a gen-1 claim)
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g2/final.jpg" })).outcome, "state_conflict", "wrong gen-path -> conflict");
+    eq(await statusOf(admin, s.id), "media_processing||", "unchanged after all destination mismatches");
+  });
+
+  // ── §18.20 wrong processed container / canonical content-type mismatch ───────
+  await t("§18.20 wrong processed container or non-canonical content-type cannot READY", async () => {
+    await reset(admin);
+    let s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, container: "mp4" })).outcome, "state_conflict", "container != detected -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, ctype: "image/png" })).outcome, "state_conflict", "content-type != canonical(jpeg) -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, ctype: "application/octet-stream" })).outcome, "state_conflict", "octet-stream -> conflict");
+    eq(await statusOf(admin, s.id), "media_processing||", "unchanged");
+  });
+
+  // ── §18.21 missing storage identity (object id / etag) cannot READY ─────────
+  await t("§18.21 missing processed storage object id / etag cannot READY (state_conflict)", async () => {
+    await reset(admin);
+    let s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, oid: null })).outcome, "state_conflict", "null storage oid -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, oid: "   " })).outcome, "state_conflict", "blank storage oid -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, etag: null })).outcome, "state_conflict", "null storage etag -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, etag: "" })).outcome, "state_conflict", "blank storage etag -> conflict");
+    eq(await statusOf(admin, s.id), "media_processing||", "unchanged");
+  });
+
+  // ── §18.22 IMAGE media-shape violations cannot READY ────────────────────────
+  await t("§18.22 IMAGE shape: duration/video-codec/audio-codec present, or missing dims -> state_conflict", async () => {
+    await reset(admin);
+    let s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, dur: 5000 })).outcome, "state_conflict", "image w/ duration -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, vcodec: "h264" })).outcome, "state_conflict", "image w/ video codec -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, acodec: "aac" })).outcome, "state_conflict", "image w/ audio codec -> conflict");
+    await reset(admin);
+    s = await seedClaimed(admin, {});
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, w: 0 })).outcome, "state_conflict", "image w/ non-positive width -> conflict");
+    eq(await statusOf(admin, s.id), "media_processing||", "unchanged");
+  });
+
+  // ── §18.23 VIDEO (reel) READY positive + shape violations ───────────────────
+  await t("§18.23 VIDEO reel: canonical mp4/h264 + dims + duration -> READY; missing duration/dims -> state_conflict", async () => {
+    // positive: a fully-shaped reel completes READY
+    await reset(admin);
+    let s = await seedClaimed(admin, { mediaClass: "reel", ctype: "video/mp4" });
+    const key = "sessions/" + s.id + "/processed/g1/final.mp4";
+    const okOut = (await readyRpc(admin, {
+      sessionId: s.id, gen: 1, key, container: "mp4", ctype: "video/mp4",
+      size: 40960, sha: "e".repeat(64), w: 1280, h: 720, dur: 5000, vcodec: "h264", acodec: null,
+      oid: "vpoid1", etag: "vpetag1",
+    }));
+    eq(okOut.outcome, "applied", "reel READY applied"); eq(okOut.status, "ready", "-> ready");
+    eq(await statusOf(admin, s.id), "ready|ready|", "reel status ready/ready");
+    // missing duration
+    await reset(admin);
+    s = await seedClaimed(admin, { mediaClass: "reel", ctype: "video/mp4" });
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g1/final.mp4", container: "mp4", ctype: "video/mp4", w: 1280, h: 720, dur: null, vcodec: "h264" })).outcome, "state_conflict", "reel missing duration -> conflict");
+    // missing dims
+    await reset(admin);
+    s = await seedClaimed(admin, { mediaClass: "reel", ctype: "video/mp4" });
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g1/final.mp4", container: "mp4", ctype: "video/mp4", w: null, h: null, dur: 5000, vcodec: "h264" })).outcome, "state_conflict", "reel missing dims -> conflict");
+    // wrong video codec for mp4 (vp9 is webm-only)
+    await reset(admin);
+    s = await seedClaimed(admin, { mediaClass: "reel", ctype: "video/mp4" });
+    eq((await readyRpc(admin, { sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g1/final.mp4", container: "mp4", ctype: "video/mp4", w: 1280, h: 720, dur: 5000, vcodec: "vp9" })).outcome, "state_conflict", "mp4 w/ vp9 codec -> conflict");
+  });
+
+  // ── §18.24 media_class <-> family mismatch cannot READY ─────────────────────
+  await t("§18.24 a photo (image) row can never READY with a video container/shape", async () => {
+    await reset(admin);
+    const s = await seedClaimed(admin, {}); // photo, detected jpeg
+    // even a perfectly-shaped mp4 payload cannot READY on a photo row (detected jpeg key
+    // won't match, and family mismatch is caught) -> state_conflict.
+    eq((await readyRpc(admin, {
+      sessionId: s.id, gen: 1, key: "sessions/" + s.id + "/processed/g1/final.mp4",
+      container: "mp4", ctype: "video/mp4", w: 1280, h: 720, dur: 5000, vcodec: "h264",
+    })).outcome, "state_conflict", "photo row + video payload -> conflict");
+    eq(await statusOf(admin, s.id), "media_processing||", "unchanged");
+  });
+
+  // ── §18.25 direct UPDATE with a bad READY shape violates the CHECK ──────────
+  await t("§18.25 a direct UPDATE to ready with an inconsistent media-shape violates chk_media_upload_proc_ready_shape", async () => {
+    await reset(admin);
+    const { id } = await seedMediaProcessing(admin, {}); // photo
+    // Full evidence + storage identity present, but an IMAGE row carrying a video codec
+    // must violate the fail-closed shape CHECK (defense against a raw UPDATE).
+    await throwsRpc(() => admin.query(
+      `UPDATE public.media_upload_sessions
+          SET processing_outcome='ready', processing_completed_at=now(),
+              processed_bucket='${PROCESSED_BUCKET}', processed_object_key='sessions/${id}/processed/g1/final.jpg',
+              processed_byte_size=4096, processed_sha256='${"d".repeat(64)}',
+              processed_content_type='image/jpeg', processed_container='jpeg',
+              processed_width_px=48, processed_height_px=24, processed_video_codec='h264',
+              processed_storage_object_id='oid', processed_storage_etag='etag'
+        WHERE id='${id}'`),
+      "image row with a video codec must violate the ready-shape CHECK");
+    // and a ready row with a blank storage identity violates the storage-identity CHECK
+    await throwsRpc(() => admin.query(
+      `UPDATE public.media_upload_sessions
+          SET processing_outcome='ready', processing_completed_at=now(),
+              processed_bucket='${PROCESSED_BUCKET}', processed_object_key='sessions/${id}/processed/g1/final.jpg',
+              processed_byte_size=4096, processed_sha256='${"d".repeat(64)}',
+              processed_content_type='image/jpeg', processed_container='jpeg',
+              processed_width_px=48, processed_height_px=24,
+              processed_storage_object_id='', processed_storage_etag=''
+        WHERE id='${id}'`),
+      "blank storage identity must violate the storage-identity CHECK");
+    eq(await statusOf(admin, id), "media_processing||", "no mutation from either refused direct UPDATE");
   });
 
   // ── generation fencing: two real concurrent claimers, ONE row -> one wins ────
