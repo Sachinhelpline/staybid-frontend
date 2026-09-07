@@ -95,7 +95,7 @@ function fakeSupabase(plan) {
             calls.listV2Count++; calls.listV2Args = opts;
             if (plan.listThrow) throw new Error("boom");
             if (plan.listError) return { data: null, error: new Error("list") };
-            return { data: plan.listData ?? { objects: [] }, error: null };
+            return { data: plan.listData ?? v2([]), error: null };
           },
         };
       },
@@ -107,6 +107,11 @@ function fakeSupabase(plan) {
 // A listV2 object entry for the exact expected object (valid metadata).
 function exactObject(over = {}) {
   return { key: KEY, id: "objid_1", updated_at: "t", created_at: "t", last_accessed_at: "t", metadata: { eTag: '"etag-abc"', size: 1024, mimetype: "image/jpeg", cacheControl: "max-age=3600", lastModified: "t", contentLength: 1024, httpStatusCode: 200 }, ...over };
+}
+// A realistic complete SearchV2Result (the R1 contract: objects + folders array +
+// exact boolean hasNext). `over` can inject hasNext/folders for the R1 cases.
+function v2(objects, over = {}) {
+  return { objects, folders: [], hasNext: false, ...over };
 }
 
 async function main() {
@@ -286,54 +291,105 @@ async function main() {
     }
 
     // ── C13-C20 — interpretListV2Result exact identity + metadata ─────────
+    // (all valid-shape fixtures carry the realistic SearchV2Result: folders:[], hasNext:false)
+    const II = (objs, over) => P.interpretListV2Result(v2(objs, over), { sessionId: SESSION_ID });
     section("C13 prefix sibling / relative-name reconstruction");
-    ok(P.interpretListV2Result({ objects: [exactObject({ key: KEY + "-sibling" })] }, { sessionId: SESSION_ID }).kind === "not_observed", "prefix-only sibling (key) -> not_observed");
-    ok(P.interpretListV2Result({ objects: [exactObject({ key: undefined, name: "raw-sibling" })] }, { sessionId: SESSION_ID }).kind === "not_observed", "relative sibling name -> not_observed");
-    ok(P.interpretListV2Result({ objects: [exactObject({ key: KEY })] }, { sessionId: SESSION_ID }).kind === "observed", "exact key -> observed");
-    ok(P.interpretListV2Result({ objects: [exactObject({ key: undefined, name: "raw" })] }, { sessionId: SESSION_ID }).kind === "observed", "relative name 'raw' -> observed");
-    ok(P.interpretListV2Result({ objects: [exactObject({ key: undefined, name: KEY })] }, { sessionId: SESSION_ID }).kind === "observed", "full key as name -> observed");
+    ok(II([exactObject({ key: KEY + "-sibling" })]).kind === "not_observed", "prefix-only sibling (key) -> not_observed");
+    ok(II([exactObject({ key: undefined, name: "raw-sibling" })]).kind === "not_observed", "relative sibling name -> not_observed");
+    ok(II([exactObject({ key: KEY })]).kind === "observed", "exact key -> observed");
+    ok(II([exactObject({ key: undefined, name: "raw" })]).kind === "observed", "relative name 'raw' -> observed");
+    ok(II([exactObject({ key: undefined, name: KEY })]).kind === "observed", "full key as name -> observed");
     {
-      const r = P.interpretListV2Result({ objects: [exactObject()] }, { sessionId: SESSION_ID });
+      const r = II([exactObject()]);
       ok(r.kind === "observed" && r.observation.byteSize === 1024 && r.observation.contentType === "image/jpeg" && r.observation.storageObjectId === "objid_1" && r.observation.storageEtag === '"etag-abc"', "observed carries exact metadata");
     }
 
     section("C14 ambiguous / malformed");
-    ok(P.interpretListV2Result({ objects: [exactObject(), exactObject({ id: "obj2" })] }, { sessionId: SESSION_ID }).kind === "ambiguous", "two objects -> ambiguous");
-    ok(P.interpretListV2Result({ objects: [] }, { sessionId: SESSION_ID }).kind === "not_observed", "empty -> not_observed");
+    ok(II([exactObject(), exactObject({ id: "obj2" })]).kind === "ambiguous", "two objects -> ambiguous");
+    ok(II([]).kind === "not_observed", "empty -> not_observed");
     ok(P.interpretListV2Result({}, { sessionId: SESSION_ID }).kind === "error", "no objects array -> error");
     ok(P.interpretListV2Result(null, { sessionId: SESSION_ID }).kind === "error", "null -> error");
-    ok(P.interpretListV2Result({ objects: "nope" }, { sessionId: SESSION_ID }).kind === "error", "objects not array -> error");
+    ok(P.interpretListV2Result({ objects: "nope", folders: [], hasNext: false }, { sessionId: SESSION_ID }).kind === "error", "objects not array -> error");
 
     section("C15 missing/blank object id");
     for (const bad of [undefined, "", "   ", 123, null, "x".repeat(257)]) {
-      ok(P.interpretListV2Result({ objects: [exactObject({ id: bad })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "objectId=" + JSON.stringify(bad) + " -> invalid_metadata");
+      ok(II([exactObject({ id: bad })]).kind === "invalid_metadata", "objectId=" + JSON.stringify(bad) + " -> invalid_metadata");
     }
 
     section("C16 missing/invalid actual size");
     for (const bad of [undefined, null, 0, -5, 1.5, "1024", NaN]) {
-      ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, size: bad, contentLength: undefined } })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "size=" + JSON.stringify(bad) + " -> invalid_metadata");
+      ok(II([exactObject({ metadata: { ...exactObject().metadata, size: bad, contentLength: undefined } })]).kind === "invalid_metadata", "size=" + JSON.stringify(bad) + " -> invalid_metadata");
     }
-    ok(P.interpretListV2Result({ objects: [exactObject({ metadata: null })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "null metadata -> invalid_metadata");
+    ok(II([exactObject({ metadata: null })]).kind === "invalid_metadata", "null metadata -> invalid_metadata");
 
     section("C17 >100 MiB actual size");
-    ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, size: CEILING + 1, contentLength: undefined } })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "size>ceiling -> invalid_metadata");
-    ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, size: CEILING, contentLength: CEILING } })] }, { sessionId: SESSION_ID }).kind === "observed", "size==ceiling -> observed");
+    ok(II([exactObject({ metadata: { ...exactObject().metadata, size: CEILING + 1, contentLength: undefined } })]).kind === "invalid_metadata", "size>ceiling -> invalid_metadata");
+    ok(II([exactObject({ metadata: { ...exactObject().metadata, size: CEILING, contentLength: CEILING } })]).kind === "observed", "size==ceiling -> observed");
 
     section("C18 missing/blank MIME");
     for (const bad of [undefined, "", "   ", 123, null, "x".repeat(129)]) {
-      ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, mimetype: bad } })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "mime=" + JSON.stringify(bad) + " -> invalid_metadata");
+      ok(II([exactObject({ metadata: { ...exactObject().metadata, mimetype: bad } })]).kind === "invalid_metadata", "mime=" + JSON.stringify(bad) + " -> invalid_metadata");
     }
 
     section("C19 missing/blank ETag");
     for (const bad of [undefined, "", "   ", 123, null, "x".repeat(513)]) {
-      ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, eTag: bad } })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "etag=" + JSON.stringify(bad) + " -> invalid_metadata");
+      ok(II([exactObject({ metadata: { ...exactObject().metadata, eTag: bad } })]).kind === "invalid_metadata", "etag=" + JSON.stringify(bad) + " -> invalid_metadata");
     }
 
     section("C20 size/contentLength disagreement");
-    ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: 2048 } })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "size!=contentLength -> invalid_metadata");
-    ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: 1024 } })] }, { sessionId: SESSION_ID }).kind === "observed", "size==contentLength -> observed");
-    ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: undefined } })] }, { sessionId: SESSION_ID }).kind === "observed", "no contentLength -> observed");
-    ok(P.interpretListV2Result({ objects: [exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: "1024" } })] }, { sessionId: SESSION_ID }).kind === "invalid_metadata", "non-number contentLength -> invalid_metadata");
+    ok(II([exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: 2048 } })]).kind === "invalid_metadata", "size!=contentLength -> invalid_metadata");
+    ok(II([exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: 1024 } })]).kind === "observed", "size==contentLength -> observed");
+    ok(II([exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: undefined } })]).kind === "observed", "no contentLength -> observed");
+    ok(II([exactObject({ metadata: { ...exactObject().metadata, size: 1024, contentLength: "1024" } })]).kind === "invalid_metadata", "non-number contentLength -> invalid_metadata");
+
+    // ── R1 — listV2 pagination / response-shape fail-closed ───────────────
+    section("R1 pagination / SearchV2Result shape fail-closed");
+    // R1-1 one exact valid object, folders=[], hasNext=false -> observed
+    ok(P.interpretListV2Result(v2([exactObject()]), { sessionId: SESSION_ID }).kind === "observed", "R1-1 complete single-object result -> observed");
+    // R1-2 one exact valid object, hasNext=true -> ambiguous
+    ok(P.interpretListV2Result(v2([exactObject()], { hasNext: true }), { sessionId: SESSION_ID }).kind === "ambiguous", "R1-2 hasNext=true (with exact object) -> ambiguous");
+    // R1-3 zero objects, hasNext=true -> ambiguous (NOT not_observed)
+    ok(P.interpretListV2Result(v2([], { hasNext: true }), { sessionId: SESSION_ID }).kind === "ambiguous", "R1-3 hasNext=true (zero objects) -> ambiguous, not not_observed");
+    // R1-4 multiple objects, folders=[], hasNext=false -> ambiguous
+    ok(P.interpretListV2Result(v2([exactObject(), exactObject({ id: "obj2" })]), { sessionId: SESSION_ID }).kind === "ambiguous", "R1-4 multiple objects -> ambiguous");
+    // R1-5 one exact object, folders non-empty, hasNext=false -> ambiguous
+    ok(P.interpretListV2Result(v2([exactObject()], { folders: [{ name: "sub/" }] }), { sessionId: SESSION_ID }).kind === "ambiguous", "R1-5 non-empty folders -> ambiguous");
+    // R1-6/7/8 folders missing / null / non-array -> error
+    ok(P.interpretListV2Result({ objects: [exactObject()], hasNext: false }, { sessionId: SESSION_ID }).kind === "error", "R1-6 folders missing -> error");
+    ok(P.interpretListV2Result({ objects: [exactObject()], folders: null, hasNext: false }, { sessionId: SESSION_ID }).kind === "error", "R1-7 folders null -> error");
+    ok(P.interpretListV2Result({ objects: [exactObject()], folders: "nope", hasNext: false }, { sessionId: SESSION_ID }).kind === "error", "R1-8 folders non-array -> error");
+    // R1-9/10/11/12 hasNext missing / null / string / number -> error (exact boolean only)
+    ok(P.interpretListV2Result({ objects: [exactObject()], folders: [] }, { sessionId: SESSION_ID }).kind === "error", "R1-9 hasNext missing -> error");
+    ok(P.interpretListV2Result({ objects: [exactObject()], folders: [], hasNext: null }, { sessionId: SESSION_ID }).kind === "error", "R1-10 hasNext null -> error");
+    ok(P.interpretListV2Result({ objects: [exactObject()], folders: [], hasNext: "false" }, { sessionId: SESSION_ID }).kind === "error", "R1-11 hasNext string 'false' -> error");
+    ok(P.interpretListV2Result({ objects: [exactObject()], folders: [], hasNext: 0 }, { sessionId: SESSION_ID }).kind === "error", "R1-12 hasNext number 0 -> error");
+    // R1-13 valid shape + exact prefix sibling -> not_observed
+    ok(P.interpretListV2Result(v2([exactObject({ key: KEY + "-sibling" })]), { sessionId: SESSION_ID }).kind === "not_observed", "R1-13 prefix sibling in complete result -> not_observed");
+    // R1-14 valid shape + malformed metadata -> invalid_metadata preserved
+    ok(P.interpretListV2Result(v2([exactObject({ metadata: null })]), { sessionId: SESSION_ID }).kind === "invalid_metadata", "R1-14 malformed metadata -> invalid_metadata preserved");
+    // R1-15 hasNext=true -> ZERO confirmObservation at worker level
+    {
+      const { client, calls } = fakeSupabase({ listData: v2([exactObject()], { hasNext: true }) });
+      const store = ST.createUploadObservationStore({}, { client });
+      const r = await store.observeExactObject(baseTarget());
+      ok(r.kind === "ambiguous", "R1-15 store observe hasNext=true -> ambiguous");
+      eqv(calls.rpcCount, 0, "R1-15 ZERO confirmation RPC on hasNext ambiguity");
+      // full handler: hasNext=true -> 503, ZERO confirm
+      const hstore = { configured: () => true, findOwnedSessionTarget: async () => baseTarget(), observeExactObject: async () => store.observeExactObject(baseTarget()), confirmObservation: async () => "applied" };
+      let confirmed = 0; const hstore2 = { ...hstore, confirmObservation: async () => { confirmed++; return "applied"; } };
+      const res = await P.runUploadCompletion(mkReq("Bearer x", OKBODY), { verify: async () => ({ id: OWNER }), store: hstore2, env: { MEDIA_UPLOAD_OBSERVATION_ENABLED: "true" } });
+      eqv(res.status, 503, "R1-15 handler hasNext=true -> 503");
+      eqv(confirmed, 0, "R1-15 handler ZERO confirm on hasNext ambiguity");
+    }
+    // R1-16 folders non-empty -> ZERO confirmObservation at worker level; ZERO second listV2
+    {
+      const { client, calls } = fakeSupabase({ listData: v2([exactObject()], { folders: [{ name: "x/" }] }) });
+      const store = ST.createUploadObservationStore({}, { client });
+      const r = await store.observeExactObject(baseTarget());
+      ok(r.kind === "ambiguous", "R1-16 store observe non-empty folders -> ambiguous");
+      eqv(calls.rpcCount, 0, "R1-16 ZERO confirmation RPC on folders ambiguity");
+      eqv(calls.listV2Count, 1, "R1-16 exactly ONE listV2 call (no second Storage read)");
+    }
 
     // ── C21 / C22 — P1H-1 applied / idempotent + quarantined -> accepted ──
     section("C21/C22 applied / idempotent accepted");
@@ -444,7 +500,7 @@ async function main() {
     {
       // A malicious DB row cannot redirect the Storage read: bucket/key are ignored.
       const evilTarget = { id: SESSION_ID, ownerUserId: OWNER, status: "upload_authorized", quarantineBucket: "EVIL-BUCKET", objectKey: "EVIL/KEY" };
-      const { client, calls } = fakeSupabase({ listData: { objects: [exactObject()] } });
+      const { client, calls } = fakeSupabase({ listData: v2([exactObject()]) });
       const store = ST.createUploadObservationStore({}, { client });
       const r = await store.observeExactObject(evilTarget);
       ok(r.kind === "observed", "observeExactObject -> observed");
@@ -454,7 +510,7 @@ async function main() {
       eqv(calls.listV2Args.limit, 2, "tiny fixed limit 2");
       eqv(calls.listV2Args.with_delimiter, false, "flat listing (with_delimiter false)");
       // missing object -> not_observed (retryable), no confirm
-      const { client: c2, calls: k2 } = fakeSupabase({ listData: { objects: [] } });
+      const { client: c2, calls: k2 } = fakeSupabase({ listData: v2([]) });
       const s2 = ST.createUploadObservationStore({}, { client: c2 });
       ok((await s2.observeExactObject(evilTarget)).kind === "not_observed", "empty listing -> not_observed");
       eqv(k2.rpcCount, 0, "observe never calls the RPC");

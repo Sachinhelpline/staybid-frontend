@@ -76,9 +76,30 @@ ok(/target\.objectKey\s*!==\s*expectedObjectKeyFor\(/.test(orch), "rejects a DB 
 ok(/QUARANTINE_BUCKET\s*=\s*["']social-media-quarantine["']/.test(orch), "server-constant bucket defined");
 ok(/expectedObjectKeyFor[\s\S]{0,60}`sessions\/\$\{sessionId\}\/raw`/.test(orch), "exact sessions/<id>/raw key derivation");
 
+// ── ORCHESTRATOR — R1: SearchV2Result pagination / shape fail-closed ─────
+section("orchestrator R1: listV2 pagination / response-shape fail-closed");
+ok(/typeof\s+r\.hasNext\s*!==\s*["']boolean["']/.test(orch), "hasNext is validated as an EXACT boolean");
+ok(/typeof\s+r\.hasNext\s*!==\s*["']boolean["'][\s\S]{0,40}["']error["']/.test(orch), "missing/non-boolean hasNext -> error (fail closed)");
+ok(/r\.hasNext\s*===\s*true[\s\S]{0,60}["']ambiguous["']/.test(orch), "hasNext === true -> ambiguous (cannot reach observed)");
+ok(/!Array\.isArray\(r\.folders\)/.test(orch), "folders is validated as an array");
+ok(/!Array\.isArray\(r\.folders\)[\s\S]{0,40}["']error["']/.test(orch), "missing/null/non-array folders -> error");
+ok(/r\.folders\.length\s*>\s*0[\s\S]{0,60}["']ambiguous["']/.test(orch), "non-empty folders -> ambiguous (cannot reach observed)");
+// The hasNext/folders guards run BEFORE the object-count + identity checks (so a
+// paginated / folder-bearing result can never reach the exact-single-object path).
+{
+  const iHasNext = orch.indexOf("r.hasNext === true");
+  const iFolders = orch.indexOf("r.folders.length > 0");
+  const iCount = orch.indexOf("objects.length === 0");
+  const iIdentity = orch.indexOf("fullKey !== expectedKey");
+  ok(iHasNext > -1 && iFolders > iHasNext && iCount > iFolders && iIdentity > iCount, "success requires hasNext===false AND folders.length===0 BEFORE objects.length/identity");
+}
+// No cursor pagination / no second listV2 anywhere in the orchestrator.
+ok(!/nextCursor/.test(orch) && !/\.listV2\(/.test(orch), "orchestrator does NO cursor pagination and issues NO listV2 itself");
+
 // ── ORCHESTRATOR — exact object identity + metadata extraction ──────────
 section("orchestrator: exact identity + provider size/MIME/object-id/ETag");
 ok(/fullKey\s*!==\s*expectedKey/.test(orch), "exact single-object identity comparison (fullKey === expectedKey)");
+ok(/objects\.length\s*===\s*1|objects\[0\]/.test(orch) || /objects\.length\s*>\s*1/.test(orch), "success still requires exactly one object (count checks remain)");
 ok(/objects\.length\s*>\s*1[\s\S]{0,40}ambiguous/.test(orch), "more than one object -> ambiguous (fail closed)");
 ok(/objects\.length\s*===\s*0[\s\S]{0,40}not_observed/.test(orch), "zero objects -> not_observed (retryable)");
 ok(/meta\.size/.test(orch) && /MAX_OBSERVED_BYTES/.test(orch) && /104857600/.test(orch), "uses the provider byte size against the 100 MiB ceiling");
@@ -114,6 +135,12 @@ ok(/\.storage\.from\(QUARANTINE_BUCKET\)\.listV2\(/.test(store), "Storage read u
 ok(!/\.from\(\s*target\.quarantineBucket/.test(store), "store NEVER uses target.quarantineBucket for the Storage bucket");
 ok(/expectedPrefixFor\(target\.id\)/.test(store) && /(prefix,|prefix:\s*prefix)/.test(store), "exact server-derived prefix from the DB row id");
 ok(/limit:\s*2/.test(store) && /with_delimiter:\s*false/.test(store), "bounded one-folder metadata query (limit 2, flat)");
+// R1: exactly ONE listV2 architecture, no cursor pagination / no second Storage read.
+{
+  const listV2Calls = (store.match(/\.listV2\(/g) || []).length;
+  ok(listV2Calls === 1, "exactly ONE listV2 call site in the store (got " + listV2Calls + ")");
+}
+ok(!/cursor/i.test(store), "store issues NO cursor pagination follow-up");
 // No byte download / signed url / public url / upload / remove / info / list(v1).
 ok(!/\.download\(|createSignedUrl|createSignedUploadUrl|getPublicUrl|publicUrl|\.upload\(|\.remove\(|\.info\(|\.list\(/.test(store), "no download/signed-url/public-url/upload/remove/info/list(v1) call");
 // Only the P1H-1 confirmation RPC mutates lifecycle; no direct table UPDATE, no other RPC.

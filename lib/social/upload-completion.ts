@@ -159,9 +159,23 @@ export function parseCompletionBody(body: unknown): { sessionId: string } | { er
 // @supabase/storage-js 2.106.2 SearchV2Object shape is { name, key?, id, metadata:
 // FileMetadata|null } with FileMetadata { eTag, size, mimetype, contentLength, ... }.
 export function interpretListV2Result(raw: unknown, ctx: { sessionId: string }): ObserveResult {
+  // ── SEC-00B-P1H-2-R1: strict SearchV2Result shape (fail closed) ──────────
+  // The provider result must PROVE it is complete + unambiguous BEFORE any
+  // observation is accepted. NO coercion (Boolean/String/Number), NO defaulting a
+  // missing hasNext to false or a missing folders to [].
   if (!raw || typeof raw !== "object") return { kind: "error" };
-  const objects = (raw as { objects?: unknown }).objects;
-  if (!Array.isArray(objects)) return { kind: "error" };
+  const r = raw as { objects?: unknown; folders?: unknown; hasNext?: unknown };
+  if (!Array.isArray(r.objects)) return { kind: "error" };
+  if (!Array.isArray(r.folders)) return { kind: "error" }; // missing/null/non-array folders
+  if (typeof r.hasNext !== "boolean") return { kind: "error" }; // exact boolean only
+  const objects = r.objects;
+  // Pagination fail-closed: hasNext===true means undisclosed additional results
+  // may remain, so exact-single-object certainty is NOT proven. This is bounded to
+  // ONE metadata query — NO second listV2, NO cursor/nextCursor follow-up.
+  if (r.hasNext === true) return { kind: "ambiguous" };
+  // A non-empty folders result is not exact-single-object proof (never traversed).
+  if (r.folders.length > 0) return { kind: "ambiguous" };
+  // Object-count rule (only AFTER provider-shape / pagination / folder validation).
   if (objects.length === 0) return { kind: "not_observed" }; // upload may still be finishing
   if (objects.length > 1) return { kind: "ambiguous" }; // more than the one expected object
 
