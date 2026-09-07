@@ -1,0 +1,41 @@
+-- ============================================================================
+-- SEC-00B — P1J — PRIVATE PROCESSED-MEDIA BUCKET — SOURCE-ONLY CONTRACT
+-- ----------------------------------------------------------------------------
+-- REVIEW ARTIFACT ONLY. This file is NOT applied by the P1J DB-foundation
+-- migration and is NOT applied to any hosted project by this change. It records
+-- the exact private processed-media bucket the P1J worker writes normalized output
+-- into. Bucket creation is a later OWNER-CONTROLLED operation (out of band); this
+-- packet performs NO production bucket creation/apply.
+--
+-- Authority: the P1J worker (service-role) is the ONLY writer of this bucket. No
+-- browser INSERT/UPDATE/DELETE authority. The raw quarantine bucket
+-- (social-media-quarantine) stays private and is NEVER copied here as-is; only the
+-- fully decoded + sanitized + normalized + output-verified bytes are written.
+-- Processed output stays PRIVATE until a later, separately-approved promotion/
+-- activation step (NOT part of P1J).
+--
+-- Contract:
+--   id / name            : social-media-processed
+--   public               : false
+--   file_size_limit      : 104857600  (100 MiB — matches the P1J output ceiling)
+--   allowed_mime_types   : image/jpeg, image/png, image/webp, video/mp4,
+--                          video/webm, audio/mpeg, audio/mp4
+--
+-- Supabase Storage buckets live in storage.buckets. The idempotent INSERT below is
+-- the shape an OWNER would apply from a securely linked terminal; it is inert here.
+-- ============================================================================
+
+-- INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+-- VALUES (
+--   'social-media-processed',
+--   'social-media-processed',
+--   false,
+--   104857600,
+--   ARRAY['image/jpeg','image/png','image/webp','video/mp4','video/webm','audio/mpeg','audio/mp4']
+-- )
+-- ON CONFLICT (id) DO NOTHING;
+
+-- Reads/writes remain service-role only (no anon / authenticated / public policies).
+-- No RLS policy grants browser access to social-media-processed in this contract.
+
+-- END SEC-00B-P1J processed-bucket source contract (NOT APPLIED HERE).
