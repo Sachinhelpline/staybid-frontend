@@ -1,59 +1,39 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
-const DOMAIN = "staybid:sec00b:media-ref:v1";
 const UUID_V4_LOWER =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const SIG_RE = /^[0-9a-f]{64}$/;
-
-function signingKey(): string | null {
-  const raw = (process.env.JWT_ACCESS_SECRET || "").trim();
-  return raw.length >= 32 ? raw : null;
-}
+const SHA256_RE = /^[0-9a-f]{64}$/;
 
 export function isMediaSessionId(v: unknown): v is string {
   return typeof v === "string" && UUID_V4_LOWER.test(v);
 }
 
 export function isMediaRefSignature(v: unknown): v is string {
-  return typeof v === "string" && SIG_RE.test(v);
+  return typeof v === "string" && SHA256_RE.test(v);
 }
 
-export function signSecureMediaRef(
+// The reference token is the immutable SHA-256 recorded by the trusted
+// processing worker when the session becomes READY. It is not caller authority:
+// the owner-bound status endpoint is the only place that reveals it before
+// publication, and the delivery route additionally requires an APPROVED /
+// AUTO_APPROVED social_posts reference before serving bytes.
+export function secureMediaPath(
   sessionId: string,
-  ownerUserId: string,
+  processedSha256: string,
 ): string | null {
-  const key = signingKey();
-  if (
-    !key ||
-    !isMediaSessionId(sessionId) ||
-    typeof ownerUserId !== "string" ||
-    ownerUserId.length === 0
-  ) {
+  if (!isMediaSessionId(sessionId) || !isMediaRefSignature(processedSha256)) {
     return null;
   }
-  return createHmac("sha256", key)
-    .update(`${DOMAIN}\n${sessionId}\n${ownerUserId}`)
-    .digest("hex");
+  return `/api/social/media/${sessionId}/${processedSha256}`;
 }
 
 export function verifySecureMediaRef(
   sessionId: string,
-  ownerUserId: string,
+  processedSha256: string,
   signature: string,
 ): boolean {
-  if (!isMediaRefSignature(signature)) return false;
-  const expected = signSecureMediaRef(sessionId, ownerUserId);
-  if (!expected) return false;
-  return timingSafeEqual(
-    Buffer.from(expected, "hex"),
-    Buffer.from(signature, "hex"),
+  return (
+    isMediaSessionId(sessionId) &&
+    isMediaRefSignature(processedSha256) &&
+    isMediaRefSignature(signature) &&
+    processedSha256 === signature
   );
-}
-
-export function secureMediaPath(
-  sessionId: string,
-  ownerUserId: string,
-): string | null {
-  const sig = signSecureMediaRef(sessionId, ownerUserId);
-  return sig ? `/api/social/media/${sessionId}/${sig}` : null;
 }
