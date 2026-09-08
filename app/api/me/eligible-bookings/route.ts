@@ -13,6 +13,6 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const rows = await listEligibleBookings(user.id, user.phone);
+  const rows = await listEligibleBookings(user.id, user.phone, user.email);
   return NextResponse.json({ bookings: rows });
 }

@@ -49,10 +49,19 @@ export type EligibleBooking = {
  */
 export async function listEligibleBookings(
   primaryUserId: string,
-  phone?: string | null
+  phone?: string | null,
+  email?: string | null
 ): Promise<EligibleBooking[]> {
   // resolveUserIds() accepts string | undefined; normalize null → undefined.
-  const userIds = await resolveUserIds(primaryUserId, phone ?? undefined);
+  // v740 — pass jwtEmail (the documented resolveUserIds(id, phone, email)
+  // contract). Without it, an eligible stay booked under an email-keyed
+  // identity twin — e.g. a Google/Firebase session whose own `users` row has
+  // no stored email — is silently missed, producing a false "no stays" zero.
+  const userIds = await resolveUserIds(
+    primaryUserId,
+    phone ?? undefined,
+    email ?? undefined
+  );
   if (!userIds.length) return [];
   const inList = userIds.map(encodeURIComponent).join(",");
 
@@ -194,9 +203,13 @@ export async function hasEligibleBookingForHotel(
   primaryUserId: string,
   phone: string | null,
   hotelId: string,
-  bookingId: string
+  bookingId: string,
+  email?: string | null
 ): Promise<{ ok: boolean; booking?: EligibleBooking }> {
-  const eligible = await listEligibleBookings(primaryUserId, phone);
+  // v740 — thread email so the upload gate resolves the SAME identity set as
+  // the picker (/api/me/eligible-bookings) and the tier count. Otherwise the
+  // picker could show a stay the upload gate then rejects (or vice-versa).
+  const eligible = await listEligibleBookings(primaryUserId, phone, email);
   const match = eligible.find(
     (b) => b.hotelId === hotelId && b.id === bookingId
   );

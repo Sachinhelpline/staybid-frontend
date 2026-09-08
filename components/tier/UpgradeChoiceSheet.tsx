@@ -114,7 +114,7 @@ export default function UpgradeChoiceSheet({
       setBookings(rows);
       if (!rows.length) {
         setBookingErr(
-          "No completed stays in the last 90 days. Book a stay and check out to unlock content sharing."
+          "No recent or current StayBid stays found in the last 90 days. Book a stay to unlock content sharing."
         );
       }
     } catch (e: any) {
@@ -277,8 +277,8 @@ export default function UpgradeChoiceSheet({
                     lineHeight: 1.4,
                   }}
                 >
-                  Pick a hotel where you&apos;ve checked out in the last
-                  90 days. Your booking is the proof — your content
+                  Choose a recent or current StayBid stay (within the last
+                  90 days). Your booking is the proof — your content
                   publishes instantly.
                 </div>
               </div>
@@ -457,21 +457,50 @@ export default function UpgradeChoiceSheet({
                 >
                   {bookingErr}
                 </div>
-                <a
-                  href="/hotels"
+                <div
                   style={{
-                    display: "inline-block",
-                    padding: "11px 22px",
-                    borderRadius: 12,
-                    background: COZY.champagne,
-                    color: "#fff",
-                    fontWeight: 700,
-                    fontSize: "0.9rem",
-                    textDecoration: "none",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    alignItems: "center",
                   }}
                 >
-                  Browse hotels →
-                </a>
+                  {/* Primary: the user's own booking/history surface — proving
+                     a StayBid stay should start from your bookings, NOT a
+                     generic hotel search. */}
+                  <a
+                    href="/bookings"
+                    style={{
+                      display: "inline-block",
+                      padding: "11px 22px",
+                      borderRadius: 12,
+                      background: COZY.champagne,
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: "0.9rem",
+                      textDecoration: "none",
+                    }}
+                  >
+                    View my bookings →
+                  </a>
+                  {/* Secondary: only for genuinely new travellers. */}
+                  <a
+                    href="/hotels"
+                    style={{
+                      display: "inline-block",
+                      padding: "9px 18px",
+                      borderRadius: 12,
+                      border: `1px solid ${COZY.border}`,
+                      background: "transparent",
+                      color: COZY.cocoaSoft,
+                      fontWeight: 600,
+                      fontSize: "0.85rem",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Book a new stay
+                  </a>
+                </div>
               </div>
             )}
 
@@ -529,7 +558,9 @@ export default function UpgradeChoiceSheet({
                         fontSize: "0.78rem",
                       }}
                     >
-                      Checked out {formatDate(b.checkOut)}
+                      {b.checkOut && Date.parse(b.checkOut) >= Date.now()
+                        ? `Current stay · ends ${formatDate(b.checkOut)}`
+                        : `Checked out ${formatDate(b.checkOut)}`}
                     </div>
                   </div>
                   <div

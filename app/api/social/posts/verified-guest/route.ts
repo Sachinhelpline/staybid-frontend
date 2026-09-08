@@ -69,7 +69,8 @@ export async function POST(req: Request) {
     user.id,
     user.phone || null,
     body.hotelId,
-    body.bookingId
+    body.bookingId,
+    user.email || null
   );
   if (!eligibility.ok) {
     return NextResponse.json(
