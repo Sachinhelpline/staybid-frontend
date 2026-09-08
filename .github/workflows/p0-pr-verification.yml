@@ -52,6 +52,9 @@ jobs:
       - name: Run security regression suite
         run: npm run test:security
 
+      - name: Run SEC-00B final writer cutover source suite
+        run: node tests/security/sec00b-writer-cutover.test.js
+
       - name: Run Voice AI foundation suite (SB-01)
         run: node tests/voice/voice-ai.test.js
 
