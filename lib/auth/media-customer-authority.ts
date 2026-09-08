@@ -85,6 +85,66 @@ export function verifyMediaCustomerToken(token: string, secret: string | undefin
   return sub;
 }
 
+// ── Verified identity claims (email / phone / name) — SEC-00B authority-boundary
+// remediation. Some ownership-sensitive resolvers (Verified Guest booking
+// ownership + the eligible-bookings picker) must bridge a person's identity twins
+// by email / phone. Those twin ATTRIBUTES must themselves come from a
+// CRYPTOGRAPHICALLY VERIFIED token — never a decode-only claim. This returns the
+// verified subject PLUS any email / phone / name claims carried by the SAME HS256
+// token, applying the IDENTICAL crypto rules as verifyMediaCustomerToken (exact
+// JWT_ACCESS_SECRET only, mandatory sub, id===sub when present, admin/super_admin
+// rejected). It performs NO fresh Railway proof — callers pair it with
+// resolveVerifiedMediaCustomer for the authoritative id + account-state proof.
+export type VerifiedMediaIdentity = {
+  sub: string;
+  email: string | null;
+  phone: string | null;
+  name: string | null;
+};
+
+// A claim is usable only if it is a non-empty, reasonably-bounded string.
+function cleanClaimString(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length > 0 && t.length <= 320 ? t : null;
+}
+
+/**
+ * Verify the token (same strict crypto as verifyMediaCustomerToken) and return
+ * the verified subject + verified email / phone / name claims, or null (fail
+ * closed). The email / phone reaching an ownership resolver from here are
+ * cryptographically verified attributes — NOT decode-only claims.
+ */
+export function verifyMediaCustomerIdentity(
+  token: string,
+  secret: string | undefined,
+): VerifiedMediaIdentity | null {
+  if (typeof secret !== "string" || secret.length === 0) return null; // no config → fail closed
+  if (typeof token !== "string" || token.trim().length === 0) return null;
+  let p: unknown;
+  try {
+    p = jwt.verify(token.trim(), secret, { algorithms: ["HS256"] });
+  } catch {
+    return null; // wrong secret / expired / forged / non-HS256 / alg:none
+  }
+  if (!p || typeof p !== "object") return null;
+  const claims = p as Record<string, unknown>;
+  const sub = claims.sub;
+  if (typeof sub !== "string" || sub.length === 0) return null; // mandatory non-empty sub
+  if (claims.id !== undefined) {
+    if (typeof claims.id !== "string" || claims.id !== sub) return null; // id, if present, MUST equal sub
+  }
+  if (isAdminRoleClaim(claims.role)) return null; // reject admin/super_admin claim
+  const emailRaw = cleanClaimString(claims.email) ?? cleanClaimString(claims.email_address);
+  const email = emailRaw && /@/.test(emailRaw) ? emailRaw : null;
+  const phone = cleanClaimString(claims.phone) ?? cleanClaimString(claims.phone_number);
+  const name =
+    cleanClaimString(claims.name) ??
+    cleanClaimString(claims.display_name) ??
+    cleanClaimString(claims.given_name);
+  return { sub, email, phone, name };
+}
+
 function bearerFromReq(req: Request): string {
   return (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
 }
@@ -115,6 +175,20 @@ export async function resolveVerifiedMediaCustomer(
   if (fresh.isBlocked === true) return null; // blocked
   if (isAdminRoleClaim(fresh.role)) return null; // fresh state resolves admin/super_admin → reject
   return { id: subject, authorityDomain: "customer" };
+}
+
+/**
+ * Request-level companion to resolveVerifiedMediaCustomer: reads ONLY the
+ * Authorization header and returns the VERIFIED identity claims (sub + email /
+ * phone / name) for identity-twin reconciliation. Never reads a body / query /
+ * hint header. Pair with resolveVerifiedMediaCustomer (authority id + fresh
+ * account-state proof); this supplies the verified twin attributes.
+ */
+export function resolveVerifiedMediaIdentity(
+  req: Request,
+  secret: string | undefined,
+): VerifiedMediaIdentity | null {
+  return verifyMediaCustomerIdentity(bearerFromReq(req), secret);
 }
 
 // ── Production transport (server-only) ──────────────────────────────────────

@@ -49,10 +49,37 @@ export type EligibleBooking = {
  */
 export async function listEligibleBookings(
   primaryUserId: string,
-  phone?: string | null
+  phone?: string | null,
+  email?: string | null
 ): Promise<EligibleBooking[]> {
   // resolveUserIds() accepts string | undefined; normalize null → undefined.
-  const userIds = await resolveUserIds(primaryUserId, phone ?? undefined);
+  // Pass jwtEmail (the documented resolveUserIds(id, phone, email) contract).
+  // Without it, an eligible stay booked under an email-keyed identity twin —
+  // e.g. a Google/Firebase session whose own `users` row has no stored email —
+  // is silently missed, producing a false "no stays" zero.
+  //
+  // AUTHORITY BOUNDARY (SEC-00B): the ownership callers of this helper (the
+  // Verified Guest upload gate + the eligible-bookings picker) now supply a
+  // CRYPTOGRAPHICALLY VERIFIED email (resolveVerifiedMediaIdentity) — never a
+  // decode-only claim. Two independent defences still neutralize the
+  // `email=ilike.<email>` wildcard vector: (1) this local plausibility gate
+  // drops a value carrying whitespace / , % * ( ) < > " ' \ or a non-address
+  // shape; (2) resolveUserIds() escapes the SQL LIKE metacharacters (`\ % _`)
+  // and drops the PostgREST `*` wildcard, so the match is LITERAL and a
+  // legitimate `first_last@x.com` still resolves its twin while `*@*` / `%` / `_`
+  // can never widen the caller to another user's identity.
+  const trimmedEmail = typeof email === "string" ? email.trim() : "";
+  const safeEmail =
+    trimmedEmail &&
+    !/[\s,%*()<>"'\\]/.test(trimmedEmail) &&
+    /^[^@]+@[^@]+\.[^@]+$/.test(trimmedEmail)
+      ? trimmedEmail
+      : undefined;
+  const userIds = await resolveUserIds(
+    primaryUserId,
+    phone ?? undefined,
+    safeEmail
+  );
   if (!userIds.length) return [];
   const inList = userIds.map(encodeURIComponent).join(",");
 
@@ -194,9 +221,13 @@ export async function hasEligibleBookingForHotel(
   primaryUserId: string,
   phone: string | null,
   hotelId: string,
-  bookingId: string
+  bookingId: string,
+  email?: string | null
 ): Promise<{ ok: boolean; booking?: EligibleBooking }> {
-  const eligible = await listEligibleBookings(primaryUserId, phone);
+  // v740 — thread email so the upload gate resolves the SAME identity set as
+  // the picker (/api/me/eligible-bookings) and the tier count. Otherwise the
+  // picker could show a stay the upload gate then rejects (or vice-versa).
+  const eligible = await listEligibleBookings(primaryUserId, phone, email);
   const match = eligible.find(
     (b) => b.hotelId === hotelId && b.id === bookingId
   );

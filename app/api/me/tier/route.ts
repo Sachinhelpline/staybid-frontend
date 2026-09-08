@@ -176,7 +176,7 @@ export async function GET(req: Request) {
 
   // When location-OTP is disabled, skip the count query entirely.
   const [eligible, activeLocCount] = await Promise.all([
-    listEligibleBookings(user.id, user.phone),
+    listEligibleBookings(user.id, user.phone, user.email),
     LOCATION_OTP_ENABLED
       ? countActiveLocationVerifications(user.id)
       : Promise.resolve(0),
