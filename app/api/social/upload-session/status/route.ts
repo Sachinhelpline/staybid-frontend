@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await sb
     .from("media_upload_sessions")
-    .select("id,owner_user_id,status,processed_bucket,processed_object_key")
+    .select("id,owner_user_id,status,processed_bucket,processed_object_key,processed_sha256")
     .eq("id", sessionId)
     .eq("owner_user_id", who.id)
     .limit(1)
@@ -66,9 +66,10 @@ export async function POST(req: Request) {
     data.status === "ready" &&
     data.processed_bucket === "social-media-processed" &&
     typeof data.processed_object_key === "string" &&
-    data.processed_object_key.startsWith(`sessions/${sessionId}/processed/`)
+    data.processed_object_key.startsWith(`sessions/${sessionId}/processed/`) &&
+    typeof data.processed_sha256 === "string"
   ) {
-    const mediaUrl = secureMediaPath(sessionId, data.owner_user_id);
+    const mediaUrl = secureMediaPath(sessionId, data.processed_sha256);
     if (!mediaUrl) {
       return NextResponse.json(
         { error: "media_status_service_unavailable" },
