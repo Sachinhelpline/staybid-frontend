@@ -265,6 +265,7 @@ export async function uploadSocialMedia(args: {
     throw new Error("Secure media upload is temporarily unavailable.");
   }
 
+  const onProgress = args.onProgress;
   const mediaBlob = await fetch(args.mediaBlobUrl).then((r) => r.blob());
   const mainClass: SecureMediaClass =
     args.kind === "PHOTO" ? "photo" : args.kind === "REEL" ? "reel" : "story";
@@ -273,7 +274,7 @@ export async function uploadSocialMedia(args: {
     mediaBlob,
     mainClass,
     args.mediaMime || mediaBlob.type || (args.kind === "PHOTO" ? "image/jpeg" : "video/mp4"),
-    args.onProgress ? (pct) => args.onProgress(Math.round(pct * 0.86)) : undefined,
+    onProgress ? (pct) => onProgress(Math.round(pct * 0.86)) : undefined,
   );
 
   let thumbnailUrl = "";
@@ -284,12 +285,12 @@ export async function uploadSocialMedia(args: {
       posterBlob,
       "photo",
       posterBlob.type || "image/jpeg",
-      args.onProgress ? (pct) => args.onProgress(86 + Math.round(pct * 0.14)) : undefined,
+      onProgress ? (pct) => onProgress(86 + Math.round(pct * 0.14)) : undefined,
     );
   } else if (!isVideo) {
     thumbnailUrl = mediaUrl;
   }
-  args.onProgress?.(100);
+  onProgress?.(100);
   return { mediaUrl, thumbnailUrl, bucket: PROCESSED_BUCKET };
 }
 
