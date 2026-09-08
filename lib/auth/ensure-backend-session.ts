@@ -14,6 +14,17 @@
 // backend token back so the CURRENT request uses it — not only future requests.
 // ONE shared helper backs BOTH the picker and the writer so they cannot drift.
 //
+// SESSION-INTEGRITY (the exchange is an async gap in which the browser session
+// can change under us — logout, or a different account signing in):
+//   • Every in-flight exchange is BOUND to the exact originating Firebase token.
+//   • The single-flight is SESSION-AWARE (keyed by that token): a different
+//     token / user can NEVER join another session's exchange.
+//   • Immediately before committing the returned backend credentials, the CURRENT
+//     session is re-read and must STILL be that exact originating Firebase session
+//     (sb_token === the originating token AND sb_token_type === "firebase").
+//     If it changed / disappeared / was replaced, we ABORT and write NOTHING —
+//     never resurrect the old session, never overwrite the new one.
+//
 // FAIL CLOSED — on any exchange failure it THROWS and never:
 //   • uses a decode-only Firebase token as ownership authority,
 //   • falls back to the legacy / public media writer,
@@ -24,7 +35,7 @@
 // elevates a session (the token reflects the backend-verified identity).
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type SessionUpgradeCode = "needs_reauth" | "exchange_failed";
+export type SessionUpgradeCode = "needs_reauth" | "exchange_failed" | "session_changed";
 
 export class SessionUpgradeError extends Error {
   code: SessionUpgradeCode;
@@ -39,6 +50,8 @@ const REAUTH_MSG =
   "Please sign in again to continue — your session needs to be refreshed.";
 const EXCHANGE_MSG =
   "Your session needs a refresh. Please sign out and sign in again to continue.";
+const SESSION_CHANGED_MSG =
+  "Your session changed while signing in — please try that again.";
 
 function readLocal(key: string): string {
   try {
@@ -48,11 +61,12 @@ function readLocal(key: string): string {
   }
 }
 
-// Module-level single-flight: concurrent picker + upload callers share ONE
-// exchange, so there is no double-exchange, no localStorage corruption, and no
-// retry/exchange loop. Reset after settle; each user action is one discrete
-// attempt (a failure throws to the caller, it does not auto-retry here).
-let inFlight: Promise<string> | null = null;
+// Session-aware single-flight: keyed by the ORIGINATING Firebase token, so
+// concurrent callers for the SAME session share ONE exchange while a DIFFERENT
+// token / user can never join it. Entries are cleared on settle (bounded to the
+// tokens currently mid-exchange); a failure throws to the caller and does not
+// auto-retry here, so there is no retry/exchange loop.
+const inFlight = new Map<string, Promise<string>>();
 
 async function exchangeFirebaseForBackend(firebaseToken: string): Promise<string> {
   let res: Response;
@@ -80,7 +94,16 @@ async function exchangeFirebaseForBackend(firebaseToken: string): Promise<string
     throw new SessionUpgradeError("exchange_failed", EXCHANGE_MSG);
   }
 
-  // Atomically promote the session to a backend-verified token.
+  // ── SESSION RE-BIND (guards the async gap) ────────────────────────────────
+  // Only commit if the CURRENT session is STILL the exact originating Firebase
+  // session. If the user logged out, or another account replaced the session
+  // while the exchange was in flight, abort WITHOUT writing — never resurrect
+  // the old session and never overwrite the new/current one. This check and the
+  // writes below are one SYNCHRONOUS block (no await between), so no other JS
+  // can change localStorage between the check and the commit.
+  if (readLocal("sb_token") !== firebaseToken || readLocal("sb_token_type") !== "firebase") {
+    throw new SessionUpgradeError("session_changed", SESSION_CHANGED_MSG);
+  }
   try {
     localStorage.setItem("sb_token", backendToken);
     if (data.user !== undefined && data.user !== null) {
@@ -88,6 +111,9 @@ async function exchangeFirebaseForBackend(firebaseToken: string): Promise<string
     }
     localStorage.setItem("sb_token_type", "backend");
   } catch {
+    // A partial write can only touch the ORIGINATING user's own session (we just
+    // re-bound to it synchronously) — never a different user's — and any
+    // inconsistent state fails closed at the strict media authority on next use.
     throw new SessionUpgradeError("exchange_failed", EXCHANGE_MSG);
   }
   // Let the auth/tier providers re-probe on the upgraded session.
@@ -103,8 +129,9 @@ async function exchangeFirebaseForBackend(firebaseToken: string): Promise<string
  * Ensure the current customer session carries a backend-verified token and
  * return that token (for the CURRENT request). Backend sessions pass straight
  * through with NO exchange; a Firebase-fallback session is upgraded once
- * (single-flight); no session at all throws `needs_reauth`. Throws
- * `SessionUpgradeError` (fail closed) on any exchange failure.
+ * (session-aware single-flight, bound to the originating token); no session at
+ * all throws `needs_reauth`. Throws `SessionUpgradeError` (fail closed) on any
+ * exchange failure or if the session changed mid-exchange (`session_changed`).
  */
 export async function ensureBackendSessionToken(): Promise<string> {
   const token = readLocal("sb_token");
@@ -115,10 +142,15 @@ export async function ensureBackendSessionToken(): Promise<string> {
   // media authority — no unnecessary exchange.
   if (type !== "firebase") return token;
 
-  if (!inFlight) {
-    inFlight = exchangeFirebaseForBackend(token).finally(() => {
-      inFlight = null;
-    });
-  }
-  return inFlight;
+  // Session-aware single-flight keyed by THIS Firebase token. A concurrent call
+  // for the SAME session joins the one exchange; a DIFFERENT token never joins
+  // (it starts its own, bound to its own token).
+  const existing = inFlight.get(token);
+  if (existing) return existing;
+
+  const p = exchangeFirebaseForBackend(token).finally(() => {
+    if (inFlight.get(token) === p) inFlight.delete(token);
+  });
+  inFlight.set(token, p);
+  return p;
 }
