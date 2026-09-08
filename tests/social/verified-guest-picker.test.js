@@ -37,8 +37,13 @@ const uploadSession = read("app/api/social/upload-session/route.ts");
 // ── 1. Identity reconciliation — email threaded ───────────────────────────────
 ok(/function listEligibleBookings\(\s*primaryUserId:\s*string,\s*phone\?:\s*string \| null,\s*email\?:\s*string \| null/.test(eligibility),
   "listEligibleBookings accepts an email param");
-ok(/resolveUserIds\(\s*primaryUserId,\s*phone \?\? undefined,\s*email \?\? undefined\s*\)/.test(eligibility),
-  "listEligibleBookings forwards email to resolveUserIds (3rd arg)");
+// The email is sanitized BEFORE resolveUserIds (it lands in an `email=ilike`
+// ownership filter; `*`/`%` are wildcards). The wildcard-free `safeEmail` — not
+// the raw claim — is what gets passed to resolveUserIds.
+ok(/const safeEmail =/.test(eligibility) && /\[\\s,%\*\(\)/.test(eligibility),
+  "email is sanitized (wildcard/whitespace chars blocked) before resolution");
+ok(/resolveUserIds\(\s*primaryUserId,\s*phone \?\? undefined,\s*safeEmail\s*\)/.test(eligibility),
+  "listEligibleBookings forwards the SANITIZED email (safeEmail) to resolveUserIds");
 ok(/function hasEligibleBookingForHotel\([\s\S]*?email\?:\s*string \| null\s*\)/.test(eligibility),
   "hasEligibleBookingForHotel accepts an email param");
 ok(/listEligibleBookings\(primaryUserId,\s*phone,\s*email\)/.test(eligibility),

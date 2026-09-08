@@ -57,10 +57,25 @@ export async function listEligibleBookings(
   // contract). Without it, an eligible stay booked under an email-keyed
   // identity twin — e.g. a Google/Firebase session whose own `users` row has
   // no stored email — is silently missed, producing a false "no stays" zero.
+  //
+  // Sanitize FIRST: resolveUserIds matches this via `email=ilike.<email>`,
+  // where `*` and `%` are match-any wildcards. A crafted claim like `*@*`
+  // would otherwise resolve to EVERY user (this is an OWNERSHIP axis for the
+  // Verified Guest upload gate — never widen it). Require a single,
+  // wildcard-free, plausibly-shaped address; anything else is dropped and the
+  // caller is still resolved by the id + phone axes. Realistic emails
+  // (letters/digits/._+-) pass unchanged; this can only NARROW the email axis.
+  const trimmedEmail = typeof email === "string" ? email.trim() : "";
+  const safeEmail =
+    trimmedEmail &&
+    !/[\s,%*()<>"'\\]/.test(trimmedEmail) &&
+    /^[^@]+@[^@]+\.[^@]+$/.test(trimmedEmail)
+      ? trimmedEmail
+      : undefined;
   const userIds = await resolveUserIds(
     primaryUserId,
     phone ?? undefined,
-    email ?? undefined
+    safeEmail
   );
   if (!userIds.length) return [];
   const inList = userIds.map(encodeURIComponent).join(",");

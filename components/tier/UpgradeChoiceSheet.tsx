@@ -217,7 +217,8 @@ export default function UpgradeChoiceSheet({
             {/* Card 1: Verified Guest — booking-based.
                Always tappable: even with 0 eligible stays the tap opens the
                booking-picker step, which shows an honest empty-state ("no
-               completed stays — book one to unlock") instead of a dead button.
+               recent or current stays — view your bookings or book one")
+               instead of a dead button.
                The gate is unchanged (posting still needs a real booking); this
                only gives the user feedback + a path forward. */}
             <button
