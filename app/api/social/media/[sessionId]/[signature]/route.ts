@@ -39,7 +39,7 @@ export async function GET(
 
   const { data: session, error: sessionError } = await sb
     .from("media_upload_sessions")
-    .select("id,owner_user_id,status,processed_bucket,processed_object_key")
+    .select("id,status,processed_bucket,processed_object_key,processed_sha256")
     .eq("id", sessionId)
     .limit(1)
     .maybeSingle();
@@ -47,7 +47,7 @@ export async function GET(
   if (
     sessionError ||
     !session ||
-    !verifySecureMediaRef(sessionId, session.owner_user_id, signature) ||
+    !verifySecureMediaRef(sessionId, session.processed_sha256, signature) ||
     session.status !== "ready" ||
     session.processed_bucket !== PROCESSED_BUCKET ||
     typeof session.processed_object_key !== "string" ||
@@ -56,9 +56,8 @@ export async function GET(
     return new NextResponse(null, { status: 404 });
   }
 
-  // A READY object is still private until an approved social post actually
-  // references this exact signed media path. Community PENDING_ADMIN_REVIEW
-  // uploads therefore remain non-public even after media processing succeeds.
+  // READY is still private until a publicly approved social post references the
+  // exact immutable media ref. Community PENDING_ADMIN_REVIEW stays non-public.
   const mediaRef = `/api/social/media/${sessionId}/${signature}`;
   const { data: published, error: postError } = await sb
     .from("social_posts")
