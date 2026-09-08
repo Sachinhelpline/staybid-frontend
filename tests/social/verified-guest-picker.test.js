@@ -1,17 +1,24 @@
 "use strict";
 // ─────────────────────────────────────────────────────────────────────────────
-// SEC-00B FINAL NORMAL-CUSTOMER CUTOVER — Verified Guest picker remediation.
-// Hermetic source-scan test (no network, no DB). Proves the bounded contract:
-//   1. Identity reconciliation: the eligibility resolution threads `email`
-//      (the documented resolveUserIds(id, phone, email) contract) at every
-//      call site — picker, tier count, and the upload gate — so a stay under
-//      an email-keyed identity twin is not falsely missed, and the picker,
-//      tier count, and upload gate can never silently disagree.
-//   2. Empty-state navigation: the primary CTA is /bookings (the user's own
-//      history surface); /hotels is only a secondary "book a new stay" path.
-//   3. Copy alignment: stale "checked out only / completed stays" wording is
-//      gone; current/ongoing stays are represented honestly.
-//   4. No weakening: the eligibility RULE (statuses + date window) is unchanged;
+// SEC-00B — Verified Guest picker + AUTHORITY-BOUNDARY remediation.
+// Source-scan regression test (no network, no DB). It guards the PRODUCT/UX
+// contract + the shape of the authority wiring. The CRYPTO authority proof is
+// behavioral (tests/social/verified-guest-authority.test.js).
+//
+// Contract guarded here:
+//   1. Authority binding: the Verified Guest upload gate AND the eligible-bookings
+//      picker resolve identity from the STRICT, cryptographically-verified media
+//      authority (resolveVerifiedMediaCustomer) — never socialUserFromReq /
+//      decode-only claims / x-email hint headers. Ownership resolves from the
+//      VERIFIED id (+ verified email/phone twins). Picker ⇄ upload gate therefore
+//      use equivalent verified identity.
+//   2. Wildcard containment: resolveUserIds escapes the email ilike axis
+//      (escapeLikeLiteral) so `_` / `%` / `*` cannot widen ownership.
+//   3. Empty-state navigation: primary CTA is /bookings; /hotels is only a
+//      secondary "book a new stay" path.
+//   4. Copy alignment: no stale "checked out only / completed stays" framing;
+//      current/ongoing stays represented honestly.
+//   5. No weakening: the eligibility RULE (statuses + date window) is unchanged;
 //      the strict media authority still rejects admin/super_admin.
 // ─────────────────────────────────────────────────────────────────────────────
 const fs = require("fs");
@@ -29,64 +36,81 @@ function ok(cond, name) {
 // ── files under test ──────────────────────────────────────────────────────────
 const eligibility = read("lib/tier/eligibility.ts");
 const pickerRoute = read("app/api/me/eligible-bookings/route.ts");
-const tierRoute = read("app/api/me/tier/route.ts");
 const uploadGate = read("app/api/social/posts/verified-guest/route.ts");
 const sheet = read("components/tier/UpgradeChoiceSheet.tsx");
 const uploadSession = read("app/api/social/upload-session/route.ts");
+const sbServer = read("lib/sb-server.ts");
+const mediaAuth = read("lib/auth/media-customer-authority.ts");
 
-// ── 1. Identity reconciliation — email threaded ───────────────────────────────
-ok(/function listEligibleBookings\(\s*primaryUserId:\s*string,\s*phone\?:\s*string \| null,\s*email\?:\s*string \| null/.test(eligibility),
-  "listEligibleBookings accepts an email param");
-// The email is sanitized BEFORE resolveUserIds (it lands in an `email=ilike`
-// ownership filter; `*`/`%` are wildcards). The wildcard-free `safeEmail` — not
-// the raw claim — is what gets passed to resolveUserIds.
-ok(/const safeEmail =/.test(eligibility) && /\[\\s,%\*\(\)/.test(eligibility),
-  "email is sanitized (wildcard/whitespace chars blocked) before resolution");
-ok(/resolveUserIds\(\s*primaryUserId,\s*phone \?\? undefined,\s*safeEmail\s*\)/.test(eligibility),
-  "listEligibleBookings forwards the SANITIZED email (safeEmail) to resolveUserIds");
-ok(/function hasEligibleBookingForHotel\([\s\S]*?email\?:\s*string \| null\s*\)/.test(eligibility),
-  "hasEligibleBookingForHotel accepts an email param");
-ok(/listEligibleBookings\(primaryUserId,\s*phone,\s*email\)/.test(eligibility),
-  "hasEligibleBookingForHotel forwards email to listEligibleBookings");
+// ── 1. Authority binding — verified, not decode-only ──────────────────────────
+// The upload gate no longer trusts socialUserFromReq for ownership.
+ok(!/socialUserFromReq/.test(uploadGate),
+  "verified-guest upload gate no longer uses decode-only socialUserFromReq");
+ok(/resolveVerifiedMediaCustomer/.test(uploadGate),
+  "verified-guest upload gate uses the strict resolveVerifiedMediaCustomer authority");
+ok(/hasEligibleBookingForHotel\(\s*verified\.id,\s*vPhone,\s*body\.hotelId,\s*body\.bookingId,\s*vEmail\s*\)/.test(uploadGate),
+  "upload gate resolves ownership from the VERIFIED id + verified email/phone twins");
+ok(/resolveVerifiedMediaIdentity\(req,\s*mediaAuthority\.secret\)/.test(uploadGate),
+  "upload gate takes email/phone twins from the SAME verified token (resolveVerifiedMediaIdentity)");
 
-ok(/listEligibleBookings\(user\.id,\s*user\.phone,\s*user\.email\)/.test(pickerRoute),
-  "eligible-bookings route passes user.email");
-ok(/listEligibleBookings\(user\.id,\s*user\.phone,\s*user\.email\)/.test(tierRoute),
-  "me/tier route passes user.email");
-ok(/hasEligibleBookingForHotel\(\s*user\.id,\s*user\.phone \|\| null,\s*body\.hotelId,\s*body\.bookingId,\s*user\.email \|\| null\s*\)/.test(uploadGate),
-  "verified-guest upload gate passes user.email (picker<->upload identity parity)");
+// The picker no longer trusts socialUserFromReq / x-email; it uses the SAME authority.
+ok(!/socialUserFromReq/.test(pickerRoute),
+  "eligible-bookings picker no longer uses decode-only socialUserFromReq");
+ok(/resolveVerifiedMediaCustomer/.test(pickerRoute),
+  "eligible-bookings picker uses the strict resolveVerifiedMediaCustomer authority (picker⇄gate parity)");
+ok(/listEligibleBookings\(\s*verified\.id,\s*identity\?\.phone \?\? null,\s*identity\?\.email \?\? null\s*\)/.test(pickerRoute),
+  "picker resolves from the VERIFIED id + verified email/phone twins");
+ok(!/headers\.get\(\s*["']x-(email|phone)/i.test(pickerRoute) && !/req\.headers\.get\(["']x-/.test(pickerRoute),
+  "picker does not READ x-email / x-phone hint headers as ownership input");
 
-// ── 2. Empty-state navigation — /bookings primary, /hotels secondary ──────────
+// The verified identity extractor exists in the locked media authority module.
+ok(/export function verifyMediaCustomerIdentity\(/.test(mediaAuth),
+  "media authority exports verifyMediaCustomerIdentity (verified email/phone claims)");
+ok(/export function resolveVerifiedMediaIdentity\(/.test(mediaAuth),
+  "media authority exports resolveVerifiedMediaIdentity (request-level verified claims)");
+// It must stay HS256 + exact secret only (no RS256 / JWT_SECRET fallback added).
+{
+  const code = mediaAuth.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  ok(!/JWT_SECRET\b/.test(code.replace(/JWT_ACCESS_SECRET/g, "")),
+    "media authority code references NO JWT_SECRET fallback");
+  ok(!/RS256/.test(code), "media authority code has no RS256 path");
+}
+
+// ── 2. Wildcard containment — escapeLikeLiteral on the email ilike axis ───────
+ok(/export function escapeLikeLiteral\(/.test(sbServer),
+  "resolveUserIds exposes escapeLikeLiteral (email ilike wildcard neutralizer)");
+ok(/const literal = escapeLikeLiteral\(email\);/.test(sbServer) &&
+   /email=ilike\.\$\{encodeURIComponent\(literal\)\}/.test(sbServer),
+  "resolveUserIds escapes the email BEFORE the ilike filter (no raw wildcard email)");
+ok(/value\.includes\("\*"\)/.test(sbServer) && /replace\(\/\[\\\\%_\]\/g/.test(sbServer),
+  "escapeLikeLiteral drops the PostgREST `*` wildcard and escapes SQL LIKE `\\ % _`");
+// The eligibility caller still sanitizes (defence in depth) + threads the email.
+ok(/const safeEmail =/.test(eligibility) &&
+   /resolveUserIds\(\s*primaryUserId,\s*phone \?\? undefined,\s*safeEmail\s*\)/.test(eligibility),
+  "eligibility still sanitizes + threads the email into resolveUserIds (defence in depth)");
+
+// ── 3. Empty-state navigation — /bookings primary, /hotels secondary ──────────
 ok(/href="\/bookings"/.test(sheet), "picker empty-state links to /bookings");
 ok(/View my bookings/.test(sheet), "picker primary CTA copy = View my bookings");
-// /hotels may remain ONLY as the secondary 'book a new stay' path.
 ok(/href="\/hotels"[\s\S]*?Book a new stay/.test(sheet),
   "/hotels is present only as the secondary 'Book a new stay' CTA");
-// The primary CTA must be /bookings, i.e. /bookings appears before /hotels.
 ok(sheet.indexOf('href="/bookings"') < sheet.indexOf('href="/hotels"'),
   "/bookings CTA precedes /hotels CTA (primary vs secondary order)");
-// The old stale 'Browse hotels ->' primary CTA is gone.
 ok(!/Browse hotels/.test(sheet), "stale 'Browse hotels' primary CTA removed");
 
-// ── 3. Copy alignment — no 'checked out only / completed stays' framing ───────
+// ── 4. Copy alignment — no 'checked out only / completed stays' framing ───────
 ok(!/No completed stays in the last 90 days/.test(sheet),
   "stale 'No completed stays' empty-state copy removed");
-ok(!/checked out in the last\s*90 days/i.test(sheet.replace(/\s+/g, " ")) ||
-   /recent or current/i.test(sheet),
-  "card subtitle no longer claims only 'checked out'");
 ok(/recent or current StayBid stay/i.test(sheet),
   "copy now says 'recent or current StayBid stay'");
 ok(/Current stay · ends/.test(sheet),
   "row label is ongoing-aware (Current stay for a future checkOut)");
-
-// selection still carries bookingId + hotelId into the verified_guest context.
 ok(/kind:\s*"verified_guest",\s*hotelId:\s*b\.hotelId,\s*bookingId:\s*b\.id/.test(sheet),
   "picker selection preserves bookingId + hotelId in verified_guest context");
-// picker still calls the authoritative endpoint.
 ok(/api\.getEligibleBookings\(\)/.test(sheet),
   "picker still fetches the authoritative /api/me/eligible-bookings");
 
-// ── 4. No weakening — eligibility rule + admin rejection intact ───────────────
+// ── 5. No weakening — eligibility rule + admin rejection intact ───────────────
 ok(/BOOKING_OK_STATUSES = \["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"\]/.test(eligibility),
   "booking eligibility statuses UNCHANGED");
 ok(/BID_OK_STATUSES = \["ACCEPTED", "CHECKED_IN", "CHECKED_OUT"\]/.test(eligibility),

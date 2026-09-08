@@ -132,6 +132,22 @@ export async function ensureUser(id: string, phone?: string, name?: string): Pro
   }
 }
 
+// SEC-00B — the email identity axis feeds `email=ilike.<value>`, where PostgREST
+// treats `*` as a `%` wildcard and Postgres treats `%` / `_` as wildcards. An
+// unescaped value (e.g. a decode-only claim or an x-email hint at a caller) with
+// `*@*` / `%` / `_` could otherwise widen the match to EVERY user — turning an
+// identity-reconciliation read into a mass-match / ownership-claim vector. This
+// makes the value a LITERAL case-insensitive match: it drops a value carrying the
+// PostgREST `*` wildcard (never a valid email character) and escapes the SQL LIKE
+// metacharacters (`\`, `%`, `_`) so a real address — including a legitimate
+// `first_last@x.com` — still resolves its twin, while no metacharacter can widen.
+// Only NARROWS the match; never widens. Exported for the hermetic authority test.
+export function escapeLikeLiteral(value: string): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  if (value.includes("*")) return null; // PostgREST wildcard → drop (not a valid email char)
+  return value.replace(/[\\%_]/g, (c) => "\\" + c); // backslash-escape SQL LIKE metacharacters
+}
+
 export async function sbSelect(path: string): Promise<any[]> {
   try {
     const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_H });
@@ -259,8 +275,13 @@ export async function resolveUserIds(
   // Array.from() iterator — v94-era trap: `for (const x of someSet)` fails
   // Vercel's strict TS build (tsconfig lacks downlevelIteration).
   for (const email of Array.from(emailCandidates)) {
+    // Neutralize LIKE / PostgREST wildcards so the ilike is a LITERAL
+    // case-insensitive match — an email can never widen the caller to another
+    // user's identity (SEC-00B).
+    const literal = escapeLikeLiteral(email);
+    if (!literal) continue;
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/users?email=ilike.${encodeURIComponent(email)}&select=id`, { headers: SB_H });
+      const r = await fetch(`${SB_URL}/rest/v1/users?email=ilike.${encodeURIComponent(literal)}&select=id`, { headers: SB_H });
       const arr = await r.json();
       if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
     } catch {}

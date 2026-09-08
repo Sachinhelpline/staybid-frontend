@@ -11,15 +11,32 @@
 // verification_method='booking'. If the user was PUBLIC, promotes them
 // to VERIFIED_GUEST.
 //
-// Auth: any signed-in customer. Existing /api/social/posts is untouched.
+// Auth (SEC-00B authority-boundary remediation): booking ownership is an
+// AUTHORITY input (this route AUTO_APPROVES content), so it is resolved from the
+// STRICT customer-domain media authority `resolveVerifiedMediaCustomer` — the
+// SAME cryptographically-verified gate the secure upload-session uses (HS256 +
+// exact JWT_ACCESS_SECRET, mandatory sub, id===sub, admin/super_admin rejected,
+// + a fresh Railway customer proof). Identity is NEVER derived from a decode-only
+// JWT claim or an x-email / x-phone hint header. Email / phone used to bridge
+// identity twins come from the SAME verified token (resolveVerifiedMediaIdentity).
 import { NextResponse } from "next/server";
 import { validatePostMediaUrls } from "@/lib/social/media-url-policy";
 import { SB_URL, SB_KEY } from "@/lib/sb";
-import { socialUserFromReq } from "@/lib/social/auth-helper";
+import {
+  resolveVerifiedMediaCustomer,
+  resolveVerifiedMediaIdentity,
+  createMediaCustomerAuthority,
+} from "@/lib/auth/media-customer-authority";
 import { ensureForUser } from "@/lib/social/social-profile.service";
 import { hasEligibleBookingForHotel } from "@/lib/tier/eligibility";
 import { maybePromoteToTier, queueTierPromotionNudge } from "@/lib/tier/promote";
 import type { ContentTier } from "@/lib/tier/types";
+
+export const runtime = "nodejs"; // JWT verify (jsonwebtoken) is server-only; never edge
+export const dynamic = "force-dynamic";
+
+// Built once per server instance; reads JWT_ACCESS_SECRET + the backend base.
+const mediaAuthority = createMediaCustomerAuthority();
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -31,10 +48,19 @@ const HEADERS = {
 const VALID_TYPES = new Set(["PHOTO", "REEL", "STORY"]);
 
 export async function POST(req: Request) {
-  const user = socialUserFromReq(req);
-  if (!user) {
+  // Cryptographically-verified customer authority (fail-closed). The returned
+  // id === the verified token subject === the fresh Railway customer row id;
+  // an admin/super_admin, blocked, forged, unsigned, tampered, or non-HS256
+  // token can never reach here.
+  const verified = await resolveVerifiedMediaCustomer(req, mediaAuthority);
+  if (!verified) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Verified twin attributes (from the SAME signed token) — never decode-only.
+  const identity = resolveVerifiedMediaIdentity(req, mediaAuthority.secret);
+  const vEmail = identity?.email ?? null;
+  const vPhone = identity?.phone ?? null;
+  const vName = identity?.name ?? undefined;
 
   const body = await req.json().catch(() => null);
   if (!body) {
@@ -64,13 +90,14 @@ export async function POST(req: Request) {
     );
   }
 
-  // Validate that this user actually has the booking they're claiming
+  // Validate that this user actually has the booking they're claiming.
+  // Ownership resolves from the VERIFIED id (+ verified email/phone twins).
   const eligibility = await hasEligibleBookingForHotel(
-    user.id,
-    user.phone || null,
+    verified.id,
+    vPhone,
     body.hotelId,
     body.bookingId,
-    user.email || null
+    vEmail
   );
   if (!eligibility.ok) {
     return NextResponse.json(
@@ -83,10 +110,10 @@ export async function POST(req: Request) {
   }
 
   const profile = await ensureForUser({
-    id: user.id,
-    email: user.email,
-    phone: user.phone,
-    name: user.name,
+    id: verified.id,
+    email: vEmail ?? undefined,
+    phone: vPhone ?? undefined,
+    name: vName,
   });
   if (!profile) {
     return NextResponse.json(
@@ -193,7 +220,7 @@ export async function POST(req: Request) {
     "VERIFIED_GUEST"
   );
   if (promotion.promoted) {
-    void queueTierPromotionNudge(user.id, "VERIFIED_GUEST");
+    void queueTierPromotionNudge(verified.id, "VERIFIED_GUEST");
   }
 
   // FYI notification to the hotel partner — a verified guest just published

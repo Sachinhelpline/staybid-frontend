@@ -53,18 +53,21 @@ export async function listEligibleBookings(
   email?: string | null
 ): Promise<EligibleBooking[]> {
   // resolveUserIds() accepts string | undefined; normalize null → undefined.
-  // v740 — pass jwtEmail (the documented resolveUserIds(id, phone, email)
-  // contract). Without it, an eligible stay booked under an email-keyed
-  // identity twin — e.g. a Google/Firebase session whose own `users` row has
-  // no stored email — is silently missed, producing a false "no stays" zero.
+  // Pass jwtEmail (the documented resolveUserIds(id, phone, email) contract).
+  // Without it, an eligible stay booked under an email-keyed identity twin —
+  // e.g. a Google/Firebase session whose own `users` row has no stored email —
+  // is silently missed, producing a false "no stays" zero.
   //
-  // Sanitize FIRST: resolveUserIds matches this via `email=ilike.<email>`,
-  // where `*` and `%` are match-any wildcards. A crafted claim like `*@*`
-  // would otherwise resolve to EVERY user (this is an OWNERSHIP axis for the
-  // Verified Guest upload gate — never widen it). Require a single,
-  // wildcard-free, plausibly-shaped address; anything else is dropped and the
-  // caller is still resolved by the id + phone axes. Realistic emails
-  // (letters/digits/._+-) pass unchanged; this can only NARROW the email axis.
+  // AUTHORITY BOUNDARY (SEC-00B): the ownership callers of this helper (the
+  // Verified Guest upload gate + the eligible-bookings picker) now supply a
+  // CRYPTOGRAPHICALLY VERIFIED email (resolveVerifiedMediaIdentity) — never a
+  // decode-only claim. Two independent defences still neutralize the
+  // `email=ilike.<email>` wildcard vector: (1) this local plausibility gate
+  // drops a value carrying whitespace / , % * ( ) < > " ' \ or a non-address
+  // shape; (2) resolveUserIds() escapes the SQL LIKE metacharacters (`\ % _`)
+  // and drops the PostgREST `*` wildcard, so the match is LITERAL and a
+  // legitimate `first_last@x.com` still resolves its twin while `*@*` / `%` / `_`
+  // can never widen the caller to another user's identity.
   const trimmedEmail = typeof email === "string" ? email.trim() : "";
   const safeEmail =
     trimmedEmail &&
