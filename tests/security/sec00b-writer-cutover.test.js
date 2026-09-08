@@ -31,15 +31,17 @@ ok(/\/api\/social\/upload-session\/status/.test(writer), "secure writer waits fo
 ok(/mode === "blocked"/.test(writer), "blocked secure mode has no legacy fallback");
 ok(/resolveVerifiedMediaCustomer/.test(status), "READY status uses strict customer media authority");
 ok(/owner_user_id/.test(status), "READY status lookup is owner-bound");
-ok(/secureMediaPath/.test(status), "READY status returns only a signed media reference");
-ok(/createHmac/.test(refs) && /timingSafeEqual/.test(refs), "media reference is HMAC-bound and constant-time verified");
-ok(/JWT_ACCESS_SECRET/.test(refs), "media reference signing stays server-secret backed");
-ok(/verifySecureMediaRef/.test(delivery), "delivery verifies signed media reference");
+ok(/processed_sha256/.test(status), "READY status binds the media ref to processing evidence");
+ok(/secureMediaPath/.test(status), "READY status returns only an opaque processed-media reference");
+ok(/SHA256_RE/.test(refs) && /processedSha256 === signature/.test(refs), "media reference is bound to immutable processed SHA-256 evidence");
+ok(!/JWT_ACCESS_SECRET|createHmac/.test(refs), "media reference stability does not depend on auth-secret rotation");
+ok(/verifySecureMediaRef/.test(delivery), "delivery verifies processed media reference evidence");
+ok(/processed_sha256/.test(delivery), "delivery re-reads processed SHA-256 from DB");
 ok(/status !== "ready"/.test(delivery), "delivery rejects non-READY session rows");
 ok(/APPROVED/.test(delivery) && /AUTO_APPROVED/.test(delivery), "delivery requires a publicly approved post reference");
 ok(/createSignedUrl/.test(delivery), "private processed object is exposed only via short-lived signed read URL");
 ok(/social-media-processed/.test(delivery), "delivery is pinned to processed bucket");
-ok(/SIG_RE/.test(policy) && /SECURE_MEDIA_PREFIX/.test(policy), "post URL policy accepts only strict signed secure refs");
+ok(/SIG_RE/.test(policy) && /SECURE_MEDIA_PREFIX/.test(policy), "post URL policy accepts only strict secure media refs");
 ok(!/NEXT_PUBLIC_.*SERVICE/i.test(writer + status + delivery + refs), "no service-role secret is moved to client/public env");
 
 if (failed) process.exit(1);
