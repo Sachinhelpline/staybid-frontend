@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
+import { ensureBackendSessionToken } from "@/lib/auth/ensure-backend-session";
 
 // SEC-00B final writer cutover.
 //
@@ -28,14 +29,6 @@ type UploadMode = "legacy" | "secure" | "blocked";
 type SecureMediaClass = "photo" | "reel" | "story" | "audio";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function token(): string {
-  try {
-    return localStorage.getItem("sb_token") || "";
-  } catch {
-    return "";
-  }
-}
 
 function safeExt(mime: string, fallback: string): string {
   const m = (mime || "").split("/")[1]?.split(";")[0]?.toLowerCase() || fallback;
@@ -111,8 +104,12 @@ async function secureUploadBlob(
   contentType: string,
   onProgress?: (pct: number) => void,
 ): Promise<string> {
-  const bearer = token();
-  if (!bearer) throw new Error("Please sign in again before uploading media.");
+  // SEC-00B — the secure upload-session/complete/status calls hit the strict
+  // HS256 media authority. Upgrade a Firebase-fallback session to a backend
+  // token FIRST and use the RETURNED token for the CURRENT request (all three
+  // sub-calls). Fail closed on exchange failure — never fall back to the legacy
+  // public writer, never use a decode-only Firebase token.
+  const bearer = await ensureBackendSessionToken();
 
   onProgress?.(5);
   const sessionRes = await fetch("/api/social/upload-session", {

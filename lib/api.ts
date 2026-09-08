@@ -1,3 +1,5 @@
+import { ensureBackendSessionToken } from "@/lib/auth/ensure-backend-session";
+
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // In the browser, route through the Vercel proxy so ISPs that block Railway
 // (e.g. Jio) still work. On the server we call Railway directly.
@@ -397,7 +399,14 @@ export const api = {
 
   // 2-Tier System — Phase 2 endpoints (additive; never replaces existing api methods)
   getMyTier:               () => direct("/api/me/tier"),
-  getEligibleBookings:     () => direct("/api/me/eligible-bookings"),
+  // SEC-00B — the picker hits the strict HS256 media authority. Upgrade a
+  // Firebase-fallback session to a backend-verified token FIRST (fail closed on
+  // failure), then call with the upgraded token (direct() re-reads the freshly
+  // stored sb_token, so the CURRENT request carries the backend token).
+  getEligibleBookings:     async () => {
+    await ensureBackendSessionToken();
+    return direct("/api/me/eligible-bookings");
+  },
 
   uploadVerifiedGuestPost: (data: {
     bookingId: string;
