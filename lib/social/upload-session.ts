@@ -173,20 +173,59 @@ export type UploadSessionRow = {
   status: string;
 };
 
+// SEC-00B-P1F-1 — the four bounded business outcomes of the atomic reservation
+// RPC. `reserved` / `idempotent_existing` carry the canonical row; the two quota
+// rejections carry no row.
+export type ReserveOutcome =
+  | "reserved"
+  | "idempotent_existing"
+  | "rate_limited"
+  | "concurrency_limited";
+
+// Single-literal discriminants (one per member) so the handler narrows the
+// union reliably by `reservation.outcome`.
+export type ReserveResult =
+  | { outcome: "reserved"; row: UploadSessionRow }
+  | { outcome: "idempotent_existing"; row: UploadSessionRow }
+  | { outcome: "rate_limited" }
+  | { outcome: "concurrency_limited" };
+
+// SEC-00B-P1F-2 — DB-time lifecycle CAS outcomes. The three security-sensitive
+// lifecycle transitions run through a single privileged RPC that OWNS the clock,
+// the 2h TTL, and the rejection reason (none is caller-supplied). `applied` means
+// exactly one row in the expected status transitioned; `state_conflict` means a
+// later / wrong state (zero mutation), never a throw.
+export type LifecycleCasOutcome = "applied" | "state_conflict";
+
+// authorize_created / refresh_authorized: an `applied` result carries the
+// DB-GENERATED expiry (a validated, non-empty timestamp string) — the handler
+// echoes exactly this value to the client, never an application-computed one.
+export type AuthorizeCasResult =
+  | { outcome: "applied"; expiresAt: string }
+  | { outcome: "state_conflict" };
+
+// reject_created: no expiry — only whether the still-CREATED row transitioned.
+export type RejectCasResult =
+  | { outcome: "applied" }
+  | { outcome: "state_conflict" };
+
 export interface UploadSessionStore {
   configured(): boolean;
   /** True ONLY when the private quarantine bucket exists with the exact safe
    *  metadata (id, public===false, file_size_limit===MAX_BYTE_SIZE). */
   bucketReady(): Promise<boolean>;
   findByOwnerIdem(ownerId: string, idempotencyKey: string): Promise<UploadSessionRow | null>;
-  countRecentSessions(ownerId: string, sinceIso: string): Promise<number>;
-  /** Active = status in {created,upload_authorized} AND not expired at nowIso
-   *  (expires_at IS NULL counts active, fail-closed). */
-  countActiveSessions(ownerId: string, nowIso: string): Promise<number>;
-  /** Insert a CREATED row (with a bounded server-owned expiry so an orphaned
-   *  CREATED row cannot permanently consume the active quota); 'conflict' on the
-   *  (owner,idempotency) unique race. */
-  insertCreated(input: {
+  /** SEC-00B-P1F-1 — ATOMIC new-session reservation. ONE privileged RPC runs the
+   *  idempotency check + the rate (12/60s) & active (6) quota counts + the
+   *  CREATED insert (bounded 2h TTL) inside ONE transaction under a per-owner
+   *  advisory lock, on a single authoritative DB clock. The caller passes NO
+   *  limit / window / TTL / clock — they are DB-FIXED security invariants.
+   *  Replaces the former NON-ATOMIC countRecentSessions → countActiveSessions →
+   *  insertCreated trio, closing the per-owner quota TOCTOU race. Fails closed
+   *  (throws) on any provider error, unknown outcome, or a reserved /
+   *  idempotent_existing result whose row is not structurally valid; the handler
+   *  maps a throw to 503 (never a new public error surface). */
+  reserveNewSession(input: {
     id: string;
     owner_user_id: string;
     media_class: string;
@@ -194,20 +233,29 @@ export interface UploadSessionStore {
     declared_byte_size: number;
     object_key: string;
     idempotency_key: string;
-    nowIso: string;
-    expiresAtIso: string;
-  }): Promise<"ok" | "conflict">;
+  }): Promise<ReserveResult>;
   /** Standard signed upload for the exact object key (upsert=false). */
   mintSignedUpload(objectKey: string): Promise<{ token: string; path: string } | null>;
-  /** CAS: created -> upload_authorized. true ONLY when exactly one row whose
-   *  status was still 'created' transitioned (proven by the update's returned
-   *  row set). A later lifecycle state can never be regressed by this call. */
-  authorizeCreated(id: string, expiresAtIso: string, nowIso: string): Promise<boolean>;
-  /** CAS: refresh expiry while status is still 'upload_authorized' (state
-   *  unchanged). true ONLY when exactly one matching row was updated. */
-  refreshAuthorized(id: string, expiresAtIso: string, nowIso: string): Promise<boolean>;
-  /** CAS: created -> rejected. Only a still-'created' row is ever rejected. */
-  rejectCreated(id: string, reason: string, nowIso: string): Promise<boolean>;
+  /** SEC-00B-P1F-2 — DB-time CAS: created -> upload_authorized via the single
+   *  privileged RPC public.apply_media_upload_authorization_cas. The caller
+   *  passes ONLY the session id — NO clock / TTL / expiry: the DB stamps
+   *  upload_authorized_at/updated_at/expires_at from one post-lock instant and
+   *  RETURNS the authoritative expiry. `applied` carries that DB expires_at;
+   *  `state_conflict` means the row was not still 'created' (later-state race,
+   *  zero mutation). Fails closed (throws) on any provider error, unknown /
+   *  malformed outcome, or an applied result whose DB expires_at is not a usable
+   *  non-empty timestamp string. */
+  authorizeCreated(id: string): Promise<AuthorizeCasResult>;
+  /** SEC-00B-P1F-2 — DB-time CAS: refresh expiry while status is still
+   *  'upload_authorized' (state + upload_authorized_at unchanged). Session id
+   *  only; the DB owns updated_at/expires_at. `applied` carries the DB expiry;
+   *  `state_conflict` = no matching row. Same fail-closed contract as above. */
+  refreshAuthorized(id: string): Promise<AuthorizeCasResult>;
+  /** SEC-00B-P1F-2 — DB-time CAS: created -> rejected via the same RPC. Session
+   *  id ONLY — the rejection reason ('upload_authorization_failed') and the
+   *  timestamp are DB-owned, never caller-supplied. Only a still-'created' row is
+   *  ever rejected. Fails closed (throws) on provider error / unknown outcome. */
+  rejectCreated(id: string): Promise<RejectCasResult>;
 }
 
 export type VerifiedRequester = { id: string } | null;
@@ -291,8 +339,8 @@ export async function handleUploadSession(req: Request, deps: UploadSessionDeps)
   }
   if (existing) return authorizeExisting(existing, v.value, deps);
 
-  // 6) NEW session only — quarantine readiness (R1) BEFORE any row insert (no
-  //    dormant garbage), then the new-session abuse bounds.
+  // 6) NEW session only — quarantine readiness (R1) BEFORE any reservation (no
+  //    dormant garbage), regardless of the atomic quota gate below.
   let bucketOk = false;
   try {
     bucketOk = await deps.store.bucketReady();
@@ -301,29 +349,18 @@ export async function handleUploadSession(req: Request, deps: UploadSessionDeps)
   }
   if (!bucketOk) return err(503, "quarantine_unavailable");
 
-  try {
-    const nowMs = deps.now().getTime();
-    const sinceIso = new Date(nowMs - 60_000).toISOString();
-    const nowIso = new Date(nowMs).toISOString();
-    if ((await deps.store.countRecentSessions(owner, sinceIso)) >= MAX_NEW_SESSIONS_PER_60S) {
-      return err(429, "upload_session_rate_limited");
-    }
-    // Active quota excludes expired created/upload_authorized rows (F2), so a
-    // handful of stale orphans can never permanently block new sessions.
-    if ((await deps.store.countActiveSessions(owner, nowIso)) >= MAX_ACTIVE_SESSIONS) {
-      return err(429, "upload_session_concurrency_limited");
-    }
-  } catch {
-    return err(503, "upload_session_service_unavailable");
-  }
-
-  // 7) New session — server-owned id + object key + bounded created expiry.
+  // 7) Server-owned id + object key (never client-supplied).
   const sessionId = deps.genId();
   const objectKey = objectKeyForSession(sessionId);
-  let ins: "ok" | "conflict";
+
+  // 8) SEC-00B-P1F-1 — ONE atomic reservation RPC does the idempotency check +
+  //    rate (12/60s) & active (6) quota + CREATED insert in a single txn under a
+  //    per-owner advisory lock on a single DB clock. The former non-atomic
+  //    countRecent → countActive → insert trio (a TOCTOU race) is gone. The
+  //    handler supplies NO limit / window / TTL / clock — they are DB-fixed.
+  let reservation: ReserveResult;
   try {
-    const nowMs = deps.now().getTime();
-    ins = await deps.store.insertCreated({
+    reservation = await deps.store.reserveNewSession({
       id: sessionId,
       owner_user_id: owner,
       media_class: v.value.mediaClass,
@@ -331,27 +368,38 @@ export async function handleUploadSession(req: Request, deps: UploadSessionDeps)
       declared_byte_size: v.value.byteSize,
       object_key: objectKey,
       idempotency_key: v.value.idempotencyKey,
-      nowIso: new Date(nowMs).toISOString(),
-      // Bounded orphan lifetime = same 2h horizon as the signed-upload window.
-      expiresAtIso: new Date(nowMs + SIGNED_UPLOAD_TTL_MS).toISOString(),
     });
   } catch {
     return err(503, "upload_session_service_unavailable");
   }
 
-  if (ins === "conflict") {
-    // Unique-race: the DB is the arbiter — re-read + apply idempotency rules.
-    let row: UploadSessionRow | null = null;
-    try {
-      row = await deps.store.findByOwnerIdem(owner, v.value.idempotencyKey);
-    } catch {
-      return err(503, "upload_session_service_unavailable");
-    }
-    if (!row) return err(503, "upload_session_service_unavailable");
-    return authorizeExisting(row, v.value, deps);
+  // 9) Handle the bounded reservation outcome.
+  if (reservation.outcome === "rate_limited") return err(429, "upload_session_rate_limited");
+  if (reservation.outcome === "concurrency_limited") return err(429, "upload_session_concurrency_limited");
+
+  if (reservation.outcome === "idempotent_existing") {
+    // A concurrent / prior reservation under the SAME (owner, idempotency) key
+    // resolved to this canonical row — the DB is the arbiter. Apply the same
+    // idempotency rules as a direct findByOwnerIdem hit.
+    return authorizeExisting(reservation.row, v.value, deps);
   }
 
-  // Fresh CREATED row → created->upload_authorized CAS path.
+  // outcome === 'reserved' — a fresh CREATED row was atomically inserted.
+  // RESERVED-ROW INVARIANT (§19): the canonical row MUST match the exact
+  // reservation the server requested before any signed-upload token is minted.
+  const row = reservation.row;
+  if (
+    row.id !== sessionId ||
+    row.owner_user_id !== owner ||
+    row.object_key !== objectKey ||
+    row.status !== "created" ||
+    !factsMatch(row, v.value)
+  ) {
+    return err(503, "upload_session_service_unavailable");
+  }
+
+  // Fresh CREATED row → created->upload_authorized CAS path (provider mint runs
+  // only AFTER the DB reservation committed).
   return mintAndTransition(sessionId, objectKey, "created", deps);
 }
 
@@ -392,6 +440,13 @@ async function authorizeExisting(
  *   'upload_authorized' -> refreshAuthorized (expiry refresh, state unchanged)
  * A minted token is returned ONLY when the provider path exactly matches the
  * server object key AND the CAS transitioned exactly one row.
+ *
+ * SEC-00B-P1F-2: the lifecycle transition is DB-time. This function passes NO
+ * clock / TTL / expiry / reason to the store — `deps.now()` is NEVER called in
+ * this lifecycle path. The DB CAS RPC stamps updated_at/expires_at from a single
+ * post-lock instant and RETURNS the authoritative expiry, which is the ONLY
+ * value echoed to the client. (Provider signed-upload token behaviour is a
+ * separate boundary, unchanged.)
  */
 async function mintAndTransition(
   id: string,
@@ -411,9 +466,11 @@ async function mintAndTransition(
   if (mintBad) {
     // Only a still-CREATED session is marked rejected; an already-authorized
     // session's lifecycle state is never mutated by a refresh mint failure.
+    // P1F-2: reject authority (status + timestamp + reason) is DB-owned — the
+    // handler passes ONLY the session id (no app clock, no reason).
     if (currentStatus === "created") {
       try {
-        await deps.store.rejectCreated(id, "upload_authorization_failed", deps.now().toISOString());
+        await deps.store.rejectCreated(id);
       } catch {
         // best-effort; never leak provider detail
       }
@@ -422,21 +479,23 @@ async function mintAndTransition(
   }
   if (!mint) return err(503, "upload_authorization_failed"); // narrow (unreachable: mintBad covered it)
 
-  const nowIso = deps.now().toISOString();
-  const expiresAtIso = new Date(deps.now().getTime() + SIGNED_UPLOAD_TTL_MS).toISOString();
-  let ok = false;
+  // P1F-2: DB-time lifecycle CAS. No `deps.now()`, no SIGNED_UPLOAD_TTL_MS, no
+  // application-computed expiry in this path — the DB RPC owns the clock + 2h TTL.
+  let result: AuthorizeCasResult;
   try {
-    ok =
+    result =
       currentStatus === "created"
-        ? await deps.store.authorizeCreated(id, expiresAtIso, nowIso)
-        : await deps.store.refreshAuthorized(id, expiresAtIso, nowIso);
+        ? await deps.store.authorizeCreated(id)
+        : await deps.store.refreshAuthorized(id);
   } catch {
-    ok = false;
+    return err(503, "upload_session_service_unavailable");
   }
   // Security-critical: if the CAS did not transition exactly one matching row
-  // (conflict / later-state race / no match), the minted token is NEVER
-  // returned — it simply expires unused.
-  if (!ok) return err(503, "upload_session_service_unavailable");
+  // (state_conflict / later-state race), the minted token is NEVER returned — it
+  // simply expires unused.
+  if (result.outcome !== "applied") return err(503, "upload_session_service_unavailable");
 
-  return json(200, { sessionId: id, path: objectKey, token: mint.token, expiresAt: expiresAtIso });
+  // The response expiry is the DB-GENERATED instant returned by the CAS (the
+  // store has already validated it is a non-empty valid timestamp string).
+  return json(200, { sessionId: id, path: objectKey, token: mint.token, expiresAt: result.expiresAt });
 }
