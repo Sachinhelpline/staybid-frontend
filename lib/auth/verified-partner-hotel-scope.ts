@@ -94,6 +94,34 @@ export async function readActivePartnerHotelIds(
 }
 
 /**
+ * The ACTIVE protected binding rows (hotel_id + role) for a verified partner
+ * subject. Reads ONLY the protected table (status=active). FAILS CLOSED ([])
+ * when the key is unconfigured, the table is missing, or the read errors. Used
+ * by partner ADMISSION to decide "is this verified identity a partner, and for
+ * which hotels" without ever consulting a client-writable ownership mapping.
+ */
+export async function readActivePartnerScopeRows(
+  subject: string
+): Promise<Array<{ hotel_id: string; role: string }>> {
+  if (!serviceRoleKey() || !subject) return [];
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/${SCOPE_TABLE}?partner_subject=eq.${encodeURIComponent(subject)}` +
+        `&status=eq.active&select=hotel_id,role&limit=500`,
+      { headers: svcHeaders(), cache: "no-store" }
+    );
+    if (!r.ok) return [];
+    const rows = await r.json().catch(() => []);
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .filter((row: any) => row && row.hotel_id)
+      .map((row: any) => ({ hotel_id: String(row.hotel_id), role: String(row.role || "hotel_partner") }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Is a verified partner subject ACTIVELY authorized for one exact hotel?
  * Protected-table read (service-role); FAILS CLOSED (false) on any config /
  * network / data ambiguity.

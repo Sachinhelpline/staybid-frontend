@@ -143,6 +143,19 @@ async function main() {
     { const { privateKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
       eqv(PA.verifyPartnerToken(jwt.sign({ sub: "partnerA" }, privateKey, { algorithm: "RS256", expiresIn: "1h" }), [PARTNER_SECRET]), null, "1.5 RS256/Firebase-shaped → null"); }
     eqv(PA.verifyPartnerToken(signP({ sub: "partnerA", id: "partnerB" }), [PARTNER_SECRET]), null, "1.6 id!==sub → null");
+    // MANDATORY SUBJECT CONTRACT (issue A):
+    eqv(PA.verifyPartnerToken(signP({ sub: "partnerA", id: "partnerA" }), [PARTNER_SECRET]).subject, "partnerA", "1.7 subject = the verified sub");
+    eqv(PA.verifyPartnerToken(signP({ id: "partnerA" }), [PARTNER_SECRET]), null, "1.8 id-only token (no sub) → null (sub is MANDATORY)");
+    eqv(PA.verifyPartnerToken(signP({ id: "partnerA", extra: 1 }), [PARTNER_SECRET]), null, "1.9 id present but sub absent → null (subject never derived from id alone)");
+    { const r = PA.verifyPartnerToken(signP({ sub: "partnerA" }), [PARTNER_SECRET]); ok(r && r.subject === "partnerA", "1.10 sub-only (no id) → verified subject"); }
+    eqv(PA.verifyPartnerToken(signP({ sub: "partnerA", id: "" }), [PARTNER_SECRET]).subject, "partnerA", "1.11 empty id ignored, sub used");
+    { // hand-crafted alg:none token (no signature) must be rejected (HS256-only verify).
+      const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+      const noneTok = `${b64({ alg: "none", typ: "JWT" })}.${b64({ sub: "partnerA" })}.`;
+      eqv(PA.verifyPartnerToken(noneTok, [PARTNER_SECRET]), null, "1.12 alg:none unsigned token → null");
+    }
+    eqv(PA.verifyPartnerToken("Bearer-shaped-but-empty", [PARTNER_SECRET]), null, "1.13 non-JWT string → null");
+    eqv(PA.verifyPartnerToken(signP({ sub: "partnerA" }), []), null, "1.14 no configured secret → null (fail closed)");
 
     // ── Part 2 — REAL factory resolves scope ONLY from the protected table ───
     section("2. protected partner↔hotel scope — customer rejected, cross-hotel blocked, NO public-table read");
@@ -176,6 +189,10 @@ async function main() {
       ok(forbiddenRead === "", "2.4 authz path NEVER reads public hotels / hotel_room_units / users (forgery ignored)" + (forbiddenRead ? " — read " + forbiddenRead : ""));
       ok(/status=eq\.active/.test(scopeUrl), "2.5 scope query requires status=eq.active (revoked/disabled binding grants nothing)");
       ok(scopeAuth.includes(SVC_KEY), "2.6 scope read authorizes with the service-role key (not anon)");
+      // Mandatory-sub enforced end-to-end through the real factory deps.
+      const reqIdOnly = mkReq("Bearer " + signP({ id: "partnerA" }));
+      const rIdOnly = await PA.partnerAuthorizedForHotel(reqIdOnly, deps, "hotelA");
+      ok(rIdOnly.ok === false, "2.7 id-only token (no sub) → NOT authorized (mandatory-sub enforced end-to-end)");
     } finally { global.fetch = savedFetch; }
 
     // ── Part 3 — protected store fails closed when unconfigured ──────────────
@@ -227,6 +244,16 @@ async function main() {
     // The client sends the idToken (not a claimed email/name).
     const clientPage = fs.readFileSync(path.join(REPO, "app/partner/page.tsx"), "utf8");
     ok(/getIdToken\(\)/.test(clientPage) && /JSON\.stringify\(\{\s*idToken\s*\}\)/.test(clientPage), "5.8 the partner login client sends the Firebase idToken (no claimed email/name)");
+    // AUTHORIZATION via the protected binding, NOT client-writable ownership (issue B):
+    ok(/readActivePartnerScopeRows/.test(gl) && /partnerScopeConfigured/.test(gl), "5.9 admission authorizes ONLY via the protected verified_partner_hotel_scope binding");
+    ok(/if \(!scopeRows\.length\)/.test(gl), "5.10 a verified identity with NO active binding is REJECTED (verified identity alone is not partner authority)");
+    ok(/partnerScopeConfigured\(\)/.test(gl) && /status: 503/.test(gl), "5.11 unconfigured protected authority → fail closed (503)");
+    // Strip comments so the "NO role:hotel_owner" doc lines don't trip absence checks.
+    const glCode = gl.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    ok(!/role:\s*["']hotel_owner["']/.test(glCode), "5.12 NO role:\"hotel_owner\" security fallback (code)");
+    ok(!/hotels\?ownerId/.test(glCode) && !/PARTNER_ROLES/.test(glCode), "5.13 authorization does NOT use client-writable hotels.ownerId / users.role");
+    ok(/hotels\?id=in/.test(gl), "5.14 bound hotels loaded by the protected binding's ids (DISPLAY only, AFTER authorization)");
+    ok(/readActivePartnerScopeRows\(verifiedId\)/.test(gl), "5.15 the binding is keyed on the VERIFIED canonical subject");
 
     // ── Part 6 — factory reads ONLY the protected table (static import proof) ─
     section("6. factory security path imports ONLY the protected scope reader");
@@ -237,6 +264,9 @@ async function main() {
     ok(/verified-partner-hotel-scope/.test(factorySrc) && /readActivePartnerHotelIds/.test(factoryCode), "6.1 factory resolves scope via the protected readActivePartnerHotelIds");
     ok(!/resolveOwnerIdsCrossPool/.test(factoryCode) && !/resolveOperatedHotelIds/.test(factoryCode), "6.2 factory NO LONGER reads the client-writable owner-ids / operated-hotels resolvers");
     ok(!/hotels\?ownerId/.test(factoryCode) && !/hotel_room_units/.test(factoryCode), "6.3 factory NO LONGER queries hotels.ownerId / hotel_room_units on the authz path");
+    // NARROWEST SECURE SECRET CONTRACT (issue A):
+    ok(/env\.JWT_ACCESS_SECRET/.test(factoryCode), "6.4 factory verifies against the authoritative JWT_ACCESS_SECRET");
+    ok(!/env\.JWT_SECRET/.test(factoryCode), "6.5 factory secret contract narrowed to JWT_ACCESS_SECRET ONLY (no JWT_SECRET fallback)");
   } catch (err) {
     fatal = err;
     console.error("\n• FATAL: " + (err && err.message ? err.message : String(err)));

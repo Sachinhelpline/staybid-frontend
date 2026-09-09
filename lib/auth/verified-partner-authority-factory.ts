@@ -16,17 +16,20 @@ import { readActivePartnerHotelIds } from "@/lib/auth/verified-partner-hotel-sco
 import type { PartnerAuthorityDeps } from "@/lib/auth/verified-partner-authority";
 
 /**
- * Build the partner authority deps. Secrets = the Railway customer-family HS256
- * secrets (JWT_ACCESS_SECRET + the JWT_SECRET compat fallback) — used ONLY to
- * cryptographically verify the token subject. Authorization is then decided by
- * the protected verified_partner_hotel_scope binding for that exact subject, so
- * a validly-signed CUSTOMER token (no binding) is never a partner authority.
+ * Build the partner authority deps. Secret contract is NARROW: the authority
+ * verifies ONLY against the authoritative Railway `JWT_ACCESS_SECRET` (the
+ * secret partner/customer access tokens are minted with — the same one the
+ * admin gate uses). The `JWT_SECRET` compat fallback is deliberately NOT
+ * included on this strict evidence-writer path (a legacy JWT_SECRET-only token
+ * fails closed rather than being trusted). Authorization is then decided by the
+ * protected verified_partner_hotel_scope binding for that exact subject, so a
+ * validly-signed CUSTOMER token (no binding) is never a partner authority.
  */
 export function createPartnerAuthorityDeps(
   env: Record<string, string | undefined> = process.env
 ): PartnerAuthorityDeps {
   return {
-    secrets: [env.JWT_ACCESS_SECRET, env.JWT_SECRET],
+    secrets: [env.JWT_ACCESS_SECRET],
     // subject-only: the phone/email twins are intentionally NOT used, so no
     // client-writable table (users / onboarding_users / hotels /
     // hotel_room_units) is read on the authorization path.

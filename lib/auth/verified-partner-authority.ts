@@ -6,12 +6,15 @@
 // partner identity. The verified-stay evidence write path must NOT trust that.
 //
 // This gate:
-//   1. CRYPTOGRAPHICALLY verifies the partner token (HS256 against the Railway
-//      customer-family secrets — JWT_ACCESS_SECRET, with the JWT_SECRET compat
-//      fallback the customer contract already uses). Rejects decode-only /
+//   1. CRYPTOGRAPHICALLY verifies the partner token (HS256). The signing-secret
+//      contract is NARROW: the authority verifies ONLY against the injected
+//      secret set, which production wires to the authoritative Railway
+//      JWT_ACCESS_SECRET (the secret partner/customer access tokens are minted
+//      with) — NOT the JWT_SECRET compat fallback. Rejects decode-only /
 //      unsigned / forged / RS256 / alg:none / expired / wrong-secret tokens.
-//      Subject = verified `sub` (or `id` when `sub` is absent); if both present
-//      they MUST be equal.
+//      MANDATORY SUBJECT: `sub` MUST exist and be a non-empty string; `id` is
+//      compatibility-only and, if present, MUST exactly equal `sub`. An id-only
+//      token is REJECTED — the subject is never derived from `id` alone.
 //   2. Proves the verified subject is AUTHORIZED for a specific hotel by reading
 //      the PROTECTED, forge-proof verified_partner_hotel_scope binding (an
 //      ACTIVE row for that exact subject + hotel). A partner for Hotel A can
@@ -59,11 +62,15 @@ export function verifyPartnerToken(
     }
     if (!p || typeof p !== "object") continue;
     const c = p as Record<string, unknown>;
+    // MANDATORY SUBJECT CONTRACT (SEC-00B strict):
+    //   • `sub` MUST exist and be a non-empty string — an id-only (compat) token
+    //     is REJECTED (subject is never derived from `id` alone).
+    //   • `id` is compatibility-only; if present it MUST exactly equal `sub`.
     const sub = typeof c.sub === "string" && c.sub.length > 0 ? c.sub : null;
     const idc = typeof c.id === "string" && c.id.length > 0 ? c.id : null;
-    if (sub && idc && sub !== idc) continue; // id, if present with sub, must equal it
-    const subject = sub || idc;
-    if (!subject) continue; // need a verified subject
+    if (!sub) continue; // `sub` is required — id-only token rejected
+    if (idc && idc !== sub) continue; // `id`, if present, must equal `sub`
+    const subject = sub;
     const emailRaw = typeof c.email === "string" ? c.email.trim() : "";
     const email = emailRaw && /@/.test(emailRaw) ? emailRaw : null;
     const phoneRaw = typeof c.phone === "string" ? c.phone.trim() : "";
