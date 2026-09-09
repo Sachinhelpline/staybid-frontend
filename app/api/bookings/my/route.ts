@@ -11,6 +11,7 @@
 // unions both so nothing goes missing.
 import { NextRequest, NextResponse } from "next/server";
 import { authPayload, sbSelect, resolveUserIds } from "@/lib/sb-server";
+import { isBidConfirmedStay } from "@/lib/stay/confirmed-stay";
 
 export async function GET(req: NextRequest) {
   const payload = authPayload(req);
@@ -25,17 +26,45 @@ export async function GET(req: NextRequest) {
     sbSelect(`bids?customerId=in.(${inList})&status=eq.ACCEPTED&select=*`),
   ]);
 
+  // SEC-00B confirmed-stay authority: an ACCEPTED bid is a real reservation ONLY
+  // when it carries a genuine payment signal. Side-load the server-trusted
+  // `bid_paid_amounts.paid_total` and UNION it with the message "Razorpay:"
+  // marker so a best-effort divergence never wrongly excludes a paid stay — and
+  // a merely-accepted / stale-expired UNPAID bid is never projected as CONFIRMED.
+  const acceptedBidIds = Array.from(
+    new Set(acceptedBids.map((b: any) => b.id).filter(Boolean))
+  );
+  const paidById = new Map<string, number>();
+  if (acceptedBidIds.length) {
+    try {
+      const paidRows = await sbSelect(
+        `bid_paid_amounts?bid_id=in.(${acceptedBidIds
+          .map(encodeURIComponent)
+          .join(",")})&select=bid_id,paid_total`
+      );
+      for (const p of paidRows as any[]) {
+        const amt = Number(p?.paid_total);
+        if (Number.isFinite(amt)) paidById.set(String(p.bid_id), amt);
+      }
+    } catch {
+      /* fail closed on the ledger read — the message marker still applies */
+    }
+  }
+  const confirmedBids = acceptedBids.filter((b: any) =>
+    isBidConfirmedStay(b, paidById.get(String(b.id)) ?? null)
+  );
+
   // Collect lookup ids across both sources
   const hotelIds = Array.from(new Set([
     ...bookings.map((b: any) => b.hotelId),
-    ...acceptedBids.map((b: any) => b.hotelId),
+    ...confirmedBids.map((b: any) => b.hotelId),
   ].filter(Boolean)));
   const roomIds = Array.from(new Set([
     ...bookings.map((b: any) => b.roomId),
-    ...acceptedBids.map((b: any) => b.roomId),
+    ...confirmedBids.map((b: any) => b.roomId),
   ].filter(Boolean)));
   const requestIds = Array.from(new Set(
-    acceptedBids.map((b: any) => b.requestId).filter(Boolean)
+    confirmedBids.map((b: any) => b.requestId).filter(Boolean)
   ));
 
   const [hotels, rooms, requests] = await Promise.all([
@@ -52,8 +81,10 @@ export async function GET(req: NextRequest) {
     room:  rooms.find((r: any) => r.id === b.roomId)  || null,
   }));
 
-  // Accepted bids projected as bookings (so downstream UI treats them uniformly)
-  const bidEnriched = acceptedBids.map((b: any) => {
+  // Confirmed (paid) accepted bids projected as bookings (so downstream UI
+  // treats them uniformly). Unpaid / stale ACCEPTED bids were already dropped
+  // by the confirmed-stay authority above — they never appear as "CONFIRMED".
+  const bidEnriched = confirmedBids.map((b: any) => {
     const req = requests.find((r: any) => r.id === b.requestId) || null;
     return {
       id: b.id,

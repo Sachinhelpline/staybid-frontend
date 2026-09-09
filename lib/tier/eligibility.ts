@@ -7,6 +7,7 @@
 // other helper in lib/ — no service-role key, no Railway dependency.
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { resolveUserIds } from "@/lib/sb-server";
+import { isBidConfirmedStay } from "@/lib/stay/confirmed-stay";
 
 const READ_HEADERS = {
   apikey: SB_KEY,
@@ -27,6 +28,11 @@ const READ_HEADERS = {
 const ELIGIBILITY_WINDOW_DAYS = 90;
 
 const BOOKING_OK_STATUSES = ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"];
+// We FETCH these bid statuses, but a bare ACCEPTED bid is only Verified-Guest
+// proof once it is genuinely PAID — the canonical confirmed-stay authority
+// (isBidConfirmedStay) re-checks each fetched bid below. CHECKED_IN/CHECKED_OUT
+// pass without a payment marker (the guest physically stayed); a merely-accepted
+// or stale-expired UNPAID ACCEPTED bid is rejected.
 const BID_OK_STATUSES = ["ACCEPTED", "CHECKED_IN", "CHECKED_OUT"];
 
 export type EligibleBooking = {
@@ -104,7 +110,9 @@ export async function listEligibleBookings(
     fetch(
       `${SB_URL}/rest/v1/bids?customerId=in.(${inList})` +
         `&status=in.(${BID_OK_STATUSES.join(",")})` +
-        `&select=id,hotelId,roomId,customerId,requestId,status` +
+        // `message` carries the "Razorpay:" paid marker; the confirmed-stay
+        // authority reads it to reject a bare/stale UNPAID ACCEPTED bid.
+        `&select=id,hotelId,roomId,customerId,requestId,status,message` +
         `&order=createdAt.desc&limit=100`,
       { headers: READ_HEADERS, cache: "no-store" }
     ),
@@ -120,6 +128,28 @@ export async function listEligibleBookings(
   // table's column from a top-level GET).
   let bidEnriched: any[] = [];
   if (bidRows.length) {
+    // Server-trusted payment side-load: `bid_paid_amounts.paid_total`. UNIONed
+    // with the message "Razorpay:" marker inside isBidConfirmedStay so a
+    // legitimately-paid stay whose one marker failed to write is never wrongly
+    // excluded — while a genuinely UNPAID accepted bid is.
+    const paidById = new Map<string, number>();
+    const bidIds = Array.from(new Set(bidRows.map((b) => b.id).filter(Boolean)));
+    if (bidIds.length) {
+      const inBids = bidIds.map(encodeURIComponent).join(",");
+      const pr = await fetch(
+        `${SB_URL}/rest/v1/bid_paid_amounts?bid_id=in.(${inBids})` +
+          `&select=bid_id,paid_total`,
+        { headers: READ_HEADERS, cache: "no-store" }
+      );
+      if (pr.ok) {
+        const rows = (await pr.json().catch(() => [])) as any[];
+        for (const p of rows) {
+          const amt = Number(p?.paid_total);
+          if (Number.isFinite(amt)) paidById.set(String(p.bid_id), amt);
+        }
+      }
+    }
+
     const reqIds = Array.from(
       new Set(bidRows.map((b) => b.requestId).filter(Boolean))
     );
@@ -138,6 +168,12 @@ export async function listEligibleBookings(
     const nowMs = Date.now();
     bidEnriched = bidRows
       .map((b) => {
+        // SEC-00B confirmed-stay authority — a bare/stale UNPAID ACCEPTED bid is
+        // NOT a confirmed stay and grants NO Verified-Guest proof. CHECKED_IN /
+        // CHECKED_OUT pass (the guest physically stayed).
+        if (!isBidConfirmedStay(b, paidById.get(String(b.id)) ?? null)) {
+          return null;
+        }
         const r = b.requestId ? reqById.get(b.requestId) : null;
         if (!r?.checkIn || !r?.checkOut) return null;
         const checkInMs = Date.parse(r.checkIn);

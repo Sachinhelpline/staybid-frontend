@@ -61,6 +61,12 @@ export type UpgradeChoiceSheetProps = {
   open: boolean;
   /** Initial tier snapshot — saves a roundtrip when the parent has it. */
   tier?: MyTierResponse | null;
+  /**
+   * Open directly on the booking-picker step (skip the choice step). Used when
+   * the FAB gate already knows the traveller is Verified-Guest-eligible with
+   * more than one stay — so it is literally "one picker", no extra tap.
+   */
+  startAtBookingPicker?: boolean;
   onClose: () => void;
   /** Called when user picks a booking. Parent opens CreateFlow with tierContext. */
   onPickedContext: (ctx: TierContext) => void;
@@ -82,6 +88,7 @@ function formatDate(iso: string | null): string {
 export default function UpgradeChoiceSheet({
   open,
   tier,
+  startAtBookingPicker,
   onClose,
   onPickedContext,
 }: UpgradeChoiceSheetProps) {
@@ -100,10 +107,20 @@ export default function UpgradeChoiceSheet({
     };
   }, [open]);
 
-  // Reset to choice step on close
+  // Reset to the choice step on close; when the parent asks for the picker
+  // directly (a known Verified-Guest-eligible traveller with >1 stay), jump
+  // straight to the booking-list and load it — no extra tap.
   useEffect(() => {
-    if (!open) setStep("choice");
-  }, [open]);
+    if (!open) {
+      setStep("choice");
+      return;
+    }
+    if (startAtBookingPicker) {
+      setStep("booking-list");
+      void fetchBookings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, startAtBookingPicker]);
 
   const fetchBookings = async () => {
     setLoadingBookings(true);
