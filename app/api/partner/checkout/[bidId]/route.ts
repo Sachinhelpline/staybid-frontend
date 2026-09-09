@@ -13,16 +13,19 @@ const partnerAuthority = createPartnerAuthorityDeps();
 // POST /api/partner/checkout/[bidId]
 // Hotel partner marks check-out. SEC-00B hardened exactly like check-in: the
 // partner token is cryptographically verified, the partner must be authorized
-// for this bid's hotel, and the AUTHORITATIVE result is a protected
+// for this bid's hotel via the PROTECTED verified_partner_hotel_scope binding
+// (service-role, deny-by-default; NOT the client-writable hotels.ownerId /
+// hotel_room_units mappings), and the AUTHORITATIVE result is a protected
 // verified_stay_evidence row (proof_state='checked_out'). The existing display
 // side-effects (log / bids.status / video_lifecycle / feedback / notification)
 // are preserved as best-effort, non-authority writes.
 //
-// HONEST BOUNDARY (owner follow-up): same as check-in — the unsigned `alg:none`
-// google-login stub token is REJECTED (401) here by design, so evidence is
-// reachable only via a signed HS256 partner token; Verified-Guest stays
-// fail-closed until partner sessions are signed AND the v746 migration is
-// applied. This route does NOT weaken to accept the stub.
+// HONEST BOUNDARY (owner follow-up): same as check-in — evidence requires a
+// signed HS256 token AND an ACTIVE protected verified_partner_hotel_scope
+// binding for this exact (subject, hotel) AND the service-role key + the v746
+// (evidence) & v747 (partner scope) migrations applied. A forged public
+// ownership row or an unsigned stub grants nothing; Verified-Guest stays
+// fail-closed until all hold. This route never weakens to accept them.
 export async function POST(req: Request, props: { params: Promise<{ bidId: string }> }) {
   const params = await props.params;
   try {

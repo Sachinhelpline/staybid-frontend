@@ -13,20 +13,26 @@ const partnerAuthority = createPartnerAuthorityDeps();
 // Hotel partner marks the guest as checked in. SEC-00B hardened:
 //   • the partner token is CRYPTOGRAPHICALLY verified (HS256) — decode-only /
 //     forged / unsigned tokens are rejected;
-//   • the partner must be AUTHORIZED for this bid's hotel (owns/operates it);
+//   • the partner must be AUTHORIZED for this bid's hotel via the PROTECTED,
+//     forge-proof verified_partner_hotel_scope binding (service-role, deny-by-
+//     default) — NOT the client-writable hotels.ownerId / hotel_room_units
+//     mappings, so forging a public ownership row grants no scope;
 //   • the AUTHORITATIVE result is a row in the protected verified_stay_evidence
 //     table (service-role only, forge-proof) — this, not the mutable public
 //     bids.status / checkin_checkout_logs, is what Verified-Guest trusts.
 // The legacy status + log writes are kept as best-effort DISPLAY side-effects.
 //
-// HONEST BOUNDARY (owner follow-up): the current PRIMARY partner login
-// (/api/partner/google-login) mints an UNSIGNED `alg:none` stub token — that
-// decode-only trust is exactly the hole this route closes, so such a token is
-// now REJECTED (401) here. Evidence creation is therefore reachable only by a
-// genuinely HS256-signed customer-family partner token; Verified-Guest stays
-// fail-closed (no evidence ⇒ no AUTO_APPROVE) until partner sessions are
-// upgraded to signed tokens AND the v746 migration is applied. This route does
-// NOT weaken to accept the stub — that would reopen the forgery.
+// HONEST BOUNDARY (owner follow-up): evidence creation requires ALL of —
+//   (a) a genuinely HS256-signed customer-family token (an unsigned/alg:none
+//       token, incl. any legacy stub, is rejected 401);
+//   (b) an ACTIVE protected verified_partner_hotel_scope binding for this exact
+//       (subject, hotel) — created only by a service-role ops/admin path; a
+//       forged public hotels.ownerId / hotel_room_units row grants nothing;
+//   (c) the service-role key set AND the v746 (evidence) + v747 (partner scope)
+//       migrations applied.
+// Until all three hold, Verified-Guest stays fail-closed (no evidence ⇒ no
+// AUTO_APPROVE) — the intended safe default. This route never weakens to accept
+// a stub or a client-writable ownership mapping.
 export async function POST(req: Request, props: { params: Promise<{ bidId: string }> }) {
   const params = await props.params;
   try {

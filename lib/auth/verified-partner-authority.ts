@@ -12,17 +12,20 @@
 //      unsigned / forged / RS256 / alg:none / expired / wrong-secret tokens.
 //      Subject = verified `sub` (or `id` when `sub` is absent); if both present
 //      they MUST be equal.
-//   2. Proves the verified subject is AUTHORIZED for a specific hotel — owns it
-//      (hotels.ownerId) or operates ≥1 physical unit in it
-//      (hotel_room_units.owner_user_id). A partner for Hotel A can NEVER verify
-//      a Hotel B stay.
-// Fail closed at every gap. The hotel-ownership resolver is INJECTED so the gate
-// is hermetically testable and cannot smuggle a network call of its own.
+//   2. Proves the verified subject is AUTHORIZED for a specific hotel by reading
+//      the PROTECTED, forge-proof verified_partner_hotel_scope binding (an
+//      ACTIVE row for that exact subject + hotel). A partner for Hotel A can
+//      NEVER verify a Hotel B stay.
+// Fail closed at every gap. The hotel-scope resolver is INJECTED so the gate is
+// hermetically testable and cannot smuggle a network call of its own.
 //
-// NOTE (documented residual): the hotel-authorization step reads the ownership
-// mapping (hotels.ownerId / hotel_room_units.owner_user_id), which this SEC-00B
-// finding did NOT flag as client-writable. If those tables are later found
-// client-writable, that is a SEPARATE trust-boundary item.
+// SEC-00B FINAL (partner↔hotel authority): the scope resolver reads ONLY the
+// protected verified_partner_hotel_scope table (service-role, deny-by-default),
+// NOT the client-writable hotels.ownerId / hotel_room_units.owner_user_id
+// mappings (both have permissive production RLS). So a normal customer editing
+// one of those public tables to their own subject gains NO partner scope, and a
+// validly-signed CUSTOMER token with no active binding resolves to an empty
+// scope (→ fail closed). Those public mappings stay DISPLAY / inventory data.
 import jwt from "jsonwebtoken";
 
 export type VerifiedPartnerIdentity = {
