@@ -14,7 +14,7 @@
 //
 // Mirrors the server window in lib/tier/eligibility.ts:
 //   confirmed stay  AND  checkIn <= now  AND  checkOut >= now - 90d.
-import { isBidConfirmedStay, isBookingConfirmedStay } from "@/lib/stay/confirmed-stay";
+import { isBidVerifiedStay, isBookingConfirmedStay } from "@/lib/stay/confirmed-stay";
 import { parseDbTime } from "@/lib/bid-expiry";
 
 export const SHARE_WINDOW_DAYS = 90;
@@ -32,15 +32,16 @@ export type ShareState =
   | { state: "not_confirmed" };
 
 // A merged My-Bookings row. Either:
-//   • a `bookings`-table row / server-projected paid-bid ("CONFIRMED",
-//     _source:"booking"), or
-//   • a client-side paid-bid projection (_source:"bid", carries message).
+//   • a real `bookings`-table row (trustworthy direct booking), or
+//   • a bid — a client-side paid-bid projection (_source:"bid") OR the
+//     server projection from /api/bookings/my (_projectedFromBid:true, carrying
+//     the REAL bid status on _bidStatus while `status` shows "CONFIRMED").
 export type ShareRow = {
   id?: string | null;
   _source?: string | null;
+  _projectedFromBid?: boolean | null;
+  _bidStatus?: string | null;
   status?: string | null;
-  message?: string | null;
-  serverPaid?: { paidTotal?: number | null } | null;
   checkIn?: string | null;
   checkOut?: string | null;
   hotelId?: string | null;
@@ -50,22 +51,21 @@ export type ShareRow = {
 /**
  * Resolve the Share state for one My-Bookings row.
  *
- * A `_source:"bid"` row is judged through the canonical BID rule (needs a real
- * payment signal). Every other row carries a booking status that the server
- * already vetted (the paid-bid projection from /api/bookings/my emits only
- * CONFIRMED / CHECKED_IN / CHECKED_OUT after the confirmed-stay filter), so the
- * canonical BOOKING rule applies.
+ * SEC-00B fail-closed: a BID is share-eligible ONLY via the strong Verified-Guest
+ * rule (CHECKED_IN/CHECKED_OUT) — never a forgeable payment marker — so the Share
+ * CTA can only ever appear where the server upload gate will actually authorize.
+ * A real `bookings`-table row is the trustworthy direct-booking authority.
  */
 export function resolveShareState(row: ShareRow, nowMs: number = Date.now()): ShareState {
   const hotelId = String(row?.hotelId || row?.hotel?.id || "");
   const bookingId = String(row?.id || "");
   const hotelName = row?.hotel?.name || undefined;
 
-  const paidTotal = row?.serverPaid?.paidTotal ?? null;
-  const confirmed =
-    row?._source === "bid"
-      ? isBidConfirmedStay({ status: row?.status, message: row?.message }, paidTotal)
-      : isBookingConfirmedStay({ status: row?.status });
+  const isBid = row?._source === "bid" || row?._projectedFromBid === true;
+  const bidStatus = row?._bidStatus ?? row?.status;
+  const confirmed = isBid
+    ? isBidVerifiedStay({ status: bidStatus })
+    : isBookingConfirmedStay({ status: row?.status });
 
   if (!confirmed || !hotelId || !bookingId) return { state: "not_confirmed" };
 

@@ -112,9 +112,15 @@ ok(/api\.getEligibleBookings\(\)/.test(sheet),
 
 // ── 5. No weakening — eligibility rule + admin rejection intact ───────────────
 ok(/BOOKING_OK_STATUSES = \["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"\]/.test(eligibility),
-  "booking eligibility statuses UNCHANGED");
-ok(/BID_OK_STATUSES = \["ACCEPTED", "CHECKED_IN", "CHECKED_OUT"\]/.test(eligibility),
-  "bid eligibility statuses UNCHANGED");
+  "booking eligibility statuses UNCHANGED (trustworthy direct-booking authority)");
+// SEC-00B fail-closed (requirement F): a bid grants Verified-Guest proof ONLY
+// via CHECKED_IN/CHECKED_OUT — the forgeable payment markers (client-stamped
+// message / unauthenticated /api/bid/paid ledger) are no longer accepted, so
+// ACCEPTED is intentionally REMOVED from the bid eligibility statuses.
+ok(/BID_OK_STATUSES = \["CHECKED_IN", "CHECKED_OUT"\]/.test(eligibility),
+  "bid eligibility fail-closed to CHECKED_IN/CHECKED_OUT (ACCEPTED removed — SEC-00B)");
+ok(!/rest\/v1\/bid_paid_amounts/.test(eligibility),
+  "eligibility never FETCHES the forgeable bid_paid_amounts ledger (comments explaining why may mention it)");
 ok(/checkIn=lte\./.test(eligibility) && /checkOut=gte\./.test(eligibility),
   "date window (checkIn<=now, checkOut>=since) UNCHANGED — ongoing stays still pass");
 ok(!/checkOut=lt\./.test(eligibility),
