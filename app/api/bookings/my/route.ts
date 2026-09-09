@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authPayload, sbSelect, resolveUserIds } from "@/lib/sb-server";
 import { isBidConfirmedStayForDisplay } from "@/lib/stay/confirmed-stay";
+import { readVerifiedStayEvidenceForCustomers } from "@/lib/stay/verified-stay-evidence";
 
 export async function GET(req: NextRequest) {
   const payload = authPayload(req);
@@ -101,6 +102,23 @@ export async function GET(req: NextRequest) {
   const enriched = [...realEnriched, ...mergedBids].sort((a: any, b: any) =>
     new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
   );
+
+  // SEC-00B — flag which rows are genuinely SHARE-eligible, using ONLY the
+  // protected, forge-proof verified_stay_evidence (service-role). The mutable
+  // public bids/bookings status is never the authority for this. Fails closed:
+  // no evidence / unconfigured → no `_shareEligible` → no "Share now" CTA (the
+  // server upload gate re-checks evidence anyway).
+  try {
+    const evidence = await readVerifiedStayEvidenceForCustomers(customerIds);
+    const evKeys = new Set(
+      evidence.map((e) => `${String(e.hotel_id)}|${String(e.source_id)}`)
+    );
+    for (const row of enriched as any[]) {
+      row._shareEligible = evKeys.has(`${String(row.hotelId)}|${String(row.id)}`);
+    }
+  } catch {
+    /* fail closed — leave _shareEligible unset (falsey) */
+  }
 
   return NextResponse.json({ bookings: enriched });
 }

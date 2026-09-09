@@ -110,21 +110,33 @@ ok(/kind:\s*"verified_guest",\s*hotelId:\s*b\.hotelId,\s*bookingId:\s*b\.id/.tes
 ok(/api\.getEligibleBookings\(\)/.test(sheet),
   "picker still fetches the authoritative /api/me/eligible-bookings");
 
-// ── 5. No weakening — eligibility rule + admin rejection intact ───────────────
-ok(/BOOKING_OK_STATUSES = \["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"\]/.test(eligibility),
-  "booking eligibility statuses UNCHANGED (trustworthy direct-booking authority)");
-// SEC-00B fail-closed (requirement F): a bid grants Verified-Guest proof ONLY
-// via CHECKED_IN/CHECKED_OUT — the forgeable payment markers (client-stamped
-// message / unauthenticated /api/bid/paid ledger) are no longer accepted, so
-// ACCEPTED is intentionally REMOVED from the bid eligibility statuses.
-ok(/BID_OK_STATUSES = \["CHECKED_IN", "CHECKED_OUT"\]/.test(eligibility),
-  "bid eligibility fail-closed to CHECKED_IN/CHECKED_OUT (ACCEPTED removed — SEC-00B)");
+// ── 5. FINAL trust boundary — eligibility reads ONLY protected evidence ───────
+// SEC-00B FINAL: `bids` / `bookings` / `checkin_checkout_logs` all have
+// permissive RLS (anon+authenticated full CRUD) and the legacy partner check-in
+// was decode-only, so a client can forge any CHECKED_IN/CHECKED_OUT row. NONE of
+// those tables is trustworthy as Verified-Guest authority anymore. The ONLY
+// authority is the protected, service-role, forge-proof `verified_stay_evidence`
+// table. Eligibility now reads ONLY that (via readVerifiedStayEvidenceForCustomers)
+// and fails closed ([]) when it is unconfigured / the migration is not applied.
+ok(/readVerifiedStayEvidenceForCustomers/.test(eligibility) &&
+   /from "@\/lib\/stay\/verified-stay-evidence"/.test(eligibility),
+  "eligibility resolves stays ONLY from the protected verified_stay_evidence authority");
+ok(/const evidence = await readVerifiedStayEvidenceForCustomers\(userIds\);/.test(eligibility) &&
+   /if \(!evidence\.length\) return \[\];/.test(eligibility),
+  "eligibility fails closed ([]) when there is no protected evidence (migration unapplied / unconfigured)");
+// The forgeable mutable public tables are NEVER fetched as authority.
+ok(!/rest\/v1\/bids\b/.test(eligibility),
+  "eligibility never FETCHES the forgeable public `bids` table");
+ok(!/rest\/v1\/bookings\b/.test(eligibility),
+  "eligibility never FETCHES the forgeable public `bookings` table");
+ok(!/rest\/v1\/checkin_checkout_logs\b/.test(eligibility),
+  "eligibility never FETCHES the forgeable public `checkin_checkout_logs` table");
 ok(!/rest\/v1\/bid_paid_amounts/.test(eligibility),
-  "eligibility never FETCHES the forgeable bid_paid_amounts ledger (comments explaining why may mention it)");
-ok(/checkIn=lte\./.test(eligibility) && /checkOut=gte\./.test(eligibility),
-  "date window (checkIn<=now, checkOut>=since) UNCHANGED — ongoing stays still pass");
-ok(!/checkOut=lt\./.test(eligibility),
-  "no 'checkOut < now' filter re-introduced (ongoing stays not excluded)");
+  "eligibility never FETCHES the forgeable bid_paid_amounts ledger (payment markers stay fail-closed)");
+// The status constants that string-matched the forgeable bids/bookings status
+// are GONE — proof authority no longer derives from a mutable status at all.
+ok(!/BID_OK_STATUSES/.test(eligibility) && !/BOOKING_OK_STATUSES/.test(eligibility),
+  "no mutable-status allow-lists remain (proof is the protected evidence row, not a status)");
 ok(/resolveVerifiedMediaCustomer/.test(uploadSession),
   "upload-session still uses the strict media authority (admin/super_admin rejected)");
 

@@ -8,13 +8,16 @@
 //
 // This is a CLIENT-SIDE convenience for honest copy + routing. It is NEVER the
 // authority: the upload path (/api/social/posts/verified-guest) independently
-// re-verifies the strict media identity, exact booking ownership, the canonical
-// confirmed-stay rule, the hotel binding, and the date window server-side. A
+// re-verifies the strict media identity, exact booking ownership, the protected
+// verified_stay_evidence, the hotel binding, and the date window server-side. A
 // forged bookingId/hotelId carried on a Share deep-link is rejected there.
 //
-// Mirrors the server window in lib/tier/eligibility.ts:
-//   confirmed stay  AND  checkIn <= now  AND  checkOut >= now - 90d.
-import { isBidVerifiedStay, isBookingConfirmedStay } from "@/lib/stay/confirmed-stay";
+// SEC-00B trust boundary: the "Share now" (eligible) state is gated ONLY on the
+// server-computed `_shareEligible` flag, which /api/bookings/my derives from the
+// protected verified_stay_evidence table — NOT from the forgeable bids/bookings
+// status. "Share from check-in" is a soft display-only hint for an upcoming
+// confirmed reservation (it triggers NO upload, so it never needs authority).
+import { isBookingConfirmedStay } from "@/lib/stay/confirmed-stay";
 import { parseDbTime } from "@/lib/bid-expiry";
 
 export const SHARE_WINDOW_DAYS = 90;
@@ -46,35 +49,47 @@ export type ShareRow = {
   checkOut?: string | null;
   hotelId?: string | null;
   hotel?: { id?: string | null; name?: string | null } | null;
+  /**
+   * Server-computed by /api/bookings/my from the protected verified_stay_evidence
+   * table. The ONLY signal that grants a real "Share now" CTA. Never trust the
+   * forgeable bids/bookings status for this.
+   */
+  _shareEligible?: boolean | null;
 };
 
 /**
  * Resolve the Share state for one My-Bookings row.
  *
- * SEC-00B fail-closed: a BID is share-eligible ONLY via the strong Verified-Guest
- * rule (CHECKED_IN/CHECKED_OUT) — never a forgeable payment marker — so the Share
- * CTA can only ever appear where the server upload gate will actually authorize.
- * A real `bookings`-table row is the trustworthy direct-booking authority.
+ * SEC-00B: the "eligible" (Share now) state is granted ONLY by the
+ * server-computed `_shareEligible` flag (backed by protected
+ * verified_stay_evidence). "future" is a display-only nudge for an upcoming
+ * confirmed reservation (no upload happens from it, so it needs no authority).
+ * Everything else shows no verified-share CTA.
  */
 export function resolveShareState(row: ShareRow, nowMs: number = Date.now()): ShareState {
   const hotelId = String(row?.hotelId || row?.hotel?.id || "");
   const bookingId = String(row?.id || "");
   const hotelName = row?.hotel?.name || undefined;
 
+  // AUTHORITY-ALIGNED: a real Share CTA only when the server proved evidence.
+  if (row?._shareEligible === true && hotelId && bookingId) {
+    return { state: "eligible", hotelId, bookingId, hotelName };
+  }
+
+  // Display-only "future" hint: an upcoming, non-cancelled confirmed reservation.
+  // (No authority: this state never uploads — it only shows "Share from
+  // check-in". The row's status/date here are display fields, not a security
+  // signal.) A cancelled booking is excluded via isBookingConfirmedStay.
   const isBid = row?._source === "bid" || row?._projectedFromBid === true;
-  const bidStatus = row?._bidStatus ?? row?.status;
-  const confirmed = isBid
-    ? isBidVerifiedStay({ status: bidStatus })
-    : isBookingConfirmedStay({ status: row?.status });
-
-  if (!confirmed || !hotelId || !bookingId) return { state: "not_confirmed" };
-
+  const notCancelled = isBid ? true : isBookingConfirmedStay({ status: row?.status });
   const checkInMs = parseDbTime(row?.checkIn ?? null);
-  const checkOutMs = parseDbTime(row?.checkOut ?? null);
-  const sinceMs = nowMs - SHARE_WINDOW_DAYS * 86_400_000;
-
-  // Confirmed but the stay has not started yet → share from check-in.
-  if (Number.isFinite(checkInMs) && checkInMs > nowMs) {
+  if (
+    notCancelled &&
+    hotelId &&
+    bookingId &&
+    Number.isFinite(checkInMs) &&
+    checkInMs > nowMs
+  ) {
     return {
       state: "future",
       availableFrom: String(row?.checkIn),
@@ -84,13 +99,7 @@ export function resolveShareState(row: ShareRow, nowMs: number = Date.now()): Sh
     };
   }
 
-  // Confirmed but the 90-day sharing window has closed.
-  if (Number.isFinite(checkOutMs) && checkOutMs < sinceMs) {
-    return { state: "window_closed" };
-  }
-
-  // Started (or an ongoing stay, or dates unknown but server-confirmed) → now.
-  return { state: "eligible", hotelId, bookingId, hotelName };
+  return { state: "not_confirmed" };
 }
 
 export type BannerShareState =
