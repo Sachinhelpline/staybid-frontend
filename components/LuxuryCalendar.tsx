@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { calculateDynamicPrice, demandTierFromScore } from "@/lib/ai-pricing";
+import { roomScopeKey, readScopedDayPrices, isValidSpineBatch } from "@/lib/pricing/calendar-scope";
 
 type Mode = "checkIn" | "checkOut";
 
@@ -127,14 +128,23 @@ export default function LuxuryCalendar({
   // v750 (PRICE-CONSISTENCY-01) — the room ids that drive hotel-mode pricing.
   // When present (only on the hotel-detail page today), the calendar reads the
   // canonical pricing-spine livePrice per day rather than computing its own.
+  // De-duped + SORTED so the ORDER of the supplied rooms never changes identity.
   const roomIds = useMemo(
-    () => Array.from(new Set((rooms || []).map(r => (r?.id ? String(r.id) : "")).filter(Boolean))),
+    () => Array.from(new Set((rooms || []).map(r => (r?.id ? String(r.id) : "")).filter(Boolean))).sort(),
     [rooms],
   );
-  // Canonical per-day price/tier resolved from the spine (hotel mode only),
-  // keyed by ISO date. Accumulates across visited months.
-  const [spineMap, setSpineMap] = useState<Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }>>({});
-  // Month+rooms fingerprints already fetched, so month navigation never restorms.
+  // The exact room-SCOPE fingerprint the calendar's canonical prices are bound
+  // to. The SAME <LuxuryCalendar> instance is reused for different room scopes
+  // (all hotel rooms vs a single flash room), so the price data MUST be keyed by
+  // this scope — a price resolved for room-set A can never render for room-set B.
+  const scopeKey = useMemo(() => roomScopeKey(roomIds), [roomIds]);
+  // Canonical per-day price/tier resolved from the spine (hotel mode only), keyed
+  // by ROOM-SCOPE fingerprint → ISO date. Reading is scoped to the CURRENT
+  // scopeKey, so scope A's prices can NEVER surface under scope B, not even for
+  // one render while B's request is still pending.
+  const [spineByScope, setSpineByScope] = useState<Record<string, Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }>>>({});
+  // Month+scope fingerprints already fetched SUCCESSFULLY, so month navigation
+  // never re-storms and a failed request stays retryable.
   const fetchedMonthsRef = useRef<Set<string>>(new Set());
 
   const todayIso = useMemo(() => toIso(new Date()), []);
@@ -172,7 +182,9 @@ export default function LuxuryCalendar({
       dates.push(toIso(dt));
     }
     if (!dates.length) return;
-    const monthKey = `${y}-${m}|${roomIds.join(",")}`;
+    // Scope-aware month key: switching room scopes (all rooms ↔ single flash
+    // room) refetches per scope and never reuses another scope's cache.
+    const monthKey = `${y}-${m}|${scopeKey}`;
     if (fetchedMonthsRef.current.has(monthKey)) return;
     let cancelled = false;
     (async () => {
@@ -183,7 +195,12 @@ export default function LuxuryCalendar({
           body: JSON.stringify({ roomIds, dates }),
         }).then((r) => r.json());
         if (cancelled) return;
-        const byDate: Record<string, Record<string, any>> = res?.pricesByDate || {};
+        // Only trust a response that actually carries the batched pricesByDate
+        // contract. A failed / garbled body (the route's error path returns
+        // { prices, error } WITHOUT pricesByDate) is NOT marked fetched → stays
+        // retryable, and never poisons this scope's map.
+        if (!isValidSpineBatch(res)) return;
+        const byDate: Record<string, Record<string, any>> = res.pricesByDate;
         const patch: Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }> = {};
         for (const iso of dates) {
           const forDate = byDate[iso];
@@ -202,16 +219,19 @@ export default function LuxuryCalendar({
             patch[iso] = { price: minLive, tier: demandTierFromScore(scoreAtMin), score: scoreAtMin };
           }
         }
-        // Mark fetched on any successful response (even an empty window) so
-        // month nav never restorms; a network throw leaves it unmarked to retry.
+        // Valid response → mark this month+scope fetched (even an empty window,
+        // so it never re-storms) and merge the patch UNDER this scope's key only.
         fetchedMonthsRef.current.add(monthKey);
-        if (Object.keys(patch).length) setSpineMap((prev) => ({ ...prev, ...patch }));
+        setSpineByScope((prev) => ({
+          ...prev,
+          [scopeKey]: { ...(prev[scopeKey] || {}), ...patch },
+        }));
       } catch {
         /* spine unreachable — hotel-mode cells stay neutral (never a 2nd authority) */
       }
     })();
     return () => { cancelled = true; };
-  }, [pricingMode, roomIds, cursor, todayDate]);
+  }, [pricingMode, roomIds, scopeKey, cursor, todayDate]);
 
   // Precompute prices/tiers for the month.
   //   HOTEL  mode → the canonical spine map (fetched above). No local formula.
@@ -219,7 +239,10 @@ export default function LuxuryCalendar({
   //                 no specific hotel is selected so there is no spine to read.
   //   NONE   mode → nothing.
   const priceMap = useMemo(() => {
-    if (pricingMode === "hotel") return spineMap;
+    // HOTEL mode reads ONLY the current room-scope's canonical map. On a scope
+    // change scopeKey changes in this same render, so the previous scope's
+    // prices can never surface (no reliance on a state-clearing effect).
+    if (pricingMode === "hotel") return readScopedDayPrices(spineByScope, scopeKey);
     const out: Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }> = {};
     if (pricingMode === "none") return out;
     // Demand mode uses a synthetic anchor (1000) since the price is never rendered.
@@ -234,7 +257,7 @@ export default function LuxuryCalendar({
       } catch {}
     }
     return out;
-  }, [monthCells, floorAnchor, city, todayDate, pricingMode, spineMap]);
+  }, [monthCells, floorAnchor, city, todayDate, pricingMode, spineByScope, scopeKey]);
 
   // Range helpers (using draft + hover preview)
   const inDate  = fromIso(draftIn);

@@ -30,6 +30,20 @@ function ok(cond, name) {
 function inc(hay, needle, name) { ok(hay.includes(needle), name + `  (missing: ${needle})`); }
 function nin(hay, needle, name) { ok(!hay.includes(needle), name + `  (unexpected: ${needle})`); }
 
+// Load the REAL pure scope helpers (lib/pricing/calendar-scope.ts) by transpiling
+// them in-memory with the project's own TypeScript — an executable regression of
+// the runtime invariant, not just a source-string presence check.
+function loadScopeHelpers() {
+  const ts = require("typescript");
+  const src = fs.readFileSync(path.join(__dirname, "..", "..", "lib/pricing/calendar-scope.ts"), "utf8");
+  const js = ts.transpileModule(src, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017 },
+  }).outputText;
+  const mod = { exports: {} };
+  new Function("exports", "require", "module", js)(mod.exports, require, mod);
+  return mod.exports;
+}
+
 // ── files under test ──────────────────────────────────────────────────────────
 const LC        = read("components/LuxuryCalendar.tsx");
 const HOTEL     = read("app/hotels/[id]/page.tsx");
@@ -41,14 +55,14 @@ const SEARCH    = read("components/hotel/StaySearchSheet.tsx");
 
 // Slice of the LuxuryCalendar hotel-mode spine fetch effect (used by 2 tests).
 const fetchStart = LC.indexOf('const res = await fetch("/api/pricing/spine"');
-const fetchEnd   = LC.indexOf("}, [pricingMode, roomIds, cursor, todayDate]);");
+const fetchEnd   = LC.indexOf("}, [pricingMode, roomIds, scopeKey, cursor, todayDate]);");
 const fetchBlock = fetchStart >= 0 && fetchEnd > fetchStart ? LC.slice(fetchStart, fetchEnd) : "";
 
 // ── 1. Hotel-mode calendar price is NOT computed from calculateDynamicPrice ────
-ok(/if\s*\(pricingMode === "hotel"\)\s*return spineMap;/.test(LC),
-  "1a. LuxuryCalendar priceMap returns the spine map for hotel mode");
+ok(/if\s*\(pricingMode === "hotel"\)\s*return readScopedDayPrices\(spineByScope, scopeKey\);/.test(LC),
+  "1a. LuxuryCalendar priceMap returns the scope-bound canonical spine map for hotel mode");
 {
-  const idxHotel = LC.indexOf('if (pricingMode === "hotel") return spineMap;');
+  const idxHotel = LC.indexOf('if (pricingMode === "hotel") return readScopedDayPrices(spineByScope, scopeKey);');
   const idxCalc  = LC.indexOf("calculateDynamicPrice(anchor");
   ok(idxHotel > 0 && idxCalc > idxHotel,
     "1b. calculateDynamicPrice(anchor) is only reached AFTER the hotel-mode early return (never for hotel mode)");
@@ -57,8 +71,8 @@ ok(/if\s*\(pricingMode === "hotel"\)\s*return spineMap;/.test(LC),
 // ── 2. Calendar consumes the canonical spine (batched, dates[]) ────────────────
 inc(LC, 'body: JSON.stringify({ roomIds, dates })',
   "2a. LuxuryCalendar posts the batched { roomIds, dates } shape to /api/pricing/spine");
-inc(LC, "res?.pricesByDate",
-  "2b. LuxuryCalendar reads the batched pricesByDate response");
+inc(LC, "const byDate: Record<string, Record<string, any>> = res.pricesByDate;",
+  "2b. LuxuryCalendar reads the batched pricesByDate response (after batch validation)");
 
 // ── 3. Hotel-level cell = LOWEST valid livePrice across rooms ("starting from") ─
 inc(LC, "const lp = Number(p?.livePrice) || 0;",
@@ -144,6 +158,82 @@ inc(AI, 'export function demandTierFromScore(score: number): "green" | "orange" 
   "10c. demandTierFromScore is exported");
 inc(AI, "const lvl = demandLevelFromScore(score);",
   "10d. demandTierFromScore derives its 3-tier colour from the SAME level mapping");
+
+// ── 11. CROSS-ROOM-SCOPE stale-price-leak invariant (Owner-Controller finding) ─
+// The SAME <LuxuryCalendar> instance is reused for different room scopes (all
+// hotel rooms vs a single flash room). A price resolved for room-set A must NEVER
+// render for room-set B — not even for one render while B's request is pending.
+// These are EXECUTABLE assertions against the real lib/pricing/calendar-scope.ts.
+{
+  const { roomScopeKey, readScopedDayPrices, isValidSpineBatch } = loadScopeHelpers();
+
+  // F. order-independent, de-duped scope fingerprint (equivalent sets → one key).
+  ok(roomScopeKey(["r2", "r1"]) === roomScopeKey(["r1", "r2", "r1"]),
+    "11.F room-id ORDER + duplicates produce the SAME deterministic scope key");
+  ok(roomScopeKey(["r1", "r2"]) === "r1,r2" && roomScopeKey([]) === "",
+    "11.F scope key is the sorted-unique join; empty set → empty key");
+
+  const keyA = roomScopeKey(["r1", "r2"]);          // all rooms
+  const keyB = roomScopeKey(["r9"]);                // a single (different) flash room
+  ok(keyA !== keyB, "11.pre scope A and scope B have distinct keys");
+
+  // Scope A resolved a canonical price for a date; scope B has NOT resolved yet.
+  const byScope = { [keyA]: { "2026-09-18": { price: 3500, tier: "green", score: 10 } } };
+
+  // A. scope A reads its own canonical data.
+  ok(readScopedDayPrices(byScope, keyA)["2026-09-18"] &&
+     readScopedDayPrices(byScope, keyA)["2026-09-18"].price === 3500,
+    "11.A scope A reads its own canonical date price (₹3,500)");
+
+  // B + C. active scope changes to B before B resolves → NO scope-A leak.
+  const renderedForB = readScopedDayPrices(byScope, keyB);
+  ok(Object.keys(renderedForB).length === 0,
+    "11.C scope B reads EMPTY while pending — scope A's price does not leak in");
+  ok(renderedForB["2026-09-18"] === undefined,
+    "11.C the specific scope-A date is absent under scope B (no cross-scope render)");
+  ok(renderedForB !== byScope[keyA],
+    "11.B scope B never returns scope A's map object");
+
+  // D. a failed/invalid B response leaves B neutral (never A's price).
+  ok(isValidSpineBatch({ prices: {}, error: "spine error" }) === false,
+    "11.D an error batch response is INVALID (retryable, not cached)");
+  // ...so byScope still has no keyB; B stays neutral.
+  ok(Object.keys(readScopedDayPrices(byScope, keyB)).length === 0,
+    "11.D after a failed B request, scope B remains neutral (not scope A's ₹3,500)");
+
+  // E. switching back to A safely reuses ONLY A's own cached data.
+  ok(readScopedDayPrices(byScope, keyA)["2026-09-18"].price === 3500,
+    "11.E returning to scope A reuses A's own cached price");
+
+  // G. only a real pricesByDate contract is treated as a successful fetch.
+  ok(isValidSpineBatch({ pricesByDate: {} }) === true,
+    "11.G a valid (even empty) pricesByDate response is accepted");
+  ok(isValidSpineBatch({ pricesByDate: { "2026-09-18": { r1: { livePrice: 3500 } } } }) === true,
+    "11.G a populated pricesByDate response is accepted");
+  ok(isValidSpineBatch({}) === false && isValidSpineBatch(null) === false &&
+     isValidSpineBatch({ prices: {} }) === false,
+    "11.G missing/!object/no-pricesByDate bodies are INVALID (stay retryable)");
+}
+
+// ── 11b. LuxuryCalendar is WIRED to the scope-safe helpers ─────────────────────
+inc(LC, 'from "@/lib/pricing/calendar-scope"',
+  "11b.1 LuxuryCalendar imports the scope helpers");
+inc(LC, "const scopeKey = useMemo(() => roomScopeKey(roomIds), [roomIds]);",
+  "11b.2 scopeKey is the deterministic room-scope fingerprint");
+ok(/\.filter\(Boolean\)\)\)\.sort\(\)/.test(LC),
+  "11b.3 roomIds is de-duped AND sorted (order-independent identity)");
+inc(LC, "const [spineByScope, setSpineByScope] = useState",
+  "11b.4 canonical prices are stored per ROOM-SCOPE (spineByScope), not date-only");
+ok(/const monthKey = `\$\{y\}-\$\{m\}\|\$\{scopeKey\}`;/.test(LC),
+  "11b.5 the month fetch key is scope-aware (per-scope dedup, never cross-scope reuse)");
+inc(LC, "if (!isValidSpineBatch(res)) return;",
+  "11b.6 only a valid batch response is accepted (failure stays retryable)");
+inc(LC, "[scopeKey]: { ...(prev[scopeKey] || {}), ...patch },",
+  "11b.7 the fetched patch is merged UNDER the current scope key only");
+inc(LC, 'if (pricingMode === "hotel") return readScopedDayPrices(spineByScope, scopeKey);',
+  "11b.8 hotel-mode rendering reads ONLY the current scope's map");
+ok(!/return spineMap;/.test(LC),
+  "11b.9 the old date-only spineMap render path is gone (no cross-scope leak surface)");
 
 // ── summary ─────────────────────────────────────────────────────────────────
 console.log(`\nprice-consistency: ${pass} passed, ${fail} failed`);
