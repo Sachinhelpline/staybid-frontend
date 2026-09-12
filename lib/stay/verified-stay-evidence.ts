@@ -89,6 +89,35 @@ export async function readVerifiedStayEvidenceForCustomers(
   }
 }
 
+/**
+ * Read the single protected evidence row for ONE underlying reservation
+ * (deterministic id `vse_<sourceType>_<sourceId>`), or null. Service-role only;
+ * FAILS CLOSED (null) when the key is unconfigured, the table is missing, or the
+ * read errors. Used by the hardened check-in route to enforce replay idempotency
+ * and to refuse ever minting over a mismatched/malformed pre-existing row —
+ * read-only, and does NOT change the meaning of verified_stay_evidence.
+ */
+export async function readVerifiedStayEvidenceForSource(
+  sourceType: EvidenceSourceType,
+  sourceId: string
+): Promise<VerifiedStayEvidenceRow | null> {
+  if (!serviceRoleKey()) return null;
+  if (!sourceId) return null;
+  const id = evidenceId(sourceType, sourceId);
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/${EVIDENCE_TABLE}?id=eq.${encodeURIComponent(id)}` +
+        `&select=*&limit=1`,
+      { headers: svcHeaders(), cache: "no-store" }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json().catch(() => []);
+    return Array.isArray(rows) && rows[0] ? (rows[0] as VerifiedStayEvidenceRow) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type WriteEvidenceInput = {
   customerId: string;
   hotelId: string;
