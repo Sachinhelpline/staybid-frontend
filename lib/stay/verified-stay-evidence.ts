@@ -89,6 +89,74 @@ export async function readVerifiedStayEvidenceForCustomers(
   }
 }
 
+/**
+ * Tri-state result of a single-source protected evidence read. The check-in /
+ * check-out gates MUST distinguish "there is no protected row" (`not_found`)
+ * from "I could not prove whether one exists" (`error`) — conflating the two
+ * would let a transient read failure be read as "no evidence", after which the
+ * merge-duplicates upsert could silently overwrite a real protected row. A
+ * `not_found` may proceed to a legitimate NEW mint; an `error` MUST fail closed.
+ */
+export type EvidenceReadResult =
+  | { status: "found"; row: VerifiedStayEvidenceRow }
+  | { status: "not_found" }
+  | { status: "error"; reason: string };
+
+/**
+ * Read the single protected evidence row for ONE underlying reservation
+ * (deterministic id `vse_<sourceType>_<sourceId>`) as a TRI-STATE result.
+ * Service-role only; FAILS CLOSED (`error`) when the key is unconfigured, the
+ * source id is empty, the HTTP read is non-OK, the body is not a JSON array, or
+ * the fetch throws. Returns `not_found` ONLY on a successful read that returned
+ * zero rows, and `found` on exactly one row. Read-only; does NOT change the
+ * meaning of verified_stay_evidence. Used by the hardened check-in / check-out
+ * routes to enforce replay idempotency, to refuse ever minting over a
+ * mismatched/malformed pre-existing row, and to fail closed on a read failure.
+ */
+export async function readVerifiedStayEvidenceForSource(
+  sourceType: EvidenceSourceType,
+  sourceId: string
+): Promise<EvidenceReadResult> {
+  if (!serviceRoleKey()) return { status: "error", reason: "service_role_unconfigured" };
+  if (!sourceId) return { status: "error", reason: "missing_source_id" };
+  const id = evidenceId(sourceType, sourceId);
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/${EVIDENCE_TABLE}?id=eq.${encodeURIComponent(id)}` +
+        `&select=*&limit=1`,
+      { headers: svcHeaders(), cache: "no-store" }
+    );
+    if (!r.ok) return { status: "error", reason: `read_failed_${r.status}` };
+    const rows = await r.json().catch(() => null);
+    if (!Array.isArray(rows)) return { status: "error", reason: "read_parse_error" };
+    if (!rows[0]) return { status: "not_found" };
+    return { status: "found", row: rows[0] as VerifiedStayEvidenceRow };
+  } catch (e: any) {
+    return { status: "error", reason: e?.message || "read_error" };
+  }
+}
+
+/**
+ * Pure check: does a protected evidence row's IMMUTABLE binding EXACTLY match the
+ * expected reservation identity — deterministic id + source_type + source_id +
+ * customer_id + hotel_id? `proof_state` is validated separately per transition.
+ * A row that fails this check is malformed / bound to a different reservation and
+ * MUST NEVER be overwritten or treated as this reservation's evidence.
+ */
+export function evidenceBindingMatches(
+  row: VerifiedStayEvidenceRow | null | undefined,
+  expected: { sourceType: EvidenceSourceType; sourceId: string; customerId: string; hotelId: string }
+): boolean {
+  if (!row) return false;
+  return (
+    String(row.id) === evidenceId(expected.sourceType, expected.sourceId) &&
+    String(row.source_type) === expected.sourceType &&
+    String(row.source_id) === expected.sourceId &&
+    String(row.customer_id) === expected.customerId &&
+    String(row.hotel_id) === expected.hotelId
+  );
+}
+
 export type WriteEvidenceInput = {
   customerId: string;
   hotelId: string;

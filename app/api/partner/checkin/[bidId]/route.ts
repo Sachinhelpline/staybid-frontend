@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { sbInsert, sbSelect, sbUpdate, SB } from "@/lib/onboard/supabase-admin";
 import { resolveVerifiedPartnerScope } from "@/lib/auth/verified-partner-authority";
 import { createPartnerAuthorityDeps } from "@/lib/auth/verified-partner-authority-factory";
-import { writeVerifiedStayEvidence, evidenceConfigured } from "@/lib/stay/verified-stay-evidence";
+import {
+  writeVerifiedStayEvidence,
+  evidenceConfigured,
+  readVerifiedStayEvidenceForSource,
+  evidenceBindingMatches,
+} from "@/lib/stay/verified-stay-evidence";
 
 export const runtime = "nodejs"; // JWT verify (jsonwebtoken) is server-only; never edge
 export const dynamic = "force-dynamic";
@@ -33,6 +38,27 @@ const partnerAuthority = createPartnerAuthorityDeps();
 // Until all three hold, Verified-Guest stays fail-closed (no evidence ⇒ no
 // AUTO_APPROVE) — the intended safe default. This route never weakens to accept
 // a stub or a client-writable ownership mapping.
+//
+// LIFECYCLE PRECONDITION (SEC-00B remediation): minting TRUSTED evidence also
+// requires a legitimate pre-check-in bid state. An authorized partner must NOT
+// be able to promote a not-yet-accepted bid straight to CHECKED_IN evidence, so
+// a NEW check-in transition may be minted ONLY when the existing bid state is
+// ACCEPTED. Why ACCEPTED (not "CONFIRMED"): the live bids schema has no CONFIRMED
+// state, and a paid bid stays ACCEPTED (its "paid" markers are FORGEABLE, so they
+// are NEVER an authorization requirement here — bid_paid_amounts / bids.message
+// are not consulted); the accepted contract treats an authenticated partner
+// CHECKED_IN/CHECKED_OUT as the strong physical-stay proof, so ACCEPTED is the
+// smallest correct pre-state. PENDING / COUNTER / REJECTED / EXPIRED / CANCELLED /
+// DECLINED / unknown / null are rejected 409 with ZERO evidence write. A repeated
+// check-in of an already-CHECKED_IN bid is idempotent success ONLY when the
+// matching protected evidence already records the checked_in proof (never a fresh
+// mint / rewrite); a pre-existing evidence row whose COMPLETE immutable binding
+// (id + source_type + source_id + customer_id + hotel_id) does not match THIS bid
+// is a 409 conflict and is NEVER minted over; an existing checked_out row is never
+// downgraded back to checked_in (409). CHECKED_OUT is a completed stay, not a new
+// check-in (409). The protected evidence read is TRI-STATE: a read FAILURE fails
+// closed (503) and is never conflated with "no evidence", so a transient failure
+// can never let the merge-upsert silently overwrite a real protected row.
 export async function POST(req: Request, props: { params: Promise<{ bidId: string }> }) {
   const params = await props.params;
   try {
@@ -57,6 +83,66 @@ export async function POST(req: Request, props: { params: Promise<{ bidId: strin
     if (!evidenceConfigured()) {
       return NextResponse.json({ error: "verified_stay_unconfigured" }, { status: 503 });
     }
+
+    // ── SEC-00B lifecycle precondition (before ANY authoritative write) ───────
+    // A NEW check-in may mint trusted evidence ONLY from an ACCEPTED bid. The
+    // forgeable payment markers (bid_paid_amounts / bids.message) are NOT read
+    // and can never bypass this gate.
+    const up = (s: unknown) => String(s ?? "").trim().toUpperCase();
+    const status = up(bid.status);
+    const custId = String(bid.customerId ?? "");
+    const hotId = String(bid.hotelId);
+
+    // The deterministic protected evidence row for THIS bid, read as a TRI-STATE
+    // result. A READ FAILURE is never conflated with "no evidence" — it fails
+    // closed (503) so a transient failure can NEVER let the merge-upsert silently
+    // overwrite an existing protected row.
+    const read = await readVerifiedStayEvidenceForSource("bid", String(params.bidId));
+    if (read.status === "error") {
+      return NextResponse.json({ error: "verified_stay_unavailable" }, { status: 503 });
+    }
+    const existingEvidence = read.status === "found" ? read.row : null;
+
+    if (existingEvidence) {
+      // Any pre-existing protected row MUST match THIS bid's complete immutable
+      // binding (id + source_type + source_id + customer_id + hotel_id). A
+      // malformed / different-reservation row is NEVER accepted or overwritten.
+      if (
+        !evidenceBindingMatches(existingEvidence, {
+          sourceType: "bid",
+          sourceId: String(params.bidId),
+          customerId: custId,
+          hotelId: hotId,
+        })
+      ) {
+        return NextResponse.json({ error: "verified_stay_conflict" }, { status: 409 });
+      }
+      const ps = String(existingEvidence.proof_state);
+      // A valid checked_in row is idempotent success — NEVER rewritten.
+      if (ps === "checked_in") {
+        return NextResponse.json({
+          ok: true,
+          alreadyCheckedIn: true,
+          checkin_time: existingEvidence.check_in_at || existingEvidence.verified_at,
+        });
+      }
+      // A completed stay is NEVER downgraded back to a check-in.
+      if (ps === "checked_out") {
+        return NextResponse.json({ error: "already_checked_out" }, { status: 409 });
+      }
+      // Any other (unexpected/malformed) proof_state on a bound row → conflict.
+      return NextResponse.json({ error: "verified_stay_conflict" }, { status: 409 });
+    }
+
+    // No protected evidence yet: a NEW checked_in mint is allowed ONLY from an
+    // ACCEPTED bid. Everything else (PENDING / COUNTER / REJECTED / EXPIRED /
+    // CANCELLED / DECLINED / CHECKED_IN-without-evidence / CHECKED_OUT / unknown /
+    // null) is rejected with ZERO evidence write — the mutable bids.status alone
+    // can never authorize a fresh mint.
+    if (status !== "ACCEPTED") {
+      return NextResponse.json({ error: "bid_not_accepted", status }, { status: 409 });
+    }
+
     const ev = await writeVerifiedStayEvidence({
       customerId: String(bid.customerId),
       hotelId: String(bid.hotelId),
