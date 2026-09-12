@@ -3097,11 +3097,14 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   const [tierSnapshot, setTierSnapshot] = useState<MyTierResponse | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [tierContext, setTierContext] = useState<ComposerTierContext | undefined>(undefined);
-  // Controlled-composer mode: when the user picks a tier path inside
-  // UpgradeChoiceSheet, we set this to "reel" (or kind from picker) so
-  // the Composer opens directly, skipping the CreateSheet chooser. We
-  // pass open + kind down via the new controlled props on <CreateFlow>.
-  const [pickedComposerOpen, setPickedComposerOpen] = useState(false);
+  // VG-CREATE-UX-01 — once a Verified-Guest stay is BOUND (auto-bind of the
+  // single eligible stay, the one-stay-picker selection, or a direct
+  // "Share this stay" deep-link), we open the SAME Reel/Photo/Story chooser
+  // (CreateSheet) with the stay bound, instead of force-opening the Composer in
+  // Reel. The user picks the content kind; the Composer then opens carrying the
+  // bound tierContext. Driven via the controlled `chooserOpen` prop on
+  // <CreateFlow>.
+  const [pickedChooserOpen, setPickedChooserOpen] = useState(false);
   // When the FAB gate routes a Verified-Guest-eligible traveller who has MORE
   // THAN ONE eligible stay to the picker, open UpgradeChoiceSheet directly on
   // its booking-list step (skip the choice step) so it is literally "one picker".
@@ -3120,13 +3123,18 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       const detail = ((e as CustomEvent).detail || {}) as {
         hotelId?: string;
         bookingId?: string;
+        hotelName?: string;
       };
       const hotelId = String(detail.hotelId || "");
       const bookingId = String(detail.bookingId || "");
       if (!hotelId || !bookingId) return;
+      // Exact stay already bound by the deep-link → do NOT ask the user to pick
+      // the stay again; open the Reel/Photo/Story chooser straight away. Optional
+      // hotelName (presentation only) is used if the deep-link carried it.
+      const hotelName = detail.hotelName ? String(detail.hotelName) : undefined;
       setUpgradeOpen(false);
-      setTierContext({ kind: "verified_guest", hotelId, bookingId });
-      setPickedComposerOpen(true);
+      setTierContext({ kind: "verified_guest", hotelId, bookingId, hotelName });
+      setPickedChooserOpen(true);
     };
     window.addEventListener("sb:share-stay", onShare as EventListener);
     return () =>
@@ -4849,14 +4857,20 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
                 rows = [];
               }
               if (rows.length === 1 && rows[0]?.hotelId && rows[0]?.id) {
+                // Exactly one eligible stay → auto-bind it and open the SAME
+                // Reel/Photo/Story chooser (no unnecessary stay picker).
                 setTierContext({
                   kind: "verified_guest",
                   hotelId: rows[0].hotelId,
                   bookingId: rows[0].id,
+                  hotelName: rows[0].hotelName || undefined,
                 });
-                setPickedComposerOpen(true);
+                setPickedChooserOpen(true);
                 return false;
               }
+              // Zero eligible stays → the picker's honest terminal empty-state
+              // (View my bookings / Book a stay), NOT an upload bypass. More than
+              // one → ONE stay picker (booking-list step).
               setUpgradeStartPicker(true);
               setUpgradeOpen(true);
               return false;
@@ -4875,15 +4889,19 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             return false;
           } catch {
             // If tier probe fails, fail open (don't block uploads on
-            // network errors — better UX than a stuck FAB).
+            // network errors — better UX than a stuck FAB). Clear any stale
+            // Verified-Guest binding so a fail-open FAB tap opens the generic
+            // chooser and never carries a stale stay into a generic post.
+            setTierContext(undefined);
             return;
           }
         }}
         tierContext={tierContext}
-        composerOpen={pickedComposerOpen || undefined}
-        composerKind={pickedComposerOpen ? "reel" : undefined}
+        chooserOpen={pickedChooserOpen || undefined}
+        chooserSubtitle="Share photos, reels & stories from your verified StayBid stay."
+        onChooserClose={() => setPickedChooserOpen(false)}
         onComposerClose={() => {
-          setPickedComposerOpen(false);
+          setPickedChooserOpen(false);
           setTierContext(undefined);
         }}
         onPosted={(p) => {
@@ -4944,6 +4962,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
               kind: "verified_guest",
               hotelId: ctx.hotelId,
               bookingId: ctx.bookingId,
+              hotelName: ctx.hotelName,
             });
           } else {
             setTierContext({
@@ -4953,10 +4972,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             });
           }
           setUpgradeOpen(false);
-          // Skip the CreateSheet chooser — open Composer directly. Reel
-          // is the default kind; the user can switch inside the Composer
-          // if their first instinct was Photo or Story.
-          setPickedComposerOpen(true);
+          // Stay is now bound → open the SAME Reel/Photo/Story chooser (no
+          // second stay picker). The user picks the content kind; the Composer
+          // then opens carrying the bound tierContext.
+          setPickedChooserOpen(true);
         }}
       />
       {/* ── Inline Edit-post sheet — caption + tags only. Media replace

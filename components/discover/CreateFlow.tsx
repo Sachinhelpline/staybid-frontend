@@ -257,11 +257,18 @@ export function CreateFAB({ onClick }: { onClick: () => void }) {
 
 // ─── Main Create entry sheet (3 cards: Reel / Photo / Story) ─────────────
 export function CreateSheet({
-  open, onClose, onPick,
+  open, onClose, onPick, subtitle,
 }: {
   open: boolean;
   onClose: () => void;
   onPick: (kind: ContentKind) => void;
+  /**
+   * VG-CREATE-UX-01 — optional truthful context line shown under the title.
+   * Passed only for the Verified-Guest chooser ("Share photos, reels & stories
+   * from your verified StayBid stay."). Omitted for the generic chooser, which
+   * keeps its existing header unchanged.
+   */
+  subtitle?: string;
 }) {
   // v115 — flag body so the BottomDock hides while the entry sheet is open.
   // Before v115 the Story card sat behind the dock (visible cut-off in user
@@ -298,9 +305,12 @@ export function CreateSheet({
       >
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full" style={{ background: "rgba(176, 192, 209,0.4)" }} /></div>
         <div className="flex items-center justify-between px-5 pb-1">
-          <div>
+          <div className="min-w-0">
             <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#5f7c98" }}>Share your stay</p>
             <p className="font-semibold text-[1.15rem]" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: "italic", color: "#f4f6f8" }}>Create</p>
+            {subtitle ? (
+              <p className="text-[0.66rem] mt-0.5 leading-snug" style={{ color: "rgba(176, 192, 209,0.72)" }}>{subtitle}</p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -1949,7 +1959,19 @@ export function CoverFramePicker({
 // or /api/social/posts/community when set. When undefined (the existing
 // path), the POST still targets /api/social/posts exactly as before.
 export type ComposerTierContext =
-  | { kind: "verified_guest"; hotelId: string; bookingId: string }
+  | {
+      kind: "verified_guest";
+      hotelId: string;
+      bookingId: string;
+      /**
+       * OPTIONAL PRESENTATION DATA ONLY (VG-CREATE-UX-01). Used solely to label
+       * the locked "Verified stay" row in the Composer so the traveller sees
+       * WHICH stay this post is linked to. It is NEVER authority and is NEVER
+       * sent in the upload body — the server forces + re-verifies hotelId +
+       * bookingId. When absent, the locked row shows a generic label.
+       */
+      hotelName?: string;
+    }
   | {
       kind: "community_contributor";
       hotelId: string;
@@ -3786,58 +3808,93 @@ export function Composer({
                 </button>
               )}
 
-              {/* Hotel tag row — viewers tap through to the hotel page from
-                  the reel, so public-user reels turn into discovery + a
-                  direct booking funnel for that property. */}
-              <button
-                type="button"
-                onClick={() => setHotelOpen(true)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                style={{
-                  background: taggedHotel
-                    ? "linear-gradient(135deg, rgba(140, 160, 182,0.14), rgba(255,69,141,0.10))"
-                    : "rgba(255,255,255,0.04)",
-                  border: taggedHotel
-                    ? "1px solid rgba(140, 160, 182,0.45)"
-                    : (!tierContext
-                        ? "1px solid rgba(140, 160, 182,0.40)"
-                        : "1px solid rgba(255,255,255,0.10)"),
-                }}
-              >
-                <span
-                  className="w-9 h-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-base"
-                  style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)", border: "1px solid rgba(255,255,255,0.10)" }}
+              {/* Hotel tag row. VG-CREATE-UX-01: for a Verified-Guest post the
+                  hotel is FORCED + re-verified server-side from tierContext, so
+                  we render a LOCKED, non-editable "Verified stay" row (no
+                  HotelPicker, no Clear, no way to change the authoritative
+                  hotel). Every other flow (generic Creator / Hotel, and the
+                  community path) keeps the existing editable "Tag a hotel"
+                  control unchanged. */}
+              {tierContext?.kind === "verified_guest" ? (
+                <div
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  data-sb-verified-stay="1"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(125,168,108,0.16), rgba(140,160,182,0.10))",
+                    border: "1px solid rgba(125,168,108,0.45)",
+                  }}
                 >
-                  {taggedHotel?.image ? (
-                    <img src={taggedHotel.image} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span>🏨</span>
-                  )}
-                </span>
-                <span className="flex-1 text-left min-w-0">
-                  <span className="block text-white text-[0.82rem] font-semibold truncate">
-                    {taggedHotel
-                      ? taggedHotel.name
-                      : (!tierContext ? "Tag a hotel · Required" : "Tag a hotel")}
-                  </span>
-                  <span className="block text-white/55 text-[0.62rem] truncate">
-                    {taggedHotel
-                      ? (taggedHotel.city ? `📍 ${taggedHotel.city} · viewers can book or bid from this reel` : "viewers can book or bid from this reel")
-                      : (!tierContext
-                          ? "Required — every post must link to a StayBid hotel so viewers can book or bid"
-                          : "Tag a StayBid hotel so viewers can book or bid right from your reel")}
-                  </span>
-                </span>
-                {taggedHotel ? (
                   <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); setTaggedHotel(null); }}
-                    className="text-red-300 text-[0.74rem] font-semibold mr-1"
-                  >Clear</span>
-                ) : null}
-                <span className="text-white/45 text-base">›</span>
-              </button>
+                    className="w-9 h-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-base"
+                    style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)", border: "1px solid rgba(255,255,255,0.10)" }}
+                    aria-hidden
+                  >
+                    🏨
+                  </span>
+                  <span className="flex-1 text-left min-w-0">
+                    <span className="block text-[0.58rem] font-bold uppercase tracking-[0.16em]" style={{ color: "#9ec98a" }}>
+                      Verified stay
+                    </span>
+                    <span className="block text-white text-[0.82rem] font-semibold truncate">
+                      {tierContext.hotelName || "Your verified StayBid stay"}
+                    </span>
+                    <span className="block text-white/55 text-[0.62rem] truncate">
+                      ✓ Linked to your verified StayBid stay
+                    </span>
+                  </span>
+                  <span className="text-base" style={{ color: "#9ec98a" }} aria-hidden>✓</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setHotelOpen(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{
+                    background: taggedHotel
+                      ? "linear-gradient(135deg, rgba(140, 160, 182,0.14), rgba(255,69,141,0.10))"
+                      : "rgba(255,255,255,0.04)",
+                    border: taggedHotel
+                      ? "1px solid rgba(140, 160, 182,0.45)"
+                      : (!tierContext
+                          ? "1px solid rgba(140, 160, 182,0.40)"
+                          : "1px solid rgba(255,255,255,0.10)"),
+                  }}
+                >
+                  <span
+                    className="w-9 h-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-base"
+                    style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)", border: "1px solid rgba(255,255,255,0.10)" }}
+                  >
+                    {taggedHotel?.image ? (
+                      <img src={taggedHotel.image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>🏨</span>
+                    )}
+                  </span>
+                  <span className="flex-1 text-left min-w-0">
+                    <span className="block text-white text-[0.82rem] font-semibold truncate">
+                      {taggedHotel
+                        ? taggedHotel.name
+                        : (!tierContext ? "Tag a hotel · Required" : "Tag a hotel")}
+                    </span>
+                    <span className="block text-white/55 text-[0.62rem] truncate">
+                      {taggedHotel
+                        ? (taggedHotel.city ? `📍 ${taggedHotel.city} · viewers can book or bid from this reel` : "viewers can book or bid from this reel")
+                        : (!tierContext
+                            ? "Required — every post must link to a StayBid hotel so viewers can book or bid"
+                            : "Tag a StayBid hotel so viewers can book or bid right from your reel")}
+                    </span>
+                  </span>
+                  {taggedHotel ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); setTaggedHotel(null); }}
+                      className="text-red-300 text-[0.74rem] font-semibold mr-1"
+                    >Clear</span>
+                  ) : null}
+                  <span className="text-white/45 text-base">›</span>
+                </button>
+              )}
 
               {/* Caption */}
               <div className="relative">
@@ -4140,6 +4197,7 @@ export function CreateFlow({
   onPosted, sanitize,
   onFabClick, tierContext,
   composerOpen, composerKind, onComposerClose,
+  chooserOpen, chooserSubtitle, onChooserClose,
 }: {
   onPosted?: (post: UserPost) => void;
   sanitize?: (s: string) => { clean: string; blocked: boolean };
@@ -4148,6 +4206,17 @@ export function CreateFlow({
   composerOpen?: boolean;
   composerKind?: ContentKind;
   onComposerClose?: () => void;
+  /**
+   * VG-CREATE-UX-01 — controlled open of the SAME Reel/Photo/Story chooser
+   * (CreateSheet) AFTER a stay is bound, so a Verified-Guest traveller picks the
+   * content kind (Reel / Photo / Story) instead of being force-opened into Reel.
+   * When set, `tierContext` is already bound and flows into the Composer the user
+   * opens by picking a kind. `onChooserClose` releases this controlled flag (on
+   * BOTH a kind-pick and a dismiss). `chooserSubtitle` is optional truthful copy.
+   */
+  chooserOpen?: boolean;
+  chooserSubtitle?: string;
+  onChooserClose?: () => void;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [composer, setComposer] = useState<{ open: boolean; kind: ContentKind }>({ open: false, kind: "reel" });
@@ -4184,13 +4253,28 @@ export function CreateFlow({
     onComposerClose?.();
   };
 
+  // VG-CREATE-UX-01 — the Reel/Photo/Story chooser is controlled by the parent
+  // (chooserOpen) when a Verified-Guest stay has been bound; otherwise the
+  // internal FAB-driven sheetOpen drives it. Picking a kind opens the Composer
+  // via the internal composer state, carrying the bound tierContext prop, so the
+  // final POST still forces the exact hotelId + bookingId. onChooserClose
+  // releases the parent's controlled flag on BOTH a pick and a dismiss.
+  const chooserIsOpen = chooserOpen ?? sheetOpen;
+  const closeChooser = () => { setSheetOpen(false); onChooserClose?.(); };
+  const pickKind = (kind: ContentKind) => {
+    setSheetOpen(false);
+    onChooserClose?.();
+    setComposer({ open: true, kind });
+  };
+
   return (
     <>
       <CreateFAB onClick={handleFabClick} />
       <CreateSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        onPick={(kind) => { setSheetOpen(false); setComposer({ open: true, kind }); }}
+        open={chooserIsOpen}
+        onClose={closeChooser}
+        onPick={pickKind}
+        subtitle={chooserOpen ? chooserSubtitle : undefined}
       />
       <Composer
         open={compOpen}

@@ -103,8 +103,13 @@ ok(!/No completed stays in the last 90 days/.test(sheet),
   "stale 'No completed stays' empty-state copy removed");
 ok(/recent or current StayBid stay/i.test(sheet),
   "copy now says 'recent or current StayBid stay'");
-ok(/Current stay · ends/.test(sheet),
-  "row label is ongoing-aware (Current stay for a future checkOut)");
+// VG-CREATE-UX-01 — the row now shows check-in → check-out and appends a
+// "· current stay" marker for a future checkOut (still ongoing-aware, and now
+// distinguishes same-hotel stays by date). Assertion re-pointed to the new copy.
+ok(/· current stay/.test(sheet),
+  "row label is ongoing-aware (marks a current stay for a future checkOut)");
+ok(/formatDate\(b\.checkIn\)\}\s*→\s*\{formatDate\(b\.checkOut\)/.test(sheet),
+  "row shows check-in → check-out (same-hotel disambiguation)");
 ok(/kind:\s*"verified_guest",\s*hotelId:\s*b\.hotelId,\s*bookingId:\s*b\.id/.test(sheet),
   "picker selection preserves bookingId + hotelId in verified_guest context");
 ok(/api\.getEligibleBookings\(\)/.test(sheet),
