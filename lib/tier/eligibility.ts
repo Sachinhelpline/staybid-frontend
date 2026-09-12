@@ -7,27 +7,23 @@
 // other helper in lib/ — no service-role key, no Railway dependency.
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { resolveUserIds } from "@/lib/sb-server";
+import { readVerifiedStayEvidenceForCustomers } from "@/lib/stay/verified-stay-evidence";
 
 const READ_HEADERS = {
   apikey: SB_KEY,
   Authorization: `Bearer ${SB_KEY}`,
 };
 
-// v160 — a booking qualifies for the Verified Guest upload path from CHECK-IN
-// onwards, NOT just after checkout. Guests routinely post content during the
-// stay, so gating on a partner-marked CHECKOUT would block them until the
-// hotel remembers to mark it. The date-based rule below doesn't depend on any
-// partner action:
-//   status not cancelled  (bookings: CONFIRMED|CHECKED_IN|CHECKED_OUT;
-//                          bids:     ACCEPTED|CHECKED_IN|CHECKED_OUT)
-//   AND checkIn  <= NOW()                        (the stay has started)
-//   AND checkOut >= NOW() - INTERVAL '90 days'   (ongoing stays pass — checkOut
-//                                                 is in the future; old stays
-//                                                 fall out after 90 days)
-const ELIGIBILITY_WINDOW_DAYS = 90;
-
-const BOOKING_OK_STATUSES = ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"];
-const BID_OK_STATUSES = ["ACCEPTED", "CHECKED_IN", "CHECKED_OUT"];
+// SEC-00B FINAL TRUST BOUNDARY: the mutable public tables `bids`, `bookings`,
+// and `checkin_checkout_logs` have permissive RLS (anon + authenticated full
+// CRUD) — a client can forge any CHECKED_IN/CHECKED_OUT status or row in them —
+// and the legacy partner check-in route was decode-only. So NONE of those rows
+// are trustworthy as Verified-Guest AUTO_APPROVE authority. The ONLY authority
+// is the protected `verified_stay_evidence` table (service-role, forge-proof),
+// written by the hardened, cryptographically-verified partner check-in. This
+// helper reads ONLY that evidence (already recency-windowed to 90 days) and
+// fails closed ([]) when it is unconfigured / the migration is not yet applied.
+// Payment markers remain fail-closed (never authority).
 
 export type EligibleBooking = {
   // Unified shape across `bookings` table + `bids` (ACCEPTED → CHECKED_OUT)
@@ -81,113 +77,37 @@ export async function listEligibleBookings(
     safeEmail
   );
   if (!userIds.length) return [];
-  const inList = userIds.map(encodeURIComponent).join(",");
 
-  const since = new Date(
-    Date.now() - ELIGIBILITY_WINDOW_DAYS * 86_400_000
-  ).toISOString();
-  const now = new Date().toISOString();
+  // AUTHORITY: read ONLY the protected verified_stay_evidence (service-role,
+  // forge-proof; already windowed to 90 days). Fails closed ([]) when
+  // unconfigured / migration not applied. The mutable public bids / bookings /
+  // checkin_checkout_logs rows are NEVER consulted here.
+  const evidence = await readVerifiedStayEvidenceForCustomers(userIds);
+  if (!evidence.length) return [];
 
-  // Both tables in parallel. checkIn <= now keeps it to stays that have
-  // already started; checkOut >= since keeps it within the 90-day window
-  // while still allowing ongoing stays (future checkOut passes gte.since).
-  const [bookingsRes, bidsRes] = await Promise.all([
-    fetch(
-      `${SB_URL}/rest/v1/bookings?customerId=in.(${inList})` +
-        `&status=in.(${BOOKING_OK_STATUSES.join(",")})` +
-        `&checkIn=lte.${encodeURIComponent(now)}` +
-        `&checkOut=gte.${encodeURIComponent(since)}` +
-        `&select=id,hotelId,roomId,checkIn,checkOut,customerId,status` +
-        `&order=checkOut.desc&limit=100`,
-      { headers: READ_HEADERS, cache: "no-store" }
-    ),
-    fetch(
-      `${SB_URL}/rest/v1/bids?customerId=in.(${inList})` +
-        `&status=in.(${BID_OK_STATUSES.join(",")})` +
-        `&select=id,hotelId,roomId,customerId,requestId,status` +
-        `&order=createdAt.desc&limit=100`,
-      { headers: READ_HEADERS, cache: "no-store" }
-    ),
-  ]);
-
-  const bookingRows = (bookingsRes.ok
-    ? await bookingsRes.json().catch(() => [])
-    : []) as any[];
-  const bidRows = (bidsRes.ok ? await bidsRes.json().catch(() => []) : []) as any[];
-
-  // For these bids we join bid_requests to get checkIn/checkOut and apply the
-  // same date window at app-level (PostgREST can't filter on a related
-  // table's column from a top-level GET).
-  let bidEnriched: any[] = [];
-  if (bidRows.length) {
-    const reqIds = Array.from(
-      new Set(bidRows.map((b) => b.requestId).filter(Boolean))
-    );
-    let requestRows: any[] = [];
-    if (reqIds.length) {
-      const inReq = reqIds.map(encodeURIComponent).join(",");
-      const r = await fetch(
-        `${SB_URL}/rest/v1/bid_requests?id=in.(${inReq})` +
-          `&select=id,checkIn,checkOut`,
-        { headers: READ_HEADERS, cache: "no-store" }
-      );
-      requestRows = r.ok ? (await r.json().catch(() => [])) : [];
-    }
-    const reqById = new Map(requestRows.map((r: any) => [r.id, r]));
-    const sinceMs = Date.now() - ELIGIBILITY_WINDOW_DAYS * 86_400_000;
-    const nowMs = Date.now();
-    bidEnriched = bidRows
-      .map((b) => {
-        const r = b.requestId ? reqById.get(b.requestId) : null;
-        if (!r?.checkIn || !r?.checkOut) return null;
-        const checkInMs = Date.parse(r.checkIn);
-        const checkOutMs = Date.parse(r.checkOut);
-        if (!Number.isFinite(checkInMs) || !Number.isFinite(checkOutMs)) {
-          return null;
-        }
-        // Stay must have started, and must not be older than the 90-day
-        // window. Ongoing stays (future checkOut) are allowed.
-        if (checkInMs > nowMs) return null;
-        if (checkOutMs < sinceMs) return null;
-        return {
-          id: b.id,
-          hotelId: b.hotelId,
-          roomId: b.roomId,
-          checkIn: r.checkIn,
-          checkOut: r.checkOut,
-          source: "bid" as const,
-          status: b.status,
-        };
-      })
-      .filter(Boolean) as any[];
-  }
-
-  const bookingEnriched: EligibleBooking[] = bookingRows.map((b: any) => ({
-    id: b.id,
-    hotelId: b.hotelId,
-    roomId: b.roomId,
-    checkIn: b.checkIn,
-    checkOut: b.checkOut,
-    source: "booking" as const,
-    status: b.status,
-  }));
-
-  // Dedup on (hotelId, roomId, checkIn) — direct booking wins over bid projection.
+  // Map evidence → the unified EligibleBooking shape. `source_id` is the
+  // underlying bid/booking id the client references; the partner-recorded
+  // check-in/out timestamps are trustworthy (set by the authenticated partner).
   const seen = new Set<string>();
   const merged: EligibleBooking[] = [];
-  for (const row of [...bookingEnriched, ...bidEnriched]) {
-    const k = `${row.hotelId}|${row.roomId || ""}|${row.checkIn || ""}`;
+  for (const e of evidence) {
+    const id = String(e.source_id || "");
+    const hotelId = String(e.hotel_id || "");
+    if (!id || !hotelId) continue;
+    const k = `${hotelId}|${id}`;
     if (seen.has(k)) continue;
     seen.add(k);
-    merged.push(row);
+    merged.push({
+      id,
+      hotelId,
+      roomId: null,
+      checkIn: e.check_in_at || null,
+      checkOut: e.check_out_at || e.check_in_at || null,
+      source: e.source_type === "booking" ? "booking" : "bid",
+      status: e.proof_state,
+    });
   }
-
-  // Sort by checkOut desc (most recent first)
-  merged.sort((a, b) => {
-    const av = a.checkOut ? Date.parse(a.checkOut) : 0;
-    const bv = b.checkOut ? Date.parse(b.checkOut) : 0;
-    return bv - av;
-  });
+  if (!merged.length) return [];
 
   // Side-load hotel name + city for display
   const hotelIds = Array.from(new Set(merged.map((m) => m.hotelId).filter(Boolean)));

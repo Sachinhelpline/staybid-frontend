@@ -3102,6 +3102,36 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // the Composer opens directly, skipping the CreateSheet chooser. We
   // pass open + kind down via the new controlled props on <CreateFlow>.
   const [pickedComposerOpen, setPickedComposerOpen] = useState(false);
+  // When the FAB gate routes a Verified-Guest-eligible traveller who has MORE
+  // THAN ONE eligible stay to the picker, open UpgradeChoiceSheet directly on
+  // its booking-list step (skip the choice step) so it is literally "one picker".
+  const [upgradeStartPicker, setUpgradeStartPicker] = useState(false);
+
+  // ── Direct "Share this stay" deep-link ──────────────────────────────────
+  // A booking-card / banner "Share now" fires `sb:share-stay` (via the discover
+  // page reading ?share=1&bookingId&hotelId). We bind that stay straight into
+  // the Composer's Verified-Guest context and open it — NO reel feed to scroll,
+  // NO picker to re-pick. Client context is NOT authority: the upload route
+  // (/api/social/posts/verified-guest) independently re-verifies the strict
+  // media identity, exact booking ownership, the canonical confirmed-stay rule,
+  // and the hotel binding, so a forged deep-link is rejected there.
+  useEffect(() => {
+    const onShare = (e: Event) => {
+      const detail = ((e as CustomEvent).detail || {}) as {
+        hotelId?: string;
+        bookingId?: string;
+      };
+      const hotelId = String(detail.hotelId || "");
+      const bookingId = String(detail.bookingId || "");
+      if (!hotelId || !bookingId) return;
+      setUpgradeOpen(false);
+      setTierContext({ kind: "verified_guest", hotelId, bookingId });
+      setPickedComposerOpen(true);
+    };
+    window.addEventListener("sb:share-stay", onShare as EventListener);
+    return () =>
+      window.removeEventListener("sb:share-stay", onShare as EventListener);
+  }, []);
 
   // ── Saved-set hydration ─────────────────────────────────────────────
   // Fetch the user's existing saves once on mount so the bookmark icon on
@@ -4802,15 +4832,45 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
               snap = (await api.getMyTier()) as MyTierResponse;
               setTierSnapshot(snap);
             }
-            // If user can upload (non-PUBLIC OR PUBLIC with eligible
-            // bookings/location verification), let CreateFlow open the
-            // default CreateSheet as today. tierContext stays undefined
-            // → /api/social/posts route used as before.
+            // SEC-00B — a PUBLIC traveller whose ONLY upload right is a
+            // confirmed StayBid stay (reason "verified_guest_eligible") must
+            // post through the SECURE, booking-proof Verified-Guest route, not
+            // the generic composer. Bind the stay:
+            //   • exactly 1 eligible → auto-bind → composer opens directly.
+            //   • more than 1        → ONE picker (booking-list step).
+            //   • 0 (race/desync)    → the picker's honest terminal empty-state.
+            // The server re-verifies ownership + confirmed-stay + hotel binding.
+            if (snap?.canUpload && snap.reason === "verified_guest_eligible") {
+              let rows: any[] = [];
+              try {
+                const r: any = await api.getEligibleBookings();
+                rows = Array.isArray(r?.bookings) ? r.bookings : [];
+              } catch {
+                rows = [];
+              }
+              if (rows.length === 1 && rows[0]?.hotelId && rows[0]?.id) {
+                setTierContext({
+                  kind: "verified_guest",
+                  hotelId: rows[0].hotelId,
+                  bookingId: rows[0].id,
+                });
+                setPickedComposerOpen(true);
+                return false;
+              }
+              setUpgradeStartPicker(true);
+              setUpgradeOpen(true);
+              return false;
+            }
+            // Non-PUBLIC (creator / hotel / admin) or community-eligible → let
+            // CreateFlow open the default CreateSheet as today. tierContext
+            // stays undefined → /api/social/posts route used as before.
             if (snap?.canUpload) {
               setTierContext(undefined);
               return; // void → default-open behavior
             }
-            // Otherwise, intercept: show UpgradeChoiceSheet.
+            // No eligibility → the upgrade sheet. Its 0-state is a terminal,
+            // no-loop "View my bookings / Book a stay" — NOT a re-pick loop.
+            setUpgradeStartPicker(false);
             setUpgradeOpen(true);
             return false;
           } catch {
@@ -4870,7 +4930,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       <UpgradeChoiceSheet
         open={upgradeOpen}
         tier={tierSnapshot}
-        onClose={() => setUpgradeOpen(false)}
+        startAtBookingPicker={upgradeStartPicker}
+        onClose={() => {
+          setUpgradeOpen(false);
+          setUpgradeStartPicker(false);
+        }}
         onPickedContext={(ctx: TierContext) => {
           // Translate the picker output into the Composer's tier-context
           // shape (both shapes happen to be identical right now, but the

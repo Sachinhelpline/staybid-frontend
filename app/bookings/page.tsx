@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { CountUp } from "@/components/CountUp";
 import { resolvePaidAmount, fetchServerPaid } from "@/lib/paid-amount";
+import { resolveShareState, resolveBannerShareState } from "@/lib/stay/share-eligibility";
 import {
   readHoldState, removeHoldState, formatHoldCountdown, isHoldExpired,
   hydrateHoldsFromServer,
@@ -368,7 +369,28 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
 
 function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const shareRouter = useRouter();
   const st = STATUS_META[b.status] || { color: "#7790a8", soft: "rgba(154,139,111,0.16)", label: b.status };
+
+  // SEC-00B truthful Share: eligible now → open the composer directly with this
+  // stay preselected (no reel feed, no re-pick); confirmed-but-future → "Share
+  // from check-in"; otherwise no Share CTA. The upload route re-verifies
+  // ownership + confirmed-stay server-side, so this is only display + routing.
+  const share = resolveShareState(b);
+  const shareFmtDate = (iso?: string | null) =>
+    iso
+      ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      : "";
+  const openShare = () => {
+    if (share.state !== "eligible") return;
+    const params = new URLSearchParams({
+      share: "1",
+      bookingId: share.bookingId,
+      hotelId: share.hotelId,
+    });
+    if (share.hotelName) params.set("hotelName", share.hotelName);
+    shareRouter.push(`/discover?${params.toString()}`);
+  };
 
   const bookingId = b.id?.slice(0, 8).toUpperCase() || "STAYBID1";
 
@@ -524,6 +546,29 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
             <span className="text-white font-bold text-lg">{nights}N</span>
           </div>
         </div>
+
+        {/* SEC-00B — Share this stay. Eligible now → straight to the composer
+            with THIS stay preselected (no reel feed, no re-pick). Confirmed but
+            not yet started → honest "Share from check-in". Nothing when the
+            stay isn't a shareable confirmed stay. */}
+        {share.state === "eligible" && (
+          <button
+            type="button"
+            onClick={openShare}
+            className="w-full mb-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition"
+            style={{ background: "rgba(106,133,160,0.14)", border: "1px solid rgba(106,133,160,0.36)", color: "#5f7c98" }}
+          >
+            <Star size={14} strokeWidth={2.4} aria-hidden /> Share this stay · earn StayPoints →
+          </button>
+        )}
+        {share.state === "future" && (
+          <div
+            className="w-full mb-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[0.8rem]"
+            style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}
+          >
+            <Star size={13} strokeWidth={2.2} aria-hidden /> Share from check-in · Available {shareFmtDate(share.availableFrom)}
+          </div>
+        )}
 
         {/* Phase 7: trip chat — only on confirmed bookings (status ACCEPTED/
             CONFIRMED/CHECKED_IN/CHECKED_OUT). Anti-bypass sanitizer applied
@@ -845,13 +890,16 @@ export default function BookingsPage() {
           )}
         </div>
 
-        {/* Phase 4 tier-system — Inspiration banner. */}
+        {/* Phase 4 tier-system — Inspiration banner (SEC-00B truthful CTA:
+            "Share now" only when a stay is actually shareable now; "Share from
+            check-in" for a confirmed-but-future stay; nothing otherwise). */}
         {bookings.length > 0 && (
           <InspirationBanner
             variant="card"
             bookingId={bookings[0]?.id}
             hotelId={bookings[0]?.hotelId}
             hotelName={bookings[0]?.hotel?.name}
+            shareState={resolveBannerShareState(bookings)}
           />
         )}
 

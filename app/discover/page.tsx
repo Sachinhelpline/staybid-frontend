@@ -62,13 +62,38 @@ export default function DiscoverPage() {
     const q = new URLSearchParams(window.location.search);
     const s = q.get("start");
     if (s) setStartId(s);
+    const timers: ReturnType<typeof setTimeout>[] = [];
     // The composer's own tier gate lives inside CreateFlow; this is the same
     // window event its desktop dead-space button already fires, so the gate
     // still runs. Deferred a tick so CreateFlow has mounted its listener.
     if (q.get("create") === "1") {
-      const t = setTimeout(() => window.dispatchEvent(new Event("sb:open-create")), 900);
-      return () => clearTimeout(t);
+      timers.push(
+        setTimeout(() => window.dispatchEvent(new Event("sb:open-create")), 900)
+      );
     }
+    // Direct "Share this stay" deep-link from My Bookings — bind the confirmed
+    // stay straight into the Verified-Guest composer (NO reel feed to scroll,
+    // NO picker to re-pick). These params are a hint, never authority: the
+    // upload route re-verifies the strict media identity, exact booking
+    // ownership, the canonical confirmed-stay rule, and the hotel binding.
+    if (q.get("share") === "1") {
+      const bookingId = q.get("bookingId") || "";
+      const hotelId = q.get("hotelId") || "";
+      if (bookingId && hotelId) {
+        timers.push(
+          setTimeout(
+            () =>
+              window.dispatchEvent(
+                new CustomEvent("sb:share-stay", {
+                  detail: { bookingId, hotelId },
+                })
+              ),
+            900
+          )
+        );
+      }
+    }
+    if (timers.length) return () => timers.forEach(clearTimeout);
   }, []);
 
   // Decode the current user's id once — used to flag posts as `_isSelf`

@@ -23,14 +23,16 @@ export default function PartnerLogin() {
       const { firebaseAuth } = await import("@/lib/firebase");
       const provider = new fb.GoogleAuthProvider();
       const result = await fb.signInWithPopup(firebaseAuth, provider);
-      const email = result.user?.email || "";
-      const name  = result.user?.displayName || "";
-      if (!email) throw new Error("Google did not return an email. Try again.");
+      // SEC-00B: send the Firebase idToken so the server verifies the Google
+      // credential server-side (canonical Railway exchange). The claimed
+      // email/name is never trusted, and no unsigned stub is ever minted.
+      const idToken = await result.user?.getIdToken();
+      if (!idToken) throw new Error("Google sign-in did not return a credential. Try again.");
 
       const res = await fetch("/api/partner/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name }),
+        body: JSON.stringify({ idToken }),
       });
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "Login failed");

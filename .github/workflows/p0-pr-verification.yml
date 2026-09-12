@@ -55,6 +55,9 @@ jobs:
       - name: Run SEC-00B final writer cutover source suite
         run: node tests/security/sec00b-writer-cutover.test.js
 
+      - name: Run SEC-00B protected-authority suites (evidence + partner-hotel scope)
+        run: npm run test:sec00b
+
       - name: Run Voice AI foundation suite (SB-01)
         run: node tests/voice/voice-ai.test.js
 
