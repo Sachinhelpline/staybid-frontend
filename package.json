@@ -12,6 +12,7 @@
     "test:security": "node tests/security/security.test.js",
     "test:sec00b": "node tests/social/verified-stay-evidence-authority.test.js && node tests/social/verified-partner-hotel-scope-authority.test.js && node tests/social/partner-checkin-lifecycle-authority.test.js && node tests/social/verified-guest-authority.test.js && node tests/social/verified-guest-picker.test.js && node tests/social/confirmed-stay-authority.test.js && node tests/social/media-customer-authority.test.js && node tests/social/backend-session-upgrade.test.js && node tests/social/verified-guest-create-ux.test.js",
     "test:concurrency": "node tests/concurrency/classic-reservation.pg.test.js && node tests/concurrency/verified-stay-evidence-rls.pg.test.js && node tests/concurrency/verified-partner-hotel-scope-rls.pg.test.js",
+    "test:pricing": "node tests/pricing/price-consistency.test.js && node tests/price-spine-occupancy.test.js && node tests/pricing-engine-schema-contract.test.js",
     "test:voice": "node tests/voice/voice-ai.test.js && node tests/voice/voice-ux.test.js",
     "test:voice:provider": "node tests/voice/voice-provider.test.js",
     "test:voice:broker": "node tests/voice/voice-session-broker.test.js",
