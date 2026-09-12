@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { calculateDynamicPrice } from "@/lib/ai-pricing";
+import { calculateDynamicPrice, demandTierFromScore } from "@/lib/ai-pricing";
+import { roomScopeKey, readScopedDayPrices, isValidSpineBatch } from "@/lib/pricing/calendar-scope";
 
 type Mode = "checkIn" | "checkOut";
 
@@ -21,7 +22,11 @@ interface Props {
   mode: Mode;
   checkIn: string;
   checkOut: string;
-  rooms: Array<{ floorPrice?: number | null }>;
+  /** v750 — rooms carry their `id` so the hotel-mode calendar can read the
+   *  canonical pricing-spine livePrice per room (same authority as the room
+   *  cards), instead of computing a separate per-day price. `floorPrice` is
+   *  still used as the demand-mode anchor / legacy fallback shape. */
+  rooms: Array<{ id?: string; floorPrice?: number | null }>;
   city: string;
   /** If set, check-in cannot be changed below this ISO date (e.g. "today" for flash deals). */
   minCheckIn?: string;
@@ -56,12 +61,10 @@ function isSameDay(a: Date, b: Date) {
 function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function addMonths(d: Date, n: number) { return new Date(d.getFullYear(), d.getMonth() + n, 1); }
 
-// 3-tier demand color: green / orange / red
-function demandTier(score: number): "green" | "orange" | "red" {
-  if (score >= 72) return "red";       // Very High + Surge
-  if (score >= 52) return "orange";    // High
-  return "green";                       // Low + Moderate
-}
+// v750 (PRICE-CONSISTENCY-01) — the 3-tier demand colour now comes from the ONE
+// shared `demandTierFromScore` mapping in lib/ai-pricing (byte-identical to the
+// former inline red≥72 / orange≥52 / green thresholds), so the calendar dots and
+// the hotel room-card demand badges can never disagree about a demand score.
 
 function formatPrice(n: number) {
   if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
@@ -113,7 +116,7 @@ export default function LuxuryCalendar({
     };
   }, [open, mode, checkIn, checkOut, inline]);
 
-  // Cheapest room floor price as anchor
+  // Cheapest room floor price as anchor (demand-mode synthetic anchor / legacy).
   const floorAnchor = useMemo(() => {
     const prices = (rooms || [])
       .map(r => Number(r?.floorPrice) || 0)
@@ -121,6 +124,28 @@ export default function LuxuryCalendar({
     if (!prices.length) return 0;
     return Math.min(...prices);
   }, [rooms]);
+
+  // v750 (PRICE-CONSISTENCY-01) — the room ids that drive hotel-mode pricing.
+  // When present (only on the hotel-detail page today), the calendar reads the
+  // canonical pricing-spine livePrice per day rather than computing its own.
+  // De-duped + SORTED so the ORDER of the supplied rooms never changes identity.
+  const roomIds = useMemo(
+    () => Array.from(new Set((rooms || []).map(r => (r?.id ? String(r.id) : "")).filter(Boolean))).sort(),
+    [rooms],
+  );
+  // The exact room-SCOPE fingerprint the calendar's canonical prices are bound
+  // to. The SAME <LuxuryCalendar> instance is reused for different room scopes
+  // (all hotel rooms vs a single flash room), so the price data MUST be keyed by
+  // this scope — a price resolved for room-set A can never render for room-set B.
+  const scopeKey = useMemo(() => roomScopeKey(roomIds), [roomIds]);
+  // Canonical per-day price/tier resolved from the spine (hotel mode only), keyed
+  // by ROOM-SCOPE fingerprint → ISO date. Reading is scoped to the CURRENT
+  // scopeKey, so scope A's prices can NEVER surface under scope B, not even for
+  // one render while B's request is still pending.
+  const [spineByScope, setSpineByScope] = useState<Record<string, Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }>>>({});
+  // Month+scope fingerprints already fetched SUCCESSFULLY, so month navigation
+  // never re-storms and a failed request stays retryable.
+  const fetchedMonthsRef = useRef<Set<string>>(new Set());
 
   const todayIso = useMemo(() => toIso(new Date()), []);
   const todayDate = useMemo(() => { const t = new Date(); t.setHours(0,0,0,0); return t; }, []);
@@ -137,26 +162,102 @@ export default function LuxuryCalendar({
     return cells;
   }, [cursor]);
 
-  // Precompute prices/tiers for the month (deterministic — calculateDynamicPrice is hour-stable)
-  // For "demand" mode we still compute the tier (so color dots render) but never expose price.
-  // For "none" mode we skip the computation entirely.
+  // v750 (PRICE-CONSISTENCY-01) — HOTEL MODE: fetch the canonical pricing-spine
+  // livePrice for the whole visible month in ONE batched request (no per-day
+  // request storm). The price shown on a day cell is the LOWEST valid room
+  // livePrice for that date ("starting from"), and the demand tier is derived
+  // from that same room's canonical spine demandScore — the exact authority the
+  // room cards read. If the spine can't resolve a date, that cell stays neutral
+  // (no fabricated price, and NEVER a second pricing formula).
+  useEffect(() => {
+    if (pricingMode !== "hotel") return;
+    if (!roomIds.length) return;
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const dates: string[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(y, m, d);
+      if (dt < todayDate) continue;
+      dates.push(toIso(dt));
+    }
+    if (!dates.length) return;
+    // Scope-aware month key: switching room scopes (all rooms ↔ single flash
+    // room) refetches per scope and never reuses another scope's cache.
+    const monthKey = `${y}-${m}|${scopeKey}`;
+    if (fetchedMonthsRef.current.has(monthKey)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/pricing/spine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomIds, dates }),
+        }).then((r) => r.json());
+        if (cancelled) return;
+        // Only trust a response that actually carries the batched pricesByDate
+        // contract. A failed / garbled body (the route's error path returns
+        // { prices, error } WITHOUT pricesByDate) is NOT marked fetched → stays
+        // retryable, and never poisons this scope's map.
+        if (!isValidSpineBatch(res)) return;
+        const byDate: Record<string, Record<string, any>> = res.pricesByDate;
+        const patch: Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }> = {};
+        for (const iso of dates) {
+          const forDate = byDate[iso];
+          if (!forDate) continue;
+          let minLive = 0;
+          let scoreAtMin = 0;
+          for (const rid of roomIds) {
+            const p = forDate[rid];
+            const lp = Number(p?.livePrice) || 0;
+            if (lp > 0 && (minLive === 0 || lp < minLive)) {
+              minLive = lp;
+              scoreAtMin = Number(p?.demandScore) || 0;
+            }
+          }
+          if (minLive > 0) {
+            patch[iso] = { price: minLive, tier: demandTierFromScore(scoreAtMin), score: scoreAtMin };
+          }
+        }
+        // Valid response → mark this month+scope fetched (even an empty window,
+        // so it never re-storms) and merge the patch UNDER this scope's key only.
+        fetchedMonthsRef.current.add(monthKey);
+        setSpineByScope((prev) => ({
+          ...prev,
+          [scopeKey]: { ...(prev[scopeKey] || {}), ...patch },
+        }));
+      } catch {
+        /* spine unreachable — hotel-mode cells stay neutral (never a 2nd authority) */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pricingMode, roomIds, scopeKey, cursor, todayDate]);
+
+  // Precompute prices/tiers for the month.
+  //   HOTEL  mode → the canonical spine map (fetched above). No local formula.
+  //   DEMAND mode → the local demand tier only (deterministic, hour-stable);
+  //                 no specific hotel is selected so there is no spine to read.
+  //   NONE   mode → nothing.
   const priceMap = useMemo(() => {
+    // HOTEL mode reads ONLY the current room-scope's canonical map. On a scope
+    // change scopeKey changes in this same render, so the previous scope's
+    // prices can never surface (no reliance on a state-clearing effect).
+    if (pricingMode === "hotel") return readScopedDayPrices(spineByScope, scopeKey);
     const out: Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }> = {};
     if (pricingMode === "none") return out;
-    // Demand mode falls back to a synthetic anchor (1000) since we never render the price anyway.
-    const anchor = floorAnchor || (pricingMode === "demand" ? 1000 : 0);
-    if (!anchor) return out;
+    // Demand mode uses a synthetic anchor (1000) since the price is never rendered.
+    const anchor = floorAnchor || 1000;
     for (const d of monthCells) {
       if (!d) continue;
       if (d < todayDate) continue;
       const iso = toIso(d);
       try {
         const res = calculateDynamicPrice(anchor, iso, city || "Mussoorie");
-        out[iso] = { price: res.price, tier: demandTier(res.demandScore), score: res.demandScore };
+        out[iso] = { price: res.price, tier: demandTierFromScore(res.demandScore), score: res.demandScore };
       } catch {}
     }
     return out;
-  }, [monthCells, floorAnchor, city, todayDate, pricingMode]);
+  }, [monthCells, floorAnchor, city, todayDate, pricingMode, spineByScope, scopeKey]);
 
   // Range helpers (using draft + hover preview)
   const inDate  = fromIso(draftIn);
@@ -377,7 +478,10 @@ export default function LuxuryCalendar({
                     {pData.tier === "green" ? "Low" : pData.tier === "orange" ? "Med" : "High"}
                   </span>
                 )}
-                {!past && !pData && floorAnchor === 0 && pricingMode === "hotel" && (
+                {/* v750 — hotel mode: when the canonical spine price is
+                    unresolved for a date (outage / not yet loaded), show a
+                    neutral dot instead of a fabricated price. */}
+                {!past && !pData && pricingMode === "hotel" && (
                   <span className="lux-cal-daydot" />
                 )}
                 {/* v243.1 — the today cell is marked by the champagne ring
