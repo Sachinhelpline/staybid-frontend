@@ -42,6 +42,10 @@ fs.copyFileSync(path.join(REPO, "lib/admin/admin-rls-service-role.ts"), path.joi
 // handlers can be executed (deps mocked via Module._resolveFilename below).
 fs.mkdirSync(path.join(SRC, "app", "api", "admin", "rls"), { recursive: true });
 fs.copyFileSync(path.join(REPO, "app/api/admin/rls/route.ts"), path.join(SRC, "app/api/admin/rls/route.ts"));
+// CP-01-PRE-RA-01: compile the service-role acceptance probe helper + its route.
+fs.copyFileSync(path.join(REPO, "lib/admin/service-role-acceptance.ts"), path.join(SRC, "lib/admin/service-role-acceptance.ts"));
+fs.mkdirSync(path.join(SRC, "app", "api", "admin", "rls", "service-role-acceptance"), { recursive: true });
+fs.copyFileSync(path.join(REPO, "app/api/admin/rls/service-role-acceptance/route.ts"), path.join(SRC, "app/api/admin/rls/service-role-acceptance/route.ts"));
 fs.copyFileSync(path.join(REPO, "lib/auth/customer-verify.ts"), path.join(SRC, "lib/auth/customer-verify.ts"));
 fs.copyFileSync(path.join(REPO, "lib/cron/auth.ts"), path.join(SRC, "lib/cron/auth.ts"));
 fs.copyFileSync(path.join(REPO, "lib/razorpay-server.ts"), path.join(SRC, "lib/razorpay-server.ts"));
@@ -66,12 +70,14 @@ const adminClientFetchJs = path.join(OUT, "lib/admin/client-fetch.js");
 const storeJs = path.join(OUT, "lib/admin/supabase-admin-store.js");
 const adminRlsSrJs = path.join(OUT, "lib/admin/admin-rls-service-role.js");
 const rlsRouteJs = path.join(OUT, "app/api/admin/rls/route.js");
+const raHelperJs = path.join(OUT, "lib/admin/service-role-acceptance.js");
+const raRouteJs = path.join(OUT, "app/api/admin/rls/service-role-acceptance/route.js");
 const custJs = path.join(OUT, "lib/auth/customer-verify.js");
 const cronJs = path.join(OUT, "lib/cron/auth.js");
 const rzpCfgJs = path.join(OUT, "lib/razorpay-server.js");
 const rzpClientJs = path.join(OUT, "lib/razorpay.js");
 const authReturnJs = path.join(OUT, "lib/auth-return.js");
-if (!fs.existsSync(adminJs) || !fs.existsSync(adminClientFetchJs) || !fs.existsSync(storeJs) || !fs.existsSync(adminRlsSrJs) || !fs.existsSync(rlsRouteJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
+if (!fs.existsSync(adminJs) || !fs.existsSync(adminClientFetchJs) || !fs.existsSync(storeJs) || !fs.existsSync(adminRlsSrJs) || !fs.existsSync(rlsRouteJs) || !fs.existsSync(raHelperJs) || !fs.existsSync(raRouteJs) || !fs.existsSync(custJs) || !fs.existsSync(cronJs) || !fs.existsSync(rzpCfgJs) || !fs.existsSync(rzpClientJs) || !fs.existsSync(authReturnJs)) {
   console.error("COMPILE FAILED — helper JS not emitted");
   process.exit(2);
 }
@@ -129,6 +135,7 @@ Module._resolveFilename = function (request, ...rest) {
   if (request === "@/lib/admin/verify") return VERIFYSTUB;
   if (request === "@/lib/admin/audit") return AUDITSTUB;
   if (request === "@/lib/admin/admin-rls-service-role") return adminRlsSrJs;
+  if (request === "@/lib/admin/service-role-acceptance") return raHelperJs;
   return origResolve.call(this, request, ...rest);
 };
 
@@ -137,6 +144,8 @@ const adminClientFetch = require(adminClientFetchJs);
 const adminStoreMod = require(storeJs);
 const adminRlsSr = require(adminRlsSrJs);
 const rlsRoute = require(rlsRouteJs); // actual GET/POST handlers (deps mocked above)
+const raHelper = require(raHelperJs); // service-role acceptance probe helper
+const raRoute = require(raRouteJs); // actual probe POST handler (deps mocked above)
 const custV = require(custJs);
 const cronV = require(cronJs);
 const rzpCfg = require(rzpCfgJs);
@@ -1237,6 +1246,182 @@ function reqWith(headers) {
     global.fetch = savedFetch;
     if (savedAdmin === undefined) delete global.__CP01_ADMIN__; else global.__CP01_ADMIN__ = savedAdmin;
     if (savedSR === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = savedSR;
+  }
+
+  // ===== CP-01-PRE-RA-01 — Exact Service-Role Acceptance Probe =====
+  // Drives the ACTUAL probe route + helper with a controllable admin gate, the
+  // real fail-closed readServiceRoleKey(), and a mocked global.fetch. Proves:
+  // gate-before-probe ordering, zero probe on unauth/no-key, exactly one probe
+  // to ONLY the hard-coded probe RPC with the service-role Bearer (no anon
+  // fallback, no requester-auth forwarding, no retry), and the accepted /
+  // rejected / inconclusive mapping. Plus static checks on the route and
+  // helper source. (The backend migration source is validated inside the
+  // staybid-Live backend security runner — this frontend suite is portable and
+  // has NO cross-repository / backend-checkout dependency.)
+  {
+    const savedSR = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const savedFetch = global.fetch;
+    const savedAdmin = global.__CP01_ADMIN__;
+    const CONFIGURED = "SYNTH-SR-RA";
+    const PROBE_PATH = "/rest/v1/rpc/cp01_service_role_acceptance_probe";
+    const SIX = ["admin_list_rls", "admin_set_rls", "admin_add_permissive_policy", "admin_lockdown_table", "admin_apply_policy_template", "admin_drop_policy"];
+
+    const mkReq = (headers = {}) => ({ headers: { get: (k) => headers[k.toLowerCase()] ?? null }, json: async () => ({}) });
+    let calls = 0, seen = [];
+    const setFetch = (impl) => {
+      calls = 0; seen = [];
+      global.fetch = async (url, init) => {
+        calls++;
+        seen.push({
+          url: String(url),
+          auth: (init && init.headers && init.headers.Authorization) || "",
+          apikey: (init && init.headers && init.headers.apikey) || "",
+          hasSignal: !!(init && init.signal),
+        });
+        return impl(url, init);
+      };
+    };
+    const setAdmin = (a) => { global.__CP01_ADMIN__ = a; };
+    const setEnv = (v) => { if (v === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = v; };
+    const respond = (status, body) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+    const respondThrows = (status) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => { throw new Error("bad json"); } });
+    const rejectWith = (err) => async () => { throw err; };
+
+    // helper-direct: no credential → inconclusive with ZERO fetch.
+    setEnv(undefined); setFetch(respond(200, true));
+    const direct = await raHelper.probeServiceRoleAcceptance();
+    check("ra-helper: no service-role key → inconclusive with ZERO fetch", direct === "inconclusive" && calls === 0);
+
+    // (1) unauthenticated caller → zero probe, generic 401.
+    setEnv(CONFIGURED); setAdmin(null); setFetch(respond(200, true));
+    let r = await raRoute.POST(mkReq());
+    check("ra-route: unauthenticated → 401 + ZERO probe", r && r.status === 401 && calls === 0);
+    // (2) non-admin caller (gate returns null) → zero probe, 401.
+    setAdmin(null); setFetch(respond(200, true));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: non-admin → 401 + ZERO probe", r && r.status === 401 && calls === 0);
+
+    // admin present from here.
+    setAdmin({ id: "admin1", role: "super_admin" });
+
+    // (3)(4)(5) missing / empty / whitespace service-role key → generic 401, ZERO probe.
+    for (const [label, v] of [["missing", undefined], ["empty", ""], ["whitespace", "   "]]) {
+      setEnv(v); setFetch(respond(200, true));
+      r = await raRoute.POST(mkReq());
+      check(`ra-route: ${label} service-role key → 401 + ZERO probe`, r && r.status === 401 && calls === 0);
+    }
+
+    // (6)-(11) valid credential + boolean true → accepted, exactly ONE request to
+    // ONLY the probe endpoint, service-role Bearer, no requester-auth forward, no
+    // anon fallback, bounded-timeout signal.
+    setEnv(CONFIGURED); setFetch(respond(200, true));
+    r = await raRoute.POST(mkReq({ authorization: "Bearer REQUESTER-TOKEN-SHOULD-NOT-LEAK" }));
+    check("ra-route: valid + true → 200 accepted", r && r.status === 200 && r.body && r.body.status === "accepted");
+    check("ra-route: exactly ONE probe request", calls === 1);
+    check("ra-route: hits ONLY the probe endpoint", seen.length === 1 && seen[0].url.endsWith(PROBE_PATH));
+    check("ra-route: Authorization is the service-role Bearer", seen[0].auth === "Bearer " + CONFIGURED);
+    check("ra-route: requester Authorization NOT forwarded as probe identity", seen[0].auth.indexOf("REQUESTER-TOKEN-SHOULD-NOT-LEAK") === -1);
+    check("ra-route: public/anon key in apikey slot only (never Bearer)", seen[0].apikey === "SYNTH-ANON-STUB-KEY" && seen[0].auth.indexOf("SYNTH-ANON-STUB-KEY") === -1);
+    check("ra-route: bounded-timeout signal wired", seen[0].hasSignal === true);
+
+    // (12) boolean false → rejected 403.
+    setFetch(respond(200, false));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: false → 403 rejected", r && r.status === 403 && r.body.status === "rejected" && calls === 1);
+
+    // (13) clear upstream auth/permission rejection (401/403) → rejected 403, single request.
+    for (const code of [401, 403]) {
+      setFetch(respond(code, { message: "denied" }));
+      r = await raRoute.POST(mkReq());
+      check(`ra-route: upstream ${code} → 403 rejected (ONE request, no retry)`, r && r.status === 403 && r.body.status === "rejected" && calls === 1);
+    }
+
+    // (14) timeout / abort → inconclusive 503, single attempt.
+    setFetch(rejectWith(Object.assign(new Error("aborted"), { name: "AbortError" })));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: timeout/abort → 503 inconclusive (ONE attempt, no retry)", r && r.status === 503 && r.body.status === "inconclusive" && calls === 1);
+
+    // (15) 5xx → inconclusive.
+    setFetch(respond(500, {}));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: 5xx → 503 inconclusive", r && r.status === 503 && r.body.status === "inconclusive" && calls === 1);
+
+    // (16) 404 / schema-cache condition → inconclusive.
+    setFetch(respond(404, { message: "Could not find the function" }));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: 404/schema-cache → 503 inconclusive", r && r.status === 503 && r.body.status === "inconclusive" && calls === 1);
+
+    // (17) malformed body → inconclusive.
+    setFetch(respondThrows(200));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: malformed body → 503 inconclusive", r && r.status === 503 && r.body.status === "inconclusive" && calls === 1);
+
+    // unexpected 200 shape (non-boolean) → inconclusive.
+    setFetch(respond(200, { unexpected: true }));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: unexpected shape → 503 inconclusive", r && r.status === 503 && r.body.status === "inconclusive" && calls === 1);
+
+    // (18) network / transport failure → inconclusive.
+    setFetch(rejectWith(new TypeError("network down")));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: network/transport failure → 503 inconclusive", r && r.status === 503 && r.body.status === "inconclusive" && calls === 1);
+
+    // (19)(20) no retry / no alternate credential.
+    setFetch(respond(401, {}));
+    r = await raRoute.POST(mkReq());
+    check("ra-route: no retry (single request) on rejection", calls === 1);
+    check("ra-route: no alternate credential (the single request used only the service-role Bearer)", seen.length === 1 && seen[0].auth === "Bearer " + CONFIGURED);
+
+    // (21) no secret / header / upstream-body exposure.
+    setFetch(respond(200, { leak: "UPSTREAM-SECRET-BODY", token: CONFIGURED }));
+    r = await raRoute.POST(mkReq());
+    const bodyStr = JSON.stringify(r.body);
+    check("ra-route: response body carries only the normalized status", bodyStr === JSON.stringify({ status: "inconclusive" }));
+    check("ra-route: response never leaks upstream body / service-role / apikey",
+      bodyStr.indexOf("UPSTREAM-SECRET-BODY") === -1 && bodyStr.indexOf(CONFIGURED) === -1 && bodyStr.indexOf("SYNTH-ANON-STUB-KEY") === -1);
+
+    // (22) no six Admin-RLS RPC endpoint was ever hit.
+    setFetch(respond(200, true));
+    await raRoute.POST(mkReq());
+    check("ra-route: none of the six Admin-RLS RPC endpoints were hit", seen.every((s) => SIX.every((n) => !s.url.endsWith("/rpc/" + n))));
+
+    // restore harness globals/env.
+    global.fetch = savedFetch;
+    if (savedAdmin === undefined) delete global.__CP01_ADMIN__; else global.__CP01_ADMIN__ = savedAdmin;
+    if (savedSR === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = savedSR;
+
+    // ---- static: route + helper source ----
+    const raRouteSrc = fs.readFileSync(path.join(REPO, "app/api/admin/rls/service-role-acceptance/route.ts"), "utf8");
+    const raHelperSrc = fs.readFileSync(path.join(REPO, "lib/admin/service-role-acceptance.ts"), "utf8");
+    const gi = raRouteSrc.indexOf("requireVerifiedAdmin(req)");
+    const ki = raRouteSrc.indexOf("readServiceRoleKey()");
+    const pi = raRouteSrc.indexOf("probeServiceRoleAcceptance(");
+    check("ra-route(src): requireVerifiedAdmin precedes readServiceRoleKey precedes probe", gi > -1 && ki > -1 && pi > -1 && gi < ki && ki < pi);
+    check("ra-route(src): no GET handler", !/export async function GET/.test(raRouteSrc));
+    check("ra-route(src): does not read the request body", !/req\.json\(/.test(raRouteSrc) && !/req\.text\(/.test(raRouteSrc));
+    check("ra-route(src): sets Cache-Control no-store", /Cache-Control/.test(raRouteSrc) && /no-store/.test(raRouteSrc));
+    const raRouteCode = raRouteSrc.split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
+    check("ra-route(src): does NOT use the generic adminRlsRpc sender", !/adminRlsRpc/.test(raRouteCode));
+    for (const n of SIX) check(`ra-route(src): does not reference ${n}`, !raRouteCode.includes(n));
+
+    check("ra-helper(src): hard-codes cp01_service_role_acceptance_probe", raHelperSrc.includes('"cp01_service_role_acceptance_probe"'));
+    const raHelperCode = raHelperSrc.split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
+    check("ra-helper(src): does NOT use SB_H / SB_ADMIN_KEY / SB_H_ANON_ONLY (code)", !/\bSB_H\b/.test(raHelperCode) && !/\bSB_ADMIN_KEY\b/.test(raHelperCode) && !/\bSB_H_ANON_ONLY\b/.test(raHelperCode));
+    const raAuthLines = raHelperSrc.split("\n").filter((l) => /Authorization/.test(l) && !/^\s*\/\//.test(l));
+    check("ra-helper(src): Authorization built from serviceRoleKey only", raAuthLines.length >= 1 && raAuthLines.every((l) => /serviceRoleKey/.test(l)));
+    check("ra-helper(src): no anon/public key reaches Authorization", raAuthLines.every((l) => !/SB_KEY|SB_ADMIN_KEY|apiKey|apikey|anon/i.test(l)));
+    check("ra-helper(src): server-only guard present", /typeof window !== ["']undefined["']/.test(raHelperSrc));
+    check("ra-helper(src): reuses readServiceRoleKey from the CP-01 boundary", /readServiceRoleKey/.test(raHelperSrc) && /admin-rls-service-role/.test(raHelperSrc));
+    check("ra-helper(src): does not use the adminRlsRpc sender", !/adminRlsRpc/.test(raHelperCode));
+    check("ra-helper(src): bounded ~5s timeout via AbortController", /5000/.test(raHelperSrc) && /AbortController/.test(raHelperSrc));
+    check("ra-helper(src): never reads a NEXT_PUBLIC_ env var", !/NEXT_PUBLIC_/.test(raHelperSrc));
+
+    // NOTE: the backend migration source
+    // (apps/api/supabase/migrations/20260825001321_cp01_service_role_acceptance_probe.sql)
+    // is validated by the staybid-Live backend security runner
+    // (apps/api/tests/security/auth.test.js), resolved WITHIN that repository.
+    // This frontend suite deliberately performs NO backend/migration read so it
+    // stays portable (no sibling-repo / backend-checkout / DB dependency).
   }
 
   console.log(results.join("\n"));
