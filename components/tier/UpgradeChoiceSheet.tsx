@@ -85,6 +85,14 @@ function formatDate(iso: string | null): string {
   }
 }
 
+// VG-CREATE-UX-01 — a SHORT, friendly reference derived from the booking id so
+// two legitimate same-hotel stays are visually distinguishable in the picker.
+// DISPLAY ONLY: never authority, never widens/collapses eligibility. Just the
+// last 4 alphanumerics (NOT the full internal id).
+function shortRef(id: string): string {
+  return (id || "").replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase();
+}
+
 export default function UpgradeChoiceSheet({
   open,
   tier,
@@ -227,8 +235,8 @@ export default function UpgradeChoiceSheet({
                 marginBottom: 18,
               }}
             >
-              Posting reels &amp; photos is reserved for verified travellers.
-              Choose how to verify yourself below.
+              Posting photos, reels &amp; stories is reserved for verified
+              travellers. Choose how to verify yourself below.
             </p>
 
             {/* Card 1: Verified Guest — booking-based.
@@ -570,15 +578,31 @@ export default function UpgradeChoiceSheet({
                         </span>
                       )}
                     </div>
+                    {/* VG-CREATE-UX-01 — check-in → check-out so two legitimate
+                        stays at the SAME hotel are visually distinguishable. */}
                     <div
                       style={{
                         color: COZY.cocoaSoft,
                         fontSize: "0.78rem",
                       }}
                     >
+                      {formatDate(b.checkIn)} → {formatDate(b.checkOut)}
                       {b.checkOut && Date.parse(b.checkOut) >= Date.now()
-                        ? `Current stay · ends ${formatDate(b.checkOut)}`
-                        : `Checked out ${formatDate(b.checkOut)}`}
+                        ? " · current stay"
+                        : ""}
+                    </div>
+                    {/* Source (Bid stay / Booking stay) + a short friendly ref
+                        so same-hotel, same-date stays still read as distinct. */}
+                    <div
+                      style={{
+                        color: COZY.cocoaSoft,
+                        fontSize: "0.72rem",
+                        marginTop: 2,
+                        opacity: 0.9,
+                      }}
+                    >
+                      {b.source === "bid" ? "Bid stay" : "Booking stay"}
+                      {shortRef(b.id) ? ` · Ref …${shortRef(b.id)}` : ""}
                     </div>
                   </div>
                   <div
