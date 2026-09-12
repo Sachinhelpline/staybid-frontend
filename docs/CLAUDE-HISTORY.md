@@ -10,8 +10,8 @@
 ## Project Overview
 StayBid is a luxury hotel reverse-auction platform. Customers browse hotels, place price bids, and book flash deals. Hotels accept, counter, or reject bids in real time. Built with Next.js 14 App Router, TypeScript, Tailwind CSS (custom luxury theme), and deployed on Vercel.
 
-**Backend:** Railway (Node/Express/Prisma/PostgreSQL) at `https://staybid-live-production.up.railway.app`  
-**Frontend:** Vercel auto-deploys from `main` branch of `Sachinhelpline/staybid-frontend`  
+**Backend:** Railway (Node/Express/Prisma/PostgreSQL) at `https://staybid-live-production.up.railway.app`
+**Frontend:** Vercel auto-deploys from `main` branch of `Sachinhelpline/staybid-frontend`
 **Dev branch:** work directly on `main` — each commit auto-deploys to Vercel
 
 ---
@@ -88,7 +88,7 @@ All requests go through the `request()` helper which auto-attaches `sb_token` fr
 | `getMyBookings()` | GET /api/bookings/my | Confirmed bookings |
 | `getWallet()` | GET /api/wallet | Balance + transactions |
 
-**Flash deal bypass:** Send `dealId` in placeBid body to skip floor-price validation on backend.  
+**Flash deal bypass:** Send `dealId` in placeBid body to skip floor-price validation on backend.
 **Auto-accept:** After placeBid, call `POST /api/bids/:id/accept` to confirm instantly.
 
 ---
