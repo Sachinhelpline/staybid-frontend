@@ -1,28 +1,38 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // ─────────────────────────────────────────────────────────────────────────────
-// SEC-00B — PARTNER CHECK-IN lifecycle precondition (bid pre-state gate).
+// SEC-00B — PARTNER CHECK-IN + CHECK-OUT lifecycle precondition (bid pre-state
+// gate + protected-evidence transition authority).
 //   Run: node tests/social/partner-checkin-lifecycle-authority.test.js
 // ZERO live network / Railway / Supabase. Compiles the REAL
-// app/api/partner/checkin/[bidId]/route.ts together with its real deps
-// (verified-partner-authority(+factory) · verified-partner-hotel-scope ·
-// verified-stay-evidence · onboard/supabase-admin · sb-server) using the
-// lockfile tsc, then drives the real POST handler against a fake Supabase to
-// prove the NEW lifecycle precondition:
-//   • a NEW check-in mints trusted verified_stay_evidence ONLY from an ACCEPTED
-//     bid (the smallest correct pre-state — the live bids schema has no CONFIRMED
-//     and a paid bid stays ACCEPTED with FORGEABLE markers);
-//   • PENDING / COUNTER / REJECTED / EXPIRED / CANCELLED / DECLINED / unknown /
-//     null are rejected 409 with ZERO evidence write;
-//   • a forgeable payment marker (bids.message "Razorpay:") on a PENDING bid can
-//     NEVER bypass the pre-state gate;
-//   • an already-CHECKED_IN source is idempotent success ONLY when the matching
-//     protected evidence already records the checked_in proof (never a fresh
-//     mint / duplicate); a mismatched pre-existing evidence row is a 409 and is
-//     NEVER minted over; CHECKED_OUT is not a new check-in (409);
-//   • the pre-existing authority is preserved: forged/unsigned/wrong-secret/
-//     id-only token → 401; wrong-hotel partner → 403; service-role unavailable →
-//     fail-closed (403, zero write); missing bid → 404.
+// app/api/partner/checkin/[bidId]/route.ts AND app/api/partner/checkout/[bidId]/
+// route.ts together with their real deps (verified-partner-authority(+factory) ·
+// verified-partner-hotel-scope · verified-stay-evidence · onboard/supabase-admin ·
+// sb-server) using the lockfile tsc, then drives the real POST handlers against a
+// fake Supabase to prove the lifecycle preconditions:
+//   • CHECK-IN mints trusted checked_in evidence ONLY from an ACCEPTED bid with no
+//     pre-existing evidence (the smallest correct pre-state — the live bids schema
+//     has no CONFIRMED and a paid bid stays ACCEPTED with FORGEABLE markers);
+//     PENDING / COUNTER / REJECTED / EXPIRED / CANCELLED / DECLINED / unknown /
+//     null → 409, ZERO write.
+//   • CHECK-OUT mints trusted checked_out evidence ONLY when the bid is genuinely
+//     CHECKED_IN AND a bound checked_in protected row exists; every other pre-state
+//     (incl. a forged-marker PENDING, and a CHECKED_IN bid with no/mismatched
+//     evidence) → 409, ZERO write — CHECKED_OUT is a trusted state, so this closes
+//     the alternate-bypass hole.
+//   • forgeable payment markers (bids.message "Razorpay:" / bid_paid_amounts) can
+//     NEVER bypass either gate;
+//   • replay is idempotent with ZERO rewrite (checked_in for check-in, checked_out
+//     for checkout) ONLY on a fully-bound matching row; a row whose COMPLETE
+//     immutable binding (id + source_type + source_id + customer_id + hotel_id)
+//     mismatches is a 409 and is NEVER minted over; an existing checked_out row is
+//     never downgraded to checked_in;
+//   • the protected evidence read is TRI-STATE — a read FAILURE fails closed (503)
+//     and is NEVER conflated with "no evidence" (so the merge-upsert can never
+//     silently overwrite a real row);
+//   • the pre-existing authority is preserved on both routes: forged/unsigned/
+//     wrong-secret/id-only token → 401; wrong-hotel partner → 403; service-role
+//     unavailable → fail-closed (zero write); missing bid → 404.
 // Exit code set AFTER cleanup.
 // ─────────────────────────────────────────────────────────────────────────────
 const path = require("path"),
@@ -54,6 +64,7 @@ function section(n) {
 
 const FILES = {
   "checkin-route.ts": "app/api/partner/checkin/[bidId]/route.ts",
+  "checkout-route.ts": "app/api/partner/checkout/[bidId]/route.ts",
   "supabase-admin.ts": "lib/onboard/supabase-admin.ts",
   "verified-partner-authority.ts": "lib/auth/verified-partner-authority.ts",
   "verified-partner-authority-factory.ts": "lib/auth/verified-partner-authority-factory.ts",
@@ -135,7 +146,7 @@ async function main() {
     });
     if (compile.status !== 0)
       throw new Error("COMPILE GATE FAILED:\n" + (compile.stdout || "") + (compile.stderr || ""));
-    console.log("• Local tsc compile: exit 0, clean (strict) — checkin route + deps");
+    console.log("• Local tsc compile: exit 0, clean (strict) — checkin + checkout routes + deps");
 
     // Env MUST be set BEFORE requiring the route: it builds partnerAuthority at
     // module load (captures JWT_ACCESS_SECRET) and supabase-admin freezes its key.
@@ -152,6 +163,7 @@ async function main() {
     };
 
     const ROUTE = require(path.join(OUT, "checkin-route.js"));
+    const CHECKOUT = require(path.join(OUT, "checkout-route.js"));
     const EV = require(path.join(OUT, "verified-stay-evidence.js"));
     const jwt = require(path.join(REPO_NM, "jsonwebtoken"));
 
@@ -159,6 +171,7 @@ async function main() {
     let BIDS = {}; // bidId → row
     let EVIDENCE = {}; // evidence-id (vse_bid_<bidId>) → row
     let evidenceWrites = []; // authoritative POSTs to verified_stay_evidence
+    let EVIDENCE_READ_FAIL = false; // inject a protected-evidence GET failure
     const evId = (bidId) => `vse_bid_${bidId}`;
     const jsonRes = (data, status = 200) => ({
       ok: status < 400,
@@ -195,6 +208,9 @@ async function main() {
           evidenceWrites.push(body);
           return jsonRes([], 201);
         }
+        // Protected evidence GET. When injected, simulate an HTTP/read failure so
+        // the route's TRI-STATE reader must fail closed (never "not found").
+        if (EVIDENCE_READ_FAIL) return jsonRes({ message: "boom" }, 500);
         const m = u.match(/id=eq\.([^&]+)/);
         const id = m ? decodeURIComponent(m[1]) : "";
         const row = EVIDENCE[id];
@@ -221,6 +237,22 @@ async function main() {
       const res = await ROUTE.POST(mkReq(auth), { params: Promise.resolve({ bidId }) });
       return { status: res.status, body: res.body, writes: evidenceWrites.slice() };
     }
+    // Same, for the checkout route (proof_state='checked_out').
+    async function callCheckout(bidId, auth) {
+      evidenceWrites = [];
+      const res = await CHECKOUT.POST(mkReq(auth), { params: Promise.resolve({ bidId }) });
+      return { status: res.status, body: res.body, writes: evidenceWrites.slice() };
+    }
+    // Seed a bound checked_in protected evidence row for a bid (the state after a
+    // legitimate check-in) — the precondition a real checkout builds on.
+    const seedCheckedInEvidence = (bidId) => {
+      EVIDENCE[evId(bidId)] = {
+        id: evId(bidId), customer_id: CUSTOMER, hotel_id: HOTEL, source_type: "bid",
+        source_id: bidId, proof_state: "checked_in", verifier_type: "partner",
+        verifier_id: AUTHZ_SUBJECT, verified_at: "2026-09-12T00:00:00Z",
+        check_in_at: "2026-09-12T00:00:00Z", check_out_at: null,
+      };
+    };
     const seedBid = (bidId, status, extra = {}) => {
       BIDS[bidId] = { id: bidId, hotelId: HOTEL, customerId: CUSTOMER, status, ...extra };
     };
@@ -422,30 +454,231 @@ async function main() {
       eqv(r.writes.length, 0, "10.2 unknown bid → ZERO write");
     }
 
+    // ── 12 — CHECK-IN Finding B: full-binding validation + tri-state read ─────
+    section("12. check-in — complete-binding validation + fail-closed tri-state read");
+    // (a) ACCEPTED + existing checked_OUT evidence → never downgraded → 409.
+    seedBid("bid_ci_out", "ACCEPTED");
+    EVIDENCE[evId("bid_ci_out")] = {
+      id: evId("bid_ci_out"), customer_id: CUSTOMER, hotel_id: HOTEL, source_type: "bid",
+      source_id: "bid_ci_out", proof_state: "checked_out", verifier_type: "partner",
+      verifier_id: AUTHZ_SUBJECT, verified_at: "2026-09-12T00:00:00Z",
+      check_in_at: "2026-09-11T00:00:00Z", check_out_at: "2026-09-12T00:00:00Z",
+    };
+    {
+      const r = await call("bid_ci_out", authToken());
+      eqv(r.status, 409, "12.1 ACCEPTED + existing checked_out evidence → 409 (no downgrade)");
+      eqv(r.writes.length, 0, "12.1w → ZERO write");
+      ok(r.body && r.body.error === "already_checked_out", "12.1e error already_checked_out");
+    }
+    // (b) ACCEPTED + same customer/hotel but WRONG source_type → 409 conflict.
+    seedBid("bid_ci_wst", "ACCEPTED");
+    EVIDENCE[evId("bid_ci_wst")] = {
+      id: evId("bid_ci_wst"), customer_id: CUSTOMER, hotel_id: HOTEL, source_type: "booking",
+      source_id: "bid_ci_wst", proof_state: "checked_in", verifier_type: "partner",
+      verifier_id: AUTHZ_SUBJECT, verified_at: "2026-09-12T00:00:00Z", check_in_at: "2026-09-12T00:00:00Z",
+      check_out_at: null,
+    };
+    {
+      const r = await call("bid_ci_wst", authToken());
+      eqv(r.status, 409, "12.2 ACCEPTED + wrong source_type binding → 409");
+      eqv(r.writes.length, 0, "12.2w → ZERO write (never overwritten)");
+      ok(r.body && r.body.error === "verified_stay_conflict", "12.2e error verified_stay_conflict");
+    }
+    // (c) ACCEPTED + same customer/hotel but WRONG source_id → 409 conflict.
+    seedBid("bid_ci_wsid", "ACCEPTED");
+    EVIDENCE[evId("bid_ci_wsid")] = {
+      id: evId("bid_ci_wsid"), customer_id: CUSTOMER, hotel_id: HOTEL, source_type: "bid",
+      source_id: "SOME_OTHER_BID", proof_state: "checked_in", verifier_type: "partner",
+      verifier_id: AUTHZ_SUBJECT, verified_at: "2026-09-12T00:00:00Z", check_in_at: "2026-09-12T00:00:00Z",
+      check_out_at: null,
+    };
+    {
+      const r = await call("bid_ci_wsid", authToken());
+      eqv(r.status, 409, "12.3 ACCEPTED + wrong source_id binding → 409");
+      eqv(r.writes.length, 0, "12.3w → ZERO write");
+    }
+    // (d) ACCEPTED + a VALID matching checked_in row → idempotent, ZERO rewrite.
+    seedBid("bid_ci_valid", "ACCEPTED");
+    seedCheckedInEvidence("bid_ci_valid");
+    {
+      const r = await call("bid_ci_valid", authToken());
+      eqv(r.status, 200, "12.4 ACCEPTED + valid checked_in evidence → idempotent 200");
+      ok(r.body && r.body.alreadyCheckedIn === true, "12.4b → alreadyCheckedIn:true");
+      eqv(r.writes.length, 0, "12.4w → ZERO rewrite of the valid protected row");
+    }
+    // (e) protected-evidence GET failure → fail closed 503, ZERO write.
+    seedBid("bid_ci_readfail", "ACCEPTED");
+    EVIDENCE_READ_FAIL = true;
+    {
+      const r = await call("bid_ci_readfail", authToken());
+      eqv(r.status, 503, "12.5 check-in evidence read FAILURE → 503 (fail closed, not 'not found')");
+      eqv(r.writes.length, 0, "12.5w → ZERO write (never overwrites on a failed read)");
+      ok(r.body && r.body.error === "verified_stay_unavailable", "12.5e error verified_stay_unavailable");
+    }
+    EVIDENCE_READ_FAIL = false;
+
+    // ── 13 — CHECKOUT Finding A: no alternate CHECKED_OUT evidence bypass ─────
+    section("13. checkout — mints checked_out ONLY from CHECKED_IN + valid checked_in evidence");
+    // (a) POSITIVE: CHECKED_IN bid + matching checked_in evidence → checked_out.
+    seedBid("bid_co_ok", "CHECKED_IN");
+    seedCheckedInEvidence("bid_co_ok");
+    {
+      const r = await callCheckout("bid_co_ok", authToken());
+      eqv(r.status, 200, "13.1 CHECKED_IN + valid checked_in evidence → 200");
+      ok(r.body && r.body.ok === true, "13.1b body.ok === true");
+      eqv(r.writes.length, 1, "13.1w EXACTLY one authoritative evidence write");
+      const w = r.writes[0] || {};
+      eqv(w.id, evId("bid_co_ok"), "13.1id evidence id = deterministic vse_bid_<bidId>");
+      eqv(w.proof_state, "checked_out", "13.1ps proof_state = checked_out");
+      eqv(w.customer_id, CUSTOMER, "13.1cu customer_id bound to the bid customer");
+      eqv(w.hotel_id, HOTEL, "13.1ho hotel_id bound to the bid hotel");
+      eqv(w.source_type, "bid", "13.1st source_type = bid");
+      eqv(w.source_id, "bid_co_ok", "13.1si source_id = bidId");
+      eqv(w.verifier_id, AUTHZ_SUBJECT, "13.1vi verifier_id = the VERIFIED partner subject");
+    }
+    // (b) every non-CHECKED_IN pre-state → 409, ZERO write (the alternate bypass).
+    const CONEG = ["PENDING", "COUNTER", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED", "DECLINED"];
+    let ci = 0;
+    for (const st of CONEG) {
+      ci += 1;
+      const bidId = "bid_co_neg_" + st;
+      seedBid(bidId, st); // NO protected evidence
+      const r = await callCheckout(bidId, authToken());
+      eqv(r.status, 409, `13.2.${ci} checkout on ${st} → 409 (no direct checked_out mint)`);
+      eqv(r.writes.length, 0, `13.2.${ci}w ${st} → ZERO evidence write`);
+      ok(r.body && r.body.error === "bid_not_checked_in", `13.2.${ci}e ${st} → error bid_not_checked_in`);
+    }
+    // unknown + null status → 409, zero write.
+    seedBid("bid_co_unknown", "WEIRD_STATE");
+    {
+      const r = await callCheckout("bid_co_unknown", authToken());
+      eqv(r.status, 409, "13.3 checkout on unknown status → 409");
+      eqv(r.writes.length, 0, "13.3w → ZERO write");
+    }
+    seedBid("bid_co_null", null);
+    {
+      const r = await callCheckout("bid_co_null", authToken());
+      eqv(r.status, 409, "13.4 checkout on null status → 409");
+      eqv(r.writes.length, 0, "13.4w → ZERO write");
+    }
+    // (c) forged payment marker on a PENDING bid never bypasses checkout either.
+    seedBid("bid_co_paid", "PENDING", { message: "Razorpay: pay_forged_777 razorpay_payment_id" });
+    {
+      const r = await callCheckout("bid_co_paid", authToken());
+      eqv(r.status, 409, "13.5 checkout PENDING + forged 'Razorpay:' marker → 409 (marker ignored)");
+      eqv(r.writes.length, 0, "13.5w → ZERO write");
+    }
+    // (d) CHECKED_IN bid but NO protected evidence → 409 (mutable status alone insufficient).
+    seedBid("bid_co_noev", "CHECKED_IN"); // no EVIDENCE seeded
+    {
+      const r = await callCheckout("bid_co_noev", authToken());
+      eqv(r.status, 409, "13.6 CHECKED_IN + NO checked_in evidence → 409");
+      eqv(r.writes.length, 0, "13.6w → ZERO write (never mint checked_out from bids.status)");
+      ok(r.body && r.body.error === "verified_stay_conflict", "13.6e error verified_stay_conflict");
+    }
+    // (e) CHECKED_IN bid + MISMATCHED evidence (different customer) → 409.
+    seedBid("bid_co_mm", "CHECKED_IN");
+    EVIDENCE[evId("bid_co_mm")] = {
+      id: evId("bid_co_mm"), customer_id: "ATTACKER_OTHER", hotel_id: HOTEL, source_type: "bid",
+      source_id: "bid_co_mm", proof_state: "checked_in", verifier_type: "partner",
+      verifier_id: AUTHZ_SUBJECT, verified_at: "2026-09-12T00:00:00Z", check_in_at: "2026-09-12T00:00:00Z",
+      check_out_at: null,
+    };
+    {
+      const r = await callCheckout("bid_co_mm", authToken());
+      eqv(r.status, 409, "13.7 CHECKED_IN + mismatched-customer evidence → 409");
+      eqv(r.writes.length, 0, "13.7w → ZERO write (never overwritten)");
+    }
+    // (f) idempotent: matching checked_out evidence → success, ZERO rewrite.
+    seedBid("bid_co_done", "CHECKED_OUT");
+    EVIDENCE[evId("bid_co_done")] = {
+      id: evId("bid_co_done"), customer_id: CUSTOMER, hotel_id: HOTEL, source_type: "bid",
+      source_id: "bid_co_done", proof_state: "checked_out", verifier_type: "partner",
+      verifier_id: AUTHZ_SUBJECT, verified_at: "2026-09-12T00:00:00Z",
+      check_in_at: "2026-09-11T00:00:00Z", check_out_at: "2026-09-12T00:00:00Z",
+    };
+    {
+      const r = await callCheckout("bid_co_done", authToken());
+      eqv(r.status, 200, "13.8 CHECKED_OUT + matching checked_out evidence → idempotent 200");
+      ok(r.body && r.body.alreadyCheckedOut === true, "13.8b → alreadyCheckedOut:true");
+      eqv(r.writes.length, 0, "13.8w → ZERO rewrite");
+    }
+    // (g) CHECKED_OUT bid but NO evidence → 409 (never mint checked_out).
+    seedBid("bid_co_out_noev", "CHECKED_OUT"); // no EVIDENCE
+    {
+      const r = await callCheckout("bid_co_out_noev", authToken());
+      eqv(r.status, 409, "13.9 CHECKED_OUT bid + NO evidence → 409 (never mint)");
+      eqv(r.writes.length, 0, "13.9w → ZERO write");
+    }
+    // (h) checkout evidence-read FAILURE → fail closed 503, ZERO write.
+    seedBid("bid_co_readfail", "CHECKED_IN");
+    seedCheckedInEvidence("bid_co_readfail");
+    EVIDENCE_READ_FAIL = true;
+    {
+      const r = await callCheckout("bid_co_readfail", authToken());
+      eqv(r.status, 503, "13.10 checkout evidence read FAILURE → 503 (fail closed)");
+      eqv(r.writes.length, 0, "13.10w → ZERO write");
+      ok(r.body && r.body.error === "verified_stay_unavailable", "13.10e error verified_stay_unavailable");
+    }
+    EVIDENCE_READ_FAIL = false;
+    // (i) checkout wrong-hotel partner → 403; forged token → 401 (authority intact).
+    BIDS["bid_co_other"] = { id: "bid_co_other", hotelId: "999999", customerId: CUSTOMER, status: "CHECKED_IN" };
+    seedCheckedInEvidence("bid_co_other");
+    {
+      const r = await callCheckout("bid_co_other", authToken());
+      eqv(r.status, 403, "13.11 checkout wrong-hotel partner → 403");
+      eqv(r.writes.length, 0, "13.11w → ZERO write");
+    }
+    seedBid("bid_co_forged", "CHECKED_IN");
+    seedCheckedInEvidence("bid_co_forged");
+    {
+      const wrong = "Bearer " + jwt.sign({ sub: AUTHZ_SUBJECT }, "WRONG_SECRET", { algorithm: "HS256" });
+      const r = await callCheckout("bid_co_forged", wrong);
+      eqv(r.status, 401, "13.12 checkout forged token → 401");
+      eqv(r.writes.length, 0, "13.12w → ZERO write");
+    }
+
     global.fetch = savedFetch;
     Module._resolveFilename = origResolve;
 
-    // ── 11 — source scan: the pre-state gate never consults payment markers ──
-    section("11. route source — the lifecycle gate reads bids.status only (no payment markers)");
-    const routeSrc = fs.readFileSync(path.join(REPO, "app/api/partner/checkin/[bidId]/route.ts"), "utf8");
+    // ── 14 — source scan: neither gate consults forgeable payment markers ────
+    section("14. route source — both lifecycle gates read bids.status + protected evidence only");
     // Strip comments so the doc lines (which legitimately NAME the retired
     // markers) don't trip the CODE-only absence checks.
-    const routeCode = routeSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
-    ok(!/bid_paid_amounts/.test(routeCode), "11.1 route CODE never reads bid_paid_amounts");
-    // Specifically the BID's forgeable payment marker fields (bid.message /
-    // bid?.message / bid["message"] / bid.metadata) must never be read for
-    // authorization. (A caught exception's own e?.message in the 500 handler is
-    // ordinary error reporting, NOT a bid field — so the check is scoped to the
-    // `bid` object, not any `.message`.)
-    ok(
-      !/\bbid\s*\??\.\s*message\b/.test(routeCode) &&
-        !/\bbid\s*\[\s*["']message["']\s*\]/.test(routeCode) &&
-        !/\bbid\s*\??\.\s*metadata\b/.test(routeCode),
-      "11.2 route CODE never reads the bid's message/metadata payment markers for authorization"
+    const stripComments = (s) =>
+      s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    const noMarkerRead = (code, tag) => {
+      ok(!/bid_paid_amounts/.test(code), `${tag} CODE never reads bid_paid_amounts`);
+      // The BID's forgeable marker fields (bid.message / bid?.message /
+      // bid["message"] / bid.metadata) must never be read for authorization. (A
+      // caught exception's own e?.message in the 500 handler is ordinary error
+      // reporting, NOT a bid field — the check is scoped to the `bid` object.)
+      ok(
+        !/\bbid\s*\??\.\s*message\b/.test(code) &&
+          !/\bbid\s*\[\s*["']message["']\s*\]/.test(code) &&
+          !/\bbid\s*\??\.\s*metadata\b/.test(code),
+        `${tag} CODE never reads the bid's message/metadata payment markers for authorization`
+      );
+      ok(!/migrations\//.test(code), `${tag} no new migration referenced (source-only remediation)`);
+    };
+    const checkinCode = stripComments(
+      fs.readFileSync(path.join(REPO, "app/api/partner/checkin/[bidId]/route.ts"), "utf8")
     );
-    ok(/status\s*!==\s*["']ACCEPTED["']/.test(routeCode), "11.3 gate admits ONLY ACCEPTED as the mint pre-state");
-    ok(/readVerifiedStayEvidenceForSource/.test(routeCode), "11.4 route enforces idempotency via the protected evidence reader");
-    ok(!/migrations\//.test(routeCode), "11.5 no new migration referenced (source-only remediation)");
+    const checkoutCode = stripComments(
+      fs.readFileSync(path.join(REPO, "app/api/partner/checkout/[bidId]/route.ts"), "utf8")
+    );
+    noMarkerRead(checkinCode, "14.1 check-in");
+    noMarkerRead(checkoutCode, "14.2 checkout");
+    // Check-in admits ONLY an ACCEPTED bid as the NEW-mint pre-state; both routes
+    // consult the protected evidence reader + the immutable-binding validator.
+    ok(/status\s*!==\s*["']ACCEPTED["']/.test(checkinCode), "14.3 check-in admits ONLY ACCEPTED as the mint pre-state");
+    ok(/readVerifiedStayEvidenceForSource/.test(checkinCode), "14.4 check-in reads protected evidence (tri-state)");
+    ok(/evidenceBindingMatches/.test(checkinCode), "14.5 check-in validates the complete immutable binding");
+    // Checkout requires BOTH a CHECKED_IN bid AND a valid checked_in evidence row.
+    ok(/status\s*!==\s*["']CHECKED_IN["']/.test(checkoutCode), "14.6 checkout requires the bid to be CHECKED_IN");
+    ok(/!==\s*["']checked_in["']/.test(checkoutCode), "14.7 checkout requires an existing checked_in protected row");
+    ok(/readVerifiedStayEvidenceForSource/.test(checkoutCode), "14.8 checkout reads protected evidence (tri-state)");
+    ok(/evidenceBindingMatches/.test(checkoutCode), "14.9 checkout validates the complete immutable binding");
   } catch (err) {
     fatal = err;
     console.error("\n• FATAL: " + (err && err.message ? err.message : String(err)));
