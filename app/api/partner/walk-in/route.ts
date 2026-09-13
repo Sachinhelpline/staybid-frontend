@@ -24,6 +24,7 @@ import { createPartnerAuthorityDeps } from "@/lib/auth/verified-partner-authorit
 import { reservationDateISO } from "@/lib/stay/stay-dates";
 import {
   assignmentStoreConfigured,
+  assignmentAuthorityReady,
   readUnits,
   findUnitConflicts,
   validateAssignmentSet,
@@ -104,6 +105,11 @@ export async function PATCH(req: NextRequest) {
   // server-side; the unit NUMBER is always derived from the unit row.
   const effectiveUnit = patch.assignedUnitId !== undefined ? patch.assignedUnitId : existing.assignedUnitId;
   if (effectiveUnit && (patch.assignedUnitId !== undefined || patch.fromDate !== undefined || patch.toDate !== undefined || patch.roomId !== undefined)) {
+    // STAY-LIFECYCLE-OPS-01 M8 — changing a PINNED block's unit/dates/category is an
+    // occupancy write guarded by the room_blocks trigger; fail closed 503 pre-migration.
+    if (!(await assignmentAuthorityReady())) {
+      return NextResponse.json({ error: "unit_assignment_authority_unavailable" }, { status: 503 });
+    }
     const from = reservationDateISO(nextFrom), to = reservationDateISO(nextTo);
     if (!from || !to) return NextResponse.json({ error: "stay_dates_unavailable" }, { status: 409 });
     const v = await validateBlockUnit({
@@ -179,6 +185,13 @@ export async function POST(req: NextRequest) {
   }
   let pinnedUnit: UnitRow | null = null;
   if (unitPin) {
+    // STAY-LIFECYCLE-OPS-01 M8 — a pinned block is an OCCUPANCY write that depends
+    // on the room_blocks guard trigger. CODE-FIRST cutover: fail closed 503 BEFORE
+    // any write until the migration (the guard) is applied. An UNPINNED block below
+    // is a category hold (guard-irrelevant) and is never gated.
+    if (!(await assignmentAuthorityReady())) {
+      return NextResponse.json({ error: "unit_assignment_authority_unavailable" }, { status: 503 });
+    }
     const from = reservationDateISO(fromDate), to = reservationDateISO(toDate);
     if (!from || !to) return NextResponse.json({ error: "stay_dates_unavailable" }, { status: 409 });
     const v = await validateBlockUnit({ unitId: unitPin, hotelId: String(hotelId), roomId: String(targets[0]), from, to, excludeBlockId: "" });

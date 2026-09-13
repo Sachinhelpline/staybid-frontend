@@ -35,6 +35,8 @@ export interface SyncResult {
   imported: number;
   removed: number;
   skipped: number;
+  /** OTA events refused by the room_blocks unit guard (unit already occupied) — isolated so unrelated valid events still import. */
+  conflicts?: number;
   error?: string;
   durationMs: number;
 }
@@ -208,6 +210,7 @@ export async function syncFeed(
     imported: 0,
     removed: 0,
     skipped: 0,
+    conflicts: 0,
     durationMs: 0,
   };
 
@@ -327,6 +330,19 @@ export async function syncFeed(
     .filter((r) => r.fromDate < r.toDate);
 
   if (toInsert.length) {
+    // STAY-LIFECYCLE-OPS-01 M7 — CONFLICT ISOLATION. The room_blocks guard trigger
+    // (migration v753) refuses a PINNED event whose unit is already occupied
+    // (unit_conflict). A single such event in a multi-row batch INSERT would roll
+    // back the WHOLE batch, blocking unrelated valid reservations. So: optimistic
+    // batch first; on an integrity/unit-conflict failure ONLY, retry PER-EVENT so
+    // valid events still import and the conflicting ones are recorded (base.conflicts,
+    // warned, counted in base.skipped). A genuine systemic error (network/schema)
+    // still fails honestly. Idempotency is preserved — the externalRef dedup above
+    // means a retry re-attempts only still-missing events, so a refused event is
+    // re-tried + refused next run with no duplicate.
+    const isIntegrityConflict = (t: string) =>
+      /unit_conflict|unit_wrong_hotel|unit_wrong_category|unit_inactive|unit_not_found|unit_assignment_forbidden_role|23P01|23505|exclusion|duplicate key/i.test(String(t || ""));
+    let batchOk = false;
     try {
       const r = await withTimeout(
         fetch(`${SB_URL}/rest/v1/room_blocks`, {
@@ -337,11 +353,41 @@ export async function syncFeed(
         FETCH_TIMEOUT_MS,
         "block insert"
       );
-      if (!r.ok) throw new Error(await r.text());
-      const j = await r.json().catch(() => []);
-      base.imported = Array.isArray(j) ? j.length : toInsert.length;
+      if (r.ok) {
+        const j = await r.json().catch(() => []);
+        base.imported = Array.isArray(j) ? j.length : toInsert.length;
+        batchOk = true;
+      } else {
+        const t = await r.text();
+        // Only an integrity/unit-conflict batch failure is isolated; anything else fails honestly.
+        if (!isIntegrityConflict(t)) return fail(`Import insert failed: ${t || `HTTP ${r.status}`}`);
+      }
     } catch (e: any) {
       return fail(`Import insert failed: ${e?.message || "error"}`);
+    }
+    if (!batchOk) {
+      const conflicted: string[] = [];
+      for (const row of toInsert) {
+        let r: Response;
+        try {
+          r = await withTimeout(
+            fetch(`${SB_URL}/rest/v1/room_blocks`, { method: "POST", headers: SB_H_REPRESENT, body: JSON.stringify([row]) }),
+            FETCH_TIMEOUT_MS,
+            "block insert (isolated)"
+          );
+        } catch (e: any) {
+          return fail(`Import insert failed: ${e?.message || "error"}`);
+        }
+        if (r.ok) { base.imported += 1; continue; }
+        const t = await r.text();
+        if (isIntegrityConflict(t)) { conflicted.push(String(row.externalRef || "?")); continue; }
+        return fail(`Import insert failed: ${t || `HTTP ${r.status}`}`);
+      }
+      base.conflicts = conflicted.length;
+      if (conflicted.length) {
+        // eslint-disable-next-line no-console
+        console.warn(`[channel-sync] feed ${base.feedId}: ${conflicted.length} OTA event(s) refused by the unit guard (unit already occupied) and skipped: ${conflicted.join(", ")}`);
+      }
     }
   }
 

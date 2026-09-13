@@ -668,7 +668,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // Check-out. Bumping drops the stale cached partner markup so the corrected UI
 // shows on first load. (Service-worker fetch/cache LOGIC is unchanged —
 // cache-name + comment only.)
-const HTML_CACHE = 'staybid-html-v545';
+const HTML_CACHE = 'staybid-html-v546';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -3,6 +3,7 @@ import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { resolveOperatedHotelIds } from "@/lib/partner/operator-access";
 import { partnerBookingStatusInFilter } from "@/lib/bid-expiry";
 import { normalizeGuestContact } from "@/lib/stay/guest-contact";
+import { projectDisplayUnits } from "@/lib/stay/unit-assignments";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { SB_H as SB_H_SVC } from "@/lib/sb-server";
 
@@ -142,14 +143,19 @@ export async function GET(req: NextRequest) {
   try {
     const ids = bookingsArr.map((b: any) => b.id).filter(Boolean).map((i: string) => encodeURIComponent(i));
     if (ids.length) {
+      // STAY-LIFECYCLE-OPS-01 M6 — ACTIVE (live stay) + COMPLETED (finished stay)
+      // so a CHECKED_OUT booking still shows the FINAL room(s) occupied.
+      // projectDisplayUnits picks active-if-any-else-completed per bid (never a
+      // superseded/transferred-away room).
       const lRes = await fetch(
-        `${SB_URL}/rest/v1/bid_unit_assignment_lines?bid_id=in.(${ids.join(",")})&status=eq.active&select=bid_id,unit_id,unit_number,slot&order=slot.asc`,
+        `${SB_URL}/rest/v1/bid_unit_assignment_lines?bid_id=in.(${ids.join(",")})&status=in.(active,completed)&select=bid_id,unit_id,unit_number,slot,status&order=slot.asc`,
         { headers: SB_H_SVC, cache: "no-store" }
       );
       if (lRes.ok) {
         const arr = await lRes.json();
-        if (Array.isArray(arr)) for (const l of arr) {
-          (unitsByBid[l.bid_id] ||= []).push({ unitId: String(l.unit_id), unitNumber: String(l.unit_number), slot: Number(l.slot) || 1 });
+        if (Array.isArray(arr)) {
+          const projected = projectDisplayUnits(arr);
+          for (const bidId of Object.keys(projected)) unitsByBid[bidId] = projected[bidId];
         }
       } else {
         const aRes = await fetch(

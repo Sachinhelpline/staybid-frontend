@@ -3704,7 +3704,9 @@ export default function PartnerDashboard() {
                         </div>
                         {assigned.length > 0 && (
                           <div className="text-right">
-                            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest">Allocated Room{assigned.length>1?"s":""} · {assigned.length}/{required}</p>
+                            {/* STAY-LIFECYCLE-OPS-01 M6 — a completed stay shows the FINAL room(s)
+                                it occupied (the read model returns the COMPLETED lines). */}
+                            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest">{frozen ? "Final Room" : "Allocated Room"}{assigned.length>1?"s":""}{frozen ? "" : ` · ${assigned.length}/${required}`}</p>
                             <p className="text-2xl font-bold text-gold-700">{assigned.map((a) => `#${a.unitNumber}`).join("  ")}</p>
                           </div>
                         )}

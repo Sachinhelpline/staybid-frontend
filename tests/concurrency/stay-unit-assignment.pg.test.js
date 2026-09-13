@@ -165,7 +165,12 @@ async function main() {
       if not exists (select from pg_roles where rolname='anon') then create role anon nologin; end if;
       if not exists (select from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
       if not exists (select from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if;
-      if not exists (select from pg_roles where rolname='railway_writer') then create role railway_writer nologin; end if;
+      -- railway_writer models a legitimate EXTERNAL backend (Railway) writing bids/room_blocks.
+      -- Post-M5 the only legitimate non-owner writers are BYPASSRLS/service_role connections
+      -- (anon/authenticated are revoked), so it is BYPASSRLS — it still holds NO privilege on the
+      -- service_role-only lines table, so it proves the SECURITY DEFINER sync still fires for a
+      -- non-owner writer without granting that writer any lines-table access.
+      if not exists (select from pg_roles where rolname='railway_writer') then create role railway_writer nologin bypassrls; end if;
     end $$;`);
     await c.query(MINIMAL_SCHEMA);
     await c.query(LEGACY_DDL);
@@ -548,6 +553,130 @@ async function main() {
     });
 
     await c.query(`drop trigger if exists trg_test_fail_mirror on public.bid_unit_assignments; drop function if exists public.test_fail_mirror();`);
+
+    // ── M5 — source-table authorization closure (bids + room_blocks) ──────────
+    await t("P. M5 — bids/room_blocks RLS closed: anon/authenticated write revoked, SELECT preserved, service_role writes, permissive policies gone", async () => {
+      for (const tbl of ["bids", "room_blocks"]) {
+        eq((await c.query(`select relrowsecurity from pg_class where relname=$1`, [tbl])).rows[0].relrowsecurity, true, tbl + " RLS enabled");
+        // exactly one SELECT-only policy remains (the old ALL policies dropped)
+        const pols = (await c.query(`select cmd, count(*)::int as n from pg_policies where schemaname='public' and tablename=$1 group by cmd`, [tbl])).rows;
+        eq(pols.length, 1, tbl + " exactly one policy kind");
+        eq(pols[0].cmd, "SELECT", tbl + " the surviving policy is SELECT-only");
+        eq((await c.query(`select count(*)::int as n from information_schema.role_table_grants where table_schema='public' and table_name=$1 and grantee in ('anon','authenticated') and privilege_type in ('INSERT','UPDATE','DELETE')`, [tbl])).rows[0].n, 0, tbl + " no anon/authenticated write grant");
+        eq((await c.query(`select count(*)::int as n from information_schema.role_table_grants where table_schema='public' and table_name=$1 and grantee in ('anon','authenticated') and privilege_type='SELECT'`, [tbl])).rows[0].n, 2, tbl + " anon+authenticated retain SELECT");
+      }
+      // anon CANNOT write bids (RLS: no write policy + no grant) — the primary bridge closure
+      const h = await seedHotel(c, 2);
+      const b = await seedBid(c, h, "ACCEPTED", "2029-01-10", "2029-01-12");
+      const eUp = await fails(asRole(c, "anon", `update public.bids set "assignedUnitId"=$2 where id=$1`, [b, h.units[0]]), "P.anon-bids"); eq(eUp.code, "42501", "anon bids UPDATE permission denied");
+      const eIns = await fails(asRole(c, "authenticated", `insert into public.room_blocks (id,"hotelId","roomId","fromDate","toDate",source,"assignedUnitId") values ('p_forge',$1,$2,'2029-01-10','2029-01-12','walk_in',$3)`, [h.hotelId, h.roomId, h.units[0]]), "P.auth-rb"); eq(eIns.code, "42501", "authenticated room_blocks INSERT permission denied");
+      // anon CAN still SELECT (read surface preserved)
+      const rd = await asRole(c, "anon", `select count(*)::int as n from public.bids where id=$1`, [b]);
+      eq(rd.rows[0].n, 1, "anon SELECT on bids still works (read surface preserved)");
+      // service_role writes fine (BYPASSRLS + grant) — and the sync trigger runs
+      await asRole(c, "service_role", `update public.bids set "assignedUnitId"=$2 where id=$1`, [b, h.units[0]]);
+      eq((await activeLines(c, b)).length, 1, "P.svc service_role write drives the sync trigger");
+    });
+
+    await t("P2. M5 — SECURITY DEFINER tripwire: a request whose jwt.claims role is anon/authenticated is REFUSED even if a write grant is re-added; a NULL/service_role claim is trusted", async () => {
+      const h = await seedHotel(c, 2);
+      const b = await seedBid(c, h, "ACCEPTED", "2029-02-10", "2029-02-12");
+      // Re-grant anon write TEMPORARILY (simulating a future misconfiguration) so the write
+      // reaches the trigger; the tripwire must still refuse it based on the JWT role claim.
+      // Wrapped in one transaction so `set local role` + the request.jwt.claims GUC hold for
+      // the write and auto-clear on rollback.
+      await c.query(`grant insert, update on public.bids to anon`);
+      await c.query(`create policy tmp_anon_write on public.bids for all to anon using (true) with check (true)`);
+      let err = null;
+      try {
+        await c.query("begin");
+        await c.query(`set local role anon`);
+        await c.query(`set local request.jwt.claims = '{"role":"anon"}'`);
+        try { await c.query(`update public.bids set "assignedUnitId"=$2 where id=$1`, [b, h.units[0]]); } catch (e) { err = e; }
+        await c.query("rollback");
+      } finally {
+        await c.query("rollback").catch(() => {});
+        await c.query(`drop policy if exists tmp_anon_write on public.bids`);
+        await c.query(`revoke insert, update on public.bids from anon`);
+      }
+      truthy(err, "P2 tripwire raised"); eq(err.code, "P0001", "P2 sqlstate"); eq(err.message, "unit_assignment_forbidden_role", "P2 refusal code");
+      eq((await allLines(c, b)).length, 0, "P2 refused anon write wrote no line (rolled back)");
+      // a NULL/absent claim (direct DB / service_role — no anon/authenticated claim) is trusted:
+      // the sync trigger proceeds normally.
+      await asRole(c, "service_role", `update public.bids set "assignedUnitId"=$2 where id=$1`, [b, h.units[0]]);
+      eq((await activeLines(c, b)).length, 1, "P2 trusted (NULL claim) write → line synced");
+    });
+
+    // ── M6 — completed-room projection (final room survives checkout) ─────────
+    await t("Q. M6 — assign → check-in → check-out: the FINAL room is a COMPLETED line (never blank); a transfer leaves A superseded, B completed", async () => {
+      const h = await seedHotel(c, 4);
+      const [u1, u2] = h.units;
+      const b = await seedBid(c, h, "ACCEPTED", "2029-03-10", "2029-03-12");
+      await assign(c, b, [u1]);
+      await c.query(`update public.bids set status='CHECKED_IN' where id=$1`, [b]);
+      await c.query(`update public.bids set status='CHECKED_OUT' where id=$1`, [b]);
+      const linesQ = (await c.query(`select unit_id, status from public.bid_unit_assignment_lines where bid_id=$1`, [b])).rows;
+      eq(linesQ.length, 1, "Q one line"); eq(linesQ[0].status, "completed", "Q final room is COMPLETED"); eq(linesQ[0].unit_id, u1, "Q final room = u1");
+      // the customer/partner read model queries status in (active,completed): a CHECKED_OUT
+      // stay still surfaces exactly the final room (u1), never blank.
+      const disp = (await c.query(`select unit_id from public.bid_unit_assignment_lines where bid_id=$1 and status in ('active','completed')`, [b])).rows;
+      eq(disp.length, 1, "Q read model still returns the final room after checkout"); eq(disp[0].unit_id, u1, "Q = u1");
+      // transfer case: A (u1) superseded, B (u2) completed after checkout; final = B only
+      const b2 = await seedBid(c, h, "ACCEPTED", "2029-04-10", "2029-04-12");
+      await assign(c, b2, [u1]);
+      await c.query(`update public.bids set status='CHECKED_IN' where id=$1`, [b2]);
+      await assign(c, b2, [u2], { mode: "transfer", reason: "AC failure" });
+      await c.query(`update public.bids set status='CHECKED_OUT' where id=$1`, [b2]);
+      const all2 = (await c.query(`select unit_id, status from public.bid_unit_assignment_lines where bid_id=$1 order by unit_id`, [b2])).rows;
+      const bySt = Object.fromEntries(all2.map((r) => [r.unit_id, r.status]));
+      eq(bySt[u1], "superseded", "Q u1 stays superseded (transferred away)"); eq(bySt[u2], "completed", "Q u2 is the final completed room");
+      const disp2 = (await c.query(`select unit_id from public.bid_unit_assignment_lines where bid_id=$1 and status in ('active','completed')`, [b2])).rows;
+      eq(disp2.length, 1, "Q transfer: read model returns exactly one final room"); eq(disp2[0].unit_id, u2, "Q final = B (u2), not A");
+    });
+
+    // ── M7 — OTA batch conflict isolation (DB-level premise) ─────────────────
+    await t("R. M7 — a multi-row batch INSERT with one conflicting pinned event rolls back WHOLE; per-event isolation lands the valid ones and refuses only the conflict", async () => {
+      const h = await seedHotel(c, 4);
+      const uPin = h.units[0];
+      // an existing occupation of uPin over 2029-05-11..13 (a bid line)
+      const holder = await seedBid(c, h, "ACCEPTED", "2029-05-11", "2029-05-13");
+      await assign(c, holder, [uPin]);
+      const rb = (from, to, ref) => ({ id: seed.cuid("rb"), hotelId: h.hotelId, roomId: h.roomId, from, to, unit: uPin, ref });
+      const A = rb("2029-05-01", "2029-05-03", "A"), B = rb("2029-05-12", "2029-05-14", "B-conflict"), C = rb("2029-05-20", "2029-05-22", "C");
+      // (1) single multi-row INSERT (the batch) → the WHOLE statement fails (B conflicts)
+      let batchErr = null;
+      try {
+        await c.query(
+          `insert into public.room_blocks (id,"hotelId","roomId","fromDate","toDate",source,"assignedUnitId","externalRef") values
+             ($1,$4,$5,$6,$7,'ota',$8,$9),($2,$4,$5,$10,$11,'ota',$8,$12),($3,$4,$5,$13,$14,'ota',$8,$15)`,
+          [A.id, B.id, C.id, h.hotelId, h.roomId, A.from, A.to, uPin, A.ref, B.from, B.to, B.ref, C.from, C.to, C.ref],
+        );
+      } catch (e) { batchErr = e; }
+      truthy(batchErr, "R batch with a conflicting event fails"); eq(batchErr.message, "unit_conflict", "R batch refusal = unit_conflict");
+      eq((await c.query(`select count(*)::int as n from public.room_blocks where "externalRef" in ('A','B-conflict','C')`)).rows[0].n, 0, "R whole batch rolled back — no partial import");
+      // (2) per-event isolation → A and C import, B refused
+      const imported = []; const conflicted = [];
+      for (const row of [A, B, C]) {
+        let e = null;
+        try { await c.query(`insert into public.room_blocks (id,"hotelId","roomId","fromDate","toDate",source,"assignedUnitId","externalRef") values ($1,$2,$3,$4,$5,'ota',$6,$7)`, [row.id, h.hotelId, h.roomId, row.from, row.to, uPin, row.ref]); } catch (err) { e = err; }
+        if (e) { eq(e.message, "unit_conflict", "R per-event " + row.ref + " conflict"); conflicted.push(row.ref); } else imported.push(row.ref);
+      }
+      eq(imported.join(","), "A,C", "R per-event: A and C imported"); eq(conflicted.join(","), "B-conflict", "R per-event: only B refused");
+      eq((await c.query(`select count(*)::int as n from public.room_blocks where "externalRef" in ('A','C')`)).rows[0].n, 2, "R the two valid events persisted");
+      // an UNPINNED (category-level) event is unaffected by the guard
+      await c.query(`insert into public.room_blocks (id,"hotelId","roomId","fromDate","toDate",source,"externalRef") values ($1,$2,$3,'2029-05-12','2029-05-14','ota','D-unpinned')`, [seed.cuid("rb"), h.hotelId, h.roomId]);
+      eq((await c.query(`select count(*)::int as n from public.room_blocks where "externalRef"='D-unpinned'`)).rows[0].n, 1, "R unpinned event imports regardless of the occupied unit");
+    });
+
+    // ── M8 — cutover authority probe ─────────────────────────────────────────
+    await t("S. M8 — stay_assignment_ready() exists post-migration, returns true, EXECUTE service_role-only (the code-first fail-closed signal)", async () => {
+      eq((await c.query(`select public.stay_assignment_ready() as x`)).rows[0].x, true, "S ready() returns true when the migration is applied");
+      const fn = "public.stay_assignment_ready()";
+      for (const role of ["anon", "authenticated", "railway_writer"]) {
+        eq((await c.query(`select has_function_privilege($1, $2, 'EXECUTE') as x`, [role, fn])).rows[0].x, false, "S " + role + " cannot EXECUTE ready()");
+      }
+      eq((await c.query(`select has_function_privilege('service_role', $1, 'EXECUTE') as x`, [fn])).rows[0].x, true, "S service_role can EXECUTE ready()");
+    });
   } finally {
     try { if (mon) await mon.end(); } catch {}
     try { await c.end(); } catch {}

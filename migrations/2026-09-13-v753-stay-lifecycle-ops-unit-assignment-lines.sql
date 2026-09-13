@@ -4,11 +4,21 @@
 -- cross-table serialization strategy, and authorization closure.
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ⚠ NOT APPLIED TO PRODUCTION by the PR that introduces it. Applying it is an
---    OWNER-controlled operation. Deploy order: apply this migration FIRST, then
---    deploy the code. Pre-migration the code READS the legacy row (fallback) and
---    REFUSES every assignment WRITE (503 unit_assignment_rpc_unavailable): the
---    only sanctioned write path is the atomic RPC below, so no non-atomic
---    multi-step write path exists in the application at all.
+--    OWNER-controlled operation.
+--    SAFE CUTOVER = CODE-FIRST, FAIL-CLOSED (M8). Deploy v753 FIRST, THEN apply
+--    this migration. Pre-migration the code READS the legacy row (fallback) and
+--    REFUSES every occupancy WRITE — the assignment RPCs 503
+--    `unit_assignment_rpc_unavailable` (PGRST202) and the walk-in pinned writes
+--    503 `unit_assignment_authority_unavailable` (the stay_assignment_ready()
+--    probe is absent). The ONLY sanctioned assignment write path is the atomic RPC
+--    below, so no non-atomic / unguarded multi-step write path exists in the
+--    application at all. This ordering prevents BOTH failure modes: (1) old-v752
+--    legacy-only assignment writes after schema activation — v752 is fully
+--    replaced by v753 before the migration; and (2) new-v753 unguarded pinned
+--    writes before the guard/trigger exist — they 503. Applying the migration
+--    FIRST is NOT safe (a v752 partner could write a divergent legacy assignment
+--    during the migration→deploy gap). See the M8 section (stay_assignment_ready)
+--    and the M5 section (source-table authorization closure) at the end.
 --
 -- WHY
 --   • public.bid_unit_assignments has PRIMARY KEY ("bidId") — ONE unit per bid —
@@ -366,8 +376,21 @@ end $$;
 -- the service_role-only lines table; the body touches only the named tables.
 create or replace function public.stay_sync_bid_unit_assignment() returns trigger
 language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_status text; v_unit record; v_from date; v_to date; v_required integer; v_active integer;
+declare v_status text; v_unit record; v_from date; v_to date; v_required integer; v_active integer; v_actor text;
 begin
+  -- M5 tripwire (defense in depth). This SECURITY DEFINER function is the ONLY
+  -- occupancy writer that reaches the service_role-only lines/mirror tables, so it
+  -- is the privilege-bridge surface. The PRIMARY closure is the REVOKE of anon/
+  -- authenticated write on public.bids (M5 section at the end of this migration):
+  -- an untrusted PostgREST role can no longer INSERT/UPDATE bids at all, so this
+  -- trigger is never reached by anon/authenticated. This tripwire refuses the bridge
+  -- even if a write grant is ever re-added. A NULL/absent claim (a direct DB or
+  -- backend connection, e.g. Railway) is TRUSTED and allowed, so it never breaks a
+  -- legitimate server/service_role writer.
+  begin v_actor := current_setting('request.jwt.claims', true)::json->>'role'; exception when others then v_actor := null; end;
+  if v_actor in ('anon', 'authenticated') then
+    raise exception 'unit_assignment_forbidden_role' using errcode = 'P0001', detail = coalesce(v_actor, '');
+  end if;
   v_status := upper(coalesce(new.status, ''));
 
   -- lifecycle exits: a finished stay no longer occupies its unit (history kept)
@@ -449,8 +472,15 @@ create trigger trg_stay_sync_bid_unit_assignment
 -- ═══════════════════════════════════════════════════════════════════════════
 create or replace function public.stay_guard_room_block_unit() returns trigger
 language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_unit record;
+declare v_unit record; v_actor text;
 begin
+  -- M5 tripwire (defense in depth) — see stay_sync_bid_unit_assignment. The primary
+  -- closure is the REVOKE of anon/authenticated write on public.room_blocks (M5
+  -- section below); a NULL/absent claim (direct DB / backend) is trusted.
+  begin v_actor := current_setting('request.jwt.claims', true)::json->>'role'; exception when others then v_actor := null; end;
+  if v_actor in ('anon', 'authenticated') then
+    raise exception 'unit_assignment_forbidden_role' using errcode = 'P0001', detail = coalesce(v_actor, '');
+  end if;
   if new."assignedUnitId" is null then return new; end if;
   if tg_op = 'UPDATE'
      and new."assignedUnitId" is not distinct from old."assignedUnitId"
@@ -542,3 +572,78 @@ where b."assignedUnitId" is not null
   and upper(coalesce(b.status,'')) in ('ACCEPTED','CONFIRMED','CHECKED_IN')
   and not exists (select 1 from public.bid_unit_assignments a where a."bidId" = b.id)
 on conflict ("bidId") do nothing;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M8 — safe cutover probe. A read-only, side-effect-free authority signal so the
+-- application can FAIL CLOSED before any occupancy write when the migration is not
+-- yet applied. The deploy order is CODE-FIRST: deploy v753 (every occupancy WRITE
+-- fails closed 503 while this function / the RPCs are absent — reads fall back to
+-- the legacy row), THEN apply this migration (writes become available). That order
+-- prevents BOTH (1) old-v752 legacy-only assignment writes after schema activation
+-- (v752 is fully replaced before the migration) and (2) new-v753 unguarded pinned
+-- writes before the guard/trigger exist (they 503). SECURITY INVOKER; EXECUTE
+-- service_role only.
+-- ═══════════════════════════════════════════════════════════════════════════
+create or replace function public.stay_assignment_ready() returns boolean
+language sql security invoker set search_path = public, pg_temp as $$ select true $$;
+revoke execute on function public.stay_assignment_ready() from public, anon, authenticated;
+grant  execute on function public.stay_assignment_ready() to service_role;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M5 — SOURCE-TABLE AUTHORIZATION CLOSURE (public.bids + public.room_blocks)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- WHY: before this migration public.bids carried policies all_anon_all (anon,
+-- authenticated: ALL true/true) + "public rw" (public: ALL true/true), and
+-- public.room_blocks carried all_anon_all — with anon/authenticated holding full
+-- INSERT/UPDATE/DELETE table grants. The public anon key is, by design, PUBLIC, so
+-- ANY holder could bypass the hardened Next routes and directly mutate bids /
+-- room_blocks via PostgREST. Combined with the NEW SECURITY DEFINER occupancy
+-- triggers introduced above, an untrusted direct write to bids.assignedUnitId /
+-- status (or a pinned room_block) would drive a privileged trigger into the
+-- service_role-only assignment lines/mirror — a privilege bridge.
+--
+-- CLOSURE: revoke DIRECT public/anon/authenticated MUTATION of both tables and
+-- preserve every legitimate server writer through service_role (which every
+-- frontend server route already uses — lib/sb-server SB_H sends the service-role
+-- key in Authorization when SUPABASE_SERVICE_ROLE_KEY is set; verified: no browser
+-- component and no SB_H_ANON_ONLY path writes these tables). READS are preserved
+-- (a permissive SELECT policy stays open) — this closes MUTATION only, not the
+-- broad customer/partner read surface. This section lands in the SAME atomic
+-- migration as the triggers, so the bridge never exists for even one moment.
+--
+-- ⚠ OWNER PREREQUISITE (OD3, apply-time): every legitimate writer of bids /
+-- room_blocks MUST use the service_role key before applying. The frontend is
+-- proven safe (all server routes use SB_H=service_role; the anon fallback only
+-- engages when SUPABASE_SERVICE_ROLE_KEY is unset, which already fails closed
+-- elsewhere and is a documented production requirement). An EXTERNAL writer
+-- (Railway) that writes these tables via the ANON key — NOT observable from this
+-- repo — would begin failing closed; confirm Railway uses the service_role key
+-- (or a BYPASSRLS/granted role) before applying.
+
+alter table public.bids        enable row level security;
+alter table public.room_blocks enable row level security;
+
+-- Drop EVERY existing policy on each table (name-independent) so no permissive
+-- write policy survives, then install exactly ONE permissive SELECT policy.
+do $$
+declare p record;
+begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'bids' loop
+    execute format('drop policy if exists %I on public.bids', p.policyname);
+  end loop;
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'room_blocks' loop
+    execute format('drop policy if exists %I on public.room_blocks', p.policyname);
+  end loop;
+end $$;
+
+create policy bids_select_all        on public.bids        for select to public using (true);
+create policy room_blocks_select_all on public.room_blocks for select to public using (true);
+
+-- Revoke the write surface from every untrusted role; keep SELECT.
+revoke insert, update, delete, truncate on public.bids        from anon, authenticated, public;
+revoke insert, update, delete, truncate on public.room_blocks from anon, authenticated, public;
+grant  select                          on public.bids        to   anon, authenticated;
+grant  select                          on public.room_blocks to   anon, authenticated;
+-- Legitimate server writers only (service_role bypasses RLS + holds the grant).
+grant  select, insert, update, delete  on public.bids        to   service_role;
+grant  select, insert, update, delete  on public.room_blocks to   service_role;

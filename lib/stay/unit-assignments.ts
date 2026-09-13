@@ -422,3 +422,52 @@ export async function callStayRpc(fn: string, args: Record<string, unknown>): Pr
     return { status: "error", reason: e?.message || "rpc_error" };
   }
 }
+
+// ── M8 cutover probe (fail-closed authority signal) ─────────────────────────
+/**
+ * True only when the migration is applied (the read-only RPC stay_assignment_ready
+ * exists and returns). CODE-FIRST cutover: deploy v753 first, and every occupancy
+ * writer that relies on the new DB authority (the assign RPCs, and the walk-in
+ * pinned-block writes) must fail closed 503 until this returns true — then apply
+ * the migration. A "missing" (PGRST202) or any error → false (fail closed). Zero
+ * network when the service-role key is unconfigured.
+ */
+export async function assignmentAuthorityReady(): Promise<boolean> {
+  const r = await callStayRpc("stay_assignment_ready", {});
+  return r.status === "ok";
+}
+
+// ── M6 completed-room projection (pure) ─────────────────────────────────────
+export type DisplayLine = { unitId: string; unitNumber: string; slot: number };
+
+/**
+ * Project the room(s) to DISPLAY per bid from assignment lines that may be in a
+ * mix of statuses. For a LIVE stay (any ACTIVE line) the ACTIVE lines are the
+ * current rooms; for a CHECKED_OUT / finished stay (no ACTIVE line) the COMPLETED
+ * lines are the FINAL rooms. SUPERSEDED / RELEASED lines are history and are NEVER
+ * shown as current/final. Sorted by slot; multi-room faithful. Pure.
+ */
+export function projectDisplayUnits(
+  lines: Array<{ bid_id: string; unit_id: string; unit_number: string; slot?: number | null; status?: string | null }>,
+): Record<string, DisplayLine[]> {
+  const byBid: Record<string, Array<{ unitId: string; unitNumber: string; slot: number; status: string }>> = {};
+  for (const l of lines || []) {
+    const bid = String(l.bid_id);
+    (byBid[bid] ||= []).push({
+      unitId: String(l.unit_id),
+      unitNumber: String(l.unit_number),
+      slot: Number(l.slot) || 1,
+      status: String(l.status || "").toLowerCase(),
+    });
+  }
+  const out: Record<string, DisplayLine[]> = {};
+  Object.keys(byBid).forEach((bid) => {
+    const rows = byBid[bid];
+    const active = rows.filter((r) => r.status === "active");
+    const chosen = active.length ? active : rows.filter((r) => r.status === "completed");
+    out[bid] = chosen
+      .sort((a, b) => a.slot - b.slot)
+      .map((r) => ({ unitId: r.unitId, unitNumber: r.unitNumber, slot: r.slot }));
+  });
+  return out;
+}

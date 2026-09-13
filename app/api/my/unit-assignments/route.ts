@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, resolveUserIds } from "@/lib/sb-server";
 import { verifiedCustomerFromReq } from "@/lib/auth/customer-verify";
+import { projectDisplayUnits } from "@/lib/stay/unit-assignments";
 
 export const runtime = "nodejs"; // jsonwebtoken verify is server-only; never edge
 export const dynamic = "force-dynamic";
@@ -44,17 +45,22 @@ export async function POST(req: NextRequest) {
     const inList = ownIds.map(encodeURIComponent).join(",");
 
     const map: Record<string, { unitId: string; unitNumber: string; unitNumbers: string[] }> = {};
+    // STAY-LIFECYCLE-OPS-01 M6 — read ACTIVE (live stay) AND COMPLETED (finished
+    // stay) lines so a CHECKED_OUT guest still sees the FINAL room(s) they occupied.
+    // projectDisplayUnits picks active-if-any-else-completed per bid, never a
+    // superseded/released (transferred-away) room.
     const lRes = await fetch(
-      `${SB_URL}/rest/v1/bid_unit_assignment_lines?bid_id=in.(${inList})&status=eq.active&select=bid_id,unit_id,unit_number,slot&order=slot.asc`,
+      `${SB_URL}/rest/v1/bid_unit_assignment_lines?bid_id=in.(${inList})&status=in.(active,completed)&select=bid_id,unit_id,unit_number,slot,status&order=slot.asc`,
       { headers: SB_H, cache: "no-store" }
     );
     if (lRes.ok) {
       const rows = await lRes.json();
       if (Array.isArray(rows)) {
-        for (const x of rows) {
-          const cur = map[x.bid_id];
-          if (!cur) map[x.bid_id] = { unitId: String(x.unit_id), unitNumber: String(x.unit_number), unitNumbers: [String(x.unit_number)] };
-          else cur.unitNumbers.push(String(x.unit_number));
+        const projected = projectDisplayUnits(rows);
+        for (const bidId of Object.keys(projected)) {
+          const units = projected[bidId];
+          if (!units.length) continue;
+          map[bidId] = { unitId: units[0].unitId, unitNumber: units[0].unitNumber, unitNumbers: units.map((u) => u.unitNumber) };
         }
       }
       return NextResponse.json({ assignments: map });

@@ -302,6 +302,7 @@ async function main() {
         blk.assignedUnitId = null; blk.assignedUnitNumber = null;
         return jsonRes({ ok: true });
       }
+      if (fn === "stay_assignment_ready") return jsonRes(true); // M8 authority probe (RPC_MISSING handled above → 404 PGRST202)
       return jsonRes({ code: "PGRST202", message: "unknown rpc " + fn }, 404);
     };
 
@@ -639,6 +640,20 @@ async function main() {
       r = await walkinDelete("id=g_blk", "Bearer " + jwt.sign({ sub: SUBJECT }, "WRONG", { algorithm: "HS256" })); eqv(r.status, 401, "W.29 DELETE forged → 401");
       r = await walkinDelete("id=g_blk"); eqv(r.status, 200, "W.30 DELETE own block → 200"); eqv(DB.room_blocks.length, 1, "W.30w row removed"); }
 
+    // ═══════════ X. M8 cutover — walk-in PINNED writes fail closed pre-migration ═══════════
+    section("X. M8 — walk-in pinned writes fail closed (503) when the assignment authority (migration) is absent");
+    reset(); seedCategory(); RPC_MISSING = true;
+    { const r = await walkinPost(blockBody({ assignedUnitId: "u1" })); eqv(r.status, 503, "X.1 pinned POST pre-migration → 503"); eqv(r.body.error, "unit_assignment_authority_unavailable", "X.1e"); eqv(DB.room_blocks.length, 0, "X.1w ZERO room_blocks written (503 BEFORE any occupancy write)"); }
+    reset(); seedCategory(); RPC_MISSING = true;
+    { const r = await walkinPost(blockBody()); eqv(r.status, 200, "X.2 UNPINNED walk-in still works pre-migration (category hold, guard-irrelevant)"); eqv(DB.room_blocks.length, 1, "X.2w one row"); }
+    reset(); seedCategory(); DB.room_blocks.push({ id: "x_blk", hotelId: HOTEL, roomId: ROOM, fromDate: TODAY, toDate: D(2), source: "walk_in" }); RPC_MISSING = true;
+    { const r = await walkinPatch({ id: "x_blk", assignedUnitId: "u1" }); eqv(r.status, 503, "X.3 PATCH setting a pin pre-migration → 503"); eqv(r.body.error, "unit_assignment_authority_unavailable", "X.3e"); ok(!DB.room_blocks.find((b) => b.id === "x_blk").assignedUnitId, "X.3w pin NOT written"); }
+    reset(); seedCategory(); DB.room_blocks.push({ id: "x_blk2", hotelId: HOTEL, roomId: ROOM, fromDate: TODAY, toDate: D(2), source: "walk_in", assignedUnitId: "u1", assignedUnitNumber: "101" }); RPC_MISSING = true;
+    { const r = await walkinPatch({ id: "x_blk2", toDate: D(3) }); eqv(r.status, 503, "X.4 PATCH changing dates on a PINNED block pre-migration → 503"); ok(String(DB.room_blocks.find((b) => b.id === "x_blk2").toDate).slice(0,10) === D(2), "X.4w dates unchanged"); }
+    reset(); seedCategory(); DB.room_blocks.push({ id: "x_blk3", hotelId: HOTEL, roomId: ROOM, fromDate: TODAY, toDate: D(2), source: "walk_in" }); RPC_MISSING = true;
+    { const r = await walkinPatch({ id: "x_blk3", guestName: "Renamed" }); eqv(r.status, 200, "X.5 a non-occupancy PATCH (guest name) still works pre-migration"); }
+    { ok(typeof UA.assignmentAuthorityReady === "function", "X.6 assignmentAuthorityReady exported from the store"); }
+
     // ═══════════ M4. customer unit-assignment read — cryptographic customer authority ═══════════
     section("M4. customer allocated-room read — verified HS256 customer only; forged / alg:none / id-only / RS256-shaped / expired → 401; own bids only");
     const seedMine = () => { reset(); seedCategory(); seedBid("m_own", "ACCEPTED", { numRooms: 2 }); seedLine("m_own", "u1", 1); seedLine("m_own", "u2", 2); seedBid("m_other", "ACCEPTED", { customerId: OTHER_CUSTOMER }); seedLine("m_other", "u2"); };
@@ -660,6 +675,21 @@ async function main() {
     seedMine(); LINES_MISSING = true; DB.bid_unit_assignments.push({ bidId: "m_own", unitId: "u1", unitNumber: "101" }, { bidId: "m_other", unitId: "u2", unitNumber: "102" });
     { const r = await mine({ bidIds: ["m_own", "m_other"] }, custToken()); eqv(r.status, 200, "M4.10 lines table missing → legacy fallback"); ok(r.body.assignments.m_own && r.body.assignments.m_own.unitNumber === "101" && !r.body.assignments.m_other, "M4.10o legacy fallback still scoped to own bids"); }
     { const r = await mine({}, custToken()); ok(r.status === 200 && JSON.stringify(r.body.assignments) === "{}", "M4.11 empty request → empty map"); }
+
+    // ═══════════ M6. completed-room projection — final room survives checkout ═══════════
+    section("M6. completed-room projection — a CHECKED_OUT stay still surfaces its FINAL room(s), never blank");
+    // pure projector
+    { const p = UA.projectDisplayUnits([{ bid_id: "z", unit_id: "u1", unit_number: "101", slot: 1, status: "active" }]); ok(p.z && p.z.length === 1 && p.z[0].unitNumber === "101", "M6.1 active line projects"); }
+    { const p = UA.projectDisplayUnits([{ bid_id: "z", unit_id: "u1", unit_number: "101", slot: 1, status: "completed" }]); ok(p.z && p.z.length === 1 && p.z[0].unitNumber === "101", "M6.2 completed-only (finished stay) projects the final room"); }
+    { const p = UA.projectDisplayUnits([{ bid_id: "z", unit_id: "u1", unit_number: "101", slot: 1, status: "superseded" }, { bid_id: "z", unit_id: "u2", unit_number: "102", slot: 1, status: "completed" }]); ok(p.z.length === 1 && p.z[0].unitNumber === "102", "M6.3 transfer: only the final (completed) room, never the superseded one"); }
+    { const p = UA.projectDisplayUnits([{ bid_id: "z", unit_id: "u1", unit_number: "101", slot: 1, status: "active" }, { bid_id: "z", unit_id: "u9", unit_number: "109", slot: 1, status: "completed" }]); ok(p.z.length === 1 && p.z[0].unitNumber === "101", "M6.4 active takes precedence over a stale completed row"); }
+    { const p = UA.projectDisplayUnits([{ bid_id: "z", unit_id: "u2", unit_number: "102", slot: 2, status: "active" }, { bid_id: "z", unit_id: "u1", unit_number: "101", slot: 1, status: "active" }]); ok(p.z.map((x) => x.unitNumber).join(",") === "101,102", "M6.5 multi-room sorted by slot"); }
+    { const p = UA.projectDisplayUnits([{ bid_id: "z", unit_id: "u1", unit_number: "101", slot: 1, status: "released" }]); ok(!p.z || p.z.length === 0, "M6.6 a released-only bid projects nothing (never occupied)"); }
+    // customer read model after checkout: the line is COMPLETED (no active) → still returns the final room
+    reset(); seedCategory(); seedBid("m6_out", "CHECKED_OUT", { numRooms: 1 }); seedLine("m6_out", "u1", 1, { status: "completed" });
+    { const r = await mine({ bidIds: ["m6_out"] }, custToken({ sub: CUSTOMER })); eqv(r.status, 200, "M6.7 CHECKED_OUT read → 200"); ok(r.body.assignments.m6_out && r.body.assignments.m6_out.unitNumber === "101", "M6.7f final room (u1 #101) still surfaced after checkout, not blank"); }
+    reset(); seedCategory(); seedBid("m6_tr", "CHECKED_OUT", { numRooms: 1 }); seedLine("m6_tr", "u1", 1, { status: "superseded" }); seedLine("m6_tr", "u2", 1, { status: "completed" });
+    { const r = await mine({ bidIds: ["m6_tr"] }, custToken({ sub: CUSTOMER })); ok(r.body.assignments.m6_tr && r.body.assignments.m6_tr.unitNumber === "102", "M6.8 transferred-then-checked-out → customer sees the FINAL room (u2), never the superseded u1"); }
 
     // ═══════════ E. checkout — lifecycle authority + explicit early + downstream idempotency + notification ═══════════
     section("E. checkout route — downstream lifecycle only after a legitimate checkout; notification contract");
@@ -783,6 +813,29 @@ async function main() {
     ok(/status\s*!==\s*["']CHECKED_IN["']/.test(checkoutSrc) && /!==\s*["']checked_in["']/.test(checkoutSrc), "G.38 checkout keeps the CHECKED_IN + checked_in-evidence precondition");
     ok(/feedbackWindowNotificationId/.test(checkoutSrc) && /id: nid/.test(checkoutSrc), "G.39 checkout notification insert carries an explicit id");
     ok(/stay-unit-assignment\.pg\.test\.js/.test(read("package.json")) && fs.existsSync(path.join(REPO, "tests/concurrency/stay-unit-assignment.pg.test.js")), "G.40 the real-PostgreSQL atomicity/race suite is wired into test:concurrency");
+    // M5 — source-table authorization closure (migration)
+    ok(/M5 — SOURCE-TABLE AUTHORIZATION CLOSURE/.test(mig), "G.41 migration has the M5 source-table closure section");
+    ok(/revoke insert, update, delete, truncate on public\.bids\s+from anon, authenticated, public/.test(mig) && /revoke insert, update, delete, truncate on public\.room_blocks\s+from anon, authenticated, public/.test(mig), "G.42 M5 revokes anon/authenticated/public WRITE on bids + room_blocks");
+    ok(/create policy bids_select_all\s+on public\.bids\s+for select to public/.test(mig) && /create policy room_blocks_select_all\s+on public\.room_blocks\s+for select to public/.test(mig), "G.43 M5 preserves a SELECT-only policy on both (reads never break)");
+    ok(/grant\s+select, insert, update, delete\s+on public\.bids\s+to\s+service_role/.test(mig) && /grant\s+select, insert, update, delete\s+on public\.room_blocks\s+to\s+service_role/.test(mig), "G.44 M5 preserves service_role writes on both");
+    ok(/drop policy if exists %I on public\.bids/.test(mig) && /drop policy if exists %I on public\.room_blocks/.test(mig), "G.45 M5 drops every existing (permissive) policy name-independently");
+    // M5 — SECURITY DEFINER tripwire in BOTH trigger functions
+    ok((mig.match(/unit_assignment_forbidden_role/g) || []).length >= 2, "G.46 both SECURITY DEFINER trigger functions carry the untrusted-role tripwire");
+    ok(/current_setting\('request\.jwt\.claims', true\)::json->>'role'/.test(mig) && /v_actor in \('anon', 'authenticated'\)/.test(mig), "G.47 tripwire keys on the request.jwt.claims role (anon/authenticated refused; NULL/other trusted)");
+    // M8 — code-first cutover
+    ok(/create or replace function public\.stay_assignment_ready\(\) returns boolean/.test(mig) && /revoke execute on function public\.stay_assignment_ready\(\) from public, anon, authenticated/.test(mig) && /grant\s+execute on function public\.stay_assignment_ready\(\) to service_role/.test(mig), "G.48 M8 stay_assignment_ready() probe exists, EXECUTE service_role-only");
+    ok(/SAFE CUTOVER = CODE-FIRST/.test(mig) && /Deploy v753 FIRST, THEN apply/.test(mig), "G.49 migration header states the CODE-FIRST fail-closed cutover (not migration-first)");
+    ok(/assignmentAuthorityReady\(\)/.test(walkinSrc) && /unit_assignment_authority_unavailable/.test(walkinSrc), "G.50 walk-in route probes the authority + fails closed 503 before a pinned write");
+    ok(/callStayRpc\("stay_assignment_ready"/.test(storeSrc), "G.51 assignmentAuthorityReady probes via the read-only stay_assignment_ready RPC");
+    // M6 — completed-room projection wired into BOTH read models
+    ok(/status=in\.\(active,completed\)/.test(mineSrc) && /projectDisplayUnits\(/.test(mineSrc), "G.52 customer read model queries active+completed and projects (final room survives checkout)");
+    const hotelSrc = strip(read("app/api/partner/hotel/route.ts"));
+    ok(/status=in\.\(active,completed\)/.test(hotelSrc) && /projectDisplayUnits\(/.test(hotelSrc), "G.53 partner hotel read model queries active+completed and projects");
+    ok(/Final Room/.test(dash), "G.54 dashboard labels a completed stay's rooms 'Final Room(s)'");
+    // M7 — OTA batch conflict isolation
+    const syncSrc = strip(read("lib/channels/sync.ts"));
+    ok(/isIntegrityConflict/.test(syncSrc) && /block insert \(isolated\)/.test(syncSrc) && /base\.conflicts/.test(syncSrc), "G.55 OTA sync isolates a conflicting event per-event (valid events still import; conflicts recorded)");
+    ok(/BEGIN:VCALENDAR/.test(read("lib/channels/sync.ts")) && /isSafeFeedUrl\(/.test(read("lib/channels/sync.ts")), "G.56 OTA sync preserves the VCALENDAR reconcile guard + SSRF guard");
   } catch (err) {
     fatal = err;
     console.error("\n• FATAL: " + (err && err.message ? err.message : String(err)));
