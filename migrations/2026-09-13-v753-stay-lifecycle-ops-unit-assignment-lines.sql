@@ -1,39 +1,81 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- STAY-LIFECYCLE-OPS-01 — multi-unit physical room assignment + authorization
--- closure for the assignment surface.
+-- STAY-LIFECYCLE-OPS-01 — multi-unit physical room assignment: ATOMIC
+-- mutation authority, ongoing synchronization of every occupancy writer, ONE
+-- cross-table serialization strategy, and authorization closure.
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ⚠ NOT APPLIED TO PRODUCTION by the PR that introduces it. Applying it is an
 --    OWNER-controlled operation. Deploy order: apply this migration FIRST, then
---    deploy the code. (The code is backward compatible pre-migration: it falls
---    back to the legacy single-unit row for reads and single-unit writes, and
---    fails closed only for a multi-unit write it cannot represent.)
+--    deploy the code. Pre-migration the code READS the legacy row (fallback) and
+--    REFUSES every assignment WRITE (503 unit_assignment_rpc_unavailable): the
+--    only sanctioned write path is the atomic RPC below, so no non-atomic
+--    multi-step write path exists in the application at all.
 --
 -- WHY
 --   • public.bid_unit_assignments has PRIMARY KEY ("bidId") — ONE unit per bid —
---     so an N-room booking (bids."numRooms" > 1) cannot be represented and a
---     re-assignment destructively overwrites history.
---   • It also carries the permissive `all_anon_all` RLS policy from
---     2026-05-13-rls-everywhere (anon + authenticated: ALL, qual/with_check =
---     true), i.e. any client could write/delete any assignment directly.
+--     so an N-room booking cannot be represented and a re-assignment
+--     destructively overwrites history.
+--   • It carries the permissive `all_anon_all` RLS policy (anon + authenticated:
+--     ALL, qual/with_check = true): any client could write/delete any assignment.
+--   • Occupancy of a physical unit was claimed from several places
+--     (bids."assignedUnitId" stamped by the unit-level booking flow, unit-pinned
+--     room_blocks from walk-in / OTA / inventory holds) with no shared authority,
+--     so line-vs-block and block-vs-block claims could race or bypass checks.
 --
 -- SCHEMA CONTRACT (after)
 --   public.bid_unit_assignment_lines  — NEW, authoritative, history-preserving:
---     one row per (bid, unit) with status active | superseded | released;
---     partial UNIQUE (bid_id, unit_id) WHERE active  → no duplicate live line;
---     partial UNIQUE (bid_id, slot)    WHERE active  → deterministic slots 1..N;
---     stay_from / stay_to (denormalised from bid_requests at write time) +
---     EXCLUDE USING gist (unit_id =, daterange(stay_from, stay_to, '[)') &&)
---     WHERE active AND dated → the DATABASE refuses two active lines that put
---     the SAME unit on OVERLAPPING nights, even under concurrent writes (the
---     server-side findUnitConflicts check is the fast path; this is the final
---     authority; the server maps the 23P01 → 409 unit_conflict). Backfilled
---     legacy rows without dates do not participate in the EXCLUDE (they stay
---     server-checked) — nothing is invented for them.
+--     one row per (bid, unit) with status active | superseded | released |
+--     completed; partial UNIQUE (bid_id, unit_id) WHERE active; partial UNIQUE
+--     (bid_id, slot) WHERE active; stay_from / stay_to denormalised from
+--     bid_requests at write time + EXCLUDE USING gist (unit_id =, daterange &&)
+--     WHERE active AND dated → the DATABASE refuses the SAME unit on OVERLAPPING
+--     nights even under concurrent writes (btree_gist). Backfilled legacy rows
+--     without dates do not participate (they stay server/trigger-checked).
 --   public.bid_unit_assignments       — LEGACY, kept as the SLOT-1 MIRROR so
---     every existing single-unit reader (availability calendar, customer
---     "allocated room") keeps working unchanged. Backfilled into the lines
---     table below (idempotent).
+--     every existing single-unit reader keeps working; maintained ONLY by the
+--     RPC / sync trigger (never by clients).
 --   bids."assignedUnitId"             — unchanged column; mirrored to slot 1.
+--
+-- ATOMIC MUTATION AUTHORITY (M1)
+--   stay_assign_units / stay_release_units / stay_assign_block_unit /
+--   stay_release_block_unit are plpgsql RPCs. Each runs in ONE transaction:
+--   lock → re-validate → close superseded lines → insert target lines → update
+--   legacy slot-1 mirror → update bids."assignedUnitId" (or the block). Every
+--   refusal is RAISE EXCEPTION (SQLSTATE P0001, MESSAGE = error code, DETAIL =
+--   unit id), so a refused or failed call ROLLS BACK everything — the previous
+--   assignment state is left exactly as it was. SECURITY INVOKER is sufficient:
+--   the only caller is the server's service_role (BYPASSRLS, owns every
+--   privilege needed); EXECUTE is REVOKED from PUBLIC / anon / authenticated.
+--
+-- ONGOING WRITER SYNCHRONIZATION (M2)
+--   trg_stay_sync_bid_unit_assignment (AFTER INSERT OR UPDATE OF "assignedUnitId",
+--   status ON bids): whenever ANY writer (the unit-level booking flow in
+--   app/api/bids/place, the Railway backend, a manual script) puts an occupying
+--   booking (ACCEPTED / CONFIRMED / CHECKED_IN) on a unit, an ACTIVE line is
+--   ensured (unit validated: exact hotel, exact category, active; conflicts
+--   re-checked under the unit lock); CHECKED_OUT → lines 'completed'; terminal
+--   (CANCELLED/EXPIRED/REJECTED/DECLINED) → 'released'; a cleared column releases
+--   that unit's line. INVARIANT: no occupying booking can hold a unit solely in
+--   bids."assignedUnitId" while absent from the authoritative lines table. The
+--   trigger function is SECURITY DEFINER with a PINNED search_path because the
+--   role that legitimately mutates `bids` (Railway's DB role, the server's
+--   anon-fallback headers) has NO privilege on the service_role-only lines
+--   table; the function body touches only the named public tables.
+--
+-- ONE SERIALIZATION STRATEGY ACROSS LINES AND BLOCKS (M3)
+--   Every physical-unit occupancy writer — both bid RPCs, both block RPCs, the
+--   bids sync trigger and the room_blocks guard trigger (BEFORE INSERT OR UPDATE
+--   OF "assignedUnitId","fromDate","toDate") — takes
+--   pg_advisory_xact_lock(hashtext('sb_unit:' || unit_id)) and THEN re-checks
+--   occupancy with stay_unit_conflict_count(), a VOLATILE function (fresh
+--   snapshot after the lock, so a competitor's just-committed row is seen).
+--   Concurrent line-vs-block / block-vs-block / line-vs-line claims on the same
+--   unit-night therefore serialize deterministically: the first to hold the lock
+--   wins, the second re-checks and RAISES (rolling its own write back). The
+--   lines EXCLUDE constraint is the final line-vs-line backstop. The guard also
+--   validates exact hotel / category / active and derives "assignedUnitNumber"
+--   SERVER-SIDE (a client value is never trusted). Writers that go through
+--   room_blocks without the app (OTA sync pinned imports, inventory holds) are
+--   covered because the guard is a table trigger.
 --
 -- PRIVILEGE / RLS CONTRACT (after)
 --   bid_unit_assignment_lines : RLS ENABLED + FORCED, ZERO client policies;
@@ -41,12 +83,13 @@
 --   bid_unit_assignments      : RLS ENABLED + FORCED; the permissive
 --                               `all_anon_all` policy is DROPPED; anon/
 --                               authenticated: NOTHING; service_role: ALL.
---   Every server path that touches these tables already elevates to the
---   service role (lib/sb-server SB_H / lib/onboard/supabase-admin / the stay
---   store) — SUPABASE_SERVICE_ROLE_KEY is a production requirement already
---   (admin gate, verified-stay evidence). No client reads these tables
---   directly (verified by source grep). The customer "allocated room" read
---   (/api/my/unit-assignments) and the availability engine are server routes.
+--   RPC + helper functions    : EXECUTE revoked from PUBLIC/anon/authenticated,
+--                               granted to service_role only.
+--   Trigger functions         : EXECUTE revoked from PUBLIC/anon/authenticated
+--                               (firing a trigger needs no EXECUTE at runtime —
+--                               proven by tests/concurrency/stay-unit-assignment
+--                               .pg.test.js with a non-owner role). Calling a
+--                               trigger function directly is impossible.
 --
 -- Additive / forward-only. TEXT ids (CUIDs), NO FK constraints (repo contract).
 -- Idempotent: safe to re-run.
@@ -56,25 +99,28 @@
 create extension if not exists btree_gist;
 
 create table if not exists public.bid_unit_assignment_lines (
-  id            text primary key,                 -- bual_<bid>_<unit>_<ts36>
+  id            text primary key,                 -- bual_<bid>_<unit>_<uuid>
   bid_id        text        not null,
   hotel_id      text        not null,             -- denormalised from the bid (integrity checks)
   room_id       text        not null,             -- the booked room CATEGORY
   unit_id       text        not null,             -- hotel_room_units.id
   unit_number   text        not null,             -- display copy at assignment time
   slot          integer     not null default 1,   -- 1..numRooms
-  status        text        not null default 'active',  -- active | superseded | released
-  assigned_by   text,                              -- verified partner subject
+  status        text        not null default 'active',  -- active | superseded | released | completed
+  assigned_by   text,                              -- verified partner subject / 'lifecycle'
   assigned_at   timestamptz not null default now(),
   released_at   timestamptz,
   released_by   text,
-  reason        text,                              -- e.g. "transfer: <reason>", "reassigned before check-in", "unassigned"
+  reason        text,                              -- "transfer: <reason>", "reassigned before check-in", "unassigned", "lifecycle: <status>"
   stay_from     date,                              -- denormalised stay range [stay_from, stay_to)
   stay_to       date,
-  constraint bual_status_chk check (status in ('active','superseded','released')),
   constraint bual_slot_chk   check (slot >= 1),
   constraint bual_stay_chk   check (stay_from is null or stay_to is null or stay_from < stay_to)
 );
+-- (re)establish the status check idempotently (adds 'completed' = finished stay, no longer occupying)
+alter table public.bid_unit_assignment_lines drop constraint if exists bual_status_chk;
+alter table public.bid_unit_assignment_lines
+  add constraint bual_status_chk check (status in ('active','superseded','released','completed'));
 
 create unique index if not exists uniq_bual_active_bid_unit
   on public.bid_unit_assignment_lines (bid_id, unit_id) where status = 'active';
@@ -89,15 +135,11 @@ create index if not exists idx_bual_unit_active
 -- overlapping nights (checkout-exclusive daterange '[)'). Idempotent add.
 do $$
 begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'excl_bual_unit_night_overlap'
-  ) then
+  if not exists (select 1 from pg_constraint where conname = 'excl_bual_unit_night_overlap') then
     alter table public.bid_unit_assignment_lines
       add constraint excl_bual_unit_night_overlap
-      exclude using gist (
-        unit_id with =,
-        daterange(stay_from, stay_to, '[)') with &&
-      ) where (status = 'active' and stay_from is not null and stay_to is not null);
+      exclude using gist (unit_id with =, daterange(stay_from, stay_to, '[)') with &&)
+      where (status = 'active' and stay_from is not null and stay_to is not null);
   end if;
 end $$;
 
@@ -115,42 +157,388 @@ drop policy if exists all_anon_all on public.bid_unit_assignments;
 revoke all on public.bid_unit_assignments from anon, authenticated;
 grant  all on public.bid_unit_assignments to   service_role;
 
--- ── Backfill: every existing legacy row becomes an ACTIVE slot-1 line ───────
--- Idempotent (skips bids that already have an active line for that unit).
--- A legacy row whose unit no longer exists in hotel_room_units cannot carry the
--- hotel/room denormalisation and is skipped (it remains readable via the legacy
--- mirror; the server read path falls back to it).
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Occupancy helpers (called by the RPCs and both triggers)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Per-unit serialization point shared by EVERY occupancy writer.
+create or replace function public.stay_lock_unit(p_unit_id text) returns void
+language sql as $$
+  select pg_advisory_xact_lock(hashtext('sb_unit:' || p_unit_id)::bigint);
+$$;
+
+-- Number of OTHER live occupations of a unit overlapping [p_from, p_to):
+--   • ACTIVE lines of OTHER occupying bids (dated → range overlap; undated → the
+--     bid_requests dates; undated AND no request dates → counted, fail closed);
+--   • room_blocks pinned to the unit (any source) overlapping the range, except
+--     the caller's own block.
+-- VOLATILE on purpose: each statement takes a fresh snapshot, so a competitor's
+-- row committed while we waited for the advisory lock IS seen.
+create or replace function public.stay_unit_conflict_count(
+  p_unit_id text, p_from date, p_to date, p_exclude_bid text, p_exclude_block text
+) returns integer language plpgsql volatile as $$
+declare v_lines integer; v_blocks integer;
+begin
+  select count(*) into v_lines
+    from public.bid_unit_assignment_lines l
+    left join public.bids b on b.id = l.bid_id
+    left join public.bid_requests r on r.id = b."requestId"
+   where l.unit_id = p_unit_id and l.status = 'active'
+     and (p_exclude_bid is null or l.bid_id <> p_exclude_bid)
+     and upper(coalesce(b.status, '')) in ('ACCEPTED','CONFIRMED','CHECKED_IN')
+     and (
+       (l.stay_from is not null and l.stay_to is not null and l.stay_from < p_to and p_from < l.stay_to)
+       or (l.stay_from is null and r."checkIn" is not null and r."checkOut" is not null
+           and r."checkIn"::date < p_to and p_from < r."checkOut"::date)
+       or (l.stay_from is null and (r."checkIn" is null or r."checkOut" is null))
+     );
+  select count(*) into v_blocks
+    from public.room_blocks rb
+   where rb."assignedUnitId" = p_unit_id
+     and (p_exclude_block is null or rb.id <> p_exclude_block)
+     and rb."fromDate"::date < p_to and p_from < rb."toDate"::date;
+  return v_lines + v_blocks;
+end $$;
+
+-- Smallest free slot number among a bid's ACTIVE lines.
+create or replace function public.stay_next_free_slot(p_bid_id text) returns integer
+language plpgsql volatile as $$
+declare v_slot integer := 1;
+begin
+  while exists (select 1 from public.bid_unit_assignment_lines where bid_id = p_bid_id and status = 'active' and slot = v_slot) loop
+    v_slot := v_slot + 1;
+  end loop;
+  return v_slot;
+end $$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M1 — ATOMIC assignment-set mutation (the ONLY sanctioned write path)
+-- ═══════════════════════════════════════════════════════════════════════════
+create or replace function public.stay_assign_units(
+  p_bid_id text, p_unit_ids text[], p_partner_subject text, p_mode text, p_reason text
+) returns jsonb
+language plpgsql security invoker set search_path = public, pg_temp as $$
+declare
+  v_bid record; v_unit record; v_status text; v_mode text := lower(coalesce(p_mode, 'assign'));
+  v_ids text[]; v_raw_count integer; v_required integer; v_from date; v_to date;
+  v_lock text[]; v_u text; v_reason text; v_now timestamptz := now(); v_assigned jsonb;
+  v_slot1_unit text; v_slot1_num text;
+begin
+  -- distinct requested ids, first-occurrence order; duplicates are a malformed request
+  select array_agg(x order by ord) into v_ids
+    from (select x, min(ord) as ord from unnest(p_unit_ids) with ordinality as t(x, ord)
+           where coalesce(btrim(x), '') <> '' group by x) s;
+  select count(*) into v_raw_count from unnest(p_unit_ids) x where coalesce(btrim(x), '') <> '';
+  if v_ids is null or coalesce(array_length(v_ids, 1), 0) = 0 then
+    raise exception 'no_units' using errcode = 'P0001';
+  end if;
+  if array_length(v_ids, 1) <> v_raw_count then
+    raise exception 'duplicate_unit' using errcode = 'P0001';
+  end if;
+
+  -- serialize per bid (row lock) + lifecycle gate
+  select * into v_bid from public.bids where id = p_bid_id for update;
+  if not found then raise exception 'bid_not_found' using errcode = 'P0001'; end if;
+  v_status := upper(coalesce(v_bid.status, ''));
+  if v_status = 'CHECKED_OUT' then raise exception 'stay_completed' using errcode = 'P0001'; end if;
+  if v_status = 'CHECKED_IN' then
+    if v_mode <> 'transfer' then raise exception 'transfer_confirmation_required' using errcode = 'P0001'; end if;
+    if coalesce(btrim(p_reason), '') = '' then raise exception 'transfer_reason_required' using errcode = 'P0001'; end if;
+  elsif v_status not in ('ACCEPTED', 'CONFIRMED') then
+    raise exception 'bid_not_reservable' using errcode = 'P0001';
+  elsif v_mode = 'transfer' then
+    raise exception 'transfer_only_while_checked_in' using errcode = 'P0001';
+  end if;
+  v_required := greatest(1, coalesce(v_bid."numRooms", 1));
+  if array_length(v_ids, 1) > v_required then raise exception 'too_many_units' using errcode = 'P0001'; end if;
+
+  -- stay range (server-read)
+  select r."checkIn"::date, r."checkOut"::date into v_from, v_to
+    from public.bid_requests r where r.id = v_bid."requestId";
+  if v_from is null or v_to is null or v_from >= v_to then
+    raise exception 'stay_dates_unavailable' using errcode = 'P0001';
+  end if;
+
+  -- ONE serialization strategy: advisory xact locks on every involved unit, sorted
+  select array_agg(distinct x order by x) into v_lock
+    from unnest(v_ids || coalesce((select array_agg(unit_id) from public.bid_unit_assignment_lines
+                                     where bid_id = p_bid_id and status = 'active'), '{}'::text[])) x;
+  foreach v_u in array v_lock loop perform public.stay_lock_unit(v_u); end loop;
+
+  -- validate every requested unit under the locks (exact hotel / category / active / no live overlap)
+  foreach v_u in array v_ids loop
+    select * into v_unit from public.hotel_room_units where id = v_u;
+    if not found then raise exception 'unit_not_found' using errcode = 'P0001', detail = v_u; end if;
+    if v_unit."hotelId" <> v_bid."hotelId" then raise exception 'unit_wrong_hotel' using errcode = 'P0001', detail = v_u; end if;
+    if v_unit."roomId" <> v_bid."roomId" then raise exception 'unit_wrong_category' using errcode = 'P0001', detail = v_u; end if;
+    if lower(coalesce(v_unit.status, '')) <> 'active' then raise exception 'unit_inactive' using errcode = 'P0001', detail = v_u; end if;
+    if public.stay_unit_conflict_count(v_u, v_from, v_to, p_bid_id, null) > 0 then
+      raise exception 'unit_conflict' using errcode = 'P0001', detail = v_u;
+    end if;
+  end loop;
+
+  v_reason := case when v_mode = 'transfer' then 'transfer: ' || left(btrim(p_reason), 300) else 'reassigned before check-in' end;
+
+  -- close every active line not in the target set (history preserved, never deleted)
+  update public.bid_unit_assignment_lines
+     set status = 'superseded', released_at = v_now, released_by = p_partner_subject, reason = v_reason
+   where bid_id = p_bid_id and status = 'active' and not (unit_id = any (v_ids));
+
+  -- insert the missing target lines (existing active lines keep their slot)
+  foreach v_u in array v_ids loop
+    if not exists (select 1 from public.bid_unit_assignment_lines where bid_id = p_bid_id and unit_id = v_u and status = 'active') then
+      insert into public.bid_unit_assignment_lines
+        (id, bid_id, hotel_id, room_id, unit_id, unit_number, slot, status, assigned_by, assigned_at, reason, stay_from, stay_to)
+      select 'bual_' || p_bid_id || '_' || v_u || '_' || replace(gen_random_uuid()::text, '-', ''),
+             p_bid_id, v_bid."hotelId", v_bid."roomId", v_u, u."roomNumber", public.stay_next_free_slot(p_bid_id),
+             'active', p_partner_subject, v_now, case when v_mode = 'transfer' then v_reason else null end, v_from, v_to
+        from public.hotel_room_units u where u.id = v_u;
+    end if;
+  end loop;
+
+  -- slot-1 mirror (legacy readers) + bids."assignedUnitId" — same transaction.
+  -- The mirror is the LOWEST active slot (an existing line keeps its slot).
+  select unit_id, unit_number into v_slot1_unit, v_slot1_num
+    from public.bid_unit_assignment_lines
+   where bid_id = p_bid_id and status = 'active' order by slot asc limit 1;
+  insert into public.bid_unit_assignments ("bidId", "unitId", "unitNumber", "assignedBy", "assignedAt")
+  values (p_bid_id, v_slot1_unit, v_slot1_num, p_partner_subject, v_now)
+  on conflict ("bidId") do update
+    set "unitId" = excluded."unitId", "unitNumber" = excluded."unitNumber",
+        "assignedBy" = excluded."assignedBy", "assignedAt" = excluded."assignedAt";
+  update public.bids set "assignedUnitId" = v_slot1_unit where id = p_bid_id;
+
+  select jsonb_agg(jsonb_build_object('unitId', unit_id, 'unitNumber', unit_number, 'slot', slot) order by slot)
+    into v_assigned from public.bid_unit_assignment_lines where bid_id = p_bid_id and status = 'active';
+  return jsonb_build_object('ok', true, 'action', v_mode, 'required', v_required,
+                            'assigned', coalesce(v_assigned, '[]'::jsonb));
+end $$;
+
+create or replace function public.stay_release_units(p_bid_id text, p_partner_subject text, p_reason text)
+returns jsonb language plpgsql security invoker set search_path = public, pg_temp as $$
+declare v_bid record; v_status text; v_released text[]; v_u text;
+begin
+  select * into v_bid from public.bids where id = p_bid_id for update;
+  if not found then raise exception 'bid_not_found' using errcode = 'P0001'; end if;
+  v_status := upper(coalesce(v_bid.status, ''));
+  if v_status = 'CHECKED_OUT' then raise exception 'stay_completed' using errcode = 'P0001'; end if;
+  if v_status = 'CHECKED_IN' then raise exception 'unassign_not_allowed_in_house' using errcode = 'P0001'; end if;
+  select coalesce(array_agg(unit_id order by unit_id), '{}'::text[]) into v_released
+    from public.bid_unit_assignment_lines where bid_id = p_bid_id and status = 'active';
+  foreach v_u in array v_released loop perform public.stay_lock_unit(v_u); end loop;
+  update public.bid_unit_assignment_lines
+     set status = 'released', released_at = now(), released_by = p_partner_subject,
+         reason = coalesce(nullif(btrim(p_reason), ''), 'unassigned')
+   where bid_id = p_bid_id and status = 'active';
+  delete from public.bid_unit_assignments where "bidId" = p_bid_id;
+  update public.bids set "assignedUnitId" = null where id = p_bid_id;
+  return jsonb_build_object('ok', true, 'released', to_jsonb(v_released));
+end $$;
+
+-- Walk-in / OTA / manual block: pin a unit atomically (the BEFORE UPDATE guard
+-- trigger below validates, serializes and derives the unit number).
+create or replace function public.stay_assign_block_unit(p_block_id text, p_unit_id text, p_partner_subject text)
+returns jsonb language plpgsql security invoker set search_path = public, pg_temp as $$
+declare v_block record; v_num text;
+begin
+  select * into v_block from public.room_blocks where id = p_block_id for update;
+  if not found then raise exception 'block_not_found' using errcode = 'P0001'; end if;
+  if coalesce(btrim(p_unit_id), '') = '' then raise exception 'no_units' using errcode = 'P0001'; end if;
+  update public.room_blocks set "assignedUnitId" = p_unit_id where id = p_block_id;
+  select "assignedUnitNumber" into v_num from public.room_blocks where id = p_block_id;
+  return jsonb_build_object('ok', true, 'unitId', p_unit_id, 'unitNumber', v_num);
+end $$;
+
+create or replace function public.stay_release_block_unit(p_block_id text, p_partner_subject text)
+returns jsonb language plpgsql security invoker set search_path = public, pg_temp as $$
+declare v_block record;
+begin
+  select * into v_block from public.room_blocks where id = p_block_id for update;
+  if not found then raise exception 'block_not_found' using errcode = 'P0001'; end if;
+  update public.room_blocks set "assignedUnitId" = null, "assignedUnitNumber" = null where id = p_block_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M2 — keep EVERY bids."assignedUnitId" writer synchronized with the lines table
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SECURITY DEFINER (pinned search_path): the roles that legitimately write
+-- `bids` (Railway's DB role, the server's anon-fallback) hold no privilege on
+-- the service_role-only lines table; the body touches only the named tables.
+create or replace function public.stay_sync_bid_unit_assignment() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_status text; v_unit record; v_from date; v_to date; v_required integer; v_active integer;
+begin
+  v_status := upper(coalesce(new.status, ''));
+
+  -- lifecycle exits: a finished stay no longer occupies its unit (history kept)
+  if v_status = 'CHECKED_OUT' then
+    update public.bid_unit_assignment_lines
+       set status = 'completed', released_at = now(), released_by = 'lifecycle', reason = 'lifecycle: CHECKED_OUT'
+     where bid_id = new.id and status = 'active';
+    return new;
+  end if;
+  if v_status in ('CANCELLED', 'EXPIRED', 'REJECTED', 'DECLINED') then
+    update public.bid_unit_assignment_lines
+       set status = 'released', released_at = now(), released_by = 'lifecycle', reason = 'lifecycle: ' || v_status
+     where bid_id = new.id and status = 'active';
+    return new;
+  end if;
+  -- PENDING / COUNTER / unknown: a bid that does not occupy inventory yet
+  if v_status not in ('ACCEPTED', 'CONFIRMED', 'CHECKED_IN') then return new; end if;
+
+  -- column cleared by a writer → that unit is released
+  if new."assignedUnitId" is null then
+    if tg_op = 'UPDATE' and old."assignedUnitId" is not null then
+      update public.bid_unit_assignment_lines
+         set status = 'released', released_at = now(), released_by = 'lifecycle', reason = 'assignedUnitId cleared'
+       where bid_id = new.id and unit_id = old."assignedUnitId" and status = 'active';
+      delete from public.bid_unit_assignments where "bidId" = new.id and "unitId" = old."assignedUnitId";
+    end if;
+    return new;
+  end if;
+
+  -- occupying booking on a unit: ensure an ACTIVE line exists (validated + serialized)
+  perform public.stay_lock_unit(new."assignedUnitId");
+  if not exists (select 1 from public.bid_unit_assignment_lines
+                  where bid_id = new.id and unit_id = new."assignedUnitId" and status = 'active') then
+    select * into v_unit from public.hotel_room_units where id = new."assignedUnitId";
+    if not found then raise exception 'unit_not_found' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+    if v_unit."hotelId" <> new."hotelId" then raise exception 'unit_wrong_hotel' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+    if v_unit."roomId" <> new."roomId" then raise exception 'unit_wrong_category' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+    if lower(coalesce(v_unit.status, '')) <> 'active' then raise exception 'unit_inactive' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+    select r."checkIn"::date, r."checkOut"::date into v_from, v_to from public.bid_requests r where r.id = new."requestId";
+    if v_from is not null and v_to is not null and v_from < v_to then
+      if public.stay_unit_conflict_count(new."assignedUnitId", v_from, v_to, new.id, null) > 0 then
+        raise exception 'unit_conflict' using errcode = 'P0001', detail = new."assignedUnitId";
+      end if;
+    else
+      v_from := null; v_to := null; -- undated: server-side checks apply; the EXCLUDE cannot protect it
+    end if;
+    insert into public.bid_unit_assignment_lines
+      (id, bid_id, hotel_id, room_id, unit_id, unit_number, slot, status, assigned_by, assigned_at, reason, stay_from, stay_to)
+    values ('bual_' || new.id || '_' || new."assignedUnitId" || '_' || replace(gen_random_uuid()::text, '-', ''),
+            new.id, new."hotelId", new."roomId", new."assignedUnitId", v_unit."roomNumber",
+            public.stay_next_free_slot(new.id), 'active', 'lifecycle', now(), 'synced from bids.assignedUnitId', v_from, v_to);
+    -- the column IS the primary unit → keep the legacy slot-1 mirror truthful
+    insert into public.bid_unit_assignments ("bidId", "unitId", "unitNumber", "assignedBy", "assignedAt")
+    values (new.id, new."assignedUnitId", v_unit."roomNumber", 'lifecycle', now())
+    on conflict ("bidId") do update
+      set "unitId" = excluded."unitId", "unitNumber" = excluded."unitNumber", "assignedAt" = excluded."assignedAt";
+    -- a direct writer CHANGED the primary unit: supersede the old one only when the
+    -- booking would otherwise exceed its room count (the RPC manages sets itself)
+    if tg_op = 'UPDATE' and old."assignedUnitId" is not null and old."assignedUnitId" <> new."assignedUnitId" then
+      v_required := greatest(1, coalesce(new."numRooms", 1));
+      select count(*) into v_active from public.bid_unit_assignment_lines where bid_id = new.id and status = 'active';
+      if v_active > v_required then
+        update public.bid_unit_assignment_lines
+           set status = 'superseded', released_at = now(), released_by = 'lifecycle', reason = 'assignedUnitId changed'
+         where bid_id = new.id and unit_id = old."assignedUnitId" and status = 'active';
+      end if;
+    end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_stay_sync_bid_unit_assignment on public.bids;
+create trigger trg_stay_sync_bid_unit_assignment
+  after insert or update of "assignedUnitId", status on public.bids
+  for each row execute function public.stay_sync_bid_unit_assignment();
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M3 — room_blocks unit pins: validate, serialize, derive the number server-side
+-- ═══════════════════════════════════════════════════════════════════════════
+create or replace function public.stay_guard_room_block_unit() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_unit record;
+begin
+  if new."assignedUnitId" is null then return new; end if;
+  if tg_op = 'UPDATE'
+     and new."assignedUnitId" is not distinct from old."assignedUnitId"
+     and new."fromDate" is not distinct from old."fromDate"
+     and new."toDate" is not distinct from old."toDate" then
+    return new;
+  end if;
+  perform public.stay_lock_unit(new."assignedUnitId");
+  select * into v_unit from public.hotel_room_units where id = new."assignedUnitId";
+  if not found then raise exception 'unit_not_found' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+  if v_unit."hotelId" <> new."hotelId" then raise exception 'unit_wrong_hotel' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+  if v_unit."roomId" <> new."roomId" then raise exception 'unit_wrong_category' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+  if lower(coalesce(v_unit.status, '')) <> 'active' then raise exception 'unit_inactive' using errcode = 'P0001', detail = new."assignedUnitId"; end if;
+  if public.stay_unit_conflict_count(new."assignedUnitId", new."fromDate"::date, new."toDate"::date, null, new.id) > 0 then
+    raise exception 'unit_conflict' using errcode = 'P0001', detail = new."assignedUnitId";
+  end if;
+  new."assignedUnitNumber" := v_unit."roomNumber"; -- never a client value
+  return new;
+end $$;
+
+drop trigger if exists trg_stay_guard_room_block_unit on public.room_blocks;
+create trigger trg_stay_guard_room_block_unit
+  before insert or update of "assignedUnitId", "fromDate", "toDate" on public.room_blocks
+  for each row execute function public.stay_guard_room_block_unit();
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Function privileges: service_role only; no generic/public mutation authority
+-- ═══════════════════════════════════════════════════════════════════════════
+revoke execute on function public.stay_lock_unit(text) from public, anon, authenticated;
+revoke execute on function public.stay_unit_conflict_count(text, date, date, text, text) from public, anon, authenticated;
+revoke execute on function public.stay_next_free_slot(text) from public, anon, authenticated;
+revoke execute on function public.stay_assign_units(text, text[], text, text, text) from public, anon, authenticated;
+revoke execute on function public.stay_release_units(text, text, text) from public, anon, authenticated;
+revoke execute on function public.stay_assign_block_unit(text, text, text) from public, anon, authenticated;
+revoke execute on function public.stay_release_block_unit(text, text) from public, anon, authenticated;
+revoke execute on function public.stay_sync_bid_unit_assignment() from public, anon, authenticated;
+revoke execute on function public.stay_guard_room_block_unit() from public, anon, authenticated;
+grant execute on function public.stay_lock_unit(text) to service_role;
+grant execute on function public.stay_unit_conflict_count(text, date, date, text, text) to service_role;
+grant execute on function public.stay_next_free_slot(text) to service_role;
+grant execute on function public.stay_assign_units(text, text[], text, text, text) to service_role;
+grant execute on function public.stay_release_units(text, text, text) to service_role;
+grant execute on function public.stay_assign_block_unit(text, text, text) to service_role;
+grant execute on function public.stay_release_block_unit(text, text) to service_role;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Backfill (idempotent). Line status follows the bid's lifecycle so a finished
+-- or dead stay never occupies a unit; only live stays get ACTIVE lines.
+-- ═══════════════════════════════════════════════════════════════════════════
 insert into public.bid_unit_assignment_lines
-  (id, bid_id, hotel_id, room_id, unit_id, unit_number, slot, status, assigned_by, assigned_at, stay_from, stay_to)
+  (id, bid_id, hotel_id, room_id, unit_id, unit_number, slot, status, assigned_by, assigned_at, reason, stay_from, stay_to)
 select
   'bual_' || a."bidId" || '_' || a."unitId" || '_bf',
-  a."bidId", u."hotelId", u."roomId", a."unitId", a."unitNumber", 1, 'active', a."assignedBy", a."assignedAt",
+  a."bidId", u."hotelId", u."roomId", a."unitId", a."unitNumber", 1,
+  case when upper(coalesce(b.status,'')) in ('ACCEPTED','CONFIRMED','CHECKED_IN') then 'active'
+       when upper(coalesce(b.status,'')) = 'CHECKED_OUT' then 'completed' else 'released' end,
+  a."assignedBy", a."assignedAt", 'backfill: legacy bid_unit_assignments',
   r."checkIn"::date, r."checkOut"::date
 from public.bid_unit_assignments a
 join public.hotel_room_units u on u.id = a."unitId"
 left join public.bids b on b.id = a."bidId"
 left join public.bid_requests r on r.id = b."requestId" and r."checkIn" < r."checkOut"
-where not exists (
-  select 1 from public.bid_unit_assignment_lines l
-  where l.bid_id = a."bidId" and l.unit_id = a."unitId" and l.status = 'active'
-)
+where not exists (select 1 from public.bid_unit_assignment_lines l where l.bid_id = a."bidId" and l.unit_id = a."unitId")
 on conflict (id) do nothing;
 
--- ── Backfill: LIVE stays stamped ONLY on bids."assignedUnitId" (Circle / unit-
--- level booking flows write that column directly, never the legacy table) ────
+-- LIVE stays stamped ONLY on bids."assignedUnitId" (unit-level booking flow)
 insert into public.bid_unit_assignment_lines
-  (id, bid_id, hotel_id, room_id, unit_id, unit_number, slot, status, assigned_by, assigned_at, stay_from, stay_to)
+  (id, bid_id, hotel_id, room_id, unit_id, unit_number, slot, status, assigned_by, assigned_at, reason, stay_from, stay_to)
 select
   'bual_' || b.id || '_' || b."assignedUnitId" || '_bf',
-  b.id, u."hotelId", u."roomId", b."assignedUnitId", u."roomNumber", 1, 'active', null, now(),
-  r."checkIn"::date, r."checkOut"::date
+  b.id, u."hotelId", u."roomId", b."assignedUnitId", u."roomNumber", 1, 'active', 'backfill', now(),
+  'backfill: bids.assignedUnitId', r."checkIn"::date, r."checkOut"::date
 from public.bids b
 join public.hotel_room_units u on u.id = b."assignedUnitId"
 left join public.bid_requests r on r.id = b."requestId" and r."checkIn" < r."checkOut"
 where b."assignedUnitId" is not null
-  and b.status in ('ACCEPTED','CONFIRMED','CHECKED_IN')
-  and not exists (
-    select 1 from public.bid_unit_assignment_lines l
-    where l.bid_id = b.id and l.unit_id = b."assignedUnitId" and l.status = 'active'
-  )
+  and upper(coalesce(b.status,'')) in ('ACCEPTED','CONFIRMED','CHECKED_IN')
+  and not exists (select 1 from public.bid_unit_assignment_lines l
+                   where l.bid_id = b.id and l.unit_id = b."assignedUnitId" and l.status = 'active')
 on conflict (id) do nothing;
+
+-- Legacy slot-1 mirror for LIVE stays that were stamped only on bids."assignedUnitId"
+-- (keeps the single-unit readers truthful for pre-existing rows).
+insert into public.bid_unit_assignments ("bidId", "unitId", "unitNumber", "assignedBy", "assignedAt")
+select b.id, b."assignedUnitId", u."roomNumber", 'backfill', now()
+from public.bids b
+join public.hotel_room_units u on u.id = b."assignedUnitId"
+where b."assignedUnitId" is not null
+  and upper(coalesce(b.status,'')) in ('ACCEPTED','CONFIRMED','CHECKED_IN')
+  and not exists (select 1 from public.bid_unit_assignments a where a."bidId" = b.id)
+on conflict ("bidId") do nothing;

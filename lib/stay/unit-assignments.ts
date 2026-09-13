@@ -20,12 +20,17 @@
 //   • bids.assignedUnitId — mirrored to the slot-1 unit (the operator-isolation
 //     read model + attribution key on it).
 //
-// PRE-MIGRATION COMPATIBILITY: if the lines table does not exist yet (PostgREST
-// 404 / PGRST205), the store transparently falls back to the LEGACY row for reads
-// and to legacy-only writes for a SINGLE unit. A multi-unit write cannot be
-// represented pre-migration and fails closed. A read ERROR (anything other than
-// "table missing") always fails closed — it is never conflated with "nothing
-// assigned". Zero network when the service-role key is unconfigured.
+// WRITES ARE ATOMIC AND DB-SIDE ONLY: every assignment mutation goes through ONE
+// plpgsql RPC (stay_assign_units / stay_release_units / stay_assign_block_unit /
+// stay_release_block_unit, migration 2026-09-13-v753) that locks, re-validates,
+// supersedes, inserts, mirrors the legacy slot-1 row and updates
+// bids.assignedUnitId in a SINGLE transaction; any refusal is a RAISE (SQLSTATE
+// P0001, message = error code) so the previous assignment state is left exactly
+// as it was. There is NO multi-step JavaScript write path. Pre-migration (RPC
+// missing → PostgREST 404 PGRST202) every write fails closed 503; READS fall back
+// to the legacy row + bids.assignedUnitId. A read ERROR (anything other than
+// "table missing") always fails closed — never conflated with "nothing assigned".
+// Zero network when the service-role key is unconfigured.
 //
 // Client-supplied identifiers (bidId, unitIds) are INPUT ONLY — every fact used
 // for authorization/integrity is re-read server-side from the DB.
@@ -371,102 +376,49 @@ export async function findUnitConflicts(input: {
   }
 }
 
-export function assignmentLineId(bidId: string, unitId: string, nowMs: number = Date.now()): string {
-  return `bual_${bidId}_${unitId}_${nowMs.toString(36)}`;
+// ── Atomic RPC caller (the ONLY write path) ──────────────────────────────────
+export type StayRpcResult =
+  | { status: "ok"; body: any }
+  | { status: "refused"; code: string; detail: string | null }
+  | { status: "missing" }
+  | { status: "error"; reason: string };
+
+/** True when PostgREST says the function does not exist (migration not applied). */
+function rpcMissing(status: number, body: unknown): boolean {
+  if (status !== 404) return false;
+  const b = (body || {}) as { code?: string; message?: string };
+  return String(b.code || "") === "PGRST202" || /could not find the function|function .* does not exist/i.test(String(b.message || ""));
 }
 
 /**
- * Insert new ACTIVE lines. Returns "missing" when the lines table does not
- * exist, and "conflict" when the DB EXCLUDE / unique constraint rejects the
- * write (23P01 exclusion_violation / 23505 → PostgREST 409) — i.e. another
- * concurrent write claimed an overlapping unit-night first. The DB is the
- * final clash-freedom authority; the server-side overlap check is the fast path.
+ * Call one of the atomic stay RPCs with the service role. A plpgsql RAISE
+ * (P0001) surfaces as PostgREST 400 { code:"P0001", message:<error code>,
+ * details:<unit id> } → "refused" (and the DB has rolled back everything).
  */
-export async function insertAssignmentLines(rows: AssignmentLine[]): Promise<"ok" | "missing" | "conflict" | "error"> {
-  if (!serviceRoleKey()) return "error";
-  if (!rows.length) return "ok";
+export async function callStayRpc(fn: string, args: Record<string, unknown>): Promise<StayRpcResult> {
+  if (!serviceRoleKey()) return { status: "error", reason: "service_role_unconfigured" };
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/${ASSIGNMENT_LINES_TABLE}`, {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
       method: "POST",
-      headers: svcHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-      body: JSON.stringify(rows),
+      headers: svcHeaders({ "Content-Type": "application/json", Accept: "application/json" }),
+      body: JSON.stringify(args),
+      cache: "no-store",
     });
-    if (r.ok) return "ok";
-    if (r.status === 409) return "conflict";
     const body = await r.json().catch(() => null);
-    return tableMissing(r.status, body) ? "missing" : "error";
-  } catch {
-    return "error";
-  }
-}
-
-/** Close (supersede/release) the ACTIVE lines of a bid for the given units — audit, never delete. */
-export async function closeAssignmentLines(input: {
-  bidId: string;
-  unitIds: string[];
-  status: "superseded" | "released";
-  by: string;
-  reason: string | null;
-  at?: string;
-}): Promise<"ok" | "missing" | "error"> {
-  if (!serviceRoleKey()) return "error";
-  const ids = dedupeIds(input.unitIds);
-  if (!ids.length) return "ok";
-  try {
-    const r = await fetch(
-      `${SB_URL}/rest/v1/${ASSIGNMENT_LINES_TABLE}?bid_id=eq.${encodeURIComponent(input.bidId)}&unit_id=in.(${ids.map(encodeURIComponent).join(",")})&status=eq.active`,
-      {
-        method: "PATCH",
-        headers: svcHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-        body: JSON.stringify({
-          status: input.status,
-          released_at: input.at || new Date().toISOString(),
-          released_by: input.by,
-          reason: input.reason,
-        }),
-      }
-    );
-    if (r.ok) return "ok";
-    const body = await r.json().catch(() => null);
-    return tableMissing(r.status, body) ? "missing" : "error";
-  } catch {
-    return "error";
-  }
-}
-
-/**
- * Mirror the SLOT-1 unit into the legacy PK=bidId row + bids.assignedUnitId so
- * every existing single-unit reader keeps working. `null` clears both.
- */
-export async function mirrorPrimaryAssignment(input: {
-  bidId: string;
-  unit: UnitRow | null;
-  by: string;
-}): Promise<boolean> {
-  if (!serviceRoleKey()) return false;
-  const enc = encodeURIComponent(input.bidId);
-  try {
-    if (input.unit) {
-      const r1 = await fetch(`${SB_URL}/rest/v1/${LEGACY_ASSIGNMENT_TABLE}?on_conflict=bidId`, {
-        method: "POST",
-        headers: svcHeaders({ "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" }),
-        body: JSON.stringify({ bidId: input.bidId, unitId: input.unit.id, unitNumber: input.unit.roomNumber, assignedBy: input.by }),
-      });
-      if (!r1.ok) return false;
-    } else {
-      const r1 = await fetch(`${SB_URL}/rest/v1/${LEGACY_ASSIGNMENT_TABLE}?bidId=eq.${enc}`, {
-        method: "DELETE",
-        headers: svcHeaders({ Prefer: "return=minimal" }),
-      });
-      if (!r1.ok && r1.status !== 404) return false;
+    if (r.ok) return { status: "ok", body };
+    if (rpcMissing(r.status, body)) return { status: "missing" };
+    const b = (body || {}) as { code?: string; message?: string; details?: string };
+    // A plpgsql RAISE (P0001) — whatever HTTP status PostgREST wraps it in — is a
+    // refusal: the transaction has already rolled back.
+    if (String(b.code || "") === "P0001") {
+      return { status: "refused", code: String(b.message || "refused"), detail: b.details ? String(b.details) : null };
     }
-    const r2 = await fetch(`${SB_URL}/rest/v1/bids?id=eq.${enc}`, {
-      method: "PATCH",
-      headers: svcHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-      body: JSON.stringify({ assignedUnitId: input.unit ? input.unit.id : null }),
-    });
-    return r2.ok;
-  } catch {
-    return false;
+    // The lines EXCLUDE constraint (23P01) refusing an insert also rolls the RPC back.
+    if (r.status === 409 || String(b.code || "") === "23P01" || String(b.code || "") === "23505") {
+      return { status: "refused", code: "unit_conflict", detail: b.details ? String(b.details) : null };
+    }
+    return { status: "error", reason: `rpc_${fn}_failed_${r.status}` };
+  } catch (e: any) {
+    return { status: "error", reason: e?.message || "rpc_error" };
   }
 }

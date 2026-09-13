@@ -1,22 +1,31 @@
 // Returns room unit assignments for a list of bid IDs (customer-facing).
 // Used by /my-bids and /bookings pages to display the allocated room number(s).
 //
-// STAY-LIFECYCLE-OPS-01 — reads the authoritative bid_unit_assignment_lines
-// (ACTIVE lines, slot order) so a multi-room booking lists every allocated
-// room; falls back to the legacy PK=bidId row when the lines table is not
-// applied yet. Response keeps the original single-unit shape ({unitId,
-// unitNumber} = slot 1) and adds `unitNumbers` (all slots). Read-only; the
-// caller only ever receives rows for the bid ids it asked about, scoped to its
-// own verified customer identity below.
+// STAY-LIFECYCLE-OPS-01 — CRYPTOGRAPHIC customer authority. The previous
+// handler derived the caller from a DECODED (unverified) JWT, so a forged
+// id/sub could read another guest's physical room number. Identity now comes
+// ONLY from the established verified customer authority
+// (lib/auth/customer-verify.ts: HS256 signature verified against the configured
+// secrets; decode-only / forged / alg:none / Firebase RS256 tokens FAIL CLOSED →
+// 401). The verified primary id is reconciled to its legitimate identity twins
+// via resolveUserIds (prefix twin / phone variants / email), and ONLY bids owned
+// by those ids are resolved.
+//
+// Reads the authoritative bid_unit_assignment_lines (ACTIVE lines, slot order)
+// so a multi-room booking lists every allocated room; falls back to the legacy
+// PK=bidId row when the lines table is not applied yet. Response keeps the
+// original single-unit shape ({unitId, unitNumber} = slot 1) and adds
+// `unitNumbers` (all slots). Read-only.
 import { NextRequest, NextResponse } from "next/server";
-import { SB_URL, SB_H, authPayload, resolveUserIds } from "@/lib/sb-server";
+import { SB_URL, SB_H, resolveUserIds } from "@/lib/sb-server";
+import { verifiedCustomerFromReq } from "@/lib/auth/customer-verify";
 
+export const runtime = "nodejs"; // jsonwebtoken verify is server-only; never edge
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const payload = authPayload(req);
-  const primaryId = payload?.id || payload?.user_id || payload?.sub;
-  if (!primaryId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const customer = verifiedCustomerFromReq(req);
+  if (!customer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch {}
@@ -24,10 +33,10 @@ export async function POST(req: NextRequest) {
   if (!bidIds.length) return NextResponse.json({ assignments: {} });
 
   try {
-    // Only this customer's own bids may be resolved (never another guest's room).
-    const customerIds = await resolveUserIds(primaryId, payload?.phone);
+    // Only this VERIFIED customer's own bids may be resolved (never another guest's room).
+    const customerIds = await resolveUserIds(customer.id, customer.phone || undefined, customer.email || undefined);
     const own = await fetch(
-      `${SB_URL}/rest/v1/bids?id=in.(${bidIds.map(encodeURIComponent).join(",")})&customerId=in.(${customerIds.join(",")})&select=id`,
+      `${SB_URL}/rest/v1/bids?id=in.(${bidIds.map(encodeURIComponent).join(",")})&customerId=in.(${customerIds.map(encodeURIComponent).join(",")})&select=id`,
       { headers: SB_H, cache: "no-store" }
     ).then((r) => r.json()).catch(() => []);
     const ownIds: string[] = Array.isArray(own) ? own.map((b: any) => String(b.id)) : [];
