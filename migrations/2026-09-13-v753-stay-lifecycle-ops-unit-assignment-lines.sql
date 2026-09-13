@@ -12,13 +12,23 @@
 --    503 `unit_assignment_authority_unavailable` (the stay_assignment_ready()
 --    probe is absent). The ONLY sanctioned assignment write path is the atomic RPC
 --    below, so no non-atomic / unguarded multi-step write path exists in the
---    application at all. This ordering prevents BOTH failure modes: (1) old-v752
---    legacy-only assignment writes after schema activation — v752 is fully
---    replaced by v753 before the migration; and (2) new-v753 unguarded pinned
---    writes before the guard/trigger exist — they 503. Applying the migration
---    FIRST is NOT safe (a v752 partner could write a divergent legacy assignment
---    during the migration→deploy gap). See the M8 section (stay_assignment_ready)
---    and the M5 section (source-table authorization closure) at the end.
+--    application at all. The code-first 503 covers the NEW authority surfaces (the
+--    assignment RPCs + walk-in pins). Two residual races that the 503 alone does
+--    NOT cover are closed at the SCHEMA level by M8-R1 (see the sections below):
+--      • a PRE-EXISTING pinned room_blocks writer (OTA sync, b2b/circle/trade
+--        verify, inventory holds) is still active during the code-first window and
+--        could pin a unit a live legacy assignment already holds → the LOCKED,
+--        FAIL-CLOSED cutover preflight at the TOP refuses the migration
+--        (stay_assignment_preflight_conflict, full rollback) if any such conflict
+--        exists, and its EXCLUSIVE lock stops a concurrent writer racing the
+--        preflight→activation gap;
+--      • an OLD v752 in-flight request finishing AFTER activation could write a
+--        divergent legacy-only row → the LEGACY-TABLE CONVERGENCE GUARD at the END
+--        refuses a legacy write with no matching active line.
+--    Applying the migration FIRST is NOT safe (a v752 partner could write a
+--    divergent legacy assignment during the migration→deploy gap). See the M8-R1
+--    preflight (top) + legacy guard (end), the M8 stay_assignment_ready() probe,
+--    and the M5 source-table authorization closure.
 --
 -- WHY
 --   • public.bid_unit_assignments has PRIMARY KEY ("bidId") — ONE unit per bid —
@@ -104,6 +114,63 @@
 -- Additive / forward-only. TEXT ids (CUIDs), NO FK constraints (repo contract).
 -- Idempotent: safe to re-run.
 -- ═══════════════════════════════════════════════════════════════════════════
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M8-R1 — ZERO-CORRUPTION CUTOVER PREFLIGHT (must run FIRST, under lock).
+-- ═══════════════════════════════════════════════════════════════════════════
+-- This migration MUST be applied as ONE transaction (the Supabase CLI / a BEGIN…
+-- COMMIT wrapper does this; the concurrency test applies the whole file as one
+-- implicit transaction). Two guarantees:
+--   (B) SERIALIZE occupancy writers behind the whole migration: an EXCLUSIVE lock
+--       on every occupancy source is taken BEFORE the preflight and held until the
+--       migration COMMITs (which activates the triggers + RLS). So no concurrent
+--       pinned-block / bids write can slip between the preflight and activation —
+--       it waits for COMMIT and then meets the now-active guard.
+--   (A) FAIL CLOSED on any pre-existing conflict the code-first window could have
+--       created: during code-first (v753 deployed, migration NOT yet applied) the
+--       assignment RPCs + walk-in pins fail closed 503, but PRE-EXISTING pinned
+--       room_blocks writers (OTA sync, b2b/circle/trade verify, inventory holds)
+--       stay active and unguarded. One of them could pin a unit that a LIVE legacy
+--       assignment (bid_unit_assignments row, or bids."assignedUnitId" stamp on an
+--       occupying bid) already holds on overlapping nights. The line backfill below
+--       would then create an ACTIVE line whose EXCLUDE constraint only checks
+--       line-vs-line — it would NOT see the pre-existing pinned block, so the
+--       migration could finish with BOTH occupations (a one-unit/one-night
+--       violation). The preflight refuses exactly that: if ANY live assignment
+--       (legacy row OR occupying bids."assignedUnitId") overlaps a unit-pinned
+--       room_blocks row on the same unit + checkout-exclusive dates, it RAISEs
+--       stay_assignment_preflight_conflict and the WHOLE transaction rolls back —
+--       ZERO durable schema / RLS / trigger changes. The owner frees the unit and
+--       re-applies. Unknown assignment dates are treated as a conflict (fail closed).
+lock table public.bids, public.bid_requests, public.room_blocks, public.bid_unit_assignments in exclusive mode;
+do $$
+declare v_conflict integer;
+begin
+  with live_assign as (
+    select a."unitId" as unit_id, r."checkIn"::date as f, r."checkOut"::date as t
+      from public.bid_unit_assignments a
+      join public.bids b on b.id = a."bidId"
+      left join public.bid_requests r on r.id = b."requestId"
+     where upper(coalesce(b.status, '')) in ('ACCEPTED', 'CONFIRMED', 'CHECKED_IN')
+       and a."unitId" is not null
+    union
+    select b."assignedUnitId" as unit_id, r."checkIn"::date as f, r."checkOut"::date as t
+      from public.bids b
+      left join public.bid_requests r on r.id = b."requestId"
+     where b."assignedUnitId" is not null
+       and upper(coalesce(b.status, '')) in ('ACCEPTED', 'CONFIRMED', 'CHECKED_IN')
+  )
+  select count(*) into v_conflict
+    from public.room_blocks rb
+    join live_assign la on la.unit_id = rb."assignedUnitId"
+   where rb."assignedUnitId" is not null
+     and (la.f is null or la.t is null                                   -- unknown dates → fail closed
+          or (la.f < rb."toDate"::date and rb."fromDate"::date < la.t)); -- checkout-exclusive overlap
+  if v_conflict > 0 then
+    raise exception 'stay_assignment_preflight_conflict' using errcode = 'P0001',
+      detail = v_conflict || ' live assignment(s) overlap a unit-pinned room_block — free the unit before applying';
+  end if;
+end $$;
 
 -- btree_gist lets the EXCLUDE constraint combine `unit_id =` with a range `&&`.
 create extension if not exists btree_gist;
@@ -647,3 +714,43 @@ grant  select                          on public.room_blocks to   anon, authenti
 -- Legitimate server writers only (service_role bypasses RLS + holds the grant).
 grant  select, insert, update, delete  on public.bids        to   service_role;
 grant  select, insert, update, delete  on public.room_blocks to   service_role;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M8-R1 — LEGACY-TABLE CONVERGENCE GUARD (closes the old-v752 in-flight write).
+-- ═══════════════════════════════════════════════════════════════════════════
+-- After the cutover, an OLD v752 request still in flight could finish and write a
+-- legacy public.bid_unit_assignments row DIRECTLY (v752 does not know about the
+-- lines table), producing a legacy-only assignment that diverges from the lines.
+-- The legacy table is maintained ONLY by the atomic RPCs / sync trigger / this
+-- migration's backfill, all of which insert the authoritative ACTIVE line BEFORE
+-- the slot-1 mirror. So a direct legacy write with NO matching active line is an
+-- out-of-contract writer → REFUSE it. This makes a post-migration legacy-only
+-- write converge (refuse) safely instead of diverging. Created LAST so the
+-- backfills above (which write the mirror only after their lines exist) are
+-- unaffected. Fires on INSERT/UPDATE only (releases DELETE the mirror). SECURITY
+-- DEFINER + pinned search_path; a NULL/absent request.jwt.claims role (direct DB /
+-- service_role backend) is trusted for the SAME anon/authenticated tripwire as the
+-- other definer functions.
+create or replace function public.stay_guard_legacy_assignment() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_actor text;
+begin
+  begin v_actor := current_setting('request.jwt.claims', true)::json->>'role'; exception when others then v_actor := null; end;
+  if v_actor in ('anon', 'authenticated') then
+    raise exception 'unit_assignment_forbidden_role' using errcode = 'P0001', detail = coalesce(v_actor, '');
+  end if;
+  if not exists (
+    select 1 from public.bid_unit_assignment_lines l
+     where l.bid_id = new."bidId" and l.unit_id = new."unitId" and l.status = 'active'
+  ) then
+    raise exception 'legacy_assignment_without_line' using errcode = 'P0001', detail = coalesce(new."bidId", '');
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_stay_guard_legacy_assignment on public.bid_unit_assignments;
+create trigger trg_stay_guard_legacy_assignment
+  before insert or update on public.bid_unit_assignments
+  for each row execute function public.stay_guard_legacy_assignment();
+
+revoke execute on function public.stay_guard_legacy_assignment() from public, anon, authenticated;
