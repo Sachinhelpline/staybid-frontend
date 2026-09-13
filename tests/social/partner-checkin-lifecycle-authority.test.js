@@ -71,6 +71,9 @@ const FILES = {
   "verified-partner-hotel-scope.ts": "lib/auth/verified-partner-hotel-scope.ts",
   "verified-stay-evidence.ts": "lib/stay/verified-stay-evidence.ts",
   "sb-server.ts": "lib/sb-server.ts",
+  // STAY-LIFECYCLE-OPS-01 deps of the hardened routes.
+  "stay-dates.ts": "lib/stay/stay-dates.ts",
+  "unit-assignments.ts": "lib/stay/unit-assignments.ts",
 };
 const ALIAS = {
   "next/server": "next-server",
@@ -80,7 +83,20 @@ const ALIAS = {
   "@/lib/auth/verified-partner-hotel-scope": "verified-partner-hotel-scope",
   "@/lib/stay/verified-stay-evidence": "verified-stay-evidence",
   "@/lib/sb-server": "sb-server",
+  "@/lib/stay/stay-dates": "stay-dates",
+  "@/lib/stay/unit-assignments": "unit-assignments",
 };
+
+// STAY-LIFECYCLE-OPS-01 — the routes now enforce a TEMPORAL window (IST) read
+// from bid_requests and a physical-unit gate. This suite is about the EVIDENCE
+// authority, so the fake serves every seeded bid a stay that makes today
+// legitimate: check-in bids → [today, today+1); checkout bids ("bid_co_*") →
+// [today-1, today] so today is the scheduled (not early) check-out day. The
+// category has NO configured physical units here (the unit gate is exercised in
+// tests/social/stay-lifecycle-ops.test.js).
+const IST_OFFSET_MS = (5 * 60 + 30) * 60_000;
+const istToday = () => new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+const addDays = (iso, n) => new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + n)).toISOString().slice(0, 10);
 
 // Minimal next/server stub so the compiled route's NextResponse.json returns an
 // inspectable { status, body } object (no real Next runtime pulled in).
@@ -220,6 +236,20 @@ async function main() {
         if (method === "POST") return jsonRes([{}]);
         return jsonRes([]); // GET → no existing log
       }
+      if (u.includes("/rest/v1/bid_requests")) {
+        // Serve the stay window that makes TODAY a legitimate transition day.
+        const m = u.match(/id=eq\.([^&]+)/);
+        const rid = m ? decodeURIComponent(m[1]) : "";
+        const today = istToday();
+        const isCheckout = /^req_bid_co_/.test(rid);
+        return jsonRes([{
+          id: rid,
+          checkIn: (isCheckout ? addDays(today, -1) : today) + "T00:00:00",
+          checkOut: (isCheckout ? today : addDays(today, 1)) + "T00:00:00",
+        }]);
+      }
+      if (u.includes("/rest/v1/hotel_room_units")) return jsonRes([]); // no configured physical units
+      if (u.includes("/rest/v1/notifications")) return method === "POST" ? jsonRes([{}], 201) : jsonRes([]);
       return jsonRes([]);
     };
 
@@ -254,7 +284,7 @@ async function main() {
       };
     };
     const seedBid = (bidId, status, extra = {}) => {
-      BIDS[bidId] = { id: bidId, hotelId: HOTEL, customerId: CUSTOMER, status, ...extra };
+      BIDS[bidId] = { id: bidId, hotelId: HOTEL, customerId: CUSTOMER, status, requestId: "req_" + bidId, ...extra };
     };
 
     // ── 1 — POSITIVE: ACCEPTED mints exactly one correct evidence row ─────────

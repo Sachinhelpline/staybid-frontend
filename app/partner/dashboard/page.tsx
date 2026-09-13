@@ -56,6 +56,32 @@ import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from 
 // v177 — auto-cleanup of stale bids in the Bid Inbox. Same rule the
 // customer /my-bids + admin /admin/bookings views use.
 import { filterActiveBids, canPartnerCheckIn, canPartnerCheckOut } from "@/lib/bid-expiry";
+// STAY-LIFECYCLE-OPS-01 — shared pure helpers (server is authoritative; the UI mirrors).
+import { istDateISO, evaluateCheckInWindow } from "@/lib/stay/stay-dates";
+import { bookingDetailStatus, type StatusTone } from "@/lib/stay/booking-detail-status";
+import { normalizeGuestContact, whatsappDigits } from "@/lib/stay/guest-contact";
+import { bookingPaymentSummary } from "@/lib/stay/booking-payment-summary";
+
+/** Human message for a refused partner check-in (server error codes → English). */
+function checkInRefusalMessage(j: any): string {
+  const e = String(j?.error || "");
+  if (e === "checkin_premature") return `Check-in opens on ${j?.checkInDate} (today is ${j?.today}). A guest cannot be checked in before the reservation's first night.`;
+  if (e === "checkin_window_closed") return `This reservation's stay dates have passed (check-out ${j?.checkOutDate}). Check-in is no longer possible.`;
+  if (e === "checkin_date_unavailable") return "This reservation has no stay dates on file, so check-in cannot be verified.";
+  if (e === "units_not_assigned") return `Assign ${j?.required} room number${Number(j?.required) > 1 ? "s" : ""} before check-in (${j?.assigned ?? 0} assigned).`;
+  if (e === "assigned_unit_invalid") return "An assigned room number is no longer valid for this booking (wrong category / inactive). Re-assign the room before check-in.";
+  if (e === "bid_not_accepted") return "Only an accepted reservation can be checked in.";
+  return `Check-in refused: ${e || "unknown error"}`;
+}
+
+const TONE_BADGE: Record<StatusTone, string> = {
+  success: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
+  warning: "bg-amber-500/20 text-amber-300 border-amber-400/30",
+  info:    "bg-blue-500/20 text-blue-300 border-blue-400/30",
+  accent:  "bg-indigo-500/20 text-indigo-300 border-indigo-400/30",
+  neutral: "bg-white/10 text-white/60 border-white/20",
+  danger:  "bg-red-500/20 text-red-300 border-red-400/30",
+};
 // v129 — structured complimentary-amenity catalog replaces the free-text
 // "Message to Guest" textarea (anti-bypass: phone/email/WhatsApp could slip
 // through that box). See lib/counter-addons.ts for the rationale.
@@ -2390,20 +2416,51 @@ export default function PartnerDashboard() {
                             API read model + UI action rules stay in lockstep (Check-in hidden once
                             CHECKED_IN/CHECKED_OUT; Check-out only while CHECKED_IN). */}
                         <div className="flex gap-1.5 mt-2 justify-end" onClick={(e) => e.stopPropagation()}>
-                          {canPartnerCheckIn(b.status) && (
-                            <button onClick={async (e) => {
-                              e.stopPropagation();
-                              const tkn = getToken();
-                              await fetch(`/api/partner/checkin/${b.id}`, { method: "POST", headers: { Authorization: `Bearer ${tkn}` } });
-                              refreshLive(tkn || "");
-                            }} className="text-[10px] px-2 py-1 rounded-full bg-blue-600 text-white font-bold hover:bg-blue-700">Mark Check-in</button>
-                          )}
+                          {/* STAY-LIFECYCLE-OPS-01 — the UI MIRRORS the server's temporal rule
+                              (no check-in before the reservation's first night; late check-in
+                              allowed; none once the stay dates have passed) and surfaces the
+                              server's refusal reason. The server remains authoritative. */}
+                          {canPartnerCheckIn(b.status) && (() => {
+                            const win = evaluateCheckInWindow({ checkIn: b.checkIn, checkOut: b.checkOut, todayISO: istDateISO() });
+                            const assignedCount = Array.isArray(b.assignedUnits) ? b.assignedUnits.length : (b.assignedUnitNumber ? 1 : 0);
+                            const hint = !win.ok
+                              ? (win.reason === "checkin_premature" ? `Check-in opens on ${win.checkInDate}`
+                                : win.reason === "checkin_window_closed" ? "Stay dates have passed"
+                                : "Stay dates unavailable")
+                              : assignedCount < nr ? `Assign ${nr} room number${nr > 1 ? "s" : ""} first (${assignedCount}/${nr})` : "";
+                            return (
+                              <button disabled={!win.ok} title={hint} aria-label={hint ? `Mark Check-in — ${hint}` : "Mark Check-in"}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const tkn = getToken();
+                                  const r = await fetch(`/api/partner/checkin/${b.id}`, { method: "POST", headers: { Authorization: `Bearer ${tkn}` } });
+                                  if (!r.ok) { const j = await r.json().catch(() => ({})); alert(checkInRefusalMessage(j)); }
+                                  refreshLive(tkn || "");
+                                }} className={`text-[10px] px-2 py-1 rounded-full bg-blue-600 text-white font-bold hover:bg-blue-700 ${!win.ok ? "opacity-40 cursor-not-allowed" : ""}`}>Mark Check-in</button>
+                            );
+                          })()}
                           {canPartnerCheckOut(b.status) && (
                             <button onClick={async (e) => {
                               e.stopPropagation();
                               if (!confirm("Mark check-out? This starts the 4-hour feedback window.")) return;
                               const tkn = getToken();
-                              await fetch(`/api/partner/checkout/${b.id}`, { method: "POST", headers: { Authorization: `Bearer ${tkn}` } });
+                              const post = (body?: any) => fetch(`/api/partner/checkout/${b.id}`, {
+                                method: "POST",
+                                headers: { Authorization: `Bearer ${tkn}`, "Content-Type": "application/json" },
+                                body: JSON.stringify(body || {}),
+                              });
+                              let r = await post();
+                              // STAY-LIFECYCLE-OPS-01 — an EARLY departure must be explicit + audited:
+                              // the server refuses until the partner confirms it (with an optional reason).
+                              if (r.status === 409) {
+                                const j = await r.json().catch(() => ({}));
+                                if (j?.error === "early_checkout_confirmation_required") {
+                                  const reason = prompt(`Guest is leaving EARLY — scheduled check-out is ${j?.scheduledCheckOut} (today ${j?.today}).\nRecord an early checkout? Enter a reason (optional), or Cancel.`);
+                                  if (reason === null) return;
+                                  r = await post({ confirmEarly: true, reason });
+                                }
+                              }
+                              if (!r.ok) { const k = await r.json().catch(() => ({})); alert(`Check-out refused: ${k?.error || r.status}`); }
                               refreshLive(tkn || "");
                             }} className="text-[10px] px-2 py-1 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700">Mark Check-out</button>
                           )}
@@ -3541,16 +3598,21 @@ export default function PartnerDashboard() {
         const nr = Math.max(1, Number(b.numRooms || 1));
         const total = pricePerNight * nights * nr;
         const guestInitials = (b.guestName || b.user?.name || "G").slice(0,2).toUpperCase();
-        const todayISO = new Date().toISOString().slice(0,10);
-        const ciISO = b.checkIn ? new Date(b.checkIn).toISOString().slice(0,10) : "";
-        const coISO = b.checkOut ? new Date(b.checkOut).toISOString().slice(0,10) : "";
-        let statusLabel = "Confirmed";
-        let statusBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-400/30";
-        if (ciISO === todayISO) { statusLabel = "Arriving Today"; statusBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"; }
-        else if (coISO === todayISO) { statusLabel = "Departing Today"; statusBadge = "bg-amber-500/20 text-amber-300 border-amber-400/30"; }
-        else if (ciISO && coISO && ciISO <= todayISO && todayISO < coISO) { statusLabel = "In-house"; statusBadge = "bg-blue-500/20 text-blue-300 border-blue-400/30"; }
-        else if (ciISO && ciISO > todayISO) { statusLabel = "Upcoming"; statusBadge = "bg-indigo-500/20 text-indigo-300 border-indigo-400/30"; }
-        else if (coISO && coISO < todayISO) { statusLabel = "Checked Out"; statusBadge = "bg-white/10 text-white/60 border-white/20"; }
+        // STAY-LIFECYCLE-OPS-01 — LIFECYCLE state (CHECKED_IN / CHECKED_OUT / terminal)
+        // takes precedence over date-derived labels: a checked-out stay never reads
+        // "Upcoming" because its scheduled dates are in the future; "today" is the
+        // IST operational date, not the device clock.
+        const ds = bookingDetailStatus({ status: b.status, checkIn: b.checkIn, checkOut: b.checkOut, todayISO: istDateISO() });
+        const statusLabel = ds.label;
+        const statusBadge = TONE_BADGE[ds.tone];
+        // Truthful contact slots (an email in the phone column is an EMAIL, never tel:).
+        const contact = normalizeGuestContact({ phone: b.guestPhone || b.user?.phone, email: b.guestEmail || b.user?.email });
+        const waDigits = whatsappDigits(contact.phone);
+        // Booking VALUE vs payment actually RECORDED — never label value as revenue.
+        const pay = bookingPaymentSummary({
+          ratePerNight: pricePerNight, nights, rooms: nr,
+          paidTotal: b.paidTotal, razorpayPaymentId: b.razorpayPaymentId, message: b.message,
+        });
 
         return (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs overflow-y-auto"
@@ -3597,10 +3659,40 @@ export default function PartnerDashboard() {
 
                 {/* Room + assigned unit */}
                 {(() => {
-                  // Find assigned unit number for this booking (bid or block)
+                  // STAY-LIFECYCLE-OPS-01 — multi-unit assignment with FROZEN history.
+                  // A booking of N rooms needs N distinct room numbers before check-in;
+                  // a completed (CHECKED_OUT) stay can never be reassigned here; an
+                  // in-house guest is moved only via an explicit, audited TRANSFER. The
+                  // server re-validates everything (hotel / category / active / conflicts).
                   const fromBid = Object.values(calendar[b.roomId] || {}).find((c: any) => c?.refId === b.id) as any;
-                  const assignedNumber = b.assignedUnitNumber || fromBid?.assignedUnitNumber || "";
-                  const freeForAssign = freeUnitsForRoom(b.roomId, b.checkIn || "", b.checkOut || "");
+                  const assigned: Array<{ unitId: string; unitNumber: string }> =
+                    Array.isArray(b.assignedUnits) && b.assignedUnits.length
+                      ? b.assignedUnits
+                      : (b.assignedUnitNumber || fromBid?.assignedUnitNumber)
+                        ? [{ unitId: String(fromBid?.assignedUnitId || ""), unitNumber: String(b.assignedUnitNumber || fromBid?.assignedUnitNumber) }]
+                        : [];
+                  const required = nr;
+                  const lifecycle = String(b.status || "").toUpperCase();
+                  const frozen = lifecycle === "CHECKED_OUT";
+                  const inHouse = lifecycle === "CHECKED_IN";
+                  const freeForAssign = freeUnitsForRoom(b.roomId, b.checkIn || "", b.checkOut || "")
+                    .filter((u: any) => !assigned.some((a) => a.unitId === u.id));
+                  const postAssign = async (unitIds: string[], action?: "transfer", reason?: string) => {
+                    const token = getToken();
+                    const r = await fetch("/api/partner/room-units/assign", {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                      body: JSON.stringify({ bidId: b.id, unitIds, action, reason }),
+                    });
+                    const j = await r.json().catch(() => ({}));
+                    if (!r.ok) { alert(`Room assignment refused: ${j?.error || r.status}${j?.unitId ? ` (unit ${j.unitId})` : ""}`); return; }
+                    loadCalendar();
+                    refreshLive(token || "");
+                    alert(action === "transfer" ? "✓ Room transfer recorded" : "✓ Room assignment saved");
+                  };
+                  const unitOptions = freeForAssign.map((u: any) => (
+                    <option key={u.id} value={u.id}>#{u.roomNumber}{u.floor ? ` · Floor ${u.floor}` : ""}</option>
+                  ));
                   return (
                     <div className="p-4 rounded-2xl bg-luxury-50 border border-luxury-200">
                       <p className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest mb-2"><DIc I={BedDouble} size={11} /> Room</p>
@@ -3608,39 +3700,53 @@ export default function PartnerDashboard() {
                         <div>
                           <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "—"}</p>
                           {b.room?.capacity && <p className="text-xs text-luxury-500">Capacity: {b.room.capacity} guests</p>}
-                          <p className="text-xs text-luxury-500">{b.guests || 2} guest{(b.guests||2)>1?"s":""} booked</p>
+                          <p className="text-xs text-luxury-500">{b.guests || 2} guest{(b.guests||2)>1?"s":""} booked · {required} room{required>1?"s":""}</p>
                         </div>
-                        {assignedNumber ? (
+                        {assigned.length > 0 && (
                           <div className="text-right">
-                            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest">Allocated Room</p>
-                            <p className="text-2xl font-bold text-gold-700">#{assignedNumber}</p>
+                            {/* STAY-LIFECYCLE-OPS-01 M6 — a completed stay shows the FINAL room(s)
+                                it occupied (the read model returns the COMPLETED lines). */}
+                            <p className="text-[0.63rem] font-bold text-gold-600 uppercase tracking-widest">{frozen ? "Final Room" : "Allocated Room"}{assigned.length>1?"s":""}{frozen ? "" : ` · ${assigned.length}/${required}`}</p>
+                            <p className="text-2xl font-bold text-gold-700">{assigned.map((a) => `#${a.unitNumber}`).join("  ")}</p>
                           </div>
-                        ) : (
+                        )}
+                        {frozen ? (
+                          <p className="w-full mt-2 text-[0.65rem] text-luxury-500 italic">Completed stay — room history is frozen (no reassignment).</p>
+                        ) : inHouse ? (
                           <div className="w-full mt-2">
-                            <p className="text-[0.63rem] font-bold text-amber-600 uppercase mb-1"><DIc I={TriangleAlert} size={11} /> No room # assigned</p>
+                            <p className="text-[0.63rem] font-bold text-blue-700 uppercase mb-1">Transfer room (in-house, audited)</p>
                             {freeForAssign.length === 0 ? (
-                              <p className="text-xs text-luxury-400">No free rooms in this category.</p>
+                              <p className="text-xs text-luxury-400">No free rooms in this category to transfer to.</p>
                             ) : (
-                              <select
-                                className="inp-p text-xs"
-                                onChange={async e => {
-                                  const unitId = e.target.value; if (!unitId) return;
-                                  const token = getToken();
-                                  await fetch("/api/partner/room-units/assign", {
-                                    method: "POST",
-                                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                                    body: JSON.stringify({ bidId: b.id, unitId }),
-                                  });
-                                  loadCalendar();
-                                  alert("✓ Room assigned");
-                                }}>
-                                <option value="">Assign a room number…</option>
-                                {freeForAssign.map((u: any) => (
-                                  <option key={u.id} value={u.id}>#{u.roomNumber}{u.floor ? ` · Floor ${u.floor}` : ""}</option>
-                                ))}
+                              <select className="inp-p text-xs" value="" onChange={async e => {
+                                const unitId = e.target.value; if (!unitId) return;
+                                const reason = prompt("Reason for the room transfer (required — recorded on the stay history):");
+                                if (!reason || !reason.trim()) return;
+                                // Replaces the primary (slot-1) room, keeps any others.
+                                await postAssign([unitId, ...assigned.slice(1).map((a) => a.unitId)].filter(Boolean), "transfer", reason.trim());
+                              }}>
+                                <option value="">Move guest to room number…</option>
+                                {unitOptions}
                               </select>
                             )}
                           </div>
+                        ) : assigned.length < required ? (
+                          <div className="w-full mt-2">
+                            <p className="text-[0.63rem] font-bold text-amber-600 uppercase mb-1"><DIc I={TriangleAlert} size={11} /> Assign room {assigned.length + 1} of {required} before check-in</p>
+                            {freeForAssign.length === 0 ? (
+                              <p className="text-xs text-luxury-400">No free rooms in this category.</p>
+                            ) : (
+                              <select className="inp-p text-xs" value="" onChange={async e => {
+                                const unitId = e.target.value; if (!unitId) return;
+                                await postAssign([...assigned.map((a) => a.unitId).filter(Boolean), unitId]);
+                              }}>
+                                <option value="">Assign a room number…</option>
+                                {unitOptions}
+                              </select>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="w-full mt-2 text-[0.65rem] text-emerald-700 font-semibold">All {required} room{required>1?"s":""} assigned — ready for check-in.</p>
                         )}
                       </div>
                     </div>
@@ -3650,19 +3756,20 @@ export default function PartnerDashboard() {
                 {/* Guest contact */}
                 <div className="p-4 rounded-2xl bg-white border border-luxury-200 space-y-2">
                   <p className="text-[0.63rem] font-bold text-luxury-400 uppercase tracking-widest"><DIc I={UserRound} size={11} /> Guest Contact</p>
-                  {(b.guestPhone || b.user?.phone) && (
-                    <a href={`tel:${b.guestPhone || b.user?.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
+                  {/* STAY-LIFECYCLE-OPS-01 — classified by SHAPE: only a real phone becomes tel:. */}
+                  {contact.phone && (
+                    <a href={`tel:${contact.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
                       <span className="text-luxury-600 inline-flex items-center gap-1.5"><Phone size={12} strokeWidth={2.2} aria-hidden /> Phone</span>
-                      <span className="font-bold text-luxury-900">{b.guestPhone || b.user?.phone}</span>
+                      <span className="font-bold text-luxury-900">{contact.phone}</span>
                     </a>
                   )}
-                  {(b.guestEmail || b.user?.email) && (
-                    <a href={`mailto:${b.guestEmail || b.user?.email}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
+                  {contact.email && (
+                    <a href={`mailto:${contact.email}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
                       <span className="text-luxury-600 inline-flex items-center gap-1.5"><Mail size={12} strokeWidth={2.2} aria-hidden /> Email</span>
-                      <span className="font-semibold text-luxury-900 truncate">{b.guestEmail || b.user?.email}</span>
+                      <span className="font-semibold text-luxury-900 truncate">{contact.email}</span>
                     </a>
                   )}
-                  {!(b.guestPhone || b.user?.phone) && !(b.guestEmail || b.user?.email) && (
+                  {!contact.phone && !contact.email && (
                     <p className="text-xs text-luxury-400 italic">No contact info on file</p>
                   )}
                 </div>
@@ -3679,13 +3786,21 @@ export default function PartnerDashboard() {
                     <span className="font-semibold text-luxury-900">{fmtCur(total)}</span>
                   </div>
                   <div className="h-px bg-gold-300 my-2" />
+                  {/* STAY-LIFECYCLE-OPS-01 — booking VALUE is not revenue received. Only a
+                      RECORDED online payment is shown as paid; nothing is inferred from the bid. */}
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-luxury-900">Total Revenue</span>
-                    <span className="text-xl font-bold text-gold-700">{fmtCur(total)}</span>
+                    <span className="text-sm font-bold text-luxury-900">Booking value</span>
+                    <span className="text-xl font-bold text-gold-700">{fmtCur(pay.bookingValue)}</span>
                   </div>
-                  {b.message && /razorpay|pay_/i.test(b.message) && (
-                    <p className="text-[0.65rem] text-emerald-700 font-semibold mt-2"><DIc I={Check} size={11} /> Paid online via Razorpay</p>
-                  )}
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-sm text-luxury-700">Paid online (recorded)</span>
+                    <span className={`text-base font-bold ${pay.paidRecorded != null ? "text-emerald-700" : "text-luxury-400"}`}>
+                      {pay.paidRecorded != null ? fmtCur(pay.paidRecorded) : "—"}
+                    </span>
+                  </div>
+                  <p className={`text-[0.65rem] font-semibold mt-2 ${pay.paymentState === "recorded_online" ? "text-emerald-700" : "text-amber-700"}`}>
+                    {pay.paymentState === "recorded_online" ? <DIc I={Check} size={11} /> : <DIc I={TriangleAlert} size={11} />} {pay.paymentLabel}
+                  </p>
                 </div>
 
                 {/* Notes / source */}
@@ -3703,14 +3818,14 @@ export default function PartnerDashboard() {
 
                 {/* Action buttons */}
                 <div className="grid grid-cols-2 gap-2 pt-2">
-                  {(b.guestPhone || b.user?.phone) && (
-                    <a href={`tel:${b.guestPhone || b.user?.phone}`}
+                  {contact.phone && (
+                    <a href={`tel:${contact.phone}`}
                       className="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold text-center transition-all inline-flex items-center justify-center gap-1.5">
                       <Phone size={14} strokeWidth={2.3} aria-hidden /> Call Guest
                     </a>
                   )}
-                  {(b.guestPhone || b.user?.phone) && (
-                    <a href={`https://wa.me/${String(b.guestPhone || b.user?.phone).replace(/[^0-9]/g,"")}`} target="_blank" rel="noopener"
+                  {waDigits && (
+                    <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noopener"
                       className="py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold text-center transition-all inline-flex items-center justify-center gap-1.5">
                       <MessageCircle size={14} strokeWidth={2.3} aria-hidden /> WhatsApp
                     </a>

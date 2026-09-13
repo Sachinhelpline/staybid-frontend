@@ -133,4 +133,4 @@ async function applyAll(client) {
   await client.query(v734Sql);
 }
 
-module.exports = { applyAll };
+module.exports = { applyAll, MINIMAL_SCHEMA };

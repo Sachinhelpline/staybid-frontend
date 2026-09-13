@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { resolveOperatedHotelIds } from "@/lib/partner/operator-access";
 import { partnerBookingStatusInFilter } from "@/lib/bid-expiry";
+import { normalizeGuestContact } from "@/lib/stay/guest-contact";
+import { projectDisplayUnits } from "@/lib/stay/unit-assignments";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { SB_H as SB_H_SVC } from "@/lib/sb-server";
 
 // JWT-format anon key required for RLS-enabled tables (users)
 
@@ -102,8 +105,10 @@ export async function GET(req: NextRequest) {
   const roomIdsB    = Array.from(new Set(bookingsArr.map((b: any) => b.roomId).filter(Boolean)));
 
   const [users, requests, bRooms] = await Promise.all([
+    // STAY-LIFECYCLE-OPS-01 — also pull email so a legacy "email stored in the
+    // phone column" account can be normalised into the right contact slot.
     customerIds.length
-      ? fetch(`${SB_URL}/rest/v1/users?id=in.(${customerIds.join(",")})&select=id,name,phone`, { headers: SB_H }).then(r => r.json()).catch(() => [])
+      ? fetch(`${SB_URL}/rest/v1/users?id=in.(${customerIds.join(",")})&select=id,name,phone,email`, { headers: SB_H }).then(r => r.json()).catch(() => [])
       : Promise.resolve([]),
     requestIds.length
       ? fetch(`${SB_URL}/rest/v1/bid_requests?id=in.(${requestIds.join(",")})&select=*`, { headers: SB_H }).then(r => r.json()).catch(() => [])
@@ -130,10 +135,48 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* ignore */ }
 
+  // STAY-LIFECYCLE-OPS-01 — physical unit assignments per booking (display).
+  // Authoritative lines table first (service-role); legacy PK=bidId row when the
+  // lines table is not applied yet. Best-effort: a read failure leaves the list
+  // empty (the check-in ROUTE re-reads authoritatively; this is display only).
+  const unitsByBid: Record<string, Array<{ unitId: string; unitNumber: string; slot: number }>> = {};
+  try {
+    const ids = bookingsArr.map((b: any) => b.id).filter(Boolean).map((i: string) => encodeURIComponent(i));
+    if (ids.length) {
+      // STAY-LIFECYCLE-OPS-01 M6 — ACTIVE (live stay) + COMPLETED (finished stay)
+      // so a CHECKED_OUT booking still shows the FINAL room(s) occupied.
+      // projectDisplayUnits picks active-if-any-else-completed per bid (never a
+      // superseded/transferred-away room).
+      const lRes = await fetch(
+        `${SB_URL}/rest/v1/bid_unit_assignment_lines?bid_id=in.(${ids.join(",")})&status=in.(active,completed)&select=bid_id,unit_id,unit_number,slot,status&order=slot.asc`,
+        { headers: SB_H_SVC, cache: "no-store" }
+      );
+      if (lRes.ok) {
+        const arr = await lRes.json();
+        if (Array.isArray(arr)) {
+          const projected = projectDisplayUnits(arr);
+          for (const bidId of Object.keys(projected)) unitsByBid[bidId] = projected[bidId];
+        }
+      } else {
+        const aRes = await fetch(
+          `${SB_URL}/rest/v1/bid_unit_assignments?bidId=in.(${ids.join(",")})&select=bidId,unitId,unitNumber`,
+          { headers: SB_H_SVC, cache: "no-store" }
+        );
+        const arr = await aRes.json().catch(() => []);
+        if (Array.isArray(arr)) for (const a of arr) {
+          unitsByBid[a.bidId] = [{ unitId: String(a.unitId), unitNumber: String(a.unitNumber), slot: 1 }];
+        }
+      }
+    }
+  } catch { /* display only */ }
+
   const bookings = bookingsArr.map((b: any) => {
     const u  = uArr.find((x: any) => x.id === b.customerId);
     const rq = rqArr.find((x: any) => x.id === b.requestId);
     const rm = rmArr.find((x: any) => x.id === b.roomId);
+    // Truthful contact slots: an email sitting in `users.phone` is an EMAIL.
+    const contact = normalizeGuestContact({ phone: u?.phone, email: u?.email });
+    const assignedUnits = unitsByBid[b.id] || [];
     // BULLETPROOF paid-amount resolution (priority order):
     //   1. bid_paid_amounts row (server-authoritative, written at booking time)
     //   2. legacy paid:/rate: tokens in bid.message (pre-bulletproof bookings)
@@ -157,7 +200,10 @@ export async function GET(req: NextRequest) {
       paidFlow: serverPaid?.flow || null,
       razorpayPaymentId: serverPaid?.razorpay_payment_id || null,
       guestName: u?.name || null,
-      guestPhone: u?.phone || null,
+      guestPhone: contact.phone,
+      guestEmail: contact.email,
+      assignedUnits,
+      assignedUnitNumber: assignedUnits[0]?.unitNumber || null,
       customer: u || null,
       request: rq || null,
       checkIn: rq?.checkIn || b.checkIn || null,

@@ -8,12 +8,18 @@ import {
   readVerifiedStayEvidenceForSource,
   evidenceBindingMatches,
 } from "@/lib/stay/verified-stay-evidence";
+import { istDateISO, evaluateCheckOutTiming } from "@/lib/stay/stay-dates";
 
 export const runtime = "nodejs"; // JWT verify (jsonwebtoken) is server-only; never edge
 export const dynamic = "force-dynamic";
 
 const FEEDBACK_WINDOW_HOURS = 4;
 const partnerAuthority = createPartnerAuthorityDeps();
+
+/** Deterministic id for the one feedback-window notification per stay (idempotent). */
+function feedbackWindowNotificationId(bidId: string): string {
+  return `ntf_fbwin_${bidId}`;
+}
 
 // POST /api/partner/checkout/[bidId]
 // Hotel partner marks check-out. SEC-00B hardened exactly like check-in: the
@@ -122,6 +128,40 @@ export async function POST(req: Request, props: { params: Promise<{ bidId: strin
       return NextResponse.json({ error: "verified_stay_conflict" }, { status: 409 });
     }
 
+    // ── STAY-LIFECYCLE-OPS-01 — EARLY checkout is EXPLICIT + AUDITABLE ───────
+    // A genuinely checked-in guest may leave before the scheduled check-out
+    // date, so the date never BLOCKS a checkout. But an early departure must
+    // not be indistinguishable from a normal one: when today(IST) is before the
+    // scheduled checkOut, the caller must explicitly confirm (`confirmEarly`),
+    // and the fact + optional reason is recorded on the lifecycle log. Dates are
+    // read server-side; a read FAILURE fails closed (never "not early").
+    let body: any = {};
+    try { body = await req.json(); } catch { body = {}; }
+    const confirmEarly = body?.confirmEarly === true;
+    const earlyReason = typeof body?.reason === "string" ? body.reason.trim().slice(0, 300) : "";
+    const today = istDateISO();
+    let request: any = null;
+    if (bid.requestId) {
+      try {
+        request = (await sbSelect<any>(
+          "bid_requests",
+          `id=eq.${encodeURIComponent(String(bid.requestId))}&select=id,checkIn,checkOut&limit=1`
+        ))[0] || null;
+      } catch {
+        return NextResponse.json({ error: "stay_dates_unavailable" }, { status: 503 });
+      }
+    }
+    const timing = evaluateCheckOutTiming({ checkOut: request?.checkOut, todayISO: today });
+    if (timing.early && !confirmEarly) {
+      return NextResponse.json(
+        { error: "early_checkout_confirmation_required", scheduledCheckOut: timing.scheduledCheckOut, today },
+        { status: 409 }
+      );
+    }
+    const earlyNote = timing.early
+      ? `early checkout: scheduled ${timing.scheduledCheckOut}, actual ${today}${earlyReason ? ` — ${earlyReason}` : ""}`
+      : null;
+
     const ev = await writeVerifiedStayEvidence({
       customerId: String(bid.customerId),
       hotelId: String(bid.hotelId),
@@ -138,14 +178,16 @@ export async function POST(req: Request, props: { params: Promise<{ bidId: strin
     // 1. checkin_checkout_logs
     try {
       const existing = (await sbSelect<any>("checkin_checkout_logs", `booking_id=eq.${params.bidId}&limit=1`))[0];
+      // Audit trail: an early checkout is recorded explicitly in `notes`.
+      const notesPatch = earlyNote ? { notes: earlyNote } : {};
       if (existing) {
         await sbUpdate("checkin_checkout_logs", `booking_id=eq.${params.bidId}`, {
-          checkout_time: nowIso, marked_by: scope.subject, updated_at: nowIso,
+          checkout_time: nowIso, marked_by: scope.subject, updated_at: nowIso, ...notesPatch,
         });
       } else {
         await sbInsert("checkin_checkout_logs", {
           booking_id: params.bidId, hotel_id: bid.hotelId, customer_id: bid.customerId,
-          checkout_time: nowIso, marked_by: scope.subject,
+          checkout_time: nowIso, marked_by: scope.subject, ...notesPatch,
         });
       }
     } catch {}
@@ -184,18 +226,46 @@ export async function POST(req: Request, props: { params: Promise<{ bidId: strin
       }
     } catch {}
 
-    // 5. queue initial notification (best-effort)
+    // 5. queue the feedback-window notification (best-effort, but HONEST).
+    //    STAY-LIFECYCLE-OPS-01: the live `notifications` schema has `id TEXT NOT
+    //    NULL` with NO default, so the previous id-less insert failed on every
+    //    checkout and the failure was silently swallowed — the guest never got
+    //    the "How was your stay?" prompt. The insert now carries a DETERMINISTIC
+    //    id (one notification per stay → idempotent on replay, never duplicated)
+    //    and a failure is logged with its reason instead of being hidden. It
+    //    still never blocks an already-verified checkout.
+    let notificationQueued = false;
+    const nid = feedbackWindowNotificationId(String(params.bidId));
+    let alreadyQueued = false;
     try {
-      await sbInsert("notifications", {
-        userId: bid.customerId,
-        type: "feedback_window_opened",
-        title: "How was your stay?",
-        body: `You have ${FEEDBACK_WINDOW_HOURS} hours to submit feedback. Your verification video will be deleted after that.`,
-        meta: { bookingId: params.bidId, expiry: expiry.toISOString() },
-      });
-    } catch { /* notifications table schema may differ — non-fatal */ }
+      alreadyQueued = !!(await sbSelect<any>("notifications", `id=eq.${encodeURIComponent(nid)}&select=id&limit=1`))[0];
+    } catch { /* unknown → attempt the insert; the deterministic PK prevents a duplicate */ }
+    if (alreadyQueued) {
+      notificationQueued = true;
+    } else {
+      try {
+        await sbInsert("notifications", {
+          id: nid,
+          userId: bid.customerId,
+          type: "feedback_window_opened",
+          title: "How was your stay?",
+          body: `You have ${FEEDBACK_WINDOW_HOURS} hours to submit feedback. Your verification video will be deleted after that.`,
+          meta: { bookingId: params.bidId, expiry: expiry.toISOString() },
+        });
+        notificationQueued = true;
+      } catch (e: any) {
+        console.warn(`[checkout] feedback_window_opened notification NOT queued for ${params.bidId}: ${e?.message || e}`);
+      }
+    }
 
-    return NextResponse.json({ ok: true, checkout_time: nowIso, expiry_time: expiry.toISOString() });
+    return NextResponse.json({
+      ok: true,
+      checkout_time: nowIso,
+      expiry_time: expiry.toISOString(),
+      earlyCheckout: timing.early,
+      scheduledCheckOut: timing.scheduledCheckOut,
+      notificationQueued,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "checkout failed" }, { status: 500 });
   }
