@@ -17,7 +17,7 @@ import { api, ApiError } from "@/lib/api";
 import ActiveBidConflictSheet, { type BidConflict } from "@/components/ActiveBidConflictSheet";
 import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
-import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
+import { calculateDynamicPrice, demandLevelFromScore, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
 // v407 — socket.io-client is NO LONGER a static import. It's the heaviest
 // dependency on this (already heavy) route; loading it eagerly delayed the
 // hotel page's first paint on every navigation. It's now dynamically
@@ -1109,9 +1109,16 @@ export default function HotelDetail() {
       }
       // v167 — override the displayed price with the unified pricing
       // spine (room_date_price → competitor-undercut + per-date vacancy
-      // baked in). Demand / trend / factor badges stay from the local
-      // compute. If the spine is unreachable the local price stands, so
-      // the page never breaks.
+      // baked in). Trend / factor badges stay from the local compute. If
+      // the spine is unreachable the local price stands, so the page never
+      // breaks.
+      // v750 (PRICE-CONSISTENCY-01) — ALSO override the demand chrome
+      // (demandScore + demandLevel) from the SAME canonical spine
+      // demandScore, via the shared demandLevelFromScore mapping. This is
+      // the exact authority the inline pricing calendar reads, so the room
+      // card and the calendar can never disagree about price OR demand.
+      // Spine outage → the local demand compute stands (fallback), same as
+      // the price.
       try {
         const roomIds = hotel.rooms.map((r: any) => r.id);
         const sp = await fetch("/api/pricing/spine", {
@@ -1123,15 +1130,21 @@ export default function HotelDetail() {
         const floors: Record<string, number> = {};
         for (const r of hotel.rooms) {
           const p = prices[r.id];
-          if (p && Number(p.livePrice) > 0) {
-            next[r.id] = { ...next[r.id], price: Number(p.livePrice) };
+          if (p) {
+            const patch: Partial<DynamicPriceResult> = {};
+            if (Number(p.livePrice) > 0) patch.price = Number(p.livePrice);
+            if (typeof p.demandScore === "number" && Number.isFinite(p.demandScore)) {
+              patch.demandScore = Math.round(Number(p.demandScore));
+              patch.demandLevel = demandLevelFromScore(patch.demandScore);
+            }
+            if (Object.keys(patch).length) next[r.id] = { ...next[r.id], ...patch };
           }
           // v248 Layer 1 — capture the dynamic bid-floor so the Negotiate
           // probability UI matches the server's accept/counter threshold.
           if (p && Number(p.bidFloor) > 0) floors[r.id] = Math.round(Number(p.bidFloor));
         }
         if (Object.keys(floors).length > 0) setRoomSpineFloors(floors);
-      } catch { /* spine unreachable — local price stands */ }
+      } catch { /* spine unreachable — local price + demand stand */ }
       setRoomPrices((prev) => {
         // Flash animation on price change
         const changed: Record<string, boolean> = {};

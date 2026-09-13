@@ -637,12 +637,17 @@ const CACHE_NAME = 'staybid-static-v2';
 // v732 — HTML_CACHE bump (v524 -> v525). /bid step sheets now hide the bottom
 // dock while open (sb-modal-open) so the CTA + content are never clipped behind
 // the nav on any step/device. Bumping drops the stale cached /bid markup.
+// PRICE-CONSISTENCY-01 — HTML_CACHE bump (v541 -> v542). Hotel-detail calendar
+// now reads the canonical pricing-spine livePrice + demandScore (same authority
+// as the room cards) instead of a second local formula. Bumping HTML_CACHE drops
+// the stale cached hotel-page markup so the consistent prices show on first load.
+// (Service-worker fetch/cache LOGIC is unchanged — cache-name + comment only.)
 // VG-CREATE-UX-01 — HTML_CACHE bump (v540 -> v541). Verified Guest create flow
 // now opens the Reel/Photo/Story chooser (not forced Reel) + shows a locked
 // "Verified stay" row in the composer. Bumping drops the stale cached
 // discover/create markup so the new UI shows on first load. (Fetch/cache logic
 // unchanged.)
-const HTML_CACHE = 'staybid-html-v541';
+const HTML_CACHE = 'staybid-html-v542';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -23,6 +23,37 @@ import { cityMeta } from "@/lib/cities";
 export type DemandLevel = "Low" | "Moderate" | "High" | "Very High" | "Surge";
 export type PriceTrend  = "rising" | "falling" | "stable";
 
+// ── v750 (PRICE-CONSISTENCY-01) — ONE canonical demand-score → label mapping ──
+// Every surface that shows "how busy is this date" must derive its label from the
+// SAME 0–100 demand score through THESE functions, so the hotel room card, the
+// per-day calendar dots and the pricing engine can never disagree about demand.
+// The thresholds are exactly the ones that used to live inline in
+// calculateDynamicPrice (88 / 72 / 52 / 32) — extracting them changes nothing.
+// The canonical score itself is the pricing spine's `demandScore`
+// (lib/pricing/spine.ts), which is what the customer surfaces read.
+
+/** 0–100 demand score → the 5-level demand label (canonical, shared). */
+export function demandLevelFromScore(score: number): DemandLevel {
+  const s = Math.min(100, Math.max(0, Math.round(Number(score) || 0)));
+  return s >= 88 ? "Surge" :
+         s >= 72 ? "Very High" :
+         s >= 52 ? "High" :
+         s >= 32 ? "Moderate" : "Low";
+}
+
+/**
+ * 0–100 demand score → the 3-tier calendar colour, derived from the SAME
+ * score→level mapping (Surge / Very High → red, High → orange, else green).
+ * Byte-identical to the calendar's former inline `demandTier` (red ≥72,
+ * orange ≥52, green else) — it just routes through the one canonical mapping.
+ */
+export function demandTierFromScore(score: number): "green" | "orange" | "red" {
+  const lvl = demandLevelFromScore(score);
+  return lvl === "Surge" || lvl === "Very High" ? "red"
+    : lvl === "High" ? "orange"
+    : "green";
+}
+
 export interface DynamicPriceResult {
   price: number;           // AI live price (INR, rounded to ₹50)
   suggestedFlash: number;  // Recommended flash deal price
@@ -363,11 +394,11 @@ export function calculateDynamicPrice(
   // Demand score 0-100
   // v169 — score band widened to match the clamped multiplier range.
   const demandScore = Math.min(100, Math.max(0, Math.round((totalMult - clampMin) / ((clampMax - clampMin) || 1) * 100)));
-  const demandLevel: DemandLevel =
-    demandScore >= 88 ? "Surge" :
-    demandScore >= 72 ? "Very High" :
-    demandScore >= 52 ? "High" :
-    demandScore >= 32 ? "Moderate" : "Low";
+  // v750 (PRICE-CONSISTENCY-01) — the score→level thresholds are now the shared
+  // `demandLevelFromScore` mapping (below), so the pricing engine, the hotel room
+  // card and the calendar all label a demand score identically. Byte-identical to
+  // the old inline 88/72/52/32 thresholds.
+  const demandLevel: DemandLevel = demandLevelFromScore(demandScore);
 
   // Human-readable factor list
   const factors: string[] = [];
