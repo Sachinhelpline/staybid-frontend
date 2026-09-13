@@ -660,7 +660,15 @@ const CACHE_NAME = 'staybid-static-v2';
 // checked-out stay reaches the completed/rating view. Bumping drops the stale
 // cached My-Bookings markup so the corrected view shows on first load.
 // (Service-worker fetch/cache LOGIC is unchanged — cache-name + comment only.)
-const HTML_CACHE = 'staybid-html-v544';
+// STAY-LIFECYCLE-OPS-01 — HTML_CACHE bump (v544 -> v545). Partner booking detail
+// now shows lifecycle-true status (never "Upcoming" for a checked-out stay),
+// truthful contact slots (an email is never a tel: link), booking VALUE vs
+// recorded payment (never "Total Revenue" for an unpaid stay), multi-unit room
+// assignment with frozen history, and date-gated Check-in / explicit early
+// Check-out. Bumping drops the stale cached partner markup so the corrected UI
+// shows on first load. (Service-worker fetch/cache LOGIC is unchanged —
+// cache-name + comment only.)
+const HTML_CACHE = 'staybid-html-v545';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

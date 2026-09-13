@@ -8,6 +8,14 @@ import {
   readVerifiedStayEvidenceForSource,
   evidenceBindingMatches,
 } from "@/lib/stay/verified-stay-evidence";
+import { istDateISO, evaluateCheckInWindow } from "@/lib/stay/stay-dates";
+import {
+  countActiveUnitsInCategory,
+  readAssignmentState,
+  readUnits,
+  evaluateCheckInAssignment,
+  type UnitRow,
+} from "@/lib/stay/unit-assignments";
 
 export const runtime = "nodejs"; // JWT verify (jsonwebtoken) is server-only; never edge
 export const dynamic = "force-dynamic";
@@ -143,6 +151,71 @@ export async function POST(req: Request, props: { params: Promise<{ bidId: strin
       return NextResponse.json({ error: "bid_not_accepted", status }, { status: 409 });
     }
 
+    // ── STAY-LIFECYCLE-OPS-01 — TEMPORAL authority (server-side, IST-safe) ────
+    // A NEW check-in is legitimate only from the reservation's first night
+    // through its last night: today(IST) < checkIn → premature (409); today ≥
+    // checkOut → window closed (409); unresolvable dates → fail closed (409).
+    // A LATE arrival on a later night of the stay is allowed. This gate runs
+    // AFTER the idempotent-replay path above, so an already-checked-in stay is
+    // never re-evaluated. Dates are read server-side from bid_requests — never
+    // from the client.
+    const today = istDateISO();
+    let request: any = null;
+    if (bid.requestId) {
+      try {
+        request = (await sbSelect<any>(
+          "bid_requests",
+          `id=eq.${encodeURIComponent(String(bid.requestId))}&select=id,checkIn,checkOut&limit=1`
+        ))[0] || null;
+      } catch {
+        return NextResponse.json({ error: "stay_dates_unavailable" }, { status: 503 });
+      }
+    }
+    const win = evaluateCheckInWindow({ checkIn: request?.checkIn, checkOut: request?.checkOut, todayISO: today });
+    if (!win.ok) {
+      return NextResponse.json(
+        { error: win.reason, checkInDate: win.checkInDate, checkOutDate: win.checkOutDate, today },
+        { status: 409 }
+      );
+    }
+
+    // ── STAY-LIFECYCLE-OPS-01 — PHYSICAL unit assignment gate ─────────────────
+    // When the booked room category has configured ACTIVE physical units, a NEW
+    // check-in fails closed unless exactly numRooms DISTINCT, currently-valid
+    // units (exact hotel + exact category + active) are assigned. A category
+    // with no configured units (quantity inventory) skips the requirement. Any
+    // read failure fails closed (503) — never conflated with "nothing assigned".
+    const configured = await countActiveUnitsInCategory(hotId, String(bid.roomId ?? ""));
+    if (configured === null) {
+      return NextResponse.json({ error: "unit_inventory_unavailable" }, { status: 503 });
+    }
+    let assignedUnitIds: string[] = [];
+    let unitRows: UnitRow[] = [];
+    if (configured > 0) {
+      const st = await readAssignmentState(String(params.bidId), bid);
+      if (st.status === "error") {
+        return NextResponse.json({ error: "unit_assignment_unavailable" }, { status: 503 });
+      }
+      assignedUnitIds = st.unitIds;
+      const rows = await readUnits(assignedUnitIds);
+      if (rows === null) {
+        return NextResponse.json({ error: "unit_inventory_unavailable" }, { status: 503 });
+      }
+      unitRows = rows;
+    }
+    const gate = evaluateCheckInAssignment({
+      bid,
+      configuredActiveUnits: configured,
+      assignedUnitIds,
+      units: unitRows,
+    });
+    if (!gate.ok) {
+      return NextResponse.json(
+        { error: gate.error, required: gate.required, assigned: gate.assigned, unitId: gate.unitId },
+        { status: 409 }
+      );
+    }
+
     const ev = await writeVerifiedStayEvidence({
       customerId: String(bid.customerId),
       hotelId: String(bid.hotelId),
@@ -177,7 +250,14 @@ export async function POST(req: Request, props: { params: Promise<{ bidId: strin
       });
     } catch {}
 
-    return NextResponse.json({ ok: true, checkin_time: now });
+    return NextResponse.json({
+      ok: true,
+      checkin_time: now,
+      checkInDate: win.checkInDate,
+      lateCheckIn: win.late,
+      unitsAssigned: gate.assigned,
+      unitsRequired: gate.required,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "checkin failed" }, { status: 500 });
   }
