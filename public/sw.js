@@ -647,7 +647,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // "Verified stay" row in the composer. Bumping drops the stale cached
 // discover/create markup so the new UI shows on first load. (Fetch/cache logic
 // unchanged.)
-const HTML_CACHE = 'staybid-html-v542';
+// BID-LIFECYCLE-UI-01 — HTML_CACHE bump (v542 -> v543). Partner Bookings now
+// preserves a stay across ACCEPTED→CHECKED_IN→CHECKED_OUT (no longer vanishes on
+// Mark-Check-in) and the customer My-Bids badge shows the truthful lifecycle
+// state (never a false "Pending"). Bumping drops the stale cached partner +
+// my-bids markup so the corrected UI shows on first load. (Service-worker
+// fetch/cache LOGIC is unchanged — cache-name + comment only.)
+const HTML_CACHE = 'staybid-html-v543';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

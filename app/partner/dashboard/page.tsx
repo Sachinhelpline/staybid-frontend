@@ -55,7 +55,7 @@ import OtaFeedManager from "@/components/partner/OtaFeedManager";
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
 // v177 — auto-cleanup of stale bids in the Bid Inbox. Same rule the
 // customer /my-bids + admin /admin/bookings views use.
-import { filterActiveBids } from "@/lib/bid-expiry";
+import { filterActiveBids, canPartnerCheckIn, canPartnerCheckOut } from "@/lib/bid-expiry";
 // v129 — structured complimentary-amenity catalog replaces the free-text
 // "Message to Guest" textarea (anti-bypass: phone/email/WhatsApp could slip
 // through that box). See lib/counter-addons.ts for the rationale.
@@ -2343,11 +2343,14 @@ export default function PartnerDashboard() {
         {/* ══════════════ BOOKINGS ══════════════ */}
         {tab === "bookings" && (
           <div className="fade-up">
-            <h2 className="sec-title text-xl mb-5">Confirmed Bookings</h2>
+            {/* v751 — the list preserves the full stay lifecycle (accepted →
+                checked-in → checked-out), so the heading is no longer "only
+                accepted/confirmed". */}
+            <h2 className="sec-title text-xl mb-5">Bookings</h2>
             {bookings.length === 0 ? (
               <div className="card-p text-center py-12 text-luxury-400">
                 <CalendarDays size={34} strokeWidth={1.8} aria-hidden className="mx-auto mb-3 text-luxury-400" />
-                <p className="font-semibold text-luxury-600">No confirmed bookings yet</p>
+                <p className="font-semibold text-luxury-600">No bookings yet</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -2382,9 +2385,12 @@ export default function PartnerDashboard() {
                           b.status === "CHECKED_IN"  ? "bg-blue-50 text-blue-700 border-blue-200" :
                           "bg-emerald-50 text-emerald-700 border-emerald-200"
                         }`}>{b.status === "CHECKED_OUT" ? "Checked out" : b.status === "CHECKED_IN" ? "Checked in" : "Confirmed"} ›</span>
-                        {/* Check-in / Check-out actions — additive layer, doesn't affect confirm flow */}
+                        {/* Check-in / Check-out actions — additive layer, doesn't affect confirm flow.
+                            v751 — gating uses the shared canPartnerCheckIn/Out lifecycle helpers so the
+                            API read model + UI action rules stay in lockstep (Check-in hidden once
+                            CHECKED_IN/CHECKED_OUT; Check-out only while CHECKED_IN). */}
                         <div className="flex gap-1.5 mt-2 justify-end" onClick={(e) => e.stopPropagation()}>
-                          {b.status !== "CHECKED_IN" && b.status !== "CHECKED_OUT" && (
+                          {canPartnerCheckIn(b.status) && (
                             <button onClick={async (e) => {
                               e.stopPropagation();
                               const tkn = getToken();
@@ -2392,7 +2398,7 @@ export default function PartnerDashboard() {
                               refreshLive(tkn || "");
                             }} className="text-[10px] px-2 py-1 rounded-full bg-blue-600 text-white font-bold hover:bg-blue-700">Mark Check-in</button>
                           )}
-                          {b.status === "CHECKED_IN" && (
+                          {canPartnerCheckOut(b.status) && (
                             <button onClick={async (e) => {
                               e.stopPropagation();
                               if (!confirm("Mark check-out? This starts the 4-hour feedback window.")) return;

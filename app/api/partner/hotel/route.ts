@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { resolveOperatedHotelIds } from "@/lib/partner/operator-access";
+import { partnerBookingStatusInFilter } from "@/lib/bid-expiry";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 // JWT-format anon key required for RLS-enabled tables (users)
@@ -64,7 +65,10 @@ export async function GET(req: NextRequest) {
     ownedUnits = Array.isArray(u) ? u : [];
   }
 
-  // Bookings (accepted bids). For an operator-reached hotel we scope to bids
+  // Bookings. v751 (BID-LIFECYCLE-UI-01) — the read model preserves a stay
+  // across its whole visible lifecycle (ACCEPTED → CONFIRMED → CHECKED_IN →
+  // CHECKED_OUT) via the shared partnerBookingStatusInFilter(), so a partner's
+  // Mark-Check-in no longer makes the row vanish. For an operator-reached hotel we scope to bids
   // assigned to the caller's OWN units. Until the individual-room booking flow
   // assigns units (Phase 3), operators see zero shared-hotel bookings — which is
   // the correct, leak-free state (never surface another owner's booking).
@@ -72,20 +76,23 @@ export async function GET(req: NextRequest) {
   let bookingsArr: any[] = [];
   if (!isOperator) {
     const bRes  = await fetch(
-      `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&status=eq.ACCEPTED&select=*&order=createdAt.desc&limit=100`,
+      `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&${partnerBookingStatusInFilter()}&select=*&order=createdAt.desc&limit=100`,
       { headers: SB_H }
     );
     const bookingsRaw = await bRes.json();
     bookingsArr = Array.isArray(bookingsRaw) ? bookingsRaw : [];
   } else {
     const bRes  = await fetch(
-      `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&status=eq.ACCEPTED&select=*&order=createdAt.desc&limit=100`,
+      `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&${partnerBookingStatusInFilter()}&select=*&order=createdAt.desc&limit=100`,
       { headers: SB_H }
     );
     const bookingsRaw = await bRes.json();
     const all = Array.isArray(bookingsRaw) ? bookingsRaw : [];
     // Only bids whose assigned unit the caller owns (assignedUnitId set once the
-    // individual-room flow lands). No unit → excluded (leak-safe).
+    // individual-room flow lands). No unit → excluded (leak-safe). v751 — the
+    // widened lifecycle-status filter does NOT weaken this owned-unit isolation:
+    // scoping is still by assignedUnitId ∈ ownedUnitIdSet, so another operator's
+    // stay can never appear regardless of which lifecycle state it is in.
     bookingsArr = all.filter((b: any) => b.assignedUnitId && ownedUnitIdSet.has(String(b.assignedUnitId)));
   }
 

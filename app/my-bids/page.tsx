@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/paid-amount";
+import { BID_STATUS_META as STATUS_META, resolveBidStatusMeta } from "@/lib/bid-lifecycle-display";
 // v241.20 — Shared customer-view freshness window. Imported (not
 // redeclared inline) so /my-bids + hotel page + any future customer
 // surface stay in lockstep. Bumping this constant in lib/bid-expiry
@@ -40,15 +41,10 @@ import { Target, Building2, Zap, KeyRound, Timer, Gift, Wallet, Crown, X } from 
 
 // v174 — cozy-theme status palette. Mid-tone colours that read on both the
 // cream (light) and walnut (dark) surfaces — no per-theme branching needed.
-const STATUS_META: Record<string, { label: string; color: string; soft: string }> = {
-  PENDING:   { label: "Pending",   color: "#5f7c98", soft: "rgba(106,133,160,0.14)" },
-  COUNTER:   { label: "Countered", color: "#C77B43", soft: "rgba(199,123,67,0.14)" },
-  ACCEPTED:  { label: "Accepted",  color: "#7F9269", soft: "rgba(127,146,105,0.18)" },
-  REJECTED:  { label: "Declined",  color: "#C77E6D", soft: "rgba(199,126,109,0.14)" },
-  // v229 — customer-initiated cancel via /api/bids/:id/cancel
-  CANCELLED: { label: "Cancelled", color: "#8A8FA8", soft: "rgba(138,143,168,0.14)" },
-  EXPIRED:   { label: "Expired",   color: "#8A8FA8", soft: "rgba(138,143,168,0.14)" },
-};
+// v751 (BID-LIFECYCLE-UI-01) — STATUS_META + resolveBidStatusMeta are now the
+// ONE shared registry in lib/bid-lifecycle-display (imported above). It adds the
+// lifecycle states CONFIRMED / CHECKED_IN / CHECKED_OUT and, crucially, an
+// unknown status resolves to a NEUTRAL humanized label — never a false "Pending".
 
 const isPaid = (b: any) => typeof b?.message === "string" && b.message.includes("Razorpay:");
 
@@ -1107,7 +1103,7 @@ function MyBidsPageInner() {
             items-start lets each card shrink to its own content height. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
           {filtered.map((b: any, idx: number) => {
-            const meta  = STATUS_META[b.status] || STATUS_META.PENDING;
+            const meta  = resolveBidStatusMeta(b.status);
             const paid  = isPaid(b);
             // BUG-FIX: below-floor bids are stored at floor in bid.amount (backend
             // rejects below-floor). The customer's actual bid intent lives in the

@@ -45,6 +45,36 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const IST_OFFSET_MS = (5 * 60 + 30) * MIN;
 
+// ── Partner Bookings lifecycle (BID-LIFECYCLE-UI-01, v751) ──────────────────
+// The partner "Bookings" read model must PRESERVE a stay through its whole
+// visible lifecycle, not drop it the instant it advances past ACCEPTED. These
+// are the ONLY statuses the Bookings list surfaces (no new business state is
+// invented). Used as the single deterministic source for the read-model status
+// filter AND the per-row Check-in/Check-out action gating, so the API and UI
+// can never drift apart.
+export const PARTNER_BOOKING_STATUSES = ["ACCEPTED", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT"] as const;
+
+/** PostgREST `status=in.(…)` filter for the partner Bookings read model. */
+export function partnerBookingStatusInFilter(): string {
+  return `status=in.(${PARTNER_BOOKING_STATUSES.join(",")})`;
+}
+
+/** True ONLY when a NEW check-in is authorised by the hardened check-in route,
+ *  which mints trusted verified_stay_evidence exclusively from an ACCEPTED bid
+ *  (app/api/partner/checkin/[bidId] → 409 `bid_not_accepted` for any other
+ *  status). So Mark Check-in is shown for ACCEPTED ONLY — a CONFIRMED row stays
+ *  visible but offers no lifecycle action (the route would fail-close it), and
+ *  any unknown/unexpected status fails safe to false. CONFIRMED is NOT
+ *  reinterpreted as ACCEPTED. */
+export function canPartnerCheckIn(status?: string | null): boolean {
+  return String(status || "").toUpperCase() === "ACCEPTED";
+}
+
+/** True ONLY for an in-house stay (Mark Check-out shown only when CHECKED_IN). */
+export function canPartnerCheckOut(status?: string | null): boolean {
+  return String(status || "").toUpperCase() === "CHECKED_IN";
+}
+
 // v241.26 — Parse a Postgres timestamp as UTC.
 // `bids.createdAt` / `bids.expiresAt` are `timestamp without time zone`
 // columns; PostgREST returns them WITHOUT a timezone marker, e.g.
