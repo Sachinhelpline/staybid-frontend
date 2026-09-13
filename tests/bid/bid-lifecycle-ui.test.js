@@ -78,11 +78,21 @@ const display = loadTsModule("lib/bid-lifecycle-display.ts");
   // 7. CHECKED_OUT → neither
   ok(canPartnerCheckIn("CHECKED_OUT") === false && canPartnerCheckOut("CHECKED_OUT") === false,
     "7. partner CHECKED_OUT row offers neither Check-in nor Check-out");
-  // (supporting) ACCEPTED/CONFIRMED → Check-in yes, Check-out no
+
+  // ── Authoritative partner action matrix — ALIGNED to the hardened check-in
+  //    route (a NEW check-in mints verified evidence ONLY from an ACCEPTED bid;
+  //    every other status → 409 bid_not_accepted). ──
   ok(canPartnerCheckIn("ACCEPTED") === true && canPartnerCheckOut("ACCEPTED") === false,
-    "7b. ACCEPTED offers Check-in only");
-  ok(canPartnerCheckIn("CONFIRMED") === true && canPartnerCheckOut("CONFIRMED") === false,
-    "7c. CONFIRMED offers Check-in only");
+    "7b. ACCEPTED → Check-in only");
+  ok(canPartnerCheckIn("CONFIRMED") === false && canPartnerCheckOut("CONFIRMED") === false,
+    "7c. CONFIRMED → NEITHER lifecycle action (route would fail-close a check-in; not reinterpreted as ACCEPTED)");
+  // PENDING / COUNTER / REJECTED / EXPIRED / CANCELLED / unknown / empty → no Check-in (fail-safe).
+  ["PENDING", "COUNTER", "REJECTED", "EXPIRED", "CANCELLED", "SOMETHING_NEW", "", null, undefined].forEach((st) => {
+    ok(canPartnerCheckIn(st) === false, `7d. status '${String(st)}' → NO partner Check-in action (fail-safe)`);
+  });
+  // lower-case / mixed case still resolves correctly (case-insensitive).
+  ok(canPartnerCheckIn("accepted") === true && canPartnerCheckOut("checked_in") === true,
+    "7e. gating helpers are case-insensitive");
 }
 
 // ════════════════════════════════════════════════════════════════

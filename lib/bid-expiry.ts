@@ -59,11 +59,15 @@ export function partnerBookingStatusInFilter(): string {
   return `status=in.(${PARTNER_BOOKING_STATUSES.join(",")})`;
 }
 
-/** True while a Bookings row is still awaiting arrival (Mark Check-in shown).
- *  A stay already CHECKED_IN or CHECKED_OUT must NEVER offer Check-in again. */
+/** True ONLY when a NEW check-in is authorised by the hardened check-in route,
+ *  which mints trusted verified_stay_evidence exclusively from an ACCEPTED bid
+ *  (app/api/partner/checkin/[bidId] → 409 `bid_not_accepted` for any other
+ *  status). So Mark Check-in is shown for ACCEPTED ONLY — a CONFIRMED row stays
+ *  visible but offers no lifecycle action (the route would fail-close it), and
+ *  any unknown/unexpected status fails safe to false. CONFIRMED is NOT
+ *  reinterpreted as ACCEPTED. */
 export function canPartnerCheckIn(status?: string | null): boolean {
-  const s = String(status || "").toUpperCase();
-  return s !== "CHECKED_IN" && s !== "CHECKED_OUT";
+  return String(status || "").toUpperCase() === "ACCEPTED";
 }
 
 /** True ONLY for an in-house stay (Mark Check-out shown only when CHECKED_IN). */
