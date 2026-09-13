@@ -139,3 +139,54 @@ export function isBookingConfirmedStay(booking: {
     up(booking?.status)
   );
 }
+
+/**
+ * Bid statuses eligible to APPEAR in the customer's own My-Bookings list — the
+ * candidate set that GET /api/bookings/my must FETCH before the canonical
+ * isBidConfirmedStayForDisplay() filter runs. It is exactly the statuses that
+ * filter can ever return true for:
+ *   • ACCEPTED    — shown only when it carries a (forgeable) paid marker.
+ *   • CHECKED_IN  — a STRONG stay state; always shown.
+ *   • CHECKED_OUT — a STRONG stay state; always shown.
+ * PENDING / COUNTER / terminal are deliberately EXCLUDED: the filter would drop
+ * them anyway, and fetching them only bloats the read. Shared as one constant so
+ * the DB query and the display filter can never drift apart (the old read fetched
+ * only ACCEPTED, so a legitimately-progressed CHECKED_IN/CHECKED_OUT bid silently
+ * vanished from My Bookings even though the filter would have shown it).
+ */
+export const MY_BOOKINGS_CANDIDATE_BID_STATUSES = [
+  "ACCEPTED",
+  "CHECKED_IN",
+  "CHECKED_OUT",
+] as const;
+
+/**
+ * The PostgREST `status=in.(...)` fragment for the My-Bookings candidate bid
+ * read — derived from MY_BOOKINGS_CANDIDATE_BID_STATUSES so the query and the
+ * constant stay in lock-step (no hand-written interpolation drift).
+ */
+export function myBookingsCandidateBidStatusFilter(): string {
+  return `status=in.(${MY_BOOKINGS_CANDIDATE_BID_STATUSES.join(",")})`;
+}
+
+/**
+ * The TRUTHFUL display status for a bid projected into the customer's My-Bookings
+ * list. Runs ONLY on rows that already passed isBidConfirmedStayForDisplay(), so
+ * the only inputs it can see are ACCEPTED (display-paid) / CHECKED_IN /
+ * CHECKED_OUT:
+ *   • CHECKED_IN  → "CHECKED_IN"   (never flattened — the card shows "Checked In")
+ *   • CHECKED_OUT → "CHECKED_OUT"  (never flattened — drives the completed/rating
+ *                                   view, which keys on status === "CHECKED_OUT")
+ *   • ACCEPTED    → "CONFIRMED"    (its existing display-paid behaviour, unchanged)
+ * The raw underlying bid status is carried SEPARATELY on `_bidStatus`, so the
+ * Verified-Guest / Share-CTA resolver still applies the STRONG rule
+ * (isBidVerifiedStay: CHECKED_IN/CHECKED_OUT only) and never treats a forgeable
+ * "paid" ACCEPTED bid as a share-eligible stay. NEVER reinterprets CHECKED_IN /
+ * CHECKED_OUT as CONFIRMED.
+ */
+export function projectedBidBookingStatus(bid: ConfirmedBidLike): string {
+  const st = up(bid?.status);
+  if (st === "CHECKED_IN") return "CHECKED_IN";
+  if (st === "CHECKED_OUT") return "CHECKED_OUT";
+  return "CONFIRMED";
+}

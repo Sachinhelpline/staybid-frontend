@@ -653,7 +653,14 @@ const CACHE_NAME = 'staybid-static-v2';
 // state (never a false "Pending"). Bumping drops the stale cached partner +
 // my-bids markup so the corrected UI shows on first load. (Service-worker
 // fetch/cache LOGIC is unchanged — cache-name + comment only.)
-const HTML_CACHE = 'staybid-html-v543';
+// MY-BOOKINGS-LIFECYCLE-PROJECTION-01 — HTML_CACHE bump (v543 -> v544). GET
+// /api/bookings/my now fetches the whole candidate stay lifecycle
+// (ACCEPTED/CHECKED_IN/CHECKED_OUT) and projects a truthful status, so a
+// checked-in / checked-out bid stops vanishing from customer My Bookings and a
+// checked-out stay reaches the completed/rating view. Bumping drops the stale
+// cached My-Bookings markup so the corrected view shows on first load.
+// (Service-worker fetch/cache LOGIC is unchanged — cache-name + comment only.)
+const HTML_CACHE = 'staybid-html-v544';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
