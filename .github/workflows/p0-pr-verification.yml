@@ -79,5 +79,11 @@ jobs:
       - name: Run Voice AI gateway security suite (SB-04)
         run: node tests/voice/voice-gateway-security.test.js
 
+      - name: Run Voice AI router suite (SB-04)
+        run: npm run test:voice:router
+
+      - name: Run Live AI dormant-provider suite (LIVE-AI-02A)
+        run: npm run test:live-ai
+
       - name: Run concurrency regression suite
         run: npm run test:concurrency

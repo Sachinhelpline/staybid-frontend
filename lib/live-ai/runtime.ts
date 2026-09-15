@@ -50,6 +50,7 @@ import {
   type HotelSection,
   type HotelSort,
 } from "./contracts";
+import type { PublishedContext, PublishedVisibleHotel, RefinementProjection } from "./protocol";
 
 // ---- resolved, SAFE command handed to a page bridge -------------------------
 export type ResolvedCommand =
@@ -104,6 +105,12 @@ export interface CompanionTurn {
   phase: CompanionPhase;
   speech: string;
   accepted?: boolean;
+  /** LIVE-AI-02A: when reconcile() confirms a prior UI_LOCAL action as verified,
+   *  it carries the correlation of the ORIGINATING action so the conversation
+   *  controller can bind a "verified" receipt to the exact proposal it executed
+   *  (the runtime never learns the provider's proposalId — the controller maps
+   *  actionId→proposalId). */
+  correlated?: { turnId: string; actionId: string; operation: LiveAiOperationName };
 }
 
 export interface ComparisonResult {
@@ -137,6 +144,10 @@ interface MemoryTurn { turnId: string; role: "user" | "assistant"; text: string;
 
 interface PendingRefinement {
   turnId: string;
+  /** LIVE-AI-02A: the envelope action-id + op that applied this refinement, so a
+   *  later verified reconcile is correlated back to the originating action. */
+  actionId: string;
+  operation: LiveAiOperationName;
   kind: "catalogue" | "local";
   revisionAtApply: string;
   city: string | null;
@@ -242,6 +253,15 @@ export interface LiveAiRuntime {
   getRegisteredPageId(): LiveAiPageId | null;
   getRegistrationToken(): string | null;
   makeEnvelope(operation: LiveAiOperation, turnId?: string): OperationEnvelope | null;
+  /** LIVE-AI-02A: the current bounded, data-minimized PublishedContext derived
+   *  from the live snapshot (never a raw hotel object / url / DOM / owner field),
+   *  for the conversation controller to publish to the gateway. Null when there is
+   *  no registered page. PURE — no network, no provider. */
+  publishedContext(): PublishedContext | null;
+  /** R5B-REV-06 — the canonical current-refinement projection of the live hotels-list snapshot (the
+   *  ALREADY-applied destination/query/maxPrice/parking/stars/sort + ordered ids), or null when not on a
+   *  hotels list. Used to prove every APPLY dimension against the trusted context. PURE. */
+  currentListProjection(): RefinementProjection | null;
   execute(envelope: unknown): ExecutionResult;
   reconcile(): CompanionTurn | null;
   greet(): CompanionTurn | null;
@@ -352,6 +372,20 @@ export function createLiveAiRuntime(initialRole: LiveAiRole = "anonymous"): Live
       };
     },
 
+    publishedContext() {
+      const snap = currentSnapshot();
+      if (!snap) return null;
+      return buildPublishedContext(snap, role);
+    },
+
+    currentListProjection() {
+      // R5B-REV-06 — the canonical current-refinement projection of the live hotels-list snapshot (or null
+      // when not on a hotels list). Derived from the SAME snapshot as publishedContext().refinement.
+      const snap = currentSnapshot();
+      if (!snap || snap.pageId !== "hotels") return null;
+      return buildRefinementProjection(snap);
+    },
+
     execute(envelopeRaw) {
       if (process.env.NEXT_PUBLIC_VOICE_AI_BETA !== "1") return fail("disabled");
       if (!activated) return fail("not_activated");
@@ -375,7 +409,7 @@ export function createLiveAiRuntime(initialRole: LiveAiRole = "anonymous"): Live
       if (snap.pageId !== env.expectedPage) return fail("wrong_page");
       if (env.contextRevision !== snap.contextRevision) return fail("stale_context");
       if (dedup.has(env.actionId)) return { ok: true, status: "deduped", operation: op.op, authority };
-      const res = dispatch(op, snap, authority);
+      const res = dispatch(op, snap, authority, env.actionId);
       if (res.status !== "not_ready") dedup.add(env.actionId); // not_ready is retryable
       return res;
     },
@@ -400,7 +434,7 @@ export function createLiveAiRuntime(initialRole: LiveAiRole = "anonymous"): Live
         if (list.receipt.status !== "ready") return null; // error → never explain
         if (!resMatch || !p.sawLoading || !dimsMatch()) return null;
         pendingRefinement = null;
-        return verified(list);
+        return verified(list, { turnId: p.turnId, actionId: p.actionId, operation: p.operation });
       }
       // local: requires a NEW revision reflecting the applied dims (never the
       // pre-setter snapshot count — REV-03).
@@ -408,7 +442,7 @@ export function createLiveAiRuntime(initialRole: LiveAiRole = "anonymous"): Live
       if (list.loadState !== "ready") return null;
       if (!dimsMatch()) return null;
       pendingRefinement = null;
-      return verified(list);
+      return verified(list, { turnId: p.turnId, actionId: p.actionId, operation: p.operation });
     },
 
     greet() {
@@ -427,14 +461,14 @@ export function createLiveAiRuntime(initialRole: LiveAiRole = "anonymous"): Live
     dedupSize: () => dedup.size,
   };
 
-  function verified(list: HotelsListContext): CompanionTurn {
+  function verified(list: HotelsListContext, correlated: CompanionTurn["correlated"]): CompanionTurn {
     const n = list.visibleHotels.length;
-    const turn: CompanionTurn = { phase: "verified", speech: `${n} ${n === 1 ? "stay" : "stays"} now match.` };
+    const turn: CompanionTurn = { phase: "verified", speech: `${n} ${n === 1 ? "stay" : "stays"} now match.`, correlated };
     pushMemory("assistant", turn.speech);
     return turn;
   }
 
-  function dispatch(op: LiveAiOperation, snap: HotelsListContext | HotelDetailContext, authority: AuthorityLevel): ExecutionResult {
+  function dispatch(op: LiveAiOperation, snap: HotelsListContext | HotelDetailContext, authority: AuthorityLevel, actionId: string): ExecutionResult {
     switch (op.op) {
       case "READ_CURRENT_RESULTS": {
         const list = snap as HotelsListContext;
@@ -486,6 +520,8 @@ export function createLiveAiRuntime(initialRole: LiveAiRole = "anonymous"): Live
         const changesCatalogue = "destination" in op || "query" in op;
         const pend: PendingRefinement = {
           turnId: currentTurnId || "-",
+          actionId,
+          operation: op.op,
           kind: changesCatalogue ? "catalogue" : "local",
           revisionAtApply: list.contextRevision,
           city: effCity,
@@ -558,4 +594,48 @@ function factWord(f: HotelFacts["breakfast"]): string {
 }
 function buildFactsSpeech(f: HotelFacts): string {
   return `Breakfast: ${factWord(f.breakfast)}. Parking: ${factWord(f.parking)}.`;
+}
+
+/**
+ * LIVE-AI-02A: project the authority snapshot down to the bounded, data-minimized
+ * PublishedContext the gateway may see. Carries ONLY already-bounded fields (never
+ * a raw hotel object, a URL, an owner/internal field, a token, or DOM/selectors).
+ * A hotel-detail context exposes the current hotel id / facts ONLY when validated.
+ */
+function buildPublishedContext(snap: HotelsListContext | HotelDetailContext, role: LiveAiRole): PublishedContext {
+  if (snap.pageId === "hotels") {
+    const list = snap;
+    const visibleHotels: PublishedVisibleHotel[] = list.visibleHotels.map((h) => ({
+      position: h.position, id: h.id, name: h.name, city: h.city, minPrice: h.minPrice, rating: h.rating, parking: h.parking,
+    }));
+    return {
+      pageId: "hotels", role, destination: list.destination, query: list.query, loadState: list.loadState,
+      visibleHotels, currentHotelId: null, validated: false, section: null, breakfast: null, parking: null,
+      // R5B-REV-06 — the canonical current-refinement projection (destination/query/maxPrice/parking/stars/
+      // sort + ordered ids), so the gateway can prove EVERY APPLY dimension against the trusted context.
+      refinement: buildRefinementProjection(list),
+    };
+  }
+  const detail = snap;
+  return {
+    pageId: "hotel-detail", role, destination: null, query: null, loadState: detail.loadState,
+    visibleHotels: [], currentHotelId: detail.validated ? detail.currentHotelId : null, validated: detail.validated,
+    section: detail.section, breakfast: detail.validated ? detail.breakfast : null, parking: detail.validated ? detail.parking : null,
+    refinement: null, // R5B-REV-06 — a detail page has no list refinement
+  };
+}
+/**
+ * R5B-REV-06 — the pure BOUNDED CANONICAL current-refinement projection of a hotels-list snapshot: the
+ * ALREADY-APPLIED filter/sort state + resulting ordered ids + count. Normalizes here (in the builder, per
+ * the reject-not-normalize split) to a value the wire validator accepts unchanged: maxPrice null unless a
+ * finite positive ≤ ceiling; stars deduped + clamped to distinct 1..5 (≤5); sort a known token; orderedIds
+ * in ascending display-position order. It represents the already-authorized APPLY contract ONLY (the same
+ * six dimensions the APPLY op carries) — never any new filter authority.
+ */
+function buildRefinementProjection(list: HotelsListContext): RefinementProjection {
+  const orderedIds = list.visibleHotels.slice().sort((a, b) => a.position - b.position).map((h) => h.id);
+  const stars = Array.from(new Set(list.stars.filter((s) => Number.isInteger(s) && s >= 1 && s <= 5))).slice(0, 5);
+  const maxPrice = (typeof list.maxPrice === "number" && Number.isFinite(list.maxPrice) && list.maxPrice > 0 && list.maxPrice <= 10_000_000) ? list.maxPrice : null;
+  const sort = (list.sort === "price-asc" || list.sort === "price-desc" || list.sort === "rating") ? list.sort : "default";
+  return { destination: list.destination, query: list.query, maxPrice, parking: !!list.parking, stars, sort, orderedIds, count: orderedIds.length };
 }

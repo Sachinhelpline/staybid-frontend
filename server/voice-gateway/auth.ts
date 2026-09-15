@@ -20,6 +20,11 @@ const ASSERT_ALG = "ES256";
 const CLOCK_TOLERANCE_SEC = 5;
 const ASSERT_MAX_AGE_SEC = 120; // an assertion older than this is rejected outright
 
+// The EXACT read-only scopes. voice:read is UNCHANGED; the Live-AI scope is a
+// SEPARATE exact value — neither generalizes to "any scope".
+export const VOICE_ASSERTION_SCOPE = "voice:read" as const;
+export const LIVE_AI_ASSERTION_SCOPE = "live-ai:read-ui-local" as const;
+
 export interface VerifiedAssertion {
   subject: string;
   jti: string;
@@ -67,12 +72,21 @@ export function createReplayStore(now: () => number = () => Date.now()) {
 export type ReplayStore = ReturnType<typeof createReplayStore>;
 
 // ---- assertion verify -------------------------------------------------------
-export async function verifyAssertion(
+export interface AssertionAuthParams {
+  signingPublicKey: string | null;
+  issuer: string | null;
+  audience: string | null;
+  /** The EXACT scope required (never "any"). */
+  expectedScope: string;
+}
+
+/** Core ES256 assertion verify against explicit params + an EXACT required scope. */
+export async function verifyAssertionCore(
   token: string,
-  config: GatewayConfig,
+  params: AssertionAuthParams,
   replay: ReplayStore,
 ): Promise<AssertionResult> {
-  if (!config.signingPublicKey || !config.issuer || !config.audience) {
+  if (!params.signingPublicKey || !params.issuer || !params.audience || !params.expectedScope) {
     return { ok: false, code: "assertion_unconfigured" };
   }
   if (typeof token !== "string" || !token || token.length > 8 * 1024) {
@@ -80,10 +94,10 @@ export async function verifyAssertion(
   }
   let payload: JWTPayload;
   try {
-    const key = await importSPKI(config.signingPublicKey, ASSERT_ALG);
+    const key = await importSPKI(params.signingPublicKey, ASSERT_ALG);
     const res = await jwtVerify(token, key, {
-      issuer: config.issuer,
-      audience: config.audience,
+      issuer: params.issuer,
+      audience: params.audience,
       algorithms: [ASSERT_ALG],
       clockTolerance: CLOCK_TOLERANCE_SEC,
       maxTokenAge: ASSERT_MAX_AGE_SEC,
@@ -92,7 +106,7 @@ export async function verifyAssertion(
   } catch {
     return { ok: false, code: "assertion_invalid" };
   }
-  if (payload.scope !== "voice:read") return { ok: false, code: "assertion_scope" };
+  if (payload.scope !== params.expectedScope) return { ok: false, code: "assertion_scope" };
   const sub = typeof payload.sub === "string" ? payload.sub : "";
   const jti = typeof payload.jti === "string" ? payload.jti : "";
   if (!sub || !jti) return { ok: false, code: "assertion_invalid" };
@@ -100,6 +114,35 @@ export async function verifyAssertion(
   if (!replay.consume(jti, expMs)) return { ok: false, code: "assertion_replayed" };
   const origin = typeof payload.origin === "string" ? payload.origin : "";
   return { ok: true, assertion: { subject: sub, jti, authenticated: payload.auth === true, origin } };
+}
+
+/** VOICE assertion — UNCHANGED behavior (exact "voice:read", voice config keys). */
+export async function verifyAssertion(
+  token: string,
+  config: GatewayConfig,
+  replay: ReplayStore,
+): Promise<AssertionResult> {
+  return verifyAssertionCore(token, {
+    signingPublicKey: config.signingPublicKey,
+    issuer: config.issuer,
+    audience: config.audience,
+    expectedScope: VOICE_ASSERTION_SCOPE,
+  }, replay);
+}
+
+/** LIVE-AI assertion — the EXACT "live-ai:read-ui-local" scope + the Live-AI signing
+ *  config. It can NEVER accept a voice:read token, and never an arbitrary scope. */
+export async function verifyLiveAiAssertion(
+  token: string,
+  liveAiAuth: { signingPublicKey: string | null; issuer: string | null; audience: string | null },
+  replay: ReplayStore,
+): Promise<AssertionResult> {
+  return verifyAssertionCore(token, {
+    signingPublicKey: liveAiAuth.signingPublicKey,
+    issuer: liveAiAuth.issuer,
+    audience: liveAiAuth.audience,
+    expectedScope: LIVE_AI_ASSERTION_SCOPE,
+  }, replay);
 }
 
 // ---- control token (HMAC, bound to session+subject, ≤10min) -----------------
@@ -111,43 +154,54 @@ interface ControlTokenPayload {
   n: string;
 }
 
+export function mintControlTokenWithSecret(
+  sessionId: string,
+  subject: string,
+  secret: string | null,
+  maxAgeMs: number,
+  now: () => number = () => Date.now(),
+): string | null {
+  if (!secret) return null;
+  const t = now();
+  const payload: ControlTokenPayload = {
+    sid: sessionId,
+    sub: subject,
+    iat: t,
+    exp: t + maxAgeMs,
+    n: randomBytes(9).toString("hex"),
+  };
+  const body = b64url(Buffer.from(JSON.stringify(payload)));
+  const sig = b64url(createHmac("sha256", secret).update(body).digest());
+  return `${body}.${sig}`;
+}
+
 export function mintControlToken(
   sessionId: string,
   subject: string,
   config: GatewayConfig,
   now: () => number = () => Date.now(),
 ): string | null {
-  if (!config.controlTokenSecret) return null;
-  const t = now();
-  const payload: ControlTokenPayload = {
-    sid: sessionId,
-    sub: subject,
-    iat: t,
-    exp: t + config.limits.controlTokenMaxAgeMs,
-    n: randomBytes(9).toString("hex"),
-  };
-  const body = b64url(Buffer.from(JSON.stringify(payload)));
-  const sig = b64url(createHmac("sha256", config.controlTokenSecret).update(body).digest());
-  return `${body}.${sig}`;
+  return mintControlTokenWithSecret(sessionId, subject, config.controlTokenSecret, config.limits.controlTokenMaxAgeMs, now);
 }
 
 export type ControlTokenResult =
   | { ok: true; sessionId: string; subject: string }
   | { ok: false; code: "control_unconfigured" | "control_invalid" | "control_expired" | "control_mismatch" };
 
-export function verifyControlToken(
+export function verifyControlTokenWithSecret(
   token: unknown,
   expectSessionId: string,
-  config: GatewayConfig,
+  secret: string | null,
+  maxAgeMs: number,
   now: () => number = () => Date.now(),
 ): ControlTokenResult {
-  if (!config.controlTokenSecret) return { ok: false, code: "control_unconfigured" };
+  if (!secret) return { ok: false, code: "control_unconfigured" };
   if (typeof token !== "string" || !token || token.length > 4096) return { ok: false, code: "control_invalid" };
   const dot = token.indexOf(".");
   if (dot <= 0) return { ok: false, code: "control_invalid" };
   const body = token.slice(0, dot);
   const sig = token.slice(dot + 1);
-  const expected = b64url(createHmac("sha256", config.controlTokenSecret).update(body).digest());
+  const expected = b64url(createHmac("sha256", secret).update(body).digest());
   if (!constantTimeEqualStr(sig, expected)) return { ok: false, code: "control_invalid" };
   let payload: ControlTokenPayload;
   try {
@@ -159,12 +213,21 @@ export function verifyControlToken(
     return { ok: false, code: "control_invalid" };
   }
   const t = now();
-  // Hard ≤10-minute lifetime, regardless of a forged longer exp.
-  if (t - payload.iat > config.limits.controlTokenMaxAgeMs || t >= payload.exp) {
+  // Hard lifetime cap, regardless of a forged longer exp.
+  if (t - payload.iat > maxAgeMs || t >= payload.exp) {
     return { ok: false, code: "control_expired" };
   }
   if (payload.sid !== expectSessionId) return { ok: false, code: "control_mismatch" };
   return { ok: true, sessionId: payload.sid, subject: payload.sub };
+}
+
+export function verifyControlToken(
+  token: unknown,
+  expectSessionId: string,
+  config: GatewayConfig,
+  now: () => number = () => Date.now(),
+): ControlTokenResult {
+  return verifyControlTokenWithSecret(token, expectSessionId, config.controlTokenSecret, config.limits.controlTokenMaxAgeMs, now);
 }
 
 // ---- kill switch (HMAC, disable-only) ---------------------------------------
@@ -172,12 +235,12 @@ export type KillVerifyResult = { ok: true } | { ok: false; code: "kill_unconfigu
 
 const KILL_MAX_SKEW_MS = 60_000;
 
-export function verifyKillRequest(
+export function verifyKillRequestWithSecret(
   body: unknown,
-  config: GatewayConfig,
+  secret: string | null,
   now: () => number = () => Date.now(),
 ): KillVerifyResult {
-  if (!config.killSwitchSecret) return { ok: false, code: "kill_unconfigured" };
+  if (!secret) return { ok: false, code: "kill_unconfigured" };
   if (!body || typeof body !== "object") return { ok: false, code: "kill_invalid" };
   const b = body as Record<string, unknown>;
   const nonce = typeof b.nonce === "string" ? b.nonce : "";
@@ -185,7 +248,15 @@ export function verifyKillRequest(
   const sig = typeof b.sig === "string" ? b.sig : "";
   if (!nonce || !Number.isFinite(ts) || !sig) return { ok: false, code: "kill_invalid" };
   if (Math.abs(now() - ts) > KILL_MAX_SKEW_MS) return { ok: false, code: "kill_stale" };
-  const expected = b64url(createHmac("sha256", config.killSwitchSecret).update(`${nonce}.${ts}`).digest());
+  const expected = b64url(createHmac("sha256", secret).update(`${nonce}.${ts}`).digest());
   if (!constantTimeEqualStr(sig, expected)) return { ok: false, code: "kill_invalid" };
   return { ok: true };
+}
+
+export function verifyKillRequest(
+  body: unknown,
+  config: GatewayConfig,
+  now: () => number = () => Date.now(),
+): KillVerifyResult {
+  return verifyKillRequestWithSecret(body, config.killSwitchSecret, now);
 }
