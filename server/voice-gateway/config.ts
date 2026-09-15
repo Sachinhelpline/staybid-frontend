@@ -88,6 +88,85 @@ export interface GatewayConfig {
   // upstream StayBid read API base
   publicBaseUrl: string | null;
   limits: GatewayLimits;
+  // LIVE-AI-02A: the isolated, independently fail-closed Live-AI sub-config.
+  liveAi: LiveAiConfig;
+}
+
+// ── LIVE-AI-02A nested config (SOURCE allowlists only; no value is ever created) ──
+/** The SINGLETON source model allowlists. A configured value MUST equal these; any
+ *  other value DISABLES the provider (fail closed). Unset ⇒ the constant. */
+export const LIVE_AI_STT_MODEL = "gpt-live-transcribe" as const;
+export const LIVE_AI_REASONING_MODEL = "gpt-5.6-terra" as const;
+export const LIVE_AI_TTS_MODEL = "gpt-4o-mini-tts" as const;
+
+export interface LiveAiConfig {
+  /** R — LIVE_AI_RUNTIME_ENABLED === "1": the gateway may create a session. */
+  runtimeEnabled: boolean;
+  /** B — LIVE_AI_BROKER_ENABLED === "1": informational at the gateway (enforced at
+   *  the Next broker route). */
+  brokerEnabled: boolean;
+  // session-assertion verification (Live-AI signing material — NOT the voice keys)
+  signingPublicKey: string | null;
+  issuer: string | null;
+  audience: string | null;
+  controlTokenSecret: string | null;
+  killSwitchSecret: string | null;
+  allowedOrigins: string[];
+  ipHashSalt: string | null;
+  openaiApiKeyPresent: boolean;
+  // fixed model allowlists ("" ⇒ a mismatching configured value disabled the provider)
+  sttModel: string;
+  reasoningModel: string;
+  ttsModel: string;
+}
+
+function resolveLiveAiModel(raw: string | undefined, allowed: string): string {
+  const v = nonEmpty(raw);
+  if (!v) return allowed; // unset ⇒ the reviewed constant
+  return v === allowed ? allowed : ""; // any other value ⇒ disabled (fail closed)
+}
+
+export function loadLiveAiConfig(env: GatewayEnv): LiveAiConfig {
+  return {
+    runtimeEnabled: exactlyOne(env.LIVE_AI_RUNTIME_ENABLED),
+    brokerEnabled: exactlyOne(env.LIVE_AI_BROKER_ENABLED),
+    signingPublicKey: nonEmpty(env.LIVE_AI_SESSION_SIGNING_PUBLIC_KEY),
+    issuer: nonEmpty(env.LIVE_AI_SESSION_ISSUER),
+    audience: nonEmpty(env.LIVE_AI_SESSION_AUDIENCE),
+    controlTokenSecret: nonEmpty(env.LIVE_AI_CONTROL_TOKEN_SECRET),
+    killSwitchSecret: nonEmpty(env.LIVE_AI_KILL_SWITCH_HMAC_SECRET),
+    allowedOrigins: parseOrigins(env.LIVE_AI_ALLOWED_ORIGINS),
+    ipHashSalt: nonEmpty(env.LIVE_AI_IP_HASH_SALT),
+    openaiApiKeyPresent: Boolean(nonEmpty(env.OPENAI_API_KEY)),
+    sttModel: resolveLiveAiModel(env.LIVE_AI_STT_MODEL, LIVE_AI_STT_MODEL),
+    reasoningModel: resolveLiveAiModel(env.LIVE_AI_REASONING_MODEL, LIVE_AI_REASONING_MODEL),
+    ttsModel: resolveLiveAiModel(env.LIVE_AI_TTS_MODEL, LIVE_AI_TTS_MODEL),
+  };
+}
+
+/** Fail-closed: the Live-AI provider is reachable only with a key + all three models. */
+export function liveAiProviderConfigured(c: LiveAiConfig): boolean {
+  return Boolean(c.openaiApiKeyPresent && c.sttModel && c.reasoningModel && c.ttsModel);
+}
+/** Fail-closed: the Live-AI assertion verify needs the Live-AI signing material. */
+export function liveAiAssertionVerifiable(c: LiveAiConfig): boolean {
+  return Boolean(c.signingPublicKey && c.issuer && c.audience);
+}
+/** Fail-closed: the whole Live-AI session-create path independently requires ALL
+ *  four dormancy gates + config — the B gate (brokerEnabled) AND the R gate
+ *  (runtimeEnabled) are BOTH enforced here at the gateway, so a still-valid signed
+ *  assertion can NEVER create a gateway session while B=0 (REV-12), plus the
+ *  assertion material + control-token secret + provider + origins + ip-hash salt. */
+export function liveAiSessionCreateConfigured(c: LiveAiConfig): boolean {
+  return (
+    c.brokerEnabled &&
+    c.runtimeEnabled &&
+    liveAiAssertionVerifiable(c) &&
+    Boolean(c.controlTokenSecret) &&
+    liveAiProviderConfigured(c) &&
+    Boolean(c.ipHashSalt) &&
+    c.allowedOrigins.length > 0
+  );
 }
 
 function exactlyOne(v: string | undefined): boolean {
@@ -209,6 +288,7 @@ export function loadGatewayConfig(env: GatewayEnv): GatewayConfig {
     ipHashSalt: nonEmpty(env.VOICE_AI_IP_HASH_SALT),
     publicBaseUrl: resolvePublicBase(env.STAYBID_PUBLIC_BASE_URL),
     limits,
+    liveAi: loadLiveAiConfig(env),
   };
 }
 
@@ -254,5 +334,16 @@ export function safeConfigSummary(c: GatewayConfig): Record<string, unknown> {
     killSwitchConfigured: Boolean(c.killSwitchSecret),
     publicBaseUrlPresent: Boolean(c.publicBaseUrl),
     globalActiveSessions: c.limits.globalActiveSessions,
+    liveAi: {
+      runtimeEnabled: c.liveAi.runtimeEnabled,
+      brokerEnabled: c.liveAi.brokerEnabled,
+      assertionVerifiable: liveAiAssertionVerifiable(c.liveAi),
+      providerConfigured: liveAiProviderConfigured(c.liveAi),
+      sessionCreateConfigured: liveAiSessionCreateConfigured(c.liveAi),
+      allowedOriginCount: c.liveAi.allowedOrigins.length,
+      sttModel: c.liveAi.sttModel,
+      reasoningModel: c.liveAi.reasoningModel,
+      ttsModel: c.liveAi.ttsModel,
+    },
   };
 }

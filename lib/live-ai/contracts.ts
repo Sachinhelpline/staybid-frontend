@@ -50,6 +50,11 @@ export const MAX_CITY_DISPLAY_LEN = 60;
 export const MAX_STARS = 5;
 export const MIN_STARS = 3; // the /hotels star filter only offers 3/4/5
 export const MAX_PRICE = 100_000_000; // ₹ technical safety bound (NOT a pricing rule)
+// R5A — the reject-not-normalize upper bound for an UNTRUSTED external operation's maxPrice.
+// Distinct from MAX_PRICE (the page-builder safety bound): the operation bound is the one the
+// provider Structured Output schema declares and the gateway mirror enforces, so the browser
+// and the gateway accept/reject an operation's maxPrice at the EXACT same ceiling (parity).
+export const MAX_OP_PRICE = 10_000_000;
 export const MAX_GUESTS = 30;
 export const MAX_MEMORY_TURNS = 40;
 export const MAX_DEDUP_ENTRIES = 256; // bounded dedup structure size (REV-13)
@@ -330,6 +335,17 @@ export function isHotelSection(x: unknown): x is HotelSection {
   return typeof x === "string" && (HOTEL_SECTIONS as readonly string[]).includes(x);
 }
 
+// R5A — the CLOSED, ordered comparison-factor vocabulary a COMPARE_VISIBLE_HOTELS operation
+// may declare (which dimensions the model wants compared). The same four factors the answer
+// plan uses; kept here because contracts.ts is the operation authority (the gateway mirror +
+// the provider Structured Output schema list the identical enum). A COMPARE operation's factors
+// are validated ORDERED + DISTINCT + recognized (reject-not-normalize) — never deduped/sorted.
+export type HotelCompareFactor = "price" | "rating" | "parking" | "breakfast";
+export const HOTEL_COMPARE_FACTORS: readonly HotelCompareFactor[] = Object.freeze(["price", "rating", "parking", "breakfast"]);
+export function isHotelCompareFactor(x: unknown): x is HotelCompareFactor {
+  return typeof x === "string" && (HOTEL_COMPARE_FACTORS as readonly string[]).includes(x);
+}
+
 export interface HotelsListContext {
   pageId: "hotels";
   /** SYNCHRONOUS complete-state fingerprint (REV-05). */
@@ -392,7 +408,7 @@ export type LiveAiOperation =
       stars?: number[];
     }
   | { op: "READ_CURRENT_RESULTS" }
-  | { op: "COMPARE_VISIBLE_HOTELS"; positions: number[] }
+  | { op: "COMPARE_VISIBLE_HOTELS"; positions: number[]; factors: HotelCompareFactor[] }
   | { op: "OPEN_VISIBLE_HOTEL"; position: number }
   | { op: "READ_CURRENT_HOTEL_FACTS" }
   | { op: "SHOW_HOTEL_SECTION"; section: HotelSection };
@@ -430,13 +446,19 @@ export const OPERATION_PAGE: Readonly<Record<LiveAiOperationName, LiveAiPageId>>
 const OP_ALLOWED_KEYS: Readonly<Record<LiveAiOperationName, readonly string[]>> = Object.freeze({
   APPLY_HOTEL_REFINEMENT: ["op", "destination", "query", "maxPrice", "parking", "sort", "stars"],
   READ_CURRENT_RESULTS: ["op"],
-  COMPARE_VISIBLE_HOTELS: ["op", "positions"],
+  COMPARE_VISIBLE_HOTELS: ["op", "positions", "factors"],
   OPEN_VISIBLE_HOTEL: ["op", "position"],
   READ_CURRENT_HOTEL_FACTS: ["op"],
   SHOW_HOTEL_SECTION: ["op", "section"],
 });
 
 const MAX_COMPARE_POSITIONS = 4;
+// R5A SECOND REMEDIATION (REV-NEW-02): the outer length bound the strict array snapshot will
+// inspect at all — every authority-bearing array (APPLY stars, COMPARE positions/factors) is far
+// smaller, and each caller re-enforces its own tighter window after the snapshot. This only bounds
+// the per-index inspection loop so a hostile huge `length` can never make the snapshot do unbounded
+// work; it is NOT a semantic array limit.
+const MAX_OP_ARRAY_LEN = 64;
 
 /**
  * STRICT own-DATA-property record (REV-01 / R1-REV-NEW-01 / R3 Fix 1+2). Inspects
@@ -455,25 +477,88 @@ const MAX_COMPARE_POSITIONS = 4;
  * TOCTOU getter). Returns null on any violation.
  */
 function strictOwnDataRecord(x: object, allowed: readonly string[]): Record<string, unknown> | null {
-  // R3 Fix 1+2: reject any non-plain prototype (custom prototype, class instance,
-  // inherited-authority chain) BEFORE extracting any field. Only a bare object
-  // literal (proto === Object.prototype) or a null-prototype record is accepted.
-  const proto = Object.getPrototypeOf(x);
-  if (proto !== Object.prototype && proto !== null) return null;
-  const out: Record<string, unknown> = Object.create(null);
-  const keys = Reflect.ownKeys(x); // string + symbol own keys
-  for (const k of keys) {
-    if (typeof k === "symbol") return null; // no symbol keys
-    if (!allowed.includes(k)) return null; // undeclared own key (enumerable or not)
-    const d = Object.getOwnPropertyDescriptor(x, k);
-    if (!d) return null;
-    if (typeof d.get === "function" || typeof d.set === "function" || !("value" in d)) return null; // accessor → reject
-    out[k] = d.value; // captured ONCE from the data property
+  // R5A-REMEDIATION (REV-NEW-02): TOTAL, fail-closed. Every reflective inspection below can be a
+  // hostile-Proxy trap (getPrototypeOf / ownKeys / getOwnPropertyDescriptor). Any thrown trap makes
+  // the WHOLE inspection fail closed → null (never throw out, never repair/coerce/partial-authorize).
+  try {
+    // R3 Fix 1+2: reject any non-plain prototype (custom prototype, class instance,
+    // inherited-authority chain) BEFORE extracting any field. Only a bare object
+    // literal (proto === Object.prototype) or a null-prototype record is accepted.
+    const proto = Object.getPrototypeOf(x);
+    if (proto !== Object.prototype && proto !== null) return null;
+    const out: Record<string, unknown> = Object.create(null);
+    const keys = Reflect.ownKeys(x); // string + symbol own keys
+    for (const k of keys) {
+      if (typeof k === "symbol") return null; // no symbol keys
+      if (!allowed.includes(k)) return null; // undeclared own key (enumerable or not)
+      const d = Object.getOwnPropertyDescriptor(x, k);
+      if (!d) return null;
+      if (typeof d.get === "function" || typeof d.set === "function" || !("value" in d)) return null; // accessor → reject
+      out[k] = d.value; // captured ONCE from the data property
+    }
+    return out;
+  } catch {
+    return null; // any hostile reflective-trap exception → fail closed
   }
-  return out;
 }
 function hasOwnData(rec: Record<string, unknown>, k: string): boolean {
   return Object.prototype.hasOwnProperty.call(rec, k);
+}
+
+/**
+ * STRICT ARRAY SNAPSHOT (R5A SECOND REMEDIATION — REV-NEW-02). Capture an untrusted value as a
+ * FRESH, inert, ordinary array of its own indexed DATA values, or null. A hostile Array may
+ * override map / slice / keys / values / Symbol.iterator / a "length" getter so that validation
+ * inspects one sequence while a frozen output ends up carrying another (e.g. positions [999,999]
+ * whose map() returns [1,2], or factors ["zoom"] whose iterator yields "price"). This helper
+ * defeats that class of attack by NEVER invoking any caller-owned method: it reads every index
+ * through a trusted intrinsic property descriptor and rebuilds a brand-new array literal from the
+ * captured primitive values, so downstream validation AND the frozen output both come from the one
+ * inert snapshot. TOTAL and fail-closed: EVERY potentially-throwing reflective inspection below —
+ * `Array.isArray` (which THROWS on a revoked Proxy), getPrototypeOf, getOwnPropertyDescriptor,
+ * Reflect.ownKeys — is inside the guard, so any hostile trap fails closed to null rather than
+ * throwing out. It NEVER freezes or mutates the caller input.
+ *
+ * Rejects (→ null): a non-Array; a value whose [[Prototype]] is not exactly the intrinsic
+ * Array.prototype (an Array subclass / re-parented array whose own map/slice/iterator could be
+ * hostile); a non-own or accessor "length"; a non-integer / negative / over-bound length; a missing
+ * (hole / sparse) index; an accessor index descriptor; any own key that is neither a canonical
+ * in-range decimal index nor "length" (a symbol key, a stray named property, "00"/"-0"/"1.5", an
+ * out-of-range numeric key). The caller freezes the returned fresh array after validating it.
+ */
+function strictArraySnapshot(x: unknown): unknown[] | null {
+  try {
+    if (!Array.isArray(x)) return null; // brand check — THROWS on a revoked Proxy, caught below
+    // The [[Prototype]] MUST be exactly the intrinsic Array.prototype — reject an Array subclass or
+    // a re-parented array whose own map/slice/iterator/Symbol.iterator could be caller-controlled.
+    if (Object.getPrototypeOf(x) !== Array.prototype) return null;
+    // Capture "length" as an OWN DATA property (never a caller getter).
+    const lenDesc = Object.getOwnPropertyDescriptor(x, "length");
+    if (!lenDesc || typeof lenDesc.get === "function" || typeof lenDesc.set === "function" || !("value" in lenDesc)) return null;
+    const len = lenDesc.value;
+    if (typeof len !== "number" || !Number.isInteger(len) || len < 0 || len > MAX_OP_ARRAY_LEN) return null;
+    // Every own key must be a canonical decimal index in [0,len) or "length" — a symbol key, a stray
+    // named property, or a non-canonical / out-of-range numeric key REJECTS the whole value.
+    const keys = Reflect.ownKeys(x);
+    for (const k of keys) {
+      if (k === "length") continue;
+      if (typeof k === "symbol") return null;
+      const n = Number(k);
+      if (!(String(n) === k && Number.isInteger(n) && n >= 0 && n < len)) return null;
+    }
+    // Capture each index 0..len-1 as an OWN DATA value (reject holes + accessors); read exactly ONCE
+    // so validation and the rebuilt output can never observe two different sequences.
+    const out: unknown[] = [];
+    for (let i = 0; i < len; i++) {
+      const d = Object.getOwnPropertyDescriptor(x, i);
+      if (!d) return null; // hole / sparse
+      if (typeof d.get === "function" || typeof d.set === "function" || !("value" in d)) return null; // accessor
+      out.push(d.value);
+    }
+    return out; // a FRESH ordinary array (intrinsic prototype); the caller validates then freezes it
+  } catch {
+    return null; // any hostile reflective-trap exception → fail closed
+  }
 }
 
 /**
@@ -485,6 +570,12 @@ function hasOwnData(rec: Record<string, unknown>, k: string): boolean {
  * runtime executes from this copy and never re-reads the original.
  */
 export function validateOperation(x: unknown): LiveAiOperation | null {
+  // R5A SECOND REMEDIATION (REV-NEW-01): TOTAL, fail-closed for arbitrary JS input. EVERY
+  // potentially-throwing inspection of the untrusted value lives INSIDE this guard — including the
+  // `Array.isArray(x)` brand check, which THROWS on a REVOKED Proxy. A hostile Proxy trap anywhere
+  // below (the head guard, the discriminant read, strictOwnDataRecord, or the strict array snapshot)
+  // fails closed to null instead of throwing OUT of the validator; nothing is repaired/coerced.
+  try {
   if (!x || typeof x !== "object" || Array.isArray(x)) return null;
   // Read `op` only as an own DATA property (never inherited / accessor).
   const opDesc = Object.getOwnPropertyDescriptor(x, "op");
@@ -498,37 +589,55 @@ export function validateOperation(x: unknown): LiveAiOperation | null {
 
   switch (name) {
     case "APPLY_HOTEL_REFINEMENT": {
+      // R5A — UNTRUSTED external operation authority (REJECT-not-normalize). A present field
+      // is accepted ONLY in its already-canonical form (an EQUALITY ORACLE over the SAME trusted
+      // page-builder canonicalizers) — never trimmed / lowercased / collapsed / coerced / sorted /
+      // deduped / truncated / repaired; anything they would have CHANGED fails the WHOLE op. A
+      // null field is "not part of this refinement" (skip) — the SAME meaning the provider schema
+      // and the gateway mirror give it, so client == server EXACTLY. At least one non-null valid
+      // field must survive, else the refinement is empty and refused.
       const out: Extract<LiveAiOperation, { op: "APPLY_HOTEL_REFINEMENT" }> = { op: "APPLY_HOTEL_REFINEMENT" };
       let touched = false;
-      if (hasOwnData(a, "destination")) {
-        if (a.destination === null) { out.destination = null; touched = true; }
-        else { const c = canonicalCity(a.destination); if (c === null) return null; out.destination = c; touched = true; }
+      if (hasOwnData(a, "destination") && a.destination !== null) {
+        if (typeof a.destination !== "string" || canonicalCity(a.destination) !== a.destination) return null;
+        out.destination = a.destination; touched = true;
       }
-      if (hasOwnData(a, "query")) {
-        if (a.query === null) { out.query = null; touched = true; }
-        else { const q = boundedQuery(a.query); if (q === null) return null; out.query = q; touched = true; }
+      if (hasOwnData(a, "query") && a.query !== null) {
+        if (typeof a.query !== "string" || boundedQuery(a.query) !== a.query) return null;
+        out.query = a.query; touched = true;
       }
-      if (hasOwnData(a, "maxPrice")) {
-        if (a.maxPrice === null) { out.maxPrice = null; touched = true; }
-        else { const p = boundedPrice(a.maxPrice); if (p === null || p <= 0) return null; out.maxPrice = p; touched = true; }
+      if (hasOwnData(a, "maxPrice") && a.maxPrice !== null) {
+        // strict number (NO numeric-string coercion), > 0, within the shared operation bound.
+        if (typeof a.maxPrice !== "number" || !Number.isFinite(a.maxPrice) || a.maxPrice <= 0 || a.maxPrice > MAX_OP_PRICE) return null;
+        out.maxPrice = a.maxPrice; touched = true;
       }
-      if (hasOwnData(a, "parking")) {
+      if (hasOwnData(a, "parking") && a.parking !== null) {
         if (typeof a.parking !== "boolean") return null;
         out.parking = a.parking; touched = true;
       }
-      if (hasOwnData(a, "sort")) {
+      if (hasOwnData(a, "sort") && a.sort !== null) {
         if (!isHotelSort(a.sort)) return null;
         out.sort = a.sort; touched = true;
       }
-      if (hasOwnData(a, "stars")) {
-        if (!Array.isArray(a.stars)) return null;
-        const stars = a.stars
-          .map((s) => strictFinite(s))
-          .filter((s): s is number => s !== null && Number.isInteger(s) && s >= MIN_STARS && s <= MAX_STARS);
-        if (stars.length !== a.stars.length) return null;
-        out.stars = Object.freeze(Array.from(new Set(stars)).sort((p, q) => q - p)) as number[]; touched = true;
+      if (hasOwnData(a, "stars") && a.stars !== null) {
+        // R5A SECOND REMEDIATION (REV-NEW-02): SNAPSHOT the array to a fresh inert copy via trusted
+        // descriptor capture (never the caller's map/slice/iterator) BEFORE validating — a hostile
+        // Array cannot make validation inspect one sequence while the frozen output carries another
+        // (e.g. stars [1] whose map() returns [5]). Length 1..(MAX-MIN+1); each star a STRICT integer
+        // in [MIN,MAX] (no coercion); ALREADY strictly DESCENDING (⇒ unique + no reorder) — the op is
+        // refused, never deduped/sorted/coerced/repaired, on a duplicate / out-of-order / out-of-range.
+        const snap = strictArraySnapshot(a.stars);
+        if (!snap) return null;
+        if (snap.length < 1 || snap.length > MAX_STARS - MIN_STARS + 1) return null;
+        for (let i = 0; i < snap.length; i++) {
+          const s = snap[i];
+          if (typeof s !== "number" || !Number.isInteger(s) || s < MIN_STARS || s > MAX_STARS) return null;
+        }
+        const arr = snap as number[];
+        for (let i = 1; i < arr.length; i++) if (!(arr[i] < arr[i - 1])) return null; // strictly descending
+        out.stars = Object.freeze(arr.slice()) as number[]; touched = true;
       }
-      if (!touched) return null; // no recognized field ⇒ nothing to apply
+      if (!touched) return null; // no recognized non-null field ⇒ nothing to apply
       return Object.freeze(out);
     }
     case "READ_CURRENT_RESULTS":
@@ -536,17 +645,40 @@ export function validateOperation(x: unknown): LiveAiOperation | null {
     case "READ_CURRENT_HOTEL_FACTS":
       return Object.freeze({ op: "READ_CURRENT_HOTEL_FACTS" as const });
     case "COMPARE_VISIBLE_HOTELS": {
-      if (!Array.isArray(a.positions)) return null;
-      const positions = a.positions.map((p) => boundedOrdinal(p));
-      if (positions.some((p) => p === null)) return null;
-      const uniq = Array.from(new Set(positions as number[]));
-      if (uniq.length < 2 || uniq.length > MAX_COMPARE_POSITIONS) return null;
-      return Object.freeze({ op: "COMPARE_VISIBLE_HOTELS" as const, positions: Object.freeze(uniq) as number[] });
+      // R5A SECOND REMEDIATION (REV-NEW-02): SNAPSHOT both arrays to fresh inert copies via trusted
+      // descriptor capture (never caller map/slice/iterator/for-of/new Set(untrusted)) BEFORE any
+      // validation, so a hostile Array cannot make validation inspect one sequence while the frozen
+      // output carries another (e.g. positions [999,999] whose map() returns [1,2], or factors
+      // ["zoom"] whose iterator yields "price"). EXACT positions: length 2..MAX, each a STRICT
+      // in-range integer (no coercion), DISTINCT (a duplicate REJECTS — never dedupe), ORDER GIVEN
+      // (never sort). Factors: length 1..N, each a recognized factor, DISTINCT, order given (an
+      // unknown or duplicate factor REJECTS — never dedupe/repair). Distinctness is an O(n²) scan on
+      // the FRESH snapshot, never new Set(<untrusted>).
+      const posSnap = strictArraySnapshot(a.positions);
+      if (!posSnap) return null;
+      if (posSnap.length < 2 || posSnap.length > MAX_COMPARE_POSITIONS) return null;
+      for (let i = 0; i < posSnap.length; i++) {
+        const p = posSnap[i];
+        if (typeof p !== "number" || !Number.isInteger(p) || p < 1 || p > MAX_VISIBLE_HOTELS) return null;
+      }
+      const pnums = posSnap as number[];
+      for (let i = 0; i < pnums.length; i++) for (let j = i + 1; j < pnums.length; j++) if (pnums[i] === pnums[j]) return null; // duplicate → reject
+      const facSnap = strictArraySnapshot(a.factors);
+      if (!facSnap) return null;
+      if (facSnap.length < 1 || facSnap.length > HOTEL_COMPARE_FACTORS.length) return null;
+      for (let i = 0; i < facSnap.length; i++) if (!isHotelCompareFactor(facSnap[i])) return null; // unknown factor → reject
+      const factors = facSnap as HotelCompareFactor[];
+      for (let i = 0; i < factors.length; i++) for (let j = i + 1; j < factors.length; j++) if (factors[i] === factors[j]) return null; // duplicate → reject
+      return Object.freeze({
+        op: "COMPARE_VISIBLE_HOTELS" as const,
+        positions: Object.freeze(pnums.slice()) as number[],
+        factors: Object.freeze(factors.slice()) as HotelCompareFactor[],
+      });
     }
     case "OPEN_VISIBLE_HOTEL": {
-      const pos = boundedOrdinal(a.position);
-      if (pos === null) return null;
-      return Object.freeze({ op: "OPEN_VISIBLE_HOTEL" as const, position: pos });
+      // R5A — STRICT position (no numeric-string coercion), parity with the gateway mirror.
+      if (typeof a.position !== "number" || !Number.isInteger(a.position) || a.position < 1 || a.position > MAX_VISIBLE_HOTELS) return null;
+      return Object.freeze({ op: "OPEN_VISIBLE_HOTEL" as const, position: a.position });
     }
     case "SHOW_HOTEL_SECTION": {
       if (!isHotelSection(a.section)) return null;
@@ -554,6 +686,9 @@ export function validateOperation(x: unknown): LiveAiOperation | null {
     }
     default:
       return null;
+  }
+  } catch {
+    return null; // any hostile reflective-trap / nested-array-inspection exception → fail closed
   }
 }
 

@@ -17,7 +17,7 @@
 import { useRef } from "react";
 import { buildHotelDetailSnapshot, type HotelDetailContext } from "@/lib/live-ai/contracts";
 import type { ResolvedCommand } from "@/lib/live-ai/runtime";
-import { useLiveAiPageRegistration, useLiveAi } from "./LiveAiProvider";
+import { useLiveAiPageRegistration, useLiveAi, useLiveAiContextNotify } from "./LiveAiProvider";
 
 export interface HotelDetailPageBridgeProps {
   routeId: string;
@@ -51,6 +51,9 @@ export default function HotelDetailPageBridge(props: HotelDetailPageBridgeProps)
 
   // routeKey = the specific hotel id → a dynamic-segment change re-registers.
   useLiveAiPageRegistration("hotel-detail", `/hotels/${props.routeId}`, getSnapshot, execute);
+  // LIVE-AI-02A: notify the provider of the SYNCHRONOUS contextRevision (validated
+  // detail only) so the dormant-unless-provider controller re-publishes + re-ACKs.
+  useLiveAiContextNotify(enabled ? getSnapshot().contextRevision : "");
 
   if (!enabled) return null;
   return null;

@@ -18,13 +18,13 @@
 import {
   buildHotelsSnapshot,
   isValidHotelId,
-  PARKING_NEEDLES,
+  resolveParkingAmenity,
   type HotelsListContext,
   type HotelSort,
 } from "@/lib/live-ai/contracts";
 import type { ResolvedCommand } from "@/lib/live-ai/runtime";
 import { useRef } from "react";
-import { useLiveAiPageRegistration, useLiveAi } from "./LiveAiProvider";
+import { useLiveAiPageRegistration, useLiveAi, useLiveAiContextNotify } from "./LiveAiProvider";
 
 interface RouterShim {
   push: (url: string) => void;
@@ -118,7 +118,13 @@ export default function HotelsPageBridge(props: HotelsPageBridgeProps) {
         cur.setAmenitySel((prev) => {
           const next = new Set(prev);
           Array.from(next).forEach((a) => {
-            if (PARKING_NEEDLES.some((n) => String(a).toLowerCase().includes(n))) next.delete(a);
+            // NEW-01 — remove ONLY an EXACT recognized POSITIVE parking token, via the
+            // shared exact positive-allowlist recognizer (resolveParkingAmenity treats a
+            // single-item vocabulary as an exact membership test), NEVER a bare substring
+            // match on "parking"/"valet". A negative / ambiguous / unrelated selection
+            // ("No parking", "Paid parking on request", "Valet laundry") is LEFT UNTOUCHED
+            // — the toggle fails closed and only ever clears what it could itself have set.
+            if (resolveParkingAmenity([a]) !== null) next.delete(a);
           });
           if (cmd.parking && label) next.add(label);
           return next;
@@ -136,6 +142,10 @@ export default function HotelsPageBridge(props: HotelsPageBridgeProps) {
   };
 
   useLiveAiPageRegistration("hotels", "/hotels", getSnapshot, execute);
+  // LIVE-AI-02A: notify the provider of the SYNCHRONOUS contextRevision so the
+  // (dormant unless providerEnabled) controller re-publishes the bounded context
+  // and requires a fresh ACK before any new proposal. Uses the SAME pure builder.
+  useLiveAiContextNotify(enabled ? getSnapshot().contextRevision : "");
 
   if (!enabled) return null;
   return null;

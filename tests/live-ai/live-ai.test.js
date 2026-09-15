@@ -165,7 +165,7 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     const proto = Object.create({ op: "READ_CURRENT_RESULTS" }); // op only on prototype
     ok(C.validateOperation(proto) === null, "REV-01: inherited-only 'op' (no own key) fails closed");
     // a VALID op with EXACTLY its allowed keys still passes
-    ok(C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", destination: "Manali", maxPrice: 5000, parking: true }) !== null, "REV-01: exact allowed keys pass");
+    ok(C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", destination: "manali", maxPrice: 5000, parking: true }) !== null, "REV-01: exact allowed keys pass (already-canonical destination)");
 
     // ── R3 Fix 1A adversarial (STRICT — corrects the earlier permissive R2
     //    assertions the independent review flagged as wrong). A NON-plain
@@ -208,11 +208,259 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     const accOp = {}; Object.defineProperty(accOp, "op", { get() { return "READ_CURRENT_RESULTS"; }, enumerable: true });
     ok(C.validateOperation(accOp) === null, "REV-01: accessor 'op' rejects");
     // IMMUTABLE canonical copy — frozen + mutation of the original does not leak
-    const src = { op: "APPLY_HOTEL_REFINEMENT", destination: "Manali" };
+    const src = { op: "APPLY_HOTEL_REFINEMENT", destination: "manali" };
     const v = C.validateOperation(src);
     ok(v && Object.isFrozen(v), "REV-01: validated operation is frozen (immutable canonical copy)");
     src.destination = "HACKED"; src.op = "HACKED";
     ok(v && v.op === "APPLY_HOTEL_REFINEMENT" && v.destination === "manali", "REV-01: mutating the original after validation does not affect the copy");
+  }
+
+  // ── R5A — STRICT OPERATION AUTHORITY (reject-not-normalize) ────────────────
+  // The UNTRUSTED external operation validator REJECTS (never trims/lowercases/collapses/
+  // coerces/sorts/dedupes/repairs) anything it would otherwise have to change. It uses the
+  // TRUSTED page-builder canonicalizers only as EQUALITY ORACLES (a value is accepted only in
+  // its already-canonical form). The builders themselves still normalize page state — that
+  // SEPARATION is asserted at the end of this section.
+  section("R5A — reject-not-normalize APPLY (destination/query equality oracle)");
+  {
+    const A = (o) => C.validateOperation(Object.assign({ op: "APPLY_HOTEL_REFINEMENT" }, o));
+    // destination: only the ALREADY-canonical (lowercase, single-spaced, letter-only) city passes.
+    ok(A({ destination: "manali" }) && A({ destination: "manali" }).destination === "manali", "R5A: an already-canonical destination is accepted VERBATIM");
+    ok(A({ destination: "Manali" }) === null, "R5A: a title-case destination is REJECTED (never lowercased)");
+    ok(A({ destination: " manali " }) === null, "R5A: leading/trailing whitespace REJECTED (never trimmed)");
+    ok(A({ destination: "manali  city" }) === null, "R5A: collapsible internal whitespace REJECTED (never collapsed)");
+    ok(A({ destination: "manali1" }) === null, "R5A: a disallowed character REJECTS (city letters only)");
+    ok(A({ destination: "manali city" }) && A({ destination: "manali city" }).destination === "manali city", "R5A: a canonical multi-word city passes verbatim");
+    ok(A({ destination: "" }) === null, "R5A: empty destination REJECTED (never normalized to null)");
+    // query: control-free, no lead/trail, no collapsible whitespace, case PRESERVED, ≤60.
+    ok(A({ query: "Sea View" }) && A({ query: "Sea View" }).query === "Sea View", "R5A: a canonical query is accepted VERBATIM (case preserved)");
+    ok(A({ query: "sea  view" }) === null, "R5A: double-space query REJECTED (never collapsed)");
+    ok(A({ query: " sea view" }) === null, "R5A: leading-space query REJECTED (never trimmed)");
+    ok(A({ query: "sea\tview" }) === null, "R5A: a C0 control char (TAB) REJECTS (never stripped)");
+    ok(A({ query: "seaview" }) === null, "R5A: DEL (0x7f) REJECTS (never stripped)");
+    ok(A({ query: "" }) === null, "R5A: empty query REJECTED");
+    ok(A({ query: "x".repeat(61) }) === null, "R5A: an over-length query REJECTED (never truncated)");
+  }
+
+  section("R5A — reject-not-normalize APPLY (maxPrice / stars) + null=skip");
+  {
+    const A = (o) => C.validateOperation(Object.assign({ op: "APPLY_HOTEL_REFINEMENT" }, o));
+    // maxPrice: STRICT number (no numeric-string coercion), > 0, ≤ MAX_OP_PRICE.
+    ok(A({ maxPrice: 5000 }) && A({ maxPrice: 5000 }).maxPrice === 5000, "R5A: a valid maxPrice number is accepted");
+    ok(A({ maxPrice: "5000" }) === null, "R5A: a numeric-STRING maxPrice REJECTED (never coerced)");
+    ok(A({ maxPrice: 0 }) === null, "R5A: maxPrice 0 REJECTED");
+    ok(A({ maxPrice: -100 }) === null, "R5A: a negative maxPrice REJECTED");
+    ok(A({ maxPrice: Number.NaN }) === null && A({ maxPrice: Number.POSITIVE_INFINITY }) === null, "R5A: NaN / Infinity maxPrice REJECTED");
+    ok(A({ maxPrice: C.MAX_OP_PRICE + 1 }) === null, "R5A: an out-of-bound maxPrice REJECTED");
+    ok(A({ maxPrice: C.MAX_OP_PRICE }) && A({ maxPrice: C.MAX_OP_PRICE }).maxPrice === C.MAX_OP_PRICE, "R5A: maxPrice exactly at the shared bound is accepted");
+    // stars: STRICT integers, strictly DESCENDING (⇒ unique, no reorder), bounded length.
+    ok(A({ stars: [5, 4, 3] }) && A({ stars: [5, 4, 3] }).stars.join(",") === "5,4,3", "R5A: strictly-descending stars accepted VERBATIM");
+    ok(A({ stars: [3, 4, 5] }) === null, "R5A: ascending stars REJECTED (never sorted)");
+    ok(A({ stars: [5, 3, 4] }) === null, "R5A: out-of-order stars REJECTED");
+    ok(A({ stars: [4, 4] }) === null, "R5A: duplicate stars REJECTED (never deduped)");
+    ok(A({ stars: ["5", "4"] }) === null, "R5A: numeric-STRING stars REJECTED (never coerced)");
+    ok(A({ stars: [6] }) === null && A({ stars: [2] }) === null, "R5A: out-of-range stars REJECTED");
+    ok(A({ stars: [] }) === null, "R5A: an empty stars array REJECTED");
+    ok(A({ stars: [5, 4, 3, 3] }) === null, "R5A: an over-length stars array REJECTED (before transform)");
+    ok(A({ stars: [4] }) && A({ stars: [4] }).stars.join(",") === "4", "R5A: a single valid star is accepted");
+    // null = "not part of this refinement" (skip), on EVERY field — parity with the gateway.
+    const provShape = A({ destination: "manali", query: null, maxPrice: null, parking: null, sort: null, stars: null });
+    ok(provShape && provShape.destination === "manali" && !("query" in provShape) && !("maxPrice" in provShape) && !("parking" in provShape) && !("sort" in provShape) && !("stars" in provShape),
+      "R5A: a provider-shape APPLY (all fields present, only destination non-null) accepts + null fields are SKIPPED (not present as null)");
+    ok(A({ destination: null, query: null, maxPrice: null, parking: null, sort: null, stars: null }) === null, "R5A: an all-null APPLY is an empty refinement → REJECTED");
+    const pf = A({ parking: false, destination: null });
+    ok(pf && pf.parking === false && !("destination" in pf), "R5A: parking:false is a real touch; a null destination beside it is skipped");
+  }
+
+  section("R5A — COMPARE_VISIBLE_HOTELS: exact positions + ordered distinct factors");
+  {
+    const K = (o) => C.validateOperation(Object.assign({ op: "COMPARE_VISIBLE_HOTELS" }, o));
+    ok(K({ positions: [1, 2] }) === null, "R5A: COMPARE without factors is REJECTED (factors now required)");
+    const c1 = K({ positions: [1, 2], factors: ["price"] });
+    ok(c1 && c1.positions.join(",") === "1,2" && c1.factors.join(",") === "price", "R5A: a valid COMPARE with factors is accepted");
+    const c2 = K({ positions: [2, 1], factors: ["price"] });
+    ok(c2 && c2.positions.join(",") === "2,1", "R5A: positions are ORDER-PRESERVED (2,1 is not sorted to 1,2)");
+    ok(K({ positions: [1, 1], factors: ["price"] }) === null, "R5A: a DUPLICATE position is REJECTED (never deduped)");
+    ok(K({ positions: ["1", "2"], factors: ["price"] }) === null, "R5A: numeric-STRING positions REJECTED");
+    ok(K({ positions: [1], factors: ["price"] }) === null, "R5A: fewer than 2 positions REJECTED");
+    ok(K({ positions: [1, 2, 3, 4, 5], factors: ["price"] }) === null, "R5A: more than 4 positions REJECTED (bounded before transform)");
+    ok(K({ positions: [1, 2, 3, 4], factors: ["price"] }) !== null, "R5A: exactly 4 positions accepted");
+    ok(K({ positions: [1, 25], factors: ["price"] }) === null, "R5A: an out-of-range position REJECTED");
+    // factors: recognized, ordered, distinct.
+    ok(K({ positions: [1, 2], factors: [] }) === null, "R5A: empty factors REJECTED");
+    ok(K({ positions: [1, 2], factors: ["zoom"] }) === null, "R5A: an unknown factor REJECTED");
+    ok(K({ positions: [1, 2], factors: ["price", "price"] }) === null, "R5A: a DUPLICATE factor REJECTED (never deduped)");
+    const c3 = K({ positions: [1, 2], factors: ["breakfast", "parking", "rating", "price"] });
+    ok(c3 && c3.factors.join(",") === "breakfast,parking,rating,price", "R5A: factors are ORDER-PRESERVED + all four recognized");
+    ok(K({ positions: [1, 2], factors: ["price", "rating", "parking", "breakfast", "price"] }) === null, "R5A: more than 4 factors (with a dup) REJECTED");
+  }
+
+  section("R5A — OPEN strict position + comparison-factor vocabulary export");
+  {
+    const O = (p) => C.validateOperation({ op: "OPEN_VISIBLE_HOTEL", position: p });
+    ok(O(2) && O(2).position === 2, "R5A: a valid OPEN position is accepted");
+    ok(O("2") === null, "R5A: a numeric-STRING OPEN position REJECTED (parity with the gateway)");
+    ok(O(2.5) === null, "R5A: a non-integer OPEN position REJECTED");
+    ok(O(0) === null && O(25) === null, "R5A: an out-of-range OPEN position REJECTED");
+    ok(C.HOTEL_COMPARE_FACTORS.slice().join(",") === "price,rating,parking,breakfast", "R5A: HOTEL_COMPARE_FACTORS is the closed ordered vocabulary");
+    ok(C.isHotelCompareFactor("price") === true && C.isHotelCompareFactor("zoom") === false && C.isHotelCompareFactor(1) === false, "R5A: isHotelCompareFactor is a closed guard");
+  }
+
+  section("R5A — TRUSTED page construction is UNCHANGED (separation from operation authority)");
+  {
+    // The primitive canonicalizers still NORMALIZE (they back the page builders) — it is the
+    // OPERATION validator that uses them as reject-not-normalize equality oracles.
+    eq(C.canonicalCity("Manali"), "manali", "R5A: canonicalCity() still normalizes (trusted helper unchanged)");
+    eq(C.boundedQuery("Sea  View"), "Sea View", "R5A: boundedQuery() still collapses (trusted helper unchanged)");
+    // buildHotelsSnapshot (the REAL production builder the bridges call) still normalizes the
+    // page's raw title-case city + double-spaced search — while the operation validator REJECTS
+    // those same raw strings. This is the separation R5A requires.
+    const snap = C.buildHotelsSnapshot({
+      displayHotels: HOTELS, city: "Manali", query: "Sea  View", checkIn: "", checkOut: "", guests: 2, maxPrice: null,
+      sort: "default", stars: [], appliedAmenities: [], amenityOpts: ["WiFi", "Parking"],
+      loading: false, error: "", resolvedCity: "Manali", resolvedQuery: "Sea  View", resolvedStatus: "ready",
+    });
+    eq(snap.destination, "manali", "R5A: the page builder NORMALIZES the raw city to canonical (trusted path)");
+    eq(snap.query, "Sea View", "R5A: the page builder collapses the raw query (trusted path)");
+    ok(C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", destination: "Manali" }) === null, "R5A: the SAME raw city is REJECTED by the untrusted operation validator (separation)");
+    ok(Array.isArray(snap.visibleHotels) && snap.visibleHotels.length === 3, "R5A: the trusted hotel-list snapshot builder is intact");
+    // detail builder still constructs a validated snapshot.
+    const dsnap = C.buildHotelDetailSnapshot({ routeId: "htl_ok", hotel: { id: "htl_ok", name: "OK", city: "Y", amenities: ["Breakfast"], rooms: [{ name: "Deluxe", floorPrice: 2000 }] }, loading: false, loadErr: false, tab: "rooms", role: "anonymous" });
+    ok(dsnap.validated === true && dsnap.hotel && dsnap.hotel.id === "htl_ok", "R5A: the trusted hotel-detail snapshot builder is intact");
+  }
+
+  // ── R5A-REMEDIATION — client validateOperation is TOTAL (REV-NEW-02) + nested-immutable (REV-NEW-03)
+  section("R5A-REMEDIATION — client operation validator: total fail-closed for hostile JS + frozen nested arrays");
+  {
+    const nt = (label, makeX) => {
+      let threw = false, v = "unset";
+      try { v = C.validateOperation(makeX()); } catch (e) { threw = true; }
+      ok(!threw, `REV-NEW-02 — client validateOperation does NOT throw on ${label}`);
+      ok(v === null, `REV-NEW-02 — client validateOperation returns null on ${label}`);
+    };
+    nt("Proxy throwing on getOwnPropertyDescriptor", () => new Proxy({}, { getOwnPropertyDescriptor() { throw new Error("gopd"); } }));
+    nt("Proxy throwing on ownKeys (valid op)", () => new Proxy({ op: "READ_CURRENT_RESULTS" }, { ownKeys() { throw new Error("ownKeys"); } }));
+    nt("Proxy throwing on getPrototypeOf (valid op)", () => new Proxy({ op: "OPEN_VISIBLE_HOTEL", position: 1 }, { getPrototypeOf() { throw new Error("gpo"); } }));
+    // R5A SECOND REMEDIATION (REV-NEW-01/02): a transparent Proxy over a VALID array that only traps
+    // `get` is fully INSPECTABLE via trusted property descriptors — the strict array snapshot reads
+    // the REAL underlying values WITHOUT ever invoking the hostile getter and returns a fresh FROZEN
+    // copy. So it must NOT throw, and (because the read is genuinely valid + in-range) it yields a
+    // consistent operation whose output IS the one descriptor-captured sequence (no substitution),
+    // with the caller proxy never touched. (A throwing-`get` proxy is not an "un-inspectable" proxy;
+    // a REVOKED proxy — which throws on the Array.isArray brand check itself — IS, and fails closed:
+    // that case is covered in the dedicated revoked-proxy totality + hostile-array matrix below.)
+    {
+      const pin = new Proxy([1, 2], { get() { throw new Error("arrget"); } });
+      let threw = false, v = "unset";
+      try { v = C.validateOperation({ op: "COMPARE_VISIBLE_HOTELS", positions: pin, factors: ["price"] }); } catch (e) { threw = true; }
+      ok(!threw, "REV-NEW-01 — client validateOperation does NOT throw on a get-trapping COMPARE positions Proxy");
+      ok(v && v.op === "COMPARE_VISIBLE_HOTELS" && Object.isFrozen(v.positions) && v.positions.length === 2 && v.positions[0] === 1 && v.positions[1] === 2,
+        "REV-NEW-02 — snapshot reads the REAL [1,2] via descriptors (never the hostile getter) into a fresh frozen output");
+    }
+    {
+      const sin = new Proxy([5, 4], { get() { throw new Error("starget"); } });
+      let threw = false, v = "unset";
+      try { v = C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", stars: sin }); } catch (e) { threw = true; }
+      ok(!threw, "REV-NEW-01 — client validateOperation does NOT throw on a get-trapping APPLY stars Proxy");
+      ok(v && v.op === "APPLY_HOTEL_REFINEMENT" && Object.isFrozen(v.stars) && v.stars.length === 2 && v.stars[0] === 5 && v.stars[1] === 4,
+        "REV-NEW-02 — snapshot reads the REAL [5,4] via descriptors (never the hostile getter) into a fresh frozen output");
+    }
+    nt("op object with throwing coercion hooks", () => ({ op: { [Symbol.toPrimitive]() { throw new Error("c"); }, toString() { throw new Error("t"); }, valueOf() { throw new Error("v"); } } }));
+    nt("op is a number", () => ({ op: 123 }));
+    // nested immutability: the client returns FROZEN nested arrays.
+    const cCmp = C.validateOperation({ op: "COMPARE_VISIBLE_HOTELS", positions: [2, 1], factors: ["price", "rating"] });
+    ok(cCmp && Object.isFrozen(cCmp.positions) && Object.isFrozen(cCmp.factors), "REV-NEW-03 — client COMPARE returns frozen positions + factors");
+    const cStars = C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", stars: [5, 4, 3] });
+    ok(cStars && Object.isFrozen(cStars.stars), "REV-NEW-03 — client APPLY returns frozen stars");
+    const inp = [5, 4, 3]; C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", stars: inp });
+    ok(!Object.isFrozen(inp), "REV-NEW-03 — the caller-owned input array is NOT frozen in place");
+  }
+
+  // ── R5A SECOND REMEDIATION (REV-NEW-01) — TOTAL fail-closed on a REVOKED Proxy ─────────────
+  // A revoked Proxy throws a TypeError on EVERY trap, including the `Array.isArray` brand check.
+  // Every exported validator/helper that accepts unknown JS must catch that inside its own guard
+  // and return the fail-closed value (null) — it must NEVER throw OUT to the caller.
+  section("R5A SECOND REMEDIATION — client validators are TOTAL on a REVOKED Proxy (REV-NEW-01)");
+  {
+    const mkRevoked = () => { const r = Proxy.revocable({ op: "READ_CURRENT_RESULTS" }, {}); r.revoke(); return r.proxy; };
+    const mkRevokedArr = () => { const r = Proxy.revocable([1, 2], {}); r.revoke(); return r.proxy; };
+    // 1) the top-level operation validator
+    { let threw = false, v = "unset"; try { v = C.validateOperation(mkRevoked()); } catch (e) { threw = true; }
+      ok(!threw, "REV-NEW-01 — client validateOperation does NOT throw on a revoked Proxy (Array.isArray brand check is inside the guard)");
+      ok(v === null, "REV-NEW-01 — client validateOperation returns null on a revoked Proxy"); }
+    // 2) a revoked Proxy WRAPPING an array, handed straight to the validator
+    { let threw = false, v = "unset"; try { v = C.validateOperation(mkRevokedArr()); } catch (e) { threw = true; }
+      ok(!threw, "REV-NEW-01 — client validateOperation does NOT throw on a revoked array-Proxy");
+      ok(v === null, "REV-NEW-01 — client validateOperation returns null on a revoked array-Proxy"); }
+    // 3) the exported strictOwnDataRecord helper (used by the envelope validator too)
+    { let threw = false, v = "unset"; try { v = C.strictOwnDataRecord(mkRevoked(), ["op"]); } catch (e) { threw = true; }
+      ok(!threw, "REV-NEW-01 — client strictOwnDataRecord does NOT throw on a revoked Proxy");
+      ok(v === null, "REV-NEW-01 — client strictOwnDataRecord returns null on a revoked Proxy"); }
+  }
+
+  // ── R5A SECOND REMEDIATION (REV-NEW-02) — HOSTILE ARRAY authority integrity ────────────────
+  // A hostile Array may override map / slice / iterator / length or carry accessor indices / holes
+  // / a custom prototype so that validation inspects one sequence while the frozen output carries
+  // another. The strict array snapshot reads EVERY index through a trusted descriptor and rebuilds
+  // a fresh inert copy, so every hostile shape REJECTS (never throws) and no substitution is
+  // possible. The base content in each vector is otherwise-VALID, so the ONLY reason for rejection
+  // is the hostile shape (non-vacuous).
+  section("R5A SECOND REMEDIATION — client hostile-array authority integrity (REV-NEW-02)");
+  {
+    const rejNoThrow = (label, op) => {
+      let threw = false, v = "unset";
+      try { v = C.validateOperation(op); } catch (e) { threw = true; }
+      ok(!threw, `REV-NEW-02 — client does NOT throw on ${label}`);
+      ok(v === null, `REV-NEW-02 — client REJECTS ${label}`);
+    };
+    // 11 hostile SHAPE classes, parameterized by an otherwise-valid base array.
+    const shapes = (base) => [
+      ["revoked proxy", (() => { const r = Proxy.revocable(base.slice(), {}); r.revoke(); return r.proxy; })()],
+      ["revoked proxy (empty target)", (() => { const r = Proxy.revocable([], {}); r.revoke(); return r.proxy; })()],
+      ["own map override", (() => { const a = base.slice(); a.map = () => base.slice(); return a; })()],
+      ["own slice override", (() => { const a = base.slice(); a.slice = () => base.slice(); return a; })()],
+      ["own Symbol.iterator override", (() => { const a = base.slice(); a[Symbol.iterator] = function* () { for (const v of base) yield v; }; return a; })()],
+      ["accessor index 0", (() => { const a = base.slice(); const v0 = a[0]; Object.defineProperty(a, 0, { get() { return v0; }, enumerable: true, configurable: true }); return a; })()],
+      ["sparse hole at index 0", (() => { const a = base.slice(); delete a[0]; return a; })()],
+      ["Array subclass instance", (() => { class Arr extends Array {} const a = new Arr(); for (const v of base) a.push(v); return a; })()],
+      ["changed prototype", (() => { const a = base.slice(); Object.setPrototypeOf(a, { hijack: 1 }); return a; })()],
+      ["extra symbol own property", (() => { const a = base.slice(); a[Symbol("s")] = 9; return a; })()],
+      ["extra named own property", (() => { const a = base.slice(); a.tainted = 9; return a; })()],
+    ];
+    for (const [name, arr] of shapes([1, 2])) rejNoThrow(`COMPARE positions — ${name}`, { op: "COMPARE_VISIBLE_HOTELS", positions: arr, factors: ["price"] });
+    for (const [name, arr] of shapes(["price", "rating"])) rejNoThrow(`COMPARE factors — ${name}`, { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: arr });
+    for (const [name, arr] of shapes([5, 4])) rejNoThrow(`APPLY stars — ${name}`, { op: "APPLY_HOTEL_REFINEMENT", stars: arr });
+    // The 3 NAMED substitution attacks that MUST become impossible (12th class), verbatim from the
+    // review: a hostile method/iterator would yield a DIFFERENT, in-range sequence than the array's
+    // own indices — validation must never observe the hostile sequence, so each REJECTS.
+    { const subPos = [999, 999]; subPos.map = () => [1, 2];
+      rejNoThrow('COMPARE positions [999,999] w/ hostile map()->[1,2]', { op: "COMPARE_VISIBLE_HOTELS", positions: subPos, factors: ["price"] }); }
+    { const subFac = ["zoom"]; subFac[Symbol.iterator] = function* () { yield "price"; };
+      rejNoThrow('COMPARE factors ["zoom"] w/ hostile iterator->"price"', { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: subFac }); }
+    { const subStar = [1]; subStar.map = () => [5];
+      rejNoThrow('APPLY stars [1] w/ hostile map()->[5]', { op: "APPLY_HOTEL_REFINEMENT", stars: subStar }); }
+    // Descriptor-authoritative POSITIVE proof: a Proxy whose `get` LIES (index 0 → 999) but whose
+    // property DESCRIPTOR still reports the real value (1). The snapshot reads the DESCRIPTOR, so the
+    // accepted output is the REAL [1,2], never the getter's 999 → no substitution is possible.
+    const liar = new Proxy([1, 2], { get(t, k) { if (k === "0") return 999; return t[k]; } });
+    const lv = C.validateOperation({ op: "COMPARE_VISIBLE_HOTELS", positions: liar, factors: ["price"] });
+    ok(lv && lv.op === "COMPARE_VISIBLE_HOTELS" && lv.positions.length === 2 && lv.positions[0] === 1 && lv.positions[1] === 2 && Object.isFrozen(lv.positions),
+      "REV-NEW-02 — a get-LYING proxy is read via DESCRIPTORS: output is the REAL [1,2], never the getter's 999");
+  }
+
+  // ── R5A SECOND REMEDIATION — EXACT length boundaries (client) ──────────────────────────────
+  section("R5A SECOND REMEDIATION — client exact length boundaries (query 60/61, city 40/41)");
+  {
+    const q60 = "x".repeat(60), q61 = "x".repeat(61), c40 = "a".repeat(40), c41 = "a".repeat(41);
+    const vq60 = C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", query: q60 });
+    ok(vq60 && vq60.query === q60, "boundary — a query of EXACTLY 60 UTF-16 units is accepted");
+    ok(C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", query: q61 }) === null, "boundary — a query of 61 UTF-16 units is REJECTED");
+    const vc40 = C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", destination: c40 });
+    ok(vc40 && vc40.destination === c40, "boundary — a city of EXACTLY 40 chars is accepted");
+    ok(C.validateOperation({ op: "APPLY_HOTEL_REFINEMENT", destination: c41 }) === null, "boundary — a city of 41 chars is REJECTED");
+    // parity with the primitive oracles themselves
+    ok(C.boundedQuery(q60) === q60 && C.boundedQuery(q61) === null, "boundary — boundedQuery oracle: 60 ok, 61 null");
+    ok(C.canonicalCity(c40) === c40 && C.canonicalCity(c41) === null, "boundary — canonicalCity oracle: 40 ok, 41 null");
   }
 
   // ── REV-02 — request/response-bound catalogue (no cross-verify) ───────────
@@ -220,7 +468,7 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
   {
     const { rt, page } = bootHotels({ displayHotels: HOTELS, city: "Dhanaulti", resolvedCity: "Dhanaulti" });
     rt.beginTurn("manali dikhao");
-    const res = run(rt, { op: "APPLY_HOTEL_REFINEMENT", destination: "Manali" });
+    const res = run(rt, { op: "APPLY_HOTEL_REFINEMENT", destination: "manali" });
     eq(res.status, "ok", "REV-02: apply Manali ok");
     ok(res.pendingReconcile === true, "REV-02: explanation deferred");
     page.startLoading();
@@ -249,14 +497,14 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     // destination-only change retains the current query
     const b = bootHotels({ displayHotels: HOTELS, city: "Dhanaulti", query: "sea", resolvedCity: "Dhanaulti", resolvedQuery: "sea" });
     b.rt.beginTurn("manali");
-    run(b.rt, { op: "APPLY_HOTEL_REFINEMENT", destination: "Manali" });
+    run(b.rt, { op: "APPLY_HOTEL_REFINEMENT", destination: "manali" });
     b.page.startLoading(); b.rt.reconcile();
     b.page.resolveTo("manali", "sea", "ready"); // query retained
     const r2 = b.rt.reconcile();
     ok(r2 && r2.phase === "verified", "REV-02B: destination-only change reconciles with query RETAINED");
     // sequential converge
     const c = bootHotels({ displayHotels: HOTELS, city: "", resolvedCity: "" });
-    c.rt.beginTurn("t1"); run(c.rt, { op: "APPLY_HOTEL_REFINEMENT", destination: "Dhanaulti" });
+    c.rt.beginTurn("t1"); run(c.rt, { op: "APPLY_HOTEL_REFINEMENT", destination: "dhanaulti" });
     c.page.startLoading(); c.rt.reconcile(); c.page.resolveTo("dhanaulti", "", "ready");
     ok(c.rt.reconcile()?.phase === "verified", "REV-02B: sequential refinement 1 converges");
     c.rt.beginTurn("t2"); run(c.rt, { op: "APPLY_HOTEL_REFINEMENT", query: "spa" });
@@ -344,7 +592,7 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     // requested != resolved ⇒ status loading ⇒ no read/compare/open authority
     const a = bootHotels({ displayHotels: HOTELS, city: "Manali", resolvedCity: "Dhanaulti" });
     eq(run(a.rt, { op: "READ_CURRENT_RESULTS" }).status, "not_ready", "REV-06: read fails while unreconciled/loading");
-    eq(run(a.rt, { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2] }).status, "not_ready", "REV-06: compare fails while loading");
+    eq(run(a.rt, { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: ["price", "rating"] }).status, "not_ready", "REV-06: compare fails while loading");
     eq(run(a.rt, { op: "OPEN_VISIBLE_HOTEL", position: 1 }).status, "not_ready", "REV-06: open fails while loading");
     ok(a.page.s.opened === null, "REV-06: no navigation over stale results");
     // error status
@@ -372,7 +620,7 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     eq(o3.resolvedHotelId, "htl_three", "REV-07: position 3 = third displayed card (never renumbered to 2)");
     const o2 = run(rt, { op: "OPEN_VISIBLE_HOTEL", position: 2 });
     eq(o2.status, "missing_ordinal", "REV-07: the invalid card's ordinal fails closed (no silent shift)");
-    eq(run(rt, { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2] }).status, "missing_ordinal", "REV-07: compare over the gap fails closed");
+    eq(run(rt, { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: ["price"] }).status, "missing_ordinal", "REV-07: compare over the gap fails closed");
   }
 
   // ── REV-08 — parking uses an EXACT positive option from amenityOpts ──────
@@ -547,38 +795,35 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     ok(!/idle:\s*"StayBid AI is listening"/.test(shell), "REV-14: the old 'idle→listening' claim is gone");
   }
 
-  // ── acceptance conversation via deterministic no-network transport ────────
-  section("Acceptance — deterministic transport companion (items 11–20/35)");
+  // ── acceptance conversation via runtime operations (gateway-proposed) ─────
+  // LIVE-AI-02A: the deterministic-script transport is gone; the "intelligence"
+  // now lives in the gateway orchestrator and the operation reaches the runtime as
+  // a validated gateway proposal. This preserves every 01A runtime regression by
+  // driving the SAME operations directly (as the gateway would propose them).
+  section("Acceptance — runtime conversation flow (gateway-proposed operations)");
   {
-    const script = [
-      { match: "parking", pageId: "hotels", operation: { op: "APPLY_HOTEL_REFINEMENT", destination: "Dhanaulti", maxPrice: 5000, parking: true } },
-      { match: "compare", pageId: "hotels", operation: { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2] } },
-      { match: "kholo", pageId: "hotels", operation: { op: "OPEN_VISIBLE_HOTEL", position: 2 } },
-      { match: "breakfast", pageId: "hotel-detail", operation: { op: "READ_CURRENT_HOTEL_FACTS" } },
-    ];
-    const transport = T.createDeterministicTransport(script);
-    ok(transport.isConnected() === false, "Acceptance: deterministic transport NOT connected (no provider/network)");
-    ok(T.createNullTransport().propose({ text: "x", pageId: "hotels" }) === null, "Acceptance: production NULL transport proposes nothing");
+    // The evolved NULL transport is fully inert — no propose, no network I/O.
+    const nt = T.createNullTransport();
+    ok(nt.kind === "null" && nt.getConnectionState() === "disconnected", "Acceptance: production NULL transport is disconnected");
+    ok(nt.submitText({ sessionId: "sess.1", turnId: "turn.1", generation: 0, text: "x" }) === false && nt.publishContext({}) === false && nt.submitActionReceipt({}) === false,
+      "Acceptance: NULL transport methods are inert (no network I/O)");
 
     const { rt, page } = bootHotels({ displayHotels: HOTELS, city: "Dhanaulti", resolvedCity: "Dhanaulti", amenityOpts: ["WiFi", "Parking", "Breakfast"] });
     rt.beginTurn("Dhanaulti mein 5000 ke andar parking wale hotel dikhao");
-    let prop = transport.propose({ text: "Dhanaulti mein 5000 ke andar parking wale hotel dikhao", pageId: "hotels" });
-    const r1 = run(rt, prop.operation);
+    const r1 = run(rt, { op: "APPLY_HOTEL_REFINEMENT", destination: "dhanaulti", maxPrice: 5000, parking: true });
     eq(r1.status, "ok", "Acceptance: turn 1 refinement applied");
     eq(page.s.maxPrice, 5000, "Acceptance: existing /hotels state updated (budget)");
     ok(page.s.appliedAmenities.includes("Parking"), "Acceptance: parking applied via existing filter vocabulary");
     ok(r1.companion.phase === "acted", "Acceptance: turn 1 signals ACTED (explanation deferred until reconciliation)");
 
     rt.beginTurn("top two compare karo");
-    prop = transport.propose({ text: "top two compare karo", pageId: "hotels" });
-    const cmp = run(rt, prop.operation);
+    const cmp = run(rt, { op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: ["price", "rating"] });
     eq(cmp.status, "ok", "Acceptance: compare current visible 1 & 2");
     eq(cmp.comparison.rows.map((r) => r.id).join(","), "htl_alpha,htl_bravo", "Acceptance: compare uses current visible ids only");
 
     rt.beginTurn("second wala kholo");
-    prop = transport.propose({ text: "second wala kholo", pageId: "hotels" });
-    const opened = run(rt, prop.operation);
-    eq(opened.resolvedHotelId, "htl_bravo", "Acceptance: 'second wala' → visible position 2");
+    const opened = run(rt, { op: "OPEN_VISIBLE_HOTEL", position: 2 });
+    eq(opened.resolvedHotelId, "htl_bravo", "Acceptance: position 2 → validated visible id");
     eq(page.s.opened.url, "/hotels/htl_bravo", "Acceptance: real /hotels/<id> route from validated id");
 
     const memBefore = rt.getMemory().length;
@@ -588,11 +833,16 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     const detail = makeDetailPage({ routeId: "htl_bravo", hotel: { id: "htl_bravo", name: "Bravo Retreat", city: "Dhanaulti", amenities: ["WiFi", "Breakfast"], rooms: [{ name: "Suite", floorPrice: 4100 }] } });
     rt.registerPage(detail.reg);
     rt.beginTurn("isme breakfast aur parking hai?");
-    prop = transport.propose({ text: "isme breakfast aur parking hai?", pageId: "hotel-detail" });
-    const facts = run(rt, prop.operation);
-    eq(facts.status, "ok", "Acceptance: detail 'isme' facts ok");
+    const facts = run(rt, { op: "READ_CURRENT_HOTEL_FACTS" });
+    eq(facts.status, "ok", "Acceptance: detail facts ok");
     eq(facts.facts.breakfast, "present", "Acceptance: breakfast present from verified detail");
     eq(facts.facts.parking, "absent", "Acceptance: parking absent from the real amenities array (no invented fact)");
+
+    // LIVE-AI-02A: the runtime now also exports the bounded PublishedContext for
+    // the controller — data-minimized (never a raw hotel object / url / owner field).
+    const pub = rt.publishedContext();
+    ok(pub && pub.pageId === "hotel-detail" && pub.validated === true && pub.currentHotelId === "htl_bravo", "02A: publishedContext exposes validated detail id");
+    ok(pub && !/"ownerId"|"owner_user_id"|"_minPrice"|"floorPrice"|"amenities"|"rooms":\[/.test(JSON.stringify(pub)), "02A: publishedContext carries no raw/internal field keys");
   }
 
   // ── envelope / role / secrets / page-binding integrity ───────────────────
@@ -739,6 +989,9 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
         ['"@/lib/live-ai/contracts"', JSON.stringify(path.join(outC, "contracts.js"))],
         ['"@/lib/live-ai/runtime"', JSON.stringify(path.join(outC, "runtime.js"))],
         ['"@/lib/live-ai/transport"', JSON.stringify(path.join(outC, "transport.js"))],
+        ['"@/lib/live-ai/gateway-client"', JSON.stringify(path.join(outC, "gateway-client.js"))],
+        ['"@/lib/live-ai/conversation"', JSON.stringify(path.join(outC, "conversation.js"))],
+        ['"@/lib/live-ai/audio-playback"', JSON.stringify(path.join(outC, "audio-playback.js"))],
       ]);
       const shellPath = transpile("components/live-ai/LiveAiShell.tsx", "LiveAiShell.js", [['"./LiveAiProvider"', JSON.stringify(providerPath)]]);
       const Provider = require(providerPath);
@@ -747,7 +1000,7 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
       const empty = ReactServer.renderToStaticMarkup(React.createElement(Shell));
       console.error = _err;
       eq(empty, "", "Render: shell renders NOTHING with no registration (disabled default)");
-      const ctx = { enabled: true, runtime: null, transport: null, registeredPageId: "hotels", activated: true, orbState: "idle", activate() {}, deactivate() {}, toggle() {}, registerPage: () => () => {} };
+      const ctx = { enabled: true, providerEnabled: false, runtime: null, transport: null, conversation: null, registeredPageId: "hotels", activated: true, orbState: "idle", activate() {}, deactivate() {}, toggle() {}, startProvider() {}, submitText() {}, bargeIn() {}, notifyContext() {}, registerPage: () => () => {} };
       console.error = () => {};
       const orb = ReactServer.renderToStaticMarkup(React.createElement(Provider.LiveAiContext.Provider, { value: ctx }, React.createElement(Shell)));
       console.error = _err;
@@ -758,6 +1011,16 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
       // exists for the unused state and is not an accessibility announcement).
       ok(/aria-label="StayBid AI ready"/.test(orb) && !/aria-label="[^"]*listening/i.test(orb),
         "Render(REV-14): active orb announces 'ready', never 'listening'");
+      // NEW-02 — the autoplay-blocked "tap to hear reply" control renders ONLY when
+      // audioNeedsResume is true (provider-enabled + activated) and is a real button.
+      console.error = () => {};
+      const ctxResume = { ...ctx, providerEnabled: true, audioNeedsResume: true, resumeAudio() {} };
+      const resumeMarkup = ReactServer.renderToStaticMarkup(React.createElement(Provider.LiveAiContext.Provider, { value: ctxResume }, React.createElement(Shell)));
+      const ctxNoResume = { ...ctx, providerEnabled: true, audioNeedsResume: false, resumeAudio() {} };
+      const noResumeMarkup = ReactServer.renderToStaticMarkup(React.createElement(Provider.LiveAiContext.Provider, { value: ctxNoResume }, React.createElement(Shell)));
+      console.error = _err;
+      ok(/aria-label="Tap to hear the reply"/.test(resumeMarkup) && /<button/.test(resumeMarkup), "Render(NEW-02): audioNeedsResume → a bounded, operable 'tap to hear reply' button");
+      ok(!/aria-label="Tap to hear the reply"/.test(noResumeMarkup), "Render(NEW-02): NO resume control when audio is not blocked");
       console.error = () => {};
       delete process.env.NEXT_PUBLIC_VOICE_AI_BETA;
       const off = ReactServer.renderToStaticMarkup(React.createElement(Provider.LiveAiProvider, null, React.createElement("div", { id: "APP" }, "APP")));
@@ -770,10 +1033,30 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     }
   }
 
+  section("NEW-01 — parking removal uses the EXACT positive-token recognizer (no substring)");
+  {
+    // The /hotels bridge clears a prior parking selection with EXACTLY the predicate
+    // resolveParkingAmenity([label]) !== null — an exact positive-allowlist membership
+    // test, NEVER a bare substring match. Mirror that predicate and prove it fails
+    // closed on negative / ambiguous / unrelated labels (the reopened substring bug).
+    const removable = (label) => C.resolveParkingAmenity([label]) !== null;
+    ok(removable("Parking") === true, "NEW-01: an EXACT positive token 'Parking' is removable");
+    ok(removable("Free Parking") === true, "NEW-01: 'Free Parking' (exact positive) is removable");
+    ok(removable("Valet Parking") === true, "NEW-01: 'Valet Parking' (exact positive) is removable");
+    ok(removable("No Parking") === false, "NEW-01: 'No Parking' (negative) is NOT removed");
+    ok(removable("Parking unavailable") === false, "NEW-01: 'Parking unavailable' (negative) is NOT removed");
+    ok(removable("Paid parking on request") === false, "NEW-01: an ambiguous 'parking' phrase is NOT removed");
+    ok(removable("Valet laundry") === false, "NEW-01: an unrelated 'valet' substring is NOT removed (fail closed)");
+    ok(removable("Parking nearby") === false, "NEW-01: 'Parking nearby' (ambiguous) is NOT removed");
+  }
+
   // ── source scans (supplementary — REV-12) ────────────────────────────────
   section("SRC — production wiring integrity (supplementary scans)");
   {
-    const read = (r) => fs.readFileSync(path.join(REPO, r), "utf8");
+    // Strip comments so a doc-comment that NAMES a forbidden term (to say it is NOT
+    // used) never trips a coarse identifier scan; the scans check real code only.
+    const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const read = (r) => stripComments(fs.readFileSync(path.join(REPO, r), "utf8"));
     const hotels = read("app/hotels/page.tsx");
     ok(!/import\s+VoiceSearchControl|<VoiceSearchControl\b/.test(hotels), "SRC: no VoiceSearchControl import/mount on /hotels");
     ok(/<HotelsPageBridge\b/.test(hotels), "SRC: /hotels registers HotelsPageBridge");
@@ -784,24 +1067,51 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
     ok(/HotelDetailPageBridge/.test(read("app/hotels/[id]/page.tsx")), "SRC: /hotels/[id] registers HotelDetailPageBridge");
     const layout = read("app/layout.tsx");
     ok(/LiveAiProvider/.test(layout) && /LiveAiShell/.test(layout), "SRC: layout mounts the provider + orb");
-    const liveAiFiles = ["components/live-ai/LiveAiProvider.tsx", "components/live-ai/LiveAiShell.tsx", "components/live-ai/HotelsPageBridge.tsx", "components/live-ai/HotelDetailPageBridge.tsx", "lib/live-ai/contracts.ts", "lib/live-ai/runtime.ts", "lib/live-ai/transport.ts"];
-    const IMPORT_VOICE = /(?:from|require\()\s*["'][^"']*(?:components\/voice|@\/lib\/voice|voice-demo)["']|import\s+VoicePanel|<VoicePanel\b/;
+
+    // AUTHORITY-PURE client modules: NO network surface at all (contracts/runtime/protocol).
+    for (const f of ["lib/live-ai/contracts.ts", "lib/live-ai/runtime.ts", "lib/live-ai/protocol.ts"]) {
+      const src = read(f);
+      ok(!/\bfetch\s*\(|new WebSocket|RTCPeerConnection|getUserMedia|["'`]\/api\//.test(src), `SRC(02A): authority-pure ${f} has NO network surface`);
+    }
+    // ALL live-ai client files: no voice-authority import, no booking/bid/payment/
+    // PREPARE_BID_DRAFT write. Network IS allowed in the approved transport/gateway/
+    // broker/conversation modules — but never action-authority.
+    const liveAiFiles = ["components/live-ai/LiveAiProvider.tsx", "components/live-ai/LiveAiShell.tsx", "components/live-ai/HotelsPageBridge.tsx", "components/live-ai/HotelDetailPageBridge.tsx", "lib/live-ai/contracts.ts", "lib/live-ai/runtime.ts", "lib/live-ai/transport.ts", "lib/live-ai/protocol.ts", "lib/live-ai/broker.ts", "lib/live-ai/gateway-client.ts", "lib/live-ai/conversation.ts", "lib/live-ai/audio-playback.ts"];
+    const IMPORT_VOICE = /(?:from|require\()\s*["'][^"']*(?:components\/voice|@\/lib\/voice\/|voice-demo)["']|import\s+VoicePanel|<VoicePanel\b/;
+    const WRITE_AUTHORITY = /PREPARE_BID_DRAFT|openRazorpay|placeBid|razorpay|createBooking|\bbookings\/|\bbids\/|payment/i;
     let noVoice = true, noWrite = true;
     for (const f of liveAiFiles) {
       const src = read(f);
       if (IMPORT_VOICE.test(src)) noVoice = false;
-      if (/\bfetch\s*\(|["'`]\/api\//.test(src) || /openRazorpay|placeBid|razorpay|new WebSocket|RTCPeerConnection/.test(src)) noWrite = false;
+      if (WRITE_AUTHORITY.test(src)) noWrite = false;
     }
-    ok(noVoice, "SRC: no VoicePanel/voice-module/voice-demo import in the Live-AI path");
-    ok(noWrite, "SRC: no network/booking/bid/payment/WebRTC surface in the Live-AI path");
+    ok(noVoice, "SRC: no voice-module/voice-demo/VoicePanel import in the Live-AI path");
+    ok(noWrite, "SRC: no booking/bid/payment/PREPARE_BID_DRAFT write authority in the Live-AI path");
+    ok(/fetch\s*\(|WebSocket/.test(read("lib/live-ai/gateway-client.ts")), "SRC(02A): gateway-client carries the APPROVED, isolated network surface");
+
+    // SERVER Live-AI modules are ISOLATED from the old tool authority.
+    const serverFiles = ["server/voice-gateway/live-ai-orchestrator.ts", "server/voice-gateway/live-ai-control-socket.ts", "server/voice-gateway/live-ai-schemas.ts", "server/voice-gateway/live-ai-sessions.ts", "server/voice-gateway/openai-responses.ts", "server/voice-gateway/openai-transcription.ts", "server/voice-gateway/openai-tts.ts"];
+    const OLD_TOOLS = /createToolExecutor|from\s+["']\.\/sideband["']|from\s+["']\.\/router["']|from\s+["']\.\/tool-executor["']|searchHotels|getHotelDetails|getFlashDeals|VoiceUiAction|PREPARE_BID_DRAFT/;
+    let noOldTools = true;
+    for (const f of serverFiles) { if (OLD_TOOLS.test(read(f))) noOldTools = false; }
+    ok(noOldTools, "SRC(02A): server Live-AI modules never import/reference the old tool authority");
+    const idx = read("server/voice-gateway/index.ts");
+    ok(/\/v1\/live-ai\/sessions/.test(idx) && /handleLiveAiSessionCreate/.test(idx), "SRC(02A): index wires the isolated Live-AI routes");
+
     const shell = read("components/live-ai/LiveAiShell.tsx");
-    ok(!/role="dialog"|<dialog|getUserMedia|MediaRecorder/.test(shell), "SRC: shell has no dialog/mic-capture surface");
+    ok(!/role="dialog"|<dialog|MediaRecorder/.test(shell), "SRC: shell has no dialog/recording surface");
     ok(/aria-live/.test(shell) && /aria-label/.test(shell), "SRC: shell provides non-visible accessibility");
-    // REV-04 / REV-05 markers in production source
+    // NEW-01 — the bridge removes parking via the exact recognizer, never a substring.
+    const bridge = read("components/live-ai/HotelsPageBridge.tsx");
+    ok(/resolveParkingAmenity\s*\(/.test(bridge), "SRC(NEW-01): HotelsPageBridge removes parking via the exact resolveParkingAmenity recognizer");
+    ok(!/PARKING_NEEDLES/.test(bridge) && !/toLowerCase\(\)\s*\.\s*includes\(/.test(bridge), "SRC(NEW-01): the bridge no longer does a substring parking match (no PARKING_NEEDLES / lowercase.includes)");
+    // NEW-02 — the resume UX is exposed by the provider + rendered by the shell.
+    const providerSrc = read("components/live-ai/LiveAiProvider.tsx");
+    ok(/audioNeedsResume/.test(providerSrc), "SRC(NEW-02): the provider exposes audioNeedsResume state");
+    ok(/audioNeedsResume/.test(shell) && /resumeAudio/.test(shell), "SRC(NEW-02): the shell renders a resume control gated on audioNeedsResume");
     ok(/token/.test(read("lib/live-ai/runtime.ts")) && /unregisterPage\(token\)/.test(read("components/live-ai/LiveAiProvider.tsx")), "SRC(REV-04): token-gated unregister in runtime + provider");
     ok(/routeKey/.test(read("components/live-ai/LiveAiProvider.tsx")), "SRC(REV-04): registration hook keys on routeKey");
     ok(/fingerprint/.test(read("lib/live-ai/contracts.ts")), "SRC(REV-05): synchronous fingerprint revision in the builder");
-    // .gitignore (REV-15)
     ok(/tests\/live-ai\/\.build\//.test(read(".gitignore")), "SRC(REV-15): tests/live-ai/.build/ is gitignored");
   }
 

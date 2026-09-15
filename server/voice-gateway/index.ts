@@ -57,6 +57,39 @@ import {
   makeSocketEmit,
   type GatewaySocket,
 } from "./control-socket";
+// ── LIVE-AI-02A — ISOLATED Live-AI wiring. This block imports ONLY the Live-AI
+//    modules + reusable crypto/rate/telemetry primitives. It NEVER imports or
+//    passes createToolExecutor / sideband / the old realtime tool authority. ──
+import {
+  liveAiSessionCreateConfigured,
+  liveAiProviderConfigured,
+  type LiveAiConfig,
+} from "./config";
+import {
+  verifyLiveAiAssertion,
+  mintControlTokenWithSecret,
+  verifyKillRequestWithSecret,
+} from "./auth";
+import {
+  createLiveAiSessionStore,
+  createServerCaptureLedger,
+  DEFAULT_LIVE_AI_LIMITS,
+  type LiveAiSessionStore,
+  type ServerCaptureLedger,
+  type LiveAiLimits,
+  type BudgetAuthority,
+} from "./live-ai-sessions";
+import { createLiveAiOrchestrator } from "./live-ai-orchestrator";
+import { unavailableTranscription, createTranscriptionAdapter, createDefaultTranscriptionSeam, type TranscriptionAdapter } from "./openai-transcription";
+import { unavailableReasoning, createReasoningAdapter, createDefaultReasoningCall, type ReasoningAdapter } from "./openai-responses";
+import { unavailableTts, createTtsAdapter, createDefaultTtsCall, type TtsAdapter } from "./openai-tts";
+import {
+  authorizeLiveAiControlOpen,
+  handleLiveAiControlFrame,
+  makeLiveAiEmit,
+  type GatewaySocket as LiveAiGatewaySocket,
+} from "./live-ai-control-socket";
+import { validateSessionCreateBody as validateLiveAiSessionBody } from "./live-ai-schemas";
 
 // R3 (REREV-09): how long a created session waits for the browser control socket to
 // attach before it self-terminates (and hangs up the provider call).
@@ -353,10 +386,221 @@ export function handleKill(ctx: GatewayContext, body: unknown): HandlerResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// LIVE-AI-02A — ISOLATED Live-AI context + DI handlers (unit-tested with fakes).
+// This context shares NO old-tool executor / sideband / realtime authority.
+// ═══════════════════════════════════════════════════════════════════════════
+export interface LiveAiGatewayContext {
+  config: LiveAiConfig;
+  store: LiveAiSessionStore;
+  /** R5C — the independent server-side capture-duration ledger. */
+  captureLedger: ServerCaptureLedger;
+  replay: ReplayStore;
+  rateLimiter: RateLimiter;
+  telemetry: Telemetry;
+  orchestrator: ReturnType<typeof createLiveAiOrchestrator>;
+  transcription: TranscriptionAdapter;
+  /** R2-13/R3-13 — the atomic budget authority (null ⇒ every provider path, including
+   *  the realtime transcription negotiation, fails closed). */
+  budget: BudgetAuthority | null;
+  runtime: GatewayRuntime;
+  limits: LiveAiLimits;
+  controlTokenMaxAgeMs: number;
+  now: () => number;
+}
+export interface BuildLiveAiDeps {
+  env: GatewayEnv;
+  now?: () => number;
+  timers?: TimerFacility;
+  telemetrySink?: Telemetry;
+  transcription?: TranscriptionAdapter;
+  reasoning?: ReasoningAdapter;
+  tts?: TtsAdapter;
+  /** R2-13 — the ATOMIC budget authority. The REAL provider adapters are constructed
+   *  ONLY when a budget authority is present (see the fail-closed barrier below): no
+   *  DB / distributed store is authorized in this packet, so a production build (which
+   *  injects no budget) NEVER constructs a spend-capable adapter and the provider path
+   *  fails closed. Tests inject a bounded in-memory authority to exercise the path. */
+  budget?: BudgetAuthority | null;
+}
+/** REV-13 — bounded per-provider-call deadline (ms) for reasoning/TTS. */
+export const LIVE_AI_PROVIDER_DEADLINE_MS = 20_000;
+// R4-13 — the realtime transcription reservation is TIED TO THE HARD MAXIMUM CAPTURE-DURATION
+// model, not an arbitrary figure. The client media owner enforces a hard cumulative
+// capture-duration ceiling (MAX_SESSION_CAPTURE_MS = 180_000 ms in lib/live-ai/gateway-client.ts),
+// so at most MAX_CAPTURE_SECONDS of audio can ever be transcribed in one session. The
+// reservation is a DOCUMENTED conservative mapping = that duration × a per-second unit rate,
+// a HARD upper bound on admitted transcription usage. Realtime negotiation surfaces no discrete
+// per-call usage figure, so the reservation is retained (settle null) after the call.
+export const MAX_CAPTURE_SECONDS = 180;
+export const TRANSCRIPTION_UNITS_PER_SECOND = 50;
+export const RESERVE_TRANSCRIPTION_UNITS = MAX_CAPTURE_SECONDS * TRANSCRIPTION_UNITS_PER_SECOND;
+
+export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext {
+  const now = deps.now || (() => Date.now());
+  const full = loadGatewayConfig(deps.env);
+  const config = full.liveAi;
+  const limits: LiveAiLimits = { ...DEFAULT_LIVE_AI_LIMITS };
+  // R5C — the INDEPENDENT server capture ledger (process-local). The store's onTerminate
+  // finalizes the session's active capture segment on EVERY termination path; the ledger's
+  // onSegmentExpired (20s server cap) terminates the session. The two reference each other,
+  // so `captureLedger` is a forward `let` captured by the store's onTerminate closure
+  // (only invoked at terminate time, after assignment).
+  let captureLedger: ServerCaptureLedger;
+  const store = createLiveAiSessionStore({
+    limits,
+    now,
+    timers: deps.timers,
+    onTerminate: (s) => { try { captureLedger.finalizeSegment(s.subject, s.gatewaySessionId, "partial"); } catch { /* no-op */ } },
+  });
+  captureLedger = createServerCaptureLedger({
+    now,
+    timers: deps.timers,
+    onSegmentExpired: (_subject, sessionKey) => { const s = store.get(sessionKey); if (s && !s.terminated) store.terminate(s, "timeout"); },
+  });
+  const replay = createReplayStore(now);
+  const rateLimiter = createRateLimiter({ limits: full.limits, now });
+  const telemetry = deps.telemetrySink || createTelemetry();
+
+  // REV-02 — PROVIDER-CAPABLE adapters: when (and only when) the provider is fully
+  // configured (server-only key + the EXACT allowlisted models), construct the REAL
+  // fixed-endpoint adapters, so "configured" means a genuinely usable adapter, not
+  // just that strings exist. Otherwise the fail-closed unavailable trio is used.
+  // Injected test adapters always win (fakes; no real network). The server-only key
+  // is read here and NEVER leaves the gateway. Dormant by default (no key ⇒ null).
+  //
+  // R2-13 — FAIL-CLOSED ACTIVATION BARRIER: a REAL, spend-capable adapter is built
+  // ONLY when a BUDGET AUTHORITY is also injected. No DB / distributed store is
+  // authorized in this packet, so a default production build injects no budget →
+  // `apiKey` collapses to null → every real adapter stays UNAVAILABLE and the
+  // provider path fails closed (no uncontrolled provider spend). Injected test
+  // adapters (fakes) still win and need no key/budget. `budget` flows to the
+  // orchestrator so its reserve→call→settle path is honoured for every provider call.
+  const budget: BudgetAuthority | null = deps.budget || null;
+  const rawKey = typeof deps.env.OPENAI_API_KEY === "string" && deps.env.OPENAI_API_KEY.trim() ? deps.env.OPENAI_API_KEY : null;
+  const apiKey = (liveAiProviderConfigured(config) && budget) ? rawKey : null;
+  const reasoningCall = apiKey ? createDefaultReasoningCall(apiKey) : null;
+  const ttsCall = apiKey ? createDefaultTtsCall(apiKey) : null;
+  const sttSeam = apiKey ? createDefaultTranscriptionSeam(apiKey) : null;
+  const reasoning = deps.reasoning || (reasoningCall ? createReasoningAdapter({ model: config.reasoningModel, call: reasoningCall }) : unavailableReasoning);
+  const tts = deps.tts || (ttsCall ? createTtsAdapter({ model: config.ttsModel, call: ttsCall }) : unavailableTts);
+  const transcription = deps.transcription || (sttSeam ? createTranscriptionAdapter({ model: config.sttModel, call: sttSeam.call, negotiate: sttSeam.negotiate }) : unavailableTranscription);
+
+  const orchestrator = createLiveAiOrchestrator({
+    reasoning,
+    tts,
+    store,               // R2-05/R2-07/R2-08 — proposal registry + pending-plan state
+    budget,              // R2-13 — atomic budget authority (null ⇒ provider fails closed)
+    now,
+    deadlineMs: LIVE_AI_PROVIDER_DEADLINE_MS, // REV-13 per-provider-call deadline
+    setTimer: deps.timers ? (fn, ms) => deps.timers!.set(fn, ms) : undefined,
+    clearTimer: deps.timers ? (h) => deps.timers!.clear(h) : undefined,
+  });
+  return {
+    config,
+    store,
+    captureLedger,
+    replay,
+    rateLimiter,
+    telemetry,
+    orchestrator,
+    transcription,
+    budget,                // R3-13 — reserve→settle the realtime negotiation (null ⇒ fail closed)
+    runtime: { killed: false },
+    limits,
+    controlTokenMaxAgeMs: full.limits.controlTokenMaxAgeMs,
+    now,
+  };
+}
+
+export async function handleLiveAiSessionCreate(ctx: LiveAiGatewayContext, input: SessionCreateInput): Promise<HandlerResult> {
+  const { config } = ctx;
+  // 1) R gate (fail closed) + kill switch.
+  if (!config.runtimeEnabled || ctx.runtime.killed) return { status: 503, body: { error: "runtime_disabled" } };
+  // 2) full config presence (zero network when unconfigured).
+  if (!liveAiSessionCreateConfigured(config)) return { status: 503, body: { error: "unconfigured" } };
+  // 3) body (mode + browser-owned sessionId + bounded SDP for mic).
+  const body = validateLiveAiSessionBody(input.body);
+  if (!body) return { status: 400, body: { error: "invalid_body" } };
+  // 4) assertion (Bearer) — the EXACT live-ai:read-ui-local scope, Live-AI signing keys.
+  const bearer = /^Bearer (.+)$/i.exec(input.authorization || "");
+  if (!bearer) return { status: 401, body: { error: "assertion_missing" } };
+  const verified = await verifyLiveAiAssertion(bearer[1], { signingPublicKey: config.signingPublicKey, issuer: config.issuer, audience: config.audience }, ctx.replay);
+  if (!verified.ok) {
+    const status = verified.code === "assertion_unconfigured" ? 503 : 401;
+    return { status, body: { error: verified.code } };
+  }
+  const assertion = verified.assertion;
+  // 5) origin allowlist — the SIGNED origin claim vs the Live-AI allowlist (never `*`).
+  if (!isAllowedOrigin(assertion.origin, config.allowedOrigins)) return { status: 403, body: { error: "origin_not_allowed" } };
+  // 6) start-limit + concurrency.
+  const ipHash = hashIp(input.ip || "0.0.0.0", config.ipHashSalt as string);
+  const startKey = assertion.authenticated ? `sub:${assertion.subject}` : `ip:${ipHash}`;
+  const start = ctx.rateLimiter.checkStart(startKey, assertion.authenticated);
+  if (!start.ok) return { status: 429, body: { error: start.reason } };
+  const created = ctx.store.create({ sessionId: body.sessionId, subject: assertion.subject, ipHash, authenticated: assertion.authenticated });
+  if (!created.ok) return { status: 429, body: { error: created.reason } };
+  const session = created.session;
+  // 7) control token bound to the gateway session id (Live-AI HMAC secret).
+  const controlToken = mintControlTokenWithSecret(session.gatewaySessionId, assertion.subject, config.controlTokenSecret, ctx.controlTokenMaxAgeMs, ctx.now);
+  if (!controlToken) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "control_unconfigured" } }; }
+  ctx.telemetry.emit({ event: "session.created", sessionId: session.sessionId, provider: "openai", model: config.reasoningModel });
+  // REV-03 — microphone mode: exchange the bounded SDP offer for the provider's
+  // bounded SDP answer via the fixed Realtime negotiation seam. Dormant by default
+  // (the seam is unavailable without a key), so a mic start fails closed here; when
+  // the provider is configured the browser receives the answer and the peer
+  // connection completes (transcripts then flow to the browser and are submitted as
+  // turn.text over the control socket).
+  const out: Record<string, unknown> = {
+    sessionId: session.sessionId,
+    gatewaySessionId: session.gatewaySessionId,
+    controlToken,
+    expiresInSeconds: Math.floor(ctx.controlTokenMaxAgeMs / 1000),
+  };
+  if (body.mode === "microphone") {
+    // R3-13 — reserve budget BEFORE the realtime provider negotiation (reserve→call→
+    // settle). No budget authority ⇒ REFUSED (fail closed) — the SAME activation barrier
+    // as reasoning/TTS: a billable realtime call is never negotiated without a live
+    // reservation. Realtime negotiation surfaces no discrete per-call usage figure, so
+    // the reservation is RETAINED (settle null) after the call, never a fabricated actual.
+    const budget = ctx.budget;
+    if (!budget) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
+    let rres: string | null = null;
+    try { rres = budget.reserve(session.gatewaySessionId, RESERVE_TRANSCRIPTION_UNITS); } catch { rres = null; }
+    if (rres === null) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
+    const neg = await ctx.transcription.negotiate(body.sdp, { signal: session.abort.signal, deadlineMs: LIVE_AI_PROVIDER_DEADLINE_MS });
+    try { budget.settle(rres, null); } catch { /* conservative retention */ }
+    if (!neg.ok) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
+    // R5C — mic-negotiation SUCCESS begins the INDEPENDENT server capture segment
+    // (identity = the trusted authenticated subject + this gateway session). The ledger
+    // enforces the ≤20s-per-segment / ≤180s-cumulative caps with the server clock and NEVER
+    // trusts any browser-reported duration. Refused (cumulative exhausted for the subject /
+    // capacity / broken) ⇒ the mic session FAILS CLOSED (a second independent enforcer).
+    const seg = ctx.captureLedger.beginSegment(assertion.subject, session.gatewaySessionId);
+    if (!seg.ok) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
+    out.answerSdp = neg.answerSdp;
+  }
+  return { status: 200, body: out };
+}
+
+export function handleLiveAiKill(ctx: LiveAiGatewayContext, body: unknown): HandlerResult {
+  const res = verifyKillRequestWithSecret(body, ctx.config.killSwitchSecret, ctx.now);
+  if (!res.ok) {
+    const status = res.code === "kill_unconfigured" ? 503 : 401;
+    return { status, body: { error: res.code } };
+  }
+  ctx.runtime.killed = true; // DISABLE ONLY — no enable path.
+  const drained = ctx.store.drainAll();
+  ctx.telemetry.emit({ event: "runtime.killed", normalizedResult: "disabled" });
+  return { status: 200, body: { ok: true, drained } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Fastify wiring (thin adapter over the DI handlers above).
 // ═══════════════════════════════════════════════════════════════════════════
-export async function buildGateway(deps: BuildContextDeps): Promise<{ app: FastifyInstance; ctx: GatewayContext }> {
+export async function buildGateway(deps: BuildContextDeps): Promise<{ app: FastifyInstance; ctx: GatewayContext; liveAiCtx: LiveAiGatewayContext }> {
   const ctx = buildContext(deps);
+  // ISOLATED Live-AI context (dormant adapters by default — no old-tool authority).
+  const liveAiCtx = buildLiveAiContext({ env: deps.env, now: deps.now, timers: deps.timers });
   const app = Fastify({ logger: false, bodyLimit: MAX_BODY_BYTES });
 
   await app.register(fastifyRateLimit, {
@@ -423,7 +667,75 @@ export async function buildGateway(deps: BuildContextDeps): Promise<{ app: Fasti
     });
   });
 
-  return { app, ctx };
+  // ── ISOLATED Live-AI routes (never wired to the old tool executor/sideband) ──
+  app.post("/v1/live-ai/sessions", async (req, reply) => {
+    const result = await handleLiveAiSessionCreate(liveAiCtx, {
+      origin: req.headers.origin,
+      ip: req.ip,
+      authorization: req.headers.authorization,
+      body: req.body,
+    });
+    reply.status(result.status).send(result.body);
+  });
+
+  app.post("/internal/live-ai/kill", async (req, reply) => {
+    const result = handleLiveAiKill(liveAiCtx, req.body);
+    reply.status(result.status).send(result.body);
+  });
+
+  app.get("/v1/live-ai/sessions/:sid/control", { websocket: true }, (socket: any, req) => {
+    const sid = (req.params as { sid: string }).sid;
+    const gwSocket: LiveAiGatewaySocket = {
+      send: (data) => socket.send(data),
+      close: (code, reason) => socket.close(code, reason),
+    };
+    const opened = authorizeLiveAiControlOpen({
+      subprotocol: req.headers["sec-websocket-protocol"],
+      gatewaySessionId: sid,
+      controlTokenSecret: liveAiCtx.config.controlTokenSecret,
+      controlTokenMaxAgeMs: liveAiCtx.controlTokenMaxAgeMs,
+      store: liveAiCtx.store,
+      now: liveAiCtx.now,
+    });
+    if (!opened.ok) {
+      gwSocket.close(opened.closeCode, opened.code);
+      return;
+    }
+    const session = opened.session;
+    const emit = makeLiveAiEmit(gwSocket);
+    // R2-01 — EXACTLY ONE control attachment. bindRuntime atomically CLAIMS the
+    // session's single, one-use control attachment. A second concurrent attach (or a
+    // control-token replay after the first socket closed) returns false: we close THIS
+    // socket WITHOUT touching the live session — no connection.ready, no message
+    // handler, and crucially no close→terminate handler that would kill the legitimate
+    // socket's session. The prior socket's callbacks stay authoritative.
+    const claimed = liveAiCtx.store.bindRuntime(session, emit, () => {
+      try { socket.close(1000); } catch { /* no-op */ }
+    });
+    if (!claimed) {
+      try { gwSocket.close(4409, "control_conflict"); } catch { /* no-op */ }
+      return;
+    }
+    // REV-01 — the authenticated control socket is bound: emit connection.ready so the
+    // browser proceeds to publish context (it waits for this real frame — no injected
+    // test frame). A late/duplicate ready is harmless (the browser ignores a mismatch).
+    emit({ t: "connection.ready", sessionId: session.sessionId, gatewaySessionId: session.gatewaySessionId });
+    socket.on("message", (raw: unknown) => {
+      const text = typeof raw === "string" ? raw : Buffer.isBuffer(raw) ? raw.toString("utf8") : "";
+      // R2-08 — runTts is the ONLY entry point into TTS; the control socket invokes it
+      // solely when a fully-matching answer.approve consumed the pending plan.
+      handleLiveAiControlFrame({ raw: text, session, store: liveAiCtx.store, captureLedger: liveAiCtx.captureLedger, runTurn: liveAiCtx.orchestrator.runTurn, runTts: liveAiCtx.orchestrator.runTts, now: liveAiCtx.now });
+    });
+    socket.on("close", () => {
+      // R2-01 — the single control socket disconnected: mark control not-live (drops
+      // the emitter) then terminate (the one-use claim is never reset, so no reattach
+      // is possible; free the session slot rather than orphan-hold it to idle timeout).
+      liveAiCtx.store.controlDetached(session);
+      liveAiCtx.store.terminate(session, "closed");
+    });
+  });
+
+  return { app, ctx, liveAiCtx };
 }
 
 // ---- main (only when run directly) ------------------------------------------
