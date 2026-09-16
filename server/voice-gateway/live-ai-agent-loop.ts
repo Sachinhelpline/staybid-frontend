@@ -52,11 +52,6 @@ import {
   deriveResultState,
   isTerminalResultState,
   buildIntelligenceInputSnapshot,
-  FACT_ANSWER_EVIDENCE,
-  renderFactAnswer,
-  renderAdvice,
-  renderClarify,
-  renderEscalation,
   contextCoherentWithBinding,
 } from "./live-ai-intelligence-contract";
 import type {
@@ -73,6 +68,12 @@ import type {
 import { getCapability, capabilityAdvancesContext } from "./live-ai-capability-registry";
 import { boundedText, isId, validatePublishedContext, terminalReceiptCommitment, validateActionAccepted, UNACCEPTED_ACTION_ID } from "./live-ai-schemas";
 import type { ResultAuthorityShape } from "./live-ai-schemas";
+// LIVE-AI-IC02 — the PURE producer-side grounded-answer compiler. The loop RETAINS one immutable
+// provenance record at the exact VERIFIED-promotion transition (P1-01), and INVOKES the compiler at
+// the accepted terminal producer point (P1-02). Both are read-only pure calls that grant NO new
+// authority — the compiler performs zero network/DB/provider/DOM/route access.
+import { buildVerifiedEvidenceRecord, compileAnswer } from "./live-ai-answer-compiler";
+import type { IC02VerifiedEvidenceRecord, CompiledAnswerEnvelope } from "./live-ai-answer-compiler";
 
 // ── injected ports (ALL fail-closed / no-op by default) ──────────────────
 export interface AgentLoopDeps {
@@ -95,7 +96,7 @@ export type LoopEffect =
   | { readonly kind: "MODEL_REQUEST"; readonly modelRequestId: string; readonly tier: ModelTier; readonly purpose: "plan" | "repair" | "replan" | "fallback"; readonly providerCeilingMs: number; readonly maxInputBytes: number; readonly deadlineMs: number; readonly input: IntelligenceInputSnapshot }
   | { readonly kind: "CAPABILITY_DISPATCH"; readonly dispatchId: string; readonly planId: string; readonly stepIndex: number; readonly capabilityId: string; readonly args: Record<string, unknown>; readonly binding: TrustedBinding; readonly deadlineMs: number }
   | { readonly kind: "REBIND_REQUIRED"; readonly planId: string; readonly stepIndex: number; readonly deadlineMs: number }
-  | { readonly kind: "TERMINAL"; readonly reason: TerminationReason; readonly terminalStep: PlanStep | null }
+  | { readonly kind: "TERMINAL"; readonly reason: TerminationReason; readonly terminalStep: PlanStep | null; readonly envelope?: CompiledAnswerEnvelope }
   | { readonly kind: "INERT"; readonly why: string }
   | { readonly kind: "REJECTED"; readonly why: string };
 
@@ -124,6 +125,7 @@ export interface AgentLoopStatus {
   readonly terminationReason: TerminationReason | null;
   readonly conversationTurns: number;
   readonly evidenceHandles: number;
+  readonly verifiedEvidenceRecords: number; // LIVE-AI-IC02 (P1-01) — count of retained provenance records this plan
   readonly deadlineMs: number | null;
   readonly lastMonotonicMs: number | null;
 }
@@ -140,6 +142,7 @@ export interface AgentLoop {
   interrupt(input: unknown): LoopEffect;
   expire(nowMs: unknown): LoopEffect;
   noteUserPreference(input: unknown): { readonly ok: boolean };
+  verifiedEvidence(): readonly IC02VerifiedEvidenceRecord[]; // LIVE-AI-IC02 (P1-01) — read-only provenance snapshot
   status(): AgentLoopStatus;
 }
 
@@ -182,6 +185,11 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
   const conversation: ConversationEntry[] = [];
   const evidenceRefs: string[] = [];                        // ≤ MAX_EVIDENCE_HANDLES verified receipt ids
   const verifiedSteps: Map<number, VerifiedStep> = new Map(); // REV-01 — step → its verified evidence
+  // LIVE-AI-IC02 (P1-01) — the atomically-retained, IMMUTABLE VERIFIED-evidence
+  // provenance records for THIS plan (one per verified step). Shares the SAME
+  // per-plan lifecycle as verifiedSteps; a pure producer-side side-ledger that is
+  // NEVER read by the IC01 grounding/decision path (a future consumer / 03B reads it).
+  const verifiedEvidenceRecords: IC02VerifiedEvidenceRecord[] = [];
   const resolvedObservations: Map<string, string> = new Map();
   const resolvedSteps: Set<number> = new Set();
   const sessionPrefs: Map<string, string> = new Map();
@@ -192,12 +200,14 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
   function frozen<T extends LoopEffect>(e: T): T { return Object.freeze(e); }
   function inert(why: string): LoopEffect { return frozen({ kind: "INERT", why }); }
   function rejected(why: string): LoopEffect { return frozen({ kind: "REJECTED", why }); }
-  function terminal(reason: TerminationReason, terminalStep: PlanStep | null = null): LoopEffect {
+  function terminal(reason: TerminationReason, terminalStep: PlanStep | null = null, envelope?: CompiledAnswerEnvelope): LoopEffect {
     phase = "TERMINAL";
     terminationReason = reason;
     pendingDispatchId = null; pendingDispatchCapability = null; pendingDispatchAuthorityRef = null; pendingDispatchExecution = null; expectedRebindAuthority = null; pendingModelRequestId = null;
     emitTelemetry("turn_terminal", reason);
-    return frozen({ kind: "TERMINAL", reason, terminalStep });
+    // LIVE-AI-IC02 (P1-02) — carry the accepted CompiledAnswerEnvelope on the typed terminal producer
+    // boundary when one was produced (a JSON-undefined `envelope` is dropped by serialization).
+    return frozen({ kind: "TERMINAL", reason, terminalStep, envelope });
   }
   function mint(kind: string): string | null {
     try { seq += 1; const id = deps.mintId(kind, seq); return isId(id) ? id : null; } catch { return null; }
@@ -274,6 +284,27 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
     return frozen({ kind: "MODEL_REQUEST", modelRequestId: id, tier: tier as ModelTier, purpose, providerCeilingMs: ceiling, maxInputBytes: IC01_LIMITS.MAX_MODEL_INPUT_BYTES, deadlineMs: deadlineAbs(), input });
   }
 
+  // LIVE-AI-IC02 (P1-02) — the accepted TERMINAL PRODUCER seam. Build the IC02 compile request from ONLY
+  // trusted / controller-owned state and invoke the PURE compiler. The answer identity is minted here via
+  // the controller-owned minter (the model NEVER supplies it). Returns the accepted CompiledAnswerEnvelope,
+  // or null when compilation is rejected — the caller then FAILS CLOSED (never legacy factual narration,
+  // never a RESPOND→CLARIFY/ESCALATE transform). No browser/TTS/provider enforcement lives here (03B/03C).
+  function compileTerminal(step: PlanStep): CompiledAnswerEnvelope | null {
+    if (!binding || planId === null) return null;
+    const answerId = mint("answer");
+    if (!answerId) return null;
+    const result = compileAnswer({
+      contractVersion: INTELLIGENCE_CONTRACT_VERSION,
+      controllerOwnedAnswerId: answerId,
+      controllerOwnedPlanId: planId,
+      trustedCurrentBinding: binding,
+      acceptedIC01TerminalDescriptor: step,
+      verifiedEvidenceRecords: verifiedEvidenceRecords.slice(),
+      requestedLanguage: (step as { language?: unknown }).language,
+    });
+    return result.disposition === "IC02_ACCEPTED" ? result.envelope : null;
+  }
+
   function dispatchStep(nowMs: number): LoopEffect {
     if (!plan || planId === null || currentStepIndex === null || !binding) return terminal("INTERNAL_ERROR");
     if (isExpired(nowMs)) return terminal("DEADLINE_EXCEEDED");
@@ -282,57 +313,44 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
     if (step.kind !== "CAPABILITY") {
       if (step.kind === "CLARIFY") {
         if (clarificationsIssued >= IC01_LIMITS.MAX_CLARIFICATIONS_PER_TURN) return terminal("HONEST_FAILURE");
-        // IC01-CLOSE-01 — the visible question is DERIVED deterministically from the CLOSED reason
-        // (never a model-authored sentence). A non-closed reason fails closed (nothing narrated).
-        const clarifyText = renderClarify(step.reason, step.language);
-        if (clarifyText === null) return terminal("HONEST_FAILURE");
+        // LIVE-AI-IC02 (P1-02) — the visible question is produced by the compiler (COMPILED_CLARIFICATION);
+        // the surfaced text is the accepted envelope's canonicalText (never a legacy renderer). A compile
+        // rejection FAILS CLOSED (HONEST_FAILURE) — nothing narrated. CLARIFY stays CLARIFY.
+        const env = compileTerminal(step);
+        if (!env) return terminal("HONEST_FAILURE");
         clarificationsIssued += 1;
         consecutiveClarificationTurns += 1;
-        conversation.push({ role: "assistant", text: clarifyText }); trimConversation();
-        if (consecutiveClarificationTurns > IC01_LIMITS.MAX_CONSECUTIVE_CLARIFICATION_TURNS) return terminal("ESCALATION_SUGGESTED", step);
-        return terminal("CLARIFICATION_ISSUED", step);
+        conversation.push({ role: "assistant", text: env.canonicalText }); trimConversation();
+        if (consecutiveClarificationTurns > IC01_LIMITS.MAX_CONSECUTIVE_CLARIFICATION_TURNS) return terminal("ESCALATION_SUGGESTED", step, env);
+        return terminal("CLARIFICATION_ISSUED", step, env);
       }
       consecutiveClarificationTurns = 0;
       if (step.kind === "ESCALATE_TO_HUMAN") {
-        // IC01-CLOSE-01 — the visible suggestion is DERIVED deterministically from the CLOSED escalation
-        // reason (never a model-authored sentence, never a completion assertion). Fail closed on a
-        // non-closed reason. A suggestion ONLY — no side-effect authority.
-        const escalText = renderEscalation(step.escalation, step.language);
-        if (escalText === null) return terminal("HONEST_FAILURE");
-        conversation.push({ role: "assistant", text: escalText }); trimConversation();
-        return terminal("ESCALATION_SUGGESTED", step);
+        // LIVE-AI-IC02 (P1-02) — the visible suggestion is produced by the compiler
+        // (COMPILED_HUMAN_ESCALATION); the surfaced text is the accepted envelope's canonicalText. A
+        // compile rejection FAILS CLOSED. ESCALATE stays ESCALATE — a SUGGESTION only, no side-effect authority.
+        const env = compileTerminal(step);
+        if (!env) return terminal("HONEST_FAILURE");
+        conversation.push({ role: "assistant", text: env.canonicalText }); trimConversation();
+        return terminal("ESCALATION_SUGGESTED", step, env);
       }
-      // RESPOND — REV-01 (CORRECTION-01) grounding. An ADVICE claim is bounded
-      // non-factual text. A FACT claim is a CLOSED answer descriptor: it must resolve
-      // to a CAPABILITY step that VERIFIED-with-evidence in THIS plan, the closed
-      // answer kind MUST match that step's trusted evidence kind, and the human text
-      // is DERIVED deterministically from the trusted evidence (renderFactAnswer) —
-      // never a model string. NO_OP / non-success / mismatch → UNGROUNDED_RESPONSE
-      // (nothing narrated).
-      const parts: string[] = [];
-      const visiblePositions = currentVisiblePositions();  // IC01-FINAL-CLOSE-01-01 — CURRENT visible POSITIONS (membership, not length)
+      // RESPOND — LIVE-AI-IC02 (P1-02) terminal producer seam. Preserve the accepted IC01 advice-position
+      // visibility grounding (IC01-FINAL-CLOSE-01-01: a referenced position MUST OCCUR in the ACTUAL current
+      // published visible set — sparse-safe, membership not 1..length — and the compiler has no published
+      // context) BEFORE compiling. Then produce the answer through the compiler: fact grounding is enforced
+      // by the compiler against the retained VERIFIED provenance (missing / wrong-kind provenance ⇒ reject).
+      // A compile rejection FAILS CLOSED as UNGROUNDED_RESPONSE (nothing narrated); RESPOND stays RESPOND and
+      // the surfaced text is the accepted envelope's canonicalText (never a legacy factual renderer).
+      const visiblePositions = currentVisiblePositions();
       for (const claim of step.claims) {
         if (claim.kind === "advice") {
-          // IC01-FINAL-CLOSE-01-01 — advice text is DERIVED deterministically from the CLOSED intent; any
-          // referenced position MUST OCCUR in the ACTUAL current published visible set (membership), NEVER a
-          // 1..length ordinal — published positions may be sparse (e.g. [1,5]: 5 is valid, 2 is not). A stale /
-          // nonexistent position fails closed here, BEFORE any narration or assistant-conversation persistence.
           for (const p of claim.positions) if (!visiblePositions.has(p)) return terminal("UNGROUNDED_RESPONSE", step);
-          const advised = renderAdvice(claim.advice, claim.positions, step.language);
-          if (advised === null) return terminal("UNGROUNDED_RESPONSE", step);
-          parts.push(advised);
-          continue;
         }
-        const g = claim.groundedInStep as number;
-        const vs = verifiedSteps.get(g);
-        if (!vs) return terminal("UNGROUNDED_RESPONSE", step);
-        if (vs.evidenceKind !== FACT_ANSWER_EVIDENCE[claim.answer]) return terminal("UNGROUNDED_RESPONSE", step);
-        const rendered = renderFactAnswer(claim.answer, vs.evidence, step.language);
-        if (rendered === null) return terminal("UNGROUNDED_RESPONSE", step);
-        parts.push(rendered);
       }
-      conversation.push({ role: "assistant", text: parts.join(" ") }); trimConversation();
-      return terminal("COMPLETED", step);
+      const env = compileTerminal(step);
+      if (!env) return terminal("UNGROUNDED_RESPONSE", step);
+      conversation.push({ role: "assistant", text: env.canonicalText }); trimConversation();
+      return terminal("COMPLETED", step, env);
     }
     // CAPABILITY step — HARD gates.
     if (pendingDispatchId !== null) return terminal("INTERNAL_ERROR");
@@ -426,6 +444,7 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
       modelCalls = 0; repairCalls = 0; fallbackCalls = 0; capabilityDispatches = 0;
       clarificationsIssued = 0; withinTurnFailures = 0; terminationReason = null; lastResultState = null;
       resolvedObservations.clear(); resolvedSteps.clear(); verifiedSteps.clear(); evidenceRefs.length = 0;
+      verifiedEvidenceRecords.length = 0; // LIVE-AI-IC02 (P1-01) — per-turn reset (mirrors verifiedSteps)
       binding = b;
       publishedContext = ctx;
       turnUserText = t.text;
@@ -472,6 +491,7 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
       currentStepIndex = 0;
       resolvedSteps.clear();
       verifiedSteps.clear();                 // a fresh plan grounds only its OWN verified steps
+      verifiedEvidenceRecords.length = 0;    // LIVE-AI-IC02 (P1-01) — a fresh plan retains only its OWN provenance
       return dispatchStep(raw.nowMs as number);
     } catch { return terminal("INTERNAL_ERROR"); }
   }
@@ -573,27 +593,46 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
       if (state === "INTERRUPTED") return terminal("INTERRUPTED");
 
       if (state === "VERIFIED") {
-        // REV-01 — record the trusted evidence (only VERIFIED with typed evidence, which
-        // validateObservation already required) so the terminal fact text can be DERIVED
-        // from it and the answer↔evidence-kind match can be enforced.
+        // LIVE-AI-IC02 (P1-01) — a SINGLE synchronous accepted VERIFIED promotion transition. EVERY
+        // accepted lifecycle precondition is evaluated FIRST; the COMPLETE immutable IC02 provenance record
+        // is PRE-BUILT before ANY evidence promotion; and the IC01 verified-step / evidence reference AND
+        // the IC02 record are committed TOGETHER only after all preconditions pass. If the required IC02
+        // provenance cannot be constructed/admitted, we FAIL CLOSED here — an IC01-only successful evidence
+        // promotion must never occur while the IC02-required provenance is absent. Provenance is captured
+        // from the ALREADY-VALIDATED trusted values and is NEVER reconstructed from mutable state later.
         const receiptId = obs.receipt.receiptId as string;
         const evidence = (obs.receipt as Record<string, unknown>).evidence;
         const evidenceKind = evidence && typeof evidence === "object" && typeof (evidence as { kind?: unknown }).kind === "string" ? (evidence as { kind: string }).kind : "";
-        verifiedSteps.set(obs.stepIndex, { receiptId, capabilityId: obs.capabilityId, commitment: terminalReceiptCommitment(obs.receipt), evidence, evidenceKind });
-        if (evidenceRefs.length < IC01_LIMITS.MAX_EVIDENCE_HANDLES && !evidenceRefs.includes(receiptId)) evidenceRefs.push(receiptId);
+        const commitment = terminalReceiptCommitment(obs.receipt);
         // REV-05 — ANY authoritative advancement invalidates ALL remaining old steps.
         const raDiffers = authorityDiffers(obs.resultAuthority, binding);
-        // IC01-CLOSE-05 RESIDUAL B — NEVER enter the trusted rebind gate WITHOUT a trusted rebind target.
-        // A VERIFIED capability DECLARED context-advancing (APPLY/OPEN/SHOW ⇒ capabilityAdvancesContext=true)
-        // MUST carry a result authority that actually advances from the source binding. A "success that
-        // advanced the context" whose result authority equals the source binding is an inconsistent
-        // result/lifecycle (the gateway both executed a context-advancing op AND reported no authority
-        // movement) → fail closed, rather than entering AWAIT_REBIND with expectedRebindAuthority=null.
+        // IC01-CLOSE-05 RESIDUAL B — an advancing VERIFIED (APPLY/OPEN/SHOW ⇒ capabilityAdvancesContext=true)
+        // whose result authority did NOT advance is an inconsistent result/lifecycle → FAIL CLOSED *before*
+        // any evidence promotion (nothing enters the IC01/IC02 ledgers for this inconsistent step).
         const advancingCapUnmoved = capabilityAdvancesContext(obs.capabilityId) && !raDiffers;
         if (advancingCapUnmoved) return terminal("HONEST_FAILURE");
-        // A genuine authority advance (whatever the capability) forces the trusted rebind gate, bound to
-        // the EXACT fresh result authority — never a null target. A non-advancing capability whose result
-        // authority did not move continues to the next step unchanged (REV-05 preserved).
+        // PRE-BUILD + validate the COMPLETE IC02 provenance record (deep-copied + deeply frozen). The
+        // builder requires a valid non-null result authority + admissible evidence for the capability;
+        // a record that cannot be admitted means this VERIFIED promotion cannot complete → FAIL CLOSED.
+        const ic02Record = buildVerifiedEvidenceRecord({
+          verifiedStepIndex: obs.stepIndex,
+          receiptId,
+          capabilityId: obs.capabilityId,
+          evidenceKind,
+          evidence,
+          receiptCommitment: commitment,
+          sourceAuthority: obs.sourceAuthority,
+          resultAuthority: obs.resultAuthority,
+          binding,
+        });
+        if (!ic02Record) return terminal("HONEST_FAILURE"); // no IC01-only success while IC02 provenance is absent
+        // ATOMIC accepted promotion — commit the IC01 verified-step + evidence reference AND the IC02
+        // provenance record together, now that every precondition has passed.
+        verifiedSteps.set(obs.stepIndex, { receiptId, capabilityId: obs.capabilityId, commitment, evidence, evidenceKind });
+        if (evidenceRefs.length < IC01_LIMITS.MAX_EVIDENCE_HANDLES && !evidenceRefs.includes(receiptId)) evidenceRefs.push(receiptId);
+        if (verifiedEvidenceRecords.length < IC01_LIMITS.MAX_EVIDENCE_HANDLES && !verifiedEvidenceRecords.some((r) => r.verifiedStepIndex === obs.stepIndex)) verifiedEvidenceRecords.push(ic02Record);
+        // A genuine authority advance forces the trusted rebind gate, bound to the EXACT fresh result
+        // authority — never a null target. A non-advancing verified step continues (REV-05 preserved).
         if (raDiffers) { expectedRebindAuthority = obs.resultAuthority; phase = "AWAIT_REBIND"; return frozen({ kind: "REBIND_REQUIRED", planId, stepIndex: obs.stepIndex, deadlineMs: deadlineAbs() }); }
         currentStepIndex = obs.stepIndex + 1;
         if (!plan || currentStepIndex >= plan.steps.length) return terminal("INTERNAL_ERROR");
@@ -722,6 +761,7 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
       // REV-05 — the OLD plan (incl. its terminal) and its evidence ledger are STALE.
       plan = null; planId = null; currentStepIndex = null;
       resolvedSteps.clear(); verifiedSteps.clear(); evidenceRefs.length = 0;
+      verifiedEvidenceRecords.length = 0;   // LIVE-AI-IC02 (P1-01) — REV-05: an advancement discards the old provenance too
       if (!modelBudgetLeft()) return terminal("BUDGET_EXHAUSTED");
       return requestModel("replan", raw.nowMs as number);
     } catch { return terminal("INTERNAL_ERROR"); }
@@ -768,6 +808,14 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
     } catch { return Object.freeze({ ok: false }); }
   }
 
+  // LIVE-AI-IC02 (P1-01) — a FROZEN snapshot of the retained per-plan provenance
+  // records. Each record is already deeply immutable; the array copy prevents any
+  // external mutation of the machine's internal ledger. A pure producer-side read
+  // for a future consumer / LIVE-AI-03B; it is NEVER consulted by the IC01 path.
+  function verifiedEvidence(): readonly IC02VerifiedEvidenceRecord[] {
+    return Object.freeze(verifiedEvidenceRecords.slice());
+  }
+
   function status(): AgentLoopStatus {
     return Object.freeze({
       phase, contractVersion: INTELLIGENCE_CONTRACT_VERSION,
@@ -775,12 +823,13 @@ export function createAgentLoop(overrides?: Partial<AgentLoopDeps>): AgentLoop {
       clarificationsIssued, consecutiveClarificationTurns, withinTurnFailures,
       planId, currentStepIndex, pendingDispatchId, pendingModelRequestId, terminationReason,
       conversationTurns: conversation.length, evidenceHandles: evidenceRefs.length,
+      verifiedEvidenceRecords: verifiedEvidenceRecords.length,
       deadlineMs: turnStartMs === null ? null : deadlineAbs(), lastMonotonicMs,
     });
   }
 
   return Object.freeze({
     beginTurn, submitModelPlan, reportModelFailure, acknowledgeDispatch, submitObservation,
-    rebind, interrupt, expire, noteUserPreference, status,
+    rebind, interrupt, expire, noteUserPreference, verifiedEvidence, status,
   });
 }
