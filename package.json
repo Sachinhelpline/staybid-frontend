@@ -22,7 +22,7 @@
     "test:voice:gateway": "node tests/voice/voice-gateway.test.js",
     "test:voice:gateway-security": "node tests/voice/voice-gateway-security.test.js",
     "test:voice:router": "node tests/voice/voice-router.test.js",
-    "test:live-ai": "node tests/live-ai/live-ai.test.js && node tests/live-ai/live-ai-conversation.test.js && node tests/live-ai/live-ai-gateway.test.js && node tests/live-ai/live-ai-audio.test.js && node tests/live-ai/live-ai-ic02.test.js",
+    "test:live-ai": "node tests/live-ai/live-ai.test.js && node tests/live-ai/live-ai-conversation.test.js && node tests/live-ai/live-ai-gateway.test.js && node tests/live-ai/live-ai-audio.test.js && node tests/live-ai/live-ai-ic02.test.js && node tests/live-ai/live-ai-03a.test.js",
     "typecheck:gateway": "tsc -p server/voice-gateway/tsconfig.json --noEmit",
     "vr": "playwright test",
     "vr:update": "playwright test --update-snapshots",
