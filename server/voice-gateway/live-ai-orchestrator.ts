@@ -32,6 +32,12 @@ export interface OrchestratorDeps {
   store?: LiveAiSessionStore;
   /** R2-13 — the atomic budget authority; absent ⇒ provider calls are refused. */
   budget?: BudgetAuthority | null;
+  /** LIVE-AI-BUDGET-01 (dormant seam) — when present, each provider call obtains a
+   *  CALL-BOUND PROVIDER_SPEND BudgetAuthority facade from the DPBEL core (bound to the
+   *  provider-spend class + gateway session + provider turn), preserving the existing
+   *  reserve → call → settle semantics. Absent ⇒ the pre-existing `budget` path is used
+   *  unchanged (byte-identical behavior). Typed structurally to avoid a module import. */
+  budgetCore?: OrchestratorBudgetCoreSeam | null;
   now?: () => number;
   genId?: (prefix: string) => string;
   /** REV-13 — per-provider-call deadline (ms). Default 20s. */
@@ -39,6 +45,19 @@ export interface OrchestratorDeps {
   /** injected timers so a deadline is testable without real wall-clock. */
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (h: unknown) => void;
+}
+
+/** LIVE-AI-BUDGET-01 — the minimal structural surface of the DPBEL core the orchestrator
+ *  needs (declared inline, NO module import, so the fixed-file-list gateway compiles are
+ *  unaffected). The real `createBudgetCore(...)` return value satisfies this structurally. */
+export interface OrchestratorBudgetCoreSeam {
+  providerSpendAuthority(binding: { providerSpendClass: "REASONING" | "TRANSCRIPTION" | "TTS"; gatewaySessionId: string; providerTurnId: string }): BudgetAuthority;
+  /** P1-01 5A — async persist barrier: durably persist the pending provider child BEFORE the
+   *  provider invocation; false ⇒ the caller MUST NOT invoke the provider (fail closed). */
+  persistProviderReservation(gatewaySessionId: string, providerTurnId: string): Promise<boolean>;
+  /** P0-01B — async POST-SETTLEMENT barrier: durably flush the settlement + any revocation
+   *  AFTER the sync local settle; false ⇒ unresolved (local lease left fail-closed). */
+  persistProviderSettlement(gatewaySessionId: string, providerTurnId: string): Promise<boolean>;
 }
 
 export interface TurnInput {
@@ -79,19 +98,50 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     finally { try { clearTimer(handle); } catch { /* no-op */ } }
   }
 
+  /** LIVE-AI-BUDGET-01 — resolve the provider-spend authority for a call. When the DPBEL
+   *  core is wired, obtain a CALL-BOUND facade for the class + session + turn; otherwise
+   *  fall back to the pre-existing single `deps.budget` (byte-identical to before). */
+  function authorityFor(session: LiveAiSession, cls: "REASONING" | "TRANSCRIPTION" | "TTS", providerTurnId: string): BudgetAuthority | null {
+    if (deps.budgetCore) {
+      try { return deps.budgetCore.providerSpendAuthority({ providerSpendClass: cls, gatewaySessionId: session.gatewaySessionId, providerTurnId }); } catch { return null; }
+    }
+    return deps.budget || null;
+  }
   /** R2-13 — reserve conservatively; null reservation ⇒ the call is REFUSED. A
    *  missing budget authority refuses every provider call (fail closed). */
-  function reserve(session: LiveAiSession, units: number): string | null {
-    if (!deps.budget) return null;
-    try { return deps.budget.reserve(session.gatewaySessionId, units); } catch { return null; }
+  function reserve(session: LiveAiSession, units: number, cls: "REASONING" | "TRANSCRIPTION" | "TTS", providerTurnId = ""): string | null {
+    const a = authorityFor(session, cls, providerTurnId);
+    if (!a) return null;
+    try { return a.reserve(session.gatewaySessionId, units); } catch { return null; }
   }
-  function settle(reservationId: string | null, actual: number | null, reservedUnits: number) {
-    if (!deps.budget || reservationId === null) return;
-    // R4-13 — the reservation is a HARD upper bound. A provider-reported actual that somehow
-    // EXCEEDS it is a safety failure: retain the FULL conservative reservation (settle null),
-    // never silently under-account. Absent/malformed usage already retains via null upstream.
-    const safe = actual !== null && actual > reservedUnits ? null : actual;
-    try { deps.budget.settle(reservationId, safe); } catch { /* conservative retention */ }
+  function settle(session: LiveAiSession, cls: "REASONING" | "TRANSCRIPTION" | "TTS", reservationId: string | null, actual: number | null, reservedUnits: number, providerTurnId = "") {
+    const a = authorityFor(session, cls, providerTurnId);
+    if (!a || reservationId === null) return;
+    let toSettle: number | null;
+    if (deps.budgetCore) {
+      // P1-03 — DPBEL path: pass the TRUE validated actual (finite, non-negative) THROUGH so the
+      // core records an over-cap excess incident + revokes; the core handles fractional (upward)
+      // and unsafe (retain-full). null ONLY when genuinely missing/malformed/unsafe. Never mask.
+      toSettle = (actual !== null && Number.isFinite(actual) && actual >= 0) ? actual : null;
+    } else {
+      // Legacy authority path (R4-13): an over-cap actual is masked to null (retain full) — unchanged.
+      toSettle = actual !== null && actual > reservedUnits ? null : actual;
+    }
+    try { a.settle(reservationId, toSettle); } catch { /* conservative retention */ }
+  }
+  /** P1-01 5A — the async persist barrier. When the DPBEL core is wired, durably persist the
+   *  pending provider child; false ⇒ the provider MUST NOT be invoked. Dormant/legacy ⇒ true
+   *  (the legacy in-memory budget path has no durable child + never reaches a real provider here). */
+  async function persistProviderChild(session: LiveAiSession, providerTurnId: string): Promise<boolean> {
+    if (!deps.budgetCore) return true;
+    try { return await deps.budgetCore.persistProviderReservation(session.gatewaySessionId, providerTurnId); } catch { return false; }
+  }
+  /** P0-01B — the async POST-SETTLEMENT barrier. Awaited AFTER the sync local settle so the
+   *  provider-call lifecycle is not considered complete until the settlement/revocation is
+   *  durable; a false result means the local lease is left fail-closed (no fresh authority). */
+  async function persistProviderSettlementBarrier(session: LiveAiSession, providerTurnId: string): Promise<boolean> {
+    if (!deps.budgetCore) return true;
+    try { return await deps.budgetCore.persistProviderSettlement(session.gatewaySessionId, providerTurnId); } catch { return false; }
   }
 
   /** R3-08 — SEMANTIC evidence binding: a plan is only voiceable when its cited
@@ -129,9 +179,15 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     if (!authorityRef) { emit({ t: "turn.error", ...b, code: "stale" }); return; }
     emit({ t: "turn.state", ...b, state: "thinking" });
     if (!deps.reasoning.available) { emit({ t: "turn.error", ...b, code: "provider_unavailable" }); return; }
+    // P1-02 A/B — mint the GATEWAY-OWNED trusted provider-call id BEFORE the reserve, and
+    // keep it bound through reserve → provider invocation → settle. The caller cannot choose it.
+    const providerTurnId = genId("pt");
     // R2-13 — atomic reservation BEFORE the reasoning call; refused ⇒ budget_exceeded.
-    const rres = reserve(session, RESERVE_REASONING_UNITS);
+    const rres = reserve(session, RESERVE_REASONING_UNITS, "REASONING", providerTurnId);
     if (rres === null) { emit({ t: "turn.error", ...b, code: "budget_exceeded" }); return; }
+    // P1-01 5A — durably persist the provider child BEFORE the call; failure ⇒ NO provider invocation.
+    if (!(await persistProviderChild(session, providerTurnId))) { settle(session, "REASONING", rres, null, RESERVE_REASONING_UNITS, providerTurnId); emit({ t: "turn.error", ...b, code: "budget_exceeded" }); return; }
+    if (!alive()) { settle(session, "REASONING", rres, null, RESERVE_REASONING_UNITS, providerTurnId); return; }
 
     let raced;
     try {
@@ -141,7 +197,8 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
         signal, deadlineMs,
       }));
     } catch {
-      settle(rres, null, RESERVE_REASONING_UNITS); // conservative retention on failure
+      settle(session, "REASONING", rres, null, RESERVE_REASONING_UNITS, providerTurnId); // conservative retention on failure
+      await persistProviderSettlementBarrier(session, providerTurnId);                   // P0-01B — durable post-settlement barrier
       emit({ t: "turn.error", ...b, code: "provider_error" });
       return;
     }
@@ -151,13 +208,13 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     const timedOut = !!(raced && (raced as { __timedOut?: true }).__timedOut);
     const rr = (!timedOut ? raced : null) as { ok?: boolean; usage?: unknown; candidate?: { proposal?: unknown; answer?: unknown } } | null;
     const reasoningActual = rr && rr.ok === true && typeof rr.usage === "number" && Number.isFinite(rr.usage) && rr.usage >= 0 ? rr.usage : null;
-    settle(rres, reasoningActual, RESERVE_REASONING_UNITS);
+    settle(session, "REASONING", rres, reasoningActual, RESERVE_REASONING_UNITS, providerTurnId);
+    await persistProviderSettlementBarrier(session, providerTurnId);                     // P0-01B — durable post-settlement barrier
     if (!alive()) return;
     if (timedOut) { emit({ t: "turn.error", ...b, code: "timeout" }); return; }
     const result = raced as { ok: boolean; candidate?: { proposal?: unknown; answer?: unknown } };
     if (!result || result.ok !== true) { emit({ t: "turn.error", ...b, code: "provider_error" }); return; }
 
-    const providerTurnId = genId("pt");
     const candidate = result.candidate || {};
 
     // ── INITIAL phase: an action proposal DEFERS the answer until its verified
@@ -253,8 +310,13 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     // approval invalidates the speech).
     if (session.ackAuthorityRef !== plan.authorityRef) return;
     if (!deps.tts.available || !plan.ttsText) return;
-    const rres = reserve(session, RESERVE_TTS_UNITS);
+    // P1-02 A/B — TTS also carries a NON-EMPTY gateway-owned trusted provider-call id
+    // (minted here, never caller-chosen), bound through reserve → synthesize → settle.
+    const ttsProviderTurnId = genId("pt");
+    const rres = reserve(session, RESERVE_TTS_UNITS, "TTS", ttsProviderTurnId);
     if (rres === null) { emit({ t: "turn.error", ...b, code: "budget_exceeded" }); return; }
+    // P1-01 5A — durably persist the provider child BEFORE synthesis; failure ⇒ NO provider invocation.
+    if (!(await persistProviderChild(session, ttsProviderTurnId))) { settle(session, "TTS", rres, null, RESERVE_TTS_UNITS, ttsProviderTurnId); emit({ t: "turn.error", ...b, code: "budget_exceeded" }); return; }
     let ttsRaced;
     try { ttsRaced = await withDeadline(deps.tts.synthesize({ text: plan.ttsText, language: plan.language, signal, deadlineMs })); }
     catch { ttsRaced = null; }
@@ -263,7 +325,8 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     // timeout / failure / absent-or-malformed usage.
     const tRes = ttsRaced && !(ttsRaced as { __timedOut?: true }).__timedOut ? (ttsRaced as { ok?: boolean; usage?: unknown; chunks?: unknown }) : null;
     const ttsActual = tRes && tRes.ok === true && typeof tRes.usage === "number" && Number.isFinite(tRes.usage) && tRes.usage >= 0 ? tRes.usage : null;
-    settle(rres, ttsActual, RESERVE_TTS_UNITS);
+    settle(session, "TTS", rres, ttsActual, RESERVE_TTS_UNITS, ttsProviderTurnId);
+    await persistProviderSettlementBarrier(session, ttsProviderTurnId);                  // P0-01B — durable post-settlement barrier
     if (!alive() || !ttsRaced || (ttsRaced as { __timedOut?: true }).__timedOut) return;
     // stale-authority re-check AFTER the provider call — already-generated audio for
     // a superseded turn is never emitted.
