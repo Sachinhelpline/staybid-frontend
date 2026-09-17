@@ -199,6 +199,15 @@ function num(v: string | undefined, fallback: number, min: number, max: number):
   return Math.min(Math.max(n, min), max);
 }
 
+/** LIVE-AI-BUDGET-01 (P1-05 F) — a numeric that is 0 (⇒ UNAVAILABLE) when UNSET/invalid.
+ *  No production timing value is invented; an owner-supplied value is clamped to [min,max]. */
+function numOrZero(v: string | undefined, min: number, max: number): number {
+  if (typeof v !== "string" || v.trim().length === 0) return 0;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(Math.max(n, min), max);
+}
+
 /**
  * R2 (SB04-R1-REREV-05B): resolve the OpenAI Realtime base URL FAIL-CLOSED.
  * An UNSET value ⇒ the safe canonical default. A SET value is accepted ONLY when
@@ -318,6 +327,53 @@ export function sessionCreateConfigured(c: GatewayConfig): boolean {
     c.allowedOrigins.length > 0 &&
     Boolean(c.publicBaseUrl)
   );
+}
+
+// ── LIVE-AI-BUDGET-01 (dormant) — non-secret budget binding config ──────────
+// Parses ONLY non-secret budget binding REFERENCES + mode gates + bounded staleness/
+// lease numerics. It NEVER creates or reads a DSN, credential, or secret VALUE — the
+// store binding is a reference NAME the owner wires out of band. FAIL-CLOSED default:
+// dormant (durable budget unavailable) unless explicitly enabled + bound.
+export interface BudgetBindingConfig {
+  /** LIVE_AI_BUDGET_ENABLED === "1": the durable budget MAY be wired (still needs a binding). */
+  readonly enabled: boolean;
+  /** a NON-SECRET store-binding reference NAME (never a DSN/credential value). */
+  readonly storeBindingRef: string | null;
+  /** the non-secret budget project id scope. */
+  readonly projectId: string | null;
+  readonly leaseTtlMs: number;
+  readonly maxControlStalenessMs: number;
+  readonly controlPollIntervalMs: number;
+}
+// P1-05 F — NO invented production timing values. Lease TTL / control staleness / poll
+// interval are ALL 0 (⇒ UNAVAILABLE) unless the owner supplies them by approved config.
+export const DEFAULT_BUDGET_BINDING: Readonly<BudgetBindingConfig> = Object.freeze({
+  enabled: false, storeBindingRef: null, projectId: null,
+  leaseTtlMs: 0, maxControlStalenessMs: 0, controlPollIntervalMs: 0,
+});
+export function loadBudgetConfig(env: GatewayEnv): BudgetBindingConfig {
+  // Owner-supplied only — an UNSET value stays 0 (⇒ budgetDurableConfigured() is false).
+  const leaseTtlMs = numOrZero(env.LIVE_AI_BUDGET_LEASE_TTL_MS, 1_000, 3_600_000);
+  // freshness window can never exceed the lease TTL (fail-closed clamp).
+  const rawStale = numOrZero(env.LIVE_AI_BUDGET_MAX_CONTROL_STALENESS_MS, 1_000, leaseTtlMs > 0 ? leaseTtlMs : 3_600_000);
+  const maxControlStalenessMs = leaseTtlMs > 0 ? Math.min(rawStale, leaseTtlMs) : rawStale;
+  const controlPollIntervalMs = numOrZero(env.LIVE_AI_BUDGET_CONTROL_POLL_MS, 250, maxControlStalenessMs > 0 ? maxControlStalenessMs : 3_600_000);
+  return {
+    enabled: exactlyOne(env.LIVE_AI_BUDGET_ENABLED),
+    storeBindingRef: nonEmpty(env.LIVE_AI_BUDGET_STORE_BINDING),
+    projectId: nonEmpty(env.LIVE_AI_BUDGET_PROJECT_ID),
+    leaseTtlMs,
+    maxControlStalenessMs,
+    controlPollIntervalMs,
+  };
+}
+/** Fail-closed: the durable budget is usable only when explicitly enabled, bound to a
+ *  (non-secret) store reference + project, AND all three timing values are explicitly
+ *  supplied (> 0) with the freshness window ≤ the lease TTL (P1-05 F — no invented values). */
+export function budgetDurableConfigured(c: BudgetBindingConfig): boolean {
+  return Boolean(c.enabled) && Boolean(c.storeBindingRef) && Boolean(c.projectId) &&
+    c.leaseTtlMs > 0 && c.maxControlStalenessMs > 0 && c.controlPollIntervalMs > 0 &&
+    c.maxControlStalenessMs <= c.leaseTtlMs;
 }
 
 /** A non-secret config summary safe to log. NEVER includes any secret value. */

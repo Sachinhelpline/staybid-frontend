@@ -402,11 +402,44 @@ export interface LiveAiGatewayContext {
   /** R2-13/R3-13 — the atomic budget authority (null ⇒ every provider path, including
    *  the realtime transcription negotiation, fails closed). */
   budget: BudgetAuthority | null;
+  /** LIVE-AI-BUDGET-01 (dormant seam) — the DPBEL budget core (null ⇒ dormant). */
+  budgetCore: LiveAiBudgetCoreSeam | null;
   runtime: GatewayRuntime;
   limits: LiveAiLimits;
   controlTokenMaxAgeMs: number;
   now: () => number;
 }
+// ── LIVE-AI-BUDGET-01 (dormant seam) — the minimal structural surface of the DPBEL
+//    budget core the gateway wires. Declared INLINE (no module import) so the fixed
+//    file-list gateway compiles are unaffected; the real `createBudgetCore(...)` value
+//    satisfies it structurally. Default = null ⇒ dormant (every path fails closed).
+export interface LiveAiBudgetPrepareRequest {
+  readonly gatewaySessionId: string;
+  readonly subjectDigest: string;
+  readonly projectId: string;
+  readonly acquisitionKey: string;
+  readonly maxControlStalenessMs: number;
+  readonly leaseTtlMs: number;
+  readonly amounts: { readonly moneyMicros: bigint; readonly providerCalls: bigint; readonly executionAdmissions: bigint };
+}
+export interface LiveAiBudgetCoreSeam {
+  prepareProviderLease(req: LiveAiBudgetPrepareRequest): Promise<{ readonly ok: boolean; readonly reason?: string }>;
+  prepareExecutionLease(req: LiveAiBudgetPrepareRequest): Promise<{ readonly ok: boolean; readonly reason?: string }>;
+  /** P1-01 5A — async persist barrier: durably persist a pending provider child BEFORE the
+   *  provider invocation; false ⇒ the caller MUST NOT invoke the provider (fail closed). */
+  persistProviderReservation(gatewaySessionId: string, providerTurnId: string): Promise<boolean>;
+  /** P0-01B — async POST-SETTLEMENT barrier: durably flush the settlement/revocation AFTER
+   *  the local settle; false ⇒ unresolved (local lease left fail-closed). */
+  persistProviderSettlement(gatewaySessionId: string, providerTurnId: string): Promise<boolean>;
+  reconcileSession(gatewaySessionId: string, opts?: { readonly crash?: boolean }): Promise<void>;
+  revokeSession(gatewaySessionId: string, reason: string): void;
+  /** P0-01 — authoritative durable revoke (local + durable envelope) so a process-loss replay is refused. */
+  revokeSessionDurable(gatewaySessionId: string, reason: string): Promise<void>;
+  providerSpendAuthority(binding: { providerSpendClass: "REASONING" | "TRANSCRIPTION" | "TTS"; gatewaySessionId: string; providerTurnId: string }): BudgetAuthority;
+  executionAdmissionGate(gatewaySessionId: string): { admit(input: unknown): { decision: "ADMITTED" | "REFUSED" | "UNAVAILABLE"; budgetAdmissionRef?: string } };
+  stop(): void;
+}
+
 export interface BuildLiveAiDeps {
   env: GatewayEnv;
   now?: () => number;
@@ -421,6 +454,12 @@ export interface BuildLiveAiDeps {
    *  injects no budget) NEVER constructs a spend-capable adapter and the provider path
    *  fails closed. Tests inject a bounded in-memory authority to exercise the path. */
   budget?: BudgetAuthority | null;
+  /** LIVE-AI-BUDGET-01 (dormant seam) — the DPBEL budget core. Default null ⇒ dormant.
+   *  When wired, the async lease-preparation seam (prepareLiveAiProviderLease /
+   *  prepareLiveAiExecutionLease) installs leases + starts the control watcher, and the
+   *  orchestrator obtains call-bound PROVIDER_SPEND facades from it. No provider is
+   *  enabled by this seam — a real provider still requires the existing fail-closed barrier. */
+  budgetCore?: LiveAiBudgetCoreSeam | null;
 }
 /** REV-13 — bounded per-provider-call deadline (ms) for reasoning/TTS. */
 export const LIVE_AI_PROVIDER_DEADLINE_MS = 20_000;
@@ -476,6 +515,9 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
   // adapters (fakes) still win and need no key/budget. `budget` flows to the
   // orchestrator so its reserve→call→settle path is honoured for every provider call.
   const budget: BudgetAuthority | null = deps.budget || null;
+  // LIVE-AI-BUDGET-01 (dormant seam) — the DPBEL core, if wired. Default null ⇒ dormant;
+  // its presence NEVER activates a provider (the fail-closed key barrier below is unchanged).
+  const budgetCore: LiveAiBudgetCoreSeam | null = deps.budgetCore || null;
   const rawKey = typeof deps.env.OPENAI_API_KEY === "string" && deps.env.OPENAI_API_KEY.trim() ? deps.env.OPENAI_API_KEY : null;
   const apiKey = (liveAiProviderConfigured(config) && budget) ? rawKey : null;
   const reasoningCall = apiKey ? createDefaultReasoningCall(apiKey) : null;
@@ -490,6 +532,7 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
     tts,
     store,               // R2-05/R2-07/R2-08 — proposal registry + pending-plan state
     budget,              // R2-13 — atomic budget authority (null ⇒ provider fails closed)
+    budgetCore,          // LIVE-AI-BUDGET-01 (dormant) — call-bound facades when wired
     now,
     deadlineMs: LIVE_AI_PROVIDER_DEADLINE_MS, // REV-13 per-provider-call deadline
     setTimer: deps.timers ? (fn, ms) => deps.timers!.set(fn, ms) : undefined,
@@ -505,11 +548,35 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
     orchestrator,
     transcription,
     budget,                // R3-13 — reserve→settle the realtime negotiation (null ⇒ fail closed)
+    budgetCore,            // LIVE-AI-BUDGET-01 (dormant) — DPBEL core (null ⇒ dormant)
     runtime: { killed: false },
     limits,
     controlTokenMaxAgeMs: full.limits.controlTokenMaxAgeMs,
     now,
   };
+}
+
+// ── LIVE-AI-BUDGET-01 (dormant) — async lease-preparation + reconciliation seam ──
+// The ONLY places a durable budget envelope is acquired / reconciled / revoked. Each is
+// a NO-OP when the budget core is dormant (null), so a default production build never
+// touches a store, mints a lease, or enables any provider. The control watcher lifecycle
+// is owned by the core (started at prepare, stopped at reconcile).
+export async function prepareLiveAiProviderLease(ctx: LiveAiGatewayContext, req: LiveAiBudgetPrepareRequest): Promise<{ ok: boolean; reason?: string }> {
+  if (!ctx.budgetCore) return { ok: false, reason: "dormant" };
+  try { return await ctx.budgetCore.prepareProviderLease(req); } catch { return { ok: false, reason: "prepare_error" }; }
+}
+export async function prepareLiveAiExecutionLease(ctx: LiveAiGatewayContext, req: LiveAiBudgetPrepareRequest): Promise<{ ok: boolean; reason?: string }> {
+  if (!ctx.budgetCore) return { ok: false, reason: "dormant" };
+  try { return await ctx.budgetCore.prepareExecutionLease(req); } catch { return { ok: false, reason: "prepare_error" }; }
+}
+export async function reconcileLiveAiBudget(ctx: LiveAiGatewayContext, gatewaySessionId: string, opts?: { crash?: boolean }): Promise<void> {
+  if (!ctx.budgetCore) return;
+  try { await ctx.budgetCore.reconcileSession(gatewaySessionId, opts); } catch { /* best-effort; a failed reconcile leaves the envelope held (conservative) */ }
+}
+export async function revokeLiveAiBudget(ctx: LiveAiGatewayContext, gatewaySessionId: string, reason: string): Promise<void> {
+  if (!ctx.budgetCore) return;
+  // P0-01 — authoritative durable revoke (local + durable envelope) so a process-loss replay is refused.
+  try { await ctx.budgetCore.revokeSessionDurable(gatewaySessionId, reason); } catch { /* local stays revoked */ }
 }
 
 export async function handleLiveAiSessionCreate(ctx: LiveAiGatewayContext, input: SessionCreateInput): Promise<HandlerResult> {
@@ -557,18 +624,34 @@ export async function handleLiveAiSessionCreate(ctx: LiveAiGatewayContext, input
     expiresInSeconds: Math.floor(ctx.controlTokenMaxAgeMs / 1000),
   };
   if (body.mode === "microphone") {
-    // R3-13 — reserve budget BEFORE the realtime provider negotiation (reserve→call→
-    // settle). No budget authority ⇒ REFUSED (fail closed) — the SAME activation barrier
-    // as reasoning/TTS: a billable realtime call is never negotiated without a live
-    // reservation. Realtime negotiation surfaces no discrete per-call usage figure, so
-    // the reservation is RETAINED (settle null) after the call, never a fabricated actual.
-    const budget = ctx.budget;
+    // R3-13 / P1-02 D — reserve budget BEFORE the realtime provider negotiation (reserve→
+    // call→settle). Realtime transcription MUST NOT bypass BUDGET-01: when the DPBEL core
+    // is wired, the reservation is taken through the CALL-BOUND PROVIDER_SPEND
+    // (TRANSCRIPTION) facade — a GATEWAY-OWNED providerTurnId (never caller-chosen) —
+    // otherwise the legacy atomic budget authority. No authority ⇒ REFUSED (fail closed):
+    // the SAME activation barrier as reasoning/TTS; a billable realtime call is never
+    // negotiated without a live reservation. Realtime negotiation surfaces no discrete
+    // per-call usage figure, so the reservation is RETAINED (settle null), never fabricated.
+    const micProviderTurnId = `${session.gatewaySessionId}:mic`;
+    const budget: BudgetAuthority | null = ctx.budgetCore
+      ? ctx.budgetCore.providerSpendAuthority({ providerSpendClass: "TRANSCRIPTION", gatewaySessionId: session.gatewaySessionId, providerTurnId: micProviderTurnId })
+      : ctx.budget;
     if (!budget) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
     let rres: string | null = null;
     try { rres = budget.reserve(session.gatewaySessionId, RESERVE_TRANSCRIPTION_UNITS); } catch { rres = null; }
     if (rres === null) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
+    // P1-01 5A — durably persist the provider child BEFORE the realtime negotiation; a
+    // persistence failure/ambiguity ⇒ NO provider invocation (fail closed).
+    if (ctx.budgetCore) {
+      let persisted = false;
+      try { persisted = await ctx.budgetCore.persistProviderReservation(session.gatewaySessionId, micProviderTurnId); } catch { persisted = false; }
+      if (!persisted) { try { budget.settle(rres, null); } catch { /* conservative retention */ } ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
+    }
     const neg = await ctx.transcription.negotiate(body.sdp, { signal: session.abort.signal, deadlineMs: LIVE_AI_PROVIDER_DEADLINE_MS });
     try { budget.settle(rres, null); } catch { /* conservative retention */ }
+    // P0-01B — durable POST-SETTLEMENT barrier for the realtime transcription call (fail-closed
+    // inside the core: an unresolved settlement leaves the lease revoked, no fresh authority).
+    if (ctx.budgetCore) { try { await ctx.budgetCore.persistProviderSettlement(session.gatewaySessionId, micProviderTurnId); } catch { /* core fails closed */ } }
     if (!neg.ok) { ctx.store.terminate(session, "closed"); return { status: 503, body: { error: "realtime_unavailable" } }; }
     // R5C — mic-negotiation SUCCESS begins the INDEPENDENT server capture segment
     // (identity = the trusted authenticated subject + this gateway session). The ledger
