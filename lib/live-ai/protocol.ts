@@ -920,6 +920,84 @@ const TURN_ERROR_CODES: readonly TurnErrorCode[] = Object.freeze([
 export interface PcmFormat { encoding: "pcm16"; sampleRate: 24000; channels: 1 }
 export const FIXED_PCM_FORMAT: Readonly<PcmFormat> = Object.freeze({ encoding: "pcm16", sampleRate: 24000, channels: 1 });
 
+// ── LIVE-AI-03B — compiled-answer envelope (IC02) carried over the wire ──────
+// A STRUCTURAL mirror of the IC02 CompiledAnswerEnvelope for the `answer.compiled` frame.
+// This validator proves ONLY the wire shape/bounds; the AUTHORITATIVE verification (versions,
+// semanticHash, deterministic rerender == canonicalText, textHash, stale-binding) is performed
+// by the browser-safe consumer (lib/live-ai/compiled-answer-consumer.ts). A malformed shape is
+// dropped here; a well-formed but TAMPERED envelope is rejected by the consumer.
+export interface CompiledAnswerBinding {
+  sessionId: string; turnId: string; generation: number; pageId: "hotels" | "hotel-detail";
+  role: "anonymous" | "customer"; routeEpoch: number; contextRevision: string; authorityRef: string; contextDigest: string;
+}
+export interface CompiledAnswerEnvelope {
+  contractVersion: string; compilerVersion: string; templateCatalogVersion: string;
+  answerId: string; planId: string; binding: CompiledAnswerBinding;
+  compiledOutcome: string; disposition: "IC02_ACCEPTED"; language: LiveAiLanguage;
+  semanticAtoms: readonly unknown[]; evidenceCommitments: readonly unknown[];
+  canonicalText: string; semanticHash: string; textHash: string;
+}
+const COMPILED_ENVELOPE_KEYS: readonly string[] = Object.freeze([
+  "contractVersion", "compilerVersion", "templateCatalogVersion", "answerId", "planId", "binding",
+  "compiledOutcome", "disposition", "language", "semanticAtoms", "evidenceCommitments", "canonicalText", "semanticHash", "textHash",
+]);
+const COMPILED_BINDING_KEYS: readonly string[] = Object.freeze([
+  "sessionId", "turnId", "generation", "pageId", "role", "routeEpoch", "contextRevision", "authorityRef", "contextDigest",
+]);
+const IC02_MAX_CANONICAL_TEXT_BYTES = 4000;
+const IC02_MAX_SEMANTIC_ATOMS = 28;   // IC02_MAX_RESPONSE_CLAIMS(8)*3 + 4
+const IC02_MAX_EVIDENCE_RECORDS = 8;
+function exactOwnKeys(x: unknown, allowed: readonly string[]): Record<string, unknown> | null {
+  if (!x || typeof x !== "object" || Array.isArray(x)) return null;
+  const keys = Object.keys(x as Record<string, unknown>);
+  if (keys.length !== allowed.length) return null;
+  for (const k of allowed) if (!Object.prototype.hasOwnProperty.call(x, k)) return null;
+  return x as Record<string, unknown>;
+}
+function validateCompiledBinding(x: unknown): CompiledAnswerBinding | null {
+  const a = exactOwnKeys(x, COMPILED_BINDING_KEYS);
+  if (!a) return null;
+  if (!isValidId(a.sessionId) || !isValidId(a.turnId) || !isValidId(a.authorityRef)) return null;
+  if (!isEpoch(a.generation) || !isEpoch(a.routeEpoch)) return null;
+  if (a.pageId !== "hotels" && a.pageId !== "hotel-detail") return null;
+  if (a.role !== "anonymous" && a.role !== "customer") return null;
+  if (!isContextRevision(a.contextRevision)) return null;
+  if (typeof a.contextDigest !== "string" || !HEX64_RE.test(a.contextDigest)) return null;
+  return Object.freeze({
+    sessionId: a.sessionId as string, turnId: a.turnId as string, generation: a.generation as number,
+    pageId: a.pageId as "hotels" | "hotel-detail", role: a.role as "anonymous" | "customer",
+    routeEpoch: a.routeEpoch as number, contextRevision: a.contextRevision as string,
+    authorityRef: a.authorityRef as string, contextDigest: a.contextDigest as string,
+  });
+}
+export function validateCompiledAnswerEnvelope(x: unknown): CompiledAnswerEnvelope | null {
+  try {
+    const a = exactOwnKeys(x, COMPILED_ENVELOPE_KEYS);
+    if (!a) return null;
+    if (typeof a.contractVersion !== "string" || !a.contractVersion) return null;
+    if (typeof a.compilerVersion !== "string" || !a.compilerVersion) return null;
+    if (typeof a.templateCatalogVersion !== "string" || !a.templateCatalogVersion) return null;
+    if (!isValidId(a.answerId) || !isValidId(a.planId)) return null;
+    const binding = validateCompiledBinding(a.binding);
+    if (!binding) return null;
+    if (typeof a.compiledOutcome !== "string" || !a.compiledOutcome) return null;
+    if (a.disposition !== "IC02_ACCEPTED") return null;
+    if (!isLiveAiLanguage(a.language)) return null;
+    if (!Array.isArray(a.semanticAtoms) || a.semanticAtoms.length < 1 || a.semanticAtoms.length > IC02_MAX_SEMANTIC_ATOMS) return null;
+    if (!Array.isArray(a.evidenceCommitments) || a.evidenceCommitments.length > IC02_MAX_EVIDENCE_RECORDS) return null;
+    if (boundedText(a.canonicalText, IC02_MAX_CANONICAL_TEXT_BYTES) === null) return null;
+    if (typeof a.semanticHash !== "string" || !HEX64_RE.test(a.semanticHash)) return null;
+    if (typeof a.textHash !== "string" || !HEX64_RE.test(a.textHash)) return null;
+    return Object.freeze({
+      contractVersion: a.contractVersion, compilerVersion: a.compilerVersion, templateCatalogVersion: a.templateCatalogVersion,
+      answerId: a.answerId as string, planId: a.planId as string, binding,
+      compiledOutcome: a.compiledOutcome, disposition: "IC02_ACCEPTED", language: a.language as LiveAiLanguage,
+      semanticAtoms: Object.freeze(a.semanticAtoms.slice()), evidenceCommitments: Object.freeze(a.evidenceCommitments.slice()),
+      canonicalText: a.canonicalText as string, semanticHash: a.semanticHash as string, textHash: a.textHash as string,
+    });
+  } catch { return null; }
+}
+
 export type ServerFrame =
   | { t: "connection.ready"; sessionId: string; gatewaySessionId: string }
   | { t: "context.ack"; sessionId: string; turnId: string; generation: number; routeEpoch: number; contextRevision: string; authorityRef: string }
@@ -937,6 +1015,8 @@ export type ServerFrame =
   // copied / fabricated ACK-shaped frame (wrong or absent commitment) never promotes.
   | { t: "action.receipt.ack"; sessionId: string; turnId: string; generation: number; receiptId: string; proposalId: string; outcome: ReceiptOutcome; closed: boolean; commitment: string }
   | { t: "answer.plan"; sessionId: string; turnId: string; generation: number; authorityRef: string; plan: AnswerPlan }
+  // LIVE-AI-03B — the compiled IC02 answer envelope (the ONLY rendered 03B answer path).
+  | { t: "answer.compiled"; sessionId: string; turnId: string; generation: number; authorityRef: string; envelope: CompiledAnswerEnvelope }
   | { t: "audio.start"; sessionId: string; turnId: string; generation: number; planId: string; audioId: string; format: PcmFormat }
   | { t: "audio.chunk"; sessionId: string; turnId: string; generation: number; audioId: string; seq: number; bytes: string }
   | { t: "audio.end"; sessionId: string; turnId: string; generation: number; audioId: string; finalSeq: number }
@@ -953,6 +1033,7 @@ const SERVER_FRAME_KEYS: Readonly<Record<ServerFrame["t"], readonly string[]>> =
   "action.proposal": ["t", "sessionId", "turnId", "generation", "authorityRef", "executionNonce", "receiptId", "proposal"],
   "action.receipt.ack": ["t", "sessionId", "turnId", "generation", "receiptId", "proposalId", "outcome", "closed", "commitment"],
   "answer.plan": ["t", "sessionId", "turnId", "generation", "authorityRef", "plan"],
+  "answer.compiled": ["t", "sessionId", "turnId", "generation", "authorityRef", "envelope"],
   "audio.start": ["t", "sessionId", "turnId", "generation", "planId", "audioId", "format"],
   "audio.chunk": ["t", "sessionId", "turnId", "generation", "audioId", "seq", "bytes"],
   "audio.end": ["t", "sessionId", "turnId", "generation", "audioId", "finalSeq"],
@@ -1042,6 +1123,13 @@ export function validateServerFrame(x: unknown): ServerFrame | null {
       const plan = validateAnswerPlan(a.plan);
       if (!plan) return null;
       return Object.freeze({ t, ...c, authorityRef: a.authorityRef as string, plan });
+    }
+    case "answer.compiled": {
+      const c = readCorrelation(a);
+      if (!c || !isValidId(a.authorityRef)) return null;
+      const envelope = validateCompiledAnswerEnvelope(a.envelope);
+      if (!envelope) return null;
+      return Object.freeze({ t, ...c, authorityRef: a.authorityRef as string, envelope });
     }
     case "audio.start": {
       const c = readCorrelation(a);

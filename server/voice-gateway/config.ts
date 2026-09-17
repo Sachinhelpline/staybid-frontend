@@ -118,6 +118,16 @@ export interface LiveAiConfig {
   sttModel: string;
   reasoningModel: string;
   ttsModel: string;
+  // LIVE-AI-03B staging text (SOURCE gate only; default OFF / empty — a STANDALONE gate,
+  // deliberately NOT coupled to the V/P/R/B or provider/TTS gates). The 03B staging text
+  // route is unreachable by default production configuration.
+  stagingTextEnabled: boolean;          // LIVE_AI_03B_STAGING_TEXT_ENABLED === "1"
+  stagingSubjectAllowlist: string[];    // LIVE_AI_03B_STAGING_SUBJECT_ALLOWLIST (default [])
+  /** P1-03 — the FIRST BILLABLE PROBE one-call mode. When ON, the 03B controller's
+   *  provider-call ceiling is 1 (one internal subject, one text turn, at most ONE
+   *  authenticated provider call). Default OFF ⇒ the normal accepted IC01 bounded
+   *  model-attempt ceiling. Configuration only; never browser/model/user controlled. */
+  stagingFirstProbeOneCall: boolean;    // LIVE_AI_03B_FIRST_PROBE_ONE_CALL === "1" (default OFF)
 }
 
 function resolveLiveAiModel(raw: string | undefined, allowed: string): string {
@@ -141,7 +151,44 @@ export function loadLiveAiConfig(env: GatewayEnv): LiveAiConfig {
     sttModel: resolveLiveAiModel(env.LIVE_AI_STT_MODEL, LIVE_AI_STT_MODEL),
     reasoningModel: resolveLiveAiModel(env.LIVE_AI_REASONING_MODEL, LIVE_AI_REASONING_MODEL),
     ttsModel: resolveLiveAiModel(env.LIVE_AI_TTS_MODEL, LIVE_AI_TTS_MODEL),
+    stagingTextEnabled: exactlyOne(env.LIVE_AI_03B_STAGING_TEXT_ENABLED),
+    stagingSubjectAllowlist: parseSubjectAllowlist(env.LIVE_AI_03B_STAGING_SUBJECT_ALLOWLIST),
+    stagingFirstProbeOneCall: exactlyOne(env.LIVE_AI_03B_FIRST_PROBE_ONE_CALL),
   };
+}
+
+/** LIVE-AI-03B — parse an internal subject allowlist (CSV/whitespace). Default EMPTY.
+ *  NOT a URL list; entries are opaque trusted subject digests/ids. */
+function parseSubjectAllowlist(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const out: string[] = [];
+  for (const piece of raw.split(/[,\s]+/)) {
+    const t = piece.trim();
+    if (t) out.push(t);
+  }
+  return Array.from(new Set(out));
+}
+
+/** P1-02 — the prerequisites TRULY necessary for the 03B TEXT reasoning route: a server-side
+ *  provider credential + the EXACT allowed reasoning model ONLY. 03B is TEXT ONLY, so it
+ *  deliberately does NOT require STT/TTS/audio configuration — the broad voice provider gate
+ *  (liveAiProviderConfigured) must never make the text route unavailable because an unrelated
+ *  STT/TTS model is absent or mismatched. Fail-closed: no key or a mismatching reasoning model
+ *  (reasoningModel === "") ⇒ false. */
+export function liveAi03bTextProviderConfigured(c: LiveAiConfig): boolean {
+  return Boolean(c.openaiApiKeyPresent && c.reasoningModel);
+}
+
+/** Fail-closed: the LIVE-AI-03B staging TEXT route is reachable ONLY when its own gate is
+ *  ON, a non-empty subject allowlist is configured, AND the exact 03B TEXT provider
+ *  prerequisites are satisfied (reasoning-only — NOT the STT/TTS voice gate, P1-02).
+ *  A per-request subject-membership check is still applied by the controller. Default OFF. */
+export function liveAi03bStagingTextConfigured(c: LiveAiConfig): boolean {
+  return Boolean(c.stagingTextEnabled && c.stagingSubjectAllowlist.length > 0 && liveAi03bTextProviderConfigured(c));
+}
+/** Per-request subject gate for the 03B staging text route (exact allowlist membership). */
+export function liveAi03bStagingSubjectAllowed(c: LiveAiConfig, subjectDigest: string): boolean {
+  return liveAi03bStagingTextConfigured(c) && typeof subjectDigest === "string" && subjectDigest.length > 0 && c.stagingSubjectAllowlist.indexOf(subjectDigest) !== -1;
 }
 
 /** Fail-closed: the Live-AI provider is reachable only with a key + all three models. */
@@ -400,6 +447,11 @@ export function safeConfigSummary(c: GatewayConfig): Record<string, unknown> {
       sttModel: c.liveAi.sttModel,
       reasoningModel: c.liveAi.reasoningModel,
       ttsModel: c.liveAi.ttsModel,
+      stagingTextEnabled: c.liveAi.stagingTextEnabled,
+      stagingSubjectAllowlistCount: c.liveAi.stagingSubjectAllowlist.length,
+      textProviderConfigured: liveAi03bTextProviderConfigured(c.liveAi),
+      stagingTextConfigured: liveAi03bStagingTextConfigured(c.liveAi),
+      stagingFirstProbeOneCall: c.liveAi.stagingFirstProbeOneCall,
     },
   };
 }

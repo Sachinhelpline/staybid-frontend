@@ -36,12 +36,16 @@ import {
   type ResultAuthority,
   type ProviderProposal,
   type AnswerPlan,
+  type CompiledAnswerEnvelope,
   type PublishedContext,
   type InterruptReason,
   type LiveAiLanguage,
 } from "./protocol";
 import type { LiveAiStatus } from "./runtime";
 import type { LiveAiOperationName } from "./contracts";
+// LIVE-AI-03B — the browser-safe compiled-answer verifier (IC02 parity). ONLY verified
+// canonicalText may render; raw provider output / legacy answer.plan never becomes a 03B answer.
+import { verifyCompiledAnswer, type ConsumerBinding } from "./compiled-answer-consumer";
 
 export type ConversationState =
   | "DISCONNECTED" | "CONNECTING" | "IDLE" | "LISTENING" | "TRANSCRIBING"
@@ -370,6 +374,10 @@ export function createConversation(deps: ConversationDeps): Conversation {
       case "answer.plan":
         if (isStale(frame.turnId, frame.generation)) return;
         handleAnswerPlan(frame.authorityRef, frame.plan);
+        return;
+      case "answer.compiled":
+        if (isStale(frame.turnId, frame.generation)) return;
+        handleCompiledAnswer(frame.authorityRef, frame.envelope);
         return;
       case "audio.start":
         if (isStale(frame.turnId, frame.generation)) return;
@@ -764,6 +772,51 @@ export function createConversation(deps: ConversationDeps): Conversation {
       }
     }
     // Audio (if any) arrives as audio.* frames; state moves to SPEAKING then IDLE.
+    touch();
+  }
+
+  // ── LIVE-AI-03B — compiled answer → browser-verified deterministic render ───
+  // The compiled IC02 envelope is the ONLY rendered 03B answer path (legacy answer.plan is
+  // NOT accepted here). ONLY the byte-verified canonicalText enters visible UI: the envelope
+  // must pass full IC02 integrity (versions, semanticHash, deterministic rerender, textHash,
+  // producer invariants) AND be bound to the CURRENT authority/turn (stale/foreign → dropped).
+  // Raw provider output can never reach the UI — nothing here trusts a supplied hash or text.
+  // P1-05 — the CURRENT trusted browser binding, built ENTIRELY from already-authoritative
+  // runtime + context-ACK state (never from the envelope). All nine accepted binding fields;
+  // contextRevision and contextDigest are both the full-content digest of the CURRENT validated
+  // published context (this protocol's revision === digest), so a late context change rejects.
+  function currentTrustedBinding(): ConsumerBinding | null {
+    const turnId = runtime.getCurrentTurnId();
+    if (!ackAuthorityRef || !turnId) return null;
+    const ctx = runtime.publishedContext();
+    const validated = ctx ? validatePublishedContext(ctx as unknown) : null;
+    if (!validated) return null;
+    const rev = deriveRevision(validated);
+    return {
+      sessionId: runtime.sessionId,
+      turnId,
+      generation,
+      pageId: validated.pageId,
+      role: validated.role,
+      routeEpoch: runtime.getRouteEpoch(),
+      contextRevision: rev,
+      authorityRef: ackAuthorityRef,
+      contextDigest: rev,
+    };
+  }
+  function handleCompiledAnswer(authorityRef: string, envelope: CompiledAnswerEnvelope) {
+    // P1-05 — construct the full CURRENT trusted binding and verify the envelope against it with the
+    // COMPLETE-binding consumer (verifyCompiledAnswer). Every binding-field mismatch rejects; there is
+    // NO parallel weaker manual comparison. Only the returned verified canonicalText may render.
+    const cur = currentTrustedBinding();
+    if (!cur) return;                                  // no coherent current authority → reject
+    if (authorityRef !== cur.authorityRef) return;     // the frame's authorityRef must be current too
+    const verified = verifyCompiledAnswer(envelope, cur);
+    if (!verified.ok) return;                          // stale/foreign binding OR unverified envelope → never render
+    const text = verified.canonicalText;
+    lastAnswer = text;
+    pushMemory("assistant", text);
+    emit({ type: "answer", text });
     touch();
   }
 

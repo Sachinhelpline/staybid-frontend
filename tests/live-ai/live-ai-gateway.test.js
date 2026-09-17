@@ -5546,11 +5546,24 @@ function fakeBudget(cap) {
           ok(!/from\s+["']\.\/(index|live-ai-orchestrator|live-ai-control-socket|live-ai-sessions|router|reasoning-adapter|config|auth|openai-)/.test(src), `IC01-D05 — ${f} imports NO production gateway module`);
           ok(!/setTimeout|setInterval/.test(src), `IC01-D05 — ${f} creates no timers`);
         });
-        ["index.ts", "live-ai-orchestrator.ts", "live-ai-control-socket.ts", "live-ai-sessions.ts", "reasoning-adapter.ts", "router.ts"].forEach((f) => {
+        // LIVE-AI-03B (P1-01): index.ts is now the ONE sanctioned bootstrap seam that wires the
+        // 03B controller (IC01 agent-loop + the compiled-answer controller) BEHIND the default-OFF
+        // staging gate — it is intentionally EXCLUDED from the "no IC01 import" invariant. Every
+        // OTHER legacy production module must still never import the IC01 foundation.
+        ["live-ai-orchestrator.ts", "live-ai-control-socket.ts", "live-ai-sessions.ts", "reasoning-adapter.ts", "router.ts"].forEach((f) => {
           let src = null; try { src = srcOf(f); } catch (_) { src = null; }
           if (src !== null) ok(!/live-ai-intelligence-contract|live-ai-capability-registry|live-ai-agent-loop/.test(src), `IC01-D06 — production module ${f} does NOT import the IC01 foundation`);
           else ok(true, `IC01-D06 — ${f} not present`);
         });
+        {
+          // index.ts wires the 03B controller, but ONLY behind the staging subject-allowlist gate
+          // (dormant by default configuration — proven by the 03B suite's dormancy section).
+          let idx = null; try { idx = srcOf("index.ts"); } catch (_) { idx = null; }
+          if (idx !== null) {
+            ok(/live-ai-03b-controller/.test(idx), "IC01-D06b — index.ts wires the 03B controller seam (P1-01)");
+            ok(/liveAi03bStagingSubjectAllowed/.test(idx), "IC01-D06c — index.ts routes 03B ONLY behind the staging subject-allowlist gate");
+          } else ok(true, "IC01-D06b — index.ts not present");
+        }
         {
           const g = globalThis;
           const savedFetch = g.fetch, savedST = g.setTimeout, savedSI = g.setInterval;
