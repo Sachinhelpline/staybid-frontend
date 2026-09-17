@@ -28,6 +28,11 @@ export function makeLiveAiEmit(socket: GatewaySocket): Emit {
   };
 }
 
+// LIVE-AI-03B (P1-06) — the browser's action.accepted for a 03B-owned lifecycle, held until its
+// terminal action.receipt so both reach controller.resumeWithObservation together. Per-session,
+// GC'd with the session; never used for legacy-owned turns.
+const accepted03bBySession = new WeakMap<LiveAiSession, unknown>();
+
 const SUBPROTO_TOKEN_RE = /^sbt\.(.+)$/;
 function extractControlToken(subprotocol: unknown): string | null {
   if (typeof subprotocol !== "string" || !subprotocol) return null;
@@ -67,6 +72,20 @@ export interface ControlFrameDeps {
   runTurn: (session: LiveAiSession, input: { turnId: string; generation: number; transcript: string; language: "hi" | "hinglish" | "en"; context: unknown; phase?: "initial" | "followup" }) => Promise<void>;
   /** R2-08 — voice an APPROVED plan (the ONLY entry point into TTS). */
   runTts?: (session: LiveAiSession, plan: { planId: string; turnId: string; generation: number; ttsText: string; language: "hi" | "hinglish" | "en"; authorityRef: string }) => Promise<void>;
+  /** LIVE-AI-03B — the OPTIONAL staging-text route. When present (staging gate ON + subject
+   *  allowlisted), a turn.text is driven through the 03B controller (IC01 → provider/03A →
+   *  IC02 compiled envelope), NOT the legacy orchestrator. Absent by default (production
+   *  dormancy) ⇒ the legacy runTurn path is byte-identical. */
+  run03bTextTurn?: (session: LiveAiSession, input: { turnId: string; generation: number; transcript: string; language: "hi" | "hinglish" | "en"; context: unknown }) => Promise<void>;
+  /** LIVE-AI-03B (P1-06) — route a RETAINED, capability-suspended 03B turn's acceptance (Stage 2) +
+   *  terminal receipt (Stage 3) through the RELEASED 03A on the SAME controller. Present only alongside
+   *  run03bTextTurn. `accept03bAction` fires acceptAction on action.accepted; `resume03bObservation`
+   *  fires deliverTerminal on the terminal action.receipt. */
+  has03bLifecycle?: (session: LiveAiSession) => boolean;
+  accept03bAction?: (session: LiveAiSession, accepted: unknown) => Promise<boolean>;
+  resume03bObservation?: (session: LiveAiSession, receipt: unknown) => Promise<boolean>;
+  /** LIVE-AI-03B (P1-07) — interrupt + tear down the active 03B lifecycle (abort provider, revoke). */
+  interrupt03b?: (session: LiveAiSession, reason: string) => Promise<boolean>;
   /** R5C — the independent server capture ledger. An interruption / reset FINALIZES the
    *  session's active capture segment (charging the actual server-measured elapsed);
    *  session.end finalizes via store.terminate → the store's onTerminate hook. */
@@ -131,10 +150,28 @@ export function handleLiveAiControlFrame(deps: ControlFrameDeps & { raw: unknown
       session.abort = new AbortController();
       store.clearPendingPlan(session);
       session.pendingTurn = null;
+      // LIVE-AI-03B — when the staging-text seam is injected (gate ON + subject allowlisted),
+      // route through the 03B controller instead of the legacy orchestrator (§23). Dormant by
+      // default: with no seam this is exactly the pre-existing legacy path.
+      if (deps.run03bTextTurn) {
+        void deps.run03bTextTurn(session, { turnId: frame.turnId as string, generation: frame.generation, transcript: frame.payload.text as string, language, context: session.lastContext });
+        return "turn_03b";
+      }
       void deps.runTurn(session, { turnId: frame.turnId as string, generation: frame.generation, transcript: frame.payload.text as string, language, context: session.lastContext, phase: "initial" });
       return "turn";
     }
     case "action.accepted": {
+      // LIVE-AI-03B (P1-06, Stage 2) — a 03B-owned capability lifecycle owns this acceptance: validate it
+      // and route it IMMEDIATELY through the RELEASED 03A (ExecutionSafety.acceptAction) on the retained
+      // controller. 03A acknowledges the dispatch on the SAME loop internally; the turn stays awaiting the
+      // terminal receipt. (Also mirror it into the per-session slot for teardown symmetry.)
+      if (deps.has03bLifecycle?.(session)) {
+        const acc03b = validateActionAccepted(frame.payload.accepted);
+        if (!acc03b) return "accepted_invalid";
+        accepted03bBySession.set(session, acc03b);
+        if (deps.accept03bAction) void deps.accept03bAction(session, acc03b);
+        return "accepted_03b";
+      }
       // R3-05 — the browser announces it accepted a proposal + minted the actionId.
       // Validate the announcement strictly, then BIND the actionId to the pending
       // proposal under the CURRENT authority + full tuple (proposalId + providerTurnId +
@@ -156,6 +193,16 @@ export function handleLiveAiControlFrame(deps: ControlFrameDeps & { raw: unknown
       return bound ? "accepted" : "accepted_uncorrelated";
     }
     case "action.receipt": {
+      // LIVE-AI-03B (P1-06) — a 03B-owned capability lifecycle owns this terminal observation: route
+      // the (held accepted + this receipt) to the SAME retained controller via resumeWithObservation.
+      // It NEVER enters the legacy proposal/receipt lifecycle (no double authority owner).
+      if (deps.has03bLifecycle?.(session) && deps.resume03bObservation) {
+        const receipt03b = validateActionReceipt(frame.payload.receipt);
+        if (!receipt03b) return "receipt_invalid";
+        accepted03bBySession.delete(session);            // acceptance already routed through 03A at action.accepted (Stage 2)
+        void deps.resume03bObservation(session, receipt03b);
+        return "receipt_03b";
+      }
       // R5B — the FULL receipt lifecycle. A receipt is correlated on every identity field
       // (proposalId + the GATEWAY-minted receiptId + providerTurnId + executionNonce + operation +
       // source authority + the EXACT bound actionId); a `verified` outcome additionally requires
@@ -271,6 +318,8 @@ export function handleLiveAiControlFrame(deps: ControlFrameDeps & { raw: unknown
       // speech can never be voiced).
       try { session.abort.abort(); } catch { /* no-op */ }
       session.abort = new AbortController(); // reset for the next turn
+      // LIVE-AI-03B (P1-07) — tear down any active 03B lifecycle (abort provider fetch, revoke authority).
+      void deps.interrupt03b?.(session, (frame.payload.reason as string) || "interrupt");
       // R5B-REV-04 — an AUTHORIZED OPEN route transition (a `route_change` interrupt) must NOT clear the
       // OPEN's pending follow-up turn — the terminal verified OPEN explanation depends on it arriving after
       // the navigation. Preserve the pending turn ONLY when the reason is route_change AND the pending turn
@@ -296,6 +345,8 @@ export function handleLiveAiControlFrame(deps: ControlFrameDeps & { raw: unknown
     case "session.reset": {
       try { session.abort.abort(); } catch { /* no-op */ }
       session.abort = new AbortController();
+      void deps.interrupt03b?.(session, "reset"); // LIVE-AI-03B (P1-07)
+      accepted03bBySession.delete(session);
       session.ackAuthorityRef = null;
       session.ackTuple = null;
       session.ackContextDigest = null;
@@ -309,6 +360,8 @@ export function handleLiveAiControlFrame(deps: ControlFrameDeps & { raw: unknown
       return "reset";
     }
     case "session.end": {
+      void deps.interrupt03b?.(session, "end"); // LIVE-AI-03B (P1-07) — terminate active 03B authority
+      accepted03bBySession.delete(session);
       store.terminate(session, "user");
       return "end";
     }

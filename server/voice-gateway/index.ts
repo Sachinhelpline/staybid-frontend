@@ -63,6 +63,9 @@ import {
 import {
   liveAiSessionCreateConfigured,
   liveAiProviderConfigured,
+  liveAi03bTextProviderConfigured,
+  liveAi03bStagingTextConfigured,
+  liveAi03bStagingSubjectAllowed,
   type LiveAiConfig,
 } from "./config";
 import {
@@ -78,10 +81,11 @@ import {
   type ServerCaptureLedger,
   type LiveAiLimits,
   type BudgetAuthority,
+  type LiveAiSession,
 } from "./live-ai-sessions";
 import { createLiveAiOrchestrator } from "./live-ai-orchestrator";
 import { unavailableTranscription, createTranscriptionAdapter, createDefaultTranscriptionSeam, type TranscriptionAdapter } from "./openai-transcription";
-import { unavailableReasoning, createReasoningAdapter, createDefaultReasoningCall, type ReasoningAdapter } from "./openai-responses";
+import { unavailableReasoning, createReasoningAdapter, createDefaultReasoningCall, type ReasoningAdapter, type Responses03bFetchLike } from "./openai-responses";
 import { unavailableTts, createTtsAdapter, createDefaultTtsCall, type TtsAdapter } from "./openai-tts";
 import {
   authorizeLiveAiControlOpen,
@@ -90,6 +94,13 @@ import {
   type GatewaySocket as LiveAiGatewaySocket,
 } from "./live-ai-control-socket";
 import { validateSessionCreateBody as validateLiveAiSessionBody } from "./live-ai-schemas";
+// LIVE-AI-03B (P1-01) — the staging-text controller + a fresh IC01 agent loop per turn.
+import { create03bController, type CompiledAnswerFrameOut, type Budget03bPort as Live03bBudgetPort, type Controller03b, type TextTurnRequest as Text03bTurnRequest, type TurnOutcome } from "./live-ai-03b-controller";
+import { createAgentLoop, type AgentLoop as AgentLoopLike } from "./live-ai-agent-loop";
+import type { ExecutionSafety, Ic01LoopPort } from "./live-ai-execution-safety";
+import type { TrustedBinding } from "./live-ai-intelligence-contract";
+import { createHash, randomUUID } from "crypto";
+import { performance as nodePerformance } from "perf_hooks";
 
 // R3 (REREV-09): how long a created session waits for the browser control socket to
 // attach before it self-terminates (and hangs up the provider call).
@@ -120,6 +131,22 @@ export interface BuildContextDeps {
   now?: () => number;
   timers?: TimerFacility;
   fetchImpl?: typeof fetch;
+  /** LIVE-AI-03B (P1-01) — OPTIONAL runtime dependencies the REAL application bootstrap forwards to
+   *  buildLiveAiContext, so the 03B staging text path is reachable when SEPARATELY configured/
+   *  authorized WITHOUT another source change. Default undefined ⇒ none forwarded ⇒ fail-closed
+   *  dormant (budget core null, 03A execution null, staging off, provider unavailable). */
+  liveAi?: LiveAiRuntimeDeps;
+}
+/** LIVE-AI-03B (P1-01) — the forwardable 03B/Budget/03A/monotonic runtime seam. Every field is
+ *  optional and defaults to the dormant fail-closed value; nothing here activates a provider. */
+export interface LiveAiRuntimeDeps {
+  budget?: BudgetAuthority | null;
+  budgetCore?: LiveAiBudgetCoreSeam | null;
+  reasoning?: ReasoningAdapter;
+  tts?: TtsAdapter;
+  transcription?: TranscriptionAdapter;
+  live03b?: BuildLiveAiDeps["live03b"];
+  monotonicNowMs?: () => number;
 }
 
 export function buildContext(deps: BuildContextDeps): GatewayContext {
@@ -408,6 +435,27 @@ export interface LiveAiGatewayContext {
   limits: LiveAiLimits;
   controlTokenMaxAgeMs: number;
   now: () => number;
+  /** LIVE-AI-03B (P1-01) — the staging-text controller entrypoint for a turn.text. It is
+   *  constructed unconditionally, but the control path routes to it ONLY when the staging
+   *  gate + per-subject allowlist pass (see the handleLiveAiControlFrame injection below).
+   *  Default production configuration never reaches it (dormant, text-only, allowlist-only). */
+  run03bTextTurn: (session: LiveAiSession, input: { turnId: string; generation: number; transcript: string; language: "hi" | "hinglish" | "en"; context: unknown }) => Promise<void>;
+  /** LIVE-AI-03B (P1-06, Stage 2) — route the browser's action.accepted for a RETAINED capability
+   *  lifecycle through the RELEASED 03A (`ExecutionSafety.acceptAction`), on the SAME controller. Returns
+   *  false when no 03B lifecycle owns this session (the caller then uses the legacy lifecycle). */
+  accept03bAction: (session: LiveAiSession, accepted: unknown) => Promise<boolean>;
+  /** LIVE-AI-03B (P1-06, Stage 3) — deliver the browser's terminal action.receipt for a RETAINED
+   *  lifecycle through the RELEASED 03A (`ExecutionSafety.deliverTerminal`), which performs the IC01
+   *  hand-off internally, on the SAME controller. Returns false when no 03B lifecycle owns this session. */
+  resume03bObservation: (session: LiveAiSession, receipt: unknown) => Promise<boolean>;
+  /** LIVE-AI-03B (P1-07) — interrupt + tear down the active 03B lifecycle (abort provider, revoke
+   *  authority, reconcile). Returns false when none is active. */
+  interrupt03b: (session: LiveAiSession, reason: string) => Promise<boolean>;
+  /** LIVE-AI-03B (P1-06) — whether a retained 03B capability lifecycle currently owns this session. */
+  has03bLifecycle: (session: LiveAiSession) => boolean;
+  /** LIVE-AI-03B (P1-06 FINAL TEARDOWN) — synchronously revoke EVERY active 03B lifecycle (used by runtime
+   *  kill BEFORE store drain). Returns the count revoked; idempotent with the per-session onTerminate hook. */
+  teardownAll03b: () => number;
 }
 // ── LIVE-AI-BUDGET-01 (dormant seam) — the minimal structural surface of the DPBEL
 //    budget core the gateway wires. Declared INLINE (no module import) so the fixed
@@ -435,6 +483,15 @@ export interface LiveAiBudgetCoreSeam {
   revokeSession(gatewaySessionId: string, reason: string): void;
   /** P0-01 — authoritative durable revoke (local + durable envelope) so a process-loss replay is refused. */
   revokeSessionDurable(gatewaySessionId: string, reason: string): Promise<void>;
+  /** LIVE-AI-03B (additive) — the reasoning-usage provider-spend trio the 03B controller uses.
+   *  The real `createBudgetCore(...)` value provides these; declaring them here lets `ctx.budgetCore`
+   *  satisfy the controller's narrower `Budget03bPort` without importing the whole core type. */
+  quoteReasoning03bWorstCaseMicros(): bigint | null;
+  reserveReasoning03b(gatewaySessionId: string, providerTurnId: string): string | null;
+  settleUsage(gatewaySessionId: string, providerTurnId: string, usage: {
+    readonly inputTokens: number; readonly cachedInputTokens: number; readonly cacheWriteTokens: number;
+    readonly outputTokens: number; readonly reasoningTokens: number; readonly totalTokens: number;
+  } | null): void;
   providerSpendAuthority(binding: { providerSpendClass: "REASONING" | "TRANSCRIPTION" | "TTS"; gatewaySessionId: string; providerTurnId: string }): BudgetAuthority;
   executionAdmissionGate(gatewaySessionId: string): { admit(input: unknown): { decision: "ADMITTED" | "REFUSED" | "UNAVAILABLE"; budgetAdmissionRef?: string } };
   stop(): void;
@@ -460,9 +517,36 @@ export interface BuildLiveAiDeps {
    *  orchestrator obtains call-bound PROVIDER_SPEND facades from it. No provider is
    *  enabled by this seam — a real provider still requires the existing fail-closed barrier. */
   budgetCore?: LiveAiBudgetCoreSeam | null;
+  /** LIVE-AI-03B (P1-01) — an OPTIONAL injection bundle for the staging-text controller's
+   *  future dependencies, so a test can drive the ACTUAL gateway control path into the 03B
+   *  controller with fakes (no real provider). Default undefined ⇒ production constructs the
+   *  real fresh IC01 loop + the real provider fetch (only when the 03B TEXT provider is
+   *  configured AND a budget core is present — dormant otherwise). 03A execution defaults to
+   *  null (capability dispatch fails closed) until it is wired; the TEXT reasoning + compiled
+   *  answer path is fully reachable without it. */
+  live03b?: {
+    budgetCore?: Live03bBudgetPort | null;
+    makeLoop?: () => AgentLoopLike;
+    execution?: ExecutionSafety | null;
+    /** P1-06 (ROOT CAUSE) — the RELEASED-03A factory: given the controller's same-loop capture proxy
+     *  (`Ic01LoopPort`), return an `ExecutionSafety` bound to it via `createExecutionSafety`. When present
+     *  the capability lifecycle runs end-to-end through 03A (admit→acceptAction→deliverTerminal) and the
+     *  IC01 hand-off is performed internally by 03A against the SAME loop this turn drives. */
+    makeExecution?: (loopPort: Ic01LoopPort) => ExecutionSafety;
+    responsesFetch?: Responses03bFetchLike | null;
+    apiKey?: string | null;
+  } | null;
+  /** P1-07 — an injectable NON-DECREASING monotonic clock (ms) for 03B elapsed/deadline decisions.
+   *  Default = the Node performance monotonic clock (NEVER wall-clock Date.now). Tests inject a
+   *  deterministic monotonic source. */
+  monotonicNowMs?: () => number;
 }
 /** REV-13 — bounded per-provider-call deadline (ms) for reasoning/TTS. */
 export const LIVE_AI_PROVIDER_DEADLINE_MS = 20_000;
+// LIVE-AI-03B (P1-01) — staging-text controller wiring constants (dormant unless configured).
+export const LIVE_AI_03B_PROJECT_ID = "live-ai-03b" as const;
+export const LIVE_AI_03B_LEASE_TTL_MS = 60_000;
+export const LIVE_AI_03B_CONTROL_STALENESS_MS = 15_000;
 // R4-13 — the realtime transcription reservation is TIED TO THE HARD MAXIMUM CAPTURE-DURATION
 // model, not an arbitrary figure. The client media owner enforces a hard cumulative
 // capture-duration ceiling (MAX_SESSION_CAPTURE_MS = 180_000 ms in lib/live-ai/gateway-client.ts),
@@ -489,7 +573,18 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
     limits,
     now,
     timers: deps.timers,
-    onTerminate: (s) => { try { captureLedger.finalizeSegment(s.subject, s.gatewaySessionId, "partial"); } catch { /* no-op */ } },
+    onTerminate: (s) => {
+      // R5C — finalize the capture segment on EVERY termination path (unchanged, must not be dropped).
+      try { captureLedger.finalizeSegment(s.subject, s.gatewaySessionId, "partial"); } catch { /* no-op */ }
+      // LIVE-AI-03B (P1-06 FINAL TEARDOWN) — the SAME central teardown owner runs for EVERY termination reason
+      // (idle / hard / control-attach timeout, explicit store.terminate, control-socket-close termination,
+      // drainAll / runtime kill). teardown03b removes the active03b entry + aborts the turn SYNCHRONOUSLY before
+      // its first await, so a suspended capability or AWAITING_TERMINAL lifecycle can NEVER outlive its authority
+      // owner; the released 03A ExecutionSafety is interrupted and conservative BUDGET reconciliation runs via the
+      // accepted controller finish path. Fire-and-forget (no in-flight-promise dependency) and idempotent — inert
+      // when no 03B lifecycle owns the session (e.g. a normal true-terminal already cleaned it).
+      try { void teardown03b(s.gatewaySessionId, "session_terminated", { reconcile: true }); } catch { /* never break store teardown */ }
+    },
   });
   captureLedger = createServerCaptureLedger({
     now,
@@ -538,6 +633,151 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
     setTimer: deps.timers ? (fn, ms) => deps.timers!.set(fn, ms) : undefined,
     clearTimer: deps.timers ? (h) => deps.timers!.clear(h) : undefined,
   });
+
+  const runtime: GatewayRuntime = { killed: false };
+  // P1-07 — a NON-DECREASING monotonic clock authority for 03B (NEVER wall-clock Date.now).
+  const monotonicNowMs: () => number = deps.monotonicNowMs || (() => nodePerformance.now());
+
+  // ── LIVE-AI-03B — staging-text controller entrypoint + bounded active-turn lifecycle ─────
+  // A turn.text for an ALLOWLISTED staging subject is CLASSIFIED once (P1-03) as 03B or LEGACY.
+  // 03B never falls back to the legacy orchestrator / answer.plan; a 03B turn with any missing
+  // mandatory authority (budget core / coherent ACK binding / provider admission) is a CLOSED 03B
+  // failure. The controller is RETAINED across a capability suspension (P1-06) and its provider
+  // call is causally bound to session + turn interrupt (P1-07). DORMANT by default configuration.
+  const apiKey03bDefault = (liveAi03bTextProviderConfigured(config) && budgetCore) ? rawKey : null;
+  const realResponsesFetch: Responses03bFetchLike = async (url, init) => {
+    const r = await fetch(url, init as RequestInit);
+    return { ok: r.ok, status: r.status, text: () => r.text() };
+  };
+  interface Active03bLifecycle { controller: Controller03b; req: Text03bTurnRequest; abort: AbortController; }
+  const active03b = new Map<string, Active03bLifecycle>();   // ≤1 per gatewaySessionId; cleaned on terminal/interrupt/end
+  const emit03bError = (session: LiveAiSession, input: { turnId: string; generation: number }, code: string) => {
+    try { session.emit?.({ t: "turn.error", sessionId: session.sessionId, turnId: input.turnId, generation: input.generation, code }); } catch { /* no-op */ }
+  };
+  async function teardown03b(gatewaySessionId: string, reason: string, opts: { reconcile: boolean }): Promise<void> {
+    const a = active03b.get(gatewaySessionId);
+    if (!a) return;
+    active03b.delete(gatewaySessionId);                        // bound memory — no retained-controller leak
+    try { a.abort.abort(); } catch { /* no-op */ }
+    try { await a.controller.interrupt(a.req, reason); } catch { /* no-op */ }
+    if (opts.reconcile) { try { await a.controller.finish(a.req, false); } catch { /* best-effort */ } }
+  }
+  // P1-06 — reconcile ONLY on a genuine terminal; NEVER merely because a turn suspended. If the
+  // lifecycle was interrupted/superseded while the turn ran, this entry is no longer current → no-op.
+  async function settle03bOutcome(session: LiveAiSession, entry: Active03bLifecycle, outcome: TurnOutcome): Promise<void> {
+    if (active03b.get(session.gatewaySessionId) !== entry) return;         // interrupted/superseded meanwhile
+    if (outcome.state === "AWAITING_CAPABILITY") return;                   // retain (already registered), do NOT reconcile
+    active03b.delete(session.gatewaySessionId);
+    try { await entry.controller.finish(entry.req, false); } catch { /* best-effort */ }
+  }
+
+  const run03bTextTurn: LiveAiGatewayContext["run03bTextTurn"] = async (session, input) => {
+    // P1-03 — classify the route EXACTLY ONCE. Not an allowlisted staging subject ⇒ LEGACY.
+    const is03b = liveAi03bStagingTextConfigured(config) && liveAi03bStagingSubjectAllowed(config, session.subject);
+    if (!is03b) {
+      await orchestrator.runTurn(session, { turnId: input.turnId, generation: input.generation, transcript: input.transcript, language: input.language, context: input.context, phase: "initial" });
+      return;
+    }
+    // From here the turn is 03B-OWNED: every missing mandatory authority is a CLOSED 03B failure.
+    // NEVER orchestrator.runTurn, NEVER answer.plan, NEVER raw provider text.
+    const budgetForCtrl: Live03bBudgetPort | null = deps.live03b && deps.live03b.budgetCore !== undefined ? deps.live03b.budgetCore : budgetCore;
+    if (!budgetForCtrl) { emit03bError(session, input, "unavailable"); return; }
+    // P1-04 — the TrustedBinding MUST be the already-acknowledged context authority. No reconstruction.
+    const bound = build03bBinding(session, input, store);
+    if (!bound.ok) { emit03bError(session, input, "stale"); return; }
+    // supersede any prior active 03B lifecycle for this session (a new turn replaces it).
+    await teardown03b(session.gatewaySessionId, "superseded", { reconcile: true });
+    const apiKey03b = deps.live03b && deps.live03b.apiKey !== undefined ? deps.live03b.apiKey : apiKey03bDefault;
+    const responsesFetch = deps.live03b && deps.live03b.responsesFetch !== undefined ? deps.live03b.responsesFetch : (apiKey03b ? realResponsesFetch : null);
+    const execution: ExecutionSafety | null = deps.live03b && deps.live03b.execution !== undefined ? deps.live03b.execution : null;
+    const loop = deps.live03b && deps.live03b.makeLoop
+      ? deps.live03b.makeLoop()
+      : createAgentLoop({ modelAvailable: () => true, routeTier: () => "LEVEL_1", mintId: (kind, seq) => `ic01-${kind}-${seq}-${randomUUID()}`, telemetry: () => { /* no-op */ } });
+    // P1-07 — the provider AbortSignal is causally bound to BOTH the session abort AND this turn's
+    // interrupt controller, so turn.interrupt / reset / end / kill abort an in-flight provider fetch.
+    const turnAbort = new AbortController();
+    const makeAbortSignal = (): AbortSignal => {
+      if (session.abort?.signal?.aborted || turnAbort.signal.aborted) { const a = new AbortController(); a.abort(); return a.signal; }
+      const linked = new AbortController();
+      const onAbort = () => { try { linked.abort(); } catch { /* no-op */ } };
+      try { session.abort?.signal?.addEventListener("abort", onAbort, { once: true }); } catch { /* no-op */ }
+      turnAbort.signal.addEventListener("abort", onAbort, { once: true });
+      return linked.signal;
+    };
+    const req: Text03bTurnRequest = {
+      gatewaySessionId: session.gatewaySessionId, subjectDigest: session.subject, projectId: LIVE_AI_03B_PROJECT_ID,
+      binding: bound.binding, userText: input.transcript, language: input.language, role: bound.binding.role, context: session.lastContext,
+    };
+    const makeExecution03b = deps.live03b && deps.live03b.makeExecution ? deps.live03b.makeExecution : undefined;
+    const controller = create03bController({
+      loop, budgetCore: budgetForCtrl, execution, makeExecution: makeExecution03b, responsesFetch, apiKey: apiKey03b,
+      emit: (frame: CompiledAnswerFrameOut) => { try { session.emit?.(frame as unknown as Record<string, unknown>); } catch { /* hostile sink never breaks the turn */ } },
+      now,
+      monotonicNowMs,                                   // legacy fallback for turnClock
+      turnClock: monotonicNowMs,                         // P1-07 (ROOT CAUSE) — THE single monotonic clock for the whole IC01+03A lifecycle (never Date.now)
+      isKilled: () => runtime.killed || session.terminated || turnAbort.signal.aborted || !!session.abort?.signal?.aborted,
+      stagingEnabled: true,
+      leaseTtlMs: LIVE_AI_03B_LEASE_TTL_MS,
+      maxControlStalenessMs: LIVE_AI_03B_CONTROL_STALENESS_MS,
+      mintId: (kind: string) => `${kind}_${randomUUID()}`,
+      maxProviderCalls: config.stagingFirstProbeOneCall ? 1 : undefined,
+      makeAbortSignal,
+      // P1-06 (a) — emit the EXACT action.proposal shape: top-level t/sessionId/turnId/generation/authorityRef
+      // + the gateway commitments executionNonce/receiptId, and a NESTED proposal carrying ONLY
+      // proposalId/providerTurnId/operation (never the whole ExecutionAdmission).
+      onCapabilityAdmitted: (admission) => {
+        try {
+          const a = admission as { proposalId?: unknown; providerTurnId?: unknown; capabilityId?: unknown; executionNonce?: unknown; receiptId?: unknown; normalizedArgs?: Record<string, unknown> };
+          // P1-06 (a) — `operation` is the canonical LiveAiOperation ENVELOPE `{ op, ...normalizedArgs }`
+          // (the registry-normalized args carry exactly the op's allowed keys), so the emitted action.proposal
+          // is a valid protocol ServerFrame the browser validates. NEVER the whole ExecutionAdmission.
+          const opEnvelope = { ...(a.normalizedArgs && typeof a.normalizedArgs === "object" ? a.normalizedArgs : {}), op: a.capabilityId };
+          session.emit?.({
+            t: "action.proposal", sessionId: session.sessionId, turnId: bound.binding.turnId,
+            generation: bound.binding.generation, authorityRef: bound.binding.authorityRef,
+            executionNonce: a.executionNonce, receiptId: a.receiptId,
+            proposal: { proposalId: a.proposalId, providerTurnId: a.providerTurnId, operation: opEnvelope },
+          } as unknown as Record<string, unknown>);
+        } catch { /* no-op */ }
+      },
+    });
+    const entry: Active03bLifecycle = { controller, req, abort: turnAbort };
+    active03b.set(session.gatewaySessionId, entry);     // register BEFORE the turn runs, so an interrupt DURING the provider fetch can abort it (P1-07)
+    const outcome = await controller.beginTextTurn(req);
+    await settle03bOutcome(session, entry, outcome);   // P1-06 — retain on AWAITING_CAPABILITY; reconcile only on genuine terminal
+  };
+
+  const accept03bAction: LiveAiGatewayContext["accept03bAction"] = async (session, accepted) => {
+    const entry = active03b.get(session.gatewaySessionId);
+    if (!entry) return false;                            // no 03B lifecycle owns this event → caller uses legacy
+    const outcome = await entry.controller.acceptCapability(entry.req, accepted);
+    await settle03bOutcome(session, entry, outcome);    // stays AWAITING_CAPABILITY on success (retained)
+    return true;
+  };
+  const resume03bObservation: LiveAiGatewayContext["resume03bObservation"] = async (session, receipt) => {
+    const entry = active03b.get(session.gatewaySessionId);
+    if (!entry) return false;                            // no 03B lifecycle owns this event → caller uses legacy
+    const outcome = await entry.controller.resumeWithObservation(entry.req, receipt);
+    await settle03bOutcome(session, entry, outcome);    // may suspend again (nested capability) or terminate
+    return true;
+  };
+  const interrupt03b: LiveAiGatewayContext["interrupt03b"] = async (session, reason) => {
+    if (!active03b.has(session.gatewaySessionId)) return false;
+    await teardown03b(session.gatewaySessionId, reason, { reconcile: true });
+    return true;
+  };
+  const has03bLifecycle: LiveAiGatewayContext["has03bLifecycle"] = (session) => active03b.has(session.gatewaySessionId);
+  // LIVE-AI-03B (P1-06 FINAL TEARDOWN, §5) — explicitly revoke EVERY active 03B lifecycle. The runtime kill path
+  // calls this BEFORE store.drainAll(), so no 03B authority survives a kill even if drain ordering changes; the
+  // per-session onTerminate hook also calls teardown03b, but teardown03b is idempotent so the double signal is
+  // inert. Each teardown03b removes its active03b entry + aborts SYNCHRONOUSLY inside this forEach (before its
+  // first await), so on return every entry is gone; the conservative budget reconcile is fire-and-forget.
+  const teardownAll03b: LiveAiGatewayContext["teardownAll03b"] = () => {
+    const ids = Array.from(active03b.keys());
+    ids.forEach((id) => { try { void teardown03b(id, "runtime_killed", { reconcile: true }); } catch { /* no-op */ } });
+    return ids.length;
+  };
+
   return {
     config,
     store,
@@ -549,10 +789,71 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
     transcription,
     budget,                // R3-13 — reserve→settle the realtime negotiation (null ⇒ fail closed)
     budgetCore,            // LIVE-AI-BUDGET-01 (dormant) — DPBEL core (null ⇒ dormant)
-    runtime: { killed: false },
+    runtime,
     limits,
     controlTokenMaxAgeMs: full.limits.controlTokenMaxAgeMs,
     now,
+    run03bTextTurn,
+    accept03bAction,
+    resume03bObservation,
+    interrupt03b,
+    has03bLifecycle,
+    teardownAll03b,
+  };
+}
+
+/** LIVE-AI-03B (P1-04) — derive the TrustedBinding for a 03B turn EXCLUSIVELY from the already
+ *  acknowledged context authority (session ACK state + the store's authorityRef algorithm). NO
+ *  JSON.stringify, NO invented defaults. Requires a CURRENT, coherent ACK whose tuple turnId equals
+ *  the incoming turnId, whose contextDigest matches, whose pageId/role come from the SAME strictly
+ *  validated acknowledged PublishedContext, and whose recomputed authorityRef (for the incoming
+ *  generation) equals the stored ackAuthorityRef exactly. Any missing/malformed/stale field ⇒ fail. */
+function build03bBinding(
+  session: LiveAiSession,
+  input: { turnId: string; generation: number },
+  store: LiveAiSessionStore,
+): { ok: true; binding: TrustedBinding } | { ok: false } {
+  const ackRef = session.ackAuthorityRef, ackTuple = session.ackTuple, ackDigest = session.ackContextDigest;
+  if (typeof ackRef !== "string" || !ackRef) return { ok: false };
+  if (typeof ackTuple !== "string" || !ackTuple) return { ok: false };
+  if (typeof ackDigest !== "string" || !ackDigest) return { ok: false };
+  if (typeof input.turnId !== "string" || !input.turnId) return { ok: false };
+  if (typeof input.generation !== "number" || !Number.isInteger(input.generation) || input.generation < 0) return { ok: false };
+  // ackTuple = `${turnId}|${routeEpoch}|${contextRevision}` — split on the FIRST TWO bars only
+  // (contextRevision may itself contain a bar; turnId is an id and routeEpoch is numeric, so they cannot).
+  const bar1 = ackTuple.indexOf("|"); if (bar1 <= 0) return { ok: false };
+  const rest = ackTuple.slice(bar1 + 1); const bar2 = rest.indexOf("|"); if (bar2 < 0) return { ok: false };
+  const ackTurnId = ackTuple.slice(0, bar1);
+  const routeEpochStr = rest.slice(0, bar2);
+  const contextRevision = rest.slice(bar2 + 1);
+  if (ackTurnId !== input.turnId) return { ok: false };                    // tuple turnId must equal incoming turnId
+  const routeEpoch = Number(routeEpochStr);
+  if (!Number.isInteger(routeEpoch) || routeEpoch < 0) return { ok: false };
+  if (!contextRevision) return { ok: false };
+  // pageId + role ONLY from the strictly-validated acknowledged PublishedContext.
+  const ctx = session.lastContext;
+  if (!ctx || typeof ctx !== "object") return { ok: false };
+  const pageIdRaw = (ctx as Record<string, unknown>).pageId;
+  const roleRaw = (ctx as Record<string, unknown>).role;
+  if (pageIdRaw !== "hotels" && pageIdRaw !== "hotel-detail") return { ok: false };
+  if (roleRaw !== "anonymous" && roleRaw !== "customer") return { ok: false };
+  // recompute the authorityRef for the INCOMING generation via the accepted store algorithm and
+  // require exact equality with the stored ackAuthorityRef (coherence of turn/generation/context).
+  const expected = store.computeAuthorityRef(session, input.turnId, input.generation, routeEpoch, contextRevision, ackDigest);
+  if (expected !== ackRef) return { ok: false };
+  return {
+    ok: true,
+    binding: {
+      sessionId: session.sessionId,
+      turnId: input.turnId,
+      generation: input.generation,
+      pageId: pageIdRaw,
+      role: roleRaw,
+      routeEpoch,
+      contextRevision,
+      authorityRef: ackRef,
+      contextDigest: ackDigest,
+    },
   };
 }
 
@@ -583,9 +884,12 @@ export async function handleLiveAiSessionCreate(ctx: LiveAiGatewayContext, input
   const { config } = ctx;
   // 1) R gate (fail closed) + kill switch.
   if (!config.runtimeEnabled || ctx.runtime.killed) return { status: 503, body: { error: "runtime_disabled" } };
-  // 2) full config presence (zero network when unconfigured).
-  if (!liveAiSessionCreateConfigured(config)) return { status: 503, body: { error: "unconfigured" } };
-  // 3) body (mode + browser-owned sessionId + bounded SDP for mic).
+  // 2) P1-02 — a CHEAP fail-closed presence guard: SOMETHING must be configured for SOME mode
+  //    (the broad voice provider OR the 03B text provider). The PRECISE, mode-specific provider
+  //    requirement is applied AFTER the body/mode + assertion are validated (below), so a text/03B
+  //    session is never blocked merely because an unrelated STT/TTS model is absent.
+  if (!liveAiSessionCreateConfigured(config) && !liveAi03bStagingTextConfigured(config)) return { status: 503, body: { error: "unconfigured" } };
+  // 3) body (mode + browser-owned sessionId + bounded SDP for mic) — validated BEFORE mode selection.
   const body = validateLiveAiSessionBody(input.body);
   if (!body) return { status: 400, body: { error: "invalid_body" } };
   // 4) assertion (Bearer) — the EXACT live-ai:read-ui-local scope, Live-AI signing keys.
@@ -599,6 +903,18 @@ export async function handleLiveAiSessionCreate(ctx: LiveAiGatewayContext, input
   const assertion = verified.assertion;
   // 5) origin allowlist — the SIGNED origin claim vs the Live-AI allowlist (never `*`).
   if (!isAllowedOrigin(assertion.origin, config.allowedOrigins)) return { status: 403, body: { error: "origin_not_allowed" } };
+  // 5b) P1-02 — MODE-SPECIFIC provider requirement (after the body/mode + all non-voice security
+  //     prerequisites are validated). Microphone keeps the BROAD voice requirement (STT+reasoning+
+  //     TTS) UNCHANGED. A text session may proceed when the 03B TEXT provider + staging gate are
+  //     valid AND the authenticated subject is allowlisted, EVEN IF STT/TTS are absent/invalid;
+  //     otherwise it falls back to legacy text ONLY when the complete legacy prerequisites are
+  //     independently met, else fails closed.
+  if (body.mode === "microphone") {
+    if (!liveAiSessionCreateConfigured(config)) return { status: 503, body: { error: "unconfigured" } };
+  } else {
+    const is03bText = liveAi03bStagingTextConfigured(config) && liveAi03bStagingSubjectAllowed(config, assertion.subject);
+    if (!is03bText && !liveAiSessionCreateConfigured(config)) return { status: 503, body: { error: "unconfigured" } };
+  }
   // 6) start-limit + concurrency.
   const ipHash = hashIp(input.ip || "0.0.0.0", config.ipHashSalt as string);
   const startKey = assertion.authenticated ? `sub:${assertion.subject}` : `ip:${ipHash}`;
@@ -672,9 +988,12 @@ export function handleLiveAiKill(ctx: LiveAiGatewayContext, body: unknown): Hand
     return { status, body: { error: res.code } };
   }
   ctx.runtime.killed = true; // DISABLE ONLY — no enable path.
+  // LIVE-AI-03B (P1-06 FINAL TEARDOWN, §5) — revoke every active 03B lifecycle BEFORE the store drain, so no
+  // suspended/AWAITING_TERMINAL 03B authority can survive the runtime kill (belt-and-suspenders with onTerminate).
+  const revoked03b = ctx.teardownAll03b();
   const drained = ctx.store.drainAll();
   ctx.telemetry.emit({ event: "runtime.killed", normalizedResult: "disabled" });
-  return { status: 200, body: { ok: true, drained } };
+  return { status: 200, body: { ok: true, drained, revoked03b } };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -683,7 +1002,18 @@ export function handleLiveAiKill(ctx: LiveAiGatewayContext, body: unknown): Hand
 export async function buildGateway(deps: BuildContextDeps): Promise<{ app: FastifyInstance; ctx: GatewayContext; liveAiCtx: LiveAiGatewayContext }> {
   const ctx = buildContext(deps);
   // ISOLATED Live-AI context (dormant adapters by default — no old-tool authority).
-  const liveAiCtx = buildLiveAiContext({ env: deps.env, now: deps.now, timers: deps.timers });
+  // P1-01 — forward every 03B/Budget/03A/monotonic runtime dependency the caller supplied, so a
+  // separately-authorized staging activation needs NO further source change. Default: none ⇒ dormant.
+  const liveAiCtx = buildLiveAiContext({
+    env: deps.env, now: deps.now, timers: deps.timers,
+    budget: deps.liveAi?.budget ?? null,
+    budgetCore: deps.liveAi?.budgetCore ?? null,
+    reasoning: deps.liveAi?.reasoning,
+    tts: deps.liveAi?.tts,
+    transcription: deps.liveAi?.transcription,
+    live03b: deps.liveAi?.live03b ?? null,
+    monotonicNowMs: deps.liveAi?.monotonicNowMs,
+  });
   const app = Fastify({ logger: false, bodyLimit: MAX_BODY_BYTES });
 
   await app.register(fastifyRateLimit, {
@@ -807,7 +1137,18 @@ export async function buildGateway(deps: BuildContextDeps): Promise<{ app: Fasti
       const text = typeof raw === "string" ? raw : Buffer.isBuffer(raw) ? raw.toString("utf8") : "";
       // R2-08 — runTts is the ONLY entry point into TTS; the control socket invokes it
       // solely when a fully-matching answer.approve consumed the pending plan.
-      handleLiveAiControlFrame({ raw: text, session, store: liveAiCtx.store, captureLedger: liveAiCtx.captureLedger, runTurn: liveAiCtx.orchestrator.runTurn, runTts: liveAiCtx.orchestrator.runTts, now: liveAiCtx.now });
+      // LIVE-AI-03B (P1-01) — route turn.text through the 03B controller ONLY when the staging
+      // gate AND this session's subject allowlist both pass (per-frame, subject-aware). Default
+      // production configuration leaves this undefined ⇒ the legacy runTurn path is byte-identical.
+      const run03b = liveAi03bStagingSubjectAllowed(liveAiCtx.config, session.subject) ? liveAiCtx.run03bTextTurn : undefined;
+      handleLiveAiControlFrame({
+        raw: text, session, store: liveAiCtx.store, captureLedger: liveAiCtx.captureLedger,
+        runTurn: liveAiCtx.orchestrator.runTurn, runTts: liveAiCtx.orchestrator.runTts, now: liveAiCtx.now,
+        run03bTextTurn: run03b,
+        // P1-06/P1-07 — the retained-lifecycle router + interrupt are always available; they are no-ops
+        // unless a 03B lifecycle is actually active for this session (dormant by default).
+        has03bLifecycle: liveAiCtx.has03bLifecycle, accept03bAction: liveAiCtx.accept03bAction, resume03bObservation: liveAiCtx.resume03bObservation, interrupt03b: liveAiCtx.interrupt03b,
+      });
     });
     socket.on("close", () => {
       // R2-01 — the single control socket disconnected: mark control not-live (drops

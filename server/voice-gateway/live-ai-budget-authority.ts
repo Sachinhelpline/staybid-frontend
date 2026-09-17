@@ -73,6 +73,37 @@ const TRANSCRIPTION_PROFILE: readonly ProfileDim[] = Object.freeze([
   Object.freeze({ dimension: "realtime_audio_second" as BillingDimension, units: BigInt(180), serviceTier: null }),
 ]);
 
+// ── LIVE-AI-03B — the accepted REASONING reservation ceiling for a 03B text turn.
+// The 03B payload bound (≤32 KiB serialized) can drive up to ~32768 input tokens, so the
+// 2000/2000 legacy REASONING_PROFILE is insufficient. This ADDITIVE 03B path reserves the
+// 32768 input ceiling ONCE (at the HIGHEST usable input-tier rate — never triple-counted
+// across the ordinary/cached/cache-write tiers) plus the 2000-token output ceiling. The
+// legacy reserve()/settle()/REASONING_PROFILE path is UNCHANGED for existing consumers. ──
+export const REASONING_03B_MAX_INPUT_TOKENS = BigInt(32768);
+export const REASONING_03B_MAX_OUTPUT_TOKENS = BigInt(2000);
+/** The service-tier vocabulary the 03B settlement recognises (base + cached + cache-write). */
+export const REASONING_INPUT_TIER_CACHED = "cached" as const;
+export const REASONING_INPUT_TIER_CACHE_WRITE = "cache_write" as const;
+
+/** authoritative provider REASONING usage (Responses `usage.*`), for exact 03B settlement. */
+export interface ReasoningUsageV1 {
+  readonly inputTokens: number;
+  readonly cachedInputTokens: number;
+  readonly cacheWriteTokens: number;
+  readonly outputTokens: number;
+  readonly reasoningTokens: number;
+  readonly totalTokens: number;
+}
+
+interface Reasoning03bRateTier { readonly rateMicros: bigint; readonly unitSize: bigint; }
+interface Reasoning03bRates {
+  readonly base: Reasoning03bRateTier;               // reasoning_input_token / tier null (REQUIRED)
+  readonly cached: Reasoning03bRateTier | null;      // reasoning_input_token / tier cached (OPTIONAL)
+  readonly cacheWrite: Reasoning03bRateTier | null;  // reasoning_input_token / tier cache_write (OPTIONAL)
+  readonly out: Reasoning03bRateTier;                // reasoning_output_token / tier null (REQUIRED)
+  readonly worstCaseMicros: bigint;                  // 32768 input (highest tier) + 2000 output
+}
+
 function classModel(cls: ProviderSpendClass): string {
   return cls === "REASONING" ? REASONING_MODEL : cls === "TRANSCRIPTION" ? TRANSCRIPTION_MODEL : TTS_MODEL;
 }
@@ -97,6 +128,9 @@ interface OpenProviderReservation {
   readonly id: string; readonly cls: ProviderSpendClass; readonly providerTurnId: string; readonly requestCommitment: string;
   readonly moneyMicros: bigint; readonly reservedUnits: bigint;
   readonly settleDim: { dimension: BillingDimension; rateMicros: bigint; unitSize: bigint; serviceTier: string | null } | null; // single-dim classes only
+  /** LIVE-AI-03B — the frozen multi-tier reasoning rates + token ceilings for exact usage
+   *  settlement (present ONLY on a reserveReasoning03b reservation). */
+  readonly reasoning03b?: Reasoning03bRates | null;
   settled: boolean;
   /** P1-01 5B — a HYDRATED already-consumed/terminal provider child. A reserve() for its
    *  providerTurnId must NEVER authorize a second provider invocation (return null). */
@@ -194,6 +228,21 @@ export interface BudgetCore {
    *  any revocation AFTER the sync local settle; false ⇒ unresolved (local lease left
    *  fail-closed so no fresh provider authority). Dormant ⇒ true. */
   persistProviderSettlement(gatewaySessionId: string, providerTurnId: string): Promise<boolean>;
+  /** LIVE-AI-03B — the accepted 03B REASONING worst-case reservation micros (32768 input at
+   *  the highest usable input tier + 2000 output), resolved from the pinned catalog, or null
+   *  when a required tier is missing/stale/non-USD (⇒ NO provider authority). Pure/sync/no I/O.
+   *  The controller uses it to size the pre-reserved envelope BEFORE prepareProviderLease. */
+  quoteReasoning03bWorstCaseMicros(): bigint | null;
+  /** LIVE-AI-03B — reserve the accepted 32768-input-once + 2000-output REASONING worst case
+   *  against the live local lease (sync, zero I/O). Returns the reservation id, or null (fail
+   *  closed) on an invalid lease / missing rate tier / insufficient headroom / empty turn id. */
+  reserveReasoning03b(gatewaySessionId: string, providerTurnId: string): string | null;
+  /** LIVE-AI-03B — settle a 03B REASONING reservation from authoritative provider usage
+   *  (multi-tier exact charge; reasoning tokens are part of output and NEVER double-charged).
+   *  null/malformed/unsafe/incoherent/over-ceiling usage retains the FULL reservation; a
+   *  provider actual above the authorized ceiling records an incident + revokes local
+   *  authority (the durable revoke lands via persistProviderSettlement). Sync, zero I/O. */
+  settleUsage(gatewaySessionId: string, providerTurnId: string, usage: ReasoningUsageV1 | null): void;
   reconcileSession(gatewaySessionId: string, opts?: { crash?: boolean }): Promise<void>;
   revokeSession(gatewaySessionId: string, reason: string): void;
   /** P0-01 — the AUTHORITATIVE async revocation: marks the local lease revoked AND durably
@@ -636,6 +685,117 @@ export function createBudgetCore(deps: BudgetCoreDeps): BudgetCore {
     return ok;
   }
 
+  // ── LIVE-AI-03B — additive REASONING worst-case reservation + exact usage settlement ──
+  //    (does NOT touch the legacy reserve()/settle()/REASONING_PROFILE path; sync, zero I/O.)
+  function resolveReasoning03bRates(catalog: PriceCatalog, nowMs: number): Reasoning03bRates | null {
+    const model = REASONING_MODEL;
+    const usd = (dimension: BillingDimension, tier: string | null): Reasoning03bRateTier | null => {
+      const e = catalog.resolve({ provider: BUDGET_PROVIDER, model, dimension, serviceTier: tier }, nowMs);
+      if (!e || !isUsdCurrency(e.currencyCode)) return null;
+      return { rateMicros: e.rateMicros, unitSize: e.unitSize };
+    };
+    const base = usd("reasoning_input_token", null);
+    const out = usd("reasoning_output_token", null);
+    if (!base || !out) return null;                                          // required tiers missing ⇒ no authority
+    const cached = usd("reasoning_input_token", REASONING_INPUT_TIER_CACHED);
+    const cacheWrite = usd("reasoning_input_token", REASONING_INPUT_TIER_CACHE_WRITE);
+    // reserve the 32768 input ceiling ONCE at the HIGHEST usable input-tier cost (never triple-counted).
+    let inputReserve = BigInt(0);
+    for (const t of [base, cached, cacheWrite]) {
+      if (!t) continue;
+      const c = costMicros(REASONING_03B_MAX_INPUT_TOKENS, t.rateMicros, t.unitSize);
+      if (!c.ok) return null;
+      if (c.micros > inputReserve) inputReserve = c.micros;
+    }
+    const oc = costMicros(REASONING_03B_MAX_OUTPUT_TOKENS, out.rateMicros, out.unitSize);
+    if (!oc.ok) return null;
+    return Object.freeze({ base, cached, cacheWrite, out, worstCaseMicros: inputReserve + oc.micros });
+  }
+
+  function quoteReasoning03bWorstCaseMicros(): bigint | null {
+    const now = monotonicNow();
+    if (now === null) return null;
+    const r = resolveReasoning03bRates(deps.catalog, now);
+    return r ? r.worstCaseMicros : null;
+  }
+
+  function reserveReasoning03b(gatewaySessionId: string, providerTurnId: string): string | null {
+    if (typeof providerTurnId !== "string" || providerTurnId.length === 0) return null;
+    const digest = deps.hashSession(gatewaySessionId);
+    const lease = providerLeases.get(digest);
+    if (!leaseValid(lease)) return null;
+    const prior = lease.reservationsByTurn.get(providerTurnId);
+    if (prior) { if (prior.terminal || !prior.reasoning03b) return null; return prior.id; } // live 03b dup ⇒ same id
+    const now = monotonicNow();
+    if (now === null) return null;
+    const rates = resolveReasoning03bRates(lease.pricedCatalog, now);
+    if (!rates) return null;
+    if (lease.openReservations.size >= PROVIDER_LEDGER_MAX) return null;
+    if (lease.freeMoneyMicros < rates.worstCaseMicros || lease.freeCalls < BigInt(1)) return null; // local headroom
+    const id = mint("prov");
+    lease.freeMoneyMicros -= rates.worstCaseMicros; lease.openReservedMoneyMicros += rates.worstCaseMicros;
+    lease.freeCalls -= BigInt(1); lease.openCalls += BigInt(1);
+    const r: OpenProviderReservation = {
+      id, cls: "REASONING", providerTurnId,
+      requestCommitment: canonicalAcquisitionCommitment({ cls: "REASONING", providerTurnId, kind: "reasoning03b" }),
+      moneyMicros: rates.worstCaseMicros, reservedUnits: REASONING_03B_MAX_INPUT_TOKENS + REASONING_03B_MAX_OUTPUT_TOKENS,
+      settleDim: null, reasoning03b: rates,
+      settled: false, terminal: false, chargedMicros: BigInt(0), releasedMicros: BigInt(0), actualUnits: null,
+      overCap: false, excessUnits: null, incidentReason: null, revoked: false, flushed: false, settleFlushed: false,
+    };
+    lease.openReservations.set(id, r);
+    lease.reservationsByTurn.set(providerTurnId, r);
+    return id;
+  }
+
+  function settleUsage(gatewaySessionId: string, providerTurnId: string, usage: ReasoningUsageV1 | null): void {
+    const digest = deps.hashSession(gatewaySessionId);
+    const lease = providerLeases.get(digest);
+    if (!lease) return;
+    const r = lease.reservationsByTurn.get(providerTurnId);
+    if (!r || r.settled || !r.reasoning03b) return;                          // only a LIVE 03b reservation
+    const rates = r.reasoning03b;
+    r.settled = true;
+    lease.openReservedMoneyMicros -= r.moneyMicros; lease.openCalls -= BigInt(1); lease.chargedCalls += BigInt(1);
+    const retainFull = () => { lease.chargedMoneyMicros += r.moneyMicros; r.chargedMicros = r.moneyMicros; r.releasedMicros = BigInt(0); };
+    const asTok = (n: unknown): bigint | null => (typeof n === "number" && Number.isSafeInteger(n) && n >= 0 ? BigInt(n) : null);
+    if (usage === null || typeof usage !== "object") { retainFull(); return; }
+    const input = asTok(usage.inputTokens), cached = asTok(usage.cachedInputTokens), cacheWrite = asTok(usage.cacheWriteTokens);
+    const output = asTok(usage.outputTokens), reasoning = asTok(usage.reasoningTokens), total = asTok(usage.totalTokens);
+    if (input === null || cached === null || cacheWrite === null || output === null || reasoning === null || total === null) { retainFull(); return; }
+    // coherence (reject — never normalize)
+    if (cached + cacheWrite > input) { retainFull(); return; }
+    if (reasoning > output) { retainFull(); return; }
+    if (total !== input + output) { retainFull(); return; }
+    // provider actual ABOVE the authorized ceiling ⇒ incident + revoke (retain full, never mint).
+    if (input > REASONING_03B_MAX_INPUT_TOKENS || output > REASONING_03B_MAX_OUTPUT_TOKENS) {
+      retainFull();
+      r.overCap = true; r.actualUnits = input + output;
+      r.excessUnits = (input > REASONING_03B_MAX_INPUT_TOKENS ? input - REASONING_03B_MAX_INPUT_TOKENS : BigInt(0))
+        + (output > REASONING_03B_MAX_OUTPUT_TOKENS ? output - REASONING_03B_MAX_OUTPUT_TOKENS : BigInt(0));
+      r.incidentReason = "reasoning_usage_over_reservation"; r.revoked = true;
+      lease.excessEvents.push({ reservationId: r.id, reason: r.incidentReason, excessUnits: r.excessUnits.toString() });
+      revokeLeaseInMap(providerLeases, digest, "reasoning_usage_over_reservation");
+      return;
+    }
+    // exact multi-tier charge (reasoning tokens are PART of output — NEVER double-charged).
+    const ordinaryInput = input - cached - cacheWrite;                       // ≥0 (cached+cacheWrite ≤ input)
+    let charge = BigInt(0);
+    const add = (units: bigint, tier: Reasoning03bRateTier | null): boolean => {
+      if (units === BigInt(0)) return true;
+      if (!tier) return false;                                              // a tier a non-zero bucket needs is absent ⇒ can't charge exactly
+      const c = costMicros(units, tier.rateMicros, tier.unitSize);
+      if (!c.ok) return false;
+      charge += c.micros; return true;
+    };
+    if (!add(ordinaryInput, rates.base) || !add(cached, rates.cached) || !add(cacheWrite, rates.cacheWrite) || !add(output, rates.out)) {
+      retainFull(); r.actualUnits = input + output; return;                  // ambiguous ⇒ conservative
+    }
+    if (charge > r.moneyMicros) { retainFull(); r.actualUnits = input + output; return; } // never under-account / exceed reservation
+    lease.chargedMoneyMicros += charge; r.chargedMicros = charge; r.releasedMicros = r.moneyMicros - charge; r.actualUnits = input + output;
+    lease.freeMoneyMicros += (r.moneyMicros - charge);
+  }
+
   // ── reconciliation / revocation (async teardown / sync interrupt) ──────────
   async function reconcileSession(gatewaySessionId: string, opts?: { crash?: boolean }): Promise<void> {
     const digest = deps.hashSession(gatewaySessionId);
@@ -705,7 +865,9 @@ export function createBudgetCore(deps: BudgetCoreDeps): BudgetCore {
 
   return Object.freeze({
     prepareProviderLease, prepareExecutionLease, providerSpendAuthority, executionAdmissionGate,
-    persistPending, persistProviderReservation, persistProviderSettlement, reconcileSession, revokeSession, revokeSessionDurable, inspect, stop,
+    persistPending, persistProviderReservation, persistProviderSettlement,
+    quoteReasoning03bWorstCaseMicros, reserveReasoning03b, settleUsage,
+    reconcileSession, revokeSession, revokeSessionDurable, inspect, stop,
   });
 }
 
