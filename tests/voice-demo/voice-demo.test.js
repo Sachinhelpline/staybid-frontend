@@ -352,6 +352,42 @@ const deps = {
     ok(sim.ui.cards.length === 0 && sim.ui.spoke === false, "R2-D: no cards/speech restored");
   }
 
+  // ---- R1 packet #2: REAL-DEVICE natural budget language + city variants ----
+  // #1 exact real-device phrase that previously reached fallback:
+  {
+    const it = C.parseIntent("Mujhe Dhanaulti ke liye 5000 wala room dikhao");
+    eq(it.kind, "search", "RD1: '5000 wala room' → search intent");
+    eq(it.city, "dhanaulti", "RD1: city resolves dhanaulti");
+    eq(it.budget, 5000, "RD1: budget 5000 parsed from 'wala'");
+    eq(it.amenity, null, "RD1: no amenity");
+    const t = await C.runTurn(C.initialState(), "Mujhe Dhanaulti ke liye 5000 wala room dikhao", deps);
+    eq(ids(t.cards), "htl_a,htl_b", "RD1: displayed = ≤5000 (A,B); C excluded");
+  }
+  // bounded natural budget variants → budget 5000 (search or filter)
+  for (const phrase of ["5000 wala", "5000 tak", "5000 ke andar", "budget 5000", "5000 se kam", "under 5000"]) {
+    const it = C.parseIntent(phrase + " dikhao");
+    ok((it.kind === "search" || it.kind === "filter") && it.budget === 5000,
+      `RD budget variant '${phrase}' → budget 5000 (got kind=${it.kind}, budget=${it.budget})`);
+  }
+  // spoken 'paanch hazaar wala' → 5000
+  ok(C.parseIntent("paanch hazaar wala dikhao").budget === 5000, "RD: 'paanch hazaar wala' → 5000");
+  // Dhanaulti spelling / Devanagari variants → canonical dhanaulti
+  for (const v of ["Dhanaulti", "Dhanolti", "dhanoli", "धनौल्टी", "धनौली"]) {
+    const it = C.parseIntent(v + " ke hotel dikhao");
+    ok(it.kind === "search" && it.city === "dhanaulti", `RD city variant '${v}' → dhanaulti (got ${it.city})`);
+  }
+  // "parking wala" must NOT be misread as a budget (no number present)
+  {
+    const it = C.parseIntent("parking wala dikhao");
+    ok(it.kind === "filter" && it.amenity === "parking" && it.budget == null,
+      "RD: 'parking wala' stays amenity filter, not budget");
+  }
+  // combined real-device: destination + budget-wala + parking in one turn
+  {
+    const t = await C.runTurn(C.initialState(), "Dhanaulti mein 5000 wala parking wala hotel dikhao", deps);
+    eq(ids(t.cards), "htl_a", "RD combined: dhanaulti + ≤5000 + parking → A only");
+  }
+
   // reset target purity
   const fresh = C.initialState();
   ok(fresh.displayed.length === 0 && fresh.baseResults.length === 0 && fresh.selectedId === null && fresh.topTwoIds.length === 0, "reset target initialState is empty");
