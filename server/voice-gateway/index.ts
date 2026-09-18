@@ -65,7 +65,7 @@ import {
   liveAiProviderConfigured,
   liveAi03bTextProviderConfigured,
   liveAi03bStagingTextConfigured,
-  liveAi03bStagingSubjectAllowed,
+  liveAi03bStagingSessionAllowed,
   type LiveAiConfig,
 } from "./config";
 import {
@@ -497,6 +497,26 @@ export interface LiveAiBudgetCoreSeam {
   stop(): void;
 }
 
+/** LIVE-AI-03B (staging bounded impl) — the PER-TURN, session-scoped authority handed to a staging
+ *  `live03b.makeExecution` factory so it can bind the RELEASED 03A ExecutionSafety to THIS session:
+ *  the gateway session id (→ BudgetCore execution-admission gate), the already-ACK'd trusted binding,
+ *  the session's validated published context (→ current screen projection), and the ONE monotonic clock.
+ *  All fields are gateway/session-derived — never caller-invented. Optional/unused by non-staging wiring. */
+export interface Live03bExecutionSessionContext {
+  readonly gatewaySessionId: string;
+  readonly binding: TrustedBinding;
+  readonly publishedContext: unknown;      // session.lastContext (already validated + ACK'd), or null
+  readonly monotonicNowMs: () => number;   // the SAME monotonic clock the turn/controller uses
+}
+
+/** LIVE-AI-03B (staging bounded-impl, P1-03) — the gateway-owned authority passed to the OPTIONAL
+ *  execution-admission preparation hook. Both fields are gateway/assertion-owned (never browser/model/
+ *  provider selectable): the trusted gateway session id + the signed authenticated subject. */
+export interface Live03bPrepareExecutionContext {
+  readonly gatewaySessionId: string;
+  readonly subject: string;
+}
+
 export interface BuildLiveAiDeps {
   env: GatewayEnv;
   now?: () => number;
@@ -531,8 +551,20 @@ export interface BuildLiveAiDeps {
     /** P1-06 (ROOT CAUSE) — the RELEASED-03A factory: given the controller's same-loop capture proxy
      *  (`Ic01LoopPort`), return an `ExecutionSafety` bound to it via `createExecutionSafety`. When present
      *  the capability lifecycle runs end-to-end through 03A (admit→acceptAction→deliverTerminal) and the
-     *  IC01 hand-off is performed internally by 03A against the SAME loop this turn drives. */
-    makeExecution?: (loopPort: Ic01LoopPort) => ExecutionSafety;
+     *  IC01 hand-off is performed internally by 03A against the SAME loop this turn drives.
+     *  Staging bounded-impl: an OPTIONAL second arg carries the PER-TURN, session-scoped authority the
+     *  staging composition needs to bind 03A correctly (gateway session id → BudgetCore execution-admission
+     *  gate; the trusted binding + the session's ACK'd published context → the current screen projection;
+     *  the same monotonic clock). The gateway supplies it per turn; the frozen controller still calls the
+     *  factory with the loop port ONLY (it is wrapped in `run03bTextTurn`), so the controller is unchanged. */
+    makeExecution?: (loopPort: Ic01LoopPort, sessionCtx?: Live03bExecutionSessionContext) => ExecutionSafety;
+    /** LIVE-AI-03B (staging bounded-impl, P1-03) — OPTIONAL async seam that prepares EXACTLY ONE
+     *  execution admission for this authenticated 03B session BEFORE any 03A capability can be admitted.
+     *  Default undefined ⇒ no preparation is attempted (non-staging wiring; 03A stays dormant/fail-closed
+     *  as before). When present, it is awaited once per turn; a non-ok result is a CLOSED 03B failure —
+     *  the session gains NO 03B capability authority. It NEVER makes ExecutionSafety async and NEVER
+     *  bypasses executionAdmissionGate (it only prepares the lease the gate reads). */
+    prepareExecution?: (ctx: Live03bPrepareExecutionContext) => Promise<{ ok: boolean; reason?: string }>;
     responsesFetch?: Responses03bFetchLike | null;
     apiKey?: string | null;
   } | null;
@@ -672,8 +704,8 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
   }
 
   const run03bTextTurn: LiveAiGatewayContext["run03bTextTurn"] = async (session, input) => {
-    // P1-03 — classify the route EXACTLY ONCE. Not an allowlisted staging subject ⇒ LEGACY.
-    const is03b = liveAi03bStagingTextConfigured(config) && liveAi03bStagingSubjectAllowed(config, session.subject);
+    // P1-03 — classify the route EXACTLY ONCE. Only an AUTHENTICATED, allowlisted staging subject ⇒ 03B; else LEGACY.
+    const is03b = liveAi03bStagingSessionAllowed(config, session.authenticated, session.subject);
     if (!is03b) {
       await orchestrator.runTurn(session, { turnId: input.turnId, generation: input.generation, transcript: input.transcript, language: input.language, context: input.context, phase: "initial" });
       return;
@@ -685,6 +717,17 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
     // P1-04 — the TrustedBinding MUST be the already-acknowledged context authority. No reconstruction.
     const bound = build03bBinding(session, input, store);
     if (!bound.ok) { emit03bError(session, input, "stale"); return; }
+    // LIVE-AI-03B (staging bounded-impl, P1-03) — prepare EXACTLY ONE execution admission for this
+    // authenticated session BEFORE it can exercise a 03A capability. Present ONLY in the staging
+    // composition; a non-ok preparation is a CLOSED 03B failure (the session gains no capability
+    // authority). This never makes ExecutionSafety async and never bypasses executionAdmissionGate —
+    // it only prepares the lease that gate reads. Non-staging wiring omits the hook (unchanged).
+    if (deps.live03b && deps.live03b.prepareExecution) {
+      let prep: { ok: boolean; reason?: string };
+      try { prep = await deps.live03b.prepareExecution({ gatewaySessionId: session.gatewaySessionId, subject: session.subject }); }
+      catch { prep = { ok: false, reason: "prepare_error" }; }
+      if (!prep.ok) { emit03bError(session, input, "unavailable"); return; }
+    }
     // supersede any prior active 03B lifecycle for this session (a new turn replaces it).
     await teardown03b(session.gatewaySessionId, "superseded", { reconcile: true });
     const apiKey03b = deps.live03b && deps.live03b.apiKey !== undefined ? deps.live03b.apiKey : apiKey03bDefault;
@@ -708,7 +751,18 @@ export function buildLiveAiContext(deps: BuildLiveAiDeps): LiveAiGatewayContext 
       gatewaySessionId: session.gatewaySessionId, subjectDigest: session.subject, projectId: LIVE_AI_03B_PROJECT_ID,
       binding: bound.binding, userText: input.transcript, language: input.language, role: bound.binding.role, context: session.lastContext,
     };
-    const makeExecution03b = deps.live03b && deps.live03b.makeExecution ? deps.live03b.makeExecution : undefined;
+    // Staging bounded-impl: WRAP the session-aware staging factory into the loop-port-only factory the
+    // FROZEN controller calls, injecting THIS turn's session-scoped authority (never caller-invented). Non-
+    // staging wiring passes no makeExecution ⇒ undefined ⇒ 03A stays dormant/fail-closed (capability refused).
+    const rawMakeExecution03b = deps.live03b && deps.live03b.makeExecution ? deps.live03b.makeExecution : undefined;
+    const makeExecution03b: ((loopPort: Ic01LoopPort) => ExecutionSafety) | undefined = rawMakeExecution03b
+      ? (loopPort: Ic01LoopPort) => rawMakeExecution03b(loopPort, {
+          gatewaySessionId: session.gatewaySessionId,
+          binding: bound.binding,
+          publishedContext: session.lastContext,
+          monotonicNowMs,
+        })
+      : undefined;
     const controller = create03bController({
       loop, budgetCore: budgetForCtrl, execution, makeExecution: makeExecution03b, responsesFetch, apiKey: apiKey03b,
       emit: (frame: CompiledAnswerFrameOut) => { try { session.emit?.(frame as unknown as Record<string, unknown>); } catch { /* hostile sink never breaks the turn */ } },
@@ -912,7 +966,7 @@ export async function handleLiveAiSessionCreate(ctx: LiveAiGatewayContext, input
   if (body.mode === "microphone") {
     if (!liveAiSessionCreateConfigured(config)) return { status: 503, body: { error: "unconfigured" } };
   } else {
-    const is03bText = liveAi03bStagingTextConfigured(config) && liveAi03bStagingSubjectAllowed(config, assertion.subject);
+    const is03bText = liveAi03bStagingSessionAllowed(config, assertion.authenticated, assertion.subject);
     if (!is03bText && !liveAiSessionCreateConfigured(config)) return { status: 503, body: { error: "unconfigured" } };
   }
   // 6) start-limit + concurrency.
@@ -1140,7 +1194,7 @@ export async function buildGateway(deps: BuildContextDeps): Promise<{ app: Fasti
       // LIVE-AI-03B (P1-01) — route turn.text through the 03B controller ONLY when the staging
       // gate AND this session's subject allowlist both pass (per-frame, subject-aware). Default
       // production configuration leaves this undefined ⇒ the legacy runTurn path is byte-identical.
-      const run03b = liveAi03bStagingSubjectAllowed(liveAiCtx.config, session.subject) ? liveAiCtx.run03bTextTurn : undefined;
+      const run03b = liveAi03bStagingSessionAllowed(liveAiCtx.config, session.authenticated, session.subject) ? liveAiCtx.run03bTextTurn : undefined;
       handleLiveAiControlFrame({
         raw: text, session, store: liveAiCtx.store, captureLedger: liveAiCtx.captureLedger,
         runTurn: liveAiCtx.orchestrator.runTurn, runTts: liveAiCtx.orchestrator.runTts, now: liveAiCtx.now,

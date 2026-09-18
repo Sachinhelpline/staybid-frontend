@@ -78,7 +78,12 @@ function mkTwoRequestLoop() {
 // algorithm), so build03bBinding (P1-04) accepts it. contextDigest defaults to a valid hex64.
 function mkAckedSession(store, opts) {
   const o = opts || {};
-  const created = store.create({ sessionId: o.sessionId || "las.a", subject: o.subject || "subj-1", ipHash: "ip", authenticated: !!o.authenticated });
+  // LIVE-AI-03B (consolidated staging §13) — 03B selection now requires an AUTHENTICATED
+  // trusted staging session (assertion auth:true). This helper exists to build a COHERENT-ACK
+  // session that REACHES 03B, so it defaults to authenticated:true; a test that needs an
+  // auth:false (customer) session passes `authenticated: false` explicitly.
+  const authenticated = o.authenticated === undefined ? true : !!o.authenticated;
+  const created = store.create({ sessionId: o.sessionId || "las.a", subject: o.subject || "subj-1", ipHash: "ip", authenticated });
   const s = created.session;
   const turnId = o.turnId || "t.1", generation = o.generation != null ? o.generation : 0;
   const routeEpoch = o.routeEpoch != null ? o.routeEpoch : 0, contextRevision = o.contextRevision || "rev.1";
@@ -615,7 +620,10 @@ const run = async () => {
       LIVE_AI_STT_MODEL: "nope", LIVE_AI_TTS_MODEL: "nope",
       LIVE_AI_03B_STAGING_TEXT_ENABLED: "1", LIVE_AI_03B_STAGING_SUBJECT_ALLOWLIST: "sub.text",
     };
-    const mkA = async (sub) => new jose.SignJWT({ scope: "live-ai:read-ui-local", origin: "https://x.test", auth: false })
+    // §13 — a 03B TEXT session requires an AUTHENTICATED trusted staging assertion (auth:true).
+    // The allowlisted-subject success case (N-G) is only reachable with auth:true; the mic (N-H)
+    // and non-allowlisted (N-I) cases still fail closed on voice/subject regardless of auth.
+    const mkA = async (sub) => new jose.SignJWT({ scope: "live-ai:read-ui-local", origin: "https://x.test", auth: true })
       .setProtectedHeader({ alg: "ES256" }).setSubject(sub).setJti("jti." + Math.random().toString(36).slice(2))
       .setIssuer("sb-broker").setAudience("sb-gateway").setIssuedAt().setExpirationTime("60s").sign(privateKey);
     const ctxN = GWIDX.buildLiveAiContext({ env: baseEnv });
@@ -670,7 +678,9 @@ const run = async () => {
     // missing / mismatched ACK ⇒ FAIL before any provider call.
     const spy2 = mkFetch(() => okResponse(validProviderBody()));
     const ctxP2 = GWIDX.buildLiveAiContext({ env: stagingEnv, live03b: mkFakes(spy2) });
-    const noAck = SESS.createLiveAiSessionStore({ limits: SESS.DEFAULT_LIVE_AI_LIMITS }).create({ sessionId: "las.p2", subject: "subj-1", ipHash: "ip", authenticated: false }).session;
+    // §13 — authenticated:true so this exercises the missing-ACK fail-closed gate specifically
+    // (not the auth gate); the point of P07 is "no acknowledged context ⇒ fail before the provider".
+    const noAck = SESS.createLiveAiSessionStore({ limits: SESS.DEFAULT_LIVE_AI_LIMITS }).create({ sessionId: "las.p2", subject: "subj-1", ipHash: "ip", authenticated: true }).session;
     noAck.emit = () => {};
     await ctxP2.run03bTextTurn(noAck, { turnId: "t.x", generation: 0, transcript: "help", language: "en", context: null });
     eq(spy2.calls.length, 0, "P07 — a turn with NO acknowledged context fails closed BEFORE the provider (no reconstruction)");

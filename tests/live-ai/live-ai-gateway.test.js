@@ -5561,7 +5561,7 @@ function fakeBudget(cap) {
           let idx = null; try { idx = srcOf("index.ts"); } catch (_) { idx = null; }
           if (idx !== null) {
             ok(/live-ai-03b-controller/.test(idx), "IC01-D06b — index.ts wires the 03B controller seam (P1-01)");
-            ok(/liveAi03bStagingSubjectAllowed/.test(idx), "IC01-D06c — index.ts routes 03B ONLY behind the staging subject-allowlist gate");
+            ok(/liveAi03bStagingSessionAllowed/.test(idx), "IC01-D06c — index.ts routes 03B ONLY behind the staging AUTHENTICATED-session + subject-allowlist gate (§13)");
           } else ok(true, "IC01-D06b — index.ts not present");
         }
         {
