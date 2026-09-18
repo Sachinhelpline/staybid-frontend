@@ -2501,7 +2501,7 @@ Gates: `tsc` 0 · `next build` 0 · `test:security` **385/0** (money logic byte-
   (✨/⏳/✅/🚫/🛡️) → lucide (Sparkles/Hourglass/CircleCheck/Ban/ShieldCheck); the source
   badge 🤖/⚠ → Bot/TriangleAlert (rendered by `application_source`); the KYC/status buttons
   ✓ Aadhaar / ✓ PAN / ✓ Approve → Check, ⟲ Pending → RotateCcw, 🚫 Block → Ban; the `Badge`
-  on-state ✓ → Check (· off kept). 
+  on-state ✓ → Check (· off kept).
 - **Contrast fix** — `btnRed` `#FF4757` (the Block button on its red tint, ~4.3:1) →
   `#FF6B7A`; KPI Blocked/KYC accent tidied to `#FF6B7A`/`#D8B4FE`. Min now **4.71:1**.
 - **CONTRAST + EMOJI (owner ask — MEASURED, 5 widths, detail modal opened, gradient-aware +
