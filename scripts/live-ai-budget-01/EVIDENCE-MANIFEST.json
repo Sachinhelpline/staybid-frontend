@@ -1,0 +1,164 @@
+{
+  "artifact_set": "LIVE-AI-BUDGET-01-DORMANT-CONTROL-POLICY-SEED",
+  "packet": "LIVE-AI-BUDGET-01-DORMANT-SEED-CONSOLIDATED-ARTIFACT-REMEDIATION-01",
+  "supersedes_packet": "LIVE-AI-BUDGET-01-DORMANT-CONTROL-POLICY-SEED-ARTIFACT-IMPLEMENTATION-01",
+  "status": "UNAPPLIED — offline reviewable artifact set; NOT executed against any database",
+  "frozen": true,
+  "effective_from": "2026-09-18T14:11:25Z",
+  "effective_from_note": "One explicit UTC timestamp, generated once at original artifact creation and frozen; UNCHANGED by this remediation. No now()/CURRENT_TIMESTAMP/clock_timestamp() anywhere.",
+
+  "remediation": {
+    "pass": "consolidated remediation 01",
+    "owner_approved_values_changed": false,
+    "digest_semantics_changed": false,
+    "digest_gen_changed": false,
+    "schema_changed": false,
+    "p1_findings_closed": {
+      "P1-01": "SQL precondition now proves the complete BUDGET foundation before any INSERT: all 13 expected public.budget_% tables exist, none missing, none unexpected, and all 13 are empty (zero rows); any mismatch RAISEs before seed DML.",
+      "P1-02": "Inside the transaction, immediately after BEGIN, all 13 BUDGET tables are locked IN SHARE ROW EXCLUSIVE MODE in a deterministic (alphabetical) order — reads allowed, concurrent writes blocked — so the precondition -> INSERT -> postcondition invariant holds until COMMIT. No schema/db-wide lock, no advisory-lock substitute.",
+      "P1-03": "Before COMMIT, an exact final-state postcondition proves: budget_control_epochs has exactly 2 byte-exact rows (global + project), budget_policy_versions has exactly 1 byte-exact dormant row with no project_id='*', the other 11 BUDGET tables remain empty, and exactly 3 rows total exist across the 13-table foundation; any mismatch RAISEs and rolls back.",
+      "P1-04": "verify-seed.mjs now structurally extracts the actual SQL INSERT targets/columns/literal values and proves the exact global/project/policy rows, the seven zero ceilings, inactive/false/false/NULL, the 13-table lock set, the complete zero-row precondition, the exact postcondition assertions, only-three-INSERT-rows, absence of prohibited DML/targets/wildcard, and the BEGIN->lock->precondition->INSERT->postcondition->COMMIT ordering — independent of substring/digest presence — and reproduces the digests and frozen schema blob."
+    }
+  },
+
+  "accepted_baseline": {
+    "repository": "Sachinhelpline/staybid-frontend",
+    "commit": "2b69ce28230fc9d56a035846e95d8de206d5db3b",
+    "tree": "87aad22d90f84f2c3b307201c3e0d3b8658b1619",
+    "commit_confirmed_on_github": true,
+    "commit_subject": "Merge pull request #598 (StayBid Live AI 03B — staging activation prerequisites)",
+    "schema_file": "migrations/2026-09-16-live-ai-budget-01-dpbel-foundation.sql",
+    "schema_blob_sha1": "5ddd43861a51c42d62e293216b702453493cd66e",
+    "schema_note": "Frozen schema of record — byte-identical to the accepted baseline blob; NOT modified by this packet."
+  },
+
+  "target": {
+    "class": "AI-STAGING",
+    "project_id": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "environment_id": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "postgres_service_id": "b7362594-a01b-4623-a982-394707a6cec2",
+    "applied_by_this_packet": false,
+    "core_prod_touched": false
+  },
+
+  "expected_budget_tables_13": [
+    "budget_control_epochs", "budget_decisions", "budget_envelope_allocations", "budget_envelopes",
+    "budget_execution_consumptions", "budget_policy_versions", "budget_price_catalog_entries",
+    "budget_price_catalog_versions", "budget_provider_reservations", "budget_provider_settlements",
+    "budget_reconciliations", "budget_scope_counters", "budget_sessions"
+  ],
+
+  "invariants": {
+    "lock_mode": "SHARE ROW EXCLUSIVE",
+    "lock_tables": 13,
+    "precondition": "all 13 exist, none missing, none unexpected, all 13 zero rows",
+    "postcondition": "budget_control_epochs = 2 exact rows; budget_policy_versions = 1 exact row; other 11 tables = 0 rows; exactly 3 total budget rows; no project_id='*'",
+    "seed_dml": "exactly 3 INSERTs (2 control + 1 policy); no UPDATE/DELETE/TRUNCATE/MERGE/ON CONFLICT; no price-catalog INSERT; no other BUDGET-table DML; no wildcard policy"
+  },
+
+  "intended_rows": [
+    {
+      "table": "public.budget_control_epochs",
+      "role": "GLOBAL control epoch (dormant, non-authorizing)",
+      "scope_type": "global",
+      "scope_key_digest": "global",
+      "control_epoch": 1,
+      "enabled": false,
+      "killed": false,
+      "updated_at": "2026-09-18T14:11:25Z",
+      "record_digest": "26136eb93212ccce1ba6f4b380dbb3f1f2ef64e3d16fa9754e287459cce525ee"
+    },
+    {
+      "table": "public.budget_control_epochs",
+      "role": "live-ai-03b PROJECT control epoch (dormant, non-authorizing)",
+      "scope_type": "project",
+      "scope_key_digest": "live-ai-03b",
+      "control_epoch": 1,
+      "enabled": false,
+      "killed": false,
+      "updated_at": "2026-09-18T14:11:25Z",
+      "record_digest": "be70f6b477c7332a834720e4f784a7d724a6363d48cbcc590315ff2fc72cad7f"
+    },
+    {
+      "table": "public.budget_policy_versions",
+      "role": "live-ai-03b DORMANT policy version (inactive; all seven ceilings zero)",
+      "id": "live-ai-03b-policy-v1-dormant",
+      "project_id": "live-ai-03b",
+      "status": "inactive",
+      "effective_from": "2026-09-18T14:11:25Z",
+      "effective_until": null,
+      "session_money_ceiling_micros": 0,
+      "session_provider_calls": 0,
+      "session_execution_admissions": 0,
+      "subject_day_money_ceiling_micros": 0,
+      "project_day_money_ceiling_micros": 0,
+      "project_month_money_ceiling_micros": 0,
+      "global_day_money_ceiling_micros": 0,
+      "created_at": "2026-09-18T14:11:25Z",
+      "policy_digest": "cf5ae64ff17eca76ac3f19c4dd2b5157a1b9bb601f765978e24eb47bbc2308c4"
+    }
+  ],
+
+  "digest_contract": {
+    "hash": "SHA-256 over canonical UTF-8 JSON, lowercase hex",
+    "canonical_rules": [
+      "recursively lexicographically sorted object keys",
+      "no insignificant whitespace",
+      "integers as JSON numbers (floats forbidden)",
+      "booleans as JSON booleans, null as JSON null",
+      "standard JSON string escaping",
+      "explicit domain field committed"
+    ],
+    "control_domain": "staybid.live-ai.budget.control.v1",
+    "policy_domain": "staybid.live-ai.budget.policy.v1",
+    "control_committed_fields": ["domain", "scope_type", "scope_key_digest", "control_epoch", "enabled", "killed"],
+    "policy_committed_fields": ["domain", "id", "project_id", "status", "effective_from", "effective_until", "session_money_ceiling_micros", "session_provider_calls", "session_execution_admissions", "subject_day_money_ceiling_micros", "project_day_money_ceiling_micros", "project_month_money_ceiling_micros", "global_day_money_ceiling_micros"]
+  },
+
+  "canonical_payloads": {
+    "control_global": "{\"control_epoch\":1,\"domain\":\"staybid.live-ai.budget.control.v1\",\"enabled\":false,\"killed\":false,\"scope_key_digest\":\"global\",\"scope_type\":\"global\"}",
+    "control_project": "{\"control_epoch\":1,\"domain\":\"staybid.live-ai.budget.control.v1\",\"enabled\":false,\"killed\":false,\"scope_key_digest\":\"live-ai-03b\",\"scope_type\":\"project\"}",
+    "policy": "{\"domain\":\"staybid.live-ai.budget.policy.v1\",\"effective_from\":\"2026-09-18T14:11:25Z\",\"effective_until\":null,\"global_day_money_ceiling_micros\":0,\"id\":\"live-ai-03b-policy-v1-dormant\",\"project_day_money_ceiling_micros\":0,\"project_id\":\"live-ai-03b\",\"project_month_money_ceiling_micros\":0,\"session_execution_admissions\":0,\"session_money_ceiling_micros\":0,\"session_provider_calls\":0,\"status\":\"inactive\",\"subject_day_money_ceiling_micros\":0}"
+  },
+
+  "digests": {
+    "control_global": "26136eb93212ccce1ba6f4b380dbb3f1f2ef64e3d16fa9754e287459cce525ee",
+    "control_project": "be70f6b477c7332a834720e4f784a7d724a6363d48cbcc590315ff2fc72cad7f",
+    "policy": "cf5ae64ff17eca76ac3f19c4dd2b5157a1b9bb601f765978e24eb47bbc2308c4"
+  },
+
+  "artifact_sha256": {
+    "migrations/2026-09-16-live-ai-budget-01-dormant-control-policy-seed.sql": "56da09a31265555d3325e61dd53f49333d926b6e384d837907cb8d00b3438dd4",
+    "scripts/live-ai-budget-01/digest-gen.mjs": "e08d4a38cd1a33aca5813a9a4aa093f3eb2fe27cc070b95a1ad18f28072de613",
+    "scripts/live-ai-budget-01/verify-seed.mjs": "ee1137dc9891dfff9bd6b56889f4d3a88b2002bb5268ee8ebe93156628abd926",
+    "migrations/2026-09-16-live-ai-budget-01-dpbel-foundation.sql": "3408e2ee304e0f9ef7b99f250d69242e7a6cf82f8178f95e051b176abc1d0fec"
+  },
+  "artifact_sha256_note": "digest-gen.mjs and the frozen schema are byte-identical to the prior pass; only the seed SQL and verify-seed.mjs changed under this remediation.",
+
+  "verification": {
+    "digest_generator": "node scripts/live-ai-budget-01/digest-gen.mjs",
+    "offline_test": "node scripts/live-ai-budget-01/verify-seed.mjs"
+  },
+
+  "authority": {
+    "no_database_connection": true,
+    "no_sql_execution": true,
+    "no_railway_mutation": true,
+    "no_supabase": true,
+    "no_vercel": true,
+    "no_provider": true,
+    "no_gateway_deployment": true,
+    "no_price_catalog": true,
+    "no_control_activation": true,
+    "no_policy_activation": true,
+    "no_commit": true,
+    "no_git_add": true,
+    "no_push": true,
+    "no_pr": true,
+    "no_merge": true,
+    "no_deploy": true,
+    "no_env_or_secret_change": true,
+    "no_core_prod_access": true,
+    "no_03c": true
+  }
+}
