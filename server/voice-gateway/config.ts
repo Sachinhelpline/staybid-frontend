@@ -190,6 +190,16 @@ export function liveAi03bStagingTextConfigured(c: LiveAiConfig): boolean {
 export function liveAi03bStagingSubjectAllowed(c: LiveAiConfig, subjectDigest: string): boolean {
   return liveAi03bStagingTextConfigured(c) && typeof subjectDigest === "string" && subjectDigest.length > 0 && c.stagingSubjectAllowlist.indexOf(subjectDigest) !== -1;
 }
+/**
+ * LIVE-AI-03B (staging bounded impl) — the SINGLE authenticated-subject predicate for every
+ * 03B routing/classification boundary. 03B is eligible ONLY when the session is a genuinely
+ * AUTHENTICATED trusted session (`authenticated === true`, i.e. the assertion carried `auth:true`),
+ * the 03B staging text prerequisites are configured, AND the subject is an exact allowlist member.
+ * An `auth:false` session (the ordinary customer broker's server-random `px.*` subject) can NEVER
+ * enter 03B, even if its subject somehow matched the allowlist. Fail-closed on every axis. */
+export function liveAi03bStagingSessionAllowed(c: LiveAiConfig, authenticated: boolean, subjectDigest: string): boolean {
+  return authenticated === true && liveAi03bStagingSubjectAllowed(c, subjectDigest);
+}
 
 /** Fail-closed: the Live-AI provider is reachable only with a key + all three models. */
 export function liveAiProviderConfigured(c: LiveAiConfig): boolean {
