@@ -1,0 +1,74 @@
+{
+  "packet": "LIVE-AI-03B-P1-02-TRUSTED-EXECUTOR-READ-ADAPTER-PRODUCTION-DEPENDENCY-BOUNDARY-CONSOLIDATED-OFFLINE-REMEDIATION-01",
+  "supersedes_candidate_of": "LIVE-AI-03B-P1-02-TRUSTED-EXECUTOR-READ-ADAPTER-OFFLINE-IMPLEMENTATION-01 (same runtime dir; the 12-file candidate was NOT frozen — WORK returned HOLD)",
+  "status": "OFFLINE REMEDIATION — UNAPPLIED / UNDEPLOYED / NON-ACTIVATING",
+  "artifact_t0_preserved": "2026-09-19T05:41:50Z",
+  "repository": "Sachinhelpline/staybid-frontend",
+  "branch": "claude/live-ai-budget-01-price-catalog-inactive-artifact-01",
+  "preflight_head": "653a84c1580c97cc9f953c5e6fc8e3c2f911238a",
+  "accepted_application_source_commit": "2b69ce28230fc9d56a035846e95d8de206d5db3b",
+
+  "work_finding_corrected": "UNAUTHENTICATED PRODUCTION DEPENDENCY AND OBSERVATION BOUNDARY — the production entrypoint accepted security-authoritative dependencies (DB clients, trust root, connection proof, privilege boolean, reviewed SQL, source pin) directly from the activation caller; a caller could return ok:true/activated:true with an in-memory DB, synthetic key, caller-created target proof, caller-selected SQL and a caller privilege boolean, with no genuine Railway identity, PostgreSQL connection, committed transaction or verified privilege.",
+
+  "corrections": {
+    "A_production_authority": "runTrustedExecutorProduction(request) accepts ONLY { approvalEnvelope, suppliedEvidence, executionId }; any other key is rejected (production_rejects_caller_supplied_authority). All trusted dependencies come from acquireProductionAuthority() (production-authority.mjs) — independent of the caller, NO runtime injector — plus the digest-bound registry. Offline the authority is UNPROVISIONED ⇒ fail closed.",
+    "B_database_target_proof": "db-target-binding.mjs now requires the connection proof to be bound to an independent issuer (expectedIssuer) AND the actual client connection token (boundConnectionToken); a bare object carrying the public provenance string + expected IDs is insufficient. CORE-PROD rejected; no fallback.",
+    "C_fixed_reviewed_queries": "production-query-registry.mjs — immutable, digest-bound known-schema queries; production read adapter refuses queries lacking the registry digest marker; arbitrary/constant-returning caller SQL cannot be used. Policy/control/ceiling/zero-exposure exact columns are NOT invented — registry is INCOMPLETE ⇒ production BLOCKED (future schema gate).",
+    "D_privilege_authority": "the raw caller boolean is no longer trusted in production; privilegeProof is supplied only by the independent authority (bound to executor/reader credential identities + verified grants). Offline absent ⇒ fail closed. Interface only; no live privilege verification claimed.",
+    "E_database_client_custody": "production database clients are never supplied by the caller (the request whitelist forbids them); they come from the authority. Absence of a __testFixture marker is NOT treated as production-trust; production adapters also refuse a __testFixture client.",
+    "F_explicit_test_boundary": "runTrustedExecutorTest(ctx) keeps injection under testBoundary only (synthetic keys + disposable fixtures). No production flag/env disables any verification; no production→test fallback; no test→production authority promotion.",
+    "G_material_regression_tests": "the demonstrated bypass (unmarked in-memory client + synthetic key + caller proof + caller SQL + caller privilege boolean) invoked against the production entrypoint FAILS CLOSED; each caller-supplied-authority vector is rejected; a clean request fails closed at the unprovisioned authority."
+  },
+
+  "new_offline_integration_dir": "scripts/live-ai-03b/trusted-executor-runtime-01/",
+  "runtime_files_sha256": {
+    "canonical-timestamp.mjs": "d0c48f3af5e8e802ff129d178ed6064eff99b49877db5616f257f928ec810e8e",
+    "runtime-config.mjs": "c0035996b6fcf3a36a402d220ac1559bdcb8cdf2f943d72deaa714c72ec197ae",
+    "db-target-binding.mjs": "c1fec8b68fe79ec2d7615ff9b401034d8f96a7e8b82ab342a5b53f1c6fbdd0ea",
+    "restricted-activation-adapter.mjs": "1a826cbe98e1fe17654bc23dd37c5295f3b438b5b6aea034f9c3b7255c8525c8",
+    "trusted-read-adapter.mjs": "12f9c439371b2cb11728fde821ac29208553797e72fb7be5d0db561e476d660b",
+    "trusted-executor-runtime.mjs": "489747cbb51de7d167f80db1e7cf836f1760763733a83e0b1de36e259fd6e605",
+    "production-authority.mjs": "6da4a3a98b98bf84d74955ddceb65ab073069f84f1852e48141976e6020890f6",
+    "production-query-registry.mjs": "d4db6b4cf9baaf792c5f93446ce38b61d6daa28ab227bacc180336111988586d",
+    "tests/inmemory-pg-fixture.mjs": "7cb31df5b719998be5311fda30a4e11da597f77ecd72e528ad29766b219145e9",
+    "tests/runtime-integration.test.mjs": "97b7767f2d9769a1b10ae09e22080e51c2b1085cd46376c697f9afabf24d96dc",
+    "future-live-preflight-spec.json": "4eb8a4173a93720261f639f35870a8985917c120772e162397305bdaee9cc154",
+    "runtime-config-spec.json": "1e60e1381b7ce23c4d0e1ae381a7ef71710ab08e5ba748f5cff9d33202e72cc8",
+    "README.md": "16cbb6d02f300ae2704928dcf9ba7167e5a2ca068a5acd2e11f517675ef7dccd"
+  },
+  "changed_from_prior_candidate": ["db-target-binding.mjs", "trusted-read-adapter.mjs", "trusted-executor-runtime.mjs", "tests/runtime-integration.test.mjs", "README.md"],
+  "new_in_this_remediation": ["production-authority.mjs", "production-query-registry.mjs"],
+  "unchanged_from_prior_candidate": ["canonical-timestamp.mjs", "runtime-config.mjs", "restricted-activation-adapter.mjs", "tests/inmemory-pg-fixture.mjs", "future-live-preflight-spec.json", "runtime-config-spec.json"],
+
+  "frozen_19_preservation_proof": {
+    "git_preservation_commit": "653a84c1580c97cc9f953c5e6fc8e3c2f911238a",
+    "accepted_evidence_zip_sha256": "2f93cd710ceea11f14c7715e59d906f686e21f4b68c6c5ea76ca42191f888864",
+    "accepted_evidence_zip_size_bytes": 82691,
+    "result": "The 19 frozen files are UNCHANGED by this remediation (0 tracked modifications; tracked blobs == working files). No frozen file modified/renamed/moved/deleted/regenerated; no application source or P1-01/price-catalog/SQL-activation change."
+  },
+
+  "test_command": "node scripts/live-ai-03b/trusted-executor-runtime-01/tests/runtime-integration.test.mjs",
+  "test_result": { "total": 66, "passed": 66, "failed": 0, "skipped": 0, "note": "includes the demonstrated-bypass regression + each caller-supplied-authority vector + clean-request fail-closed; the prior offline coverage is preserved and re-run." },
+
+  "preserved_accepted_behavior": "timestamp canonicalization, seven-ceiling logic, Phase-A/Phase-B sequencing, fixed activation-function invocation, no-auto-activation-on-import, no false PROBE_READY — all preserved; frozen SQL unchanged.",
+
+  "honest_status": {
+    "offline_remediation": "PASS — the production dependency/observation boundary is corrected and the demonstrated bypass fails closed; verified offline against a disposable in-memory fixture + synthetic keys.",
+    "database_execution": "NOT PERFORMED — no local disposable PostgreSQL server; the in-memory fixture is NOT live PostgreSQL and is not privilege verification.",
+    "production_path": "REMAINS BLOCKED offline — production authority UNPROVISIONED and query registry INCOMPLETE; caller cannot supply authority.",
+    "activation": "REMAINS BLOCKED — no production trust root, no genuine signed approval, migration UNAPPLIED, no live credentials/proofs."
+  },
+  "remaining_live_gates": [
+    "provisioned independent production authority: real reviewer trust root + credential-isolated executor/reader clients + independently ISSUED connection-identity proof (issuer + client-token bound) + independently ISSUED privilege-isolation proof",
+    "schema-confirmed, digest-bound production query registry for policy/control/seven-ceiling/zero-exposure (exact columns not in the accepted 19 artifacts)",
+    "applied trusted-boundary migration on AI-STAGING PG b7362594-... only",
+    "committed-ledger timestamp compatibility proven against real PostgreSQL to_char",
+    "provider credential; gateway arm + full gateway/broker/operator preflight; the single probe (separate authorized steps)"
+  ],
+  "authority": {
+    "no_frozen_19_change": true, "no_application_source_change": true, "no_git_add_commit_push": true,
+    "no_live_db_connection_or_write": true, "no_migration_apply": true, "no_railway_supabase_vercel_mutation": true,
+    "no_deployment": true, "no_provider_call": true, "no_activation": true, "no_secret_or_key_or_approval_created": true,
+    "no_public_endpoint_introduced": true, "no_arbitrary_sql_utility": true, "no_core_prod_access": true, "no_03c": true
+  }
+}

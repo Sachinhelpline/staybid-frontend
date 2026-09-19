@@ -1,0 +1,47 @@
+{
+  "artifact": "LIVE-AI-03B-P1-02 future READ-ONLY live-preflight specification",
+  "status": "OFFLINE SPECIFICATION ONLY — NOT EXECUTED. No live database or Railway access performed.",
+  "packet": "LIVE-AI-03B-P1-02-TRUSTED-EXECUTOR-READ-ADAPTER-OFFLINE-IMPLEMENTATION-01",
+  "warning": "These queries are read-only and must be run ONLY by an owner-controlled, credential-isolated read-only session against the exact intended AI-STAGING PostgreSQL service, AFTER an independent connection->service identity proof. A query result alone can never prove connection target, credential isolation, or absence of credentials copied into another service.",
+  "target_identity_rules": {
+    "ai_staging_pg_service_id": "b7362594-a01b-4623-a982-394707a6cec2",
+    "ai_staging_project_id": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "ai_staging_environment_id": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "core_prod_pg_service_id_PROTECTED_NON_TARGET": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b",
+    "core_prod_project_id_PROTECTED_NON_TARGET": "04c8b523-5b15-4d81-af06-8c2aa1a83499",
+    "historical_only_do_not_treat_as_current": {
+      "service_instance_id": "f384045e-eee7-4ad4-b90d-887471b50fe7",
+      "running_deployment_instance_id": "f4f479c2-d4f6-4ece-9bd6-919e2152a1bc"
+    },
+    "note": "Both AI-STAGING and CORE-PROD can show environment 'production' and DB 'railway'. A DB name, project display name, host label, or caller assertion is NOT connection authority. Fresh instance/deployment IDs must be re-fetched at preflight time; do not hardcode a running-instance ID."
+  },
+  "evidence_requirements": {
+    "A_fresh_railway_identities": { "source": "railway_api_independent", "requires": "fresh project/environment/service/deployment/running-instance IDs re-fetched at preflight; historical IDs rejected" },
+    "B_connection_to_service_identity": { "source": "railway_runtime_independent_proof", "requires": "AiStagingConnectionIdentityProofV1 — the live SQL connection terminates at PG service b7362594-... (by service identity, not DB/host name)" },
+    "C_core_prod_non_target": { "source": "railway_api_independent", "requires": "explicit proof the connection is NOT CORE-PROD service 1fbd7632-... / project 04c8b523-..." },
+    "D_source_prestate": { "source": "deploy_metadata_independent", "requires": "gateway deploy pinned to commit 2b69ce28.../tree 87aad22d...; expected inactive-catalog prestate" },
+    "E_role_identities_grants": { "source": "pg_catalog", "queries": ["role_inventory", "function_grants", "table_grants_budget"] },
+    "F_executor_no_direct_mutation": { "source": "pg_catalog+independent", "requires": "live_ai_03b_executor has EXECUTE on the trusted function ONLY, no BUDGET-table DML, no superuser/BYPASSRLS, no pg_write_all_data; pg_catalog shows grants but ABSENCE of copied credentials needs independent evidence" },
+    "G_gateway_probe_credential_isolation": { "source": "railway_env_independent", "requires": "gateway/probe runtime credentials are NOT postgres/pg_write_all_data/executor/reader; NOT provable by a DB query alone" },
+    "H_reader_read_only": { "source": "pg_catalog", "queries": ["reader_grants"], "requires": "trusted reader role has read-only authority, no table DML" },
+    "I_applied_migration_state": { "source": "pg_catalog", "queries": ["trusted_schema_objects", "ledger_table_shape", "function_signature"] },
+    "J_trust_root_config": { "source": "config_independent", "requires": "independently-pinned reviewer public key + fingerprint provisioned outside repo/Railway/gateway/probe/executor" },
+    "K_committed_ledger_timestamp_compat": { "source": "pg_catalog+live", "queries": ["ledger_timestamp_canonical_probe"], "requires": "to_char(consumed_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') yields the whole-second UTC form the frozen receipt uses" },
+    "L_pricing_catalog_freshness": { "source": "pg_catalog+contract", "queries": ["catalog_prestate"], "requires": "now < 2026-09-25T18:37:35Z or a separately reviewed successor catalog" },
+    "M_seven_ceiling_state": { "source": "pg_catalog", "queries": ["ceilings_state"], "requires": "the exact seven accepted one-call ceilings (89536 micros x5 + 1 provider call + 1 execution admission)", "SCHEMA_GATE": "exact policy/control/ceiling column identifiers are NOT in the accepted 19 artifacts and MUST be confirmed against the applied schema before these queries are finalized (reviewedStateQueries)" },
+    "N_zero_prior_provider_exposure": { "source": "pg_catalog", "queries": ["zero_exposure_counts"], "requires": "all budget foundation exposure counts = 0", "SCHEMA_GATE": "exact table/column identifiers require applied-schema confirmation" }
+  },
+  "read_only_queries_known_schema": {
+    "role_inventory": "SELECT rolname, rolsuper, rolbypassrls, rolcanlogin FROM pg_roles WHERE rolname IN ('postgres','live_ai_03b_fn_owner','live_ai_03b_executor')",
+    "function_grants": "SELECT grantee, privilege_type FROM information_schema.routine_privileges WHERE specific_schema='live_ai_03b_trusted' AND routine_name='activate_catalog'",
+    "function_signature": "SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, t.typname AS returns FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_type t ON t.oid=p.prorettype WHERE n.nspname='live_ai_03b_trusted' AND p.proname IN ('activate_catalog','restore_catalog_inactive')",
+    "table_grants_budget": "SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE table_schema='public' AND table_name LIKE 'budget_%' AND grantee IN ('live_ai_03b_executor','live_ai_03b_fn_owner')",
+    "trusted_schema_objects": "SELECT n.nspname, c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='live_ai_03b_trusted'",
+    "ledger_table_shape": "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='live_ai_03b_trusted' AND table_name='approval_consumption' ORDER BY ordinal_position",
+    "ledger_timestamp_canonical_probe": "SELECT to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS canonical_now",
+    "catalog_prestate": "SELECT id, status, catalog_digest FROM public.budget_price_catalog_versions WHERE id='openai-gpt-5-6-terra-standard-short-v1'"
+  },
+  "facts_from_pg_catalog": ["E_role_identities_grants", "F(partial: grants only)", "H_reader_read_only", "I_applied_migration_state", "K_committed_ledger_timestamp_compat", "L_pricing_catalog_freshness"],
+  "facts_requiring_independent_railway_runtime_credential_evidence": ["A_fresh_railway_identities", "B_connection_to_service_identity", "C_core_prod_non_target", "D_source_prestate", "F(absence of copied credentials)", "G_gateway_probe_credential_isolation", "J_trust_root_config"],
+  "honesty": "A database query cannot prove the absence of credentials copied into another service, and a project/service ID string cannot prove the actual connection target. Both require independent Railway/runtime evidence. This spec is not executed by this packet."
+}

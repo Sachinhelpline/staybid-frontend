@@ -1,0 +1,29 @@
+{
+  "artifact": "LIVE-AI-03B-P1-02 trusted executor + read adapter — NON-SECRET configuration & future private deployment specification",
+  "status": "OFFLINE SPECIFICATION ONLY. No configuration, secret, credential or deployment is created or applied by this packet.",
+  "packet": "LIVE-AI-03B-P1-02-TRUSTED-EXECUTOR-READ-ADAPTER-OFFLINE-IMPLEMENTATION-01",
+  "secrets_policy": "This file lists variable NAMES and documented TYPES ONLY. No connection strings, passwords, API keys, signing private keys, real approval envelopes, access tokens or production secrets appear here or anywhere in the runtime source.",
+  "env_var_names": {
+    "LIVE_AI_03B_TRUSTED_EXECUTOR_DB_URL": { "type": "secret-connection-string", "holder": "trusted-activation-executor", "grant": "EXECUTE on live_ai_03b_trusted.activate_catalog ONLY; no BUDGET-table DML; not superuser; not pg_write_all_data" },
+    "LIVE_AI_03B_TRUSTED_READER_DB_URL": { "type": "secret-connection-string", "holder": "trusted-read-adapter", "grant": "read-only; SELECT on the fixed reviewed queries; no table DML; no EXECUTE of the activation function" },
+    "LIVE_AI_03B_REVIEWER_TRUST_ROOT_DER_B64": { "type": "non-secret-public-key", "holder": "trusted-activation-executor (independently pinned)", "note": "reviewer PUBLIC key (SPKI DER, base64); never the private key" },
+    "LIVE_AI_03B_REVIEWER_TRUST_ROOT_FINGERPRINT": { "type": "non-secret-fingerprint", "holder": "trusted-activation-executor", "note": "sha256 of the DER SPKI; the executor pins the trust root to this, independent of any operator envelope" },
+    "LIVE_AI_03B_AI_STAGING_PROJECT_ID": { "type": "non-secret-id", "must_equal": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9" },
+    "LIVE_AI_03B_AI_STAGING_ENVIRONMENT_ID": { "type": "non-secret-id", "must_equal": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc" },
+    "LIVE_AI_03B_AI_STAGING_PG_SERVICE_ID": { "type": "non-secret-id", "must_equal": "b7362594-a01b-4623-a982-394707a6cec2" },
+    "LIVE_AI_03B_AI_STAGING_GATEWAY_SERVICE_ID": { "type": "non-secret-id", "must_equal": "dd96c7cd-02c1-4d02-89eb-7e217930ebfa" },
+    "LIVE_AI_03B_CONNECTION_IDENTITY_PROOF_REF": { "type": "non-secret-ref", "note": "reference to the independent connection->service identity proof source; NOT a DB name" }
+  },
+  "role_separation": {
+    "owner_administrator": { "authority": "provisions credentials/env/migration/deploy; superuser DB authority", "must_not": "be inherited by the trusted executor or read adapter" },
+    "independent_reviewer_signing_authority": { "authority": "sole holder of the Ed25519 reviewer PRIVATE key; signs approvals out-of-band", "must_not_store_key_in": ["repository", "Railway", "gateway", "probe", "trusted executor", "trusted reader"] },
+    "trusted_activation_executor": { "authority": "verify signed approval + invoke ONLY the restricted activation function", "must_not_have": ["Owner admin authority", "provider API key", "gateway signing private key", "CORE-PROD credential", "direct BUDGET-table DML", "arbitrary SQL"] },
+    "trusted_read_adapter": { "authority": "read-only fixed reviewed queries; construct trusted observations", "must_not_have": ["table mutation privileges", "EXECUTE of the activation function", "ability to authorize a second activation"] },
+    "gateway_probe_runtime": { "authority": "future customer-facing runtime (separate packet)", "must_not_receive": ["restricted executor credential", "reader credential", "administrative DB credential", "postgres/pg_write_all_data"] }
+  },
+  "private_deployment": {
+    "trusted_executor_service": { "exposure": "NO public HTTP endpoint, NO public TCP exposure; invoked only under explicit owner-controlled authority", "startup": "MUST be inert — must not activate a catalog during normal build/import/install; no auto-run entrypoint" },
+    "trusted_reader": { "exposure": "private read-only DB session; no public endpoint" }
+  },
+  "not_authorized_here": ["actual configuration", "credential provisioning", "secret creation", "deployment", "migration apply", "provider API key provisioning", "trust-root provisioning", "approval issuance"]
+}
