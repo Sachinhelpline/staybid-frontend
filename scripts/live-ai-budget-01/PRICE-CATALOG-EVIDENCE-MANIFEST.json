@@ -1,0 +1,89 @@
+{
+  "artifact_set": "LIVE-AI-BUDGET-01-INACTIVE-PRICE-CATALOG-SEED",
+  "packet": "LIVE-AI-BUDGET-01-PRICE-CATALOG-INACTIVE-ARTIFACT-IMPLEMENTATION-01",
+  "status": "UNAPPLIED / INACTIVE / OFFLINE REVIEW ARTIFACT",
+  "remediation": {
+    "pass": "consolidated remediation 01",
+    "packet": "LIVE-AI-BUDGET-01-PRICE-CATALOG-CONSOLIDATED-REMEDIATION-01",
+    "frozen_values_changed": false,
+    "digest_gen_changed": false,
+    "p1_findings_closed": {
+      "P1-01": "SQL postcondition now re-proves BOTH dormant control rows and the dormant policy row byte-exactly across ALL fields (scope_type/scope_key_digest/control_epoch/enabled/killed/updated_at/record_digest for each control; id/project_id/status/effective_from/effective_until/all seven ceilings/policy_digest/created_at for the policy), in addition to the exact 2/1 counts, before COMMIT.",
+      "P1-02": "verify-price-catalog-seed.mjs now structurally proves the SQL precondition AND postcondition each contain the FULL byte-exact predecessor predicates (both controls + policy, all fields), not merely digest presence, alongside the existing transaction/lock/insert/catalog/digest-reconstruction proofs."
+    }
+  },
+  "T0": "2026-09-18T18:37:35Z",
+  "T0_PLUS_7_DAYS": "2026-09-25T18:37:35Z",
+  "verification_freshness_days": 7,
+
+  "source_anchor": {
+    "repository": "Sachinhelpline/staybid-frontend",
+    "branch": "claude/live-ai-budget-01-dormant-seed-artifact-01",
+    "head": "e023cecc2da02bd5fe5b9e19cad78cc4ab70539f",
+    "accepted_main_ancestor": "2b69ce28230fc9d56a035846e95d8de206d5db3b"
+  },
+
+  "predecessors": {
+    "schema_file": "migrations/2026-09-16-live-ai-budget-01-dpbel-foundation.sql",
+    "schema_git_blob": "5ddd43861a51c42d62e293216b702453493cd66e",
+    "schema_sha256": "3408e2ee304e0f9ef7b99f250d69242e7a6cf82f8178f95e051b176abc1d0fec",
+    "dormant_seed_file": "migrations/2026-09-16-live-ai-budget-01-dormant-control-policy-seed.sql",
+    "dormant_seed_git_blob": "e58b2e9706cfae207969817c9a856ce55e8e5cb1",
+    "dormant_seed_sha256": "56da09a31265555d3325e61dd53f49333d926b6e384d837907cb8d00b3438dd4"
+  },
+
+  "processing_intent": "direct / standard / non-regional",
+  "context_tier": "short",
+  "currency": "USD",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "catalog_version_id": "openai-gpt-5-6-terra-standard-short-v1",
+  "entry_ids": [
+    "openai-gpt-5-6-terra-standard-short-v1-reasoning-input-token-base",
+    "openai-gpt-5-6-terra-standard-short-v1-reasoning-output-token-base"
+  ],
+  "source_id": "openai-api-pricing/gpt-5.6-terra/standard/short-context/v1",
+  "source_url": "https://developers.openai.com/api/docs/pricing",
+
+  "official_rates_represented": [
+    { "billing_dimension": "reasoning_input_token", "unit_size": 1000000, "rate_micros": 2000000, "usd_per_million": 2.0, "service_tier": null },
+    { "billing_dimension": "reasoning_output_token", "unit_size": 1000000, "rate_micros": 12000000, "usd_per_million": 12.0, "service_tier": null }
+  ],
+
+  "exclusions": [
+    "no cached-input entry", "no cache-write entry", "no STT entry", "no TTS entry", "no audio entry",
+    "no wildcard provider/model/service_tier/billing_dimension", "no alternate provider", "no alternate model",
+    "no long-context price", "no regional price", "no Batch price", "no Flex price", "no Fast price"
+  ],
+
+  "digest_contract": {
+    "hash": "SHA-256 over canonical UTF-8 JSON, lowercase hex",
+    "canonical_rules": ["recursive lexicographic key sort", "no insignificant whitespace", "integers as JSON numbers (no floats)", "null as JSON null", "standard JSON string escaping", "arrays keep defined canonical order"],
+    "catalog_domain": "staybid.live-ai.budget.price-catalog.v1"
+  },
+  "source_canonical": "{\"context_tier\":\"short\",\"currency\":\"USD\",\"model\":\"gpt-5.6-terra\",\"processing_mode\":\"standard\",\"provider\":\"openai\",\"rates\":[{\"billing_dimension\":\"reasoning_input_token\",\"rate_micros\":2000000,\"service_tier\":null,\"unit_size\":1000000},{\"billing_dimension\":\"reasoning_output_token\",\"rate_micros\":12000000,\"service_tier\":null,\"unit_size\":1000000}],\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"source_url\":\"https://developers.openai.com/api/docs/pricing\",\"verified_at\":\"2026-09-18T18:37:35Z\"}",
+  "source_digest": "fda6f4a834b2277bd0ace30738cda1e8f75c0f8bc523ddbd11c966c4da52beb3",
+  "catalog_canonical": "{\"catalog_version\":{\"created_at\":\"2026-09-18T18:37:35Z\",\"effective_from\":\"2026-09-18T18:37:35Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v1\",\"status\":\"inactive\"},\"domain\":\"staybid.live-ai.budget.price-catalog.v1\",\"entries\":[{\"billing_dimension\":\"reasoning_input_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v1\",\"created_at\":\"2026-09-18T18:37:35Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-18T18:37:35Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v1-reasoning-input-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":2000000,\"service_tier\":null,\"source_digest\":\"fda6f4a834b2277bd0ace30738cda1e8f75c0f8bc523ddbd11c966c4da52beb3\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"inactive\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-09-25T18:37:35Z\",\"verified_at\":\"2026-09-18T18:37:35Z\"},{\"billing_dimension\":\"reasoning_output_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v1\",\"created_at\":\"2026-09-18T18:37:35Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-18T18:37:35Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v1-reasoning-output-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":12000000,\"service_tier\":null,\"source_digest\":\"fda6f4a834b2277bd0ace30738cda1e8f75c0f8bc523ddbd11c966c4da52beb3\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"inactive\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-09-25T18:37:35Z\",\"verified_at\":\"2026-09-18T18:37:35Z\"}]}",
+  "catalog_digest": "453f928762b8e6cddedac8618786d008cb7a3d57ffefab9d0cfe3cda52c4c973",
+
+  "precondition_invariants": "13-table foundation intact (none missing/unexpected); budget_control_epochs = 2 byte-exact dormant rows; budget_policy_versions = 1 byte-exact dormant row; both price-catalog tables empty; other 9 tables empty; total = 3; nothing active (no enabled/killed control, no active policy, no active catalog)",
+  "postcondition_invariants": "controls + dormant policy preserved; 1 inactive catalog version (byte-exact, catalog_digest); 2 inactive entries (input+output byte-exact, shared source_id+source_digest); no active catalog; no wildcard; no alternate provider/model/currency; exactly 2 distinct billing dimensions; other 9 tables empty; total = 6",
+
+  "authority": {
+    "database_applied": false,
+    "catalog_active": false,
+    "provider_active": false,
+    "provider_called": false,
+    "controls_active": false,
+    "policy_active": false,
+    "gateway_deployed": false,
+    "network_pricing_lookup": false,
+    "version_control_mutation": false
+  },
+
+  "artifact_sha256": {
+    "migrations/2026-09-18-live-ai-budget-01-inactive-price-catalog-seed.sql": "64e0ded53bd556655bc384f5287e5a660ae593cecf98b5d47802f9c94f56400d",
+    "scripts/live-ai-budget-01/price-catalog-digest-gen.mjs": "04c029ed8dba4df4543be9c022fa6cd0436bffb984e61f2c12ed4a5682e94777",
+    "scripts/live-ai-budget-01/verify-price-catalog-seed.mjs": "7bfb9b72f4c5d909e8301bab3cc39acfc11d5469ed4053c7f768b5dd26b81cec"
+  }
+}
