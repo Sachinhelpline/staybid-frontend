@@ -1,0 +1,73 @@
+{
+  "artifact": "LIVE-AI-03B-P1-02 future live-only gates after the AI-STAGING verified-schema read-query binding (consolidated material remediation)",
+  "packet": "LIVE-AI-03B-P1-02-VERIFIED-SCHEMA-PRODUCTION-AUTHORITY-OFFLINE-INTEGRATION-CONSOLIDATED-MATERIAL-REMEDIATION-01",
+  "status": "OFFLINE — this packet performed NO live database / Railway / Supabase / Vercel / CORE-PROD access or mutation, applied NO SQL/migration/role/grant, provisioned NO credential/secret/signing-key/approval, and activated NO deployment/gateway/catalog/policy/control.",
+  "remediation": {
+    "finding_1_exact_binding": "RESOLVED OFFLINE — the four reviewed queries are bound to the exact accepted public.-qualified objects, policy identities (dormant 'live-ai-03b-policy-v1-dormant'; one-call 'live-ai-03b-policy-oneprobe-v1'), digests, and GLOBAL policy cardinality, recovered from accepted source only. Applied-schema/dialect confirmation on AI-STAGING remains a live gate (P_hosted_dialect_validation).",
+    "finding_2_supplied_sql_authority": "RESOLVED OFFLINE — production-authority-composition.mjs now validates the ACTUAL supplied query map (assertSuppliedRegistry): reconstructs the full registry from supplied reviewed SQL + frozen catalog/ledger queries, recomputes the canonical digest and requires it to equal the pinned CANDIDATE_REGISTRY_DIGEST, requires the supplied marker to equal that recomputed digest, and requires byte-identical queries. A copied correct digest carrying fabricated SQL fails closed. The reproduced WORK attack is covered by a regression test."
+  },
+  "supersedes_context": "Complements (does not replace) the frozen trusted-executor-runtime-01/future-live-preflight-spec.json. Its SCHEMA_GATEs M_seven_ceiling_state, N_zero_prior_provider_exposure plus the dormant/armed policy+control identifiers are RESOLVED OFFLINE here from accepted source; every live-only evidence requirement remains OPEN.",
+  "accepted_source_grounding": {
+    "foundation_schema": "migrations/2026-09-16-live-ai-budget-01-dpbel-foundation.sql",
+    "dormant_predecessor_seed": "migrations/2026-09-16-live-ai-budget-01-dormant-control-policy-seed.sql",
+    "inactive_catalog_seed": "migrations/2026-09-18-live-ai-budget-01-inactive-price-catalog-seed.sql",
+    "armed_policy_activation": "scripts/live-ai-03b/first-text-probe-activation-01/one-call-policy-activation.sql",
+    "armed_control_activation": "scripts/live-ai-03b/first-text-probe-activation-01/control-activation.sql",
+    "expectations": "scripts/live-ai-03b/first-text-probe-activation-01/first-probe-preflight-postflight.mjs (EXPECT / checks)"
+  },
+  "target_identity_rules_unchanged": {
+    "ai_staging_pg_service_id": "b7362594-a01b-4623-a982-394707a6cec2",
+    "ai_staging_project_id": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "core_prod_pg_service_id_PROTECTED_NON_TARGET": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b",
+    "note": "A DB name, project display name, host label, or caller assertion is NOT connection authority. Fresh instance/deployment IDs must be re-fetched at preflight time."
+  },
+  "resolved_offline_this_packet": {
+    "dormant_policy_control_query": {
+      "gate": "reviewedStateQueries.dormantPolicyControl (Phase-A predecessor observation)",
+      "resolution": "public.-qualified. active_policy_count is a GLOBAL count (no project filter) so a wildcard/foreign active policy is visible and rejects (frozen preActivationDormantPredecessor requires ===0). dormant_policy_present binds the exact dormant id 'live-ai-03b-policy-v1-dormant' + project + inactive status + policy_digest 'cf5ae64f...' AND the accepted single-policy-row cardinality.",
+      "still_required_live": "Applied-schema confirmation on AI-STAGING that these identifiers/columns exist as written (dialect/catalog validation) — an in-memory fixture is NOT PostgreSQL dialect proof."
+    },
+    "armed_policy_control_query": {
+      "gate": "reviewedStateQueries.armedPolicyControl (Phase-B armed digest observation)",
+      "resolution": "public.-qualified. one_call_policy_digest binds the exact one-call id 'live-ai-03b-policy-oneprobe-v1' + project + active status AND exactly-one-globally-active-policy (an extra/duplicate/foreign active policy ⇒ NULL ⇒ frozen predecessorArmedState rejects). Reads the STORED policy_digest / record_digest columns; does not emit the adapter-discarded active_policy_count.",
+      "still_required_live": "Applied-schema confirmation + that the accepted one-call/control activation SQLs populate policy_digest / record_digest / epoch 2 on AI-STAGING."
+    },
+    "ceilings_query": {
+      "gate": "future-live-preflight-spec.json M_seven_ceiling_state SCHEMA_GATE",
+      "resolution": "public.-qualified; reads the seven ceilings from the SAME exact accepted one-call policy identity + digest (id 'live-ai-03b-policy-oneprobe-v1' + active + policy_digest '9927a920...'); the frozen oneCallCeilingsExact enforces the exact seven accepted ceilings.",
+      "still_required_live": "Applied-schema confirmation + a live row asserting the exact seven accepted ceilings (89536 micros x5 + 1 provider call + 1 execution admission)."
+    },
+    "zero_exposure_counts_query": {
+      "gate": "future-live-preflight-spec.json N_zero_prior_provider_exposure SCHEMA_GATE",
+      "resolution": "public.-qualified count over the 8 accounting tables; count-only, single aggregated row; frozen zeroPriorProbeExposure enforces all counts = 0.",
+      "still_required_live": "Applied-schema confirmation + a live assertion that every count = 0 before any provider exposure."
+    },
+    "supplied_registry_authority": {
+      "gate": "immutable query registry — a caller cannot substitute SQL (Finding 2)",
+      "resolution": "assertSuppliedRegistry recomputes the canonical digest from the ACTUAL supplied SQL (+ frozen catalog/ledger queries) and requires it to equal the pinned CANDIDATE_REGISTRY_DIGEST; a copied digest marker with altered SQL fails closed.",
+      "still_required_live": "None offline; the digest travels with any future provisioned authority."
+    }
+  },
+  "open_live_only_gates": {
+    "A_fresh_railway_identities": "Fresh project/environment/service/deployment/running-instance IDs re-fetched at preflight; historical IDs rejected. NOT satisfiable offline.",
+    "B_connection_to_service_identity": "Independent runtime proof the live SQL connection terminates at PG service b7362594-... by service identity (not DB/host name). NOT satisfiable offline.",
+    "C_core_prod_non_target": "Explicit proof the connection is NOT CORE-PROD service 1fbd7632-... / project 04c8b523-.... NOT satisfiable offline.",
+    "D_source_prestate": "Gateway deploy pinned to the accepted commit/tree with the expected inactive-catalog prestate. NOT satisfiable offline.",
+    "F_executor_no_direct_mutation_absence": "pg_catalog shows grants, but ABSENCE of credentials copied into another service needs independent Railway/runtime evidence.",
+    "G_gateway_probe_credential_isolation": "Gateway/probe/reader/executor runtime credentials mutually isolated + none is postgres/pg_write_all_data. NOT provable by a DB query alone.",
+    "H_reader_role_applied_and_verified": "trusted-reader-role.sql (Task B) is UNAPPLIED. Owner must apply it against AI-STAGING ONLY, provision the reader LOGIN credential out of band, and run its Section V verification (effective SELECT-only, no privileged membership, canary write denied).",
+    "J_trust_root_config": "Independently-pinned reviewer public key + fingerprint provisioned outside repo/Railway/gateway/probe/executor. NOT satisfiable offline.",
+    "P_hosted_dialect_validation": "The four queries are proven only against a disposable in-memory fixture (string-exact answers) + the frozen checkers. Hosted-PostgreSQL dialect/catalog behavior (scalar-subquery cardinality errors, boolean/int coercion, NULL-on-missing-row, empty-subquery semantics) is UNPROVEN here.",
+    "Q_composed_authority_provisioning": "production-authority-composition.mjs (Task C) returns UNPROVISIONED offline and exposes no injector. A future, separately-authorized deployment must construct a candidate that passes validateProvisionedAuthority() (real credential-isolated clients, independently-issued connection + privilege proofs, config-pinned trust root, pinned+content-verified registry) — wired without modifying the frozen entrypoint."
+  },
+  "not_authorized_by_this_packet": [
+    "any live DB/Railway/Supabase/Vercel/CORE-PROD access or mutation",
+    "applying any SQL/migration (including trusted-reader-role.sql)",
+    "provisioning any role/grant/credential/secret/signing-key/genuine approval",
+    "activating any deployment/gateway/catalog/policy/control",
+    "any provider call or first text probe",
+    "advancing to stage 03C or later",
+    "any git add/commit/push/PR/merge/branch mutation"
+  ],
+  "honesty": "This packet corrects the two WORK-reproduced material defects OFFLINE, grounded entirely in accepted source, and proves them via static SQL-binding assertions + the frozen checkers + the reproduced-attack regression. It does NOT prove live PostgreSQL behavior, does NOT establish any live connection/credential/authority, and does NOT make activation reachable. Disposition: OFFLINE_REMEDIATION_COMPLETE_REVIEW_REQUIRED."
+}

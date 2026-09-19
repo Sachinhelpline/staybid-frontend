@@ -1,0 +1,28 @@
+{
+  "artifact": "LIVE-AI-03B-P1-02 trusted-runtime live-binding OFFLINE evidence manifest (consolidated material remediation)",
+  "packet": "LIVE-AI-03B-P1-02-VERIFIED-SCHEMA-PRODUCTION-AUTHORITY-OFFLINE-INTEGRATION-CONSOLIDATED-MATERIAL-REMEDIATION-01",
+  "disposition": "OFFLINE_REMEDIATION_COMPLETE_REVIEW_REQUIRED",
+  "directory": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01",
+  "hash_algorithm": "sha256",
+  "test_result": "82 passed, 0 failed (node tests/live-binding.test.mjs)",
+  "compatibility": "frozen trusted-executor-runtime-01/tests/runtime-integration.test.mjs still 66 passed, 0 failed",
+  "findings_remediated": {
+    "finding_1": "exact public.-qualified object + policy identity + digest + GLOBAL cardinality binding of the four reviewed queries",
+    "finding_2": "production-authority validator now verifies the ACTUAL supplied SQL content against the pinned registry digest (assertSuppliedRegistry); copied-digest + substituted-SQL fails closed"
+  },
+  "database_execution": "disposable in-memory fixture only — NOT live PostgreSQL dialect/catalog validation",
+  "production_authority": "composed authority UNPROVISIONED offline; frozen entrypoint untouched; activation REMAINS BLOCKED",
+  "frozen_files_touched": "none — the 19 trusted-activation-boundary + first-text-probe files and the 14 trusted-executor-runtime files are byte-unchanged (git diff empty)",
+  "changed_this_packet": ["production-read-queries.mjs", "production-authority-composition.mjs", "tests/live-binding-fixture.mjs", "tests/live-binding.test.mjs", "README.md", "future-live-gates.json", "EVIDENCE-MANIFEST.json"],
+  "unchanged_this_packet": ["trusted-reader-role.sql"],
+  "files": [
+    { "path": "production-read-queries.mjs", "sha256": "42ddf87d268183183d3851a91e9df57b8e9e2a1c3d629412a24a489e9646ed0c", "bytes": 18744, "task": "A" },
+    { "path": "trusted-reader-role.sql", "sha256": "11d9f707085e230df25e4f3ff1ddb7a8b7503149ee67a02d4ac38c501fccd8fd", "bytes": 6696, "task": "B (unchanged; preserved)" },
+    { "path": "production-authority-composition.mjs", "sha256": "a0e84399bd3c858b61a3a57b3590ff8115335ea5942a78685ad753403b651f69", "bytes": 8983, "task": "C" },
+    { "path": "tests/live-binding-fixture.mjs", "sha256": "48b2cbb811d3342e82464c8cf14e0cdb956c75c8eefe88f68c42848fe32a626a", "bytes": 5595, "task": "test" },
+    { "path": "tests/live-binding.test.mjs", "sha256": "2ddd07d63f3be1b330a1903eb36319537330a9ca8d22ddedc3840460a574b26d", "bytes": 22934, "task": "test" },
+    { "path": "future-live-gates.json", "sha256": "78b94d0646672ba61c0ee0b90e8d2cc9e353d020b983353e9458451a5516c80a", "bytes": 9285, "task": "spec" },
+    { "path": "README.md", "sha256": "28d2cf36035688f08f6edbac836a2dfed3299e7af0cfece1264a4136f2a7322d", "bytes": 5406, "task": "doc" }
+  ],
+  "honesty": "Hashes cover this directory's own files only. This manifest is not signed and is not authority; it is an integrity index for offline review."
+}
