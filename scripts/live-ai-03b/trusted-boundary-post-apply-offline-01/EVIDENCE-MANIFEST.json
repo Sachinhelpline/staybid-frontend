@@ -1,0 +1,33 @@
+{
+  "artifact": "LIVE-AI-03B-P1-02 trusted-boundary post-apply OFFLINE evidence manifest (CHECK-literal surgical fix 01)",
+  "packet": "LIVE-AI-03B-P1-02-POST-APPLY-CHECK-LITERAL-SURGICAL-FIX-01",
+  "disposition": "OFFLINE_SURGICAL_FIX_COMPLETE_REVIEW_REQUIRED",
+  "directory": "scripts/live-ai-03b/trusted-boundary-post-apply-offline-01",
+  "hash_algorithm": "sha256",
+  "status": "UNAPPLIED / OFFLINE — no live DB/Railway/Supabase/Vercel/CORE-PROD access, no SQL/migration/grant applied, no role/credential provisioned, no activation, no git mutation.",
+  "test_result": "107 passed, 0 failed (node tests/boundary-post-apply.test.mjs) — offline static coverage + acceptance-predicate replay (case/whitespace-EXACT CHECK, default) + pre-grant ordering over the actual SQL bytes; NOT hosted-PostgreSQL execution or effective-role proof",
+  "executed_assertions": 107,
+  "check_literal_surgical_fix": {
+    "defect": "The prior CHECK comparison normalized the whole pg_get_constraintdef with lower(...) + regexp_replace(...,'\\s','','g') (+ '::text' strip), which reached INSIDE the quoted string literals, so CHECK (action IN ('ACTIVATE','RESTORE')) and CHECK (action IN ('act ivate','restore')) were wrongly ACCEPTED.",
+    "fix": "Both SQL artifacts now compare the RAW pg_get_constraintdef(oid) case- and whitespace-EXACT against a source-grounded canonical allowlist (accepted_check_forms) derived from the frozen migration `action text NOT NULL CHECK (action IN ('activate','restore'))` — a text column ⇒ CHECK (action = ANY (ARRAY['activate'::text, 'restore'::text])) plus the double-paren variant. No lowercase, no whitespace transform, no '::text' strip, no LIKE/keyword fallback. Quoted-literal bytes are preserved; uppercase/embedded-whitespace/altered/missing/extra/reversed-operator/incompatible-boolean all fail to match and are rejected. An unrecognized (version-variant) rendering fails CLOSED (documented future hosted-PostgreSQL gate).",
+    "scope": "ONLY the ledger action CHECK quoted-literal comparison in both artifacts + its directly associated regression tests/evidence. consumed_at default (no quoted literals) and every previously-passing check (reader public USAGE, pre-GRANT sequencing, roles, privilege matrices, exact two-grant set) are byte-preserved."
+  },
+  "previously_closed_preserved": ["executor privilege matrix (13 tables + ledger × 7)", "reader privilege matrix + excluded allocation", "role attributes + memberships", "reader public-schema USAGE (R1)", "pre-GRANT execution ordering (R3)", "exact two-grant set", "consumed_at exact default (R2)", "README/manifest test-count consistency"],
+  "source_provenance": {
+    "trusted_boundary_migration": { "path": "scripts/live-ai-03b/trusted-activation-boundary-01/db/2026-09-19-p1-02-trusted-activation-boundary.sql", "sha256": "2987d3ffb9b49c4318b9a9ca398c6b2b545fc98484f527c8fa01f001f5aaf9c5", "unchanged": true },
+    "reader_role_proposal": { "path": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/trusted-reader-role.sql", "sha256": "11d9f707085e230df25e4f3ff1ddb7a8b7503149ee67a02d4ac38c501fccd8fd", "unchanged": true }
+  },
+  "authorized_positive_grant_set": [
+    "GRANT USAGE ON SCHEMA live_ai_03b_trusted TO live_ai_03b_reader;",
+    "GRANT SELECT ON live_ai_03b_trusted.approval_consumption TO live_ai_03b_reader;"
+  ],
+  "frozen_preservation": "accepted 19 + 14 + 8 files byte-unchanged (git diff empty); accepted migration + reader-role SQL hashes unchanged",
+  "files": [
+    { "path": "deferred-ledger-read-grant.sql", "sha256": "480648b49e8b17276cc7e6d7900895ec32d666601680feb8441230690fba88d7", "bytes": 24988, "artifact": "A" },
+    { "path": "post-application-verification.sql", "sha256": "f7db6c1d89a00eee02d535f6ca3a6f02e3ccdd2a366b2beb03dc8fc4627d4658", "bytes": 20633, "artifact": "B" },
+    { "path": "tests/boundary-post-apply.test.mjs", "sha256": "44fd69bdac50611dc1f10ee84e8679c020eee8dc47d90a7ed2b4f6ab809a1c84", "bytes": 15669, "artifact": "test" },
+    { "path": "README.md", "sha256": "50c94860aaf1af963769ec43f6e8fba0563ff832d5c784e1c6f100830974a407", "bytes": 7631, "artifact": "doc" }
+  ],
+  "future_gates": ["hosted-PostgreSQL dialect/execution validation incl. CONFIRMING the exact CHECK canonical rendering the hosted server emits (extend the fail-closed accepted_check_forms allowlist ONLY on confirmed equivalence)", "controlled backup + read-only prestate capture", "reader LOGIN credential provisioned out-of-band + custody-isolated", "effective-role credential-backed proof (SELECT succeeds; write + trusted-function EXECUTE denied)", "connection→service-identity confirmation to AI-STAGING b7362594-..."],
+  "honesty": "Hashes cover this directory's own files only. This manifest is not signed and is not authority. The two SQL artifacts are UNAPPLIED proposals; the tests prove SQL structure + the candidate's own case/whitespace-EXACT acceptance predicate against examples + pre-grant ordering — they do NOT prove the hosted-PostgreSQL constraint rendering, credential isolation, or effective runtime least privilege."
+}
