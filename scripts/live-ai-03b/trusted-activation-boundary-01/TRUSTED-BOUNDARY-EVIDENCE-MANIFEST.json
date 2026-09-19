@@ -1,0 +1,159 @@
+{
+  "packet": "LIVE-AI-03B-P1-02-TRUSTED-ACTIVATION-BOUNDARY-CONSOLIDATED-OFFLINE-IMPLEMENTATION-01",
+  "status": "UNAPPLIED / UNDEPLOYED / NON-ACTIVATING OFFLINE REVIEW ARTIFACT",
+  "artifact_t0": "2026-09-19T05:41:50Z",
+  "repository": "Sachinhelpline/staybid-frontend",
+  "local_baseline_branch": "claude/live-ai-budget-01-price-catalog-inactive-artifact-01",
+  "local_baseline_head": "0cb00f31d9b759c2479205195a5f1254266b093b",
+  "accepted_deployable_commit": "2b69ce28230fc9d56a035846e95d8de206d5db3b",
+  "accepted_deployable_tree": "87aad22d90f84f2c3b307201c3e0d3b8658b1619",
+  "predecessor_evidence_zip": {
+    "name": "LIVE-AI-03B-FIRST-TEXT-PROBE-ACTIVATION-CONSOLIDATED-REMEDIATION-01-CONTROL-ROOM-EVIDENCE.zip",
+    "size_bytes": 46353,
+    "sha256": "db08d5403d8f326dc8ad20846fb5beb1bc70a5928cbb90a924a3a03a09db3e6b"
+  },
+
+  "finding_closed": "P1-02 — independent approval provenance + execution/privilege boundary. The prior kit accepted a caller-supplied approval anchor (two matching caller values are not independent approval) and a standalone operator could bypass approval via direct catalog UPDATE.",
+
+  "integration_remediation": {
+    "packet": "LIVE-AI-03B-P1-02-TRUSTED-ACTIVATION-BOUNDARY-CONSOLIDATED-INTEGRATION-REMEDIATION-01",
+    "supersedes_status_of": "LIVE-AI-03B-P1-02-TRUSTED-ACTIVATION-BOUNDARY-CONSOLIDATED-OFFLINE-IMPLEMENTATION-01 (same 19-file set; three integration defects fixed)",
+    "predecessor_offline_impl_zip": {
+      "name": "LIVE-AI-03B-P1-02-TRUSTED-ACTIVATION-BOUNDARY-CONSOLIDATED-OFFLINE-IMPLEMENTATION-01-CONTROL-ROOM-EVIDENCE.zip",
+      "note": "predecessor evidence ZIP for the OFFLINE-IMPLEMENTATION-01 pass; this integration-remediation pass produces its own fresh ZIP (see receipt)."
+    },
+    "findings_fixed": {
+      "FINDING_1_unified_claims_contract": "verifier emits ONE flat VerifiedApprovalClaimsV1 (toVerifiedClaims) only after Ed25519 verification; approval-verify.mjs returns { claims }; executor passes claims (not the raw envelope) as verified_claims_json; catalog-activation.sql -> activate_catalog(claims_json, execution_id) reads exactly the flat top-level keys + a contract-tag check. The prior envelope/top-level-field format mismatch is closed.",
+      "FINDING_2_two_phase_order_no_pass_callback": "executor runs concrete PHASE-A runPreActivation(...) over DORMANT observations BEFORE activation (dormant predecessor + zero prior exposure + approval-not-consumed + restricted-privilege proof), through an approved read-only capability whose provenance must be trusted; the incorrect pre-activation preflight use and the caller-supplied {pass:true} callback are removed; armed-state runPreflight is a SEPARATE PHASE-B gate; executor emits CATALOG_ACTIVATION_COMPLETE only (never PROBE_READY).",
+      "FINDING_3_db_clock_freshness": "activate_catalog independently re-checks freshness on clock_timestamp() (real DB wall clock, not now()/transaction-start, not a caller value, not ARTIFACT_T0), after the FOR UPDATE lock + predecessor match and immediately before the UPDATE: catalog expiry < 2026-09-25T18:37:35Z + approval [not_before,expiry) + evidence [verified_at,evidence_expiry) from the verified claims; malformed timestamp raises on cast (fail closed)."
+    },
+    "changed_files": [
+      "pricing-approval-contract.mjs (added VERIFIED_CLAIMS_CONTRACT + toVerifiedClaims)",
+      "approval-verify.mjs (success return now { claims: toVerifiedClaims(p), ... })",
+      "trusted-activation-executor.mjs (readState approved read-only capability + runPreActivation + claims-based restrictedDbActivate + CATALOG_ACTIVATION_COMPLETE)",
+      "db/2026-09-19-p1-02-trusted-activation-boundary.sql (activate_catalog/restore_catalog_inactive claims_json flat reads + contract-tag check + clock_timestamp() freshness block; function type signatures (jsonb,text) unchanged so GRANT/REVOKE still match)",
+      "TRUSTED-BOUNDARY-README.md (section B executor + DB bullets synced to Findings 1/2/3)",
+      "TRUSTED-BOUNDARY-EVIDENCE-MANIFEST.json (this record + updated hashes)",
+      "../first-text-probe-activation-01/catalog-activation.sql (verified_claims_json invocation)",
+      "../first-text-probe-activation-01/first-probe-preflight-postflight.mjs (runPreActivation + Phase-A checks; P1-01 seven ceilings unchanged)",
+      "../first-text-probe-activation-01/ABORT-ROLLBACK-RUNBOOK.md (scenario #5 + #7)",
+      "../first-text-probe-activation-01/EVIDENCE-MANIFEST.json (integration-remediation record + updated hashes)"
+    ],
+    "unchanged_files": [
+      "trusted-executor-deployment-spec.json",
+      "gateway-deployment-spec.json (first-text-probe kit)",
+      "ai-staging-target-binding-spec.json", "environment-manifest.json",
+      "one-call-policy-activation.sql", "control-activation.sql", "dormant-restoration.sql",
+      "activation-digest-gen.mjs", "first-text-probe.mjs"
+    ],
+    "honest_status": "OFFLINE INTEGRATION PASS — three findings fixed + behavior-verified offline (end-to-end verifier->executor->DB-invocation smoke + negative matrix + static SQL incl. clock-freshness guards). LIVE PRIVILEGE / DEPLOYMENT BOUNDARY NOT YET PROVEN (no local PostgreSQL server). Activation REMAINS BLOCKED.",
+    "artifact_t0_preserved": "2026-09-19T05:41:50Z"
+  },
+
+  "phase_b_consumed_approval_lifecycle_correction": {
+    "packet": "LIVE-AI-03B-P1-02-PHASE-B-CONSUMED-APPROVAL-LIFECYCLE-CORRECTION-01",
+    "defect_fixed": "Phase B previously re-ran the Phase-A UNUSED-approval check (verifyApproval->isConsumed), so an authentic successful activation — which legitimately consumes the approval exactly once in the DB ledger — was rejected by Phase B as replay. Phase A + activation + single-use were correct; only the Phase-B lifecycle disposition was wrong.",
+    "correction": {
+      "authentication_vs_lifecycle_split": "approval-verify.mjs now exposes a shared authenticateApproval() (trust-root/signature/domain/scope/target/source/catalog/pricing/evidence-binding/freshness/execution-binding — UNCHANGED, not weakened). verifyApproval = authenticate + UNUSED (Phase A). NEW verifyConsumedApproval = authenticate + CONSUMED-ledger correlation (Phase B).",
+      "phase_a_pre_activation": "authentic approval + exact execution + authoritative UNUSED result + matching dormant predecessor + all existing Phase-A gates (unchanged).",
+      "phase_b_post_activation_pre_probe": "authentic SAME approval + exact SAME execution + EXACTLY ONE matching legitimately CONSUMED ledger record (approval_id, execution_id, content_digest, active_catalog_digest, action=activate, bounded consumed_at within the approval window) observed POST-COMMIT via a trusted read-only capability tied to AI-STAGING db identity + a correlated deterministic CatalogActivationReceiptV1 + armed state + all seven ceilings. Matching set computed from the trusted ledger records (never a caller count/object); isConsumed=false / fabricated ledger / fabricated receipt can never fabricate success.",
+      "activation_receipt_contract": "pricing-approval-contract.mjs adds RECEIPT_CONTRACT='CatalogActivationReceiptV1' + activationReceiptCommitment(). The SQL activate_catalog RETURNS jsonb (deterministic receipt from the consumed ledger row via RETURNING consumed_at) — return value only, NO new mutation authority, NOT commit proof. The executor attaches the deterministic commitment and surfaces the receipt; Phase B recomputes the commitment from the AUTHORITATIVE committed ledger record.",
+      "second_activation_forbidden": "executor one-shot guard + DB approval_consumption unique key; a second activation attempt against the consumed ledger is rejected (verified offline)."
+    },
+    "changed_files": [
+      "pricing-approval-contract.mjs (RECEIPT_CONTRACT + RECEIPT_ACTION + activationReceiptCommitment)",
+      "approval-verify.mjs (extract authenticateApproval; keep verifyApproval Phase-A behavior; add verifyConsumedApproval + TRUSTED/TEST_LEDGER_PROVENANCE)",
+      "trusted-activation-executor.mjs (surface deterministic activationReceipt from the DB return)",
+      "db/2026-09-19-p1-02-trusted-activation-boundary.sql (activate_catalog RETURNS jsonb receipt from the consumed ledger row; idempotent-safe DROP; single-use + Finding 1/3 preserved)",
+      "TRUSTED-BOUNDARY-README.md (Phase-A/Phase-B lifecycle section + DB/executor bullets)",
+      "TRUSTED-BOUNDARY-EVIDENCE-MANIFEST.json (this record + updated hashes)",
+      "../first-text-probe-activation-01/first-probe-preflight-postflight.mjs (Phase-B runPreflight uses consumedApprovalCorrelated; Phase-A runPreActivation unchanged)",
+      "../first-text-probe-activation-01/catalog-activation.sql (header notes jsonb receipt + post-commit ledger read)",
+      "../first-text-probe-activation-01/ABORT-ROLLBACK-RUNBOOK.md (scenario #7 Phase-B lifecycle)",
+      "../first-text-probe-activation-01/EVIDENCE-MANIFEST.json (this record + updated hashes)"
+    ],
+    "unchanged_files": [
+      "trusted-executor-deployment-spec.json",
+      "gateway-deployment-spec.json (first-text-probe kit)", "ai-staging-target-binding-spec.json",
+      "environment-manifest.json", "one-call-policy-activation.sql", "control-activation.sql",
+      "dormant-restoration.sql", "activation-digest-gen.mjs", "first-text-probe.mjs"
+    ],
+    "preserved": "Findings 1 (signed->VerifiedApprovalClaimsV1->executor->PostgreSQL flat contract) and 3 (clock_timestamp() DB-clock freshness) intact; P1-01 seven ceilings intact; provider openai / model gpt-5.6-terra; 89536 micros; catalog expiry 2026-09-25T18:37:35Z; canonical digests; AI-STAGING + CORE ids; ARTIFACT_T0 2026-09-19T05:41:50Z.",
+    "regression": "ONE consolidated offline regression against the ACTUAL modules: 53 checks, 53 passed, 0 failed. Full Phase A -> activation -> Phase B sequence + second-activation rejection + the required negative matrix + preservation + DB-contract static.",
+    "honest_status": "OFFLINE REGRESSION PASS. DATABASE EXECUTION TESTS NOT PERFORMED (no local disposable PostgreSQL server) — SQL checks STATIC-ONLY. LIVE PRIVILEGE / DEPLOYMENT / COMMITTED-LEDGER-READ boundary NOT YET PROVEN. Activation REMAINS BLOCKED.",
+    "artifact_t0_preserved": "2026-09-19T05:41:50Z"
+  },
+
+  "trust_model": {
+    "operator": "supplies pricing evidence + runs the probe; holds NO reviewer key and NO executor DB credential; cannot EXECUTE the trusted functions and cannot UPDATE BUDGET tables.",
+    "approver": "independent Owner/reviewer; sole holder of the Ed25519 reviewer PRIVATE key (outside repo/Railway/gateway/probe/executor); signs approvals out-of-band.",
+    "executor": "the only principal that can cause activation; verifies the reviewer signature against an independently-pinned public key and holds the only restricted DB credential able to call the trusted function.",
+    "authentication_half": "approval-verify.mjs — Ed25519 signature over the canonical PricingEvidenceApprovalV1 payload, verified against an INDEPENDENTLY-PINNED reviewer public key (never the envelope's key); binds supplied evidence to the reviewer-signed content digest + receipt id; fixed facts/targets/bundle, freshness, execution nonce, single-use.",
+    "execution_privilege_half": "db/2026-09-19-p1-02-trusted-activation-boundary.sql — restricted executor role; SECURITY DEFINER activate/restore functions EXECUTE-granted to the executor only (PUBLIC revoked); no direct BUDGET DML to the executor; single-use approval-consumption ledger (atomic, replay-rejected). catalog-activation.sql now only invokes the trusted function and fails closed unless run as live_ai_03b_executor."
+  },
+
+  "new_artifacts": {
+    "pricing-approval-contract.mjs": { "purpose": "deterministic canonical PricingEvidenceApprovalV1 envelope + canonicalization + Ed25519 verify + fixed facts + VerifiedApprovalClaimsV1 (toVerifiedClaims, Finding 1) + CatalogActivationReceiptV1 commitment (Phase-B)", "sha256": "59ef03ea3b0532100cf59c19a7f4f174543a4dea0e688359ced858e974312ad3" },
+    "approval-verify.mjs": { "purpose": "independent approval verifier; shared authenticateApproval + verifyApproval (Phase-A unused, Finding 1) + verifyConsumedApproval (Phase-B consumed-ledger + receipt correlation)", "sha256": "88212feed6e30a08069a12e1e0c1999f7df07487b3c52e035f5e5b1486fb29f3" },
+    "trusted-activation-executor.mjs": { "purpose": "private one-shot fail-closed activation executor (verify + Phase-A runPreActivation via approved read-only capability + claims-based restricted DB call; surfaces deterministic activationReceipt; CATALOG_ACTIVATION_COMPLETE only)", "sha256": "772b9859c701a42614a84e89be0fe5403aa8937c52a487c4c187e71ed5b2f941" },
+    "db/2026-09-19-p1-02-trusted-activation-boundary.sql": { "purpose": "UNAPPLIED PG18 privilege boundary: trusted schema, NOLOGIN owner, restricted executor role, single-use ledger, SECURITY DEFINER activate (RETURNS jsonb CatalogActivationReceiptV1)/restore functions reading flat VerifiedApprovalClaimsV1 (Finding 1) + clock_timestamp() freshness (Finding 3)", "sha256": "2987d3ffb9b49c4318b9a9ca398c6b2b545fc98484f527c8fa01f001f5aaf9c5" },
+    "trusted-executor-deployment-spec.json": { "purpose": "future deployment/credential/permission proofs required before the executor may run", "sha256": "cf4ba4324bed62829b396088675941d90f5365dc764a6f0683477d914279785b" },
+    "TRUSTED-BOUNDARY-README.md": { "purpose": "boundary design, authority separation, honest offline-vs-live status (Findings 1/2/3 + Phase-A/Phase-B lifecycle)", "sha256": "cfe64557da25b0bdfe7914eb95bfb2e2c89a944858f1efa3ec4cff4d49079379" }
+  },
+
+  "modified_original_kit_files": [
+    "first-text-probe-activation-01/first-probe-preflight-postflight.mjs (P1-02 delegates to Ed25519 approval verify; P1-01 seven-ceiling preserved)",
+    "first-text-probe-activation-01/catalog-activation.sql (raw operator-authorized path removed; restricted trusted-function invocation only)",
+    "first-text-probe-activation-01/EVIDENCE-MANIFEST.json (trusted-boundary remediation record + updated hashes)",
+    "first-text-probe-activation-01/ABORT-ROLLBACK-RUNBOOK.md (scenario #7 → trusted boundary)"
+  ],
+  "unchanged_original_kit_files": [
+    "gateway-deployment-spec.json", "ai-staging-target-binding-spec.json", "environment-manifest.json",
+    "one-call-policy-activation.sql", "control-activation.sql", "dormant-restoration.sql",
+    "activation-digest-gen.mjs", "first-text-probe.mjs"
+  ],
+
+  "preserved_unchanged": "P1-01 seven exact one-call ceilings; accepted source + tests; AI-STAGING + CORE ids; provider openai / model gpt-5.6-terra; accepted prices + source fields; catalog version + entries; catalog expiry 2026-09-25T18:37:35Z; canonical budget/control/catalog digests (active catalog 616cc481..., inactive 453f9287..., one-call policy 9927a920..., controls 0a60f1eb.../eb56f2b7...); 89536 micros one-call reservation; one provider call + one execution admission; first-probe text; operator-subject contract; dormant-restoration + durable accounting; ARTIFACT_T0 2026-09-19T05:41:50Z.",
+
+  "offline_negative_test_matrix": [
+    "valid TEST-only independently-signed approval (positive)", "missing approval", "wrong trusted public key",
+    "forged signature", "changed signed payload", "changed evidence content", "caller-supplied fabricated matching approval values",
+    "substituted signer/public key", "wrong provider/model/catalog/source/prices", "regional uplift", "wrong processing mode",
+    "excluded processing path", "expired evidence or approval", "approval for another execution", "approval replay",
+    "any mismatch in the seven budget ceilings", "absent trust root (BLOCKED)"
+  ],
+  "offline_test_note": "All positive/negative cases run against the ACTUAL executable verifier/executor via a synthetic TEST-only Ed25519 keypair generated in temporary offline storage and deleted after verification (never a production trust root). See consolidated offline verification (receipt item H) for the full count.",
+
+  "honest_status": {
+    "offline_implementation": "PASS — signature/trust-root authentication + one-shot executor + seven-ceiling preservation proven offline; DB privilege artifacts written + statically verified.",
+    "live_privilege_deployment_boundary": "NOT YET PROVEN — no local PostgreSQL server was available, so the DB role/grant isolation is static-only; existing postgres superuser + pg_write_all_data are not restricted by this migration; the restricted executor credential, its isolation from the probe/gateway, and the runtime DB->service-identity proof are future live gates.",
+    "activation": "REMAINS BLOCKED — no production trust root, no genuine signed pricing approval, migration UNAPPLIED, no restricted executor credential. The inactive catalog has NOT been activated."
+  },
+
+  "required_future_live_gates": [
+    "real independently-controlled reviewer trust root (public key + fingerprint) provisioned outside repo/Railway/gateway/probe/executor",
+    "genuine independently-reviewed signed Standard/non-regional pricing approval for the specific execution",
+    "applied AI-STAGING privileged-role/function/ledger migration (this db/*.sql) on Postgres b7362594-... only",
+    "restricted executor DB credential; proof it is withheld from probe/gateway and cannot mutate catalog/policy/controls directly",
+    "proof the probe/runtime principal is not superuser, lacks pg_write_all_data, and cannot read the executor credential or impersonate postgres/fn_owner",
+    "runtime DB reference resolves to AI-STAGING Postgres b7362594-... by service identity; CORE excluded",
+    "Owner-controlled executor deployment/config authority; pinned executor release + trust-root fingerprint",
+    "catalog freshness at execution (now < 2026-09-25T18:37:35Z) or a separately reviewed successor catalog",
+    "complete execution-time seven-ceiling preflight PASS"
+  ],
+
+  "authority": {
+    "no_database_connection_or_write": true,
+    "no_role_grant_function_ledger_apply": true,
+    "no_railway_query_or_mutation": true,
+    "no_deployment": true,
+    "no_activation": true,
+    "no_provider_call": true,
+    "no_production_approval_key_created": true,
+    "no_genuine_pricing_approval_created": true,
+    "no_secret_or_real_db_url_embedded": true,
+    "no_core_prod_access": true,
+    "no_git_add_commit_push": true,
+    "no_03c": true
+  }
+}

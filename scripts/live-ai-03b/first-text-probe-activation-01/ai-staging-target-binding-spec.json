@@ -1,0 +1,54 @@
+{
+  "artifact": "ai-staging-target-binding-spec",
+  "packet": "LIVE-AI-03B-FIRST-TEXT-PROBE-ACTIVATION-ARTIFACT-IMPLEMENTATION-01",
+  "status": "UNAPPLIED / NON-ACTIVATING REVIEW ARTIFACT",
+  "artifact_t0": "2026-09-19T05:41:50Z",
+  "purpose": "Defines the FUTURE fresh-state binding proof that MUST pass BEFORE any DB / config / deployment mutation. No DSN, password, or secret value appears in this file.",
+
+  "bind_exact": {
+    "railway_project_id": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "railway_environment_id": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "gateway_service_id": "dd96c7cd-02c1-4d02-89eb-7e217930ebfa",
+    "postgres_service_id": "b7362594-a01b-4623-a982-394707a6cec2"
+  },
+
+  "protect_exclude_core": {
+    "railway_project_id": "04c8b523-5b15-4d81-af06-8c2aa1a83499",
+    "postgres_service_id": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b",
+    "rule": "The binding proof MUST refuse if the runtime DSN/reference resolves to (or could resolve to) the CORE project or CORE Postgres. CORE is never a fallback."
+  },
+
+  "runtime_dsn_binding": {
+    "env_name": "LIVE_AI_03B_STAGING_DATABASE_URL",
+    "env_name_source": "server/voice-gateway/live-ai-staging-main.ts — STAGING_DATABASE_URL_ENV = 'LIVE_AI_03B_STAGING_DATABASE_URL'",
+    "requirement": "The runtime DSN/reference MUST be PROVEN to resolve to the exact AI-STAGING Postgres service b7362594-a01b-4623-a982-394707a6cec2. A merely structurally-compatible database (same schema shape) is NOT sufficient — identity of the target Postgres service is required.",
+    "value_handling": "The DSN VALUE is never written here and never logged. The binding proof reads only a non-secret resolved-service identity signal (e.g. the Railway service id the runtime reference points at), never the credential."
+  },
+
+  "non_secret_store_binding": {
+    "env_name": "LIVE_AI_BUDGET_STORE_BINDING",
+    "chosen_reference": "live-ai-03b-staging::railway-postgres::b7362594-a01b-4623-a982-394707a6cec2",
+    "properties": [
+      "clearly AI-STAGING scoped (live-ai-03b-staging prefix)",
+      "NOT a DSN (no scheme, host, port, user, or password)",
+      "NOT a credential",
+      "NOT CORE-related (embeds the AI-STAGING Postgres service id, never the CORE Postgres id)",
+      "human-readable and stable"
+    ]
+  },
+
+  "binding_proof_obligations": [
+    "Resolve the runtime DSN/reference to a Railway service identity and assert it EQUALS postgres_service_id b7362594-a01b-4623-a982-394707a6cec2.",
+    "Assert the resolved identity is NOT the CORE Postgres 1fbd7632-95ad-46f3-a20c-5be5b8e44e6b and NOT within the CORE project 04c8b523-5b15-4d81-af06-8c2aa1a83499.",
+    "Assert the gateway service under deployment is dd96c7cd-02c1-4d02-89eb-7e217930ebfa within project 4ad1abb3-823a-4acf-b889-6d34ae46d7f9 / environment aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc.",
+    "Assert LIVE_AI_BUDGET_STORE_BINDING equals the chosen reference above.",
+    "On ANY mismatch or ambiguity: HOLD before any DB/config/deployment mutation."
+  ],
+
+  "authority": {
+    "database_applied": false,
+    "railway_mutation": false,
+    "dsn_or_secret_value_present": false,
+    "core_prod_touched": false
+  }
+}

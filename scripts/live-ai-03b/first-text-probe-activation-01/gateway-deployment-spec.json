@@ -1,0 +1,68 @@
+{
+  "artifact": "gateway-deployment-spec",
+  "packet": "LIVE-AI-03B-FIRST-TEXT-PROBE-ACTIVATION-ARTIFACT-IMPLEMENTATION-01",
+  "status": "UNAPPLIED / UNDEPLOYED / NON-ACTIVATING REVIEW ARTIFACT",
+  "artifact_t0": "2026-09-19T05:41:50Z",
+  "do_not_deploy": true,
+
+  "repository": "Sachinhelpline/staybid-frontend",
+  "deployable_commit": "2b69ce28230fc9d56a035846e95d8de206d5db3b",
+  "deployable_tree": "87aad22d90f84f2c3b307201c3e0d3b8658b1619",
+  "equivalent_03b_staging_commit": "9df5a7c0c242ff0b70f5d602ea3a11a29f15b6ae",
+
+  "target": {
+    "class": "AI-STAGING",
+    "railway_project_id": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "railway_environment_id": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "gateway_service_id": "dd96c7cd-02c1-4d02-89eb-7e217930ebfa",
+    "postgres_service_id": "b7362594-a01b-4623-a982-394707a6cec2"
+  },
+  "protected_core_prod": {
+    "railway_project_id": "04c8b523-5b15-4d81-af06-8c2aa1a83499",
+    "postgres_service_id": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b",
+    "rule": "PROHIBITED — the gateway may NEVER be deployed against CORE-PROD; CORE-PROD is never a fallback."
+  },
+
+  "commands": {
+    "build_command": "npm run build:gateway",
+    "build_command_source": "package.json scripts.build:gateway = 'tsc -p server/voice-gateway/tsconfig.json'",
+    "start_command": "npm run start:live-ai-staging",
+    "start_command_source": "package.json scripts.start:live-ai-staging = 'node server/voice-gateway/dist/live-ai-staging-main.js'",
+    "health_path": "/healthz",
+    "health_path_source": "server/voice-gateway/index.ts — app.get('/healthz', ...) returns { ok:true, config: safeConfigSummary(ctx.config) } (non-secret summary)"
+  },
+
+  "required_deployment_invariants": [
+    "EXACT commit + tree linkage is required: deploy is bound to commit 2b69ce28230fc9d56a035846e95d8de206d5db3b / tree 87aad22d90f84f2c3b307201c3e0d3b8658b1619.",
+    "NO floating-branch deployment is accepted (never a branch tip; only the pinned commit/tree).",
+    "Source mismatch (working tree, deployed revision, or accepted source blob) => HOLD before deploy.",
+    "The gateway may be prepared ONLY against the AI-STAGING project/environment/postgres above.",
+    "CORE-PROD (project 04c8b523-5b15-4d81-af06-8c2aa1a83499 / postgres 1fbd7632-95ad-46f3-a20c-5be5b8e44e6b) is PROHIBITED.",
+    "During NON-SPEND gateway preparation the provider credential (OPENAI_API_KEY) MUST remain ABSENT.",
+    "Staging text gate OFF (LIVE_AI_03B_STAGING_TEXT_ENABLED != '1').",
+    "Staging broker gate OFF (LIVE_AI_03B_STAGING_BROKER_ENABLED != '1').",
+    "Budget policy INACTIVE (no active budget_policy_versions row).",
+    "Controls DISABLED (both budget_control_epochs rows enabled=false)."
+  ],
+
+  "accepted_source_blobs": {
+    "server/voice-gateway/live-ai-staging-main.ts": "e211b25f68f4414f4c6a938d9c25935cdf26b67a",
+    "server/voice-gateway/config.ts": "32a5d5f48b4d3328b87ea0ee44ff0c8c72bbc4cf",
+    "server/voice-gateway/live-ai-03b-controller.ts": "c1633aa786c86627682e803440df5472cf1a06ef",
+    "server/voice-gateway/openai-responses.ts": "9607cf8c6f9da89191c80d62bbf6a1570f7214d3",
+    "server/voice-gateway/live-ai-budget-authority.ts": "73cead6dc20a29eb5035765df38ca0414f5744d0",
+    "server/voice-gateway/live-ai-budget-store.ts": "b8979bd7673c21e914dd826fdf43e2b5577c56bc",
+    "server/voice-gateway/live-ai-budget-pricing.ts": "9684cfbc98643231b0b06479333f01d9b10d709a",
+    "app/api/live-ai/staging/session/route.ts": "8335574457fff30ea6fffb34d3b4c3c2aa42d979",
+    "lib/live-ai/staging-authority.ts": "95cc6a6e5c1a799cf664c36b0d8f62df4be706eb",
+    "package.json": "a5a06e499c1e252506ac1621a2f89ec8be0b742e"
+  },
+
+  "authority": {
+    "deployed": false,
+    "railway_mutation": false,
+    "provider_credential_configured": false,
+    "database_applied": false,
+    "core_prod_touched": false
+  }
+}

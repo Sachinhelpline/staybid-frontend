@@ -1,0 +1,347 @@
+{
+  "packet": "LIVE-AI-03B-FIRST-TEXT-PROBE-ACTIVATION-ARTIFACT-IMPLEMENTATION-01",
+  "status": "UNAPPLIED / UNDEPLOYED / NON-ACTIVATING REVIEW ARTIFACT",
+  "artifact_t0": "2026-09-19T05:41:50Z",
+
+  "p1_02_trusted_boundary_remediation": {
+    "packet": "LIVE-AI-03B-P1-02-TRUSTED-ACTIVATION-BOUNDARY-CONSOLIDATED-OFFLINE-IMPLEMENTATION-01",
+    "supersedes": "the prior caller-controlled approval-anchor equality in this kit",
+    "changed_files_in_this_kit": {
+      "first-probe-preflight-postflight.mjs": "P1-02 approval check now delegates to independentApprovalVerified -> ../trusted-activation-boundary-01/approval-verify.mjs (Ed25519 signature vs independently-pinned reviewer trust root); the caller-controlled approvedEvidenceAnchor equality is removed. Seven-ceiling (P1-01) unchanged.",
+      "catalog-activation.sql": "raw operator-authorized UPDATE path removed; now only invokes the restricted SECURITY DEFINER live_ai_03b_trusted.activate_catalog(...) and fails closed unless run as live_ai_03b_executor.",
+      "ABORT-ROLLBACK-RUNBOOK.md": "scenario #7 rewritten to the trusted-boundary (signature + privilege + single-use ledger) contract."
+    },
+    "new_trusted_boundary_artifacts_dir": "scripts/live-ai-03b/trusted-activation-boundary-01/",
+    "honest_status": "OFFLINE IMPLEMENTATION only. Signature/trust-root authentication is offline-proven; the DB privilege boundary is UNAPPLIED and statically verified only (no local PostgreSQL server available). LIVE PRIVILEGE / DEPLOYMENT BOUNDARY NOT YET PROVEN; activation REMAINS BLOCKED until the future live gates are established. See scripts/live-ai-03b/trusted-activation-boundary-01/TRUSTED-BOUNDARY-README.md + TRUSTED-BOUNDARY-EVIDENCE-MANIFEST.json.",
+    "artifact_t0_preserved": "2026-09-19T05:41:50Z"
+  },
+
+  "p1_02_integration_remediation": {
+    "packet": "LIVE-AI-03B-P1-02-TRUSTED-ACTIVATION-BOUNDARY-CONSOLIDATED-INTEGRATION-REMEDIATION-01",
+    "scope": "Exactly three accepted material integration findings fixed on the 19-file trusted-boundary set. No architecture redesign; no live execution. P1-01 seven ceilings, provider openai / model gpt-5.6-terra, 89536 micros, AI-STAGING + CORE ids, catalog expiry 2026-09-25T18:37:35Z, ARTIFACT_T0 2026-09-19T05:41:50Z, canonical digests, source commit/tree all preserved.",
+    "findings_fixed": {
+      "FINDING_1_unified_claims_contract": "The verifier now emits ONE normalized flat VerifiedApprovalClaimsV1 (toVerifiedClaims in pricing-approval-contract.mjs) only after signature verification; approval-verify.mjs returns { claims }; the executor passes claims (never the raw envelope, never caller-selected fields) as verified_claims_json; catalog-activation.sql forwards it to live_ai_03b_trusted.activate_catalog(claims_json, execution_id), which reads exactly those flat top-level keys (contract/approval_id/execution_id/*_digest/timestamps) + a contract-tag check. An authentic approval now traverses verifier -> executor -> DB unchanged; the prior envelope/top-level-field format mismatch is closed.",
+      "FINDING_2_two_phase_order_no_pass_callback": "The executor runs the CONCRETE PHASE-A runPreActivation(...) over authoritative DORMANT observations BEFORE activation (checks: dormant/inactive predecessor, zero prior probe exposure, approval-not-consumed, restricted-privilege proof) — the incorrect pre-activation use of the armed-state preflight is removed, and the caller-supplied arbitrary {pass:true} PASS callback is removed and replaced by an approved read-only observation capability whose provenance must be trusted (TEST-only under an explicit testBoundary). The armed-state seven-ceiling runPreflight(...) is the SEPARATE PHASE-B post-activation/pre-probe gate; the executor emits CATALOG_ACTIVATION_COMPLETE only, never PROBE_READY.",
+      "FINDING_3_db_clock_freshness": "live_ai_03b_trusted.activate_catalog now independently re-checks freshness on PostgreSQL's OWN wall clock (v_now := clock_timestamp(), NOT now()/transaction-start, NOT a caller timestamp, NOT ARTIFACT_T0), rechecked immediately BEFORE the UPDATE and AFTER the FOR UPDATE lock + predecessor match: catalog expiry < TIMESTAMPTZ '2026-09-25T18:37:35Z', DB clock within the signed approval [not_before,expiry) and evidence [verified_at,evidence_expiry) intervals from the verified claims; a malformed timestamp raises on cast (fail closed)."
+    },
+    "changed_files_in_this_kit": {
+      "catalog-activation.sql": "param approval_envelope_json -> verified_claims_json; invokes activate_catalog(:'verified_claims_json'::jsonb, :'execution_id'); header notes it passes the verifier-emitted VerifiedApprovalClaimsV1, never the raw envelope. Executor-role guard retained.",
+      "first-probe-preflight-postflight.mjs": "added Phase-A checks (preActivationDormantPredecessor, approvalNotConsumed, privilegeProofPresent) + exported runPreActivation(deps); runPreflight relabeled PHASE B post-activation/pre-probe. P1-01 oneCallCeilingsExact (seven ceilings) UNCHANGED.",
+      "ABORT-ROLLBACK-RUNBOOK.md": "scenario #5 (DB-clock freshness) + scenario #7 (unified claims contract + two-phase order) updated."
+    },
+    "changed_files_in_trusted_boundary_dir": [
+      "pricing-approval-contract.mjs (added VERIFIED_CLAIMS_CONTRACT + toVerifiedClaims)",
+      "approval-verify.mjs (returns { claims: toVerifiedClaims(p) })",
+      "trusted-activation-executor.mjs (readState approved read-only capability + runPreActivation + claims-based DB invocation + CATALOG_ACTIVATION_COMPLETE)",
+      "db/2026-09-19-p1-02-trusted-activation-boundary.sql (claims_json flat reads + contract-tag check + clock_timestamp() freshness in activate_catalog; restore aligned)",
+      "TRUSTED-BOUNDARY-README.md (section B executor + DB bullets synced to Findings 1/2/3)"
+    ],
+    "honest_status": "OFFLINE INTEGRATION PASS — the three findings are fixed and behavior-verified offline (end-to-end verifier->executor->DB-invocation smoke + full negative matrix; static SQL structure incl. the clock-freshness guards). LIVE PRIVILEGE / DEPLOYMENT BOUNDARY NOT YET PROVEN (no local PostgreSQL server; DB privilege/isolation static-only; postgres superuser/pg_write_all_data not restricted). Activation REMAINS BLOCKED (no production trust root, no genuine signed approval, migration UNAPPLIED, no restricted executor credential).",
+    "artifact_t0_preserved": "2026-09-19T05:41:50Z"
+  },
+
+  "p1_02_phase_b_consumed_approval_lifecycle_correction": {
+    "packet": "LIVE-AI-03B-P1-02-PHASE-B-CONSUMED-APPROVAL-LIFECYCLE-CORRECTION-01",
+    "defect_fixed": "Phase B re-invoked the Phase-A UNUSED-approval check, so an authentic successful activation (which legitimately consumes the approval exactly once in the DB ledger) was rejected by Phase B as replay. Phase A + activation single-use were correct; only the Phase-B lifecycle disposition was wrong.",
+    "correction": {
+      "phase_a": "verifyApproval — authentic approval that MUST be UNUSED (isConsumed advisory pre-check; DB ledger authoritative). Unchanged behavior + all existing Phase-A gates.",
+      "phase_b": "runPreflight now calls consumedApprovalCorrelated -> verifyConsumedApproval: the SAME authentication (unchanged) + EXACTLY ONE matching legitimately CONSUMED ledger record (approval_id/execution_id/content_digest/active_catalog_digest/action=activate/bounded consumed_at) observed POST-COMMIT via a trusted read-only capability tied to AI-STAGING + a correlated deterministic CatalogActivationReceiptV1 + armed state + all seven ceilings. isConsumed=false / caller count / fabricated ledger / fabricated receipt cannot fabricate success.",
+      "activation_receipt": "activate_catalog RETURNS a deterministic CatalogActivationReceiptV1 (jsonb) from the consumed ledger row (return value only; no new authority; not commit proof). catalog-activation.sql header documents the jsonb receipt + the separate post-commit ledger read.",
+      "second_activation": "forbidden — executor one-shot + DB approval_consumption unique key (verified offline)."
+    },
+    "changed_files_in_this_kit": {
+      "first-probe-preflight-postflight.mjs": "Phase-B runPreflight uses consumedApprovalCorrelated (verifyConsumedApproval) + passes ledgerObservation/activationReceipt/testBoundary; Phase-A runPreActivation UNCHANGED; P1-01 seven ceilings UNCHANGED.",
+      "catalog-activation.sql": "header notes activate_catalog returns the jsonb CatalogActivationReceiptV1 + Phase B independently reads the committed ledger post-commit. Invocation contract otherwise unchanged (verified_claims_json only, no raw UPDATE).",
+      "ABORT-ROLLBACK-RUNBOOK.md": "scenario #7 extended with the Phase-B consumed-approval lifecycle contract."
+    },
+    "changed_files_in_trusted_boundary_dir": [
+      "pricing-approval-contract.mjs (RECEIPT_CONTRACT + activationReceiptCommitment)",
+      "approval-verify.mjs (authenticateApproval split; verifyConsumedApproval added; verifyApproval Phase-A unchanged)",
+      "trusted-activation-executor.mjs (surface deterministic activationReceipt)",
+      "db/2026-09-19-p1-02-trusted-activation-boundary.sql (activate_catalog RETURNS jsonb receipt; single-use + Findings 1/3 preserved)",
+      "TRUSTED-BOUNDARY-README.md (Phase-A/Phase-B lifecycle section)",
+      "TRUSTED-BOUNDARY-EVIDENCE-MANIFEST.json (correction record + updated hashes)"
+    ],
+    "regression": "ONE consolidated offline regression against the ACTUAL modules: 53 checks, 53 passed, 0 failed (Phase A -> activation -> Phase B + second-activation rejection + full negative matrix + preservation + DB-contract static).",
+    "honest_status": "OFFLINE REGRESSION PASS. DATABASE EXECUTION TESTS NOT PERFORMED (no local disposable PostgreSQL server) — SQL checks STATIC-ONLY. LIVE PRIVILEGE / DEPLOYMENT / COMMITTED-LEDGER-READ boundary NOT YET PROVEN. Activation REMAINS BLOCKED.",
+    "artifact_t0_preserved": "2026-09-19T05:41:50Z"
+  },
+
+  "repository": "Sachinhelpline/staybid-frontend",
+  "local_baseline_head": "0cb00f31d9b759c2479205195a5f1254266b093b",
+  "local_baseline_branch": "claude/live-ai-budget-01-price-catalog-inactive-artifact-01",
+  "accepted_deployable_commit": "2b69ce28230fc9d56a035846e95d8de206d5db3b",
+  "accepted_deployable_tree": "87aad22d90f84f2c3b307201c3e0d3b8658b1619",
+  "equivalent_03b_staging_commit": "9df5a7c0c242ff0b70f5d602ea3a11a29f15b6ae",
+
+  "accepted_source_blobs": {
+    "server/voice-gateway/live-ai-staging-main.ts": "e211b25f68f4414f4c6a938d9c25935cdf26b67a",
+    "server/voice-gateway/config.ts": "32a5d5f48b4d3328b87ea0ee44ff0c8c72bbc4cf",
+    "server/voice-gateway/live-ai-03b-controller.ts": "c1633aa786c86627682e803440df5472cf1a06ef",
+    "server/voice-gateway/openai-responses.ts": "9607cf8c6f9da89191c80d62bbf6a1570f7214d3",
+    "server/voice-gateway/live-ai-budget-authority.ts": "73cead6dc20a29eb5035765df38ca0414f5744d0",
+    "server/voice-gateway/live-ai-budget-store.ts": "b8979bd7673c21e914dd826fdf43e2b5577c56bc",
+    "server/voice-gateway/live-ai-budget-pricing.ts": "9684cfbc98643231b0b06479333f01d9b10d709a",
+    "app/api/live-ai/staging/session/route.ts": "8335574457fff30ea6fffb34d3b4c3c2aa42d979",
+    "lib/live-ai/staging-authority.ts": "95cc6a6e5c1a799cf664c36b0d8f62df4be706eb",
+    "package.json": "a5a06e499c1e252506ac1621a2f89ec8be0b742e"
+  },
+
+  "ai_staging_ids": {
+    "railway_project_id": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "railway_environment_id": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "gateway_service_id": "dd96c7cd-02c1-4d02-89eb-7e217930ebfa",
+    "postgres_service_id": "b7362594-a01b-4623-a982-394707a6cec2"
+  },
+  "protected_core_ids": {
+    "railway_project_id": "04c8b523-5b15-4d81-af06-8c2aa1a83499",
+    "postgres_service_id": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b"
+  },
+
+  "current_accepted_db_predecessor": {
+    "foundation_tables": 13,
+    "controls": "2 rows, epoch 1, enabled=false, killed=false (global digest 26136eb9..., project digest be70f6b4...)",
+    "policy": "1 inactive zero-ceiling dormant policy live-ai-03b-policy-v1-dormant (digest cf5ae64f...)",
+    "catalog_version": "1 inactive (openai-gpt-5-6-terra-standard-short-v1, digest 453f9287...)",
+    "catalog_entries": "2 inactive (reasoning_input_token 2000000/1e6, reasoning_output_token 12000000/1e6, source_digest fda6f4a8...)",
+    "remaining_nine_tables": "empty",
+    "total_budget_rows": 6,
+    "gateway": "UNDEPLOYED",
+    "gateway_variable_names_configured": "NONE"
+  },
+
+  "provider_model_contract": {
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "endpoint": "https://api.openai.com/v1/responses",
+    "reasoning_effort": "low",
+    "max_output_tokens": 2000,
+    "store": false,
+    "background": false,
+    "stream": false,
+    "tools": [],
+    "truncation": "disabled",
+    "automatic_http_retries": 0,
+    "source": "server/voice-gateway/openai-responses.ts (OPENAI_RESPONSES_URL, REASONING_MODEL, MAX_REASONING_OUTPUT_TOKENS, ProviderCallAdmissionV1)"
+  },
+
+  "one_call_budget": {
+    "session_money_ceiling_micros": 89536,
+    "session_provider_calls": 1,
+    "session_execution_admissions": 1,
+    "subject_day_money_ceiling_micros": 89536,
+    "project_day_money_ceiling_micros": 89536,
+    "project_month_money_ceiling_micros": 89536,
+    "global_day_money_ceiling_micros": 89536,
+    "project_id": "live-ai-03b"
+  },
+  "price_verification_expiry": "2026-09-25T18:37:35Z",
+
+  "variable_classifications_reference": "scripts/live-ai-03b/first-text-probe-activation-01/environment-manifest.json (NAMES + classification + intended state only; no secret values)",
+  "chosen_non_secret_store_binding_ref": "live-ai-03b-staging::railway-postgres::b7362594-a01b-4623-a982-394707a6cec2",
+  "source_name_reconciliation": "All §9 packet-provided env NAMES verified byte-present in accepted source; operator-subject separator is a NUL byte (U+0000) in lib/live-ai/staging-authority.ts, matching packet §17 'domain + NUL + verified_admin_id'. No conflicts.",
+
+  "probe": {
+    "text": "I have not selected a destination or hotel yet. Ask me which destination I want. Do not navigate, change filters, open a hotel, or perform any action.",
+    "text_bytes": 150,
+    "text_sha256": "8efedb83900154947f749a5ca0c66546a5580593db18aa125e3d6809e311700d",
+    "one_request": true,
+    "one_provider_call_max": true,
+    "transport": "accepted staging broker -> gateway ONLY (no direct provider call, no provider URL constructed)",
+    "no_retry": true
+  },
+
+  "digest_contract": {
+    "hash": "SHA-256 over canonical UTF-8 JSON, lowercase hex",
+    "canonical_rules": [
+      "recursive lexicographic object-key sort", "UTF-8", "no insignificant whitespace",
+      "integers as JSON numbers (floats forbidden)", "booleans as JSON booleans", "null as JSON null",
+      "standard JSON string escaping", "arrays keep defined canonical order", "explicit domain field"
+    ],
+    "control_domain": "staybid.live-ai.budget.control.v1",
+    "policy_domain": "staybid.live-ai.budget.policy.v1",
+    "catalog_domain": "staybid.live-ai.budget.price-catalog.v1",
+    "generator": "scripts/live-ai-03b/first-text-probe-activation-01/activation-digest-gen.mjs"
+  },
+
+  "canonical_payloads_and_digests": {
+    "active_price_catalog": {
+      "canonical": "{\"catalog_version\":{\"created_at\":\"2026-09-18T18:37:35Z\",\"effective_from\":\"2026-09-18T18:37:35Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v1\",\"status\":\"active\"},\"domain\":\"staybid.live-ai.budget.price-catalog.v1\",\"entries\":[{\"billing_dimension\":\"reasoning_input_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v1\",\"created_at\":\"2026-09-18T18:37:35Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-18T18:37:35Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v1-reasoning-input-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":2000000,\"service_tier\":null,\"source_digest\":\"fda6f4a834b2277bd0ace30738cda1e8f75c0f8bc523ddbd11c966c4da52beb3\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"active\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-09-25T18:37:35Z\",\"verified_at\":\"2026-09-18T18:37:35Z\"},{\"billing_dimension\":\"reasoning_output_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v1\",\"created_at\":\"2026-09-18T18:37:35Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-18T18:37:35Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v1-reasoning-output-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":12000000,\"service_tier\":null,\"source_digest\":\"fda6f4a834b2277bd0ace30738cda1e8f75c0f8bc523ddbd11c966c4da52beb3\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"active\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-09-25T18:37:35Z\",\"verified_at\":\"2026-09-18T18:37:35Z\"}]}",
+      "digest": "616cc481e8cc342462445da5ededa142ec4450f38805edd91ed798554f3c24f8"
+    },
+    "one_call_active_policy": {
+      "canonical": "{\"domain\":\"staybid.live-ai.budget.policy.v1\",\"effective_from\":\"2026-09-19T05:41:50Z\",\"effective_until\":null,\"global_day_money_ceiling_micros\":89536,\"id\":\"live-ai-03b-policy-oneprobe-v1\",\"project_day_money_ceiling_micros\":89536,\"project_id\":\"live-ai-03b\",\"project_month_money_ceiling_micros\":89536,\"session_execution_admissions\":1,\"session_money_ceiling_micros\":89536,\"session_provider_calls\":1,\"status\":\"active\",\"subject_day_money_ceiling_micros\":89536}",
+      "digest": "9927a920975c4e03f5cbf3adee23c34bb7396a032b00b029ba5a2c7ac0c8ec1c"
+    },
+    "control_global_activation": {
+      "canonical": "{\"control_epoch\":2,\"domain\":\"staybid.live-ai.budget.control.v1\",\"enabled\":true,\"killed\":false,\"scope_key_digest\":\"global\",\"scope_type\":\"global\"}",
+      "digest": "0a60f1eb2050b2d0e4ff43262e9cde12d35c8dab84c30a8ceffc36ffa357878b"
+    },
+    "control_project_activation": {
+      "canonical": "{\"control_epoch\":2,\"domain\":\"staybid.live-ai.budget.control.v1\",\"enabled\":true,\"killed\":false,\"scope_key_digest\":\"live-ai-03b\",\"scope_type\":\"project\"}",
+      "digest": "eb56f2b74f1afbb82bed7316c9839201698c780c7881e3604bdc701022315a6f"
+    },
+    "control_global_restoration": {
+      "canonical": "{\"control_epoch\":3,\"domain\":\"staybid.live-ai.budget.control.v1\",\"enabled\":false,\"killed\":false,\"scope_key_digest\":\"global\",\"scope_type\":\"global\"}",
+      "digest": "0d2f68853d59b59b4d57d84eedb03af5e2117643c8b4bc378674f4be7dc4b707"
+    },
+    "control_project_restoration": {
+      "canonical": "{\"control_epoch\":3,\"domain\":\"staybid.live-ai.budget.control.v1\",\"enabled\":false,\"killed\":false,\"scope_key_digest\":\"live-ai-03b\",\"scope_type\":\"project\"}",
+      "digest": "d26219d1e4ed6e418dd7f71ec97947b2502c004b59c7fd7c88638059139db7f4"
+    },
+    "one_call_policy_restored_inactive": {
+      "canonical": "{\"domain\":\"staybid.live-ai.budget.policy.v1\",\"effective_from\":\"2026-09-19T05:41:50Z\",\"effective_until\":null,\"global_day_money_ceiling_micros\":89536,\"id\":\"live-ai-03b-policy-oneprobe-v1\",\"project_day_money_ceiling_micros\":89536,\"project_id\":\"live-ai-03b\",\"project_month_money_ceiling_micros\":89536,\"session_execution_admissions\":1,\"session_money_ceiling_micros\":89536,\"session_provider_calls\":1,\"status\":\"inactive\",\"subject_day_money_ceiling_micros\":89536}",
+      "digest": "a74a7e347f511e4c2c423fa62d3cce10559713acf903138939b59d6037b8c4d9"
+    },
+    "inactive_price_catalog_predecessor_digest": "453f928762b8e6cddedac8618786d008cb7a3d57ffefab9d0cfe3cda52c4c973",
+    "dormant_control_global_predecessor_digest": "26136eb93212ccce1ba6f4b380dbb3f1f2ef64e3d16fa9754e287459cce525ee",
+    "dormant_control_project_predecessor_digest": "be70f6b477c7332a834720e4f784a7d724a6363d48cbcc590315ff2fc72cad7f",
+    "dormant_policy_predecessor_digest": "cf5ae64ff17eca76ac3f19c4dd2b5157a1b9bb601f765978e24eb47bbc2308c4"
+  },
+
+  "artifact_paths_12": [
+    "scripts/live-ai-03b/first-text-probe-activation-01/gateway-deployment-spec.json",
+    "scripts/live-ai-03b/first-text-probe-activation-01/ai-staging-target-binding-spec.json",
+    "scripts/live-ai-03b/first-text-probe-activation-01/environment-manifest.json",
+    "scripts/live-ai-03b/first-text-probe-activation-01/catalog-activation.sql",
+    "scripts/live-ai-03b/first-text-probe-activation-01/one-call-policy-activation.sql",
+    "scripts/live-ai-03b/first-text-probe-activation-01/control-activation.sql",
+    "scripts/live-ai-03b/first-text-probe-activation-01/dormant-restoration.sql",
+    "scripts/live-ai-03b/first-text-probe-activation-01/activation-digest-gen.mjs",
+    "scripts/live-ai-03b/first-text-probe-activation-01/first-probe-preflight-postflight.mjs",
+    "scripts/live-ai-03b/first-text-probe-activation-01/first-text-probe.mjs",
+    "scripts/live-ai-03b/first-text-probe-activation-01/ABORT-ROLLBACK-RUNBOOK.md",
+    "scripts/live-ai-03b/first-text-probe-activation-01/EVIDENCE-MANIFEST.json"
+  ],
+
+  "artifact_sha256_other_11": {
+    "gateway-deployment-spec.json": "7f702382400b7a28a8d5fc01d6231ea7389ace1acbc1f8fe3b66934cadd8b267",
+    "ai-staging-target-binding-spec.json": "92180575804204772bc62bb72c4c11da04f605d1ee2366fba914aa384927ea6c",
+    "environment-manifest.json": "ce94addf6cbae32a5380679c451218b03bf82785c4fbf3e50397d99a0d579ba4",
+    "catalog-activation.sql": "1b636a517bb135cb38b37257863d18dc2ac7aca9df3c1b62ee88562ca265d801",
+    "one-call-policy-activation.sql": "3d2c74d9b8f6dd7938f67dff2b31860fb1d879a978a78df2c4d7ea383e28b53e",
+    "control-activation.sql": "908f14e09f8c47e11c4f5e10cd5c7dd75fd25fb794a8b9e89706337c7ed31518",
+    "dormant-restoration.sql": "6d267de477c19957c712b5dd17fbff62acbb8f3c9e1f3d71a72fc2d883af6ba7",
+    "activation-digest-gen.mjs": "718d2675f5542298b88e9e31475dca86cc75d3b56dfd3276c9f07662ba178fa2",
+    "first-probe-preflight-postflight.mjs": "512c4a6e584398a546c62c59da976ca3de6b1ae8f0efa14f73d28738043d1deb",
+    "first-text-probe.mjs": "3412137c70fb652a14cc04bfcda85c1d18d07d62766d025550ca1bf5733b8d76",
+    "ABORT-ROLLBACK-RUNBOOK.md": "d19b9997c4bd9746a56e3f92fae8a370fdafec7760059f4060d1943af9c28096"
+  },
+
+  "future_gate_sequence": {
+    "non_spend_preparation": [
+      "source pin (commit 2b69ce28.../tree 87aad22d...)",
+      "target binding proof (runtime DSN resolves to AI-STAGING Postgres b7362594...; CORE excluded)",
+      "active price catalog (catalog-activation.sql; requires Standard/non-regional evidence receipt)",
+      "gateway DB/BUDGET config (non-secret names; store binding ref)",
+      "provider credential ABSENT",
+      "policy inactive",
+      "controls disabled",
+      "staging text gate OFF",
+      "staging broker gate OFF",
+      "gateway deploy (pinned commit/tree; AI-STAGING only)",
+      "health check (/healthz)"
+    ],
+    "first_probe_arm_execute": [
+      "fresh price/account-mode proof (Standard/non-regional evidence receipt; now < 2026-09-25T18:37:35Z)",
+      "zero-exposure proof",
+      "one-call policy activation (one-call-policy-activation.sql)",
+      "provider credential PRESENCE",
+      "exact reasoning model (gpt-5.6-terra)",
+      "control enablement (control-activation.sql; fresh RFC3339 UTC updated_at)",
+      "one-call gate",
+      "exact operator allowlist (single stg1.<64hex> operator subject)",
+      "staging text gate ON",
+      "staging broker gate ON (LAST)",
+      "exactly one deterministic probe (first-text-probe.mjs)",
+      "settlement/reconciliation verification (first-probe-preflight-postflight.mjs --postflight)"
+    ],
+    "immediate_close": [
+      "broker/text ingress OFF FIRST",
+      "prevent any second call",
+      "provider credential removed",
+      "controls disabled (dormant-restoration.sql epoch 2 -> 3)",
+      "policy non-authorizing (one-call policy -> inactive)",
+      "catalog inactive (-> inactive digest 453f9287...)",
+      "durable accounting retained",
+      "gateway shutdown/unreachable under separate execution authority",
+      "final postflight"
+    ]
+  },
+
+  "unresolved_runtime_inputs_required_later": [
+    "SUPPLIED evidence receipt { id, content(fixed reviewed facts + verified_at), digest } — the operator/execution-harness receipt attesting direct-OpenAI / Standard / non-regional / no-Batch/Flex/Fast/Scale-Tier/Bedrock billing (§13).",
+    "INDEPENDENTLY-APPROVED evidence anchor { std_evidence_approved_id, std_evidence_approved_digest } — delivered via a channel SEPARATE from the operator receipt (reviewer approval record / independently pinned store). NOT proven by accepted source; NOT fabricated here. Both the preflight and catalog-activation.sql fail closed / BLOCK activation until this trusted anchor is bound and equals the supplied receipt.",
+    "control_updated_at — a FRESH execution-time RFC3339 UTC instant (≤ 15000 ms staleness) for control-activation.sql and dormant-restoration.sql (NEVER ARTIFACT_T0).",
+    "LIVE_AI_03B_STAGING_DATABASE_URL value proven to resolve to AI-STAGING Postgres b7362594... (identity, not just schema shape).",
+    "OPENAI_API_KEY presence at ARM (absent during preparation; removed at close).",
+    "The verified admin id + LIVE_AI_03B_STAGING_SUBJECT_HMAC_SECRET at execution to derive the single stg1.<64hex> operator subject in memory (never logged).",
+    "Broker private-key / gateway public-key correspondence (compared by safe public-key fingerprint only).",
+    "Gateway deploy of the pinned commit/tree on AI-STAGING + a passing /healthz."
+  ],
+
+  "remediation": {
+    "packet": "LIVE-AI-03B-FIRST-TEXT-PROBE-ACTIVATION-CONSOLIDATED-REMEDIATION-01",
+    "artifact_t0_preserved": "2026-09-19T05:41:50Z",
+    "predecessor_evidence_zip": {
+      "name": "LIVE-AI-03B-FIRST-TEXT-PROBE-ACTIVATION-ARTIFACT-IMPLEMENTATION-01-CONTROL-ROOM-EVIDENCE.zip",
+      "size_bytes": 41531,
+      "sha256": "34ca7744e96a0803767a617bae180b0e1f14d27c431d58c3bce40d9a57e6fc89"
+    },
+    "findings_closed": {
+      "P1-01": "first-probe-preflight-postflight.mjs oneCallCeilingsExact() now verifies ALL SEVEN one-call ceilings (session_money/provider_calls/execution_admissions + subject_day/project_day/project_month/global_day) with STRICT integer equality (exactInt: rejects missing/null/undefined/malformed/non-integer/negative/NaN/Infinity/coerced-string/mismatch, no silent coercion). It is invoked in the actual runPreflight() path before any PASS receipt.",
+      "P1-02": "An independent Standard/non-regional evidence-binding contract now backs BOTH gates. Preflight standardNonRegionalEvidenceBinding() separates A (SUPPLIED, caller-controlled receipt) from B (INDEPENDENTLY-APPROVED anchor, separate trusted channel), requires the supplied content to attest the fixed reviewed facts, recomputes the content digest and requires it to equal BOTH the supplied digest (integrity) AND the approved anchor digest (independence) with matching ids, rejects any caller reviewed/approved flag, and enforces freshness. catalog-activation.sql now requires four params (std_evidence_receipt_id/_digest + std_evidence_approved_id/_digest) and activates ONLY when supplied == independently-approved, so a preflight PASS under one receipt cannot activate under an unrelated receipt, and a self-declared receipt cannot self-approve."
+    },
+    "modified_files": [
+      "first-probe-preflight-postflight.mjs (P1-01 seven-ceiling strict check + P1-02 evidence binding)",
+      "catalog-activation.sql (P1-02 four-param independent approval binding)",
+      "EVIDENCE-MANIFEST.json (this remediation record + updated hashes + gate contract)",
+      "ABORT-ROLLBACK-RUNBOOK.md (scenario #7 synced to the strengthened evidence contract)"
+    ],
+    "unchanged_files": [
+      "gateway-deployment-spec.json", "ai-staging-target-binding-spec.json", "environment-manifest.json",
+      "one-call-policy-activation.sql", "control-activation.sql", "dormant-restoration.sql",
+      "activation-digest-gen.mjs", "first-text-probe.mjs"
+    ],
+    "preserved_unchanged": "Accepted deployable commit/tree, AI-STAGING + CORE ids, provider openai / model gpt-5.6-terra, catalog rates + expiry, one-call policy values, control lifecycle, operator-subject contract, probe text, and EVERY previously frozen canonical payload/digest (active catalog 616cc481..., one-call policy 9927a920..., control activation 0a60f1eb.../eb56f2b7..., control restoration 0d2f6885.../d26219d1..., restored policy a74a7e34..., inactive catalog 453f9287...) are UNCHANGED by this remediation."
+  },
+
+  "standard_non_regional_evidence_gate": {
+    "state": "REQUIRED FUTURE EVIDENCE RECEIPT — NOT proven by accepted source and NOT fabricated here. ACTIVATION REMAINS BLOCKED until a real, independently-reviewed approved anchor is bound at execution.",
+    "must_prove": [
+      "direct OpenAI account/project",
+      "provider openai",
+      "model gpt-5.6-terra",
+      "catalogued Standard processing/pricing applies",
+      "non-regional billing (no regional uplift)",
+      "exact reviewed input/output rates (2000000 / 12000000 micros per 1000000 units)",
+      "the specific approved catalog version openai-gpt-5-6-terra-standard-short-v1 + source openai-api-pricing/gpt-5.6-terra/standard/short-context/v1 (source_digest fda6f4a8...)",
+      "no Batch / Flex / Fast / Scale-Tier / Bedrock / alternate-provider path",
+      "evidence freshness at execution (verified_at not future; now < 2026-09-25T18:37:35Z)",
+      "exact approved receipt identity + cryptographic digest"
+    ],
+    "binding_contract": {
+      "digest_domain": "staybid.live-ai.budget.pricing-evidence.v1",
+      "supplied_A": "operator/execution-harness supplied receipt { id, content(facts + verified_at), digest }",
+      "approved_B": "independently-reviewed anchor { id, digest } delivered via a channel SEPARATE from the operator receipt (reviewer approval record / independently pinned store) — NEVER echoed from the same caller assertion, NEVER a self-asserted reviewed/approved flag",
+      "preflight_rule": "content attests fixed facts AND recompute(content) == supplied.digest == approved.digest AND supplied.id == approved.id AND fresh; else FAIL CLOSED",
+      "sql_rule": "catalog-activation.sql requires all four params and supplied == approved (id + digest, 64-hex), binding activation to the SAME approved evidence the preflight validated; else FAIL CLOSED",
+      "cross_gate": "a preflight PASS under one receipt cannot activate the catalog under an unrelated receipt (both gates key on the identical approved id + digest)"
+    },
+    "honesty": "This is a correctly fail-closed FUTURE-evidence gate ONLY. It is NOT proof that current Standard/non-regional billing is verified. No approved receipt, digest, reviewer approval, or source identifier has been fabricated. Until a real independently-reviewed approved anchor is bound, activation is BLOCKED.",
+    "if_absent_or_unbound_at_execution": "HOLD before activation (both preflight and catalog-activation.sql fail closed)."
+  },
+
+  "authority": {
+    "NO_DATABASE_APPLIED": true,
+    "NO_RAILWAY_MUTATION": true,
+    "NO_PROVIDER_CREDENTIAL_CONFIGURED": true,
+    "NO_PROVIDER_CALL": true,
+    "NO_ACTIVATION": true,
+    "NO_DEPLOYMENT": true,
+    "NO_SECRET_INSPECTED_OR_STORED": true,
+    "NO_GIT_ADD_COMMIT_PUSH_PR_MERGE": true,
+    "NO_CORE_PROD_ACCESS": true,
+    "NO_03C": true
+  }
+}

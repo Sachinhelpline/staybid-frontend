@@ -1,0 +1,54 @@
+{
+  "artifact": "trusted-executor-deployment-spec",
+  "packet": "LIVE-AI-03B-P1-02-TRUSTED-ACTIVATION-BOUNDARY-CONSOLIDATED-OFFLINE-IMPLEMENTATION-01",
+  "status": "UNAPPLIED / UNDEPLOYED / NON-ACTIVATING REVIEW ARTIFACT",
+  "artifact_t0": "2026-09-19T05:41:50Z",
+  "do_not_deploy": true,
+
+  "executor": {
+    "kind": "private one-shot activation executor",
+    "no_public_http_endpoint": true,
+    "no_provider_api_key": true,
+    "no_gateway_signing_private_key": true,
+    "no_core_prod_credential_or_fallback": true,
+    "targets_ai_staging_only": true,
+    "one_shot": true,
+    "no_retry_after_ambiguous_mutation": true,
+    "emits_redacted_bounded_receipts_only": true,
+    "must_not_infer_privilege_from_service_name_or_own_env": true
+  },
+
+  "pinned": {
+    "source_commit": "2b69ce28230fc9d56a035846e95d8de206d5db3b",
+    "source_tree": "87aad22d90f84f2c3b307201c3e0d3b8658b1619",
+    "ai_staging_project": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "ai_staging_environment": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "ai_staging_postgres": "b7362594-a01b-4623-a982-394707a6cec2",
+    "ai_staging_gateway": "dd96c7cd-02c1-4d02-89eb-7e217930ebfa",
+    "core_excluded_project": "04c8b523-5b15-4d81-af06-8c2aa1a83499",
+    "core_excluded_postgres": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b",
+    "reviewer_public_key_fingerprint": "REQUIRED_FUTURE_INPUT — production reviewer Ed25519 SPKI SHA-256, provisioned out-of-band; NOT present offline",
+    "executor_release_digest": "REQUIRED_FUTURE_INPUT — pinned executor build digest"
+  },
+
+  "required_future_proofs_before_execute": [
+    "production reviewer public key + fingerprint (trust root) provisioned outside repo/Railway/gateway/probe/executor; the reviewer private key never present in any of them",
+    "a genuine independently-reviewed Standard/non-regional signed pricing approval for the specific execution nonce",
+    "applied db/2026-09-19-p1-02-trusted-activation-boundary.sql (trusted schema + roles + ledger + functions) on AI-STAGING Postgres b7362594-... only",
+    "a restricted executor DB LOGIN credential that can EXECUTE only live_ai_03b_trusted.activate_catalog / restore_catalog_inactive and has NO BUDGET-table DML, NO superuser, NO pg_write_all_data",
+    "proof the probe + gateway + runtime principals cannot read the executor credential and are NOT superuser / NOT pg_write_all_data and cannot impersonate postgres or live_ai_03b_fn_owner",
+    "runtime DB reference resolves to AI-STAGING Postgres b7362594-... by service identity (not merely a schema-compatible database); CORE excluded",
+    "Owner-controlled executor deployment/config authority; pinned executor release + pinned trust-root fingerprint",
+    "execution-time seven-ceiling preflight PASS + catalog fresh (now < 2026-09-25T18:37:35Z) or a separately reviewed successor catalog"
+  ],
+
+  "authority": {
+    "deployed": false,
+    "executor_db_credential_present": false,
+    "production_trust_root_present": false,
+    "database_applied": false,
+    "provider_credential_configured": false,
+    "core_prod_touched": false,
+    "activation_performed": false
+  }
+}

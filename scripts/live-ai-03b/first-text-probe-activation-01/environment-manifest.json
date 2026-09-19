@@ -1,0 +1,82 @@
+{
+  "artifact": "environment-manifest",
+  "packet": "LIVE-AI-03B-FIRST-TEXT-PROBE-ACTIVATION-ARTIFACT-IMPLEMENTATION-01",
+  "status": "UNAPPLIED / NON-ACTIVATING REVIEW ARTIFACT",
+  "artifact_t0": "2026-09-19T05:41:50Z",
+  "rule": "NAMES + classification + intended state ONLY. No secret VALUE ever appears here. Names were recovered from accepted source and cross-checked against the packet.",
+
+  "source_name_reconciliation": {
+    "all_packet_names_found_verbatim_in_accepted_source": true,
+    "note": "Every §9 packet-provided variable NAME exists byte-identically in the accepted source (recovered via server/voice-gateway/config.ts + live-ai-staging-main.ts + lib/live-ai/staging-authority.ts + openai-responses.ts). No name conflict. (Source also carries a parallel LIVE_AI_03B_* budget-timing family — LIVE_AI_03B_LEASE_TTL_MS / LIVE_AI_03B_CONTROL_STALENESS_MS — but the budget core reads the LIVE_AI_BUDGET_* family; the LIVE_AI_BUDGET_* names below are the ones consumed by resolveBudgetConfig in config.ts.)",
+    "operator_subject_separator": "Accepted source lib/live-ai/staging-authority.ts derives the staging subject as HMAC-SHA256(secret, DOMAIN + NUL + adminId) where the SEP literal is a NUL byte (U+0000) — the file's `const SEP` is a single \\u0000, matching packet §17 ('domain + NUL + verified_admin_id'). No conflict."
+  },
+
+  "classifications_legend": [
+    "NON_SECRET_FIXED", "NON_SECRET_RUNTIME_INPUT", "SECRET_PRESENCE_ONLY",
+    "PUBLIC_KEY_MATERIAL", "GATE_OFF_BY_DEFAULT", "ACTIVATION_TIME_VALUE",
+    "BROKER_SIDE", "GATEWAY_SIDE"
+  ],
+
+  "budget_non_secret_config_intended_values": {
+    "LIVE_AI_BUDGET_ENABLED": "1",
+    "LIVE_AI_BUDGET_PROJECT_ID": "live-ai-03b",
+    "LIVE_AI_BUDGET_STORE_BINDING": "live-ai-03b-staging::railway-postgres::b7362594-a01b-4623-a982-394707a6cec2",
+    "LIVE_AI_BUDGET_LEASE_TTL_MS": "60000",
+    "LIVE_AI_BUDGET_MAX_CONTROL_STALENESS_MS": "15000",
+    "LIVE_AI_BUDGET_CONTROL_POLL_MS": "1000"
+  },
+
+  "variables": [
+    { "name": "LIVE_AI_03B_STAGING_DATABASE_URL", "classification": "SECRET_PRESENCE_ONLY", "sides": ["GATEWAY_SIDE"], "intended_state": "PRESENT at runtime; MUST resolve to AI-STAGING Postgres b7362594-a01b-4623-a982-394707a6cec2; value never logged", "source": "live-ai-staging-main.ts STAGING_DATABASE_URL_ENV" },
+    { "name": "LIVE_AI_BUDGET_ENABLED", "classification": "NON_SECRET_FIXED", "sides": ["GATEWAY_SIDE"], "intended_value": "1", "source": "config.ts resolveBudgetConfig exactlyOne(env.LIVE_AI_BUDGET_ENABLED)" },
+    { "name": "LIVE_AI_BUDGET_STORE_BINDING", "classification": "NON_SECRET_FIXED", "sides": ["GATEWAY_SIDE"], "intended_value": "live-ai-03b-staging::railway-postgres::b7362594-a01b-4623-a982-394707a6cec2", "source": "config.ts storeBindingRef = nonEmpty(env.LIVE_AI_BUDGET_STORE_BINDING)" },
+    { "name": "LIVE_AI_BUDGET_PROJECT_ID", "classification": "NON_SECRET_FIXED", "sides": ["GATEWAY_SIDE"], "intended_value": "live-ai-03b", "source": "config.ts projectId = nonEmpty(env.LIVE_AI_BUDGET_PROJECT_ID)" },
+    { "name": "LIVE_AI_BUDGET_LEASE_TTL_MS", "classification": "NON_SECRET_FIXED", "sides": ["GATEWAY_SIDE"], "intended_value": "60000", "source": "config.ts numOrZero(env.LIVE_AI_BUDGET_LEASE_TTL_MS, 1000, 3600000)" },
+    { "name": "LIVE_AI_BUDGET_MAX_CONTROL_STALENESS_MS", "classification": "NON_SECRET_FIXED", "sides": ["GATEWAY_SIDE"], "intended_value": "15000", "source": "config.ts numOrZero(env.LIVE_AI_BUDGET_MAX_CONTROL_STALENESS_MS, 1000, leaseTtl)" },
+    { "name": "LIVE_AI_BUDGET_CONTROL_POLL_MS", "classification": "NON_SECRET_FIXED", "sides": ["GATEWAY_SIDE"], "intended_value": "1000", "source": "config.ts numOrZero(env.LIVE_AI_BUDGET_CONTROL_POLL_MS, 250, maxStaleness)" },
+
+    { "name": "OPENAI_API_KEY", "classification": "SECRET_PRESENCE_ONLY", "sides": ["GATEWAY_SIDE"], "intended_state": "ABSENT during NON-SPEND preparation; PRESENT only at the FIRST-PROBE ARM step; REMOVED at IMMEDIATE CLOSE. Presence-only check ever; value never printed or persisted.", "source": "openai-responses.ts (Bearer apiKey), §11" },
+    { "name": "LIVE_AI_REASONING_MODEL", "classification": "NON_SECRET_FIXED", "sides": ["GATEWAY_SIDE"], "intended_value": "gpt-5.6-terra", "source": "config.ts LIVE_AI_REASONING_MODEL default = openai-responses.ts REASONING_MODEL 'gpt-5.6-terra'" },
+
+    { "name": "LIVE_AI_RUNTIME_ENABLED", "classification": "NON_SECRET_RUNTIME_INPUT", "sides": ["GATEWAY_SIDE"], "intended_state": "set per the gate sequence for the isolated staging runtime; not a spend gate on its own", "source": "config.ts" },
+    { "name": "LIVE_AI_SESSION_SIGNING_PUBLIC_KEY", "classification": "PUBLIC_KEY_MATERIAL", "sides": ["GATEWAY_SIDE"], "intended_state": "PRESENT; MUST correspond to the broker-side private key (verify by a safe derived public-key fingerprint, never the private key)", "source": "config.ts" },
+    { "name": "LIVE_AI_SESSION_ISSUER", "classification": "NON_SECRET_RUNTIME_INPUT", "sides": ["GATEWAY_SIDE", "BROKER_SIDE"], "intended_state": "identical issuer string on broker + gateway", "source": "config.ts" },
+    { "name": "LIVE_AI_SESSION_AUDIENCE", "classification": "NON_SECRET_RUNTIME_INPUT", "sides": ["GATEWAY_SIDE", "BROKER_SIDE"], "intended_state": "identical audience string on broker + gateway", "source": "config.ts" },
+    { "name": "LIVE_AI_CONTROL_TOKEN_SECRET", "classification": "SECRET_PRESENCE_ONLY", "sides": ["GATEWAY_SIDE"], "intended_state": "PRESENT; value never logged", "source": "config.ts" },
+    { "name": "LIVE_AI_KILL_SWITCH_HMAC_SECRET", "classification": "SECRET_PRESENCE_ONLY", "sides": ["GATEWAY_SIDE"], "intended_state": "PRESENT; value never logged", "source": "config.ts" },
+    { "name": "LIVE_AI_ALLOWED_ORIGINS", "classification": "NON_SECRET_RUNTIME_INPUT", "sides": ["GATEWAY_SIDE"], "intended_state": "bounded to the isolated staging operator surface", "source": "config.ts" },
+    { "name": "LIVE_AI_IP_HASH_SALT", "classification": "SECRET_PRESENCE_ONLY", "sides": ["GATEWAY_SIDE"], "intended_state": "PRESENT; value never logged", "source": "config.ts" },
+
+    { "name": "LIVE_AI_03B_STAGING_TEXT_ENABLED", "classification": "GATE_OFF_BY_DEFAULT", "sides": ["GATEWAY_SIDE"], "intended_state": "OFF (!= '1') during preparation; turned ON only at the FIRST-PROBE ARM step; OFF FIRST at IMMEDIATE CLOSE", "source": "config.ts stagingTextEnabled = exactlyOne(env.LIVE_AI_03B_STAGING_TEXT_ENABLED)" },
+    { "name": "LIVE_AI_03B_STAGING_SUBJECT_ALLOWLIST", "classification": "NON_SECRET_RUNTIME_INPUT", "sides": ["GATEWAY_SIDE"], "intended_state": "the reviewed staging subject allowlist (opaque stg1.* subject(s)); default []", "source": "config.ts parseSubjectAllowlist(env.LIVE_AI_03B_STAGING_SUBJECT_ALLOWLIST)" },
+    { "name": "LIVE_AI_03B_FIRST_PROBE_ONE_CALL", "classification": "GATE_OFF_BY_DEFAULT", "sides": ["GATEWAY_SIDE"], "intended_state": "OFF (default); ON only for the single deterministic probe", "source": "config.ts stagingFirstProbeOneCall = exactlyOne(env.LIVE_AI_03B_FIRST_PROBE_ONE_CALL)" },
+
+    { "name": "LIVE_AI_03B_STAGING_BROKER_ENABLED", "classification": "GATE_OFF_BY_DEFAULT", "sides": ["BROKER_SIDE"], "intended_state": "OFF during preparation; turned ON LAST at ARM; OFF FIRST at IMMEDIATE CLOSE", "source": "staging-authority.ts StagingBrokerConfig.brokerEnabled === '1'" },
+    { "name": "LIVE_AI_03B_STAGING_OPERATOR_SUBJECT", "classification": "ACTIVATION_TIME_VALUE", "sides": ["BROKER_SIDE"], "intended_state": "EXACTLY ONE opaque subject stg1.<64 lowercase hex>; derived from the VERIFIED admin id via HMAC-SHA256(secret, DOMAIN + NUL + adminId); a list-shaped value fails closed", "source": "staging-authority.ts resolveStagingOperatorSubject + deriveStagingSubject" },
+    { "name": "LIVE_AI_03B_STAGING_SUBJECT_HMAC_SECRET", "classification": "SECRET_PRESENCE_ONLY", "sides": ["BROKER_SIDE"], "intended_state": "PRESENT; the dedicated subject-derivation secret; never JWT_ACCESS_SECRET / signing keys; value never logged", "source": "staging-authority.ts deriveStagingSubject(hmacSecret)" },
+    { "name": "LIVE_AI_SESSION_SIGNING_PRIVATE_KEY", "classification": "SECRET_PRESENCE_ONLY", "sides": ["BROKER_SIDE"], "intended_state": "PRESENT on the broker ONLY; MUST correspond to the gateway public key (safe fingerprint check only); value never logged", "source": "§9 broker-side" },
+    { "name": "LIVE_AI_GATEWAY_URL", "classification": "NON_SECRET_RUNTIME_INPUT", "sides": ["BROKER_SIDE"], "intended_state": "the AI-STAGING gateway base URL the broker forwards to (never a CORE URL, never an arbitrary provider URL)", "source": "§9 broker-side" }
+  ],
+
+  "provider_contract_reference": {
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "endpoint": "https://api.openai.com/v1/responses",
+    "reasoning_effort": "low",
+    "max_output_tokens": 2000,
+    "store": false,
+    "background": false,
+    "stream": false,
+    "tools": [],
+    "truncation": "disabled",
+    "automatic_http_retries": 0,
+    "source": "openai-responses.ts OPENAI_RESPONSES_URL / REASONING_MODEL / MAX_REASONING_OUTPUT_TOKENS / ProviderCallAdmissionV1 (§11)"
+  },
+
+  "authority": {
+    "secret_values_present": false,
+    "env_mutation": false,
+    "database_applied": false,
+    "provider_credential_configured": false
+  }
+}
