@@ -1,0 +1,34 @@
+{
+  "artifact": "LIVE-AI-03B PRIVATE trusted-reader host — OFFLINE implementation + access-control specification (consolidated leak-path remediation)",
+  "packet": "LIVE-AI-03B-PRIVATE-READER-HOST-ONE-CONSOLIDATED-OFFLINE-REMEDIATION-AND-FINAL-REVIEW-HANDOFF",
+  "disposition": "OFFLINE_PRIVATE_HOST_REMEDIATION_COMPLETE_REVIEW_REQUIRED",
+  "directory": "scripts/live-ai-03b/private-reader-host-offline-01",
+  "hash_algorithm": "sha256",
+  "status": "OFFLINE / UNPROVISIONED / UNTRACKED — no live DB/Railway/Supabase/CORE-PROD access or mutation; no credential generated or provisioned; no SQL run; no reader-role reapplication (Sections I-III already applied/verified/CLOSED); no trusted-boundary migration; no git commit/push/PR/merge or branch change; no deployment/activation; no provider call.",
+  "test_result": "54 passed, 0 failed (node tests/private-reader-host.test.mjs) — synthetic clients/authorities + fixed-registry wiring + strict value-based outward boundary + fail-closed + both-leak-path value negatives; NOT live PostgreSQL / credential / runtime-isolation proof",
+  "executed_assertions": 54,
+  "consolidated_remediation": {
+    "leak_1_raw_exception_outward": "FIXED — observe() no longer forwards a DB driver exception's e.message/stack/connection string. All outward failures use the finite fixed non-secret ERROR_CODES set; no concatenated adapter reason and no echoed caller input (request key/observation value) crosses. Proven: a throwing reader whose message embeds a sentinel URL yields only { ok:false, code:'observation_error' } and the sentinel never appears outward.",
+    "leak_2_value_blind_boundary": "FIXED — the former name-only + JSON-round-trip guard is replaced by assertOutwardMessage: exact top-level + per-phase key allowlist, every leaf a safe scalar (finite number / boolean / string matching ^[A-Za-z0-9_.\\-]{1,128}$ forbidding ':'/'/'/'@'/whitespace), no function/.query-object/cycle, JSON-pure. A URL in a 'reason' field, inside a permitted observation field, or a non-fixed/URL-bearing code is rejected. The SAME boundary guards observe(), toGatewayMessage() and deliverToGateway() on success AND failure paths."
+  },
+  "outward_error_codes": ["unprovisioned", "production_rejects_test_boundary", "authority_invalid", "target_binding_invalid", "target_is_core_prod", "adapter_init_failed", "request_rejected", "unknown_observation", "observation_unavailable", "observation_error", "result_boundary_violation", "no_result_to_deliver", "gateway_delivery_refused"],
+  "preserved": [
+    "accepted fixed SELECT-only query registry (CANDIDATE_REGISTRY_DIGEST) + assertSuppliedRegistry",
+    "private readerDbClient ownership (closure-held; no getter)",
+    "fail-closed UNPROVISIONED default",
+    "frozen predecessor interfaces (imported read-only, unchanged)"
+  ],
+  "reader_role_sections_I_III": "APPLIED AND VERIFIED (CLOSED) — NOT reapplied by this artifact; credential remains unset.",
+  "isolation_status": "UNPROVEN OFFLINE — offline code/tests do NOT establish live Railway RBAC, credential custody, runtime isolation, or deployment safety. See ACCESS-CONTROL-SPEC.md §7.",
+  "frozen_source_unchanged": true,
+  "accepted_predecessors_touched": "none (read-only imports of accepted contracts at runtime only)",
+  "files": [
+    { "path": "private-reader-host.mjs", "sha256": "3f25bcd3975318cca5c6619beb016e6159ba06c263eb32f11d8873e650723525", "bytes": 15799 },
+    { "path": "ACCESS-CONTROL-SPEC.md", "sha256": "c9b7aabc55258690f2f2daf20c0a126497a3ef7b859996f91b70673961953748", "bytes": 9431 },
+    { "path": "tests/private-reader-host.test.mjs", "sha256": "ddda185096ce08696cf90bb6fc4c83c88b3fabd0d53ceedad722c472c4ed9d44", "bytes": 16061 },
+    { "path": "README.md", "sha256": "86c0a08b5441b7ed47c0f1e8bd55a79c3b4e49c7abe274468156a1e0b8493e86", "bytes": 6228 }
+  ],
+  "material_blocker_within_offline_candidate": "NONE — both WORK-reproduced leak paths are corrected offline within the five in-scope files with no frozen-contract change.",
+  "separately_authorized_live_gates": "Credential provisioning (private-host-only, service-scoped, custody-isolated), Railway access-control mutation/RBAC scoping, private-host deployment, trusted-boundary migration and activation, plus credential-backed effective-privilege + connection-identity + isolation evidence. Each is a distinct future Owner authorization boundary; none is in scope here.",
+  "honesty": "This artifact proves STRUCTURE + BOUNDARIES + the two remediated leak paths offline against the accepted contracts. It establishes no live connection/credential/isolation, provisions nothing, and does not make activation reachable. Hashes cover this directory's own files only; this manifest is not signed and is not authority."
+}
