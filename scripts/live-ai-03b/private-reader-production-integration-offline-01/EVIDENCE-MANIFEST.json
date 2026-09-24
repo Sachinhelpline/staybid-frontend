@@ -1,0 +1,281 @@
+{
+  "artifact": "LIVE-AI-03B private-reader PRODUCTION INTEGRATION \u2014 OFFLINE candidate after the attestation-source correction (versioned reader-attestation-channel-v1 adapter composed by the actual production entrypoint)",
+  "authorization": "Owner (Sachin Tomer) \u2014 one bounded offline production attestation-source correction, 24 Sep 2026",
+  "disposition": "OFFLINE_ATTESTATION_SOURCE_CORRECTION_COMPLETE_REVIEW_REQUIRED",
+  "directory": "scripts/live-ai-03b/private-reader-production-integration-offline-01",
+  "status": "OFFLINE / UNTRACKED / NOT DEPLOYED \u2014 no Git, Railway, live DB, SQL, credential, signing-key, provider or CORE-PROD operation.",
+  "accepted_baseline": {
+    "runtime_commit": "828b4ce70b612325ebcc18d850463ee9a64298ae",
+    "accepted_zip_sha256": "4b1feb33c831a344e9eff862e290e18d7e693658da5218450139a852d4722cd8"
+  },
+  "versions": {
+    "entrypoint": "reader-production-entrypoint-v1",
+    "authority": "reader-production-authority-v1 (supplies accepted reader-only-authority-v1)",
+    "attestation": "AiStagingReaderAttestationV1",
+    "gateway_caller": "reader-gateway-caller-v1",
+    "transport": "reader-obs-transport-v1 (accepted, unchanged)",
+    "attestation_channel": "reader-attestation-channel-v1"
+  },
+  "test_results": {
+    "integration_suite": "157 passed, 0 failed, 0 skipped (node tests/production-integration.test.mjs) \u2014 A 13, B 29, C 14, D 16, E 25, F 11, G 16, H 33; repeated runs stable; no leftover processes",
+    "actual_entrypoint_composition": "H: startProductionReaderService({env}) production mode -> composed channel -> simulated attester (authenticated) -> verified signature -> accepted runtime in PRODUCTION mode -> gateway observations mode:'production'; plus the REAL process main() in a child process (harness preload) observed by the parent as a separate gateway process, SIGTERM exit 0",
+    "entrypoint_offline_run": "clean env -> {status:'unprovisioned', reason:'integration_config_incomplete'}, exit 70, no listener, no DB connection",
+    "regression_accepted_runtime": "125 passed, 0 failed, 0 skipped",
+    "regression_accepted_private_host": "54 passed, 0 failed",
+    "regression_accepted_live_binding": "82 passed, 0 failed",
+    "syntax": "node --check OK on all .mjs files"
+  },
+  "evidence_classes": {
+    "INDEPENDENTLY_VERIFIED": [
+      "accepted runtime (11) + frozen predecessors (14) byte-unchanged \u2014 hash-asserted"
+    ],
+    "SYNTHETICALLY_TESTED": [
+      "actual production entrypoint composition through the approved channel (simulated attester, synthetic pg via harness module hook, harness DNS)",
+      "attestation verification matrix",
+      "proof lifecycle (expiry/renewal/reconnect/drift/stale readiness/mid-flight)",
+      "statement_timeout set+readback protocol",
+      "gateway caller against the accepted transport over loopback",
+      "integrated path through the accepted serving runtime"
+    ],
+    "PENDING_LIVE_VERIFICATION": [
+      "genuine reader privileges on AI-STAGING",
+      "hosted PostgreSQL statement_timeout acceptance + cancellation",
+      "own pg_stat_activity row readability + token derivation",
+      "Railway private-network isolation",
+      "a genuine attester serving reader-attestation-channel-v1 on the private network"
+    ],
+    "NOT_AUTHORIZED": [
+      "attester deployment/custody/signing key",
+      "credential provisioning",
+      "gateway wiring in server/voice-gateway",
+      "deployment"
+    ]
+  },
+  "files": [
+    {
+      "path": "INTEGRATION-CONTRACT.md",
+      "sha256": "afc5cf009111fbe07b02759d10b38660aa46c13ab6fe533169bb412099dd9287",
+      "bytes": 14790,
+      "change": "modified (correction)"
+    },
+    {
+      "path": "README.md",
+      "sha256": "ed19a4aa1b298b5b558efa44be2f11150fe6da5f5884fb2848a6e569083db831",
+      "bytes": 4607,
+      "change": "modified (correction)"
+    },
+    {
+      "path": "attestation-source-channel.mjs",
+      "sha256": "eb484e7a558de4fc59883718340e98bc6489acefdf53d295e41df9b96a8306ed",
+      "bytes": 8214,
+      "change": "new (correction)"
+    },
+    {
+      "path": "gateway-observation-caller.mjs",
+      "sha256": "d710087d28cf02a7a7676290f87b0d1da28f293cc035291870d1ccbdabeef8e7",
+      "bytes": 9480,
+      "change": "unchanged since previous candidate"
+    },
+    {
+      "path": "integration-config.mjs",
+      "sha256": "d3c86a6fd9ecc3607f904f684791e2269f6428b79ecd765ad9e803b7f2446adb",
+      "bytes": 4458,
+      "change": "modified (correction)"
+    },
+    {
+      "path": "production-entrypoint.mjs",
+      "sha256": "f70c648d340c23017b8fd28325a23bdbd4e80d0be438cd6ae4512832b6c3c432",
+      "bytes": 12512,
+      "change": "modified (correction)"
+    },
+    {
+      "path": "production-reader-authority.mjs",
+      "sha256": "bc0dac365572778feb18ff501bf65cb989c6e7bbd5c7afd15991a3675be94ad4",
+      "bytes": 12719,
+      "change": "modified (correction)"
+    },
+    {
+      "path": "reader-attestation.mjs",
+      "sha256": "42964752dcb7035abddd7decd6ea40a7c27321112f96176379c8983ce72b3d5e",
+      "bytes": 9039,
+      "change": "unchanged since previous candidate"
+    },
+    {
+      "path": "reader-session.mjs",
+      "sha256": "064021ba88e39da431249a4b5b86a2313a787c7b1c35f0190587270741b1d011",
+      "bytes": 9199,
+      "change": "unchanged since previous candidate"
+    },
+    {
+      "path": "tests/fixtures/pg-hook.mjs",
+      "sha256": "9d282dc541975107c8d77726c459aa71aee660fe3507d884b424a4c60da33922",
+      "bytes": 635,
+      "change": "new (correction)"
+    },
+    {
+      "path": "tests/fixtures/pg-synthetic-driver.mjs",
+      "sha256": "39b407a04cac89ba8e3f9bccea6b57807ac05be301dcf8260eca6e1a7f86b4c1",
+      "bytes": 1101,
+      "change": "new (correction)"
+    },
+    {
+      "path": "tests/fixtures/production-harness-preload.mjs",
+      "sha256": "5f5d149686aebd1d63075b5b052ed78814d86e76a93ce1032e0c40020eec0f11",
+      "bytes": 1802,
+      "change": "new (correction)"
+    },
+    {
+      "path": "tests/fixtures/reference-attester.mjs",
+      "sha256": "2a9fca7f1270cd05bbe5c75f1400a405ae8813c57e71e306662627ba4090ee45",
+      "bytes": 2922,
+      "change": "unchanged since previous candidate"
+    },
+    {
+      "path": "tests/fixtures/simulated-attester-server.mjs",
+      "sha256": "15a3da16db837ce4202f741f9f43d7a3064b0ca0169168a301f0b686980a1438",
+      "bytes": 5389,
+      "change": "new (correction)"
+    },
+    {
+      "path": "tests/fixtures/synthetic-pg.mjs",
+      "sha256": "08ba1749fef19c25fae53e430254fd2fed20d978267e219df232fd8bbe3e42f3",
+      "bytes": 6596,
+      "change": "modified (correction)"
+    },
+    {
+      "path": "tests/production-integration.test.mjs",
+      "sha256": "a856a98fecb55f70982c8838afd3b8417749adda27d7523448b4839bce5c4f35",
+      "bytes": 57000,
+      "change": "modified (correction)"
+    }
+  ],
+  "unchanged_dependencies": [
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/AUTHORITY-BOUNDARY.md",
+      "sha256": "a1a9411a75012523fbac7f3a1ff651e59d8ab45f71dc8b325581547fefeffe80"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/CORRECTION-SUMMARY.md",
+      "sha256": "1b8ec9b038f43c3ddd7cdec584040edf19ba96dd63573992e4cd73677df9f6ff"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/DEPLOYMENT-CONFIG.md",
+      "sha256": "3b04f3ea2d7321ff793fae9f95aec627c9874248c4adb5b74f02b73716214cfc"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/EVIDENCE-MANIFEST.json",
+      "sha256": "fef0533972f115d5b88be18eefb0e2851afc53857a15f8d11ba8c1dda8d0dab7"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/README.md",
+      "sha256": "d48579005878abef5698f4692dbfc04af734a52a0dd0ba27791f55172473ab84"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/observation-transport.mjs",
+      "sha256": "06c01348d20c3e8b118b74aae086e24de8945e7ab043df4d4715eff21b4f6ca3"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/private-reader-host-runtime.mjs",
+      "sha256": "629540c525c9d52894d5236fa37baad5682c09c1216dd278ea755eed5ed9c459"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/reader-only-authority.mjs",
+      "sha256": "ff38a8cc18184281e153dee0bd1b38d620015cc98ba281c7a241b39437efd3f8"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/runtime-config.mjs",
+      "sha256": "4843ecb038f9d91b9f5725f9476838a95ae4e4e49a99ec82fbd846a5a846c62e"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/tests/independent-client.mjs",
+      "sha256": "465efb1cab8825260484c71d7102394b5229657bd5b9c59227c8d1d922e6642d"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/tests/runtime.test.mjs",
+      "sha256": "9631a1f0653ac2cedf88d5150fe8c0ed94775ad6c08eef7311923c3a3cabc1e8"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-offline-01/private-reader-host.mjs",
+      "sha256": "3f25bcd3975318cca5c6619beb016e6159ba06c263eb32f11d8873e650723525"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-offline-01/ACCESS-CONTROL-SPEC.md",
+      "sha256": "c9b7aabc55258690f2f2daf20c0a126497a3ef7b859996f91b70673961953748"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-offline-01/tests/private-reader-host.test.mjs",
+      "sha256": "ddda185096ce08696cf90bb6fc4c83c88b3fabd0d53ceedad722c472c4ed9d44"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-offline-01/README.md",
+      "sha256": "86c0a08b5441b7ed47c0f1e8bd55a79c3b4e49c7abe274468156a1e0b8493e86"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-offline-01/EVIDENCE-MANIFEST.json",
+      "sha256": "11ef6eee49409941fc28c55ce34fbf475647886cfd476b83cb4e2accd7da0220"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/trusted-read-adapter.mjs",
+      "sha256": "12f9c439371b2cb11728fde821ac29208553797e72fb7be5d0db561e476d660b"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/db-target-binding.mjs",
+      "sha256": "c1fec8b68fe79ec2d7615ff9b401034d8f96a7e8b82ab342a5b53f1c6fbdd0ea"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/canonical-timestamp.mjs",
+      "sha256": "d0c48f3af5e8e802ff129d178ed6064eff99b49877db5616f257f928ec810e8e"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/production-authority.mjs",
+      "sha256": "6da4a3a98b98bf84d74955ddceb65ab073069f84f1852e48141976e6020890f6"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/runtime-config.mjs",
+      "sha256": "c0035996b6fcf3a36a402d220ac1559bdcb8cdf2f943d72deaa714c72ec197ae"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-activation-boundary-01/pricing-approval-contract.mjs",
+      "sha256": "59ef03ea3b0532100cf59c19a7f4f174543a4dea0e688359ced858e974312ad3"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-activation-boundary-01/approval-verify.mjs",
+      "sha256": "88212feed6e30a08069a12e1e0c1999f7df07487b3c52e035f5e5b1486fb29f3"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-read-queries.mjs",
+      "sha256": "42ddf87d268183183d3851a91e9df57b8e9e2a1c3d629412a24a489e9646ed0c"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-authority-composition.mjs",
+      "sha256": "a0e84399bd3c858b61a3a57b3590ff8115335ea5942a78685ad753403b651f69"
+    }
+  ],
+  "deferred_live_requirements": [
+    "independent attester: custody, deployment, signing key; serving reader-attestation-channel-v1 at a private endpoint; provisioning host attester host/port/channel secret + public key/fingerprint/issuer on 88c74a23",
+    "service-scoped reader DB URL + transport secret on 88c74a23; transport secret + destination on gateway dd96c7cd",
+    "live verification of set_config(statement_timeout/default_transaction_read_only) for live_ai_03b_reader and hosted cancellation at the limit",
+    "live verification of own pg_stat_activity row + attester token derivation",
+    "Railway private-network verification (mode, allowlist, DNS, gateway-only reachability, no public exposure)",
+    "gateway wiring in server/voice-gateway; attach source + deploy; live fail-closed and serving checks",
+    "trusted-boundary migration (UNAPPLIED) and the first controlled real AI TEXT test"
+  ],
+  "honesty": "Offline synthetic fixtures only. The simulated attester signs with an in-memory fixture key; its attestations are NOT genuine live attestations. Harness-only simulation (pg module hook, DNS patch, --import preload) is never part of a production start command. Does not prove live privileges, hosted timeout behaviour, Railway isolation, attester operation, or deployment. Hashes cover listed files; not signed; not authority.",
+  "previous_candidate": {
+    "zip": "LIVE-AI-03B-private-reader-production-integration-offline.zip",
+    "zip_sha256": "4143120f6fd4c8bd86b467e09c8e50ae4fb523d66351626940ad1014bc768f38",
+    "zip_bytes": 152085,
+    "manifest_sha256": "42797473f3689508db91946835e065b1b50f7da4c29e3403ce7d413004881fce"
+  },
+  "correction": {
+    "finding": "production attestation-source composition missing (PRODUCTION_ATTESTATION_SOURCE = null; production refused source injection) \u2014 WORK v2 HOLD_MATERIAL_REMEDIATION_REQUIRED",
+    "fix": "new versioned adapter attestation-source-channel.mjs (reader-attestation-channel-v1); integration-config validates deployment-owned channel config; production-entrypoint composeProductionAttestationSource(env,cfg) builds the ONLY production source; production option allowlist [mode,env,log,onFatal,onDegraded]",
+    "channel": "newline JSON over TCP to a *.railway.internal / private-IP destination from deployment config; HMAC-SHA256 channel auth with a dedicated channel secret (>=32, != transport secret) over v/op/args/nonce/ts; connect 1.5 s / total 4 s; request <=2 KiB / response <=16 KiB; no retries; fixed attester_* failure codes",
+    "authority": "unchanged \u2014 every envelope is verified by reader-attestation.mjs against the pinned trust root; nothing in the channel is trusted",
+    "other_changes": [
+      "manager surfaces fixed channel failure codes; renewal at min(120 s, half the attester lifetime)",
+      "production transport secret read from the same validated env source",
+      "SIGTERM/SIGINT shutdown exits explicitly after stop()"
+    ]
+  }
+}
