@@ -1,0 +1,127 @@
+{
+  "artifact": "LIVE-AI-03B private-reader SERVING runtime \u2014 OFFLINE candidate after the two-issue consolidated correction (private-network serving mode + bounded observation deadline)",
+  "authorization": "Owner (Sachin Tomer) \u2014 LIVE-AI-03B-B two-issue consolidated offline correction, 24 Sep 2026",
+  "disposition": "OFFLINE_TWO_ISSUE_CORRECTION_COMPLETE_REVIEW_REQUIRED",
+  "directory": "scripts/live-ai-03b/private-reader-host-runtime-offline-01",
+  "hash_algorithm": "sha256",
+  "status": "OFFLINE / UNTRACKED / NOT DEPLOYED \u2014 no live DB connection, no credential, no Railway change, no service attachment, no provider call, no Git action, no CORE-PROD.",
+  "baseline_manifest_sha256": "4915e123efbd8df3ffd749953fd9aa614c9c03f2ee4688a14a2ef0e188c247dd",
+  "versions": {
+    "authority": "reader-only-authority-v1 (+ required statementTimeoutMs declaration)",
+    "transport": "reader-obs-transport-v1 (wire protocol unchanged; listen modes unix | loopback-tcp | private-network)"
+  },
+  "test_results": {
+    "serving_runtime_suite": "125 passed, 0 failed, 0 skipped (node tests/runtime.test.mjs) \u2014 A\u2013E 62, F 44, G 19; repeated 3x stable",
+    "syntax": "node --check OK on all 4 source modules + 2 test files",
+    "entrypoint_offline_run": "{status:'unprovisioned', servesPublicDomain:false}, exit 70, no listener",
+    "regression_accepted_private_host": "54 passed, 0 failed (unchanged accepted suite)",
+    "regression_accepted_live_binding": "82 passed, 0 failed (unchanged accepted suite)",
+    "leftover_socket_files_after_suite": "none"
+  },
+  "finding_1_private_network": {
+    "mode": "explicit 'private-network' listen mode; unix default + loopback-tcp preserved",
+    "bind": "literal RFC1918/RFC4193 IP, or ::/0.0.0.0 only with allowWildcardBind === true; loopback/public/hostname refused",
+    "peer_filter": "mandatory private peer-CIDR allowlist (<=16, no /0, no supernet broader than its private range), checked per connection before request processing; NOT authentication",
+    "auth_unchanged": "HMAC-SHA256, 30 s freshness, single-use nonce, op 'observe' only, args exactly {observation}, size bounds, fixed codes",
+    "cross_process_evidence": "independent child process (own protocol implementation) against this machine's non-loopback interface; /24 declared private ONLY under testBoundary (production refuses)",
+    "not_proven": "Railway private-network isolation / addresses / DNS \u2014 deferred live verification"
+  },
+  "finding_2_deadline": {
+    "transport": "5 s end-to-end budget; 3 s observation-execution deadline; AbortSignal fired on expiry; fixed code 'timeout'",
+    "quarantine": "slot released only when underlying work settles; unsettled > 15 s => sticky degraded ('unavailable', not ready, watchdog, entrypoint exit 71)",
+    "reader_host": "AsyncLocalStorage abort gate: no further query after abort; late result discarded; no cancellation invented; accepted adapter unedited",
+    "db_bound": "readerDbClient.statementTimeoutMs (1-2000 ms) required; DB-side statement_timeout enforcement is a DEFERRED LIVE requirement",
+    "limits": "tighten-only"
+  },
+  "frozen_source_unchanged": true,
+  "accepted_five_files_hash_asserted": {
+    "private-reader-host.mjs": "3f25bcd3975318cca5c6619beb016e6159ba06c263eb32f11d8873e650723525",
+    "ACCESS-CONTROL-SPEC.md": "c9b7aabc55258690f2f2daf20c0a126497a3ef7b859996f91b70673961953748",
+    "tests/private-reader-host.test.mjs": "ddda185096ce08696cf90bb6fc4c83c88b3fabd0d53ceedad722c472c4ed9d44",
+    "README.md": "86c0a08b5441b7ed47c0f1e8bd55a79c3b4e49c7abe274468156a1e0b8493e86",
+    "EVIDENCE-MANIFEST.json": "11ef6eee49409941fc28c55ce34fbf475647886cfd476b83cb4e2accd7da0220"
+  },
+  "files": [
+    {
+      "path": "reader-only-authority.mjs",
+      "change": "modified (correction: statement bound + abort gate)",
+      "previous_sha256": "cfa5eb02467d6c65f95b34fb2e2ca33018fd68e5f24138bca8909e76d4cad1e7",
+      "sha256": "ff38a8cc18184281e153dee0bd1b38d620015cc98ba281c7a241b39437efd3f8",
+      "bytes": 15969
+    },
+    {
+      "path": "observation-transport.mjs",
+      "change": "modified (correction: private-network mode + deadline/quarantine)",
+      "previous_sha256": "dc6e998545edeeb7ff340696a7e85ef9780fb9a9d13722d89aeff782a699b5ab",
+      "sha256": "06c01348d20c3e8b118b74aae086e24de8945e7ab043df4d4715eff21b4f6ca3",
+      "bytes": 17814
+    },
+    {
+      "path": "private-reader-host-runtime.mjs",
+      "change": "modified (correction: listen config, limits, health, degraded watchdog)",
+      "previous_sha256": "de0918055983f5ecd7211ba2742d5151454f9d7d60adc15ca0b00ba57b968961",
+      "sha256": "629540c525c9d52894d5236fa37baad5682c09c1216dd278ea755eed5ed9c459",
+      "bytes": 7383
+    },
+    {
+      "path": "runtime-config.mjs",
+      "change": "modified (correction: listen-mode env names + resolver)",
+      "previous_sha256": "895e6630329378bcb589efc0e95d90407fd0bc415237b80be00108e2badf8344",
+      "sha256": "4843ecb038f9d91b9f5725f9476838a95ae4e4e49a99ec82fbd846a5a846c62e",
+      "bytes": 5716
+    },
+    {
+      "path": "tests/runtime.test.mjs",
+      "change": "modified (correction: sections F + G)",
+      "previous_sha256": "305420aec86d0c17b143f80155671ed4ff7a66d87b069bc80c1c86bf30a481b0",
+      "sha256": "9631a1f0653ac2cedf88d5150fe8c0ed94775ad6c08eef7311923c3a3cabc1e8",
+      "bytes": 39983
+    },
+    {
+      "path": "tests/independent-client.mjs",
+      "change": "new",
+      "previous_sha256": null,
+      "sha256": "465efb1cab8825260484c71d7102394b5229657bd5b9c59227c8d1d922e6642d",
+      "bytes": 2741
+    },
+    {
+      "path": "AUTHORITY-BOUNDARY.md",
+      "change": "modified (appended correction section)",
+      "previous_sha256": "3b3049d110c5cccbb1c5df2e1b14149c677adc23b4452fda52147d9ff94df2dc",
+      "sha256": "a1a9411a75012523fbac7f3a1ff651e59d8ab45f71dc8b325581547fefeffe80",
+      "bytes": 5169
+    },
+    {
+      "path": "DEPLOYMENT-CONFIG.md",
+      "change": "modified (private-network caller contract, prerequisites, deadline)",
+      "previous_sha256": "4b3a5706fc5c956f716a229d21b3ea20266b47f3d3bac734f6a12c7f027a5041",
+      "sha256": "3b04f3ea2d7321ff793fae9f95aec627c9874248c4adb5b74f02b73716214cfc",
+      "bytes": 10610
+    },
+    {
+      "path": "README.md",
+      "change": "modified",
+      "previous_sha256": "3a7b6dc16d1ce62f35b8b428b94301cddcb8e06763557d400fdda7c4a1dca7d1",
+      "sha256": "d48579005878abef5698f4692dbfc04af734a52a0dd0ba27791f55172473ab84",
+      "bytes": 7487
+    },
+    {
+      "path": "CORRECTION-SUMMARY.md",
+      "change": "new",
+      "previous_sha256": null,
+      "sha256": "1b8ec9b038f43c3ddd7cdec584040edf19ba96dd63573992e4cd73677df9f6ff",
+      "bytes": 5542
+    }
+  ],
+  "deferred_live_requirements": [
+    "Option-A workspace/token custody attestation",
+    "provision live_ai_03b_reader credential + transport secret as service-scoped secrets on 88c74a23 (secret shared only with gateway dd96c7cd)",
+    "deployment authority constructor producing GENUINE connection-identity + reader-privilege proofs and a reader connection with DB-side statement_timeout <= 2000 ms matching statementTimeoutMs",
+    "hosted-PostgreSQL validation of the fixed registry on AI-STAGING",
+    "Railway private-network topology: observed gateway private range -> allowlist, bind choice, DNS name, reachable from gateway only, no public domain / TCP proxy",
+    "gateway caller implementation per the documented contract",
+    "attach source + deploy; live fail-closed, serving and deadline verification",
+    "trusted-boundary migration (UNAPPLIED) and the first controlled real AI TEXT test"
+  ],
+  "honesty": "Proves authority validation, authenticated transport in all three listen modes, real cross-process reachability/enforcement on one machine, bounded observation deadline with quarantine, and serving lifecycle offline against synthetic authority. Does NOT prove Railway isolation, DB-side statement termination, or production serving. Hashes cover this directory only; not signed; not authority."
+}
