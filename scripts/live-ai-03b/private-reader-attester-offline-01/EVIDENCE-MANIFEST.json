@@ -1,0 +1,342 @@
+{
+  "artifact": "LIVE-AI-03B genuine independent ATTESTER — OFFLINE implementation candidate",
+  "authorization": "Owner (Sachin Tomer) — bounded offline genuine-attester implementation (24 Sep 2026) + resource-containment v2 + request-lifecycle v3 + caller-timeline & observer-open cancellation v4 (25 Sep 2026)",
+  "disposition": "OFFLINE_ATTESTER_CALLER_TIMELINE_OPEN_CANCELLATION_CORRECTION_COMPLETE_REVIEW_REQUIRED",
+  "directory": "scripts/live-ai-03b/private-reader-attester-offline-01",
+  "status": "OFFLINE / UNTRACKED / NOT DEPLOYED — no Git, Railway, live DB, live SQL, DB role, credential, signing-key, attester deployment, provider or CORE-PROD operation.",
+  "accepted_baseline": {
+    "commit": "5dadda608b7c4ef6dd506b4967c18f7ddee326db",
+    "production_integration_manifest_sha256": "771329d604e8652f7536869763389946519db0dac5fd9b8e3831b1d86966a4b8"
+  },
+  "versions": {
+    "attester": "reader-attester-v1 (caller-timeline + observer-open cancellation correction v4)",
+    "evidence_registry": "attester-evidence-registry-v1",
+    "channel": "reader-attestation-channel-v1 (accepted, served exactly)",
+    "payload": "AiStagingReaderAttestationV1 (accepted, unchanged)",
+    "anchor": "AiStagingDeploymentAnchorV1"
+  },
+  "production_entrypoint": "node scripts/live-ai-03b/private-reader-attester-offline-01/attester-entrypoint.mjs",
+  "test_results": {
+    "integration_suite": "107 passed, 0 failed, 0 skipped (node tests/attester-integration.test.mjs) — repeated runs stable; includes FULL CHAIN through the real attester entrypoint and the accepted reader-host production entrypoint",
+    "local_postgresql_suite": "25 passed, 0 failed, 0 skipped (node tests/attester-localpg.test.mjs) against a THROWAWAY LOCAL PostgreSQL 16 cluster created and destroyed by the test — NOT AI-STAGING, NOT live",
+    "entrypoint_offline_run": "clean env -> {status:'unprovisioned', reason:'attester_config_incomplete'}, exit 70, no listener",
+    "regression_accepted_production_integration": "157 passed, 0 failed",
+    "regression_accepted_runtime": "125 passed, 0 failed",
+    "regression_accepted_private_host": "54 passed, 0 failed",
+    "regression_accepted_live_binding": "82 passed, 0 failed",
+    "resource_containment_suite": "50 passed, 0 failed, 0 skipped (node tests/attester-containment.test.mjs) — v2 containment + v3 request-lifecycle matrix + v4 caller-timeline (transit-delay relay with the ACTUAL accepted caller; connect-allowance invariant; authenticated-ts caller-timeline refusal closing the accept-backlog gap) + observer-open cancellation (cancel-during-open disposal + fresh next open; caller-safe expiry during open) + delivery-boundary pre-sign guard; repeated runs stable"
+  },
+  "evidence_classes": {
+    "INDEPENDENTLY_VERIFIED": [
+      "17 accepted production-integration files (manifest-pinned), accepted serving runtime and frozen predecessors byte-unchanged"
+    ],
+    "VERIFIED_ON_THROWAWAY_LOCAL_POSTGRESQL_16": [
+      "evidence SQL executes (no overload/parameter/permission errors)",
+      "attester re-derives the SAME connection token as the accepted reader code",
+      "PUBLIC grants counted; NOINHERIT membership invisible to has_table_privilege yet detected; routines via PUBLIC; sequence USAGE; database CREATE; schema CREATE; reader-role attributes; schema drift",
+      "pg_read_all_stats genuinely required (backend_start NULL without it); superuser observer refused; observer cannot read rows or write",
+      "observer-role proposal body valid and sufficient; guard makes the file non-executable as-is",
+      "real evidence -> real signature -> accepted verifier accepts"
+    ],
+    "SYNTHETICALLY_TESTED": [
+      "full production composition: real attester entrypoint + accepted reader-host production entrypoint + authenticated gateway observation",
+      "channel auth, freshness, byte-identical replay, exact args, arbitrary op/field refusal",
+      "reconnection -> fresh attestation; old token not attestable",
+      "observer unavailability, signing failure (no unsigned fallback), bounded concurrency, clean shutdown",
+      "no production-mode injection; no key exposure",
+      "resource containment: serialized+bounded observer work, physical-connection invalidation on a stalled query/setup, no unbounded post-timeout accumulation, stale result never signed, bounded recovery and shutdown",
+      "request lifecycle + caller timeline: authority == computation lifetime; caller-safe budget (total - connect - margin) proven against the accepted caller via a transit-delay relay (no post-expiry signature, no reliance on close propagation); cancellation propagated into observer open (late connection destroyed, never current/reused); pre-sign gate; bounded one-outstanding open; signed frozen after expiry"
+    ],
+    "PENDING_LIVE_VERIFICATION": [
+      "Owner-issued deployment anchor (cluster fingerprint of Railway PG b7362594)",
+      "hosted PostgreSQL 18: set_config for both roles, pg_read_all_stats for a non-superuser, MAINTAIN evaluation",
+      "Railway private ranges and DNS names for both peer allowlists",
+      "Railpack Node-version variable"
+    ],
+    "NOT_AUTHORIZED": [
+      "attester service creation/deployment",
+      "observer role creation (proposal NOT APPLIED)",
+      "signing-key / credential provisioning",
+      "gateway wiring",
+      "provider activation"
+    ]
+  },
+  "files": [
+    {
+      "path": "DEPLOYMENT-CONTRACT.md",
+      "sha256": "68e1eee879b649dde131b28a054ccdcb86266ba74fc809981ab9878dd9ef4ba1",
+      "bytes": 20513,
+      "change": "new"
+    },
+    {
+      "path": "README.md",
+      "sha256": "92aa87d1c934813da5251b7a685c7ad455f1f0b92b86a8e474ceab51b6b141f2",
+      "bytes": 13311,
+      "change": "new"
+    },
+    {
+      "path": "attestation-server.mjs",
+      "sha256": "763884239c2027dcc8f9d6be3f0e7fd2e92339611fbcf446dc89fc65c6d9a23c",
+      "bytes": 19691,
+      "change": "new"
+    },
+    {
+      "path": "attester-config.mjs",
+      "sha256": "c2912a9d8a3ca0b4dceb73862a3521cd4ccf6b9c6f64de3ca01f23b525b589a0",
+      "bytes": 6636,
+      "change": "new"
+    },
+    {
+      "path": "attester-entrypoint.mjs",
+      "sha256": "09aeb045ff4cbf64e51652ac9e2e8fa944114729a908048f4f23c72f9a8ce513",
+      "bytes": 7967,
+      "change": "new"
+    },
+    {
+      "path": "evidence-evaluator.mjs",
+      "sha256": "c79e7177d2ef481960d87c6a657d87f41fa1d7a0d09ff04924b1d31aea47c8e2",
+      "bytes": 12773,
+      "change": "new"
+    },
+    {
+      "path": "evidence-queries.mjs",
+      "sha256": "05bf3e2895b0cb52ac5c575f7de69127e1b9e5f7ad159b938027c46714ed667e",
+      "bytes": 9842,
+      "change": "new"
+    },
+    {
+      "path": "observer-connection.mjs",
+      "sha256": "37b9672535291e5444bd6b10aea8700be1782bc310a877bbf707ba731015c1cc",
+      "bytes": 20113,
+      "change": "new"
+    },
+    {
+      "path": "observer-role-proposal.sql",
+      "sha256": "49a12b79ea8f866853cc29b2a2d5521ad548f0d6763b75233a6c880e3f2467b2",
+      "bytes": 4576,
+      "change": "new"
+    },
+    {
+      "path": "signing-adapter.mjs",
+      "sha256": "741bc14b3e634c7b657c05c2b6d3b42c67f047c606453ed6a3fb266cb39d2e65",
+      "bytes": 4340,
+      "change": "new"
+    },
+    {
+      "path": "target-binding.mjs",
+      "sha256": "6ea5cde145d8db68286bbde8dc30cbf13040ba2b32c09bb1905e1170945215b0",
+      "bytes": 4481,
+      "change": "new"
+    },
+    {
+      "path": "tests/attester-containment.test.mjs",
+      "sha256": "acb7b5c7630a71745d1be5a83b867875e2a25a75509167f2d9bcab74a7c345f4",
+      "bytes": 38752,
+      "change": "new"
+    },
+    {
+      "path": "tests/attester-integration.test.mjs",
+      "sha256": "6daf1953e1c0bbb54b80c652ebe81f816cbf19b24ff101bccc1582f9baf54dfa",
+      "bytes": 48896,
+      "change": "new"
+    },
+    {
+      "path": "tests/attester-localpg.test.mjs",
+      "sha256": "11044e88d3889a0b7f7693fa48b374a055f444462eb44d27713cb31cb68d7513",
+      "bytes": 16906,
+      "change": "new"
+    },
+    {
+      "path": "tests/fixtures/pg-hook.mjs",
+      "sha256": "91b86844b6788a1c3e78fe1bcfecb88e8dd2b5da8bfb412e59175a8a82819921",
+      "bytes": 601,
+      "change": "new"
+    },
+    {
+      "path": "tests/fixtures/pg-synthetic-driver.mjs",
+      "sha256": "b7ce68a2fa6315497b7d9a9d35c3ac34c49e120446e1391fc4e479e1d15c44c3",
+      "bytes": 1319,
+      "change": "new"
+    },
+    {
+      "path": "tests/fixtures/synthetic-cluster.mjs",
+      "sha256": "7cceb6600dd522572a7733273c41df931d286931cae6ecdd4e91426fb9d637ed",
+      "bytes": 12958,
+      "change": "new"
+    }
+  ],
+  "unchanged_dependencies": [
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-offline-01/private-reader-host.mjs",
+      "sha256": "3f25bcd3975318cca5c6619beb016e6159ba06c263eb32f11d8873e650723525"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/observation-transport.mjs",
+      "sha256": "06c01348d20c3e8b118b74aae086e24de8945e7ab043df4d4715eff21b4f6ca3"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/private-reader-host-runtime.mjs",
+      "sha256": "629540c525c9d52894d5236fa37baad5682c09c1216dd278ea755eed5ed9c459"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/reader-only-authority.mjs",
+      "sha256": "ff38a8cc18184281e153dee0bd1b38d620015cc98ba281c7a241b39437efd3f8"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/runtime-config.mjs",
+      "sha256": "4843ecb038f9d91b9f5725f9476838a95ae4e4e49a99ec82fbd846a5a846c62e"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/EVIDENCE-MANIFEST.json",
+      "sha256": "771329d604e8652f7536869763389946519db0dac5fd9b8e3831b1d86966a4b8"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/INTEGRATION-CONTRACT.md",
+      "sha256": "afc5cf009111fbe07b02759d10b38660aa46c13ab6fe533169bb412099dd9287"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/README.md",
+      "sha256": "ed19a4aa1b298b5b558efa44be2f11150fe6da5f5884fb2848a6e569083db831"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/attestation-source-channel.mjs",
+      "sha256": "eb484e7a558de4fc59883718340e98bc6489acefdf53d295e41df9b96a8306ed"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/gateway-observation-caller.mjs",
+      "sha256": "d710087d28cf02a7a7676290f87b0d1da28f293cc035291870d1ccbdabeef8e7"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/integration-config.mjs",
+      "sha256": "d3c86a6fd9ecc3607f904f684791e2269f6428b79ecd765ad9e803b7f2446adb"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/production-entrypoint.mjs",
+      "sha256": "f70c648d340c23017b8fd28325a23bdbd4e80d0be438cd6ae4512832b6c3c432"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/production-reader-authority.mjs",
+      "sha256": "bc0dac365572778feb18ff501bf65cb989c6e7bbd5c7afd15991a3675be94ad4"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-attestation.mjs",
+      "sha256": "42964752dcb7035abddd7decd6ea40a7c27321112f96176379c8983ce72b3d5e"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-session.mjs",
+      "sha256": "064021ba88e39da431249a4b5b86a2313a787c7b1c35f0190587270741b1d011"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/tests/fixtures/pg-hook.mjs",
+      "sha256": "9d282dc541975107c8d77726c459aa71aee660fe3507d884b424a4c60da33922"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/tests/fixtures/pg-synthetic-driver.mjs",
+      "sha256": "39b407a04cac89ba8e3f9bccea6b57807ac05be301dcf8260eca6e1a7f86b4c1"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/tests/fixtures/production-harness-preload.mjs",
+      "sha256": "5f5d149686aebd1d63075b5b052ed78814d86e76a93ce1032e0c40020eec0f11"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/tests/fixtures/reference-attester.mjs",
+      "sha256": "2a9fca7f1270cd05bbe5c75f1400a405ae8813c57e71e306662627ba4090ee45"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/tests/fixtures/simulated-attester-server.mjs",
+      "sha256": "15a3da16db837ce4202f741f9f43d7a3064b0ca0169168a301f0b686980a1438"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/tests/fixtures/synthetic-pg.mjs",
+      "sha256": "08ba1749fef19c25fae53e430254fd2fed20d978267e219df232fd8bbe3e42f3"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/tests/production-integration.test.mjs",
+      "sha256": "a856a98fecb55f70982c8838afd3b8417749adda27d7523448b4839bce5c4f35"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-activation-boundary-01/approval-verify.mjs",
+      "sha256": "88212feed6e30a08069a12e1e0c1999f7df07487b3c52e035f5e5b1486fb29f3"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-activation-boundary-01/pricing-approval-contract.mjs",
+      "sha256": "59ef03ea3b0532100cf59c19a7f4f174543a4dea0e688359ced858e974312ad3"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/canonical-timestamp.mjs",
+      "sha256": "d0c48f3af5e8e802ff129d178ed6064eff99b49877db5616f257f928ec810e8e"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/db-target-binding.mjs",
+      "sha256": "c1fec8b68fe79ec2d7615ff9b401034d8f96a7e8b82ab342a5b53f1c6fbdd0ea"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/production-authority.mjs",
+      "sha256": "6da4a3a98b98bf84d74955ddceb65ab073069f84f1852e48141976e6020890f6"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/runtime-config.mjs",
+      "sha256": "c0035996b6fcf3a36a402d220ac1559bdcb8cdf2f943d72deaa714c72ec197ae"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/trusted-read-adapter.mjs",
+      "sha256": "12f9c439371b2cb11728fde821ac29208553797e72fb7be5d0db561e476d660b"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-authority-composition.mjs",
+      "sha256": "a0e84399bd3c858b61a3a57b3590ff8115335ea5942a78685ad753403b651f69"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-read-queries.mjs",
+      "sha256": "42ddf87d268183183d3851a91e9df57b8e9e2a1c3d629412a24a489e9646ed0c"
+    }
+  ],
+  "honesty": "Offline only. Fixture Ed25519 keys are generated in memory at test time and never written. The local PostgreSQL cluster is throwaway, Unix-socket-only, and removed after the test; it is not AI-STAGING and proves nothing about hosted PostgreSQL 18. Harness-only simulation (pg module hook, DNS patch, peer-address shadowing) is never part of a production path. Hashes cover listed files; not signed; not authority.",
+  "resource_containment_correction": {
+    "v2_finding": "underlying work not actually bounded: request timer cleared at the newline; Promise.race query deadline abandoned but did not contain the pg operation; timed-out waves accumulated 4->8->12; shutdown did not prove work terminated.",
+    "v2_status": "CLOSED and preserved (single active collection, bounded queue, setup/query deadlines, statement_timeout defence, dead-on-timeout, connection invalidation, no reuse, fresh revalidation, no 4->8->12 accumulation, stale DB result never signed).",
+    "v3_finding": "request AUTHORITY and computation LIFETIME were not the same lifecycle: (A) total request timer cleared at newline and handle()/observe()/signer.issue() could continue and increment signed after response failure; (B) queued requests carried no expiry; (C) 13000 ms compute budget exceeded the accepted caller's 4000 ms lifetime; (D) observer-open was Promise.race only (unbounded outstanding opens, orphaned late connection).",
+    "changed_source": [
+      "attestation-server.mjs",
+      "observer-connection.mjs"
+    ],
+    "updated_tests": [
+      "tests/attester-containment.test.mjs (added the v4 caller-timeline relay + cancel-during-open matrix; total 46)"
+    ],
+    "guarantees_v3": [
+      "ONE absolute request context (immutable deadline + cancellation + identity) threaded through auth -> queue -> open -> evidence -> pre-sign gate -> response; live() is the sole authority signal; per-statement/observation deadlines capped by request remaining",
+      "expired-before-enqueue rejected; expiry-while-queued skipped at hand-over (never opens/queries); active expiry or caller disconnect aborts observation and invalidates the connection",
+      "PRE-SIGN authority gate: signed increments ONLY after a successful signature for a request still live at that instant; a handler continuing past the response deadline cannot sign",
+      "caller reconciliation: internal budget 3400 ms + response margin 600 ms <= accepted caller CHANNEL_TOTAL_TIMEOUT_MS 4000 ms (asserted at module load); accepted adapter unmodified",
+      "observer-open containment: at most ONE outstanding open at a time (a second refused, not started); a connection returned late after abandonment is destroyed and never admitted; a late error is consumed",
+      "caller disconnect before response cancels the request context (a normal close after a successful response is not an error)",
+      "bounded shutdown includes queued contexts, active work, terminating teardown and outstanding opens; never an unbounded wait; clean exit 0"
+    ],
+    "budgets_ms": {
+      "CHANNEL_TOTAL_TIMEOUT_MS_accepted_caller": 4000,
+      "CHANNEL_CONNECT_TIMEOUT_MS_accepted_caller": 1500,
+      "ATTESTER_RESPONSE_MARGIN_MS": 600,
+      "ATTESTER_REQUEST_BUDGET_MS": 1900,
+      "ATTESTER_READ_DEADLINE_MS": 800,
+      "OBSERVER_OPEN_DEADLINE_MS": 1500,
+      "OBSERVER_OBSERVATION_DEADLINE_MS": 2000,
+      "OBSERVER_QUERY_DEADLINE_MS": 1500,
+      "OBSERVER_STATEMENT_TIMEOUT_MS": 1500,
+      "OBSERVER_CLEANUP_DEADLINE_MS": 1000,
+      "ATTESTER_SHUTDOWN_DEADLINE_MS": 3000,
+      "OBSERVER_MAX_ACTIVE": 1,
+      "OBSERVER_MAX_QUEUED": 3,
+      "ATTESTER_MAX_CONCURRENT": 4
+    },
+    "honest_limitation": "A JavaScript Promise cannot be forcibly terminated; a never-settling provider open is BOUNDED to one outstanding (a second is never started), fails every request closed while it persists, and shutdown does not start more and returns within its deadline. The stuck Promise is not claimed terminated.",
+    "v4_finding": "two same-family findings: (1) the accepted caller's 4000ms timer starts at its CONNECT (window includes up to 1500ms connect phase; its connect timer clears at TCP-handshake completion, so accept can be deferred by backlog/event-loop beyond 1500ms) while the attester context starts at ACCEPT — so budget+margin<=4000 alone (and even total-connect-margin from accept) could let the attester sign after the caller expired; (2) request cancellation during provider() open was bounded by TIME only (clampRemaining), so a connection opened under a cancelled request became current and was reused.",
+    "guarantees_v4": [
+      "caller-timeline is bounded by TWO layers combined via min: (a) accept-anchored budget = total - connect - margin = 4000-1500-600 = 1900ms (fail-closed load-time assert; both caller constants imported), and (b) a caller-timeline tightening after HMAC verify: ctx.tightenRemaining(total - max(0, now-ts) - margin) tied to the caller's authenticated ts, closing the accept-backlog gap for synced clocks; tighten-only (never extends), so a skewed/fast clock or crafted ts can only shorten the window",
+      "cancellation propagates INTO observer open: acquireObserver races provider() against a cancellation signal; a cancel/expiry while the open is unresolved abandons that generation — the returned connection is never admitted as current, is destroyed (in-flight via op.then/abandoned; resolved via the pre-current ctx.live() check), and the next request opens a fresh re-validated connection",
+      "supplementary delivery-boundary pre-sign guard: immediately before signer.issue the server checks the caller socket is still alive (!sock.destroyed) and refuses if the caller is gone, catching the close-wins-race case synchronously",
+      "still at most ONE outstanding open; bounded queue with expiry; stale/late results never signed; pre-sign authority gate; bounded shutdown — all preserved"
+    ],
+    "honest_residual_caller_timeline": "PROVABLE residual that cannot be fully closed offline under the frozen-caller exclusion: the caller-safe deadline uses the caller's authenticated WALL-clock ts, but the caller's real 4000ms expiry is a MONOTONIC timer and the reader-host<->attester clock skew is unobservable from ts alone. Caller-safe under the deployment precondition skew <= response margin 600ms (Railway same-environment NTP satisfies this by orders of magnitude). The theoretical residual (caller wall-clock lead >600ms AND a >2.1s event-loop stall AND winning the DB-result-vs-close race) yields a proof MINTED but UNDELIVERABLE (caller socket destroyed) and UNREPLAYABLE (single-use nonce; fresh nonce per call) — nil practical impact, independently confirmed by two reviewers (no deliverable/replayable post-expiry proof reachable). Full theoretical closure requires a frozen-caller protocol field (a monotonic/shared reference) or an enforced tighter clock-sync SLA — both requiring separate Owner authorization beyond this packet's frozen-source exclusion. RECOMMENDED as the single next item.",
+    "adversarial_verification": "Two offline adversarial-verification workflows (7-invariant refute+confirm, then a focused caller-timeline recheck) drove this pass: 6/7 invariants held on first pass; the confirmed caller-timeline finding was fixed (ts-tightening + accept budget + delivery guard) and re-reviewed; the recheck surfaced the honest clock-skew residual above, which two residual-honesty reviewers rated nil-practical-impact (no deliverable/replayable proof)."
+  }
+}
