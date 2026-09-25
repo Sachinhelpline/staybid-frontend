@@ -1,0 +1,156 @@
+{
+  "artifact": "LIVE-AI-03B Milestone-1 CONSOLIDATED REMEDIATION — offline bootstrap/clock-gate/private-peer candidate after closing the three WORK-v2 findings: M1-R1 (reader invalidation/re-entry race), M1-R2 (real production composition roots, not permanent stubs), M1-R3 (direct-PostgreSQL clock target, no Supabase/PostgREST/SB_URL).",
+  "authorization": "Owner (Sachin Tomer) — one consolidated candidate-local remediation, 25 Sep 2026",
+  "disposition": "FINAL_M1_R1_LIFECYCLE_CLOSURE_COMPLETE_REVIEW_REQUIRED",
+  "directory": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01",
+  "status": "OFFLINE / UNTRACKED / NOT DEPLOYED — no Git, Railway, live DB, SQL, credential, signing-key, provider or CORE-PROD operation.",
+  "accepted_baseline": {
+    "head_commit": "3b9458a0048ec6fda82bccdb7aaf60b53e4af6a9",
+    "note": "Frozen predecessors reused byte-unchanged; none edited by this remediation."
+  },
+  "findings_closed": {
+    "M1-R1": "Reader invalidation/re-entry race — acquisition AND re-gate are generation-bound; per-await currency rechecks + atomic guarded final install/bind; the re-gate snapshots startGen, discards any sample crossing a rotation (no pre-invalidation sample counts), and binds eligibility to the SNAPSHOT (never generation.id); invalidation → WAITING_FOR_CLOCK + invalidated startup-gate evidence; clock eligibility ≠ authority (fresh attestation still required); concurrent acquisitions refused. (reader-bootstrap.mjs runGenerationBoundGate/regate/doAcquire; tests/race.test.mjs 13; tests/regate.test.mjs 27; tests/inventory.test.mjs 13 static writer guard; WRITER-INVENTORY.md; tests/lifecycle.test.mjs 10-12,11b,11c)",
+    "M1-R2": "Production composition — production-reader.mjs/production-attester.mjs are real fail-closed composition roots; entrypoints compose from process.env; permanent live_wiring_is_a_future_gate stub REMOVED; config validation + executor/foreign refusal + production option-key whitelist; direct-pg clock adapter; private-peer SUPERVISOR integrated (refresh/keep-last-good/invalidate-on-change). (production-config.mjs, production-db-clock.mjs, production-reader.mjs, production-attester.mjs, private-peer-resolver.mjs createPeerSupervisor, both entrypoints; tests/production.test.mjs 31, tests/network.test.mjs F1-F4)",
+    "M1-R3": "Database-clock target — DIRECT bounded read-only PostgreSQL against the anchored AI-STAGING Railway pg b7362594; same anchored clock for reader (reader cred) + attester (observer cred); no Supabase/PostgREST/SB_URL/HTTP clock; docs corrected. (production-config.mjs, production-db-clock.mjs, DEPLOYMENT-CONTRACT.md, README.md; tests/target-contract.test.mjs 20)"
+  },
+  "anchored_target": {
+    "project": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "environment": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "pg_service": "b7362594-a01b-4623-a982-394707a6cec2",
+    "core_excluded_project": "04c8b523-5b15-4d81-af06-8c2aa1a83499",
+    "core_excluded_pg": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b",
+    "clock": "PostgreSQL clock_timestamp() over a direct bounded read-only session — NOT Supabase/PostgREST/SB_URL/HTTP"
+  },
+  "versions": {
+    "attestation_channel": "reader-attestation-channel-v2",
+    "reader_bootstrap": "reader-bootstrap-v1",
+    "attester_bootstrap": "reader-attester-bootstrap-v1",
+    "reader_production": "reader-bootstrap-production-v1",
+    "attester_production": "reader-attester-bootstrap-production-v1",
+    "production_config": "reader-bootstrap-production-config-v1",
+    "production_clock": "reader-bootstrap-production-clock-v1",
+    "reused_verifier": "AiStagingReaderAttestationV1 (accepted, unchanged)"
+  },
+  "frozen_thresholds": {
+    "rtt_max_ms": 100, "wall_monotonic_discrepancy_max_ms": 10, "sample_uncertainty_E_max_ms": 10,
+    "service_abs_bound_ms": 250, "pairwise_abs_bound_ms": 500, "accepted_ceiling_ms": 600, "reserve_ms": 100,
+    "startup_consecutive_samples": 5, "monitor_period_ms": 1000, "max_sample_age_ms": 2000, "reader_bracket_tolerance_ms": 210
+  },
+  "frozen_predecessors_reused_unchanged": {
+    "private-reader-attester-offline-01/signing-adapter.mjs": "741bc14b3e634c7b657c05c2b6d3b42c67f047c606453ed6a3fb266cb39d2e65",
+    "private-reader-attester-offline-01/target-binding.mjs": "6ea5cde145d8db68286bbde8dc30cbf13040ba2b32c09bb1905e1170945215b0",
+    "private-reader-attester-offline-01/observer-connection.mjs": "37b9672535291e5444bd6b10aea8700be1782bc310a877bbf707ba731015c1cc",
+    "private-reader-attester-offline-01/evidence-queries.mjs": "05bf3e2895b0cb52ac5c575f7de69127e1b9e5f7ad159b938027c46714ed667e",
+    "private-reader-attester-offline-01/evidence-evaluator.mjs": "c79e7177d2ef481960d87c6a657d87f41fa1d7a0d09ff04924b1d31aea47c8e2",
+    "private-reader-attester-offline-01/tests/fixtures/synthetic-cluster.mjs": "7cceb6600dd522572a7733273c41df931d286931cae6ecdd4e91426fb9d637ed",
+    "private-reader-production-integration-offline-01/reader-attestation.mjs": "42964752dcb7035abddd7decd6ea40a7c27321112f96176379c8983ce72b3d5e",
+    "private-reader-production-integration-offline-01/reader-session.mjs": "064021ba88e39da431249a4b5b86a2313a787c7b1c35f0190587270741b1d011",
+    "private-reader-production-integration-offline-01/attestation-source-channel.mjs": "eb484e7a558de4fc59883718340e98bc6489acefdf53d295e41df9b96a8306ed",
+    "private-reader-host-runtime-offline-01/observation-transport.mjs": "06c01348d20c3e8b118b74aae086e24de8945e7ab043df4d4715eff21b4f6ca3",
+    "trusted-activation-boundary-01/pricing-approval-contract.mjs": "59ef03ea3b0532100cf59c19a7f4f174543a4dea0e688359ced858e974312ad3",
+    "trusted-executor-runtime-01/runtime-config.mjs": "c0035996b6fcf3a36a402d220ac1559bdcb8cdf2f943d72deaa714c72ec197ae"
+  },
+  "candidate_files": {
+    "clock-interval.mjs": "4af75f8fccbf3315c675c982ef8f13f654843ff8694154fb55396e6912e6cdd7",
+    "db-clock-probe.mjs": "8eefbb6ca35faf77203762b94eee46d8e64e8606ade7be92ee5489b7babb30bf",
+    "clock-gate.mjs": "d39eb882926534b18971a13baff795f6573493024e47a50fe945d384894c22e0",
+    "private-peer-resolver.mjs": "bb2f8d1d07cf6124a6f901ea4f1f6b18174fb68dda408e8a9a8cbc10d7617282",
+    "attestation-channel-v2.mjs": "f30d01598fd97cee7888e06833a52ebaae35680636925e109ec6b1209c6392fa",
+    "bootstrap-state.mjs": "c9001aabda2bdb52035ab55d38eb3a1b13be8b8eeaec11f3de2589b6cd75a1c5",
+    "reader-bootstrap.mjs": "a6d5b75d00e035a8e8f66f818e6a6a0add72f3c506d88c116439c0519fb0d683",
+    "attester-bootstrap.mjs": "fc163c432c98153ae227bcdc1fda1afdbe24057b09732fd5644c2bdeb95fa867",
+    "production-config.mjs": "2016a8ca7b0e1f53d3162b611cad8eb12a9352eb92c18176e5ae1468c24081fe",
+    "production-db-clock.mjs": "392de11175f3a8b68a308e31d9e1389aa63c46400486c3de367f4fbcdef7d9b2",
+    "production-reader.mjs": "513b5f258400e873041f5200c388a47e4ebceeb4db1e5d3f07baa71766034268",
+    "production-attester.mjs": "a7d48047cdea0f7bf0e5d64cb84133fc31c65953276a1d176ecbf376bc1b93ba",
+    "bootstrap-entrypoint-reader.mjs": "a3c9cbd2a845c8931e83c4d87122ec537b1d53d7f9f76415f62f42a6029d9f8c",
+    "bootstrap-entrypoint-attester.mjs": "eaad4603610c4691433f478f6ac871a4bdc66237d7891d8bff73474e71e88437",
+    "tests/clock.test.mjs": "31683d59fc178df55a5a1eaf552d9bddeb7f402b9922c0b6de450c9a1bcde26a",
+    "tests/db-probe.test.mjs": "1d74aad8137c6a77aac44bc75207fd5481ee0ac55c4b84186dad281b48277089",
+    "tests/network.test.mjs": "027dfdb72dbeb67499ff9d2fe2d3c22630908339c022731612390b95fe0b3a4e",
+    "tests/signing-authority.test.mjs": "280eb2a6f3d578cff59400ea6e554273f072c22cbdc1909ca4e8382a1bd455d4",
+    "tests/lifecycle.test.mjs": "7189c24613c1f864b26ec1c54c27812694a45e591acb2ea71672115d8f8bd597",
+    "tests/race.test.mjs": "2201bca3538f49e208d7b936cf9339833a431b7f804d378856b96a3aec063baa",
+    "tests/regate.test.mjs": "fa2ab70f67e5978526b056a40d70d48900fee4d0dbaa6030cdc9c529e2bfea39",
+    "tests/inventory.test.mjs": "4229384279c7b4ba02faefadc59c423566bac04b1f74b1dc526caf2bd8385009",
+    "tests/production.test.mjs": "f256696e2f5424271d304d7e9dd7b1fbc64ebe93e70e13c5fb9cf64ac0f17a70",
+    "tests/target-contract.test.mjs": "d907a698c222c9aec196772157007ebe3ae12b9097c20f4dc327dc9ece441ae7",
+    "tests/preservation.test.mjs": "1793f9aa118df1e1946b535e993dfdaee15b8b63a1d3788281cd89c9d61da5cf",
+    "tests/fixtures/synthetic-env.mjs": "f090368f3227d48cc3fe21b602bcb70c8431dcace18e8981540cc0143465fa72",
+    "README.md": "18de505151dd700778b5bb444cf74f0431ab76de5300f0f9468c57fb1f024ad9",
+    "DEPLOYMENT-CONTRACT.md": "e4c1638b079aa355e195cb0861c8bc704b1937e334e527795f7c7ee3165f0692",
+    "SELF-REVIEW.md": "7d72c82628e5eb82a3c561f5c8cb14150c2e6d71e3dec80cafa3acb436091f9b",
+    "WRITER-INVENTORY.md": "c1bcb5641348724f0edc52d2d17e5d4fe2ee388f36fc0c899ee9a432b903aab2"
+  },
+  "test_results": {
+    "clock_suite": "43 passed, 0 failed",
+    "db_probe_suite": "13 passed, 0 failed",
+    "network_suite": "33 passed, 0 failed (incl. §21/§22 peer supervisor F1-F4)",
+    "signing_authority_suite": "28 passed, 0 failed",
+    "lifecycle_suite": "36 passed, 0 failed (incl. M1-R1 re-entry, 1 s scheduler, spawned entrypoints exit 70)",
+    "race_suite": "13 passed, 0 failed (M1-R1 barrier-controlled acquisition invalidation/re-entry race A-M)",
+    "regate_suite": "27 passed, 0 failed (M1-R1 FINAL: barrier-controlled re-gate generation lifecycle — invalidation at each sample/seed/pre-bind; 1/4/5 samples; re-gate-only; re-gate+attestation)",
+    "inventory_suite": "13 passed, 0 failed (M1-R1 FINAL: static trust-state writer invariant coverage; never bind eligibility/authority to the current generation)",
+    "production_suite": "31 passed, 0 failed (M1-R2 config/composition/entrypoints/offline-test boundary)",
+    "target_contract_suite": "20 passed, 0 failed (M1-R3 direct-PostgreSQL, no Supabase/PostgREST/SB_URL)",
+    "preservation_suite": "21 passed, 0 failed (12 frozen predecessors byte-unchanged + composition-not-fork)",
+    "total_candidate_assertions": 278,
+    "entrypoint_offline_run": "clean env → {status:UNPROVISIONED, reason:<reader|attester>_config_incomplete}, exit 70; permanent live_wiring stub gone",
+    "syntax": "node --check OK on all .mjs files",
+    "commands": [
+      "for f in *.mjs tests/*.mjs tests/fixtures/*.mjs; do node --check \"$f\"; done",
+      "node tests/clock.test.mjs; node tests/db-probe.test.mjs; node tests/network.test.mjs; node tests/signing-authority.test.mjs; node tests/lifecycle.test.mjs; node tests/race.test.mjs; node tests/production.test.mjs; node tests/target-contract.test.mjs; node tests/preservation.test.mjs",
+      "env -i PATH=\"$PATH\" node bootstrap-entrypoint-attester.mjs; echo $?   # 70",
+      "env -i PATH=\"$PATH\" node bootstrap-entrypoint-reader.mjs;   echo $?   # 70"
+    ]
+  },
+  "accepted_regressions": {
+    "private-reader-attester-offline-01/tests/attester-integration.test.mjs": "107 passed, 0 failed",
+    "private-reader-attester-offline-01/tests/attester-containment.test.mjs": "50 passed, 0 failed",
+    "private-reader-attester-offline-01/tests/attester-localpg.test.mjs": "25 passed, 0 failed (throwaway local PostgreSQL)",
+    "private-reader-production-integration-offline-01/tests/production-integration.test.mjs": "157 passed, 0 failed",
+    "private-reader-host-runtime-offline-01/tests/runtime.test.mjs": "125 passed, 0 failed",
+    "private-reader-host-offline-01/tests/private-reader-host.test.mjs": "54 passed, 0 failed",
+    "trusted-runtime-live-binding-offline-01/tests/live-binding.test.mjs": "82 passed, 0 failed",
+    "total": "600 passed, 0 failed"
+  },
+  "self_review": {
+    "document": "SELF-REVIEW.md (+ WRITER-INVENTORY.md)",
+    "material_defects_found_and_fixed": [
+      "F-R2 — the private-peer resolver was integrated only as a one-shot resolve (unused supervisor, no refresh/invalidation on peer transition), violating §21/§22. Fixed with createPeerSupervisor wired into the attester composition; network.test.mjs F1-F4.",
+      "F-R1-final — regate() bound gatePassedForGeneration = generation.id ('whatever generation is current now') after its awaited gate+seed, so an invalidation crossing the re-gate could bind eligibility to the rotated generation using samples partly from the old one. Fixed: regate() snapshots startGen, runs a generation-bound gate (discards any sample crossing a rotation), rechecks after gate + seed, and binds the SNAPSHOT at a final synchronous recheck; construction gate made uniformly snapshot-bound. Covered by regate.test.mjs (27) + the static writer guard inventory.test.mjs (13)."
+    ],
+    "closures_probed_unbroken": ["M1-R1 (every await boundary, late result, one/four-sample, stale generation, double acquire)", "M1-R2 (test injection, missing config, wrong/CORE-PROD target, foreign credential, secret logging, permanent stub, accidental serving)", "M1-R3 (SB_URL, Supabase, PostgREST, second/HTTP clock, docs/source consistency)"],
+    "residuals_disclosed": [
+      "R1 compromised secret-holding reader misreporting its own clock (accepted threat-model limit per §29)",
+      "R2 synthetic env shares one controllable DB clock — real inter-service skew + hosted clock_timestamp precision/latency PENDING LIVE VERIFICATION",
+      "R3 production live branch (real DNS + reader/observer DB sessions + listener) proven only structurally offline; Production admin/clock operation NOT claimed fixed",
+      "R4 live peer rotation performs a controlled listener recreation by the operator/orchestrator; the supervisor invalidates authority on transition but does not rebuild the frozen v2 listener (out of scope)"
+    ]
+  },
+  "mutation_audit": {
+    "frozen_predecessor_files_edited": 0,
+    "candidate_files_added_final_m1r1_closure": ["tests/regate.test.mjs", "tests/inventory.test.mjs", "WRITER-INVENTORY.md"],
+    "candidate_files_modified_final_m1r1_closure": ["reader-bootstrap.mjs (runGenerationBoundGate + snapshot-bound regate + snapshot-bound construction gate)", "README.md", "SELF-REVIEW.md", "EVIDENCE-MANIFEST.json"],
+    "candidate_files_added_consolidated_remediation": ["production-config.mjs", "production-db-clock.mjs", "production-reader.mjs", "production-attester.mjs", "tests/race.test.mjs", "tests/production.test.mjs", "tests/target-contract.test.mjs"],
+    "candidate_files_modified_consolidated_remediation": ["reader-bootstrap.mjs", "attester-bootstrap.mjs", "bootstrap-entrypoint-reader.mjs", "bootstrap-entrypoint-attester.mjs", "private-peer-resolver.mjs", "tests/lifecycle.test.mjs", "tests/network.test.mjs", "tests/preservation.test.mjs", "README.md", "DEPLOYMENT-CONTRACT.md", "SELF-REVIEW.md"],
+    "git_operations": "none (untracked; no add/commit/push/PR/merge)",
+    "live_operations": "none (no Railway/DB/SQL/credential/signing-key/deploy/domain/gateway/provider/CORE-PROD)"
+  },
+  "evidence_classes": {
+    "INDEPENDENTLY_VERIFIED": ["12 frozen predecessors byte-unchanged — hash-asserted in tests/preservation.test.mjs"],
+    "SYNTHETICALLY_TESTED": [
+      "M1-R1 generation-bound acquisition + per-await recheck + atomic install + full re-gate (barrier-controlled)",
+      "M1-R2 production config validation, executor/foreign refusal, option-key rejection, direct-pg adapter, offline-test composition, peer supervisor",
+      "M1-R3 direct-PostgreSQL clock target + no Supabase/PostgREST/SB_URL (source + docs regression)",
+      "clock interval math + step detection + bounds + hull + pairwise; clock-gated signing authority; full lifecycle; entrypoints exit 70"
+    ],
+    "PENDING_LIVE_VERIFICATION": [
+      "live reader/observer DB sessions + hosted clock_timestamp precision/latency",
+      "live Railway private DNS peer resolution + rotation-driven listener recreation",
+      "real inter-service clock skew; reader/attester on the Railway private network; the later gateway observation listener"
+    ],
+    "NOT_AUTHORIZED_NOT_DONE": ["any Git/Railway/live DB/SQL/credential/signing-key/provider/CORE-PROD operation", "opening the gateway observation serving listener (serving() always false)"]
+  },
+  "scope_boundary": "All assertions are against synthetic controllable dependencies + real Ed25519 + real loopback sockets (plus a throwaway local PostgreSQL only in the accepted attester-localpg regression). This is NOT evidence about live AI-STAGING. CORE-PROD is strictly excluded. Production admin/clock operation is NOT claimed fixed."
+}
