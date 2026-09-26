@@ -45,7 +45,16 @@ export default function HotelDetailPageBridge(props: HotelDetailPageBridgeProps)
     });
 
   const execute = (cmd: ResolvedCommand): void => {
-    if (cmd.kind === "show_section") p.current.setTab(cmd.section);
+    if (cmd.kind === "show_section") {
+      p.current.setTab(cmd.section);
+      // Bring the existing rooms|about tab bar into view so the switch is visible on a phone (UI_LOCAL only;
+      // pure scroll, no data/state beyond the existing tab). Best-effort — never throws.
+      try {
+        if (typeof document !== "undefined") {
+          document.querySelector(".hx-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } catch { /* no-op */ }
+    }
     // apply_refinement / open_hotel are hotels-list commands; never here.
   };
 

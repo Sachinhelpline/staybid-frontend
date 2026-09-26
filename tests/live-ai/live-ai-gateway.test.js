@@ -40,6 +40,7 @@ function compileDir(tag, absDir, subdir, tsTypes, tsLib) {
   fs.rmSync(BUILD, { recursive: true, force: true });
   fs.mkdirSync(path.join(SRC, subdir), { recursive: true });
   for (const f of fs.readdirSync(absDir)) if (f.endsWith(".ts")) fs.copyFileSync(path.join(absDir, f), path.join(SRC, subdir, f));
+  if (subdir === "live-ai") fs.copyFileSync(path.join(REPO, "lib/cities.ts"), path.join(SRC, "cities.ts"));   // owner-preview imports the canonical city registry (../cities)
   fs.writeFileSync(path.join(SRC, "tsconfig.json"), JSON.stringify({
     compilerOptions: { module: "commonjs", target: "es2020", esModuleInterop: true, skipLibCheck: true, moduleResolution: "node", ignoreDeprecations: "6.0", rootDir: ".", outDir: "../out", typeRoots: [path.join(REPO, "node_modules/@types")], types: tsTypes, lib: tsLib, strict: true, noEmitOnError: true, resolveJsonModule: true },
     include: [subdir + "/**/*.ts"],

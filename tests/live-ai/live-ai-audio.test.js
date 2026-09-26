@@ -25,6 +25,7 @@ fs.mkdirSync(path.join(SRC, "live-ai"), { recursive: true });
 for (const f of fs.readdirSync(path.join(REPO, "lib/live-ai"))) {
   if (f.endsWith(".ts")) fs.copyFileSync(path.join(REPO, "lib/live-ai", f), path.join(SRC, "live-ai", f));
 }
+fs.copyFileSync(path.join(REPO, "lib/cities.ts"), path.join(SRC, "cities.ts"));   // owner-preview imports the canonical city registry (../cities)
 fs.writeFileSync(path.join(SRC, "tsconfig.json"), JSON.stringify({
   compilerOptions: { module: "commonjs", target: "es2020", esModuleInterop: true, skipLibCheck: true, moduleResolution: "node", ignoreDeprecations: "6.0", rootDir: ".", outDir: "../out", typeRoots: [path.join(REPO, "node_modules/@types")], types: ["node"], lib: ["es2020", "dom"], strict: true, noEmitOnError: true },
   include: ["live-ai/**/*.ts"],

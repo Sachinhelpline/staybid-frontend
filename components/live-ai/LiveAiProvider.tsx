@@ -40,6 +40,16 @@ import { createNullTransport, type LiveAiTransport } from "@/lib/live-ai/transpo
 import { createGatewayTransport, createBrowserMedia, resolveClientGates } from "@/lib/live-ai/gateway-client";
 import { createConversation, type Conversation, type ConversationState } from "@/lib/live-ai/conversation";
 import { createAudioPlayback, createWebAudioSink } from "@/lib/live-ai/audio-playback";
+import {
+  interpretOwnerPreview,
+  formatExecutionReply,
+  formatVerifiedReply,
+  previewGreeting,
+  resolveOwnerPreviewGate,
+} from "@/lib/live-ai/owner-preview";
+
+const PREVIEW_RECONCILE_ATTEMPTS = 16;   // bounded local verification window
+const PREVIEW_RECONCILE_INTERVAL_MS = 250;
 
 export type OrbState = "idle" | "listening" | "processing" | "speaking" | "error" | "sleep";
 
@@ -47,6 +57,12 @@ interface LiveAiContextValue {
   enabled: boolean;
   /** V AND P — a provider/microphone turn CAN be started by explicit gesture. */
   providerEnabled: boolean;
+  /** V AND owner-preview flag AND provider dormant — deterministic text-only preview owns the turn. */
+  previewEnabled: boolean;
+  /** The single transient owner-preview reply (replaces the previous; no history). Null when none. */
+  previewReply: string | null;
+  /** Dismiss the transient preview reply. */
+  dismissPreviewReply: () => void;
   runtime: LiveAiRuntime | null;
   transport: LiveAiTransport | null;
   conversation: Conversation | null;
@@ -81,6 +97,9 @@ interface LiveAiContextValue {
 const DISABLED_VALUE: LiveAiContextValue = {
   enabled: false,
   providerEnabled: false,
+  previewEnabled: false,
+  previewReply: null,
+  dismissPreviewReply: () => {},
   runtime: null,
   transport: null,
   conversation: null,
@@ -169,6 +188,8 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
   // FEATURE-OFF CONTRACT: construct NOTHING when V isn't exactly "1".
   const enabled = isLiveAiEnabled();
   const providerEnabled = useMemo(() => resolveClientGates().provider, []);
+  // OWNER-PREVIEW — deterministic, provider-dormant only (fail-closed, default OFF).
+  const previewEnabled = useMemo(() => resolveOwnerPreviewGate(enabled, providerEnabled), [enabled, providerEnabled]);
 
   const runtimeRef = useRef<LiveAiRuntime | null>(null);
   const transportRef = useRef<LiveAiTransport | null>(null);
@@ -190,6 +211,11 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
   const [convState, setConvState] = useState<ConversationState | null>(null);
   // NEW-02 — reactive mirror of the controller's blocked-audio flag for the Shell.
   const [audioNeedsResume, setAudioNeedsResume] = useState(false);
+  // OWNER-PREVIEW — the single transient reply + a lightweight processing flag + a bounded reconcile poller.
+  const [previewReply, setPreviewReply] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previewTurnRef = useRef(0);
   // R2-03 — SINGLE cancellable start owner: at most ONE start() may be in flight. A
   // second start gesture while one is pending (or a turn is live) is a no-op, so a
   // double-tap can never open two sessions/sockets. Reset on teardown.
@@ -300,6 +326,12 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
     runtime.invalidateRoute(pathRef.current);
     setRegisteredPageId(runtime.getRegisteredPageId());
     try { conversationRef.current?.onRouteChange(); } catch { /* no-op */ }
+    // OWNER-PREVIEW — the runtime session survives the route change, but old page ACTION authority does not:
+    // supersede any in-flight reconcile poll and drop the stale transient reply (a fresh turn re-verifies).
+    previewTurnRef.current += 1;
+    if (previewTimerRef.current) { clearInterval(previewTimerRef.current); previewTimerRef.current = null; }
+    setPreviewBusy(false);
+    setPreviewReply(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, runtime, pathname]);
 
@@ -316,12 +348,20 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
     [enabled, runtime],
   );
 
+  // ── OWNER-PREVIEW helpers (declared before activate/deactivate/toggle that reference them) ──
+  const clearPreviewTimer = useCallback(() => {
+    if (previewTimerRef.current) { clearInterval(previewTimerRef.current); previewTimerRef.current = null; }
+  }, []);
+  const dismissPreviewReply = useCallback(() => { setPreviewReply(null); }, []);
+
   const activate = useCallback(() => {
     if (!enabled || !runtime) return;
     runtime.activate();
     setActivated(true);
     runtime.greet();
-  }, [enabled, runtime]);
+    // OWNER-PREVIEW — a context-aware greeting bubble on the explicit orb tap (no auto-send).
+    if (previewEnabled) { setPreviewReply(previewGreeting(runtime.publishedContext())); }
+  }, [enabled, runtime, previewEnabled]);
 
   const deactivate = useCallback(() => {
     if (!enabled || !runtime) return;
@@ -330,9 +370,10 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
     pendingTextRef.current = null;
     startInFlightRef.current = false;      // R2-03 — release the start owner
     setAudioNeedsResume(false);            // NEW-02 — no blocked audio after teardown
+    clearPreviewTimer(); setPreviewBusy(false); setPreviewReply(null);   // OWNER-PREVIEW — clear on teardown
     // R2-04 — end() closes the transport (socket + media + in-flight broker fetch).
     try { conversationRef.current?.end("user"); } catch { /* no-op */ }
-  }, [enabled, runtime]);
+  }, [enabled, runtime, clearPreviewTimer]);
 
   const toggle = useCallback(() => {
     if (!enabled || !runtime) return;
@@ -344,9 +385,13 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
       pendingTextRef.current = null;
       startInFlightRef.current = false;    // R2-03 — release the start owner
       setAudioNeedsResume(false);          // NEW-02 — clear blocked-audio state
+      clearPreviewTimer(); setPreviewBusy(false); setPreviewReply(null);   // OWNER-PREVIEW — clear on teardown
       try { conversationRef.current?.end("user"); } catch { /* no-op */ }
-    } else { runtime.activate(); setActivated(true); runtime.greet(); }
-  }, [enabled, runtime]);
+    } else {
+      runtime.activate(); setActivated(true); runtime.greet();
+      if (previewEnabled) { setPreviewReply(previewGreeting(runtime.publishedContext())); }
+    }
+  }, [enabled, runtime, previewEnabled, clearPreviewTimer]);
 
   // R2-03/R3-03 — the SINGLE cancellable start owner. Returns true iff it actually
   // initiated a start. A start already in flight, or an already-live/connecting session,
@@ -379,8 +424,72 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
     beginStart(mode); // R2-03 — single-owner; a duplicate concurrent start is a no-op
   }, [enabled, providerEnabled, beginStart]);
 
+  /**
+   * Drive ONE deterministic preview turn through the EXISTING runtime authorities:
+   *   beginTurn → interpret → makeEnvelope → execute → (APPLY) reconcile.
+   * Never constructs a socket/gateway/mic and never calls a hotel setter/router directly (execute dispatches to
+   * the registered page bridge, the ONLY UI execution adapter). Reply is built ONLY from runtime output.
+   */
+  const runPreview = useCallback((raw: string) => {
+    const runtime = runtimeRef.current;
+    if (!runtime) return;
+    clearPreviewTimer();
+    const myTurn = ++previewTurnRef.current;   // supersede any in-flight reconcile poll
+    if (!runtime.isActivated()) { runtime.activate(); setActivated(true); }
+
+    const ctx = runtime.publishedContext();
+    const outcome = interpretOwnerPreview(raw, ctx);
+    if (outcome.kind === "info" || outcome.kind === "unavailable") {
+      setPreviewBusy(false);
+      setPreviewReply(outcome.message);
+      return;
+    }
+
+    // Resolve an OPEN label from the pre-navigation list context (never from free text).
+    let openLabel: string | undefined;
+    if (outcome.operation.op === "OPEN_VISIBLE_HOTEL" && ctx && ctx.pageId === "hotels") {
+      const row = ctx.visibleHotels.find((h) => h.position === (outcome.operation as { position: number }).position);
+      if (row) openLabel = row.name;
+    }
+
+    const turnId = runtime.beginTurn(raw);
+    const env = runtime.makeEnvelope(outcome.operation, turnId);
+    if (!env) { setPreviewBusy(false); setPreviewReply("I can't do that on this screen right now."); return; }
+    const result = runtime.execute(env);
+
+    if (outcome.operation.op === "APPLY_HOTEL_REFINEMENT") {
+      if (!result.ok) { setPreviewBusy(false); setPreviewReply(formatExecutionReply(result)); return; }
+      // §10 — do NOT claim success on the setter running; wait for the page's resolved receipt + a verifying
+      // reconcile within a bounded window, else a neutral retry (never fake success).
+      setPreviewBusy(true);
+      setPreviewReply("Applying…");
+      let attempts = 0;
+      previewTimerRef.current = setInterval(() => {
+        if (previewTurnRef.current !== myTurn) { clearPreviewTimer(); return; }
+        attempts += 1;
+        let verified = null as ReturnType<typeof runtime.reconcile>;
+        try { verified = runtime.reconcile(); } catch { verified = null; }
+        const speech = formatVerifiedReply(verified);
+        if (speech) { clearPreviewTimer(); setPreviewBusy(false); setPreviewReply(speech); return; }
+        if (attempts >= PREVIEW_RECONCILE_ATTEMPTS) {
+          clearPreviewTimer(); setPreviewBusy(false);
+          setPreviewReply("Couldn't confirm the update — please try again.");
+        }
+      }, PREVIEW_RECONCILE_INTERVAL_MS);
+      return;
+    }
+
+    setPreviewBusy(false);
+    const op = outcome.operation;
+    const section = op.op === "SHOW_HOTEL_SECTION" ? op.section : undefined;
+    setPreviewReply(formatExecutionReply(result, { factsFocus: outcome.factsFocus, openLabel, section }));
+  }, [clearPreviewTimer]);
+
   const submitText = useCallback((text: string) => {
-    if (!enabled || !providerEnabled) return;
+    if (!enabled) return;
+    // OWNER-PREVIEW owns the turn when the provider is dormant + the flag is on (exactly one controller).
+    if (previewEnabled) { runPreview(text); return; }
+    if (!providerEnabled) return;
     const conv = conversationRef.current;
     if (!conv) return;
     try { conv.resumeAudio(); } catch { /* no-op */ } // REV-03 — resume on the gesture
@@ -394,7 +503,7 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     conv.submitText(text);
-  }, [enabled, providerEnabled, beginStart]);
+  }, [enabled, providerEnabled, previewEnabled, runPreview, beginStart]);
 
   const bargeIn = useCallback(() => {
     if (!enabled || !providerEnabled) return;
@@ -416,12 +525,17 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
 
   const orbState: OrbState = providerEnabled
     ? (activated ? mapOrb(convState) : "sleep")
-    : (activated ? "idle" : "sleep");
+    : previewEnabled
+      ? (activated ? (previewBusy ? "processing" : "idle") : "sleep")
+      : (activated ? "idle" : "sleep");
 
   const value = useMemo<LiveAiContextValue>(
     () => ({
       enabled,
       providerEnabled,
+      previewEnabled,
+      previewReply,
+      dismissPreviewReply,
       runtime,
       transport: transportRef.current,
       conversation: conversationRef.current,
@@ -439,7 +553,7 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
       notifyContext,
       registerPage,
     }),
-    [enabled, providerEnabled, runtime, registeredPageId, activated, orbState, convState, audioNeedsResume, activate, deactivate, toggle, startProvider, submitText, bargeIn, resumeAudio, notifyContext, registerPage],
+    [enabled, providerEnabled, previewEnabled, previewReply, dismissPreviewReply, runtime, registeredPageId, activated, orbState, convState, audioNeedsResume, activate, deactivate, toggle, startProvider, submitText, bargeIn, resumeAudio, notifyContext, registerPage],
   );
 
   return <LiveAiContext.Provider value={enabled ? value : DISABLED_VALUE}>{children}</LiveAiContext.Provider>;

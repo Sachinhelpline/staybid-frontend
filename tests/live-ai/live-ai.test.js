@@ -28,6 +28,7 @@ fs.mkdirSync(path.join(SRC, "live-ai"), { recursive: true });
 for (const f of fs.readdirSync(path.join(REPO, "lib/live-ai"))) {
   if (f.endsWith(".ts")) fs.copyFileSync(path.join(REPO, "lib/live-ai", f), path.join(SRC, "live-ai", f));
 }
+fs.copyFileSync(path.join(REPO, "lib/cities.ts"), path.join(SRC, "cities.ts"));   // owner-preview imports the canonical city registry (../cities)
 fs.writeFileSync(
   path.join(SRC, "tsconfig.json"),
   JSON.stringify({
@@ -992,6 +993,7 @@ function run(rt, op) { const env = rt.makeEnvelope(op); if (!env) return { ok: f
         ['"@/lib/live-ai/gateway-client"', JSON.stringify(path.join(outC, "gateway-client.js"))],
         ['"@/lib/live-ai/conversation"', JSON.stringify(path.join(outC, "conversation.js"))],
         ['"@/lib/live-ai/audio-playback"', JSON.stringify(path.join(outC, "audio-playback.js"))],
+        ['"@/lib/live-ai/owner-preview"', JSON.stringify(path.join(outC, "owner-preview.js"))],
       ]);
       const shellPath = transpile("components/live-ai/LiveAiShell.tsx", "LiveAiShell.js", [['"./LiveAiProvider"', JSON.stringify(providerPath)]]);
       const Provider = require(providerPath);
