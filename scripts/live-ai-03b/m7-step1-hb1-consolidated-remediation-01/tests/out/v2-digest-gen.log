@@ -1,0 +1,113 @@
+{
+  "T0": "2026-09-28T15:26:23Z",
+  "T0_PLUS_7_DAYS": "2026-10-05T15:26:23Z",
+  "predecessor_self_check_ok": true,
+  "predecessor_self_checks": [
+    {
+      "key": "v1_source_digest",
+      "got": "fda6f4a834b2277bd0ace30738cda1e8f75c0f8bc523ddbd11c966c4da52beb3",
+      "want": "fda6f4a834b2277bd0ace30738cda1e8f75c0f8bc523ddbd11c966c4da52beb3",
+      "ok": true
+    },
+    {
+      "key": "v1_inactive_catalog_digest",
+      "got": "453f928762b8e6cddedac8618786d008cb7a3d57ffefab9d0cfe3cda52c4c973",
+      "want": "453f928762b8e6cddedac8618786d008cb7a3d57ffefab9d0cfe3cda52c4c973",
+      "ok": true
+    },
+    {
+      "key": "v1_active_catalog_digest",
+      "got": "616cc481e8cc342462445da5ededa142ec4450f38805edd91ed798554f3c24f8",
+      "want": "616cc481e8cc342462445da5ededa142ec4450f38805edd91ed798554f3c24f8",
+      "ok": true
+    },
+    {
+      "key": "dormant_policy_digest",
+      "got": "cf5ae64ff17eca76ac3f19c4dd2b5157a1b9bb601f765978e24eb47bbc2308c4",
+      "want": "cf5ae64ff17eca76ac3f19c4dd2b5157a1b9bb601f765978e24eb47bbc2308c4",
+      "ok": true
+    },
+    {
+      "key": "onecall_v1_active_digest",
+      "got": "9927a920975c4e03f5cbf3adee23c34bb7396a032b00b029ba5a2c7ac0c8ec1c",
+      "want": "9927a920975c4e03f5cbf3adee23c34bb7396a032b00b029ba5a2c7ac0c8ec1c",
+      "ok": true
+    },
+    {
+      "key": "onecall_v1_restored_digest",
+      "got": "a74a7e347f511e4c2c423fa62d3cce10559713acf903138939b59d6037b8c4d9",
+      "want": "a74a7e347f511e4c2c423fa62d3cce10559713acf903138939b59d6037b8c4d9",
+      "ok": true
+    },
+    {
+      "key": "dormant_control_global",
+      "got": "26136eb93212ccce1ba6f4b380dbb3f1f2ef64e3d16fa9754e287459cce525ee",
+      "want": "26136eb93212ccce1ba6f4b380dbb3f1f2ef64e3d16fa9754e287459cce525ee",
+      "ok": true
+    },
+    {
+      "key": "dormant_control_project",
+      "got": "be70f6b477c7332a834720e4f784a7d724a6363d48cbcc590315ff2fc72cad7f",
+      "want": "be70f6b477c7332a834720e4f784a7d724a6363d48cbcc590315ff2fc72cad7f",
+      "ok": true
+    },
+    {
+      "key": "control_global_activation",
+      "got": "0a60f1eb2050b2d0e4ff43262e9cde12d35c8dab84c30a8ceffc36ffa357878b",
+      "want": "0a60f1eb2050b2d0e4ff43262e9cde12d35c8dab84c30a8ceffc36ffa357878b",
+      "ok": true
+    },
+    {
+      "key": "control_project_activation",
+      "got": "eb56f2b74f1afbb82bed7316c9839201698c780c7881e3604bdc701022315a6f",
+      "want": "eb56f2b74f1afbb82bed7316c9839201698c780c7881e3604bdc701022315a6f",
+      "ok": true
+    },
+    {
+      "key": "control_global_restoration",
+      "got": "0d2f68853d59b59b4d57d84eedb03af5e2117643c8b4bc378674f4be7dc4b707",
+      "want": "0d2f68853d59b59b4d57d84eedb03af5e2117643c8b4bc378674f4be7dc4b707",
+      "ok": true
+    },
+    {
+      "key": "control_project_restoration",
+      "got": "d26219d1e4ed6e418dd7f71ec97947b2502c004b59c7fd7c88638059139db7f4",
+      "want": "d26219d1e4ed6e418dd7f71ec97947b2502c004b59c7fd7c88638059139db7f4",
+      "ok": true
+    },
+    {
+      "key": "v1_worst_case_equals_v1_ceiling",
+      "got": "89536",
+      "want": "89536",
+      "ok": true
+    }
+  ],
+  "v2_catalog_version_id": "openai-gpt-5-6-terra-standard-short-v2",
+  "v2_entry_ids": [
+    "openai-gpt-5-6-terra-standard-short-v2-reasoning-input-token-base",
+    "openai-gpt-5-6-terra-standard-short-v2-reasoning-input-token-cache-write",
+    "openai-gpt-5-6-terra-standard-short-v2-reasoning-output-token-base"
+  ],
+  "source_canonical": "{\"context_tier\":\"short\",\"currency\":\"USD\",\"model\":\"gpt-5.6-terra\",\"processing_mode\":\"standard\",\"provider\":\"openai\",\"rates\":[{\"billing_dimension\":\"reasoning_input_token\",\"rate_micros\":2000000,\"service_tier\":null,\"unit_size\":1000000},{\"billing_dimension\":\"reasoning_input_token\",\"rate_micros\":2500000,\"service_tier\":\"cache_write\",\"unit_size\":1000000},{\"billing_dimension\":\"reasoning_output_token\",\"rate_micros\":12000000,\"service_tier\":null,\"unit_size\":1000000}],\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"source_url\":\"https://developers.openai.com/api/docs/pricing\",\"verified_at\":\"2026-09-28T15:26:23Z\"}",
+  "source_digest": "ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357",
+  "inactive_catalog_canonical": "{\"catalog_version\":{\"created_at\":\"2026-09-28T15:26:23Z\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"status\":\"inactive\"},\"domain\":\"staybid.live-ai.budget.price-catalog.v1\",\"entries\":[{\"billing_dimension\":\"reasoning_input_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"created_at\":\"2026-09-28T15:26:23Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2-reasoning-input-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":2000000,\"service_tier\":null,\"source_digest\":\"ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"inactive\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-10-05T15:26:23Z\",\"verified_at\":\"2026-09-28T15:26:23Z\"},{\"billing_dimension\":\"reasoning_input_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"created_at\":\"2026-09-28T15:26:23Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2-reasoning-input-token-cache-write\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":2500000,\"service_tier\":\"cache_write\",\"source_digest\":\"ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"inactive\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-10-05T15:26:23Z\",\"verified_at\":\"2026-09-28T15:26:23Z\"},{\"billing_dimension\":\"reasoning_output_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"created_at\":\"2026-09-28T15:26:23Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2-reasoning-output-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":12000000,\"service_tier\":null,\"source_digest\":\"ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"inactive\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-10-05T15:26:23Z\",\"verified_at\":\"2026-09-28T15:26:23Z\"}]}",
+  "inactive_catalog_digest": "36355fab5be8009fa66352ce678394d4963f2927a39d1a8eea63f4aa5b939b62",
+  "active_catalog_canonical": "{\"catalog_version\":{\"created_at\":\"2026-09-28T15:26:23Z\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"status\":\"active\"},\"domain\":\"staybid.live-ai.budget.price-catalog.v1\",\"entries\":[{\"billing_dimension\":\"reasoning_input_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"created_at\":\"2026-09-28T15:26:23Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2-reasoning-input-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":2000000,\"service_tier\":null,\"source_digest\":\"ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"active\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-10-05T15:26:23Z\",\"verified_at\":\"2026-09-28T15:26:23Z\"},{\"billing_dimension\":\"reasoning_input_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"created_at\":\"2026-09-28T15:26:23Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2-reasoning-input-token-cache-write\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":2500000,\"service_tier\":\"cache_write\",\"source_digest\":\"ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"active\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-10-05T15:26:23Z\",\"verified_at\":\"2026-09-28T15:26:23Z\"},{\"billing_dimension\":\"reasoning_output_token\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"created_at\":\"2026-09-28T15:26:23Z\",\"currency_code\":\"USD\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"id\":\"openai-gpt-5-6-terra-standard-short-v2-reasoning-output-token-base\",\"model\":\"gpt-5.6-terra\",\"provider\":\"openai\",\"rate_micros\":12000000,\"service_tier\":null,\"source_digest\":\"ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357\",\"source_id\":\"openai-api-pricing/gpt-5.6-terra/standard/short-context/v1\",\"status\":\"active\",\"unit_size\":1000000,\"verification_expires_at\":\"2026-10-05T15:26:23Z\",\"verified_at\":\"2026-09-28T15:26:23Z\"}]}",
+  "active_catalog_digest": "836548ef0274f3a068c83cf4d8e952eb6388921f2064c5e29e8ec25cd7eb798b",
+  "successor_policy_id": "live-ai-03b-policy-oneprobe-v2",
+  "successor_policy_active_canonical": "{\"domain\":\"staybid.live-ai.budget.policy.v1\",\"effective_from\":\"2026-09-28T15:26:23Z\",\"effective_until\":null,\"global_day_money_ceiling_micros\":105920,\"id\":\"live-ai-03b-policy-oneprobe-v2\",\"project_day_money_ceiling_micros\":105920,\"project_id\":\"live-ai-03b\",\"project_month_money_ceiling_micros\":105920,\"session_execution_admissions\":1,\"session_money_ceiling_micros\":105920,\"session_provider_calls\":1,\"status\":\"active\",\"subject_day_money_ceiling_micros\":105920}",
+  "successor_policy_active_digest": "864e24817b2f98d741495bb403c20ada31cd4f27db3d9dfe1c50bb7d99ad9245",
+  "successor_policy_restored_digest": "833e5b963bbba37e6e6759e60269246ba8c61949257f5bb9edf49cc82829da79",
+  "successor_ceilings": {
+    "session_money_ceiling_micros": 105920,
+    "subject_day_money_ceiling_micros": 105920,
+    "project_day_money_ceiling_micros": 105920,
+    "project_month_money_ceiling_micros": 105920,
+    "global_day_money_ceiling_micros": 105920,
+    "session_provider_calls": 1,
+    "session_execution_admissions": 1
+  },
+  "worst_case_reservation_micros": 105920,
+  "activation_bundle_canonical": "{\"active_catalog_digest\":\"836548ef0274f3a068c83cf4d8e952eb6388921f2064c5e29e8ec25cd7eb798b\",\"base_commit\":\"9270c282d5fd65e9fe49261391badfe92c777b8f\",\"base_tree\":\"c46da04123dc44cd9954fe350de0b1bc20ff0948\",\"catalog_verification_expiry\":\"2026-10-05T15:26:23Z\",\"catalog_version_id\":\"openai-gpt-5-6-terra-standard-short-v2\",\"control_global_activation_digest\":\"0a60f1eb2050b2d0e4ff43262e9cde12d35c8dab84c30a8ceffc36ffa357878b\",\"control_project_activation_digest\":\"eb56f2b74f1afbb82bed7316c9839201698c780c7881e3604bdc701022315a6f\",\"domain\":\"staybid.live-ai.activation-bundle.v2\",\"inactive_catalog_digest\":\"36355fab5be8009fa66352ce678394d4963f2927a39d1a8eea63f4aa5b939b62\",\"one_call_ceilings\":{\"global_day_money_ceiling_micros\":105920,\"project_day_money_ceiling_micros\":105920,\"project_month_money_ceiling_micros\":105920,\"session_execution_admissions\":1,\"session_money_ceiling_micros\":105920,\"session_provider_calls\":1,\"subject_day_money_ceiling_micros\":105920},\"one_call_policy_digest\":\"864e24817b2f98d741495bb403c20ada31cd4f27db3d9dfe1c50bb7d99ad9245\",\"one_call_policy_id\":\"live-ai-03b-policy-oneprobe-v2\",\"service_tier\":\"default\",\"source_digest\":\"ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357\"}",
+  "activation_bundle_digest": "d6f40fc53dd6002fbed4990603aeddabe3bfff39b6a81aadc9e57dd6ef618e1e"
+}

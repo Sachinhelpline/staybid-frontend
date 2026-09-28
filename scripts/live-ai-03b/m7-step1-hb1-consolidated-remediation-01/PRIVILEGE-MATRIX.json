@@ -1,0 +1,54 @@
+{
+  "artifact": "LIVE-AI-03B M7 Step 1 — expected EFFECTIVE privilege matrix after applying sql/m7-v2-01 (seed) + sql/m7-v2-02 (trusted successor) on the accepted post-M6 state",
+  "proof": "tests/m7-localpg.test.sh (real role logins; PostgreSQL 16.13 + 18.4) + sql/m7-v2-08-post-apply-verification.sql + the frozen M6 canonical post-verifier (must also pass)",
+  "successor_schema": "live_ai_03b_trusted_v2",
+  "successor_functions": [
+    "live_ai_03b_trusted_v2.activate_catalog_v2(jsonb,text) RETURNS jsonb — SECURITY DEFINER, owner live_ai_03b_fn_owner, proconfig = {search_path=\"\"}",
+    "live_ai_03b_trusted_v2.restore_catalog_v2_inactive(jsonb,text) RETURNS jsonb — SECURITY DEFINER, owner live_ai_03b_fn_owner, proconfig = {search_path=\"\"}"
+  ],
+  "principals": {
+    "live_ai_03b_fn_owner": {
+      "login": false,
+      "owns": ["schema live_ai_03b_trusted (M6, unchanged)", "ledger live_ai_03b_trusted.approval_consumption (M6, unchanged)", "schema live_ai_03b_trusted_v2 (NEW)", "the 2 successor functions (NEW)"],
+      "table_privileges": "UNCHANGED from M6: SELECT, UPDATE on budget_price_catalog_versions / budget_price_catalog_entries / budget_control_epochs / budget_policy_versions. NO new grant.",
+      "reachable_only_via": "the SECURITY DEFINER functions"
+    },
+    "live_ai_03b_executor": {
+      "successor_schema": "USAGE only (no CREATE)",
+      "successor_functions": "EXECUTE on exactly the two successor functions",
+      "m6_functions": "EXECUTE on the two M6 functions (unchanged; V1-bound and expired → fail closed)",
+      "budget_tables": "NONE (no SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER on any of the 13)",
+      "ledger": "NONE (written only inside the definer functions)",
+      "schema_create": "NONE (live_ai_03b_trusted, live_ai_03b_trusted_v2, public)",
+      "credential": "UNCHANGED — credentialless in AI-STAGING; NOT provisioned by this packet"
+    },
+    "live_ai_03b_reader": {
+      "successor_schema": "NONE",
+      "successor_functions": "NONE",
+      "catalog_write": "NONE",
+      "unchanged_from_M6": "SELECT allowlist (12 tables) + deferred ledger SELECT"
+    },
+    "live_ai_03b_gateway_store": {
+      "successor_schema": "NONE",
+      "successor_functions": "NONE",
+      "catalog_write": "NONE (no INSERT/UPDATE/DELETE/TRUNCATE on the catalog tables)",
+      "unchanged_from_M6": "the accepted B+ gateway-store design (accounting writes + ENABLE ALWAYS guard)",
+      "credential": "UNCHANGED — credentialless; NOT provisioned by this packet"
+    },
+    "PUBLIC": {
+      "successor_schema": "NONE (REVOKE ALL ON SCHEMA … FROM PUBLIC)",
+      "successor_functions": "NONE (REVOKE ALL ON FUNCTION … FROM PUBLIC; proacl is never NULL)"
+    },
+    "postgres (Owner superuser)": {
+      "role": "applies 01/02/04/05/07/09 in separate, explicitly authorized live steps (NOT this packet); retains superuser (residual accepted M6 live gate)"
+    }
+  },
+  "denied_and_tested": [
+    "executor UPDATE on catalog (V1 expiry extension / V2 status) — permission denied",
+    "executor INSERT into the ledger — permission denied",
+    "executor CREATE in the successor schema — permission denied",
+    "reader / gateway-store / PUBLIC-only role EXECUTE on the successor — permission denied",
+    "gateway-store UPDATE on the catalog — denied",
+    "drift detection: wrong owner, non-empty search_path, SECURITY INVOKER, EXECUTE to reader/PUBLIC, schema USAGE to gateway-store, schema CREATE to executor, catalog UPDATE to executor/gateway-store, an extra function — all rejected by the 08 verifier"
+  ]
+}

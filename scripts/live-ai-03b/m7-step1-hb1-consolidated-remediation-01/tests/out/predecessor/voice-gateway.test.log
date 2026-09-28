@@ -1,0 +1,105 @@
+• Local tsc compile (SB-04 gateway): exit 0, clean
+
+• Runtime + config gates (fail closed)
+
+• Origin allowlist via SIGNED claim (never '*'; no forgeable header)
+
+• Body + SDP validation
+
+• Session assertion (valid / tamper / iss / aud / expiry / replay / scope)
+
+• Identity isolation + concurrency caps
+
+• Fixed four-tool adapter (exactly four; fifth rejected; fixed path; allowlist)
+
+• UI actions (OPEN_HOTEL allowlist, no caller url, PREPARE_BID_DRAFT no network)
+
+• Sideband: tool loop cap, stale/cancel discard, no action after cancel
+
+• Prohibited surfaces are ABSENT from the gateway tool/action space
+
+• Rate limits, cost ceilings, circuit breaker
+
+• Provider failure mapping (no fabrication)
+
+• Runtime kill switch (HMAC, disable-only, drains sessions, cannot re-enable)
+
+• Enforcement (fake clock): session/idle/utterance/turn timers + cost
+
+• Composed: broker→gateway→fake-provider→sideband→tool→control socket→browser
+
+• R2-05B: OpenAI base URL is validated (https + OpenAI origin; else fail closed)
+
+• R2-06: untrusted input is bounded by UTF-8 BYTES, not code units
+
+• R2-02: terminated session never reanimates (ensureTurn/beginTurn/timers)
+
+• R2-03: real token-usage cost + reservation reconcile + provider-429 cooldown
+
+• R2-03/04: sideband reconciles usage + seals a response (late frame discarded)
+
+• R3-01/02: multipart create · call_id · sideband ?call_id= · session.updated ACK · hangup
+
+• R3-07: EXACT api.openai.com origin (sibling subdomains rejected)
+
+• R3: 20s utterance ceiling — ACTIVE provider cancel + tool abort at the limit
+
+• R3: 12s turn timeout — ACTIVE provider cancel + tool abort + seal
+
+• R3-04: cancelled turn's slow tool fetch resolves late → fully inert
+
+• R3-03: official price vectors — $4/$0.40/$24 text · $32/$0.40/$64 audio per 1M
+
+• R3-03: missing/malformed usage retains the conservative reservation
+
+• R3-02: kill/expiry/cost terminate → provider close (hangup) invoked
+
+• R3-10: ordinal visible-context — server verification + ordinal map + defense in depth
+
+• R3-08: provider answer SDP bounded (content-length + streamed cap)
+
+• R4-01: effective session.updated is validated (type/model/tool_choice/exact-4-tools/additionalProperties/create_response)
+
+• R4-02: post-ready sideband error/close/provider-error fires the fatal lifecycle signal exactly once
+
+• R4-03: create_response:false everywhere + requestResponse gates inference (sendToolResult never auto-responds)
+
+• R4-10: sendContext awaits a conversation.item.created ack — success / timeout / close
+
+• R4-11: OPEN_HOTEL rides the documented getHotelDetails(presentationIntent) tool path; no ui_action event exists
+
+• R5-01: effective session proves the COMPLETE manual server_vad contract (audio.input.turn_detection)
+
+• R6-01: item-id-correlated VAD ownership (per-item state; no crossover; replay-safe)
+
+• R6-02: serialized response slot + exact per-request reservation ownership
+
+• R7-01: MANDATORY exact request_id correlation on response.created (missing/mismatch → fail closed)
+
+• R7-02: response.created ACK deadline cleared ONLY on the authoritative bind (raw event does not clear it)
+
+• R7-03: COMPLETE fail-closed usage trust — reconciliation NEVER refunds below the conservative reservation
+
+• R7-04: current-turn tool continuation has priority over later user work (bounded, starvation-safe)
+
+• R7-05: an OWNED but CANCELLED response.done still seals + frees the slot, WITHOUT emitting stale UI
+
+• R7.1: DECISIVE slow-tool / early-response.done — user B blocked until A's continuation is fully terminal
+
+• R7.1: additional lifecycle coverage (A–I)
+
+• R7.1: R7 invariants preserved under the debt/barrier (J/K/L/M reaffirm)
+
+• R7.1: turn-ownership closure — continuation same turn; user B a fresh turn (1–5)
+
+• R7.2: accept-once call_id dedup (1–12)
+
+• R5-03: fatal is LATCHED — a fatal before onFatal registration is delivered on registration, exactly once
+
+• R5-04: handleSessionCreate fails closed when a fatal terminates the session mid-setup
+
+• R5-05: raw response.created + response.function_call_arguments.done → translate → OPEN_HOTEL
+
+──────────────────────────────────────────────────
+Voice AI SB-04 gateway: 501 passed, 0 failed
+ALL VOICE-AI-SB-04 GATEWAY CHECKS PASSED

@@ -1,0 +1,45 @@
+{
+  "pricing_html_sha256": "ec4a7fd545d1fb71e03de5278d417bb8eae77859df046b0c6d6d36590fe50f1a",
+  "terra_embedded_rows_in_document_order": [
+    {
+      "input_usd_per_1m": 2,
+      "cached_input_usd_per_1m": 0.2,
+      "cache_writes_usd_per_1m": 2.5,
+      "output_usd_per_1m": 12
+    },
+    {
+      "input_usd_per_1m": 1,
+      "cached_input_usd_per_1m": 0.1,
+      "cache_writes_usd_per_1m": 1.25,
+      "output_usd_per_1m": 6
+    },
+    {
+      "input_usd_per_1m": 1,
+      "cached_input_usd_per_1m": 0.1,
+      "cache_writes_usd_per_1m": 1.25,
+      "output_usd_per_1m": 6
+    },
+    {
+      "input_usd_per_1m": 4,
+      "cached_input_usd_per_1m": 0.4,
+      "cache_writes_usd_per_1m": 5,
+      "output_usd_per_1m": 24
+    }
+  ],
+  "standard_short_row_present": true,
+  "fast_short_row_present": true,
+  "batch_or_flex_short_row_present": true,
+  "service_tier_default_sentence": "If set to ‘default’, then the request will be processed with the standard pricing and performance for the selected model.",
+  "service_tier_auto_sentence": "If set to ‘auto’, then the request will be processed with the service tier configured in the Project settings.",
+  "service_tier_omitted_sentence": "When not set, the default behavior is ‘auto’.",
+  "project_fast_default_sentence": "Requests that don’t specify a service_tier then default to Fast mode.",
+  "cache_write_sentence": "For GPT-5.6 and later, cache writes cost 1.25× the standard, uncached input-token rate.",
+  "caching_default_sentence": "Prompt caching is enabled by default for supported OpenAI models.",
+  "raw_html_sha256": {
+    "create.html": "e7ddffec2979a84d82432ded7ed1f4eab9218197bd1660c964f8a1b78a5e6bf0",
+    "flex-processing.html": "3922aa7b892e4b785b2974f960212def09a91e70c7a5b3ffd26054782e530773",
+    "priority-processing.html": "027346bab893225395689b190fea6930def98d4865c3be1e4ef8f8e075917ad8",
+    "prompt-caching.html": "12377823c89f7c2c544f37152e604550545f804ce594ccff893de873511c659a",
+    "pricing.html": "ec4a7fd545d1fb71e03de5278d417bb8eae77859df046b0c6d6d36590fe50f1a"
+  }
+}

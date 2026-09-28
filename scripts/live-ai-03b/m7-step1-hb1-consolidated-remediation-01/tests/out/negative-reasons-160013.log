@@ -1,0 +1,31 @@
+wrong contract rejected :: ERROR:  activate_v2: claims contract mismatch (expected VerifiedApprovalClaimsV2)
+extra claim key (approved:true) rejected (#28) :: ERROR:  activate_v2: claims key set is not the exact VerifiedApprovalClaimsV2 shape
+missing claim key rejected :: ERROR:  activate_v2: claims key set is not the exact VerifiedApprovalClaimsV2 shape
+arbitrary catalog ID rejected (#31) :: ERROR:  activate_v2: catalog_version_id is not the reviewed V2
+arbitrary caller inactive digest rejected (#32) :: ERROR:  activate_v2: inactive_catalog_digest mismatch
+arbitrary caller active digest rejected (#32) :: ERROR:  activate_v2: active_catalog_digest mismatch
+old one-call policy digest rejected (#20/#21) :: ERROR:  activate_v2: successor one-call policy binding mismatch
+89536 ceiling claim rejected (#21) :: ERROR:  activate_v2: one-call money ceiling is not 105920
+Priority/Fast service tier rejected (#33) :: ERROR:  activate_v2: service_tier is not default
+Flex service tier rejected (#35) :: ERROR:  activate_v2: service_tier is not default
+Batch processing mode rejected (#34) :: ERROR:  activate_v2: processing_mode is not standard
+regional uplift rejected (#32) :: ERROR:  activate_v2: regional uplift present
+long-context rejected (#36) :: ERROR:  activate_v2: context_tier is not short
+wrong cache-write rate rejected (#6) :: ERROR:  activate_v2: reviewed rate set mismatch (input/cache_write/output/unit)
+CORE-PROD target rejected (#53) :: ERROR:  activate_v2: target is not AI-STAGING
+expired approval window rejected :: ERROR:  activate_v2: DB clock outside signed approval validity interval
+evidence window outliving V2 rejected :: ERROR:  activate_v2: evidence window outside the V2 verification window
+wrong source digest rejected (#18) :: ERROR:  activate_v2: source_digest mismatch
+missing cache-write row rejected (#5) :: ERROR:  activate_v2: unexpected catalog rows (expected exactly V1 + V2)
+wrong cache-write rate rejected (#6) :: ERROR:  activate_v2: reviewed inactive V2 predecessor not matched
+wrong base input rate rejected (#8) :: ERROR:  activate_v2: reviewed inactive V2 predecessor not matched
+wrong output rate rejected (#9) :: ERROR:  activate_v2: reviewed inactive V2 predecessor not matched
+wrong unit size rejected (#10) :: ERROR:  activate_v2: reviewed inactive V2 predecessor not matched
+duplicate V2 entry rejected (#13) :: ERROR:  activate_v2: unexpected catalog rows (expected exactly V1 + V2)
+overlapping active authority rejected (#14) :: ERROR:  activate_v2: an active/revoked catalog version or entry already exists (no competing authority)
+simultaneously active V1 + V2 rejected (V1 active pre-state) (#15/#30) :: ERROR:  activate_v2: an active/revoked catalog version or entry already exists (no competing authority)
+V1 expiry extended in place ⇒ V2 activation refuses (#2) :: ERROR:  activate_v2: historical V1 not byte-exact
+stored source digest tamper rejected (#18) :: ERROR:  activate_v2: reviewed inactive V2 predecessor not matched
+stored catalog digest tamper rejected (#19) :: ERROR:  activate_v2: reviewed inactive V2 predecessor not matched
+an already-active policy (wrong gate order) rejected :: ERROR:  activate_v2: an active policy already exists (catalog must be armed first)
+controls not dormant rejected :: ERROR:  activate_v2: controls are not exactly dormant

@@ -1,0 +1,30 @@
+== repo (accepted) ==
+HEAD 9270c282d5fd65e9fe49261391badfe92c777b8f
+tree c46da04123dc44cd9954fe350de0b1bc20ff0948
+branch claude/live-ai-budget-01-price-catalog-inactive-artifact-01
+porcelain_lines 0
+remote_branch_head 9270c282d5fd65e9fe49261391badfe92c777b8f
+== frozen M6 / accepted files (sha256; must be unchanged) ==
+2987d3ffb9b49c4318b9a9ca398c6b2b545fc98484f527c8fa01f001f5aaf9c5  scripts/live-ai-03b/trusted-activation-boundary-01/db/2026-09-19-p1-02-trusted-activation-boundary.sql
+480648b49e8b17276cc7e6d7900895ec32d666601680feb8441230690fba88d7  scripts/live-ai-03b/trusted-boundary-post-apply-offline-01/deferred-ledger-read-grant.sql
+88252d78f0dcfe9a0e4fbbfa144d3a7ac6ff86faedcff6f0e586f451ee93f757  scripts/live-ai-03b/trusted-boundary-post-apply-offline-01/post-application-verification.sql
+a1d0e59048b48e2e6bec9de86741d7811f91aa4f909f109a8bf4e787901d0a1a  scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/gateway-store-role.sql
+11d9f707085e230df25e4f3ff1ddb7a8b7503149ee67a02d4ac38c501fccd8fd  scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/trusted-reader-role.sql
+3408e2ee304e0f9ef7b99f250d69242e7a6cf82f8178f95e051b176abc1d0fec  migrations/2026-09-16-live-ai-budget-01-dpbel-foundation.sql
+56da09a31265555d3325e61dd53f49333d926b6e384d837907cb8d00b3438dd4  migrations/2026-09-16-live-ai-budget-01-dormant-control-policy-seed.sql
+64e0ded53bd556655bc384f5287e5a660ae593cecf98b5d47802f9c94f56400d  migrations/2026-09-18-live-ai-budget-01-inactive-price-catalog-seed.sql
+59ef03ea3b0532100cf59c19a7f4f174543a4dea0e688359ced858e974312ad3  scripts/live-ai-03b/trusted-activation-boundary-01/pricing-approval-contract.mjs
+88212feed6e30a08069a12e1e0c1999f7df07487b3c52e035f5e5b1486fb29f3  scripts/live-ai-03b/trusted-activation-boundary-01/approval-verify.mjs
+3d2c74d9b8f6dd7938f67dff2b31860fb1d879a978a78df2c4d7ea383e28b53e  scripts/live-ai-03b/first-text-probe-activation-01/one-call-policy-activation.sql
+908f14e09f8c47e11c4f5e10cd5c7dd75fd25fb794a8b9e89706337c7ed31518  scripts/live-ai-03b/first-text-probe-activation-01/control-activation.sql
+6d267de477c19957c712b5dd17fbff62acbb8f3c9e1f3d71a72fc2d883af6ba7  scripts/live-ai-03b/first-text-probe-activation-01/dormant-restoration.sql
+42cdc8f73c5d927f32ac6d13cc28dc6af73ad00ab15c5471102238088edc5f75  server/voice-gateway/openai-responses.ts
+3bbb12ae34e0b462eb7fbfaf08ed7c984ad056e5b97c1684150d76ae8261f550  server/voice-gateway/live-ai-budget-authority.ts
+bb09998ebf91c3ec35db3b24329cf8b688da9b8a52af90a2d57ffb1b98034827  server/voice-gateway/live-ai-budget-pricing.ts
+468be3630ffc7da32d9da3a67b5c35c753aa14cae39ccd4935402b5defe3dd40  server/voice-gateway/live-ai-budget-store.ts
+3bff1a1bd4d329cf8ad46d976b53e24dca9b9dc44d34e9e40e199746a42a8ece  server/voice-gateway/live-ai-staging-main.ts
+fbd1e1d3247a6722f57e382b12e50d9ba1a2f4de7e39e4addf2a757cf83519bc  m6r2/staybid_m6_trusted_boundary_gateway_controlled_r2.sh
+6b7a63dc9bb8cebcec35b3aeb7793788cc99a2e3c57ac3503fe779aa0f3d89af  m6r2_1/staybid_m6_trusted_boundary_gateway_controlled_r2_1.sh
+== candidate (clone) ==
+clone HEAD 9270c282d5fd65e9fe49261391badfe92c777b8f (== accepted)
+809c27f2bfe028a0baf78ea7fb9898cbc9f21dde0070f00e2991ee40bb79ee40  server/voice-gateway/openai-responses.ts  (CANDIDATE, +7 lines)

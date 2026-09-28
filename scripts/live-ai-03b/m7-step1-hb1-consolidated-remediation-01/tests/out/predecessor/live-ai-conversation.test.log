@@ -1,0 +1,75 @@
+• Local tsc compile (conversation): exit 0, clean (strict)
+
+• state machine (transition table)
+
+• explicit-gesture start publishes the bounded context, then IDLE on ready
+
+• a proposal is INERT until its context is ACKed (authority handshake)
+
+• ACKed proposal → envelope → execute → verified receipt (immediate-verify op)
+
+• a proposal with a NON-acked authorityRef is refused
+
+• prompt-injection-as-data: a smuggled field / bad op is refused by re-validation
+
+• answer plan is EVIDENCE-BOUND (unverified citation is downgraded, never voiced)
+
+• deterministic renderer never emits raw provider prose
+
+• audio frames drive playback; kill/end tear down
+
+• R3-04 — a server-initiated session.ended also releases the transport
+
+• barge-in bumps generation; stale-generation frames are inert
+
+• route change invalidates the ACK (a prior authorityRef no longer executes)
+
+• stale turn id frames are inert
+
+• REV-07 — a duplicate proposal NEVER executes the UI action twice (replay)
+
+• transcript.final records memory + moves to THINKING
+
+• memory is bounded (never grows without limit)
+
+• session + idle bounds fail closed (teardown on timeout)
+
+• REV-06 — a stale-generation ACK never grants authority
+
+• REV-06 — barge-in REVOKES the prior ACK (a racing proposal cannot execute)
+
+• REV-08 — an answer with EMPTY evidence for a fact kind is downgraded, never voiced
+
+• REV-08 — an answer whose authorityRef ≠ the live ACK is downgraded
+
+• REV-08 — an unrelated verified receipt (no read evidence) cannot unlock a fact answer
+
+• REV-09 — a cross-route OPEN verifies against the DESTINATION detail context
+
+• R3-09 — a pending OPEN is NOT verified by a manual visit WITHOUT a route transition
+
+• dispose unsubscribes + tears down (a later frame is inert)
+
+• R2-08 — audio for an UN-APPROVED plan is DROPPED (browser approval gates TTS)
+
+• R2-08 — a NEW turn SUPERSEDES: the prior approved plan's audio is dropped
+
+• R2-09 — a pending OPEN that never confirms EXPIRES to ONE unknown receipt (one-transition)
+
+• R2-04 — dispose CLOSES the transport (end frame) + tears down audio
+
+• R4-05 — the browser echoes the GATEWAY-issued executionNonce on accept + receipt
+
+• R4-04 — conversation reset() is a FULL teardown (transport.end + audio teardown → DISCONNECTED)
+
+• R4-04 — a terminal (non-stale) turn.error tears down transport/media BEFORE ERROR; a stale one does not
+
+• R4-09 — onRouteChange reconciles a pending OPEN SYNCHRONOUSLY (wrong first destination → unknown)
+
+• R5B — the browser ECHOES the gateway receiptId (never mints its own)
+
+• R5B/R5B-REV-06 — a verified receipt is NOT trusted for an answer plan until the correlated ACK with a MATCHING commitment
+
+──────────────────────────────────────────────────────
+Live AI LIVE-AI-02A conversation: 107 passed, 0 failed
+ALL LIVE-AI-02A CONVERSATION CHECKS PASSED

@@ -1,0 +1,25 @@
+diff --git a/server/voice-gateway/openai-responses.ts b/server/voice-gateway/openai-responses.ts
+index 9607cf8..1a9e2ae 100644
+--- a/server/voice-gateway/openai-responses.ts
++++ b/server/voice-gateway/openai-responses.ts
+@@ -229,6 +229,12 @@ export function createDefaultReasoningCall(apiKey: string | null, fetchImpl?: Re
+ 
+ export const PROVIDER_ADMISSION_VERSION = "staybid-provider-admission.v1" as const;
+ export const LIVE_AI_PLAN_SCHEMA_NAME = "live_ai_plan" as const;
++// M7 (HB-1 pricing binding) — the 03B provider request is EXPLICITLY pinned to the Standard
++// service tier. OpenAI semantics: `service_tier: "default"` ⇒ "processed with the standard pricing
++// and performance for the selected model"; an OMITTED tier means "auto" ⇒ the PROJECT setting, which
++// may be Fast/Priority (2× priced) — so omission would let inherited project config silently change
++// the price the budget authority reserved against. Never browser/model/user-chosen.
++export const REASONING_03B_SERVICE_TIER = "default" as const;
+ // §6 fixed request-contract bounds.
+ export const IC01_MODEL_INPUT_MAX_BYTES = 16 * 1024;   // canonical IC01 input snapshot ceiling
+ export const PROVIDER_PAYLOAD_MAX_BYTES = 32 * 1024;   // complete serialized provider payload ceiling
+@@ -452,6 +458,7 @@ export async function runReasoning03bProviderCall(
+     store: admission.store,
+     background: admission.background,
+     stream: admission.stream,
++    service_tier: REASONING_03B_SERVICE_TIER,
+     tools: [] as unknown[],
+     truncation: admission.truncation,
+     input: [

@@ -1,0 +1,62 @@
+• Local tsc compile (budget01, strict): exit 0, clean
+
+• BUDGET01-A — integer money / cost formula (pure, no floating point)
+
+• BUDGET01-B — versioned price catalog (verification-bounded)
+
+• BUDGET01-C — default dormancy / fail-closed
+
+• BUDGET01-D — execution admission (session-scoped; zero provider money)
+
+• BUDGET01-E — provider spend (call-bound; worst-case reserve; conservative settle)
+
+• BUDGET01-F — gateway-owned session identity (browser id never budget authority)
+
+• BUDGET01-G — control epoch / kill / freshness (fail-closed)
+
+• BUDGET01-H — price catalog rollover pins the lease; TTS with an injected rule
+
+• BUDGET01-I — reconciliation (clean) + crash forfeit (no quota restored)
+
+• BUDGET01-J — privacy: no raw content / secret in source or persisted shapes
+
+• BUDGET01-L — P0-01: durable envelope replay never resurrects/extends/replenishes
+
+• BUDGET01-M — P0-02: immutable ownership + exact watcher binding
+
+• BUDGET01-N — P1-01: child idempotency across facade recreation + durable hydration
+
+• BUDGET01-O — P1-02: non-empty trusted provider-call id + transcription via DPBEL
+
+• BUDGET01-P — P1-03: USD-only, catalog-version pin, upward-safe settle, explicit excess
+
+• BUDGET01-Q — P1-04: subject/day scope + canonical commitment (DB semantics in the PG suite)
+
+• BUDGET01-R — P1-05: monotonic clock, no invented defaults, orphan reaper
+
+• BUDGET01-S — P0-01 residual: durable revocation survives process loss
+
+• BUDGET01-T — P0-02 residual: live-lease fast path revalidates immutable identity
+
+• BUDGET01-U — P1-01 5A: durable provider persist barrier before invocation
+
+• BUDGET01-V — P1-03 residual: orchestrator passes the true over-cap actual (no masking)
+
+• BUDGET01-W — P1-05 residual: monotonic guard covers all authority reads
+
+• BUDGET01-X — P0-01A: watcher REVOKE awaits the durable revoke
+
+• BUDGET01-Y — P0-01B: post-settlement durable barrier
+
+• BUDGET01-Z — P0-01 frozen-lifecycle: boot/instance anti-resurrection + control revalidation
+
+• BUDGET01-K — named closure probes
+
+── CLOSURE PROBES ──
+  ✓ dormant_no_store_no_authority
+  ✓ sync_facade_zero_store_io
+  ✓ execution_admission_idempotent_zero_money
+  ✓ integer_money_ceil_upward
+  ✓ empty_catalog_unavailable
+
+✅ BUDGET-01 deterministic suite: 210 passed, 0 failed

@@ -1,0 +1,14 @@
+• LIVE-AI-03B §21 negative mutations (revert-a-fix ⇒ suite must fail)
+
+  ✓ BASE — the unmutated 03B suite PASSES (exit=0)
+  ✓ MUT-A — mutation anchor found in source
+  ✓ MUT-A — a message with a missing/foreign role is wrongly accepted (reverted fix ⇒ suite FAILS, exit=1)
+  ✓ MUT-A — source restored byte-for-byte
+  ✓ MUT-B — mutation anchor found in source
+  ✓ MUT-B — beginTurn anchored on epoch Date.now while the deadline is monotonic (reverted fix ⇒ suite FAILS, exit=1)
+  ✓ MUT-B — source restored byte-for-byte
+  ✓ MUT-C — mutation anchor found in source
+  ✓ MUT-C — the controller bypasses 03A by acknowledging the dispatch directly on the loop (reverted fix ⇒ suite FAILS, exit=1)
+  ✓ MUT-C — source restored byte-for-byte
+
+✅ LIVE-AI-03B §21 negative mutations: 10 passed, 0 failed

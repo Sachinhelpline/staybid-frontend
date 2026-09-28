@@ -1,0 +1,9 @@
+generator: predecessor self-check OK, worst case 105920
+build-sql --check: all SQL artifacts reproduce byte-exact
+candidate artifacts reproduce byte-exact
+pricing evidence extractor: standard-short row 2/0.2/2.5/12 + service_tier/caching sentences found in raw official HTML
+contract: m7-contract: 139 passed, 0 failed
+gateway (in-memory): m7-gateway: 45 passed, 0 failed
+localpg PG16: m7-localpg: 113 passed, 0 failed (16.13; throwaway local cluster)
+localpg PG18: m7-localpg: 113 passed, 0 failed (18.4; throwaway local cluster)
+ALL_DONE

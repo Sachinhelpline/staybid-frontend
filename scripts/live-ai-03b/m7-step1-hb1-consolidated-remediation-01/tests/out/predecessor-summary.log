@@ -1,0 +1,21 @@
+PASS  tests/live-ai/live-ai.test.js  (ALL LIVE-AI-01A R2 CHECKS PASSED)
+PASS  tests/live-ai/live-ai-conversation.test.js  (ALL LIVE-AI-02A CONVERSATION CHECKS PASSED)
+PASS  tests/live-ai/live-ai-gateway.test.js  (ALL LIVE-AI-02A GATEWAY CHECKS PASSED)
+PASS  tests/live-ai/live-ai-audio.test.js  (ALL LIVE-AI-02A AUDIO CHECKS PASSED)
+PASS  tests/live-ai/live-ai-ic02.test.js  (✅ IC02 compiler suite: 291 passed, 0 failed)
+PASS  tests/live-ai/live-ai-03a.test.js  (✅ 03A execution-safety suite: 175 passed, 0 failed)
+PASS  tests/live-ai/live-ai-03b.test.js  (✅ LIVE-AI-03B deterministic suite: 249 passed, 0 failed)
+PASS  tests/live-ai/live-ai-03b-p1-negmut.test.js  (✅ LIVE-AI-03B §21 negative mutations: 10 passed, 0 failed)
+PASS  tests/live-ai/live-ai-03b-teardown-negmut.test.js  (✅ LIVE-AI-03B §14 teardown negative mutations: 10 passed, 0 failed)
+PASS  tests/live-ai/live-ai-03b-staging-authority.test.js  (✅ LIVE-AI-03B staging authority suite: 59 passed, 0 failed)
+PASS  tests/live-ai/live-ai-03b-staging-runtime.test.js  (✅ LIVE-AI-03B staging runtime suite: 66 passed, 0 failed)
+PASS  tests/live-ai/live-ai-owner-preview.test.js  (✓ owner-preview: 961 passed, 0 failed)
+PASS  tests/budget/live-ai-budget-01.test.js  (✅ BUDGET-01 deterministic suite: 210 passed, 0 failed)
+FAIL(1) tests/budget/live-ai-budget-01.pg.test.js  (ENV: initdb as the postgres OS user could not traverse the scratchpad path — NOT a test failure)
+RERUN PASS tests/budget/live-ai-budget-01.pg.test.js from a world-traversable temp copy of the SAME clone (cmp-identical candidate openai-responses.ts): ✅ BUDGET-01 PostgreSQL integration suite: 80 passed, 0 failed
+PASS  tests/voice/voice-gateway.test.js  (ALL VOICE-AI-SB-04 GATEWAY CHECKS PASSED)
+PASS  tests/voice/voice-gateway-security.test.js  (ALL VOICE-AI-SB-04 GATEWAY SECURITY CHECKS PASSED)
+PASS  tests/voice/voice-provider.test.js  (ALL VOICE-AI-SB-04 PROVIDER/CLIENT CHECKS PASSED)
+PASS  tests/voice/voice-router.test.js  (✓ SB-05-01-ARCH-01-EV-02 router suite: 646 passed, 0 failed)
+predecessor suites: 17/18 passed
+predecessor suites (after env rerun): 18/18 passed

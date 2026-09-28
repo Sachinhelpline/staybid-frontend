@@ -1,0 +1,56 @@
+{
+  "_status": "CANDIDATE SUPPLIED RECEIPT (authority A) — NOT AN APPROVAL, NOT AUTHORITY. Executor retrieved the official OpenAI pages 2026-09-28 (see docs-evidence/); a LATER independent WORK closure must re-verify the facts before any reviewer signs an anchor.",
+  "receipt": {
+    "id": "m7s1-pricing-evidence-openai-gpt-5-6-terra-standard-short-v2-20260928T152623Z",
+    "digest": "5754ef94179d9eb30a80f392a41affbd6efd1656283a55db164d78e46ef8f19c",
+    "content": {
+      "account_mode": "direct",
+      "catalog_version_id": "openai-gpt-5-6-terra-standard-short-v2",
+      "context_tier": "short",
+      "currency": "USD",
+      "excluded_paths": {
+        "batch": false,
+        "bedrock": false,
+        "fast": false,
+        "flex": false,
+        "long_context": false,
+        "priority": false,
+        "regional": false,
+        "scale_tier": false
+      },
+      "long_context_threshold_input_tokens": 272000,
+      "max_input_tokens": 32768,
+      "max_output_tokens": 2000,
+      "model": "gpt-5.6-terra",
+      "processing_mode": "standard",
+      "provider": "openai",
+      "rates": [
+        {
+          "billing_dimension": "reasoning_input_token",
+          "rate_micros": 2000000,
+          "service_tier": null,
+          "unit_size": 1000000
+        },
+        {
+          "billing_dimension": "reasoning_input_token",
+          "rate_micros": 2500000,
+          "service_tier": "cache_write",
+          "unit_size": 1000000
+        },
+        {
+          "billing_dimension": "reasoning_output_token",
+          "rate_micros": 12000000,
+          "service_tier": null,
+          "unit_size": 1000000
+        }
+      ],
+      "regional_uplift": false,
+      "service_tier": "default",
+      "source_digest": "ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357",
+      "source_id": "openai-api-pricing/gpt-5.6-terra/standard/short-context/v1",
+      "source_url": "https://developers.openai.com/api/docs/pricing",
+      "unit_size": 1000000,
+      "verified_at": "2026-09-28T15:26:23Z"
+    }
+  }
+}

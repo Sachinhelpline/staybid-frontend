@@ -1,0 +1,61 @@
+• Local tsc compile (SB-05-01 ARCH-01-EV-02 gateway incl. router): exit 0, clean
+
+• A. Normal routing
+
+• B. Complexity
+
+• C. Correction / failure
+
+• D. Language
+
+• E. Transaction boundary
+
+• R1-01. Active turn ownership
+
+• R1-02. Termination / generation invalidation
+
+• R1-03. Real bounded timeout
+
+• R1-04. Duplicate authority-inertness
+
+• R1-05. Bounded escalation id + records
+
+• R1-06. Authoritative cost safety
+
+• R1-07. Unavailable adapter zero billable effect
+
+• R1. Ownership ordering trace
+
+• Escalation caps
+
+• Stale / cancel
+
+• ARCH-01. Typed semantic advice schema
+
+• EV-01 Target A. Per-value reservation effects (non-true)
+
+• EV-01 Target B. Terminal duplicate matrix (BEFORE/AFTER)
+
+• H. Advice validator
+
+• H2. Context validator
+
+• R1-09. Telemetry closed domains + HMAC
+
+• SECURITY / adversarial
+
+• R2-01. Timer dependency failures
+
+• R2-02. Reservation exception-safe + strict true
+
+• ARCH-01. Structural non-authority (free-text classifier removed)
+
+• R2-04. Duplicate terminal states
+
+• R2-05. Id boundary + malformed ids
+
+• R2-06. Telemetry string-domain injection
+
+• R3-K. Duplicate terminal matrix
+
+✓ SB-05-01-ARCH-01-EV-02 router suite: 646 passed, 0 failed

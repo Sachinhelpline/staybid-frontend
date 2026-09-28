@@ -1,0 +1,4 @@
+• server: 18.4
+    
+    m7-gateway: 62 passed, 0 failed
+m7-localpg: 113 passed, 0 failed (18.4; throwaway local cluster)
