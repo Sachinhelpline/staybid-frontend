@@ -119,7 +119,7 @@ BEGIN
   FOREACH t IN ARRAY ARRAY['activate_catalog','restore_catalog_inactive'] LOOP
     PERFORM 1 FROM pg_proc pr JOIN pg_namespace nn ON nn.oid=pr.pronamespace
       WHERE nn.nspname='live_ai_03b_trusted' AND pr.proname=t AND pr.prosecdef=true AND pr.proowner=v_owner_oid
-        AND 'search_path=' = ANY(COALESCE(pr.proconfig, ARRAY[]::text[]));
+        AND 'search_path=""' = ANY(COALESCE(pr.proconfig, ARRAY[]::text[]));
     IF NOT FOUND THEN RAISE EXCEPTION 'verify: trusted function % missing / not SECURITY DEFINER / not fn_owner / no empty search_path', t; END IF;
   END LOOP;
   RAISE NOTICE 'verify OK: trusted functions (SECURITY DEFINER + empty search_path + fn_owner)';

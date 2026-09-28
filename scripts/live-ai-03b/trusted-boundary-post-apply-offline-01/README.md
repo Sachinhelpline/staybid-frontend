@@ -104,3 +104,12 @@ read-only prestate; reader LOGIN credential out-of-band + custody-isolated; effe
 credential-backed proof (reader SELECT succeeds; every write + trusted-function EXECUTE denied);
 connection→service-identity confirmation to AI-STAGING `b7362594-...`. Application of either artifact
 needs separate Owner authorization.
+
+## M6 R2 correction — empty `search_path` predicate (section D)
+PostgreSQL stores `SET search_path = ''` in `pg_proc.proconfig` as `search_path=""`, so the previous
+literal `'search_path='` could never match and the verifier rejected a correct application. Section D
+now requires exactly `'search_path=""'` (exact array-element equality — no `LIKE`, no regex). This is
+the ONLY SQL change; the test assertion for that predicate was updated to match (same assertion count,
+107). Proven on real PostgreSQL by the M6 offline suite: the corrected verifier passes a correct apply
+and still fails a function with a non-empty, missing or unsafe `search_path`. The M6 runner executes
+this canonical file directly (no derived copy).

@@ -76,3 +76,18 @@ validation.** Hosted-PostgreSQL scalar-subquery/boolean/NULL semantics remain a 
 See `future-live-gates.json`: fresh Railway identities, connection→service proof, CORE non-target,
 source prestate, credential isolation, trust-root config, reader-role application, hosted-dialect
 validation, and composed-authority provisioning — all OPEN, Owner/future-packet work.
+
+## M6 R2 — gateway budget-store DB role (B+, unapplied)
+- `gateway-store-role.sql` — creates the credentialless role `live_ai_03b_gateway_store` (LOGIN
+  NOINHERIT, unprivileged, CONNECTION LIMIT 8, password NULL) with the exact SOURCE-DERIVED privilege
+  matrix of the accepted gateway budget store, plus an UPDATE-deny guard: one SECURITY INVOKER trigger
+  function (empty `search_path`, no dynamic SQL, no table access) and one BEFORE UPDATE FOR EACH
+  STATEMENT trigger, ENABLE ALWAYS, on `budget_control_epochs` and `budget_sessions`. The two
+  column-level grants (`UPDATE(record_digest)`, `UPDATE(id)`) exist ONLY because PostgreSQL requires
+  UPDATE on at least one column for the accepted `FOR SHARE` / `FOR UPDATE` row locks; every UPDATE by
+  the role is rejected by the guard. Atomic, fail-closed, idempotent only for the exact state, never
+  sets a password.
+- `gateway-store-privilege-matrix.json` — the pinned machine-readable matrix + guard identity.
+
+Owner-applied only (M6 Phase C, after the deferred ledger-read grant). The gateway DSN, gateway
+configuration and deployment remain deferred (M7).

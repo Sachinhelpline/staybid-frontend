@@ -15,6 +15,12 @@
   "frozen_files_touched": "none — the 19 trusted-activation-boundary + first-text-probe files and the 14 trusted-executor-runtime files are byte-unchanged (git diff empty)",
   "changed_this_packet": ["production-read-queries.mjs", "production-authority-composition.mjs", "tests/live-binding-fixture.mjs", "tests/live-binding.test.mjs", "README.md", "future-live-gates.json", "EVIDENCE-MANIFEST.json"],
   "unchanged_this_packet": ["trusted-reader-role.sql"],
+  "m6_r2_gateway_store_role": {
+    "added": ["gateway-store-role.sql", "gateway-store-privilege-matrix.json"],
+    "summary": "credentialless live_ai_03b_gateway_store role (LOGIN NOINHERIT, CONNECTION LIMIT 8, password NULL) with the exact source-derived matrix of the accepted gateway budget store + an ENABLE ALWAYS UPDATE-deny guard on budget_control_epochs / budget_sessions (column-level UPDATE(record_digest) / UPDATE(id) exist only as row-lock capability for the accepted FOR SHARE / FOR UPDATE)",
+    "status": "UNAPPLIED — Owner-applied only (M6 Phase C); no credential, no DSN, no gateway configuration or deployment",
+    "proof": "M6 R2 real-PostgreSQL suite: all 47 accepted gateway statements executed under the real gateway-store LOGIN inside the accepted budget integration suite (0 permission / guard errors); every UPDATE path on the two guarded tables rejected; Owner / fn_owner paths unaffected; rollback exact"
+  },
   "files": [
     { "path": "production-read-queries.mjs", "sha256": "42ddf87d268183183d3851a91e9df57b8e9e2a1c3d629412a24a489e9646ed0c", "bytes": 18744, "task": "A" },
     { "path": "trusted-reader-role.sql", "sha256": "11d9f707085e230df25e4f3ff1ddb7a8b7503149ee67a02d4ac38c501fccd8fd", "bytes": 6696, "task": "B (unchanged; preserved)" },
@@ -22,7 +28,9 @@
     { "path": "tests/live-binding-fixture.mjs", "sha256": "48b2cbb811d3342e82464c8cf14e0cdb956c75c8eefe88f68c42848fe32a626a", "bytes": 5595, "task": "test" },
     { "path": "tests/live-binding.test.mjs", "sha256": "2ddd07d63f3be1b330a1903eb36319537330a9ca8d22ddedc3840460a574b26d", "bytes": 22934, "task": "test" },
     { "path": "future-live-gates.json", "sha256": "78b94d0646672ba61c0ee0b90e8d2cc9e353d020b983353e9458451a5516c80a", "bytes": 9285, "task": "spec" },
-    { "path": "README.md", "sha256": "28d2cf36035688f08f6edbac836a2dfed3299e7af0cfece1264a4136f2a7322d", "bytes": 5406, "task": "doc" }
+    { "path": "gateway-store-role.sql", "sha256": "a1d0e59048b48e2e6bec9de86741d7811f91aa4f909f109a8bf4e787901d0a1a", "bytes": 22762, "task": "M6 R2 gateway-store role (B+)" },
+    { "path": "gateway-store-privilege-matrix.json", "sha256": "2689802ff2e55284cebbd2f48aadc4ae646bd9f9114838d84916c51d898553b7", "bytes": 5440, "task": "M6 R2 gateway-store role (B+)" },
+    { "path": "README.md", "sha256": "e32b3e00e3d581af9dc49bf732f3d25d6e9809eec315abfdc2ed31632299903b", "bytes": 6528, "task": "doc" }
   ],
   "honesty": "Hashes cover this directory's own files only. This manifest is not signed and is not authority; it is an integrity index for offline review."
 }

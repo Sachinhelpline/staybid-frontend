@@ -147,7 +147,7 @@ ok("B: SELECT-only — no DML statements", !/^\s*(INSERT\s+INTO|UPDATE\s+\w|DELE
 ok("B: SELECT-only — no DDL", !/\b(CREATE\s+(ROLE|SCHEMA|FUNCTION|TABLE)|DROP\s+\w|ALTER\s+(ROLE|TABLE|FUNCTION))\b/i.test(Bs));
 ok("B: no trusted-function invocation", !/\b(PERFORM|CALL|SELECT)\s+live_ai_03b_trusted\.(activate_catalog|restore_catalog_inactive)\s*\(/i.test(Bs));
 ok("B: no unexpected trusted-schema objects (1 table + 2 functions)", /expected exactly 1\)/.test(B) && /expected exactly 2\)/.test(B));
-ok("B: SECURITY DEFINER + empty search_path checked", /prosecdef=true/.test(B) && /'search_path=' = ANY/.test(B));
+ok("B: SECURITY DEFINER + empty search_path checked", /prosecdef=true/.test(B) && /'search_path=""' = ANY/.test(B) && !/'search_path=' = ANY/.test(B));
 ok("B: lifecycle readout informational (NOTICE not EXCEPTION)", /info \(lifecycle-dependent\)/.test(B));
 
 console.log("9. Fail-closed density + provenance + honesty");

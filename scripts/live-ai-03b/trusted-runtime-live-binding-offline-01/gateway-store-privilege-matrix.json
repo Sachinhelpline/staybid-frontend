@@ -1,0 +1,194 @@
+{
+  "schema": "live-ai-03b.gateway-store-privilege-matrix.v1",
+  "status": "UNAPPLIED — Owner-applied only via gateway-store-role.sql (M6); credentialless",
+  "target": {
+    "project": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+    "environment": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+    "postgres_service": "b7362594-a01b-4623-a982-394707a6cec2",
+    "database": "railway",
+    "never": "CORE-PROD 1fbd7632-95ad-46f3-a20c-5be5b8e44e6b"
+  },
+  "role": {
+    "name": "live_ai_03b_gateway_store",
+    "attributes": {
+      "login": true,
+      "inherit": false,
+      "superuser": false,
+      "createdb": false,
+      "createrole": false,
+      "replication": false,
+      "bypassrls": false,
+      "connection_limit": 8
+    },
+    "password": "NULL (never set in M6)",
+    "memberships": [],
+    "owns": [],
+    "role_settings": [],
+    "database": {
+      "explicit": [
+        "CONNECT"
+      ],
+      "create": false
+    },
+    "schemas": {
+      "public": [
+        "USAGE"
+      ],
+      "live_ai_03b_trusted": []
+    },
+    "trusted_functions_execute": false,
+    "sequences": [],
+    "default_privileges": [],
+    "parameter_privileges": [],
+    "session_replication_role_set": false
+  },
+  "derivation": {
+    "sources": [
+      "server/voice-gateway/live-ai-budget-store.ts",
+      "server/voice-gateway/live-ai-staging-main.ts"
+    ],
+    "statements": 47,
+    "method": "each accepted statement run as EXPLAIN (GENERIC_PLAN) under SET LOCAL ROLE on real PostgreSQL with the accepted foundation migration; the table matrix minimised from the full SELECT/INSERT/UPDATE superset by dropping each (table, privilege) and keeping it only if a statement then fails; row locks proven to need UPDATE on at least one column"
+  },
+  "tables": {
+    "budget_policy_versions": {
+      "table": [
+        "SELECT"
+      ]
+    },
+    "budget_price_catalog_versions": {
+      "table": [
+        "SELECT"
+      ]
+    },
+    "budget_price_catalog_entries": {
+      "table": [
+        "SELECT"
+      ]
+    },
+    "budget_control_epochs": {
+      "table": [
+        "SELECT"
+      ],
+      "column_update": [
+        "record_digest"
+      ],
+      "why_column_update": "row-lock capability for SELECT ... FOR SHARE (source lines 425/428/465/468); every UPDATE by the role is rejected by the guard"
+    },
+    "budget_sessions": {
+      "table": [
+        "SELECT",
+        "INSERT"
+      ],
+      "column_update": [
+        "id"
+      ],
+      "why_column_update": "row-lock capability for SELECT ... FOR UPDATE (source line 482); every UPDATE by the role is rejected by the guard"
+    },
+    "budget_scope_counters": {
+      "table": [
+        "SELECT",
+        "INSERT",
+        "UPDATE"
+      ]
+    },
+    "budget_envelopes": {
+      "table": [
+        "SELECT",
+        "INSERT",
+        "UPDATE"
+      ]
+    },
+    "budget_provider_reservations": {
+      "table": [
+        "SELECT",
+        "INSERT",
+        "UPDATE"
+      ]
+    },
+    "budget_envelope_allocations": {
+      "table": [
+        "SELECT",
+        "INSERT"
+      ]
+    },
+    "budget_provider_settlements": {
+      "table": [
+        "SELECT",
+        "INSERT"
+      ]
+    },
+    "budget_execution_consumptions": {
+      "table": [
+        "SELECT",
+        "INSERT"
+      ]
+    },
+    "budget_reconciliations": {
+      "table": [
+        "SELECT",
+        "INSERT"
+      ]
+    },
+    "budget_decisions": {
+      "table": [
+        "INSERT"
+      ]
+    }
+  },
+  "never": [
+    "DELETE",
+    "TRUNCATE",
+    "REFERENCES",
+    "TRIGGER",
+    "table-level UPDATE on budget_control_epochs",
+    "table-level UPDATE on budget_sessions",
+    "SELECT on budget_decisions",
+    "any privilege on live_ai_03b_trusted.*",
+    "EXECUTE on activate_catalog / restore_catalog_inactive",
+    "EXECUTE on the guard function",
+    "GRANT ... ON ALL TABLES / ALTER DEFAULT PRIVILEGES",
+    "WITH GRANT OPTION"
+  ],
+  "guard": {
+    "function": "public.live_ai_03b_gateway_store_update_guard()",
+    "owner": "postgres",
+    "language": "plpgsql",
+    "security": "INVOKER",
+    "config": [
+      "search_path=\"\""
+    ],
+    "public_execute": false,
+    "body_md5": "94f0da6752ffec40b05d63a0e396231f",
+    "triggers": [
+      {
+        "table": "public.budget_control_epochs",
+        "name": "live_ai_03b_gateway_store_update_guard",
+        "timing": "BEFORE",
+        "event": "UPDATE",
+        "level": "STATEMENT",
+        "tgtype": 18,
+        "enabled": "ALWAYS (A)",
+        "columns": [],
+        "when": null
+      },
+      {
+        "table": "public.budget_sessions",
+        "name": "live_ai_03b_gateway_store_update_guard",
+        "timing": "BEFORE",
+        "event": "UPDATE",
+        "level": "STATEMENT",
+        "tgtype": 18,
+        "enabled": "ALWAYS (A)",
+        "columns": [],
+        "when": null
+      }
+    ],
+    "rejects": "any UPDATE statement (incl. zero-row UPDATE, INSERT ... ON CONFLICT DO UPDATE, MERGE ... UPDATE) whose session_user or current_user is live_ai_03b_gateway_store",
+    "allows": "every other principal (Owner/admin, fn_owner inside the trusted functions, reader)"
+  },
+  "limitations": [
+    "the row-lock capability lets a (future, credentialed) gateway session hold row locks that DELAY — never bypass — Owner control updates until its transaction ends; the Owner can terminate the session",
+    "TEMPORARY on the database may be available to the role through the PUBLIC default (unchanged by this artifact; not a guard bypass)"
+  ]
+}
