@@ -1,0 +1,268 @@
+run-all under test:     /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m7s2/prev/m7-step2-runtime-rebinding-offline-01/tests/run-all-m7s2.sh  sha256=01fab33fe3b3dd2e6b84200e4ef4668def72745cafa29eb36c78d076048f5cb4
+predecessor under test: /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m7s2/prev/m7-step2-runtime-rebinding-offline-01/tests/run-predecessor.sh  sha256=fd38204e277c4aca15abd5d8227a73e560f0ecf70f8248d7a56622727e5242cc
+── run-all-m7s2.sh ──
+  OK        run-all RA1-all-contracts-satisfied → exit 0 (expected 0)
+  VIOLATION run-all RA1-all-contracts-satisfied attribution: expected RESULT: PASS (10/10) and no FAIL line
+  VIOLATION run-all RA2-gateway-proof-fails → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: FAIL
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA2-gateway-proof-fails attribution: expected exactly one FAIL on 'B ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA3a-unit-fails → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: shim: forced failure of unit (exit 1)
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA3a-unit-fails attribution: expected exactly one FAIL on 'C ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA3b-unit-exit0-but-1-failed → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 289 passed, 1 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA3b-unit-exit0-but-1-failed attribution: expected exactly one FAIL on 'C ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA4a-PG16-SKIPPED-exit2 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: SKIPPED: local cluster did not start (a skip is not a pass)
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA4a-PG16-SKIPPED-exit2 attribution: expected exactly one FAIL on 'D ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA4b-PG18-SKIPPED-exit0 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: SKIPPED: harness env absent (a skip is not a pass)
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA4b-PG18-SKIPPED-exit0 attribution: expected exactly one FAIL on 'E ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA4c-PG18-binaries-unavailable → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA4c-PG18-binaries-unavailable attribution: expected exactly one FAIL on 'E ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA4d-PG18-run-reports-PG16 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA4d-PG18-run-reports-PG16 attribution: expected exactly one FAIL on 'E ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA4e-PG16-no-lifecycle-summary → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: • server: PostgreSQL 16.13 (shim)
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA4e-PG16-no-lifecycle-summary attribution: expected exactly one FAIL on 'D ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA4f-PG18-59-of-60 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 59 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA4f-PG18-59-of-60 attribution: expected exactly one FAIL on 'E ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA4g-PG16-exit1 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 59 passed, 1 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA4g-PG16-exit1 attribution: expected exactly one FAIL on 'D ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA5a-preflight-CLI-exit9 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 9 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA5a-preflight-CLI-exit9 attribution: expected exactly one FAIL on 'F CLI v2-preflight' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA5b-executor-CLI-exit0 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 0 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA5b-executor-CLI-exit0 attribution: expected exactly one FAIL on 'F CLI v2-trusted-activation-executor' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA5c-probe-CLI-exit9 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 9 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA5c-probe-CLI-exit9 attribution: expected exactly one FAIL on 'F CLI v2-first-text-probe' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA6a-reader-entrypoint-exit9 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 9 (expected 70) shim: forced failure of entrypoint (exit 9)
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA6a-reader-entrypoint-exit9 attribution: expected exactly one FAIL on 'G ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA6b-serving-runtime-exit0 → exit 0 (expected nonzero)
+        | identity artifacts: OK (runtime manifest shim)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 0 (expected 70) shim: forced failure of serving (exit 0)
+        | ALL_DONE
+  VIOLATION run-all RA6b-serving-runtime-exit0 attribution: expected exactly one FAIL on 'H ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA7-first-check-fails-all-later-pass → exit 0 (expected nonzero)
+        | shim: forced failure of identity (exit 1)
+        | PIN B gateway closure proof: PASS
+        | unit + §19 negative matrix: m7s2-unit: 290 passed, 0 failed
+        | lifecycle PG16: m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed
+        | lifecycle PG18: m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+        | CLI fail-closed v2-preflight.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-trusted-activation-executor.mjs: exit 2 (expected 2)
+        | CLI fail-closed v2-first-text-probe.mjs: exit 2 (expected 2)
+        | reader production entrypoint (no env): exit 70 (expected 70) {"status":"unprovisioned"}
+        | serving runtime (no authority): exit 70 (expected 70) {"status":"unprovisioned"}
+        | ALL_DONE
+  VIOLATION run-all RA7-first-check-fails-all-later-pass attribution: expected exactly one FAIL on 'A ' + RESULT: FAIL (got: none)
+  VIOLATION run-all RA7 later PASS lines do not produce a success verdict
+── run-predecessor.sh (frozen live-ai-03b suites discovered from the real repo: 20) ──
+  OK        predecessor PR8-all-suites-pass → exit 0 (expected 0) :: predecessor suites: 44/44 passed
+  VIOLATION predecessor PR8-all-suites-pass attribution: /^RESULT: PASS \(44/44 suites, 0 setup failures\)/ not found
+  VIOLATION predecessor PR9a-one-repo-suite-fails → exit 0 (expected nonzero)
+        | PASS  scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/tests/live-binding.test.mjs  (shim suite live-binding.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/catalog/v2-digest-gen.mjs  (shim suite v2-digest-gen.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/build-sql.mjs --check  (shim suite build-sql.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-contract.test.mjs  (shim suite m7-contract.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-gateway.test.mjs  (shim suite m7-gateway.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG16)  (m7-localpg: 113 passed, 0 failed (shim))
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG18)  (m7-localpg: 113 passed, 0 failed (shim))
+        | predecessor suites: 43/44 passed
+  OK        predecessor PR9a-one-repo-suite-fails attribution: /^FAIL\(1\) tests/live-ai/live-ai-03b.test.js/
+  VIOLATION predecessor PR9b-frozen-V1-runtime-suite-fails → exit 0 (expected nonzero)
+        | PASS  scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/tests/live-binding.test.mjs  (shim suite live-binding.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/catalog/v2-digest-gen.mjs  (shim suite v2-digest-gen.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/build-sql.mjs --check  (shim suite build-sql.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-contract.test.mjs  (shim suite m7-contract.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-gateway.test.mjs  (shim suite m7-gateway.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG16)  (m7-localpg: 113 passed, 0 failed (shim))
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG18)  (m7-localpg: 113 passed, 0 failed (shim))
+        | predecessor suites: 43/44 passed
+  OK        predecessor PR9b-frozen-V1-runtime-suite-fails attribution: /^FAIL\(1\) scripts/live-ai-03b/trusted-executor-runtime-01/tests/runtime-integration.test.mjs/
+  VIOLATION predecessor PR9c-step1-localpg-fails → exit 0 (expected nonzero)
+        | PASS  scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/tests/live-binding.test.mjs  (shim suite live-binding.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/catalog/v2-digest-gen.mjs  (shim suite v2-digest-gen.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/build-sql.mjs --check  (shim suite build-sql.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-contract.test.mjs  (shim suite m7-contract.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-gateway.test.mjs  (shim suite m7-gateway.test.mjs: 1 passed, 0 failed)
+        | FAIL(1) scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG16)  (m7-localpg: 112 passed, 1 failed)
+        | FAIL(1) scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG18)  (m7-localpg: 112 passed, 1 failed)
+        | predecessor suites: 42/44 passed
+  OK        predecessor PR9c-step1-localpg-fails attribution: /^FAIL\(1\) .*m7-localpg.test.sh \(PG16\)/
+  VIOLATION predecessor PR10-historical-checkout-bootstrap-fails → exit 0 (expected nonzero)
+        | fatal: shim clone failure
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/catalog/v2-digest-gen.mjs  (shim suite v2-digest-gen.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/build-sql.mjs --check  (shim suite build-sql.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-contract.test.mjs  (shim suite m7-contract.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-gateway.test.mjs  (shim suite m7-gateway.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG16)  (m7-localpg: 113 passed, 0 failed (shim))
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG18)  (m7-localpg: 113 passed, 0 failed (shim))
+        | predecessor suites: 44/44 passed
+  VIOLATION predecessor PR10-historical-checkout-bootstrap-fails attribution: /^SETUP-FAIL\(128\) historical 9270c282 checkout/ not found
+  VIOLATION predecessor PR11-suite-inventory-shrinks → exit 0 (expected nonzero)
+        | PASS  scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/tests/live-binding.test.mjs  (shim suite live-binding.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/catalog/v2-digest-gen.mjs  (shim suite v2-digest-gen.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/build-sql.mjs --check  (shim suite build-sql.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-contract.test.mjs  (shim suite m7-contract.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-gateway.test.mjs  (shim suite m7-gateway.test.mjs: 1 passed, 0 failed)
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG16)  (m7-localpg: 113 passed, 0 failed (shim))
+        | PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG18)  (m7-localpg: 113 passed, 0 failed (shim))
+        | predecessor suites: 43/43 passed
+  VIOLATION predecessor PR11-suite-inventory-shrinks attribution: /^INVENTORY-FAIL  ran 43 suites, expected exactly 44/ not found
+harness-fail-closed: 5 passed, 42 failed

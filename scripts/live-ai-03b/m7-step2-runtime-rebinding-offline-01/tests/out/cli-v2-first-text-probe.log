@@ -1,0 +1,1 @@
+[live-ai-03b V2 first-text-probe] FAIL-CLOSED: sends nothing on its own; requires an INJECTED staging broker transport AND an in-process V2 preflight receipt. Exit 2.

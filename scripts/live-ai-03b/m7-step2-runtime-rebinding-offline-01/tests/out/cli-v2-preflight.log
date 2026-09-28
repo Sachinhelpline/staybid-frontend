@@ -1,0 +1,3 @@
+[live-ai-03b V2 preflight] FAIL-CLOSED: performs NO db/network/railway/provider access on its own.
+It requires an INJECTED verification context via runPreActivationV2 / runPreflightV2 / runPostflightV2.
+mode=none — no injected deps present ⇒ refusing (exit 2). No secret is ever printed.

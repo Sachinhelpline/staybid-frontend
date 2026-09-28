@@ -1,0 +1,552 @@
+{
+  "artifact": "LIVE-AI-M7-STEP2-HARNESS-REMEDIATION-EVIDENCE",
+  "supersedes": {
+    "zip": "LIVE-AI-M7-STEP2-RUNTIME-REBINDING-EVIDENCE.zip",
+    "sha256": "50089b3acadbb1380c379342fecd340eab67c299fe09c2d96240e7ae97886511"
+  },
+  "baseline": {
+    "head": "4f390b74132b087b757faa655bdcb73be6c14a8f",
+    "tree": "72080256d4cc2a97a2a15058931e838ebef5ec48"
+  },
+  "candidate_destination": "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/",
+  "runtime_manifest_digest": "9a460078846eec885b726e7b54bdbd8a301c690b1f78a68439e151f462341998",
+  "v2_registry_digest": "07f19f37cef62c9bd54956fc37844f5927f5ca79d668f9fe85a2d3af9bd1ee0b",
+  "members": 107,
+  "files": [
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/ARCHITECTURE-BINDING-MAP.md",
+      "bytes": 8586,
+      "sha256": "b512a277e53b766fc51a30da63860eb8464af5dbc08fff59c03d278ddb29525c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/BASELINE-IDENTITY.txt",
+      "bytes": 975,
+      "sha256": "30259941d1a668d90edf0661698352f8b76d0a3f855301af81bf4c98b133c4ec"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/FROZEN-FILE-HASH-PROOF.txt",
+      "bytes": 3384,
+      "sha256": "1b04cdebf7bb488f7c378422855c945a4a68e1209eb6cbded9086648ef2f4288"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/LIFECYCLE-STATE-MATRIX.md",
+      "bytes": 2473,
+      "sha256": "117c8eb87718e5b06a11e5d3283aa79aa44fc4fd032f8f871510d4dd6e416e95"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/M7-STEP2-IMPLEMENTATION-RECEIPT.md",
+      "bytes": 27515,
+      "sha256": "bf79d9f3e1d649a8c3f6f1020a7b1607c7af2f4672222a07474cbc8096a1f48b"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/NEGATIVE-REGRESSION-MAP.md",
+      "bytes": 6297,
+      "sha256": "c0ab4f5d28b76261e252f9252ffce4477ebb053603f9589f1f6c210aa9760f66"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/PRIVILEGE-MATRIX.json",
+      "bytes": 2121,
+      "sha256": "c5f36ae6228ddf5805742bed1c5f1522ec2e04f71d8579ada7ee6da79f439539"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/README-OPERATOR.md",
+      "bytes": 7747,
+      "sha256": "ed167cb4cea58dace63b5f0af3b6d35ddfcb316929f61bcb7df6e4b59425e44a"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/ROLLBACK-FAIL-CLOSED-PLAN.md",
+      "bytes": 2562,
+      "sha256": "d12812e7697198870064bb96fe41d1aa7a63e559ddc520b25785ec7b3f3f610f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/docs/CANDIDATE-ADDITIONS.diff",
+      "bytes": 443869,
+      "sha256": "2783b956e12a57009314f6f9307b8e2aea0f40034a8b601d55fdc66d8a875a42"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/docs/HARNESS-REMEDIATION.diff",
+      "bytes": 25750,
+      "sha256": "3b94255c04f6a86973d26c21262aac60e6292cfd335de6b6dcff80cd6c2e4c73"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/docs/V1-DEPENDENCY-INVENTORY.txt",
+      "bytes": 5631,
+      "sha256": "d96c98077abaa16236def76f0f6c1ca9ae3b7c466c46631f5dbf4c2808d1f787"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/identity/GATEWAY-DEPLOY-SOURCE-PROOF.json",
+      "bytes": 6658,
+      "sha256": "a620f9f18cc5632a73ecebe52861058a25aaf45334a2ab1b2f1fcfde1f27050f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/identity/RUNTIME-CONTENT-MANIFEST.json",
+      "bytes": 2947,
+      "sha256": "86ac5655067ead718a0da28c47f29deaa89235616c982e09214f5d7dbe0e9274"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/identity/STEP2-PRESERVATION-BINDING-TEMPLATE.json",
+      "bytes": 1933,
+      "sha256": "3687af28089f53c4f38b2d63a1b6a36e9e8f558eb0ce2ee51d05af2ec368e4da"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/identity/v2-identity.mjs",
+      "bytes": 9677,
+      "sha256": "5d6adba97a5374c616f3095b0a066df15f01826f17b0dee9a5b98e0061cff150"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/identity/v2-source-identity.mjs",
+      "bytes": 12863,
+      "sha256": "64e8511bae411719f6d22184ccc7be7507505ad154749aac88c8bce80fe858e7"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/probe/v2-first-text-probe.mjs",
+      "bytes": 9768,
+      "sha256": "bc17a3fe506e3b56f652adc5e6a5b14543db513aeee964b451fa9df226f0f5a2"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/reader/v2-gateway-observation-caller.mjs",
+      "bytes": 5873,
+      "sha256": "12347b2e13c0b133e6aae7c0d758942f3ae1c63f551b9195dfabcd229895cdc1"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/reader/v2-observation-contract.mjs",
+      "bytes": 7357,
+      "sha256": "22f4f6f96f90d6354ff2d26766e7fa9ab879484fa47930629547a094e594247f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/reader/v2-production-entrypoint.mjs",
+      "bytes": 11315,
+      "sha256": "a90a35596bab6d7b4ec478ee906f026fa810d0d751ce1f0c05e9103e73a6495c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/reader/v2-production-reader-authority.mjs",
+      "bytes": 10758,
+      "sha256": "a173d7d2d48b9123ff3029e13c10d4be842628cd576fea0e1197cd2d3ee9bb53"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/reader/v2-reader-only-authority.mjs",
+      "bytes": 10046,
+      "sha256": "0a50bd874f889a84be2acc5d9fa98b999bdc3ded7ee6b4a645b41af717c46c9c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/reader/v2-serving-runtime.mjs",
+      "bytes": 5623,
+      "sha256": "168dd1bc65271d6d5190bf92627f2deca2270ff982e9cd91633938be7daeb4d3"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-preflight.mjs",
+      "bytes": 22190,
+      "sha256": "a2d7f005d1b3428aa8157042c57b1ed0d7515851f9aea5a89bc085ed8cc4d3c5"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-production-authority.mjs",
+      "bytes": 6143,
+      "sha256": "d629f6d64530a9cd26a43f775835ef3ee6bb85e6eb856898f77900b463a50d89"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-query-registry.mjs",
+      "bytes": 15819,
+      "sha256": "9133908fa41a5840599ad6ef02bd85b1509db58a8047117c511131a364de3572"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-restricted-activation-adapter.mjs",
+      "bytes": 6461,
+      "sha256": "d1528ad2c36236153557e5d03033a15b0504c3380579f796f09c7a0ea1446572"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-runtime-config.mjs",
+      "bytes": 4758,
+      "sha256": "dba84a7d04d6f95302838b173bfa65ab8066b0f77dfa20402d765b90dde6aa04"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-trusted-activation-executor.mjs",
+      "bytes": 7382,
+      "sha256": "f46bac53601eb66e2357678857d9dbd656ae7986076d745873eb778ae2a742c6"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-trusted-executor-runtime.mjs",
+      "bytes": 10269,
+      "sha256": "b5aa2734055848d47fcec94b6df1d2e6b01943495e804d37ad836826bbacd37f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/runtime/v2-trusted-read-adapter.mjs",
+      "bytes": 10843,
+      "sha256": "d35de138ad1caf89b764325ba1680916887c4bae5cc519096ef0460bbe175c34"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/harness-fail-closed.test.sh",
+      "bytes": 11696,
+      "sha256": "95b0f2357013dde98cf38aeb788c053929a733a6a2d6d098f14a4d64207ca6da"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/helpers.mjs",
+      "bytes": 9569,
+      "sha256": "c503b6bd751ab7a01bc580d3e6dfb1c57307a0396f3cce9a05c0d716f6c05537"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/localpg-attester.mjs",
+      "bytes": 4490,
+      "sha256": "d1908a1446e7ca80ed4203fd91237cceb4f209ea93860ab6b4572e3d90eba310"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/cli-v2-first-text-probe.log",
+      "bytes": 167,
+      "sha256": "c9e3722ce46a37e7288fd7a611ead80c05f52f747bbe423fc97543d7b49fa723"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/cli-v2-preflight.log",
+      "bytes": 292,
+      "sha256": "11b8ed8697de2a7beaae1d6a13f5c834887eb82404c3071a03b1a7d3f4727aa8"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/cli-v2-trusted-activation-executor.log",
+      "bytes": 170,
+      "sha256": "2ed370f27c328dab48d50de2acf7a3e19be50a17cf2795bcf0a2e1241c448a0d"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/gateway-source-proof.log",
+      "bytes": 6658,
+      "sha256": "a620f9f18cc5632a73ecebe52861058a25aaf45334a2ab1b2f1fcfde1f27050f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/harness/NEW-runners-forced-failure.log",
+      "bytes": 5639,
+      "sha256": "f40d748c0eb0b47fe0e0b6a9b537db4c9e9d8b515852c6c19f2b510d3c7502f6"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/harness/OLD-runners-reproduction.log",
+      "bytes": 23328,
+      "sha256": "a0b19b0bf24487f097282e121ecd7ebf560734052004af6f71ae0eff16c40e70"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/harness/RUNTIME-BYTE-FREEZE-PROOF.txt",
+      "bytes": 3506,
+      "sha256": "3aff6d07f793fe7ba594c418e4ebf65a62bef0b4a7f3c45c2c847eb281c95b4d"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/identity-artifacts.log",
+      "bytes": 107,
+      "sha256": "dcb3884504ce3d6e9f9fb91dee838fe0a9b324e058b89713a701e79f2745954f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/m6-r2_1/m6-pg18-ledger.log",
+      "bytes": 36,
+      "sha256": "382cd6a981ff432cf881732a30f415280fb336e73d344ed2aafab0c49a7e351b"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/m6-r2_1/m6-static-at-4f390.log",
+      "bytes": 369,
+      "sha256": "f7fa114dcd0dd47f48778af973d75e16302cd00e011bcfa1daa07904dd2aa74a"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/m6-r2_1/m6-static-at-9270-historical-checkout.log",
+      "bytes": 38,
+      "sha256": "e27ab1fcd3d66a0fc344248e46637ab19bf79b70e362bfcae16013a640850000"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/m7s2-summary.log",
+      "bytes": 876,
+      "sha256": "2ee4bf53521c12993b56a9b011cbee21ed7b91a9e3a7a9740c36b0b2641a0bed"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_m7-step1-hb1-consolidated-remediation-01_build-sql.mjs_--check.log",
+      "bytes": 58,
+      "sha256": "faade9d41ce8dd255bd496b504a28eb2f85064d0469e993ad790c40a949373bf"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_m7-step1-hb1-consolidated-remediation-01_catalog_v2-digest-gen.mjs.log",
+      "bytes": 12035,
+      "sha256": "4ccace9027021c8c18ee5010591d04de580dcc26fd0a38ecd5ba89bd7ba368bb"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_m7-step1-hb1-consolidated-remediation-01_tests_m7-contract.test.mjs.log",
+      "bytes": 35,
+      "sha256": "741696dfcb8be0a723f4168577129371f4c631b8a4aeaf418f924d25e8a20988"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_m7-step1-hb1-consolidated-remediation-01_tests_m7-gateway.test.mjs.log",
+      "bytes": 117,
+      "sha256": "ecccb1a10677bc87918c2828980e5ecb9292a09e1f002049afc8093ebe06ac4c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_m7-step1-hb1-consolidated-remediation-01_tests_m7-localpg.test.sh_(PG16).log",
+      "bytes": 157,
+      "sha256": "8af404b77be5280d1f5ea8314b172f8069f70c2ea61b5f1b8fc2fff2bcc3cff8"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_m7-step1-hb1-consolidated-remediation-01_tests_m7-localpg.test.sh_(PG18).log",
+      "bytes": 123,
+      "sha256": "99cb84ada340713dbcbbeb84cea034c50998577ae1e685bd56a4fea4f8ae5879"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-attester-offline-01_tests_attester-containment.test.mjs.log",
+      "bytes": 757,
+      "sha256": "99bd20592cc09f0d3304bf6d8aef26504b09c3ff04d048b739036da6789eb4ee"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-attester-offline-01_tests_attester-integration.test.mjs.log",
+      "bytes": 1661,
+      "sha256": "82ed8607c8ae7cdc40d89412e5612025063ce57b267be4c66f0bc1d67307e5c3"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-attester-offline-01_tests_attester-localpg.test.mjs.log",
+      "bytes": 805,
+      "sha256": "1a7995352793910350a819755565b771c0410e0bdf2540b4d800e80e7f0c9e64"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_clock.test.mjs.log",
+      "bytes": 265,
+      "sha256": "1262e3d34653d5a0a84eff77097422457ea818c07adfdfea2aefad7df2d7b6a5"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_db-probe.test.mjs.log",
+      "bytes": 277,
+      "sha256": "0c42b9b73aefb766344a1b75d53f034676aef0feff2afb5fc480f8fd2485ccb2"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_inventory.test.mjs.log",
+      "bytes": 299,
+      "sha256": "4265dd93236543617e20ecd2748ade571ab6a7b8ffc647166ecef6049e4c65a7"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_lifecycle.test.mjs.log",
+      "bytes": 377,
+      "sha256": "97fb52d640db730636bc1cea877029ad2993a2d65fb969ec87f21d42e44735d4"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_network.test.mjs.log",
+      "bytes": 304,
+      "sha256": "6cd5318a2bb416fd2749fcf076aa496d18bbf9d301810c948d567761cecd1225"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_preservation.test.mjs.log",
+      "bytes": 284,
+      "sha256": "3a91bb2920d6beb8fcada32e9caa851e6a437be9b3a7a486cabadec7ef76bb05"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_production.test.mjs.log",
+      "bytes": 419,
+      "sha256": "7ee7a891c9c0b30127c90c3eb219293823ca2fd04634bc13854136575f4293a9"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_race.test.mjs.log",
+      "bytes": 398,
+      "sha256": "f8c413014c3b44fd1d22ef787a7ee25755b69f625d68db88cd13d2cdce59aa23"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_regate.test.mjs.log",
+      "bytes": 415,
+      "sha256": "d115c4bedec3accd1688a90df351d089aac571f6d68fe8680a5f24a9fb183309"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_signing-authority.test.mjs.log",
+      "bytes": 385,
+      "sha256": "598727eb81c6d43b883bf17a24b113f6d5c72c7ce794c0c70c8372288f668202"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-bootstrap-clock-peer-offline-01_tests_target-contract.test.mjs.log",
+      "bytes": 286,
+      "sha256": "ad204342589b61ee16cb9bee70f52c67146e63fab01dc3d8c3f49656a51b941f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-host-offline-01_tests_private-reader-host.test.mjs.log",
+      "bytes": 995,
+      "sha256": "0096111ef93f6ad65c1dde04f5b04589ecdaf93293ac0cf9120a21f6486e6816"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-host-runtime-offline-01_tests_runtime.test.mjs.log",
+      "bytes": 1006,
+      "sha256": "ba8843bc7855a1ade70a8a8b784f55c3c145185b479de998065ac999d5848a1c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_private-reader-production-integration-offline-01_tests_production-integration.test.mjs.log",
+      "bytes": 1134,
+      "sha256": "3e84a58fee3179b18227ed09a54f5a0e2ebcb5235a64563ca332ae24fd75cddc"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_trusted-boundary-post-apply-offline-01_tests_boundary-post-apply.test.mjs.log",
+      "bytes": 1152,
+      "sha256": "a663cc8f367929912d0aafdf92233852e08ec4e3b90b1ee778a17a3da50e82d5"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_trusted-executor-runtime-01_tests_runtime-integration.test.mjs.log",
+      "bytes": 964,
+      "sha256": "0c21483525705c0477ebec87c8e7a62f1e0d4f0eb78a74830522c3abe381efdb"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/scripts_live-ai-03b_trusted-runtime-live-binding-offline-01_tests_live-binding.test.mjs.log",
+      "bytes": 737,
+      "sha256": "315d934a115d6ea289246102f7815e3ff25d31c1d488d24ecddd63fd7cba0985"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/setup.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_budget_live-ai-budget-01.pg.test.js.log",
+      "bytes": 6426,
+      "sha256": "9b7675b35e5129b14eb993be9d271edb727a1ba2142392d8eaa1454afae750b7"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_budget_live-ai-budget-01.test.js.log",
+      "bytes": 2382,
+      "sha256": "8793f656f0327c19445ab38262a68f478f20da0f95bd7334f32cddf3ed4f1a6d"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-03a.test.js.log",
+      "bytes": 1543,
+      "sha256": "58b5b0c97ddf8d081535d7539209ff2f54031fbef17dd2b15a79dba36ffbf7bf"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-03b-p1-negmut.test.js.log",
+      "bytes": 846,
+      "sha256": "415941538d45080739a334a6c761b904ed16ceff6873e5d667b7a7be8e7b75c5"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-03b-staging-authority.test.js.log",
+      "bytes": 3486,
+      "sha256": "563d93e1faa2bd43c6f249c36a6384103e7f7369013d353e21e6d5aa92705e7c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-03b-staging-runtime.test.js.log",
+      "bytes": 5003,
+      "sha256": "a95eeb1739117877aba34645b3e052c973df01824ff4678018ccbdc50e3379e3"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-03b-teardown-negmut.test.js.log",
+      "bytes": 885,
+      "sha256": "a5f31069ada1dbc2344eba962620d9ae38feeb7a4dd63bfc5e9ee1954f61a03e"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-03b.test.js.log",
+      "bytes": 19432,
+      "sha256": "2b1c9fc3842b7a39eeca2919e3d31560d12d39dddc30cd6b40d1b0c9c5ac2f4e"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-audio.test.js.log",
+      "bytes": 798,
+      "sha256": "54311336f01f760bb1478223f9da40e47445ceebb39debc6ff884167c2ba91d8"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-conversation.test.js.log",
+      "bytes": 3044,
+      "sha256": "6e3f773e37c0e230ff201a30e51ed776053b064b5a862204f3865716c9334635"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-gateway.test.js.log",
+      "bytes": 15287,
+      "sha256": "1d01e1c9941989b759ba3bb950945a9f42877ef79dc05b10ebb733e06a39d897"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-ic02.test.js.log",
+      "bytes": 2564,
+      "sha256": "a689b15382871a6420450b1226440668f1af3290e60a0c3d4193724cab0476dd"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai-owner-preview.test.js.log",
+      "bytes": 3723,
+      "sha256": "cd247599b83900d925a93359a21e5d966fee5e03b66946cf8ddec16f227f430c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_live-ai_live-ai.test.js.log",
+      "bytes": 2379,
+      "sha256": "9bba377c849f11aa1494d1e7542c4ebc7f4746584676c53fd9d44e046250b9ea"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_voice_voice-gateway-security.test.js.log",
+      "bytes": 777,
+      "sha256": "288f0eba7db5c7ad22c4266174292e3ad79001eff7b5698fa4bd8df16c16c4a4"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_voice_voice-gateway.test.js.log",
+      "bytes": 4456,
+      "sha256": "24e6fb1f0fc1504d9bd941afc75ebfce5b844e5dbed819353e31c6930b3c7c03"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_voice_voice-provider.test.js.log",
+      "bytes": 1132,
+      "sha256": "2097a0f6139105c4940cdd81601ea08b7f0b075d5ebdf7814ec4a1e9dbdc1786"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor/tests_voice_voice-router.test.js.log",
+      "bytes": 1245,
+      "sha256": "3105334dcfa04f1148f11386f46d9e9d50c1d8f7a2c051780145054e005fa83f"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/predecessor-summary.log",
+      "bytes": 6028,
+      "sha256": "ccf3075ef05c861bc3dab7bed373001d8f080a3927970ba42dd71de8e4480919"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/reader-entrypoint.log",
+      "bytes": 140,
+      "sha256": "585dae67b4991abafe7916154c7a105028fae4dac60f2feecd13140f76642d26"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/serving-runtime.log",
+      "bytes": 109,
+      "sha256": "431729cbbb9b52a75f6d464fe8760ce31bdd27896a70d9a24385ee49fbc703ad"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/v2-localpg-pg16.log",
+      "bytes": 5014,
+      "sha256": "7d59dfbff03d2f57f0e281c7fa2df153c5758d414760061cba1691d7c533e0d8"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/v2-localpg-pg18.log",
+      "bytes": 4948,
+      "sha256": "17397df117da17402ae82f01ad227ad6715e0f16f7e67bd9ef3631a0c56f03e1"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/out/v2-unit.log",
+      "bytes": 14984,
+      "sha256": "2f114eb9fe0b34be6e9a80e4e8d9eab3f0e2864d3a2eb10b81b4630aa10f6c0c"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/probe-child.mjs",
+      "bytes": 2044,
+      "sha256": "3bb5aa0d15479f3daa547b5368c0b7d6e1a4892da5f4a8ce905168dfd82ebe36"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/run-all-m7s2.sh",
+      "bytes": 5596,
+      "sha256": "9851dc5962d12318513bae8fb482cdada22a54575dd88e8744b8cdf903c7a51a"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/run-predecessor.sh",
+      "bytes": 5419,
+      "sha256": "cccae893d5d49cbca4ee33d7223fa2bb3d65a065bb334ee22e2cb128b580d942"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/v2-localpg-lifecycle.mjs",
+      "bytes": 24527,
+      "sha256": "b82dec75861af31096f865fbfa23a329142277c53ecfa5d34e92b0383e8c3c96"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/v2-localpg.test.sh",
+      "bytes": 1333,
+      "sha256": "774d5dce58aaff02285e19df7f7f0496e63e7803024914dcb27603836089df18"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tests/v2-unit.test.mjs",
+      "bytes": 69609,
+      "sha256": "7ecb7c9ef3b3196229d6fb352987008abc6a93f3435bfd873af3a87b35e2e126"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tools/prove-gateway-source.mjs",
+      "bytes": 6609,
+      "sha256": "65829407e602560f244c889c1ee2c16c588035f2cc1ca99325aa8c7ea67461db"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tools/verify-step2-preservation.mjs",
+      "bytes": 5180,
+      "sha256": "e962f8ef79d9db16cbc535eabc3ee0b4c9d6097e6e0aeb3fde9648fa109f4805"
+    },
+    {
+      "path": "m7-step2-runtime-rebinding-offline-01/tools/write-identity-artifacts.mjs",
+      "bytes": 3045,
+      "sha256": "01118b779875f0982c7f9bd783728d10240174651be4bbba2def715098255043"
+    }
+  ]
+}

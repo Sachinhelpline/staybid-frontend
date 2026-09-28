@@ -1,0 +1,14 @@
+1. Fail-closed unprovisioned + finite code contract
+2. Invalid/untrusted authority -> fail closed (fixed codes only)
+3. Rejected arbitrary SQL / injection (no echoed input)
+4. Accepted SELECT-only query behavior (message API)
+5. LEAK 1 — DB exception message never crosses outward
+6. LEAK 2 — value-based boundary (URL in an allowed/reason field rejected)
+7. Gateway can NEVER receive a credential / DB client / URL
+8. Structural production wiring + no mutation / no network
+9. All outward failures used ONLY the finite fixed code set
+
+══════════════════════════════════════════════════════════
+RESULT: 54 passed, 0 failed  (executed assertions: 54)
+OFFLINE PRIVATE-READER-HOST VERIFICATION: PASS
+SCOPE: synthetic clients/authorities + fixed-registry wiring + strict value-based outward boundary + fail-closed — NOT live PostgreSQL, credential, or runtime-isolation proof.

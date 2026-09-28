@@ -1,0 +1,1 @@
+[live-ai-03b V2 trusted-activation-executor] FAIL-CLOSED: performs NO db/network/provider access on its own; requires an INJECTED credential-isolated V2 runtime. Exit 2.

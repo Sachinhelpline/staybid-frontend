@@ -1,0 +1,82 @@
+  ✓ PG01 — migration applies (and re-applies idempotently) to the throwaway cluster
+  ✓ PG02 — atomic envelope acquisition returns a held envelope
+  ✓ PG03 — the session money counter shows 10000 held
+  ✓ PG04 — same key + same request ⇒ idempotent replay (same envelope)
+  ✓ PG05 — an idempotent replay does NOT double-count held
+  ✓ PG06 — same key + different request ⇒ acquisition_conflict
+  ✓ PG07 — a request over the session money ceiling ⇒ ceiling_exceeded
+  ✓ PG08 — two replicas at the global-day ceiling: exactly ONE wins (no overspend) [got 1]
+  ✓ PG09 — the global-day held never exceeds the ceiling
+  ✓ PG10 — a policy rollover does NOT reset the stable session counter (still 10000 held)
+  ✓ PG11 — a rollover ceiling below existing exposure refuses (true remaining headroom honored)
+  ✓ PG12 — a request within the true remaining headroom (2000) succeeds after rollover
+  ✓ PG13 — a killed control refuses new acquisition (control_killed)
+  ✓ PG14 — a disabled control refuses new acquisition (control_disabled)
+  ✓ PG15 — clean reconcile succeeds
+  ✓ PG16 — reconcile moved held→charged/released (charged 4000, released 6000; 2000 from kRoll2 remains held)
+  ✓ PG17 — a duplicate reconcile (same key) is idempotent
+  ✓ PG18 — the idempotent reconcile did NOT re-apply (charged still 4000)
+  ✓ PG19 — acquire an envelope to crash-forfeit
+  ✓ PG20 — crash forfeit charges ALL held (7000), releases nothing (no quota restored)
+  ✓ PG21 — a new gatewaySessionDigest gets its own fresh session counter (new scope)
+  ✓ PG22 — a fresh envelope persists its pins (lease generation + canonical acquisition commitment)
+  ✓ PG23 — a replay reconstructs the ORIGINAL expiry (never extends the lease lifetime)
+  ✓ PG24 — a replay after clean reconcile ⇒ envelope_terminal
+  ✓ PG25 — a replay after crash forfeit ⇒ envelope_forfeited
+  ✓ PG26 — a replay after a durable revoke ⇒ envelope_revoked
+  ✓ PG27 — a replay after expiry ⇒ envelope_expired
+  ✓ PG28 — same key + a different canonical commitment ⇒ acquisition_conflict (identity)
+  ✓ PG29 — reusing a session digest with a different SUBJECT ⇒ ownership_conflict (no silent rebind)
+  ✓ PG30 — reusing a session digest with a different PROJECT ⇒ ownership_conflict
+  ✓ PG31 — same session digest + same subject/project ⇒ a fresh acquisition is valid reuse
+  ✓ PG32 — durable execution admission recorded
+  ✓ PG33 — a duplicate execution admission (same digest) is idempotent
+  ✓ PG34 — a conflicting execution admission (different digest) fails closed
+  ✓ PG35 — durable provider reservation recorded
+  ✓ PG36 — a duplicate provider reservation (same commitment) is idempotent
+  ✓ PG37 — a conflicting provider reservation (different commitment) fails closed
+  ✓ PG38 — settle a provider reservation with an over-cap excess incident
+  ✓ PG39 — the over-cap incident is durably recorded (revoked + excess units)
+  ✓ PG40 — the envelope carries the excess incident reason (excess never silently dropped)
+  ✓ PG41 — an EXACT-duplicate terminal settlement is inert success
+  ✓ PG41b — a CONFLICTING terminal settlement fails closed (settlement_conflict)
+  ✓ PG42 — an idempotent replay returns the durable child state (hydration source)
+  ✓ PG43 — first subject/day acquisition (60000) succeeds under the 100000 ceiling
+  ✓ PG44 — the SAME subject across a DIFFERENT session counts together (subject/day exceeded)
+  ✓ PG45 — a DIFFERENT subject is isolated (its own subject/day counter)
+  ✓ PG46 — the subject/day counter aggregates the subject's spend (60000 held)
+  ✓ PG47 — a day boundary is UTC-anchored regardless of the DB session timezone (single UTC counter)
+  ✓ PG48 — a future-effective policy is NOT active (no_policy)
+  ✓ PG49 — an expired policy is NOT active (no_policy)
+  ✓ PG50 — a future-effective catalog is NOT active (envelope pins a null catalog version)
+  ✓ PG55 — an unresolved OPEN provider child ⇒ envelope non-replayable (crash-ambiguity, no fresh authority)
+  ✓ PG56 — baseline settlement recorded
+  ✓ PG57 — an EXACT-duplicate full-tuple settlement is inert success
+  ✓ PG58 — changed chargedMicros ⇒ settlement_conflict
+  ✓ PG59 — changed releasedMicros ⇒ settlement_conflict
+  ✓ PG60 — changed actualUnits ⇒ settlement_conflict
+  ✓ PG61 — changed revoked semantics ⇒ settlement_conflict
+  ✓ PG62 — changed overCap ⇒ settlement_conflict
+  ✓ PG63 — changed excessUnits ⇒ settlement_conflict
+  ✓ PG64 — changed incidentReason ⇒ settlement_conflict
+  ✓ PG65 — a terminal reservation with NO settlement row fails closed (terminal_conflict)
+  ✓ PG51 — the orphan reaper forfeits a held-but-expired envelope (no dead-process reconcile call)
+  ✓ PG52 — the reaped envelope is forfeited with ALL held charged (no quota restored)
+  ✓ PG53 — the reaper is idempotent (an already-reaped envelope is not re-forfeited)
+  ✓ PG54 — two concurrent reapers forfeit each orphan exactly once (no double-charge) [got 2]
+  ✓ PG66 — an acquire missing the boot nonce fails closed (invalid_request)
+  ✓ PG67 — a fresh envelope pins the trusted boot nonce
+  ✓ PG68 — the boot nonce is durably persisted (NOT NULL immutable pin)
+  ✓ PG69 — a SAME-boot exact replay remains valid (§6 idempotency retained)
+  ✓ PG70 — a NEW boot refuses replay of a still-HELD envelope (envelope_previous_boot)
+  ✓ PG71 — the refused envelope is left to the conservative forfeit lifecycle (still held, not resurrected)
+  ✓ PG72 — a successful durable revoke refuses SAME-boot replay (envelope_revoked, §8)
+  ✓ PG73 — a successful durable revoke refuses NEW-boot replay too (revoked precedes boot check, §8)
+  ✓ PG74 — control-revalidation fixture acquired under a healthy control
+  ✓ PG75 — a KILLED control refuses a same-boot replay (§9, never mints from stale pinned control)
+  ✓ PG76 — a second control-revalidation fixture acquired
+  ✓ PG77 — a DISABLED control refuses a same-boot replay (§9)
+  ✓ PG78 — a third control-revalidation fixture acquired at epoch 1
+  ✓ PG79 — an ADVANCED control epoch refuses a same-boot replay (control_superseded, §9)
+
+✅ BUDGET-01 PostgreSQL integration suite: 80 passed, 0 failed

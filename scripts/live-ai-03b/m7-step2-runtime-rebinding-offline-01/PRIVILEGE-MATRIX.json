@@ -1,0 +1,23 @@
+{
+  "artifact": "M7 Step 2 privilege matrix (runtime compatibility with the ACCEPTED role grants — Step 2 adds NO grant)",
+  "principals": {
+    "live_ai_03b_executor": {
+      "used_by": "runtime/v2-restricted-activation-adapter.mjs (executorDbClient)",
+      "statements_issued": ["SELECT live_ai_03b_trusted_v2.activate_catalog_v2($1::jsonb, $2) AS receipt", "SELECT live_ai_03b_trusted_v2.restore_catalog_v2_inactive($1::jsonb, $2) AS receipt"],
+      "needs": "USAGE + EXECUTE on live_ai_03b_trusted_v2 functions (Step-1 02 grants exactly this)",
+      "denied_and_proven": ["direct catalog UPDATE (lifecycle B08)", "direct ledger INSERT (P06)", "old live_ai_03b_trusted.activate_catalog with V2 claims refused (P05)", "second approval while V2 active refused inside the function (B07)", "replay refused inside the function (B06)"]
+    },
+    "live_ai_03b_reader": {
+      "used_by": "runtime/v2-trusted-read-adapter.mjs (readerDbClient) and the reader/ chain (via the V2 authority manager)",
+      "statements_issued": "ONLY the 8 queries of runtime/v2-query-registry.mjs (the reader host: the 7 non-ledger queries, parameter-free)",
+      "needs": "SELECT on the 12 public allow-listed tables (accepted) + deferred SELECT on live_ai_03b_trusted.approval_consumption (accepted M6 grant); nothing on budget_envelope_allocations",
+      "denied_and_proven": ["catalog UPDATE (A03)", "ledger INSERT (P07)", "activate_catalog_v2 / restore_catalog_v2_inactive EXECUTE (P03/P04)"],
+      "attested_by": "independent attester: selectGrantCount 12, writePrivilegeCount 0, no forbidden object, no role membership, no routine/owner/executor authority (lifecycle H00)"
+    },
+    "live_ai_03b_gateway_store": { "activation_authority": "NONE — activate_catalog_v2 denied (P01)" },
+    "PUBLIC": { "successor_authority": "NONE — activate_catalog_v2 denied for a PUBLIC-only role (P02)" },
+    "owner (postgres)": { "role_in_step2": "applies the reviewed Step-1 SQL 01/02/04/05/07 in the Owner sequence ONLY; never used by any runtime module" }
+  },
+  "no_admin_or_superuser_fallback": true,
+  "widening_required": false
+}

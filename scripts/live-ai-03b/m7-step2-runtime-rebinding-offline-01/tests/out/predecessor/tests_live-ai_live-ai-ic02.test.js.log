@@ -1,0 +1,61 @@
+• Local tsc compile (ic02, strict): exit 0, clean
+
+• IC02-A — identity + IC01 vocabulary UNCHANGED + IC02 internal vocabulary SEPARATE
+
+• IC02-B — VERIFIED-evidence provenance record: complete / immutable / deep-copied / fail-closed
+
+• IC02-B (cont) — partial provenance is IMPOSSIBLE (each missing field → inadmissible)
+
+• IC02-C — agent loop retains provenance AT the VERIFIED-promotion transition (one per step)
+
+• IC02-D — deterministic claim→atom mapping; fact requires matching verified provenance
+
+• IC02-E — NO numeric budget matching; no preference input; no preference atom
+
+• IC02-F — CompiledAnswerEnvelope + PURE tamper-detecting verifier
+
+• IC02-G — English / Hindi / Hinglish render from EQUIVALENT semantic atoms
+
+• IC02-H — fail-closed reject matrix
+
+• IC02-R1 — P1-01: non-null result authority required; pre-consistency; atomic promotion; lifecycle
+
+• IC02-R2 — P1-02: the agent-loop terminal producer invokes the compiler (no legacy narration bypass)
+
+• IC02-R3 — P1-03: exact 16 KiB serialized compile-request ceiling (reject, never truncate)
+
+• IC02-R4 — P1-04: pure verifier enforces CLOSED producer invariants (hashes are NOT authority)
+
+• IC02-R5 — P1-04 residual: the verifier admits only structures the v1 producer can emit
+
+• IC02-R6 — P1-04 residual: hotel_facts facility-state completeness (both facilities represented)
+
+• IC02-I — named MUTATION / NON-VACUITY probes (each protection is live + non-vacuous)
+
+── MUTATION / NON-VACUITY RESULTS ──
+  ✓ baseline_valid_compiles_and_verifies
+  ✓ provenance_bypass_rejected
+  ✓ staleness_bypass_rejected
+  ✓ authority_mismatch_rejected
+  ✓ entity_binding_mismatch_rejected
+  ✓ unknown_not_coerced_to_false
+  ✓ post_validation_substitution_blocked
+  ✓ hash_substitution_rejected
+  ✓ budget_string_never_promoted
+  ✓ derivations_not_model_selectable_and_none_emitted
+  ✓ pure_verifier_bypass_rejected
+  ✓ null_result_authority_admission_rejected
+  ✓ pre_consistency_provenance_not_exposed
+  ✓ atomic_promotion_ic01_equals_ic02
+  ✓ terminal_never_bypasses_compiler
+  ✓ request_16kb_ceiling_enforced
+  ✓ outcome_atom_mismatch_rejected
+  ✓ fact_without_commitment_rejected
+  ✓ rehashed_cross_field_forgery_rejected
+  ✓ uncertainty_requires_detail_commitment
+  ✓ uncertainty_topic_dedup_enforced
+  ✓ fact_uncertainty_contradiction_rejected
+  ✓ fact_value_exact_shape_enforced
+  ✓ hotel_facts_facility_completeness_enforced
+
+✅ IC02 compiler suite: 291 passed, 0 failed

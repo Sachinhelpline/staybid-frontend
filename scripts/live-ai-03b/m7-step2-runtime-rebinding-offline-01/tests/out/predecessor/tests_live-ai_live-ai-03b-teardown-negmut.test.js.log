@@ -1,0 +1,14 @@
+• LIVE-AI-03B §14 TEARDOWN negative mutations (revert-a-fix ⇒ suite must fail)
+
+  ✓ BASE — the unmutated 03B suite PASSES (exit=0)
+  ✓ MUT-A — mutation anchor found in source
+  ✓ MUT-A — runtime kill no longer revokes active 03B lifecycles before drain (reverted fix ⇒ suite FAILS, exit=1)
+  ✓ MUT-A — source restored byte-for-byte
+  ✓ MUT-B — mutation anchor found in source
+  ✓ MUT-B — session termination (timeout / terminate / socket-close) no longer tears down active03b (reverted fix ⇒ suite FAILS, exit=1)
+  ✓ MUT-B — source restored byte-for-byte
+  ✓ MUT-C — mutation anchor found in source
+  ✓ MUT-C — a torn-down lifecycle remains reachable so a late terminal can resume it (reverted fix ⇒ suite FAILS, exit=1)
+  ✓ MUT-C — source restored byte-for-byte
+
+✅ LIVE-AI-03B §14 teardown negative mutations: 10 passed, 0 failed

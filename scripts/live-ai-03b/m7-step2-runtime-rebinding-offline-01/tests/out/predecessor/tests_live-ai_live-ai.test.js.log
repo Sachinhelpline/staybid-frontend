@@ -1,0 +1,67 @@
+• Local tsc compile: exit 0, clean (strict)
+
+• REV-01 — exact-key fail-closed operation body
+
+• R5A — reject-not-normalize APPLY (destination/query equality oracle)
+
+• R5A — reject-not-normalize APPLY (maxPrice / stars) + null=skip
+
+• R5A — COMPARE_VISIBLE_HOTELS: exact positions + ordered distinct factors
+
+• R5A — OPEN strict position + comparison-factor vocabulary export
+
+• R5A — TRUSTED page construction is UNCHANGED (separation from operation authority)
+
+• R5A-REMEDIATION — client operation validator: total fail-closed for hostile JS + frozen nested arrays
+
+• R5A SECOND REMEDIATION — client validators are TOTAL on a REVOKED Proxy (REV-NEW-01)
+
+• R5A SECOND REMEDIATION — client hostile-array authority integrity (REV-NEW-02)
+
+• R5A SECOND REMEDIATION — client exact length boundaries (query 60/61, city 40/41)
+
+• REV-02 — catalogue request/response race
+
+• REV-02B — destination-only / query-only composition
+
+• REV-03 — verify only after applied state
+
+• REV-04 — registration ownership + dynamic route
+
+• REV-05 — synchronous complete-state fingerprint
+
+• REV-06 — loading/error gives no stale list authority
+
+• REV-07 — invalid-id row does not shift ordinals
+
+• REV-08 — parking option authority (exact positive allowlist)
+
+• REV-11 — no semantic truncation of authority values
+
+• REV-09 + NEW-02 — facility tri-state with negative/ambiguous recognition
+
+• REV-10 — detail authority gated on ready + id match
+
+• REV-11 — bounded context (dates/amenities/prices/text)
+
+• REV-13 — bounded dedup structure
+
+• REV-14 — orb state language (no false 'listening')
+
+• Acceptance — runtime conversation flow (gateway-proposed operations)
+
+• Integrity — envelope, role, secrets, page binding
+
+• NEW-01 — strict immutable action envelope
+
+• REV-12 — request coordinator behavior (A/B late-response race)
+
+• Render — feature-off + orb-only shell (react-dom/server)
+
+• NEW-01 — parking removal uses the EXACT positive-token recognizer (no substring)
+
+• SRC — production wiring integrity (supplementary scans)
+
+──────────────────────────────────────────────────────
+Live AI LIVE-AI-01A R2: 401 passed, 0 failed
+ALL LIVE-AI-01A R2 CHECKS PASSED

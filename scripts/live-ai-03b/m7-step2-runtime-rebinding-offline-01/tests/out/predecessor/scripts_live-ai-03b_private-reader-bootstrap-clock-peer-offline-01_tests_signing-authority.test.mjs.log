@@ -1,0 +1,5 @@
+
+══════════════════════════════════════════════════════════
+RESULT: 28 passed, 0 failed  (executed assertions: 28)
+OFFLINE CLOCK-GATED SIGNING AUTHORITY (§28): PASS
+SCOPE: real Ed25519 + synthetic least-privilege observer + real loopback sockets. NOT live AI-STAGING.

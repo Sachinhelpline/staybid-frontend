@@ -1,0 +1,25 @@
+• Local tsc compile (audio): exit 0, clean (strict)
+
+• decode + pcm
+
+• stream ownership + monotonic sequence
+
+• unknown / stale / mismatched
+
+• end mismatch + correct end
+
+• bounds: chunk / total / queued
+
+• autoplay blocked → recover + teardown
+
+• R4-R1-NEW-02 — an ENDED stream with un-drained BUFFERED audio is STILL resumable
+
+• flush suppresses + resets
+
+• REV-15 — suspended-sink chunks BUFFER and REPLAY on resume (no silent discard)
+
+• REV-15 — a superseded stream's buffer is cleared (stale audio never replays)
+
+──────────────────────────────────────────────────────
+Live AI LIVE-AI-02A audio: 44 passed, 0 failed
+ALL LIVE-AI-02A AUDIO CHECKS PASSED

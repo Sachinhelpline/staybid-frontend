@@ -1,0 +1,5 @@
+
+══════════════════════════════════════════════════════════
+RESULT: 13 passed, 0 failed  (executed assertions: 13)
+OFFLINE READER INVALIDATION / RE-ENTRY RACE (§M1-R1): PASS
+SCOPE: deterministic barriers + real Ed25519 attester + synthetic cluster + loopback. NOT live AI-STAGING.

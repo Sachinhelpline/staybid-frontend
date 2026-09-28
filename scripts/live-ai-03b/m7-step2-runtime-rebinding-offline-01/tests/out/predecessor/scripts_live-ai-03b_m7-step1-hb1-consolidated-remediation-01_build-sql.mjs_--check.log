@@ -1,0 +1,1 @@
+build-sql --check: all SQL artifacts reproduce byte-exact

@@ -1,0 +1,44 @@
+# Frozen-file hash proof — candidate clone vs HEAD 4f390b74 (git blob of every working file recomputed with git hash-object)
+generated_utc: 2026-09-28T17:58:56Z  (regenerated for the closure-harness remediation)
+HEAD: 4f390b74132b087b757faa655bdcb73be6c14a8f  tree: 72080256d4cc2a97a2a15058931e838ebef5ec48
+
+## frozen path trees at HEAD (working copy re-hashed below)
+13ea631e4a1f3cb5dae8bc3db45ae56fd160143e  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01
+6148a92edcc15ec1d225d2b205ecb6548c4104db  scripts/live-ai-03b/trusted-activation-boundary-01
+deb7fad7ab05dababa20e175f44b8141aef5b596  scripts/live-ai-03b/trusted-executor-runtime-01
+86af9577193e8202d24131ff8426f9b40966de29  scripts/live-ai-03b/trusted-runtime-live-binding-offline-01
+a5d2aa32916d396278303161f5d179574855f4f1  scripts/live-ai-03b/first-text-probe-activation-01
+4377d72c3faf1b1450c69d75645a07c40214463d  scripts/live-ai-03b/trusted-boundary-post-apply-offline-01
+6eddb5cdb108dfe0c9667d693c7a54568d1083a0  scripts/live-ai-03b/private-reader-host-offline-01
+e0e046a15351541040b16c5365fb725d5798d3ae  scripts/live-ai-03b/private-reader-host-runtime-offline-01
+b28c72a954d1ee3dd010bbdab98c9e5ed3736e0e  scripts/live-ai-03b/private-reader-production-integration-offline-01
+464ecc8a6a25e8cc428a1579d7c6214739a16e93  scripts/live-ai-03b/private-reader-attester-offline-01
+48bddb0cc849dda6929d03ab81cf7659ca7f8be4  scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01
+fad3854fa104d5ae9237ad8783330d1389e6f223  scripts/live-ai-budget-01
+026f27598a9f16342e64e07ce778effe1f785d00  migrations
+2092d9de6b96763ab76477f9c37159082c00aa26  server/voice-gateway
+b769315fd90c56a16201c00bd57cfc2f82b0b683  app
+f8d29c40cdf3bf195fcfae32af37cf100d5a9228  lib
+6b136ff3e2d4e16f3773cab92c2a40407793257d  tests
+
+## named frozen files (HEAD blob == working blob)
+IDENTICAL 1a9e2ae8f13365577c4a0dc40f6771c1c5073a37  server/voice-gateway/openai-responses.ts
+IDENTICAL 57d0a1b6e52e0100c99dcb888e314279a1ab0518  migrations/2026-09-18-live-ai-budget-01-inactive-price-catalog-seed.sql
+IDENTICAL e58b2e9706cfae207969817c9a856ce55e8e5cb1  migrations/2026-09-16-live-ai-budget-01-dormant-control-policy-seed.sql
+IDENTICAL 2e1468017342578106bc0640981909cabc0257c8  scripts/live-ai-03b/trusted-activation-boundary-01/db/2026-09-19-p1-02-trusted-activation-boundary.sql
+IDENTICAL b018461a3c9d59e1d57abb9a29accdd7d027fda9  scripts/live-ai-03b/trusted-boundary-post-apply-offline-01/post-application-verification.sql
+IDENTICAL 266a1b1f200110ec1d37ac92a8132751746fbcd0  scripts/live-ai-03b/trusted-boundary-post-apply-offline-01/deferred-ledger-read-grant.sql
+IDENTICAL 91b780da978af3ef138ddde0d3fb1f37d530fe3d  scripts/live-ai-03b/trusted-activation-boundary-01/pricing-approval-contract.mjs
+IDENTICAL c2b4637c3f88ee3448b71d0bc41f75abb99325ed  scripts/live-ai-03b/first-text-probe-activation-01/first-text-probe.mjs
+
+## every tracked file in the whole tree: working-copy blob == HEAD blob
+tracked files checked: 1570   mismatches: 0
+
+## git status (tracked modifications must be empty; only the new Step-2 directory is untracked)
+tracked modified/deleted: []
+untracked paths outside the Step-2 directory: []
+commits beyond 4f390b74 in the clone: 0
+
+## accepted repository /home/user/staybid-frontend
+HEAD: 4f390b74132b087b757faa655bdcb73be6c14a8f  tree: 72080256d4cc2a97a2a15058931e838ebef5ec48
+status (empty = clean): []

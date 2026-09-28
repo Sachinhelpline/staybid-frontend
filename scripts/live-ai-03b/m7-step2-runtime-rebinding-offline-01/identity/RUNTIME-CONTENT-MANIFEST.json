@@ -1,0 +1,77 @@
+{
+  "contract": "Step2RuntimeContentManifestV1",
+  "domain": "staybid.live-ai.m7-step2.runtime-manifest.v1",
+  "step2_dir": "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01",
+  "files": [
+    {
+      "path": "identity/v2-identity.mjs",
+      "sha256": "5d6adba97a5374c616f3095b0a066df15f01826f17b0dee9a5b98e0061cff150"
+    },
+    {
+      "path": "identity/v2-source-identity.mjs",
+      "sha256": "64e8511bae411719f6d22184ccc7be7507505ad154749aac88c8bce80fe858e7"
+    },
+    {
+      "path": "probe/v2-first-text-probe.mjs",
+      "sha256": "bc17a3fe506e3b56f652adc5e6a5b14543db513aeee964b451fa9df226f0f5a2"
+    },
+    {
+      "path": "reader/v2-gateway-observation-caller.mjs",
+      "sha256": "12347b2e13c0b133e6aae7c0d758942f3ae1c63f551b9195dfabcd229895cdc1"
+    },
+    {
+      "path": "reader/v2-observation-contract.mjs",
+      "sha256": "22f4f6f96f90d6354ff2d26766e7fa9ab879484fa47930629547a094e594247f"
+    },
+    {
+      "path": "reader/v2-production-entrypoint.mjs",
+      "sha256": "a90a35596bab6d7b4ec478ee906f026fa810d0d751ce1f0c05e9103e73a6495c"
+    },
+    {
+      "path": "reader/v2-production-reader-authority.mjs",
+      "sha256": "a173d7d2d48b9123ff3029e13c10d4be842628cd576fea0e1197cd2d3ee9bb53"
+    },
+    {
+      "path": "reader/v2-reader-only-authority.mjs",
+      "sha256": "0a50bd874f889a84be2acc5d9fa98b999bdc3ded7ee6b4a645b41af717c46c9c"
+    },
+    {
+      "path": "reader/v2-serving-runtime.mjs",
+      "sha256": "168dd1bc65271d6d5190bf92627f2deca2270ff982e9cd91633938be7daeb4d3"
+    },
+    {
+      "path": "runtime/v2-preflight.mjs",
+      "sha256": "a2d7f005d1b3428aa8157042c57b1ed0d7515851f9aea5a89bc085ed8cc4d3c5"
+    },
+    {
+      "path": "runtime/v2-production-authority.mjs",
+      "sha256": "d629f6d64530a9cd26a43f775835ef3ee6bb85e6eb856898f77900b463a50d89"
+    },
+    {
+      "path": "runtime/v2-query-registry.mjs",
+      "sha256": "9133908fa41a5840599ad6ef02bd85b1509db58a8047117c511131a364de3572"
+    },
+    {
+      "path": "runtime/v2-restricted-activation-adapter.mjs",
+      "sha256": "d1528ad2c36236153557e5d03033a15b0504c3380579f796f09c7a0ea1446572"
+    },
+    {
+      "path": "runtime/v2-runtime-config.mjs",
+      "sha256": "dba84a7d04d6f95302838b173bfa65ab8066b0f77dfa20402d765b90dde6aa04"
+    },
+    {
+      "path": "runtime/v2-trusted-activation-executor.mjs",
+      "sha256": "f46bac53601eb66e2357678857d9dbd656ae7986076d745873eb778ae2a742c6"
+    },
+    {
+      "path": "runtime/v2-trusted-executor-runtime.mjs",
+      "sha256": "b5aa2734055848d47fcec94b6df1d2e6b01943495e804d37ad836826bbacd37f"
+    },
+    {
+      "path": "runtime/v2-trusted-read-adapter.mjs",
+      "sha256": "d35de138ad1caf89b764325ba1680916887c4bae5cc519096ef0460bbe175c34"
+    }
+  ],
+  "runtime_manifest_digest": "9a460078846eec885b726e7b54bdbd8a301c690b1f78a68439e151f462341998",
+  "note": "PIN C binds THESE bytes. Recompute with measureRuntimeManifest(); the later preservation binding must carry this digest."
+}

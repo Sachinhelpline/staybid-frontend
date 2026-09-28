@@ -1,0 +1,242 @@
+• Local tsc compile (gw-client): exit 0, clean (strict)
+• Local tsc compile (gw-server): exit 0, clean (strict)
+
+• client dormancy gate matrix (V, then V+P)
+
+• broker client-response is bounded (controlUrl MUST be wss, no provider key passes)
+
+• transport is DORMANT until an explicit start (no fetch / socket on construct)
+
+• microphone mode: NO fetch before the mic offer; text mode never touches the mic
+
+• the control token travels ONLY in the WS subprotocol (never the URL / query)
+
+• broker pure logic (same-origin, wss control url, shaped response)
+
+• server strict frame / operation / answer validation (prompt-injection-as-data)
+
+• fixed model allowlists (a wrong model disables the provider + the adapter)
+
+• tts adapter enforces bounded, gap-free, sequenced chunks
+
+• isolated orchestrator: fail-closed + evidence path + gateway-minted ids + abort-inert
+
+• session store: capacity, ack, idle-timeout teardown, and the disable kill
+
+• authenticated control socket: token in subprotocol only + strict frame routing
+
+• REV-08 — a verified receipt correlated to a pending action triggers the FOLLOW-UP explain pass
+
+• control-token HMAC: round-trip, session binding, expiry, unconfigured
+
+• live-ai assertion verify is scope-locked + fail-closed without keys
+
+• REV-01 — INTEGRATION: a REAL authenticated control socket emits connection.ready
+
+• REV-06 — full-content context digest resists long-common-prefix collisions
+
+• REV-11 — the gateway base URL is validated to a canonical HTTPS origin
+
+• REV-03 — the STT/Realtime negotiate seam (dormant by default, fail-closed)
+
+• SRC: the isolated server modules import NO old-tool authority
+
+• R2-01 — EXACTLY ONE control attachment (one-use claim; duplicate + post-close replay refused)
+
+• R2-01 — the client binds to its MINTED gateway session id (a wrong id is refused)
+
+• R2-02 — the provider request SHAPES (Realtime transcription session + Responses json_schema)
+
+• R2-06 — the authorityRef is a SHA-256 over the FULL tuple INCLUDING the generation
+
+• R2-07 — the proposal registry is a HARD ceiling with NO eviction (anti-replay)
+
+• R2-08 — a stale / mismatched answer.approve is refused (takeApprovedPlan)
+
+• R2-10 — strict client/server frame schema PARITY (reject, never truncate)
+
+• R2-13 — provider FAILS CLOSED with no budget authority; reserves + settles when present; exhaustion refuses
+
+• R3-03 / R3-04 — single-start owner refuses a second start while owned; end() aborts the in-flight broker fetch + closes socket/media
+
+• R3-02 — the Responses structured-output schema is STRICT (all declared props required; optionals nullable)
+
+• R3-05 — adversarial: wrong-tuple accept refused; actionId immutable; operation-specific evidence enforced
+
+• R3-13 — provider USAGE settled as actual; conservative retention when absent; TTS ceiling; speech ceilings
+
+• R3-13 — realtime transcription negotiation RESERVES budget BEFORE the provider call (fail-closed without a budget)
+
+• R3-03 / R3-04 — single-start owner: refuse while owned; a fresh start is allowed only from DISCONNECTED
+
+• R3-NEW-02 — the input-transcription item authority gate (input-only, dedup, in-order, unknown rejected)
+
+• R4-03 — GENERATION-LOCAL MEDIA SESSION OWNERSHIP: each start mints its own media; an old start closes ONLY its own
+
+• R4-04 — createOffer partial-acquisition + owned-failure teardown: media released on any acquisition failure
+
+• R4-05 — GATEWAY-OWNED EXECUTION COMMITMENT: accept/consume require the EXACT executionNonce (copy/replay/absent fail)
+
+• R4-05B/R5B-REV-04 — OPERATION-SPECIFIC SEMANTIC evidence: wrong hotel / section / positions / count / factor / winner / tri-state are rejected
+
+• R4-08 — FIELD-BY-FIELD plan evidence: action_status/page_facts/comparison bound to the exact receipt tuple
+
+• R4-13 — REAL capture-duration + reasoning token ceiling + actual>reservation conservatism
+
+• R4-NEW-01 — TTS oversize provider response is REJECTED, not truncated
+
+• R4-R2-NEW-02 — a transcript is bound to the CONVERSATION GENERATION at commit; a stale-generation completion is dropped
+
+• R4-10 — the server REJECTS (never normalizes) a malformed published context / operation
+
+• R5A — the gateway operation validator REJECTS (never normalizes) an external operation
+
+• R5A — EXACT client/server operation-acceptance PARITY (contracts.validateOperation == validateModelOperation)
+
+• R5A-REMEDIATION (REV-NEW-02/05) — TOTAL fail-closed operation validators for hostile JS (no throw, both null)
+
+• R5A-REMEDIATION (REV-NEW-03) — nested-array immutability parity (client == gateway)
+
+• R5A SECOND REMEDIATION — gateway validators are TOTAL on a REVOKED Proxy (REV-NEW-01)
+
+• R5A SECOND REMEDIATION — gateway hostile-array authority integrity + parity (REV-NEW-02)
+
+• R5A SECOND REMEDIATION — gateway exact length boundaries (query 60/61, city 40/41)
+
+• R5B — receipt lifecycle: gateway-minted receiptId, state machine, ACK, terminal replay
+
+• R5B-REV-01 — FULL result authority is independently validated (tamper / copy / delay / cross → REJECT)
+
+• R5B-REV-09 — the closed outcome/status compatibility matrix rejects contradictory pairs (client == gateway)
+
+• R5B-REV-07 — duplicate acted is idempotent (no overwrite); a conflicting acted is rejected
+
+• R5B-REV-08 — gateway-owned PRE-ACCEPT terminalization (stale / refused before action.accepted)
+
+• R5B (non-blocking) — duplicate proposalId / receiptId registration is REFUSED (no silent overwrite)
+
+• R5B-SECOND-REMEDIATION Section 12 — CLOSURE attack battery (op-specific authority / stored OPEN+SHOW identity / async result authority / factors / pre-accept / hostile-JS)
+
+• R5B-THIRD-REMEDIATION — OPEN nav ordinal (REV-02) + gateway nested totality (REV-03) + strict R5B arrays (REV-04)
+
+• R5B-FOURTH-REMEDIATION — nested R5B authority-array IMMUTABILITY / freeze parity (FOURTH-REV-01)
+
+• R5B-THIRD-REMEDIATION — GENUINE production six-op end-to-end: REAL orchestrator proposal → REAL browser ↔ REAL control socket → client trusted-evidence promotion + supported plan (no fake auto-ACK)
+
+• R5C — browser capture ledger (controller-lifetime authority, unit)
+
+• R5C — GENUINE CHAIN: the browser transport wires the capture ledger (media ownership + lease)
+
+• R5C — server capture ledger (independent process-local mirror, unit)
+
+• R5C — server capture WIRING (control frames finalize the segment; store terminate finalizes)
+
+• R5C — GENUINE CHAIN: handleLiveAiSessionCreate begins/omits the server segment (mic vs text)
+
+• R5C2 §6 — the capture lease is admitted AT PHYSICAL ACQUISITION (onAcquire, before the broker), not after createOffer
+
+• R5C2 §6/§9 — FAIL CLOSED: a media adapter that IGNORES the acquisition callback cannot capture without a lease
+
+• R5C2 §5/§9 — a barge-in during the CONNECTING (pending) phase releases the in-flight owner (mic stopped, lease finalized, broker aborted); the late start never installs
+
+• R5C2 §7 — a teardown DURING a non-abortable getUserMedia: the late stream admits no lease, builds no peer, contacts no broker, opens no socket
+
+• R5C2 §5/§8/§12 — owner isolation: a superseded in-flight start closes ITS OWN media, never a newer owner's
+
+• R5C2 §8 — a hard teardown (end) DURING a pending mic start stops the pending owner's mic tracks
+
+• R5C2 §8/§12 — async cancellation matrix: every capture-closing operation releases the installed mic owner; a fresh explicit start is required (no auto-restart)
+
+• R5C2 §13 — the ACTUAL production createBrowserMedia stops REAL MediaStreamTrack.stop() on close AND on acquisition refusal (not a fake counter)
+
+• R5C2 §14 — FRESH-GESTURE production chain: a REAL Conversation drives a REAL gateway transport; after bargeIn() a fresh explicit start(microphone) is required (no resurrection)
+
+• R5C2 §11 — a route_change interrupt PRESERVES the server capture segment (no finalize/reset/extend); capture-closing reasons finalize it
+
+• R5C2 §16 — INTEGRATED browser↔server route: a REAL gateway transport's turn.interrupt drives the REAL control-frame handler; the FORBIDDEN state (browser capture active AND server segment inactive) never occurs
+
+• R5C2 §16 — CUMULATIVE accounting: each teardown FINALIZES the owner's lease (owner-owned charge); capture accrues to the 180000ms controller ceiling and cannot be bypassed
+
+• R5C3 §5/§7 — a capture-closing interrupt (barge_in / context_change / user_cancel) cancels a PENDING mic owner BEFORE getUserMedia resolves; the late stream admits no lease / peer / broker / socket
+
+• R5C3 §6 — createBrowserMedia: a stream that resolves AFTER close() is immediately stopped (no reopen), independent of onAcquire; a refusal + a normal close stop the REAL tracks
+
+• R5C3 §15 — the ACTUAL createBrowserMedia via the transport: a pre-acquisition barge/context_change stops the REAL late tracks (stale cancellation, NOT a hardcoded onAcquire), builds no peer, admits no lease, contacts no broker/socket
+
+• R5C3 §8 — synchronous socket callbacks during openSocket: a pre-bind onClose/onError fails the start closed (no dead-socket install); a pre-bind onOpen is applied after binding
+
+• R5C3 §9 — an installed current-socket close/error RELEASES the exact owner (browser lease finalized, mic stopped) — never leaves the browser active after the transport socket dies
+
+• R5C3 §9 — an OLD socket's close/error after a newer explicit start is INERT (never closes the newer owner)
+
+• R5C3 §10 — a reentrant close (teardown's socket.close() synchronously re-invokes onClose) is INERT the second time (exactly-once teardown + charge)
+
+• R5C3 §11 — a route_change while the socket is alive PRESERVES the browser owner / lease / mic / socket (only an ACTUAL socket death is capture-closing)
+
+• R5C3 §16 — INTEGRATED route→socket termination: a real Conversation drives a real transport ↔ real control-frame handler; route_change preserves BOTH, then a socket death closes BOTH; the forbidden state (browser active AND server segment inactive) never settles; an OLD socket callback after a fresh start leaves the newer unaffected
+
+• R5C3 §17 — cumulative pre-negotiation accounting: physical acquisition begins the lease; slow pre-negotiation elapsed is charged once on teardown; a replayed stale close does NOT charge again; the 180000ms ceiling cannot be bypassed
+
+• R5C3 §13 — NB-01: microphone mode with NO media adapter releases the exact pending owner before returning unsupported (no leaked pending registration; a fresh start still works)
+
+• R5C3 §14 — async checkpoint matrix: every pre-WIN failure fails closed (no socket, no leaked lease) and a fresh start still works
+
+• R5C4 §6/§7 — async checkpoint matrix (23): every pre-WIN async stage fails closed under A/B/C/D interruption; E succeeds
+
+• R5C4 §9 — real createBrowserMedia fresh-mic chain: cancelled MIC#1 stops the late real tracks (no acquire/peer/broker/socket/lease) → SAME-transport MIC#2 acquires a distinct stream, connects, and charges the exact elapsed
+
+• R5C4 §8 — same-controller browser transport ↔ REAL production route: connect, real context.ack, route_change preserves BOTH, terminate the EXACT socket THROUGH the production close→terminate path (both inactive; forbidden state never settles), same-controller restart (fresh resources + cumulative), stale old-socket callbacks inert
+
+• R5C5 REV-03 — REAL buildGateway → inject only budget+transcription → REAL mic session-create → REAL captureLedger.beginSegment (snapshot(subject).active===true) → REAL Conversation publish/ack → route_change preserves BOTH → raw socket drop → production close → finalizeSegment (active===false) → same-controller restart (cumulative retained)
+
+• R5C5 REV-02 — 16 async production boundaries (BND-01..BND-16): each interrupts a stage holding a REAL acquired resource and fails closed (no leaked lease / socket; media closed) — no parser-only checkpoints
+
+• R5C5 REV-05 — fresh-mic chain EXACT counters: MIC#1 (cancelled) acquires=1 peer=0 answer=0 broker=0 socket=0 lease=0 track-stops=1; MIC#2 acquires=1(more) peer=1 answer=1 broker=1 socket=1 lease=1 retry=0 track-stops=1
+
+• R5C5 MUT-FIFTH targets — T-A lease@acquisition · T-B post-acceptAnswer ownership · T-C stale-socket identity isolation · T-D reentrant-close latch-before-teardown
+
+• R5C6 REV-02 — REAL GC.createBrowserMedia lifecycle boundaries (BND-R6-01..25): controlled navigator/RTCPeerConnection/RTCDataChannel/fetch/socket/clock; each proves exact production acquisition + fail-closed cleanup
+
+• R5C6 REV-03 — same-subject cumulative carry (usedMs/remaining) across a real terminate→restart, real route advancement before route_change (both capture + server segment preserved), stale old-socket replay inert after restart
+
+• R5C7 BLOCKER-1 — REAL pending res.json() body continuation crossing ownership loss (capture-close / supersession / lease-expiry / text sole-defence); the post-await !owned() guard is load-bearing
+
+• R5C7 BLOCKER-2 — a delayed OLD-socket onOpen after the owner lost authority is INERT via the real current-owner binding guard; only the fresh owner's onOpen connects
+
+• IC01 §34 — closed intelligence contract (vocabularies, bounds, validators)
+
+• IC01 §34 REV-01(C1) — a fact is a CLOSED answer descriptor derived from evidence (no free-form text)
+
+• IC01 §34 REV-02 — trusted observation = R5B receipt + source/result authority
+
+• IC01 §34 REV-03 — canonical IntelligenceInputSnapshot (16 KiB enforced)
+
+• IC01 §35 — exact-six capability registry (accepted R5A names + delegated args)
+
+• IC01 §36 — pure bounded agent loop (state machine, budgets, R5B correlation, deadline, grounding)
+
+• IC01 §36 REV-02(C1) — dispatch acknowledgement binds the exact accepted-R5B execution
+
+• IC01 §36 REV-01(C1) — a fact is grounded + answer↔evidence matched + evidence-derived
+
+• IC01 §36 RESIDUAL-A(C2) — closed advice narrates deterministically; positions must be current-visible
+
+• IC01 §36 RESIDUAL-B(C2) — exact execution correlation on ALL terminal states (not VERIFIED-only)
+
+• IC01 §36-FINAL CLOSE-01 — CLARIFY/ESCALATE closed descriptors (no smuggled model narration)
+
+• IC01 §36-FINAL CLOSE-02/03 — real frozen-R5B gateway ACK bridge (post-accept + pre-accept lifecycle)
+
+• IC01 §36-FINAL CLOSE-04 — snapshot binding/context coherence + deep immutability
+
+• IC01 §36-FINAL CLOSE-05 — trusted rebind (fresh correlated authority + context) + negative-advanced routing
+
+• IC01 §38-FINAL-CLOSURE — terminal advice sparse current-position grounding (agent-loop RESPOND path)
+
+• IC01 §37 — language contract acceptance (en / hi / hinglish)
+
+• IC01 §38 — dormancy (zero provider/network/DB; NOT wired to production)
+
+──────────────────────────────────────────────────────
+Live AI LIVE-AI-02A gateway: 2320 passed, 0 failed
+ALL LIVE-AI-02A GATEWAY CHECKS PASSED

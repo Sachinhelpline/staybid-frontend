@@ -1,0 +1,13 @@
+A. Production entrypoint (fail closed; no synthetic authority in the production path)
+B. Reader authority: independent attestation verification matrix
+C. Proof lifecycle: expiry, renewal, reconnection, drift
+D. PostgreSQL statement_timeout enforcement (synthetic session protocol)
+E. Gateway caller
+F. Accepted source preservation + boundaries
+G. Integrated offline path (evidence -> proof -> reader binding -> timeout -> accepted runtime -> gateway -> result -> expiry/reconnect/shutdown)
+H. Production attestation-source composition through the ACTUAL production entrypoint
+
+══════════════════════════════════════════════════════════
+RESULT: 157 passed, 0 failed, 0 skipped  (executed assertions: 157)
+OFFLINE PRODUCTION-INTEGRATION VERIFICATION: PASS
+SCOPE: synthetic PostgreSQL session fixture + offline TEST-ONLY reference attester + real local loopback sockets through the ACCEPTED serving runtime — NOT live AI-STAGING privileges, hosted statement_timeout, Railway isolation, or a deployed/connected gateway.

@@ -1,0 +1,5 @@
+
+══════════════════════════════════════════════════════════
+RESULT: 31 passed, 0 failed  (executed assertions: 31)
+OFFLINE PRODUCTION COMPOSITION / CONFIG / ENTRYPOINTS (§M1-R2): PASS
+SCOPE: config + composition wiring with synthetic approved deps + real loopback. NO live DB/DNS. NOT live AI-STAGING.

@@ -1,0 +1,29 @@
+• Local tsc compile (SB-01 + SB-02 + SB-04): exit 0, clean
+
+• Provider abstraction (null provider fails closed)
+
+• Broker helpers (origin / sdp / subject / gateway url resolution)
+
+• Assertion claims (read-only scope, ~60s expiry, no PII)
+
+• Broker response shaping (bounded; fail closed)
+
+• Browser↔gateway control contracts
+
+• WebRTC client (data-channel event NEVER executes an action; lifecycle)
+
+• Gateway control client (token in subprotocol, not query; frame guards)
+
+• Gateway turn router (SB-01 dispatch; stale rejection)
+
+• R3: 20-second single-audio ceiling (frozen SB-02 bound preserved)
+
+• R3-09/11: createAttemptOwner — the exact ownership logic VoicePanel runs
+
+• R4-09: VoicePanel control frames route to the CAPTURED attempt router (never routerRef.current)
+
+• WebRTC async ownership (cancel during stages; acceptAnswer ownership)
+
+──────────────────────────────────────────────────
+Voice AI SB-04 provider/client: 102 passed, 0 failed
+ALL VOICE-AI-SB-04 PROVIDER/CLIENT CHECKS PASSED

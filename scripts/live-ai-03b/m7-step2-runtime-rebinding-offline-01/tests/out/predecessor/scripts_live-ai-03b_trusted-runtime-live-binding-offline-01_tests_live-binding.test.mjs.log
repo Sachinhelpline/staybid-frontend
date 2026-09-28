@@ -1,0 +1,10 @@
+1. registry + query integrity
+2. query→observation via frozen read adapter + checks
+3. end-to-end via frozen test entrypoint with the real registry
+4. production-authority composition + Finding 2 (supplied-SQL authority)
+
+══════════════════════════════════════════════════════════
+RESULT: 82 passed, 0 failed
+OFFLINE VERIFIED-SCHEMA READ-QUERY + COMPOSITION: PASS (Findings 1 & 2 remediated)
+DATABASE EXECUTION: disposable in-memory fixture only — NOT live PostgreSQL dialect/catalog validation.
+PRODUCTION AUTHORITY: composed authority UNPROVISIONED offline; frozen entrypoint untouched; activation REMAINS BLOCKED.

@@ -1,0 +1,41 @@
+• Local tsc compile (03a, strict): exit 0, clean
+
+• 03A-A — P1-06 exact capability execution metadata
+
+• 03A-B — the real two-stage lifecycle admits, accepts, and hands off (P1-03)
+
+• 03A-C — P1-01 request commitment, execution ids, budget correlation
+
+• 03A-D — P1-02 complete current trusted binding compared field-by-field
+
+• 03A-E — P1-05 current-pending-dispatch proof, one monotonic clock, bounded replay
+
+• 03A-F — P1-03 independent acceptance + terminal ordering through 03A
+
+• 03A-G — P1-04 source/result authority validated before submitObservation
+
+• 03A-H — advancing rebind path + preserved accepted invariants
+
+• 03A-L — P1-03 residual: post-accept PENDING keeps the execution alive; a later TRUE terminal completes it
+
+• 03A-M — P1-05 residual: NON-VACUOUS same-instance replay-ledger fill / cap / eviction
+
+• 03A-K — named closure probes (P1-01 … P1-06)
+
+── CLOSURE PROBES ──
+  ✓ P1-01_full_sha256_request_commitment
+  ✓ P1-02_complete_binding_digest_enforced
+  ✓ P1-03_two_stage_lifecycle
+  ✓ P1-04_authority_before_handoff
+  ✓ P1-05_pending_dispatch_proof
+  ✓ P1-05_one_monotonic_clock
+  ✓ P1-06_metadata_idempotency_and_open_schema
+  ✓ dormant_adapter_zero_execution
+  ✓ only_ic01_verified_reaches_ic02
+  ✓ replay_never_readmits
+  ✓ P1-03_pending_not_terminal
+  ✓ P1-03_pending_then_terminal_completes
+  ✓ P1-03_pending_revocation_no_late_authority
+  ✓ P1-05_same_instance_replay_bound
+
+✅ 03A execution-safety suite: 175 passed, 0 failed

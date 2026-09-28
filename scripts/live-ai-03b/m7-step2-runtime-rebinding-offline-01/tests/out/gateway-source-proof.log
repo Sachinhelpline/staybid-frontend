@@ -1,0 +1,183 @@
+{
+  "contract": "GatewayDeploySourceProofV2",
+  "pass": true,
+  "failures": [],
+  "gateway_source": {
+    "commit": "4f390b74132b087b757faa655bdcb73be6c14a8f",
+    "tree": "72080256d4cc2a97a2a15058931e838ebef5ec48",
+    "voice_gateway_tree": "2092d9de6b96763ab76477f9c37159082c00aa26"
+  },
+  "superseded_rejected": {
+    "commit": "2b69ce28230fc9d56a035846e95d8de206d5db3b",
+    "tree": "87aad22d90f84f2c3b307201c3e0d3b8658b1619",
+    "voice_gateway_tree": "8dd654353ae3fba106f17b9e77b290499f8c1411",
+    "reason": "gateway closure omits service_tier:\"default\" ⇒ an OMITTED tier inherits the project default (may be Fast/Priority ⇒ re-priced)"
+  },
+  "build_closure_rule": "tsc -p server/voice-gateway/tsconfig.json — include [\"*.ts\"], rootDir \".\" ⇒ server/voice-gateway/*.ts only (+ package.json / package-lock.json for dependency resolution)",
+  "closure_files": [
+    {
+      "path": "server/voice-gateway/Dockerfile",
+      "blob": "bd50f43c5e1736c6b4892e53eac072dda4e7f309"
+    },
+    {
+      "path": "server/voice-gateway/auth.ts",
+      "blob": "4f89b3f75181cd6bda54fc5beb344409a3b49a4e"
+    },
+    {
+      "path": "server/voice-gateway/config.ts",
+      "blob": "32a5d5f48b4d3328b87ea0ee44ff0c8c72bbc4cf"
+    },
+    {
+      "path": "server/voice-gateway/control-socket.ts",
+      "blob": "c24b8dc5c177c6632a96c8bf89b3b5376b9a43e7"
+    },
+    {
+      "path": "server/voice-gateway/index.ts",
+      "blob": "4e2e895cde317016974559e48829084775e3bb66"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-03b-controller.ts",
+      "blob": "c1633aa786c86627682e803440df5472cf1a06ef"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-agent-loop.ts",
+      "blob": "cfe1ca487d6190490c08febad0b87ca471d34f82"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-answer-compiler.ts",
+      "blob": "34a3fd2de6e54c33ffcfc8269a7ff7d968efef0e"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-budget-authority.ts",
+      "blob": "73cead6dc20a29eb5035765df38ca0414f5744d0"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-budget-control.ts",
+      "blob": "2a3f01354caade74da3906e455a31a76871ce71c"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-budget-pricing.ts",
+      "blob": "9684cfbc98643231b0b06479333f01d9b10d709a"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-budget-store.ts",
+      "blob": "b8979bd7673c21e914dd826fdf43e2b5577c56bc"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-capability-registry.ts",
+      "blob": "c0660e86bea67b8f65a34f70f4ceda8ac4492f5c"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-control-socket.ts",
+      "blob": "c1af9d248a626743aad2f07fbc1ee1fe8bcd1238"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-execution-safety.ts",
+      "blob": "ba3e9aba104c9fd851d6550fc78fa9affef8f4cb"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-intelligence-contract.ts",
+      "blob": "1de27a7e21289998c301a3a33cb8ab7e77c6aad7"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-orchestrator.ts",
+      "blob": "3447c98385e48df0967871ae4c7441b3a506cbcf"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-schemas.ts",
+      "blob": "6629ffa0cd9a83b3abc496caf22183c30fe48f78"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-sessions.ts",
+      "blob": "7eea230319b5555780ef3304bdac1751e726628e"
+    },
+    {
+      "path": "server/voice-gateway/live-ai-staging-main.ts",
+      "blob": "e211b25f68f4414f4c6a938d9c25935cdf26b67a"
+    },
+    {
+      "path": "server/voice-gateway/openai-realtime.ts",
+      "blob": "d7800ddfacf9840bf8401316b58810338ce7b791"
+    },
+    {
+      "path": "server/voice-gateway/openai-responses.ts",
+      "blob": "1a9e2ae8f13365577c4a0dc40f6771c1c5073a37"
+    },
+    {
+      "path": "server/voice-gateway/openai-transcription.ts",
+      "blob": "e68a47a184cfc59b001c7244a96ae97a55f93b3c"
+    },
+    {
+      "path": "server/voice-gateway/openai-tts.ts",
+      "blob": "40eb5b7aa571f5f80ebe4e19fe5dad0ab9d90486"
+    },
+    {
+      "path": "server/voice-gateway/rate-limit.ts",
+      "blob": "5f0f255bfee2b236325a45395f02e52954d53e2c"
+    },
+    {
+      "path": "server/voice-gateway/reasoning-adapter.ts",
+      "blob": "7a75391bda07a01c43eb31f1431e2de621947fd2"
+    },
+    {
+      "path": "server/voice-gateway/router.ts",
+      "blob": "d89671fbcc6d9b09e97a32337957e1f55a2b12c2"
+    },
+    {
+      "path": "server/voice-gateway/schemas.ts",
+      "blob": "6b01cb169ab655fa3ce9825069a6edc8715db0b4"
+    },
+    {
+      "path": "server/voice-gateway/sessions.ts",
+      "blob": "65dfb0752b4f317787b56c5d6d93de9ef88ec91a"
+    },
+    {
+      "path": "server/voice-gateway/sideband.ts",
+      "blob": "b3265a765eb9bae55cb1e16ab4070eb492642566"
+    },
+    {
+      "path": "server/voice-gateway/telemetry.ts",
+      "blob": "5b4cfb2e097826a516b82978797f209885170454"
+    },
+    {
+      "path": "server/voice-gateway/tool-executor.ts",
+      "blob": "4650bd56d60302a7cd54fe0f7d711b696dda1c5c"
+    },
+    {
+      "path": "server/voice-gateway/tsconfig.json",
+      "blob": "dee0a7f10d72295e4cc1e7aafbb5b690ad6ee6c0"
+    }
+  ],
+  "pinned_blobs": {
+    "server/voice-gateway/openai-responses.ts": "1a9e2ae8f13365577c4a0dc40f6771c1c5073a37",
+    "server/voice-gateway/live-ai-staging-main.ts": "e211b25f68f4414f4c6a938d9c25935cdf26b67a",
+    "server/voice-gateway/config.ts": "32a5d5f48b4d3328b87ea0ee44ff0c8c72bbc4cf",
+    "server/voice-gateway/live-ai-03b-controller.ts": "c1633aa786c86627682e803440df5472cf1a06ef",
+    "server/voice-gateway/live-ai-budget-authority.ts": "73cead6dc20a29eb5035765df38ca0414f5744d0",
+    "server/voice-gateway/live-ai-budget-store.ts": "b8979bd7673c21e914dd826fdf43e2b5577c56bc",
+    "server/voice-gateway/live-ai-budget-pricing.ts": "9684cfbc98643231b0b06479333f01d9b10d709a",
+    "server/voice-gateway/tsconfig.json": "dee0a7f10d72295e4cc1e7aafbb5b690ad6ee6c0",
+    "package.json": "a5a06e499c1e252506ac1621a2f89ec8be0b742e",
+    "package-lock.json": "569cdb2159fcf12b8bb30f88bd564fe62fb5941c"
+  },
+  "broker_blobs": {
+    "app/api/live-ai/staging/session/route.ts": "8335574457fff30ea6fffb34d3b4c3c2aa42d979",
+    "lib/live-ai/staging-authority.ts": "95cc6a6e5c1a799cf664c36b0d8f62df4be706eb"
+  },
+  "closure_diff_vs_superseded": {
+    "changed": [
+      {
+        "status": "M",
+        "path": "server/voice-gateway/openai-responses.ts"
+      }
+    ],
+    "added_lines": 7,
+    "removed_lines": 0,
+    "added_code_lines": [
+      "export const REASONING_03B_SERVICE_TIER = \"default\" as const;",
+      "    service_tier: REASONING_03B_SERVICE_TIER,"
+    ]
+  },
+  "build_command": "npm run build:gateway",
+  "start_command": "npm run start:live-ai-staging"
+}

@@ -1,0 +1,62 @@
+• server: PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+  PASS H00 V2 reader service starts against REAL PG (reader login, verified statement_timeout, independent attestation)
+  PASS H01 reader service with the unresolved Step-2 pin refuses BEFORE any DB connection
+  PASS A00 M6 canonical verifier PASS (pre-activation)
+  PASS A01 real pre-activation: 2 versions / 5 entries; V1 historical; V2 inactive ×3; 0 active; dormant policy; epoch-1; zero exposure
+  PASS A02 reader chain (loopback) returns the identical pre-activation observation
+  PASS A03 the reader session is SELECT-only (write attempt refused by the DB)
+  PASS A04 unresolved Step-2 pin / 2b69ce gateway / foreign execution ⇒ refused, ZERO ledger rows, V2 still inactive
+  PASS B00 real executor login activates V2 via activate_catalog_v2; ledger committed; correlated; activated state exact; NOT probe-ready
+  PASS B01 exactly ONE ledger row (action=activate) for this approval
+  PASS B02 V2 SOLE active with the reviewed active digest; V1 inactive historical
+  PASS B03 M6 canonical verifier PASS (activated)
+  PASS B04 reader chain: activated observation passes the activated-state check
+  PASS B05 second executor run refused (one-shot); no second ledger row
+  PASS B06 DB-level replay of the SAME approval refused inside activate_catalog_v2 (ledger unique); state unchanged
+  PASS B07 a SECOND valid approval while V2 is active refused (no competing authority); ledger unchanged
+  PASS B08 executor has no direct catalog DML
+  PASS P01 gateway_store has NO activation authority (activate_catalog_v2 denied)
+  PASS P02 PUBLIC has NO successor execute (activate_catalog_v2 denied)
+  PASS P03 reader has NO successor execute
+  PASS P04 reader has NO restore authority
+  PASS P05 old trusted activate_catalog path refuses V2 claims (no V1 fallback); ledger unchanged
+  PASS P06 executor cannot write the ledger directly
+  PASS P07 reader cannot write the ledger
+  PASS C00 Phase B before the policy/control arm ⇒ FAIL, no receipt
+  PASS D00 04 successor one-call policy (105,920) activated by the Owner
+  PASS D01 05 controls epoch 1→2 enabled by the Owner
+  PASS D02 M6 canonical verifier PASS (armed)
+  PASS D03 real armed state: V2 sole active; policy-v2 SOLE active; epoch 2 enabled
+  PASS D04 real ceilings: 5 × 105,920 + calls 1 + admissions 1 (row identity AND values)
+  PASS D05 reader chain: armed + ceilings observations equal the executor-side reads
+  PASS D06 Phase-B preflight PASS on real armed state + real committed ledger ⇒ FirstProbePreflightReceiptV2 issued
+  PASS E00 the frozen V1 probe refuses the V2 receipt (never sends)
+  PASS E01 V2 probe: ONE send of the frozen probe text through the injected broker; spend 105,920 within ceiling
+  PASS E02 no second turn
+  PASS F01 ceiling session_money_ceiling_micros +1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F01 ceiling session_money_ceiling_micros -1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F01 ceiling global_day_money_ceiling_micros +1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F01 ceiling project_month_money_ceiling_micros -1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F01 ceiling session_provider_calls +1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F01 ceiling session_execution_admissions +1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F01 ceiling subject_day_money_ceiling_micros -1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F01 ceiling project_day_money_ceiling_micros +1 ⇒ ceilings row no longer matches (zero rows) ⇒ fail closed
+  PASS F02 extra foreign active policy ⇒ policy-v2 not SOLE active ⇒ armed check fails
+  PASS F03 V1 also active ⇒ V2 not sole active
+  PASS F04 V1 expiry extended in place ⇒ fail
+  PASS F05 cache-write rate lowered to base ⇒ fail
+  PASS F06 control killed ⇒ fail
+  PASS F07 obsolete 89,536 policy row present ⇒ fail
+  PASS F08 after every revert the armed state + ceilings pass again
+  PASS F09 M6 canonical verifier PASS (armed, post-tamper-revert)
+  PASS G00 07 dormant restoration by the Owner
+  PASS G01 real restored state: V2 inactive digest; policy-v2 restored digest; epoch 3; V1 never revived
+  PASS G02 postflight PASS on the real restored state (+ synthetic accounting evidence preserved)
+  PASS G03 ledger evidence preserved (never deleted)
+  PASS G04 M6 canonical verifier PASS (restored)
+  PASS G05 reader chain: restored observation passes the restored-state check
+  PASS G06 Phase B after restoration ⇒ FAIL, no receipt (probe authority gone)
+  PASS G07 executor restore path on the restored state: idempotent already_restored, no ledger write
+  PASS H02 reader service still ready after the full lifecycle; independent attestations issued
+  PASS H03 reader service stops cleanly (listener closed)
+m7s2-localpg-lifecycle[PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)]: 60 passed, 0 failed

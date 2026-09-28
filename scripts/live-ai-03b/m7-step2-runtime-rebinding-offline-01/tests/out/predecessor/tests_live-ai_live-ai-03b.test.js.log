@@ -1,0 +1,295 @@
+
+• 03B-A — provider request contract (fixed §6)
+  ✓ A00 — admission built + digested
+  ✓ A00b — admission carries a sha256 digest
+  ✓ A01 — exact endpoint
+  ✓ A01b — POST
+  ✓ A02 — exact model
+  ✓ A03 — reasoning effort low
+  ✓ A04 — max_output_tokens 2000
+  ✓ A05 — store false
+  ✓ A06 — background false
+  ✓ A07 — stream false
+  ✓ A08 — tools empty
+  ✓ A08b — truncation disabled
+  ✓ A02c — structured output json_schema
+  ✓ A02d — strict structured output
+  ✓ A02e — PlanCandidate schema name
+  ✓ A02f — PlanCandidate schema shape
+  ✓ A20 — exactly ONE fetch (zero retries)
+  ✓ A09 — a well-formed response normalizes COMPLETED_VALID
+  ✓ A10 — an over-32KiB payload never calls the provider
+  ✓ A10b — zero fetch on payload oversize
+  ✓ A11 — an over-64KiB response body → OVERSIZED_OUTPUT
+  ✓ A12 — an over-16KiB IC01 snapshot yields NO admission (reject, never truncate)
+  ✓ A13 — deadline clamped to the 20s absolute ceiling
+  ✓ A14 — endpoint is fixed in the admission
+  ✓ A14b — model is fixed in the admission
+  ✓ A14c — provider is fixed
+  ✓ A15 — no api key ⇒ PROVIDER_UNAVAILABLE, no fetch
+  ✓ A15b — dormant (no key) ⇒ zero fetch
+
+• 03B-B — provider outcome normalization (§7)
+  ✓ B01 — 429 → RATE_LIMITED (#30)
+  ✓ B02 — 401 → AUTHENTICATION_FAILED (#31)
+  ✓ B02b — 403 → AUTHENTICATION_FAILED
+  ✓ B03 — 5xx → PROVIDER_UNAVAILABLE (#32)
+  ✓ B04 — network throw → NETWORK_FAILURE (#33)
+  ✓ B05 — bad output_text → MALFORMED_RESPONSE (#34)
+  ✓ B06 — wrong model → IDENTITY_MISMATCH (#35)
+  ✓ B07 — status incomplete → INCOMPLETE
+  ✓ B08 — empty output_text → MISSING_OUTPUT
+  ✓ B09 — no usage → USAGE_MISSING
+  ✓ B10 — malformed usage → USAGE_MALFORMED
+  ✓ B11 — unexpected tool output item → rejected
+  ✓ B12 — deadline abort → TIMEOUT (#28)
+  ✓ B13 — caller abort → ABORTED (#29)
+
+• 03B-C — budget-before-provider-call ordering (§8)
+  ✓ C00 — reservation occurs
+  ✓ C01 — a configured budget path reaches the provider fetch
+  ✓ C02 — reservation + durable child persist happen (#11/#12)
+  ✓ C02b — provider child persisted before settlement
+  ✓ C03 — no reasoning rate (budget unavailable) ⇒ ZERO fetch (#14)
+  ✓ C04 — budget refused (prepare) ⇒ ZERO fetch (#13)
+  ✓ C05 — reservation refused ⇒ ZERO fetch (#15)
+  ✓ C06 — reservation-persistence failure ⇒ ZERO fetch (#16)
+  ✓ C07 — kill before call ⇒ ZERO fetch (#17)
+  ✓ C08 — no api key ⇒ ZERO fetch
+  ✓ C09 — bounded provider calls per turn (≤ IC01 max) (#19)
+
+• 03B-D — exact reasoning usage settlement
+  ✓ D01 — worst case reserves 32768 input ONCE at the highest tier + 2000 output (#22)
+  ✓ D02 — reserveReasoning03b returns an id
+  ✓ D03 — exact ordinary/cached/cache-write/output settlement; reasoning NOT double-charged (#21/#23)
+  ✓ D04 — incoherent usage retains the FULL reservation (#24)
+  ✓ D05 — missing usage retains the FULL reservation (#25)
+  ✓ D06 — provider actual over the reservation revokes local authority (#26)
+  ✓ D07 — a catalog missing the reasoning tiers ⇒ NO worst case (no authority) (#27)
+
+• 03B-E — IC01 effect driver + 03A sole admission
+  ✓ E01 — a valid provider candidate drives IC01 to a compiled terminal
+  ✓ E02 — the compiled-answer frame is emitted
+  ✓ E03 — exactly one answer.compiled frame
+  ✓ E04 — frame type answer.compiled
+  ✓ E05 — carries an IC02-accepted envelope (#38)
+  ✓ E06 — emitted envelope passes protocol validation
+  ✓ E07 — emitted envelope verifies in the browser consumer
+  ✓ E08 — a capability plan suspends awaiting the 03A round-trip
+  ✓ E09 — capability routed through 03A admit (sole admission) (#39)
+  ✓ E10 — 03B emits NO answer while a capability is pending (no direct browser authority)
+  ✓ E11 — staging gate OFF ⇒ turn refused, zero authority
+  ✓ E12 — staging OFF ⇒ ZERO provider calls (#52)
+
+• 03B-F — compiled envelope verification, tamper, and Node/browser parity (#40-#47, #16)
+  ✓ F01 — the golden envelope verifies in the Node IC02 verifier
+  ✓ F02 — the golden envelope verifies in the browser consumer
+  ✓ F03 — the verified canonicalText equals the envelope's (deterministic rerender) (#40)
+  ✓ F04 — the golden envelope passes the wire validator
+  ✓ F05 — every supported mutation is REJECTED identically by Node + browser verifiers (parity) (#41-#45, #16)
+  ✓ F06 — verifyCompiledAnswer accepts when the current binding matches
+  ✓ F07 — a stale/foreign current binding is rejected (#44)
+  ✓ F08 — the ONLY 03B render path is the compiled-envelope verifier
+  ✓ F09 — an answer.plan-shaped object is NOT a compiled envelope (legacy bypass closed) (#46)
+  ✓ F10 — raw text can never verify as a compiled answer (#47)
+  ✓ F11 — a fabricated partial envelope is rejected
+
+• 03B-G — READ/UI_LOCAL ceiling; no transactional authority
+  ✓ G01 — exactly six capabilities (#49)
+  ✓ G02 — every capability is READ or UI_LOCAL (#48)
+  ✓ G03 — no booking/bid/payment capability exists (#50)
+
+• 03B-H — voice / STT / TTS / audio exclusion
+  ✓ H01 — 03B controller/provider/consumer never reference mic/STT/TTS/audio (#51)
+
+• 03B-I — default production dormancy
+  ✓ I01 — LIVE_AI_03B_STAGING_TEXT_ENABLED defaults OFF
+  ✓ I02 — the subject allowlist defaults EMPTY
+  ✓ I03 — default config ⇒ staging text NOT configured (unreachable)
+  ✓ I04 — gate ON but empty allowlist ⇒ still unreachable
+  ✓ I05 — no subject is allowed under the default config
+
+• 03B-J — P1-01 runtime bootstrap reachability (config-only activation)
+  ✓ J01 — default bootstrap (no 03B seam) ⇒ legacy turn path (byte-identical)
+  ✓ J02 — the legacy orchestrator received the default turn
+  ✓ J03 — the seam injected ⇒ the REAL control path routes turn.text to 03B (#reachability D)
+  ✓ J04 — the 03B controller entrypoint received the turn transcript
+  ✓ J05 — the legacy orchestrator was NOT invoked for the 03B-routed turn
+  ✓ J06 — default production env ⇒ 03B route NOT admitted (A/B)
+  ✓ J07 — staging ON but subject NOT allowlisted ⇒ not admitted (C)
+  ✓ J08 — config-only flip: an allowlisted subject IS admitted (E — activation = configuration)
+  ✓ J09 — the admitted 03B path reaches the controller (exactly one fake provider call, D)
+  ✓ J10 — the controller emitted the IC02 answer.compiled frame
+  ✓ J11 — legacy answer.plan is NOT the 03B rendered answer (F — exclusivity)
+  ✓ J12 — the emitted 03B envelope passes the wire validator (F)
+  ✓ J13 — a non-allowlisted subject ⇒ ZERO 03B provider invocation (C)
+
+• 03B-K — P1-02 text gate decoupled from the voice provider config
+  ✓ K00 — with STT/TTS mismatched, the broad voice gate is NOT configured
+  ✓ K-G — the 03B TEXT provider IS configured WITHOUT STT/TTS (decoupled)
+  ✓ K-G2 — staging text is reachable without any STT/TTS configuration
+  ✓ K-H0 — a mismatched reasoning model is disabled (fail closed)
+  ✓ K-H — an invalid reasoning model ⇒ 03B TEXT provider NOT configured (fail closed)
+  ✓ K-I — a missing provider credential ⇒ 03B TEXT provider NOT configured
+  ✓ K-I2 — no key ⇒ staging text unreachable (fail closed)
+  ✓ K-J — the voice provider gate still accepts key + all three models (UNCHANGED)
+  ✓ K-J2 — the voice gate still fails closed when STT is absent (UNCHANGED)
+
+• 03B-L — P1-03 controller-owned provider-call ceiling (first-probe = 1)
+  ✓ L00 — the loop issued a SECOND MODEL_REQUEST after the first call (non-vacuous)
+  ✓ L-K — first-probe ceiling=1 permits EXACTLY ONE authenticated provider call
+  ✓ L-L — a second IC01 MODEL_REQUEST after the first call ⇒ ZERO additional provider invocation
+  ✓ L-M — NO second provider reservation is created
+  ✓ L-M2 — the controller reports exactly one provider call for the turn
+  ✓ L-N — normal (non-probe) bounded behavior UNCHANGED: two requests ⇒ two calls (≤ IC01 max)
+
+• 03B-M — P1-01 real buildGateway forwards the 03B runtime dependencies
+  ✓ M01 — buildGateway FORWARDS the 03B deps ⇒ an authorized staging turn reaches the controller (no extra source change)
+  ✓ M02 — the buildGateway-wired 03B path emits the compiled answer
+  ✓ M03 — default buildGateway forwards NO deps ⇒ a 03B turn is a CLOSED failure (dormant)
+  ✓ M04 — default buildGateway ⇒ NO compiled answer and NO legacy answer.plan
+
+• 03B-N — P1-02 real handleLiveAiSessionCreate: text needs no STT/TTS
+  ✓ N-G — a TEXT session for an allowlisted subject SUCCEEDS without STT/TTS configured
+  ✓ N-H — MICROPHONE with STT/TTS absent STILL fails closed (voice safety unchanged)
+  ✓ N-I — a non-allowlisted text subject with no legacy voice config fails closed
+
+• 03B-O — P1-03 a 03B-classified turn NEVER falls back to legacy
+  ✓ O01 — a 03B turn with no budget core makes ZERO legacy orchestrator calls (#no-fallback)
+  ✓ O02 — ZERO provider calls when mandatory budget authority is absent
+  ✓ O03 — NO answer.plan emitted (never the legacy path)
+  ✓ O04 — NO compiled answer (closed failure)
+  ✓ O05 — a CLOSED 03B failure is emitted instead
+
+• 03B-P — P1-04 TrustedBinding is the acknowledged context authority (no reconstruction)
+  ✓ P01 — a coherent ACK admits the 03B turn to the provider
+  ✓ P02 — binding.contextDigest EQUALS the acknowledged context digest (no JSON.stringify)
+  ✓ P03 — binding.authorityRef EQUALS the acked authorityRef exactly
+  ✓ P04 — routeEpoch comes from the accepted ACK metadata (not a default of 1)
+  ✓ P05 — contextRevision comes from the accepted ACK metadata (not 'rev-1')
+  ✓ P06 — generation is the incoming active generation
+  ✓ P07 — a turn with NO acknowledged context fails closed BEFORE the provider (no reconstruction)
+  ✓ P08 — an incoming turnId that mismatches the acked tuple fails closed before the provider
+
+• 03B-Q — P1-05 the render path uses the FULL browser binding verifier
+  ✓ Q00 — a matching current binding renders (full-binding verifier)
+  ✓ Q01 — EACH of the nine binding fields, mutated independently, is REJECTED (#P1-05)
+  ✓ Q02 — conversation.ts calls verifyCompiledAnswer (full-binding)
+  ✓ Q03 — conversation.ts constructs the current trusted browser binding
+  ✓ Q04 — no weaker parallel verifyCompiledEnvelope render remains
+
+• 03B-R — P1-06 released-03A end-to-end (REAL createAgentLoop + REAL createExecutionSafety + capture proxy)
+  ✓ R01 — a REAL capability plan admits via 03A and suspends (retained)
+  ✓ R02 — the released 03A minted a real ExecutionAdmission
+  ✓ R03 — the controller made ZERO loop.acknowledgeDispatch calls before acceptAction
+  ✓ R04 — no compiled answer while the capability is pending
+  ✓ R05 — acceptCapability routes through 03A.acceptAction and stays awaiting the terminal
+  ✓ R06 — the SOLE loop.acknowledgeDispatch was performed INTERNALLY by 03A (via the capture proxy)
+  ✓ R07 — no observation submitted before the terminal receipt
+  ✓ R08 — the SOLE loop.submitObservation was performed INTERNALLY by 03A on deliverTerminal (capture proxy)
+  ✓ R09 — the resumed turn drove the exact 03A IC01 hand-off effect to a compiled answer
+  ✓ R10 — the compiled answer frame was emitted after the released-03A hand-off
+  ✓ R11 — a malformed terminal receipt is refused (REAL validateActionReceipt) — no IC01 observation
+  ✓ R12 — a malformed receipt never reaches loop.submitObservation
+  ✓ R13 — a malformed terminal yields NO compiled answer
+  ✓ R14 — the 03B controller makes NO direct loop.acknowledgeDispatch/submitObservation call (03A owns the hand-off)
+  ✓ R15 — the controller binds 03A to the SAME loop via the capture proxy + makeExecution factory
+  ✓ R16 — action.proposal nests ONLY proposalId/providerTurnId/operation (never the whole admission)
+  ✓ R17 — action.accepted routes to the 03B lifecycle (accept03bAction, Stage 2)
+  ✓ R18 — accept03bAction received the accepted action IMMEDIATELY (P1-06 b)
+  ✓ R19 — action.receipt routes to resume03bObservation (Stage 3)
+  ✓ R20 — resume03bObservation received the terminal receipt (single-arg, Stage 3)
+
+• 03B-Q7 — P1-07 one-clock-domain: REAL loop deadline enforcement + backward-clock fail-closed
+  ✓ Q7-01 — a monotonic clock past the loop's OWN deadline denies the provider call (deadline enforced in beginTurn's clock domain)
+  ✓ Q7-02 — ZERO provider invocations once the shared monotonic clock is past deadline
+  ✓ Q7-03 — the turn resolves to a closed state (no provider authority granted)
+  ✓ Q7-04 — with an increasing/steady monotonic clock the REAL capability admits and suspends
+  ✓ Q7-05 — a real 03A admission was minted under the shared clock
+  ✓ Q7-06 — a BACKWARD move of the single clock fails CLOSED at 03A acceptAction (EXECUTION_NON_MONOTONIC_TIME)
+  ✓ Q7-07 — the fail-closed reason is the 03A non-monotonic-time guard (one clock domain)
+  ✓ Q7-08 — the controller derives ONE monoNow clock (turnClock ?? monotonicNowMs)
+  ✓ Q7-09 — NO IC01 lifecycle nowMs is anchored on deps.now() (epoch) — the epoch/perf split is gone
+
+• 03B-TD — P1-06 FINAL TEARDOWN (REAL gateway lifecycle: kill / terminate / timeout / acted-terminal)
+  ✓ TD-01 — a REAL capability turn is retained in active03b (awaiting the browser round-trip)
+  ✓ TD-02 — an action.proposal frame was emitted for the retained lifecycle
+  ✓ TD-03 — the ACTUAL emitted action.proposal PASSES the REAL ServerFrame validator (§11)
+  ✓ TD-04 — top-level executionNonce + receiptId present
+  ✓ TD-05 — nested proposal contains ONLY proposalId/providerTurnId/operation (no ExecutionAdmission leakage)
+  ✓ TD-interrupt-1 — interrupt03b(interrupt) tore down the active lifecycle
+  ✓ TD-interrupt-2 — the active03b entry is removed on interrupt
+  ✓ TD-interrupt-3 — released 03A + budget authority revoked on interrupt
+  ✓ TD-interrupt-4 — budget reconciliation invoked exactly once on interrupt
+  ✓ TD-reset-1 — interrupt03b(reset) tore down the active lifecycle
+  ✓ TD-reset-2 — the active03b entry is removed on reset
+  ✓ TD-reset-3 — released 03A + budget authority revoked on reset
+  ✓ TD-reset-4 — budget reconciliation invoked exactly once on reset
+  ✓ TD-end-1 — interrupt03b(end) tore down the active lifecycle
+  ✓ TD-end-2 — the active03b entry is removed on end
+  ✓ TD-end-3 — released 03A + budget authority revoked on end
+  ✓ TD-end-4 — budget reconciliation invoked exactly once on end
+  ✓ TD-kill-1 — teardownAll03b revoked the active lifecycle(s) immediately
+  ✓ TD-kill-2 — the active03b entry is removed synchronously on kill
+  ✓ TD-kill-3 — kill reconciled the 03B budget authority
+  ✓ TD-kill-4 — a late action.accepted after kill is REFUSED (no retained lifecycle)
+  ✓ TD-kill-5 — a late action.receipt after kill is REFUSED (no retained lifecycle)
+  ✓ TD-kill-6 — handleLiveAiKill calls teardownAll03b() BEFORE ctx.store.drainAll() (§5 ordering)
+  ✓ TD-term-closed-1 — store.terminate("closed") revokes the active03b lifecycle (onTerminate hook)
+  ✓ TD-term-closed-2 — termination reason "closed" reconciled the 03B budget
+  ✓ TD-term-user-1 — store.terminate("user") revokes the active03b lifecycle (onTerminate hook)
+  ✓ TD-term-user-2 — termination reason "user" reconciled the 03B budget
+  ✓ TD-term-timeout-1 — store.terminate("timeout") revokes the active03b lifecycle (onTerminate hook)
+  ✓ TD-term-timeout-2 — termination reason "timeout" reconciled the 03B budget
+  ✓ TD-dup-1 — duplicate teardown signals do NOT trigger a second budget reconciliation
+  ✓ TD-dup-2 — the lifecycle stays torn down after duplicate signals
+  ✓ TD-acted-1 — action.accepted routed through the RELEASED 03A (acceptAction)
+  ✓ TD-acted-2 — a post-accept `acted` receipt keeps the SAME lifecycle retained (AWAITING_TERMINAL)
+  ✓ TD-acted-3 — no compiled answer / no completion on the pending `acted` event
+  ✓ TD-acted-4 — NO reconcile while awaiting the true terminal
+  ✓ TD-acted-5 — the later TRUE terminal is delivered by the SAME ExecutionSafety → IC01 continues → compiled
+  ✓ TD-acted-6 — the lifecycle cleans at the true terminal (§12-J)
+  ✓ TD-acted-7 — reconcile runs at the true terminal
+  ✓ TD-acted-8 — a teardown after the true terminal is INERT (no extra reconcile)
+  ✓ TD-i-1 — lifecycle is AWAITING_TERMINAL before teardown
+  ✓ TD-i-2 — teardown while AWAITING_TERMINAL revokes the lifecycle
+  ✓ TD-i-3 — a later TRUE terminal after teardown CANNOT resume the revoked lifecycle
+  ✓ TD-i-4 — no compiled answer is produced after the awaiting-terminal teardown
+
+• 03B-S — P1-07 provider interrupt + monotonic authority
+  ✓ S01 — interrupt03b tears down the active lifecycle
+  ✓ S02 — the in-flight provider fetch AbortSignal fired on interrupt (#P1-07)
+  ✓ S03 — no late model candidate produced a compiled answer after interrupt
+  ✓ S04 — the interrupt durably revoked the 03B budget authority
+  ✓ S05 — the active controller was cleaned on interrupt (no leak)
+  ✓ S06 — a monotonic source past the deadline DENIES authority (no provider call)
+  ✓ S07 — the default 03B monotonic clock is the Node performance clock (not Date.now)
+  ✓ S08 — the controller is driven by the monotonic clock (not () => now())
+
+• 03B-T — P1-08 raw OpenAI Responses REST conformance (no SDK convenience)
+  ✓ T01 — a valid completed nested message/content/output_text → COMPLETED_VALID
+  ✓ T02 — a reasoning item + ONE message → COMPLETED_VALID
+  ✓ T03 — incomplete → INCOMPLETE
+  ✓ T04 — a non-completed terminal status → FAILED
+  ✓ T05 — MISSING status → MALFORMED_RESPONSE
+  ✓ T06 — MISSING model → IDENTITY_MISMATCH (identity never assumed)
+  ✓ T07 — a FOREIGN model → IDENTITY_MISMATCH
+  ✓ T08 — MISSING output → MISSING_OUTPUT
+  ✓ T09 — MULTIPLE competing message outputs → MALFORMED_RESPONSE
+  ✓ T10 — MULTIPLE competing output_text payloads → MALFORMED_RESPONSE
+  ✓ T11 — a tool/function output item → MALFORMED_RESPONSE (authority-bearing rejected)
+  ✓ T12 — malformed nested content → MALFORMED_RESPONSE
+  ✓ T13 — an over-64KiB response → OVERSIZED_OUTPUT
+  ✓ T14 — a top-level SDK output_text (no raw output[]) is NOT accepted → MISSING_OUTPUT
+  ✓ T15 — usage present + valid → COMPLETED_VALID
+  ✓ T15b — a valid parse with ABSENT usage → USAGE_MISSING (settlement retains full)
+  ✓ T16 — role === 'assistant' present → COMPLETED_VALID
+  ✓ T17 — MISSING role on the message → MALFORMED_RESPONSE
+  ✓ T18 — role 'user' → MALFORMED_RESPONSE
+  ✓ T19 — role 'system' → MALFORMED_RESPONSE
+  ✓ T20 — role 'developer' → MALFORMED_RESPONSE
+  ✓ T21 — any other role value → MALFORMED_RESPONSE
+  ✓ T22 — empty-string role → MALFORMED_RESPONSE
+  ✓ T23 — null role → MALFORMED_RESPONSE
+
+✅ LIVE-AI-03B deterministic suite: 249 passed, 0 failed

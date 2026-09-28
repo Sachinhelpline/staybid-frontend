@@ -1,0 +1,100 @@
+• Local tsc compile (strict): exit 0
+
+• gate — fail-closed, provider-exclusive
+
+• interpreter — refinement dimensions
+
+• interpreter — results / compare / open
+
+• interpreter — detail facts + sections
+
+• runtime — read / compare / open
+
+• runtime — refinement reconcile (catalogue: async receipt)
+
+• runtime — refinement reconcile (local filter)
+
+• runtime — route / stale invalidation
+
+• runtime — detail facts tri-state + sections
+
+• devanagari — the five mandatory WORK closure examples
+
+• devanagari — compare / results / ordinals / open
+
+• devanagari — refinement cues + bounded city aliases
+
+• devanagari — detail facts + sections
+
+• devanagari — mixed script (same six-operation boundary)
+
+• devanagari — fail-closed (no mutation without adequate intent)
+
+• devanagari — every emitted op is one of the six + passes validateOperation
+
+• devanagari — REAL runtime drive (interpret → beginTurn → makeEnvelope → execute → reconcile)
+
+• destination matrix — A destination-first Roman-Hinglish
+
+• destination matrix — B modifier-first Roman-Hinglish (the known reproduction family)
+
+• destination matrix — C hotel noun / action / filler never leaks
+
+• destination matrix — D English 'in/at/near <city>'
+
+• destination matrix — E multi-word canonical city + non-registry places (canonical-registry invariant)
+
+• destination matrix — E2 mixed script
+
+• destination matrix — F two-city ambiguity (fail closed)
+
+• destination matrix — G modifier-only / action-only / grammar-only (no destination invented)
+
+• destination matrix — H negation + hotel ids stay locked
+
+• destination matrix — I native Devanagari regression lock
+
+• destination matrix — every emitted op is valid + no leaked request word
+
+• registry — 43 canonical cities (derived from lib/cities.ts ALL_CITIES)
+
+• registry — multi-word cities + longest-match collisions (auto-derived)
+
+• registry — adjective / modifier negative matrix (city only, never the phrase)
+
+• registry — unknown destinations with explicit grammar (NO operation, NO partial refinement)
+
+• registry — canonical city WITHOUT destination grammar (fail closed, never silently dropped)
+
+• registry — multi-city matrix (generated from the registry)
+
+• registry — Devanagari alias targets are canonical registry cities
+
+• registry — FILTER-ONLY requests stay valid (no destination attempt)
+
+• registry — PROPERTY sweep: destination authority invariant
+  property sweep: 27984 generated inputs · 19866 emitted a destination
+  registry stats: {"cities":43,"exactCases":215,"multiWord":1,"collisions":1,"propertyInputs":27984,"propertyWithDest":19866}
+
+• native/mixed — the must-fix discovered cases (§18) never partially execute
+
+• native/mixed — unsupported native destination matrix
+
+• native/mixed — mixed-script unknown matrix
+
+• native/mixed — known + unknown multi-destination (both orders, all separators)
+
+• native/mixed — unknown + unknown multi-destination
+
+• native/mixed — approved native aliases still resolve; filter-only + no-grammar locks hold
+
+• native/mixed — PROPERTY: explicit destination attempt ⇒ exactly one canonical destination OR zero APPLY
+  native/mixed property: 37288 generated inputs · 36616 explicit destination attempts · 18816 resolved to a canonical city
+  native/mixed stats: {"unsupportedNative":96,"mixed":96,"knownUnknown":17280,"unknownUnknown":2016,"propertyInputs":37288,"propertyResolved":18816}
+
+• authority — no write
+
+• isolation — no network/provider/mic imports
+
+✓ owner-preview: 961 passed, 0 failed
+OWNER-PREVIEW DETERMINISTIC FIRST-SLICE: PASS

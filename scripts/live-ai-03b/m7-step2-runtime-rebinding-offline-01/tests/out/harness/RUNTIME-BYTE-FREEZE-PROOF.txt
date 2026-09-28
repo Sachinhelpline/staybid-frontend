@@ -1,0 +1,48 @@
+# Runtime byte-freeze proof — closure-harness remediation vs the reviewed Step-2 candidate
+reviewed ZIP: LIVE-AI-M7-STEP2-RUNTIME-REBINDING-EVIDENCE.zip sha256 50089b3acadbb1380c379342fecd340eab67c299fe09c2d96240e7ae97886511
+runtime manifest digest (reviewed, from the ZIP's RUNTIME-CONTENT-MANIFEST.json): 9a460078846eec885b726e7b54bdbd8a301c690b1f78a68439e151f462341998
+runtime manifest digest (recomputed now by measureRuntimeManifest): 9a460078846eec885b726e7b54bdbd8a301c690b1f78a68439e151f462341998
+
+## the 17 runtime members: sha256 now vs reviewed ZIP
+IDENTICAL  5d6adba97a5374c616f3095b0a066df15f01826f17b0dee9a5b98e0061cff150  identity/v2-identity.mjs
+IDENTICAL  64e8511bae411719f6d22184ccc7be7507505ad154749aac88c8bce80fe858e7  identity/v2-source-identity.mjs
+IDENTICAL  bc17a3fe506e3b56f652adc5e6a5b14543db513aeee964b451fa9df226f0f5a2  probe/v2-first-text-probe.mjs
+IDENTICAL  12347b2e13c0b133e6aae7c0d758942f3ae1c63f551b9195dfabcd229895cdc1  reader/v2-gateway-observation-caller.mjs
+IDENTICAL  22f4f6f96f90d6354ff2d26766e7fa9ab879484fa47930629547a094e594247f  reader/v2-observation-contract.mjs
+IDENTICAL  a90a35596bab6d7b4ec478ee906f026fa810d0d751ce1f0c05e9103e73a6495c  reader/v2-production-entrypoint.mjs
+IDENTICAL  a173d7d2d48b9123ff3029e13c10d4be842628cd576fea0e1197cd2d3ee9bb53  reader/v2-production-reader-authority.mjs
+IDENTICAL  0a50bd874f889a84be2acc5d9fa98b999bdc3ded7ee6b4a645b41af717c46c9c  reader/v2-reader-only-authority.mjs
+IDENTICAL  168dd1bc65271d6d5190bf92627f2deca2270ff982e9cd91633938be7daeb4d3  reader/v2-serving-runtime.mjs
+IDENTICAL  a2d7f005d1b3428aa8157042c57b1ed0d7515851f9aea5a89bc085ed8cc4d3c5  runtime/v2-preflight.mjs
+IDENTICAL  d629f6d64530a9cd26a43f775835ef3ee6bb85e6eb856898f77900b463a50d89  runtime/v2-production-authority.mjs
+IDENTICAL  9133908fa41a5840599ad6ef02bd85b1509db58a8047117c511131a364de3572  runtime/v2-query-registry.mjs
+IDENTICAL  d1528ad2c36236153557e5d03033a15b0504c3380579f796f09c7a0ea1446572  runtime/v2-restricted-activation-adapter.mjs
+IDENTICAL  dba84a7d04d6f95302838b173bfa65ab8066b0f77dfa20402d765b90dde6aa04  runtime/v2-runtime-config.mjs
+IDENTICAL  f46bac53601eb66e2357678857d9dbd656ae7986076d745873eb778ae2a742c6  runtime/v2-trusted-activation-executor.mjs
+IDENTICAL  b5aa2734055848d47fcec94b6df1d2e6b01943495e804d37ad836826bbacd37f  runtime/v2-trusted-executor-runtime.mjs
+IDENTICAL  d35de138ad1caf89b764325ba1680916887c4bae5cc519096ef0460bbe175c34  runtime/v2-trusted-read-adapter.mjs
+
+## identity artifacts, tools, other tests: sha256 now vs reviewed ZIP
+IDENTICAL  identity/GATEWAY-DEPLOY-SOURCE-PROOF.json
+IDENTICAL  identity/RUNTIME-CONTENT-MANIFEST.json
+IDENTICAL  identity/STEP2-PRESERVATION-BINDING-TEMPLATE.json
+IDENTICAL  tools/prove-gateway-source.mjs
+IDENTICAL  tools/verify-step2-preservation.mjs
+IDENTICAL  tools/write-identity-artifacts.mjs
+IDENTICAL  tests/v2-unit.test.mjs
+IDENTICAL  tests/v2-localpg-lifecycle.mjs
+IDENTICAL  tests/v2-localpg.test.sh
+IDENTICAL  tests/localpg-attester.mjs
+IDENTICAL  tests/helpers.mjs
+IDENTICAL  tests/probe-child.mjs
+
+## every Step-2 file: added / changed / removed vs reviewed ZIP (tests/out logs excluded: regenerated evidence)
+ADDED    ./docs/HARNESS-REMEDIATION.diff
+ADDED    ./tests/harness-fail-closed.test.sh
+CHANGED  ./FROZEN-FILE-HASH-PROOF.txt
+CHANGED  ./M7-STEP2-IMPLEMENTATION-RECEIPT.md
+CHANGED  ./NEGATIVE-REGRESSION-MAP.md
+CHANGED  ./README-OPERATOR.md
+CHANGED  ./docs/CANDIDATE-ADDITIONS.diff
+CHANGED  ./tests/run-all-m7s2.sh
+CHANGED  ./tests/run-predecessor.sh

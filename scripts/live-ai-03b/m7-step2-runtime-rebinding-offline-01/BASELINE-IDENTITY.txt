@@ -1,0 +1,19 @@
+# Baseline identity — accepted repository (read-only checks; nothing written)
+checked_at_utc: 2026-09-28T17:15:16Z
+repository: Sachinhelpline/staybid-frontend
+branch: claude/live-ai-budget-01-price-catalog-inactive-artifact-01
+HEAD: 4f390b74132b087b757faa655bdcb73be6c14a8f
+tree: 72080256d4cc2a97a2a15058931e838ebef5ec48
+parent: 9270c282d5fd65e9fe49261391badfe92c777b8f
+subject: LIVE-AI: preserve accepted M7 Step 1 successor V2
+remote(claude/live-ai-budget-01-price-catalog-inactive-artifact-01) via ls-remote: 4f390b74132b087b757faa655bdcb73be6c14a8f
+status --porcelain --untracked-files=all (empty = clean): []
+staged diff (empty = none): []
+in-progress ops: none-checked
+stash entries: 0
+
+# Candidate scratch clone
+clone HEAD: 4f390b74132b087b757faa655bdcb73be6c14a8f  tree: 72080256d4cc2a97a2a15058931e838ebef5ec48
+clone tracked-file modifications (empty = none): []
+clone untracked top-level additions:
+  ?? scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/

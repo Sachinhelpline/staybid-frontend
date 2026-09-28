@@ -1,0 +1,4 @@
+  FAIL: repository HEAD = accepted commit 9270c282 (parent f48936f), clean — no git mutation in R2.1
+  FAIL: frozen accepted files untouched: server/, migrations/, package*.json, accepted migration/grant/reader-role, first-text-probe kit
+  FAIL: gateway: 10 accepted blobs at HEAD and pinned commit; build closure byte-identical
+m6-static (R2.1): 81 passed, 3 failed

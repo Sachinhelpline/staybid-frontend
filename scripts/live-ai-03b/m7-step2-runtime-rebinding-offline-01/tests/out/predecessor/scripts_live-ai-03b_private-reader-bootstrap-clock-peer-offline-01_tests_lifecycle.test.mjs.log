@@ -1,0 +1,5 @@
+
+══════════════════════════════════════════════════════════
+RESULT: 36 passed, 0 failed  (executed assertions: 36)
+OFFLINE FULL LIFECYCLE + ENTRYPOINT FAIL-CLOSED (§30): PASS
+SCOPE: real bootstraps + synthetic env + real loopback sockets. NOT live AI-STAGING.

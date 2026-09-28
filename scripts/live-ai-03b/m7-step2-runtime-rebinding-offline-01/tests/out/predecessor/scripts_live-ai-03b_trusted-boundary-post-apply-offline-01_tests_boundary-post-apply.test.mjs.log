@@ -1,0 +1,14 @@
+1. Artifact A — exact two-grant boundary + single transaction
+2. Preserved — complete executor + reader privilege matrices (13 tables + ledger × 7)
+3. R1 — reader public-schema USAGE required (A pre+post, B verify)
+4. CHECK-LITERAL FIX — case/whitespace-EXACT canonical comparison (predicate replay)
+5. R2 — EXACT consumed_at default (predicate replay, not prefix)
+6. R2 — exact ledger shape (columns/PK/UNIQUE/constraint-count preserved)
+7. R3 — pre-grant execution ordering (all critical checks BEFORE the first GRANT)
+8. Artifact B — read-only + fail-closed posture
+9. Fail-closed density + provenance + honesty
+
+══════════════════════════════════════════════════════════
+RESULT: 107 passed, 0 failed  (executed assertions: 107)
+OFFLINE STRUCTURAL + COVERAGE + PREDICATE-REPLAY VERIFICATION: PASS
+SCOPE: static coverage + candidate-acceptance-predicate replay (CHECK/default) + pre-grant ordering over the actual SQL bytes — NOT hosted-PostgreSQL execution or effective-role proof (future credential-backed gate).

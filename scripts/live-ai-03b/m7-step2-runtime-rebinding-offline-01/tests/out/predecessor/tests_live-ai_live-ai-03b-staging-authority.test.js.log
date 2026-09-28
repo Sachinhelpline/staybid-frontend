@@ -1,0 +1,75 @@
+
+• deriveStagingSubject — stable, opaque, admin-id-derived
+  ✓ deterministic: same (adminId, secret) ⇒ same subject
+  ✓ subject carries the stg1. prefix
+  ✓ subject = stg1. + 64 lowercase hex (HMAC-SHA256)
+  ✓ raw admin id NEVER appears inside the subject
+  ✓ different adminId ⇒ different subject
+  ✓ different secret ⇒ different subject (secret rotation)
+  ✓ empty adminId ⇒ null (fail closed)
+  ✓ empty secret ⇒ null (fail closed)
+  ✓ non-string adminId ⇒ null
+  ✓ non-string secret ⇒ null
+  ✓ adminId containing the canonical NUL separator ⇒ null
+
+• resolveStagingOperatorSubject — EXACTLY ONE canonical opaque subject; list shapes DENY (P1-05)
+  ✓ exactly one canonical stg1.<64hex> ⇒ that subject
+  ✓ surrounding whitespace trimmed ⇒ accept
+  ✓ empty ⇒ null
+  ✓ non-canonical shape (short hex) ⇒ null (exact stg1.<64hex> required)
+  ✓ uppercase digest ⇒ null (exact lowercase shape)
+  ✓ two comma-separated ⇒ null (never a list)
+  ✓ two whitespace-separated ⇒ null
+  ✓ P1-05 — an IDENTICAL-duplicate list shape MUST DENY (no dedup into acceptance)
+  ✓ non-string ⇒ null
+
+• stagingSubjectMatchesOperator — constant-time exact equality
+  ✓ equal subjects ⇒ true
+  ✓ different subjects ⇒ false
+  ✓ length mismatch ⇒ false
+  ✓ non-string operator ⇒ false
+  ✓ empty ⇒ false
+
+• stagingBrokerConfigured — fail closed on every axis
+  ✓ all set ⇒ configured
+  ✓ brokerEnabled false ⇒ not configured
+  ✓ operatorSubject null ⇒ not configured
+  ✓ hmacSecret absent ⇒ not configured
+
+• extractStagingAdminBearer — Bearer-ONLY transport prerequisite
+  ✓ Bearer token ⇒ ok
+  ✓ extracts the bearer value
+  ✓ x-admin-token ONLY (no Authorization) ⇒ NOT ok
+  ✓ x-admin-only ⇒ bearer_required
+  ✓ non-Bearer scheme ⇒ NOT ok
+  ✓ Bearer ≠ x-admin ⇒ ambiguous, NOT ok
+  ✓ conflicting transports ⇒ ambiguous_admin_transport
+  ✓ matching Bearer + x-admin ⇒ ok (not ambiguous)
+
+• decideStagingSession — composed fail-closed chain (503 → 401 → 403 → ok)
+  ✓ broker unconfigured ⇒ 503 (before the 401 transport check)
+  ✓ 503 error = staging_broker_unconfigured
+  ✓ derivation secret absent ⇒ 503
+  ✓ configured + bad transport ⇒ 401
+  ✓ 401 error = admin_bearer_required
+  ✓ verifyAdmin is NEVER invoked once the transport fails (ordering)
+  ✓ requireVerifiedAdmin returns null ⇒ 403
+  ✓ 403 error = admin_denied (no verified admin)
+  ✓ requireVerifiedAdmin throws ⇒ caught ⇒ 403 (fail closed)
+  ✓ verified admin with empty id ⇒ 403
+  ✓ verified admin ≠ operator ⇒ 403
+  ✓ 403 error = not_staging_operator
+  ✓ verified operator admin ⇒ ok
+  ✓ granted subject = the derived opaque subject
+  ✓ granted subject never exposes the raw admin id
+  ✓ secret rotation without updating the operator subject ⇒ 403 (derivation binds the secret)
+
+• gateway predicate liveAi03bStagingSessionAllowed — auth:true is MANDATORY
+  ✓ staging text prerequisites configured (test env)
+  ✓ subject in allowlist ⇒ subject-allowed
+  ✓ authenticated:true + allowlisted subject ⇒ 03B allowed
+  ✓ authenticated:false + allowlisted subject ⇒ NEVER allowed (no elevation)
+  ✓ authenticated:true + non-allowlisted subject ⇒ NOT allowed
+  ✓ staging text gate OFF ⇒ NOT allowed even for an authenticated allowlisted subject
+
+✅ LIVE-AI-03B staging authority suite: 59 passed, 0 failed

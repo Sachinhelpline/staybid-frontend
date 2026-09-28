@@ -1,0 +1,5 @@
+
+══════════════════════════════════════════════════════════
+RESULT: 27 passed, 0 failed  (executed assertions: 27)
+OFFLINE REGATE / GATE-ELIGIBILITY GENERATION LIFECYCLE (§M1-R1 final): PASS
+SCOPE: deterministic barriers + real Ed25519 attester + synthetic cluster + loopback. NOT live AI-STAGING.

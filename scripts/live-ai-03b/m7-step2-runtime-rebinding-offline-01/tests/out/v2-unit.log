@@ -1,0 +1,291 @@
+  PASS I01 V2 identity self-check passes
+  PASS I02 target constants of reused neutral modules (V1 FIXED targets) equal FIXED_V2 targets
+  PASS I03 env-name lists identical to accepted V1 (no deployment drift)
+  PASS I04 V2 identity is not V1 (catalog, policy, ceiling, digests)
+  PASS I05 zero-exposure SQL is byte-identical to the accepted V1 query (neutral)
+  PASS I06 ceilingsExactV2 exact set passes
+  PASS S01 PIN A derivation base = 9270c282/c46da041 and equals the signed bundle base
+  PASS S02 PIN A rewritten to the gateway commit is rejected
+  PASS S03 PIN B 4f390b74/72080256 accepted
+  PASS S04 old 2b69ce source cannot authorize (deployed_commit)
+  PASS S04 old 2b69ce source cannot authorize (deployed_tree)
+  PASS S04 old 2b69ce source cannot authorize (gateway_deployment_revision)
+  PASS S04 old 2b69ce source cannot authorize (voice_gateway_tree)
+  PASS S05 gateway pin mismatch (deployed_commit)
+  PASS S05 gateway pin mismatch (deployed_tree)
+  PASS S05 gateway pin mismatch (gateway_deployment_revision)
+  PASS S05 gateway pin mismatch (voice_gateway_tree)
+  PASS S06 PIN C placeholder fails closed (test boundary too)
+  PASS S07 PIN C placeholder carries NO commit/tree (nothing fabricated)
+  PASS S08 PIN C TEST binding accepted only under test boundary
+  PASS S09 PIN C cannot reuse a non-Step-2 commit (9270c282)
+  PASS S09 PIN C cannot reuse a non-Step-2 commit (4f390b74)
+  PASS S09 PIN C cannot reuse a non-Step-2 commit (2b69ce28)
+  PASS S10 PIN C manifest for other bytes rejected
+  PASS S11 PIN C extra key rejected
+  PASS S12 PIN C malformed commit rejected
+  PASS S13 combined source pin: V1-shaped pin (no contract) rejected
+  PASS S14 combined source pin: placeholder step2 ⇒ fail
+  PASS S15 runtime manifest covers every runtime module file
+  PASS S16 gateway closure proof passes on the real clone (only the service_tier pin differs from 2b69ce)
+  PASS S17 committed proof JSON equals a fresh recomputation
+  PASS S18 preservation verifier: 4f390b74 is not a Step-2 commit
+  PASS S19 preservation verifier: unknown commit ⇒ absent
+  PASS S20 preservation verifier (injected read-only git): additive Step-2 commit ⇒ binding
+  PASS S21 preservation: not descending from 4f390 ⇒ fail
+  PASS S22 preservation: a frozen predecessor modified ⇒ fail
+  PASS S23 preservation: Step-2 file modified-not-added ⇒ fail
+  PASS S24 preservation: different runtime bytes at commit ⇒ fail
+  PASS R01 registry self-check
+  PASS R02 V2 registry digest ≠ V1 registry digest
+  PASS R03 supplied registry passes by content
+  PASS R04 copied correct marker + substituted SQL
+  PASS R05 marker not content-bound
+  PASS R06 extra key
+  PASS R07 missing key
+  PASS R08 non-public-qualified relation
+  PASS R09 DML smuggled
+  PASS R10 multi-statement
+  PASS R11 comment
+  PASS R12 forbidden allocation table
+  PASS R13 V1 query map (4 keys) rejected
+  PASS R14 ledger schema outside the ledger query
+  PASS R15 parameter in reader query
+  PASS R16 every query is public./trusted-ledger qualified + SELECT-only
+  PASS R17 ceilings bound to row identity AND all seven values
+  PASS R19 every observed field of every phase is produced by its registry query (column coverage)
+  PASS R18 no V1 catalog/policy identity is a V2 target in the registry
+  PASS AD01 read adapter refuses a test fixture in production
+  PASS AD02 read adapter refuses an unverified / V1 registry
+  PASS AD03 strict conversion: NULL / '' / float never become 0
+  PASS AD04 pre-activation observation passes Phase-A state check
+  PASS AD05 a missing control row (NULL epoch) fails closed, never reads as epoch 0/1
+  PASS AD06 zero-row ceilings (tampered value) ⇒ unavailable
+  PASS AD07 read adapter provenance is V2-specific (not the V1 string)
+  PASS AD08 V2 approval verifies with the synthetic reviewer
+  PASS AD09 activation adapter forwards verified V2 claims to activate_catalog_v2 only
+  PASS AD10 V1 claims contract refused before any SQL
+  PASS AD11 claims key set ≠ 36 refused
+  PASS AD12 claims missing cache_write_rate refused
+  PASS AD13 V1 catalog id in claims refused
+  PASS AD14 execution id unbound refused
+  PASS AD15 DB error ⇒ uncertain, SQLSTATE only, no message/secret leaked
+  PASS AD16 restore uses restore_catalog_v2_inactive only
+  PASS AD17 activation adapter refuses test fixture in production
+  PASS PA00 exact pre-activation state + unused approval ⇒ PASS
+  PASS PA01 3 catalog versions
+  PASS PA02 6 entries
+  PASS PA03 something already active
+  PASS PA04 V1 not historical (digest)
+  PASS PA05 V1 active entries
+  PASS PA06 V1 expiry extended
+  PASS PA07 V2 inactive digest tampered
+  PASS PA08 V2 only 2 inactive entries
+  PASS PA09 missing cache-write row
+  PASS PA10 cache-write rate below 2.5
+  PASS PA11 input rate wrong
+  PASS PA12 output rate wrong
+  PASS PA13 extra V2 entry
+  PASS PA14 a policy already active
+  PASS PA15 obsolete 89,536 policy present
+  PASS PA16 wildcard policy
+  PASS PA17 dormant policy absent/altered
+  PASS PA18 successor policy pre-present
+  PASS PA19 control enabled
+  PASS PA20 control epoch 2
+  PASS PA21 control killed
+  PASS PA22 dormant control digest tampered
+  PASS PA23 extra control row
+  PASS PA24 nonzero prior exposure
+  PASS PA25 NULL exposure count never reads as zero
+  PASS PA26 approval already consumed (ledger)
+  PASS PA27 privilege proof absent
+  PASS PA28 CORE-PROD db binding
+  PASS PA29 wrong gateway service
+  PASS PA30 old 2b69ce gateway source
+  PASS PA31 unresolved Step-2 pin
+  PASS PA32 V1-contract approval envelope rejected by the V2 verifier
+  PASS PA33 self-approval (approved:true injected) rejected
+  PASS PA34 envelope signed by another key rejected
+  PASS N01 V1 catalog id in approval scope
+  PASS N02 V1 active digest as target
+  PASS N03 V1 inactive digest as target
+  PASS N04 V1 expiry as target
+  PASS N05 V1 one-call policy id
+  PASS N06 V1 one-call policy digest
+  PASS N07 89536 money ceiling in approval
+  PASS N08 wrong source digest
+  PASS N09 wrong cache-write rate
+  PASS N10 missing cache-write rate
+  PASS N11 wrong service tier (priority)
+  PASS N12 missing service tier
+  PASS N13 long context
+  PASS N14 regional uplift
+  PASS N15 processing mode batch
+  PASS N16 wrong AI-STAGING target
+  PASS N17 CORE-PROD as target
+  PASS N18 bundle for another base
+  PASS N19 future-dated evidence (verified_at > now)
+  PASS N20 excluded path batch=true
+  PASS N20 excluded path bedrock=true
+  PASS N20 excluded path fast=true
+  PASS N20 excluded path flex=true
+  PASS N20 excluded path long_context=true
+  PASS N20 excluded path priority=true
+  PASS N20 excluded path regional=true
+  PASS N20 excluded path scale_tier=true
+  PASS N21 unsigned approval
+  PASS N22 payload altered after signing
+  PASS N23 caller-supplied trust root + own signed envelope ⇒ refused by the runtime (config-pinned root only)
+  PASS N24 future-dated evidence (consistent signed content) ⇒ evidence_from_future
+  PASS N25 2-entry V1-only catalog state treated as V2 ⇒ refused
+  PASS N26 V1 active digest observed as the armed catalog
+  PASS N27 V1 inactive digest observed as V2 inactive
+  PASS N28 send failure ⇒ NO retry; a later send is refused (one-shot)
+  PASS PA35 one second before V2 expiry ⇒ PASS
+  PASS PA36 AT V2 expiry ⇒ HOLD (fail closed)
+  PASS PA37 AFTER V2 expiry ⇒ HOLD
+  PASS PA38 T0 is frozen (not regenerated)
+  PASS PA39 before T0 ⇒ fail
+  PASS AC00 exact activated state PASS
+  PASS AC01 V1 AND V2 active
+  PASS AC02 V2 active digest wrong
+  PASS AC03 policy already active
+  PASS AC04 controls enabled early
+  PASS AC05 V1 revived
+  PASS PB00 armed V2 + correlated consumed approval ⇒ PASS + receipt
+  PASS PB01 ceiling global_day_money_ceiling_micros -1 rejected
+  PASS PB01 ceiling global_day_money_ceiling_micros +1 rejected
+  PASS PB01 ceiling project_day_money_ceiling_micros -1 rejected
+  PASS PB01 ceiling project_day_money_ceiling_micros +1 rejected
+  PASS PB01 ceiling project_month_money_ceiling_micros -1 rejected
+  PASS PB01 ceiling project_month_money_ceiling_micros +1 rejected
+  PASS PB01 ceiling session_execution_admissions -1 rejected
+  PASS PB01 ceiling session_execution_admissions +1 rejected
+  PASS PB01 ceiling session_money_ceiling_micros -1 rejected
+  PASS PB01 ceiling session_money_ceiling_micros +1 rejected
+  PASS PB01 ceiling session_provider_calls -1 rejected
+  PASS PB01 ceiling session_provider_calls +1 rejected
+  PASS PB01 ceiling subject_day_money_ceiling_micros -1 rejected
+  PASS PB01 ceiling subject_day_money_ceiling_micros +1 rejected
+  PASS PB02 old 89,536 ceilings rejected
+  PASS PB03 ceiling as string rejected (no coercion)
+  PASS PB04 missing ceiling field
+  PASS PB05 extra/foreign active policy (digest collapses to NULL)
+  PASS PB06 old V1 one-call policy digest
+  PASS PB07 controls still dormant (epoch 1)
+  PASS PB08 controls disabled
+  PASS PB09 control killed
+  PASS PB10 V1 catalog active alongside
+  PASS PB11 V1 expiry extended
+  PASS PB12 control activation digest tampered
+  PASS PB13 obsolete policy present
+  PASS PB14 ledger observation absent ⇒ fail (no throw)
+  PASS PB15 ledger record missing
+  PASS PB16 duplicate ledger record
+  PASS PB17 fabricated receipt commitment
+  PASS PB18 V1 activation receipt contract
+  PASS PB19 trusted-provenance ledger under test boundary refused
+  PASS PB20 ledger for another DB
+  PASS PB21 gates on before arm
+  PASS PB22 signing key mismatch
+  PASS PB23 missing gateway env name
+  PASS PB24 provider credential absent
+  PASS PB25 operator subject leaked secret
+  PASS PB26 unresolved Step-2 pin ⇒ NO receipt
+  PASS PB27 at V2 expiry ⇒ no receipt
+  PASS PB28 wrong reasoning model
+  PASS PR00 issued V2 receipt validates
+  PASS PR01 receipt identity binds V2 catalog/policy/105920/epoch2/gateway 4f390/Step-2
+  PASS PR02 receipt is deep-frozen
+  PASS PR03 JSON copy (identical bytes, correct commitment) NOT issued ⇒ refused
+  PASS PR04 V1 receipt shape (pin 2b69ce) refused
+  PASS PR05 stale receipt (> 15 s)
+  PASS PR06 receipt from the future
+  PASS PR07 receipt for another approval
+  PASS PR08 receipt for another execution
+  PASS PR09 test receipt refused by a production probe
+  PASS PR10 receipt absent
+  PASS PR11 other-target receipt refused
+  PASS PR12 probe refuses a V1 receipt and sends nothing
+  PASS PR13 probe refuses a stale receipt and sends nothing
+  PASS PR14 spend 105,920 ⇒ within ceiling, ok, exactly ONE send
+  PASS PR15 second send refused (no second turn)
+  PASS PR16 spend 105,921 ⇒ NOT ok (over ceiling)
+  PASS PR17 spend 89,536 (old V1 ceiling) is within the V2 ceiling
+  PASS PR18 two provider calls reported ⇒ NOT ok
+  PASS PR19 probe sends the SAME frozen probe text/digest
+  PASS PF00 restored V2 + closed ingress ⇒ PASS
+  PASS PF01 spend 105,921 ⇒ fail
+  PASS PF02 two provider calls ⇒ fail
+  PASS PF03 V2 left active ⇒ fail
+  PASS PF04 V1 revived on restore ⇒ fail
+  PASS PF05 policy not restored ⇒ fail
+  PASS PF06 controls not epoch 3 ⇒ fail
+  PASS PF07 credential still present ⇒ fail
+  PASS EX01 production entry rejects caller-supplied authority
+  PASS EX02 production entry fails closed: authority UNPROVISIONED
+  PASS EX03 acquireProductionAuthorityV2 is unprovisioned
+  PASS EX04 validateProvisionedAuthorityV2 rejects test fixtures
+  PASS EX04b validateProvisionedAuthorityV2 fails closed (no throw) on a cfg without reviewer/targets
+  PASS EX05 test entry requires testBoundary
+  PASS EX06 runtime config: V1-era env (no contract selector) refused
+  PASS EX07 runtime config: contract V1 refused
+  PASS EX08 runtime config: CORE-PROD target refused
+  PASS EX09 runtime config: provider key present in executor env refused
+  PASS EX10 runtime config: V2 env loads (names only, no secret values returned)
+  PASS EX11 V1 query map refused by the V2 runtime
+  PASS EX12 unresolved Step-2 pin refused before activation
+  PASS EX13 shared reader/executor client refused
+  PASS EX14 wrong trust root refused
+  PASS EX15 CORE-PROD connection proof refused
+  PASS EX16 approval for another execution refused (Phase A)
+  PASS EX17 in-memory V2 run: activation → committed ledger → correlation → activated state
+  PASS EX18 never PROBE_READY
+  PASS EX19 second run: replay/one-shot refused, no second mutation
+  PASS EX20 executor already one-shot (process-lifetime)
+  PASS EX21 V1 read-state capability (provenance) refused by the V2 executor
+  PASS EX22 provider key handed to executor refused
+  PASS EX23 ambiguous mutation ⇒ uncertain, NO retry (second call refused before I/O)
+  PASS RD01 V2 outward message passes
+  PASS RD02 V1 message kind refused
+  PASS RD03 V1 phase name refused
+  PASS RD04 V1 registry digest refused
+  PASS RD05 URL/DSN embedded in a field refused by content
+  PASS RD06 NULL leaf refused
+  PASS RD07 extra field refused
+  PASS RD08 every V2 phase schema accepts the fixture state
+  PASS RD09 reader-only V2 authority validates (test boundary)
+  PASS RD10 executor client present
+  PASS RD11 V1 reviewedStateQueries supplied
+  PASS RD12 V1 registry as registry
+  PASS RD13 unresolved Step-2 pin
+  PASS RD14 11 SELECT grants
+  PASS RD15 statement timeout 5 s
+  PASS RD16 production validation refuses test fixture / test provenance
+  PASS RD17 V2 host serves ceilings observation, exact 105,920
+  PASS RD18 V1 observation name refused
+  PASS RD19 extra request key refused
+  PASS RD20 a V1 host message is refused by the V2 boundary
+  PASS RD21 production reader entrypoint refuses test injection
+  PASS RD22 production reader entrypoint fails closed: V2 source pin UNPROVISIONED (before any DB/attester)
+  PASS RD23 serving runtime default authority UNPROVISIONED
+  PASS RD24 gateway caller: public destination refused
+  PASS RD25 gateway caller: loopback only under test boundary
+  PASS RD26 PRODUCTION_OPTION_KEYS unchanged (no source pin / factory injection)
+  PASS RD27 loopback: V2 caller ↔ V2 runtime armed observation
+  PASS RD28 loopback: V1 phase name refused client-side
+  PASS RD29 loopback: wrong transport secret ⇒ unauthenticated
+  PASS ST01 no runtime module imports a V1-version-bound module
+  PASS ST02 no runtime module uses 89,536 as a value (comments + the obsolete-policy reason-code name excluded)
+  PASS ST03 2b69ce appears only in the source-identity rejection list
+  PASS ST04 probe imports no http/https/fetch/net and builds no provider URL
+  PASS ST05 no runtime module reads process.env OPENAI_API_KEY or a secret value
+  PASS ST06 no runtime module imports test helpers / fixtures
+  PASS ST07 no model identifier / private key material in runtime or tests
+  PASS ST08 only fixed V2 function names in the activation adapter
+  PASS ST09 production entrypoints never import tests or accept testBoundary in production signatures
+  PASS ST10 no runtime module spawns processes
+  PASS ST11 successor imports from frozen non-Step-1 modules are ONLY the listed version-neutral symbols
+  PASS ST12 reused neutral modules consume NO V1 pricing/catalog/policy field of FIXED (targets only)
+m7s2-unit: 290 passed, 0 failed

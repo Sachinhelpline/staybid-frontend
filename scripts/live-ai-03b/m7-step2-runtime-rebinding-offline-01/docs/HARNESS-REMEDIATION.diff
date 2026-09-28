@@ -1,0 +1,336 @@
+--- /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m7s2/prev/m7-step2-runtime-rebinding-offline-01/tests/run-all-m7s2.sh	2026-09-28 17:20:32.000000000 +0000
++++ tests/run-all-m7s2.sh	2026-09-28 17:52:06.915646483 +0000
+@@ -1,15 +1,83 @@
+ #!/bin/bash
+-# M7 Step 2 — the complete Step-2 offline evidence run (no live action). Logs → tests/out/.
++# M7 Step 2 — the CANONICAL Step-2 offline evidence runner (no live action). Logs → tests/out/.
+ # Predecessor suites are run separately by run-predecessor.sh (long).
++#
++# FAIL-CLOSED (closure-harness remediation): every REQUIRED check runs, its ACTUAL exit status (and, where
++# the contract needs it, its summary line) is compared with the EXACT expected outcome, and the result is
++# accumulated in T (checks run) / F (checks failed). The script exits 0 ONLY when F == 0 AND all
++# REQUIRED_CHECKS ran; otherwise it exits 1. No later echo/cat can change that: the final status is the
++# explicit `exit` at the bottom, computed from F. `set -e` is deliberately NOT used — several checks
++# EXPECT a non-zero exit (fail-closed CLIs: 2; reader entrypoints: 70) and are matched exactly.
++# A PostgreSQL SKIP is a FAILURE here (this runner is the evidence for real PG16 + PG18 lifecycles).
+ export M7S2_LIST=1
+-set -u; HERE=$(cd "$(dirname "$0")" && pwd); cd "$HERE"; mkdir -p out; S=out/m7s2-summary.log; : > $S
+-REPO=$(cd "$HERE/../../../.." && pwd)
+-node ../tools/write-identity-artifacts.mjs --check >> $S 2>&1
+-node ../tools/prove-gateway-source.mjs --repo "$REPO" > out/gateway-source-proof.log 2>&1 && echo "PIN B gateway closure proof: PASS" >> $S || echo "PIN B gateway closure proof: FAIL" >> $S
+-node v2-unit.test.mjs > out/v2-unit.log 2>&1; echo "unit + §19 negative matrix: $(tail -1 out/v2-unit.log)" >> $S
+-bash v2-localpg.test.sh > out/v2-localpg-pg16.log 2>&1; echo "lifecycle PG16: $(tail -1 out/v2-localpg-pg16.log)" >> $S
+-M6_PGBIN=/tmp/lai03b-pg18bin/bin bash v2-localpg.test.sh > out/v2-localpg-pg18.log 2>&1; echo "lifecycle PG18: $(tail -1 out/v2-localpg-pg18.log)" >> $S
+-for f in ../runtime/v2-preflight.mjs ../runtime/v2-trusted-activation-executor.mjs ../probe/v2-first-text-probe.mjs; do node "$f" >/dev/null 2>&1; rc=$?; echo "CLI fail-closed $(basename $f): exit $rc (expected 2)" >> $S; done
+-node ../reader/v2-production-entrypoint.mjs > out/reader-entrypoint.log 2>&1; rc=$?; echo "reader production entrypoint (no env): exit $rc (expected 70) $(tail -1 out/reader-entrypoint.log)" >> $S
+-node ../reader/v2-serving-runtime.mjs > out/serving-runtime.log 2>&1; rc=$?; echo "serving runtime (no authority): exit $rc (expected 70) $(tail -1 out/serving-runtime.log)" >> $S
+-echo ALL_DONE >> $S; cat $S
++set -u
++REQUIRED_CHECKS=10
++EXPECT_UNIT_LINE="m7s2-unit: 290 passed, 0 failed"
++EXPECT_LIFECYCLE=60
++PG18_BIN=${M7S2_PG18_BIN:-/tmp/lai03b-pg18bin/bin}   # harness config only (local PG18 test build)
++HERE=$(cd "$(dirname "$0")" && pwd) || { echo "RESULT: FAIL (cannot resolve harness directory)"; exit 1; }
++cd "$HERE" || { echo "RESULT: FAIL (cannot enter harness directory)"; exit 1; }
++mkdir -p out || { echo "RESULT: FAIL (cannot create out/)"; exit 1; }
++S=out/m7s2-summary.log
++: > "$S" || { echo "RESULT: FAIL (cannot write $S)"; exit 1; }
++REPO=$(cd "$HERE/../../../.." && pwd) || { echo "RESULT: FAIL (cannot resolve repository root)"; exit 1; }
++T=0; F=0
++
++record() {  # $1 PASS|FAIL  $2 label  $3 detail
++  T=$((T+1)); [ "$1" = PASS ] || F=$((F+1))
++  printf '%-4s  %s  —  %s\n' "$1" "$2" "$3" >> "$S"
++}
++# exact exit-code contract: $1 label  $2 expected exit  $3 log  $4.. command
++expect_exit() {
++  local label=$1 want=$2 log=$3; shift 3
++  "$@" > "$log" 2>&1; local rc=$?
++  if [ "$rc" -eq "$want" ]; then record PASS "$label" "exit $rc (expected exactly $want)"
++  else record FAIL "$label" "exit $rc (expected exactly $want)"; fi
++}
++# exit 0 AND an exact summary line: $1 label  $2 log  $3 exact expected last line  $4.. command
++expect_summary() {
++  local label=$1 log=$2 want=$3; shift 3
++  "$@" > "$log" 2>&1; local rc=$?
++  local last; last=$(tail -1 "$log")
++  if [ "$rc" -ne 0 ]; then record FAIL "$label" "exit $rc (expected 0); last line: ${last:0:120}"
++  elif [ "$last" != "$want" ]; then record FAIL "$label" "exit 0 but summary is '${last:0:120}' (expected '$want')"
++  else record PASS "$label" "exit 0; $last"; fi
++}
++# real PostgreSQL lifecycle: $1 label  $2 major  $3 log  $4.. command. SKIP / non-zero / wrong server major /
++# missing or partial summary ⇒ FAIL. Uses the child's existing contract only: it prints "SKIPPED: …" when it
++# cannot run, and "m7s2-localpg-lifecycle[PostgreSQL <version…>]: N passed, M failed" when it did.
++expect_lifecycle() {
++  local label=$1 major=$2 log=$3; shift 3
++  "$@" > "$log" 2>&1; local rc=$?
++  local sum; sum=$(grep -E '^m7s2-localpg-lifecycle\[' "$log" | tail -1)
++  if grep -qE '^SKIPPED' "$log"; then record FAIL "$label" "SKIPPED (a skip is not a pass); exit $rc"
++  elif [ "$rc" -ne 0 ]; then record FAIL "$label" "exit $rc (expected 0); ${sum:0:140}"
++  elif [ -z "$sum" ]; then record FAIL "$label" "exit 0 but no lifecycle summary line (not a real run)"
++  elif ! printf '%s\n' "$sum" | grep -qE "^m7s2-localpg-lifecycle\[PostgreSQL ${major}\.[^]]*\]: ${EXPECT_LIFECYCLE} passed, 0 failed\$"; then
++    record FAIL "$label" "summary is '${sum:0:140}' (expected PostgreSQL ${major}.x: ${EXPECT_LIFECYCLE} passed, 0 failed)"
++  else record PASS "$label" "exit 0; $sum"; fi
++}
++
++# A. identity artifacts   B. PIN B gateway closure proof   C. unit + §19 negative matrix
++expect_exit    "A identity artifacts --check" 0 out/identity-artifacts.log node ../tools/write-identity-artifacts.mjs --check
++expect_exit    "B PIN B gateway closure proof" 0 out/gateway-source-proof.log node ../tools/prove-gateway-source.mjs --repo "$REPO"
++expect_summary "C unit + §19 negative matrix" out/v2-unit.log "$EXPECT_UNIT_LINE" node v2-unit.test.mjs
++# D. real PG16 lifecycle   E. real PG18 lifecycle (binaries must exist — no silent fallback to PG16)
++expect_lifecycle "D lifecycle PostgreSQL 16" 16 out/v2-localpg-pg16.log env -u M6_PGBIN bash v2-localpg.test.sh
++if [ -x "$PG18_BIN/postgres" ] && [ -x "$PG18_BIN/initdb" ]; then
++  expect_lifecycle "E lifecycle PostgreSQL 18" 18 out/v2-localpg-pg18.log env M6_PGBIN="$PG18_BIN" bash v2-localpg.test.sh
++else
++  record FAIL "E lifecycle PostgreSQL 18" "PostgreSQL 18 binaries unavailable at $PG18_BIN (unavailable is not a pass)"
++fi
++# F. fail-closed CLIs: exactly 2    G/H. reader entrypoint + serving runtime: exactly 70
++expect_exit "F CLI v2-preflight.mjs" 2 out/cli-v2-preflight.log node ../runtime/v2-preflight.mjs
++expect_exit "F CLI v2-trusted-activation-executor.mjs" 2 out/cli-v2-trusted-activation-executor.log node ../runtime/v2-trusted-activation-executor.mjs
++expect_exit "F CLI v2-first-text-probe.mjs" 2 out/cli-v2-first-text-probe.log node ../probe/v2-first-text-probe.mjs
++expect_exit "G reader production entrypoint (no env)" 70 out/reader-entrypoint.log node ../reader/v2-production-entrypoint.mjs
++expect_exit "H serving runtime (no authority)" 70 out/serving-runtime.log node ../reader/v2-serving-runtime.mjs
++
++if [ "$F" -eq 0 ] && [ "$T" -eq "$REQUIRED_CHECKS" ]; then VERDICT="RESULT: PASS ($T/$REQUIRED_CHECKS required checks)"; STATUS=0
++else VERDICT="RESULT: FAIL ($F failed, $T/$REQUIRED_CHECKS required checks ran)"; STATUS=1; fi
++echo "$VERDICT" >> "$S"
++cat "$S"
++exit "$STATUS"
+--- /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m7s2/prev/m7-step2-runtime-rebinding-offline-01/tests/run-predecessor.sh	2026-09-28 17:14:52.000000000 +0000
++++ tests/run-predecessor.sh	2026-09-28 17:52:36.799648260 +0000
+@@ -3,21 +3,37 @@
+ # every frozen scripts/live-ai-03b/*/tests suite incl. the V1 runtime + private-reader chain, and the M7
+ # Step-1 suites) from a WORLD-TRAVERSABLE COPY of the candidate clone (so initdb, running as the postgres
+ # OS user, can traverse it and so no suite writes into the reviewed tree). NO network / provider / live DB.
++#
++# FAIL-CLOSED (closure-harness remediation): suite failures (NF) and required-setup failures (SF) are both
++# counted; a fatal setup failure (output dir / copy of the candidate) aborts immediately with exit 3. The
++# runner exits 0 ONLY when F == NF + SF == 0 AND exactly EXPECT_SUITES suites ran (the accepted inventory —
++# a silently shrinking/growing inventory is a failure, never a green summary); otherwise it exits 1.
+ set -u
+-HERE=$(cd "$(dirname "$0")" && pwd)
+-SRC=$(cd "$HERE/../../../.." && pwd)
+-OUT="$HERE/out/predecessor"; mkdir -p "$OUT"; rm -f "$OUT"/*.log
+-COPY=$(mktemp -d /tmp/lai03b-m7s2-pred-XXXXXX); chmod 755 "$COPY"
+-trap 'rm -rf "$COPY"' EXIT
+-cp -a "$SRC/." "$COPY/"
++EXPECT_SUITES=44   # 18 repo + 20 frozen scripts/live-ai-03b + 6 Step-1 (accepted inventory; do not weaken)
++PG18_BIN=${M7S2_PG18_BIN:-/tmp/lai03b-pg18bin/bin}   # harness config only (local PG18 test build)
++fatal() { echo "SETUP-FAIL  $1"; echo "RESULT: FAIL (required setup failed: $1)"; exit 3; }
++HERE=$(cd "$(dirname "$0")" && pwd) || fatal "resolve harness directory"
++SRC=$(cd "$HERE/../../../.." && pwd) || fatal "resolve candidate root"
++OUT="$HERE/out/predecessor"; mkdir -p "$OUT" || fatal "create $OUT"; rm -f "$OUT"/*.log
++COPY=$(mktemp -d /tmp/lai03b-m7s2-pred-XXXXXX) || fatal "mktemp copy dir"
++HIST=""
++trap 'rm -rf "$COPY" ${HIST:+"$HIST"}' EXIT
++chmod 755 "$COPY" || fatal "chmod copy dir"
++cp -a "$SRC/." "$COPY/" || fatal "copy candidate tree"
+ chmod -R a+rX "$COPY" 2>/dev/null
+-cd "$COPY" || exit 2
+-T=0; F=0
+-run() {  # $1 label  $2.. command
++cd "$COPY" || fatal "enter copy"
++T=0; F=0; N=0; NF=0; SF=0
++run() {  # $1 label  $2.. command   (one predecessor SUITE)
+   local label="$1"; shift; local log="$OUT/$(echo "$label" | tr '/ ' '__').log"
+-  timeout 1500 "$@" > "$log" 2>&1; local rc=$?; T=$((T+1))
++  timeout 1500 "$@" > "$log" 2>&1; local rc=$?; T=$((T+1)); N=$((N+1))
+   local last; last=$(grep -E -i "passed|failed|✓|ok\b|PASS" "$log" | tail -1 | cut -c1-150)
+-  if [ $rc = 0 ]; then echo "PASS  $label  ($last)"; else F=$((F+1)); echo "FAIL($rc) $label  ($last)"; fi
++  if [ $rc = 0 ]; then echo "PASS  $label  ($last)"; else F=$((F+1)); NF=$((NF+1)); echo "FAIL($rc) $label  ($last)"; fi
++}
++setup_step() {  # $1 label  $2.. command   (REQUIRED setup, not a suite; failure is counted, never ignored)
++  local label="$1"; shift
++  "$@" > "$OUT/setup.log" 2>&1; local rc=$?; T=$((T+1))
++  if [ $rc = 0 ]; then echo "SETUP-OK    $label"; else F=$((F+1)); SF=$((SF+1)); echo "SETUP-FAIL($rc) $label"; sed 's/^/    | /' "$OUT/setup.log" | tail -5; fi
++  return $rc
+ }
+ for f in tests/live-ai/live-ai.test.js tests/live-ai/live-ai-conversation.test.js tests/live-ai/live-ai-gateway.test.js tests/live-ai/live-ai-audio.test.js tests/live-ai/live-ai-ic02.test.js tests/live-ai/live-ai-03a.test.js tests/live-ai/live-ai-03b.test.js tests/live-ai/live-ai-03b-p1-negmut.test.js tests/live-ai/live-ai-03b-teardown-negmut.test.js tests/live-ai/live-ai-03b-staging-authority.test.js tests/live-ai/live-ai-03b-staging-runtime.test.js tests/live-ai/live-ai-owner-preview.test.js tests/budget/live-ai-budget-01.test.js tests/budget/live-ai-budget-01.pg.test.js tests/voice/voice-gateway.test.js tests/voice/voice-gateway-security.test.js tests/voice/voice-provider.test.js tests/voice/voice-router.test.js; do
+   run "$f" node "$f"
+@@ -30,13 +46,18 @@
+ # then-ACCEPTED gateway (without it). It was authored in the Step-1 scratch layout (a sibling repo/ dir).
+ # At 4f390 the faithful inputs are: candidate = this 4f390 tree (M7_CLONE); historical pre-pin = a read-only
+ # checkout of the derivation base 9270c282 (REPO). No Step-1 file is modified.
+-HIST=$(mktemp -d /tmp/lai03b-m7s2-hist9270-XXXXXX); chmod 755 "$HIST"
+-trap 'rm -rf "$COPY" "$HIST"' EXIT
+-git clone -q --no-checkout "$SRC" "$HIST/r" && git -C "$HIST/r" checkout -q 9270c282d5fd65e9fe49261391badfe92c777b8f && ln -s "$SRC/node_modules" "$HIST/r/node_modules" && chmod -R a+rX "$HIST"
++HIST=$(mktemp -d /tmp/lai03b-m7s2-hist9270-XXXXXX) || fatal "mktemp historical dir"
++chmod 755 "$HIST" || fatal "chmod historical dir"
++setup_step "historical 9270c282 checkout for the Step-1 gateway comparison" \
++  bash -c 'git clone -q --no-checkout "$1" "$2/r" && git -C "$2/r" checkout -q 9270c282d5fd65e9fe49261391badfe92c777b8f && ln -s "$1/node_modules" "$2/r/node_modules" && chmod -R a+rX "$2"' _ "$SRC" "$HIST"
+ run "$S1/catalog/v2-digest-gen.mjs" node "$S1/catalog/v2-digest-gen.mjs"
+ run "$S1/build-sql.mjs --check" node "$S1/build-sql.mjs" --check
+ run "$S1/tests/m7-contract.test.mjs" node "$S1/tests/m7-contract.test.mjs"
+ run "$S1/tests/m7-gateway.test.mjs" env M7_CLONE="$COPY" REPO="$HIST/r" node "$S1/tests/m7-gateway.test.mjs"
+-run "$S1/tests/m7-localpg.test.sh (PG16)" env M7_CLONE="$COPY" REPO="$HIST/r" bash "$S1/tests/m7-localpg.test.sh"
+-run "$S1/tests/m7-localpg.test.sh (PG18)" env M7_CLONE="$COPY" REPO="$HIST/r" M6_PGBIN=/tmp/lai03b-pg18bin/bin bash "$S1/tests/m7-localpg.test.sh"
+-echo "predecessor suites: $((T-F))/$T passed"
++run "$S1/tests/m7-localpg.test.sh (PG16)" env -u M6_PGBIN M7_CLONE="$COPY" REPO="$HIST/r" bash "$S1/tests/m7-localpg.test.sh"
++run "$S1/tests/m7-localpg.test.sh (PG18)" env M7_CLONE="$COPY" REPO="$HIST/r" M6_PGBIN="$PG18_BIN" bash "$S1/tests/m7-localpg.test.sh"
++echo "predecessor suites: $((N-NF))/$N passed; suite failures: $NF; required-setup failures: $SF; expected inventory: $EXPECT_SUITES"
++if [ "$F" -eq 0 ] && [ "$N" -eq "$EXPECT_SUITES" ]; then echo "RESULT: PASS ($N/$EXPECT_SUITES suites, 0 setup failures)"; exit 0; fi
++[ "$N" -eq "$EXPECT_SUITES" ] || echo "INVENTORY-FAIL  ran $N suites, expected exactly $EXPECT_SUITES"
++echo "RESULT: FAIL"
++exit 1
+--- /dev/null	2026-09-18 22:42:59.916478660 +0000
++++ tests/harness-fail-closed.test.sh	2026-09-28 17:53:25.255237904 +0000
+@@ -0,0 +1,159 @@
++#!/bin/bash
++# LIVE-AI-03B — M7 STEP 2 — deterministic FORCED-FAILURE regression for the two aggregate runners
++# (run-all-m7s2.sh, run-predecessor.sh). TEST-ONLY. No DB, no network, no live action.
++#
++# Anti-bypass design: the REAL runner files are copied byte-for-byte (sha256 asserted) into an isolated
++# temporary mirror of the directory layout they expect, and EXECUTED there with /bin/bash. Their child
++# commands (`node`, the in-script `bash <lifecycle>.test.sh`, and `git` for the predecessor bootstrap)
++# resolve through a TEST-ONLY PATH shim whose exit status / output is chosen per case by SHIM_FAIL.
++# Nothing in the runtime, the runners or the real repository is modified; the runners' own control
++# flow decides the observable process exit status that this test asserts.
++#
++# usage: harness-fail-closed.test.sh [--run-all <runner>] [--predecessor <runner>]
++#   (defaults: the candidate's own tests/run-all-m7s2.sh and tests/run-predecessor.sh; pointing them at
++#    an older runner reproduces its fail-open behaviour — the test then exits non-zero.)
++set -u
++HERE=$(cd "$(dirname "$0")" && pwd)
++RUN_ALL="$HERE/run-all-m7s2.sh"; PRED="$HERE/run-predecessor.sh"
++while [ $# -gt 0 ]; do case "$1" in --run-all) RUN_ALL=$2; shift 2;; --predecessor) PRED=$2; shift 2;; *) echo "unknown arg $1"; exit 2;; esac; done
++REALBASH=$(command -v bash); REALGIT=$(command -v git)
++S2REL=scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01
++W=$(mktemp -d /tmp/lai03b-m7s2-harness-XXXXXX) || exit 2
++trap 'rm -rf "$W"' EXIT
++PASS=0; FAILN=0
++ok()  { PASS=$((PASS+1)); echo "  OK        $1"; }
++bad() { FAILN=$((FAILN+1)); echo "  VIOLATION $1"; }
++sha() { sha256sum "$1" | cut -d' ' -f1; }
++echo "run-all under test:     $RUN_ALL  sha256=$(sha "$RUN_ALL")"
++echo "predecessor under test: $PRED  sha256=$(sha "$PRED")"
++
++# ── TEST-ONLY PATH shim ──
++mkdir -p "$W/shim" "$W/pg18fake"
++printf '#!/bin/sh\nexit 0\n' > "$W/pg18fake/postgres"; cp "$W/pg18fake/postgres" "$W/pg18fake/initdb"; chmod +x "$W/pg18fake/"*
++cat > "$W/shim/mode.sh" <<'EOF'
++# SHIM_FAIL = space-separated name=mode; prints the mode for $1 (empty = nominal contract)
++mode_for() { for kv in ${SHIM_FAIL:-}; do [ "${kv%%=*}" = "$1" ] && { echo "${kv#*=}"; return; }; done; echo ""; }
++EOF
++cat > "$W/shim/node" <<'EOF'
++#!/bin/bash
++# TEST-ONLY controlled `node`: never executes JavaScript; emits the nominal child contract unless forced.
++. "$(dirname "$0")/mode.sh"
++tgt=""; for a in "$@"; do case "$a" in *.mjs|*.js) tgt=$(basename "$a"); break;; esac; done
++num() { case "$1" in ''|*[!0-9]*) return 1;; esac; }
++force() { local m; m=$(mode_for "$1"); [ -n "$m" ] && num "$m" && { echo "shim: forced failure of $1 (exit $m)"; exit "$m"; }; }
++case "$tgt" in
++  write-identity-artifacts.mjs) force identity; echo "identity artifacts: OK (runtime manifest shim)"; exit 0;;
++  prove-gateway-source.mjs)     force gateway;  echo '{"contract":"GatewayDeploySourceProofV2","pass":true}'; exit 0;;
++  v2-unit.test.mjs)             force unit; [ "$(mode_for unit)" = partial ] && { echo "m7s2-unit: 289 passed, 1 failed"; exit 0; }; echo "m7s2-unit: 290 passed, 0 failed"; exit 0;;
++  v2-preflight.mjs)             force preflight; exit 2;;
++  v2-trusted-activation-executor.mjs) force executor; exit 2;;
++  v2-first-text-probe.mjs)      force probe; exit 2;;
++  v2-production-entrypoint.mjs) force entrypoint; echo '{"status":"unprovisioned"}'; exit 70;;
++  v2-serving-runtime.mjs)       force serving; echo '{"status":"unprovisioned"}'; exit 70;;
++  *) m=$(mode_for "suite:$tgt"); [ -n "$m" ] && { echo "shim suite $tgt: 0 passed, 1 failed"; exit "$m"; }; echo "shim suite $tgt: 1 passed, 0 failed"; exit 0;;
++esac
++EOF
++cat > "$W/shim/bash" <<EOF
++#!$REALBASH
++# TEST-ONLY controlled \`bash\` for the lifecycle scripts; everything else is the real bash.
++. "\$(dirname "\$0")/mode.sh"
++case "\${1:-}" in
++  *v2-localpg.test.sh)
++    if [ -n "\${M6_PGBIN:-}" ]; then n=pg18; lbl="PostgreSQL 18.4"; else n=pg16; lbl="PostgreSQL 16.13 (shim)"; fi
++    m=\$(mode_for \$n)
++    case "\$m" in
++      skip2) echo "SKIPPED: local cluster did not start (a skip is not a pass)"; exit 2;;
++      skip0) echo "SKIPPED: harness env absent (a skip is not a pass)"; exit 0;;
++      nosummary) echo "• server: \$lbl"; exit 0;;
++      wrongver) echo "• server: PostgreSQL 16.13 (shim)"; echo "m7s2-localpg-lifecycle[PostgreSQL 16.13 (shim)]: 60 passed, 0 failed"; exit 0;;
++      partial) echo "• server: \$lbl"; echo "m7s2-localpg-lifecycle[\$lbl]: 59 passed, 0 failed"; exit 0;;
++      [0-9]*) echo "• server: \$lbl"; echo "m7s2-localpg-lifecycle[\$lbl]: 59 passed, 1 failed"; exit "\$m";;
++    esac
++    echo "• server: \$lbl"; echo "m7s2-localpg-lifecycle[\$lbl]: 60 passed, 0 failed"; exit 0;;
++  *m7-localpg.test.sh)
++    m=\$(mode_for suite:m7-localpg); [ -n "\$m" ] && { echo "m7-localpg: 112 passed, 1 failed"; exit "\$m"; }
++    echo "m7-localpg: 113 passed, 0 failed (shim)"; exit 0;;
++esac
++exec $REALBASH "\$@"
++EOF
++cat > "$W/shim/git" <<EOF
++#!$REALBASH
++# TEST-ONLY controlled \`git\` for the predecessor historical-checkout bootstrap; never touches a real repo.
++. "\$(dirname "\$0")/mode.sh"
++m=\$(mode_for git)
++case " \$* " in
++  *" clone "*) [ -n "\$m" ] && { echo "fatal: shim clone failure" >&2; exit "\$m"; }; for a in "\$@"; do last=\$a; done; mkdir -p "\$last"; exit 0;;
++  *" checkout "*) exit 0;;
++esac
++exec $REALGIT "\$@"
++EOF
++chmod +x "$W/shim/"*
++export PATH="$W/shim:$PATH"
++
++# ── run-all mirror (layout the runner expects: <step2>/{tests,tools,runtime,probe,reader}) ──
++ALLM="$W/all/$S2REL"; mkdir -p "$ALLM/tests" "$ALLM/tools" "$ALLM/runtime" "$ALLM/probe" "$ALLM/reader"
++cp "$RUN_ALL" "$ALLM/tests/run-all-m7s2.sh"
++[ "$(sha "$ALLM/tests/run-all-m7s2.sh")" = "$(sha "$RUN_ALL")" ] || { echo "mirror copy mismatch"; exit 2; }
++run_all_case() {  # $1 name  $2 expected: 0|nonzero  $3 attribution (nonzero: label prefix of the ONE failed check; 0: "-")  $4.. env
++  local name=$1 want=$2 attr=$3; shift 3
++  env "$@" M7S2_PG18_BIN="${PG18OVERRIDE:-$W/pg18fake}" M6_PGBIN= "$REALBASH" "$ALLM/tests/run-all-m7s2.sh" > "$W/out.$name.log" 2>&1; local rc=$?
++  if { [ "$want" = 0 ] && [ $rc -eq 0 ]; } || { [ "$want" = nonzero ] && [ $rc -ne 0 ]; }; then ok "run-all $name → exit $rc (expected $want)"
++  else bad "run-all $name → exit $rc (expected $want)"; sed 's/^/        | /' "$W/out.$name.log" | tail -14; fi
++  # attribution: the failure is the INTENDED check (not an incidental one); the success case is a full 10/10 PASS
++  if [ "$want" = 0 ]; then
++    if grep -q "^RESULT: PASS (10/10 required checks)" "$W/out.$name.log" && ! grep -q "^FAIL" "$W/out.$name.log"; then ok "run-all $name attribution: RESULT: PASS (10/10), no FAIL line"
++    else bad "run-all $name attribution: expected RESULT: PASS (10/10) and no FAIL line"; fi
++  else
++    local fl; fl=$(grep "^FAIL" "$W/out.$name.log")
++    if [ "$(printf '%s\n' "$fl" | grep -c .)" = 1 ] && printf '%s\n' "$fl" | grep -q "^FAIL  $attr" && grep -q "^RESULT: FAIL" "$W/out.$name.log"; then ok "run-all $name attribution: exactly one FAIL on '$attr'; RESULT: FAIL"
++    else bad "run-all $name attribution: expected exactly one FAIL on '$attr' + RESULT: FAIL (got: ${fl:-none})"; fi
++  fi
++}
++echo "── run-all-m7s2.sh ──"
++run_all_case RA1-all-contracts-satisfied 0 - SHIM_FAIL=
++run_all_case RA2-gateway-proof-fails nonzero "B " SHIM_FAIL="gateway=1"
++run_all_case RA3a-unit-fails nonzero "C " SHIM_FAIL="unit=1"
++run_all_case RA3b-unit-exit0-but-1-failed nonzero "C " SHIM_FAIL="unit=partial"
++run_all_case RA4a-PG16-SKIPPED-exit2 nonzero "D " SHIM_FAIL="pg16=skip2"
++run_all_case RA4b-PG18-SKIPPED-exit0 nonzero "E " SHIM_FAIL="pg18=skip0"
++PG18OVERRIDE="$W/does-not-exist" run_all_case RA4c-PG18-binaries-unavailable nonzero "E " SHIM_FAIL=
++run_all_case RA4d-PG18-run-reports-PG16 nonzero "E " SHIM_FAIL="pg18=wrongver"
++run_all_case RA4e-PG16-no-lifecycle-summary nonzero "D " SHIM_FAIL="pg16=nosummary"
++run_all_case RA4f-PG18-59-of-60 nonzero "E " SHIM_FAIL="pg18=partial"
++run_all_case RA4g-PG16-exit1 nonzero "D " SHIM_FAIL="pg16=1"
++run_all_case RA5a-preflight-CLI-exit9 nonzero "F CLI v2-preflight" SHIM_FAIL="preflight=9"
++run_all_case RA5b-executor-CLI-exit0 nonzero "F CLI v2-trusted-activation-executor" SHIM_FAIL="executor=0"
++run_all_case RA5c-probe-CLI-exit9 nonzero "F CLI v2-first-text-probe" SHIM_FAIL="probe=9"
++run_all_case RA6a-reader-entrypoint-exit9 nonzero "G " SHIM_FAIL="entrypoint=9"
++run_all_case RA6b-serving-runtime-exit0 nonzero "H " SHIM_FAIL="serving=0"
++run_all_case RA7-first-check-fails-all-later-pass nonzero "A " SHIM_FAIL="identity=1"
++# RA7 also: the later PASS lines are present, yet the final verdict line must not read as success.
++if grep -q "PASS" "$W/out.RA7-first-check-fails-all-later-pass.log" && ! tail -3 "$W/out.RA7-first-check-fails-all-later-pass.log" | grep -qE "RESULT: PASS|^ALL_DONE$"; then ok "run-all RA7 later PASS lines do not produce a success verdict"
++else bad "run-all RA7 later PASS lines do not produce a success verdict"; fi
++
++# ── predecessor mirror (a tiny synthetic SRC tree; the frozen-suite inventory is taken from the REAL repo) ──
++REPOROOT=$(cd "$HERE/../../../.." && pwd)
++PSRC="$W/pred/src"; mkdir -p "$PSRC/$S2REL/tests"
++cp "$PRED" "$PSRC/$S2REL/tests/run-predecessor.sh"
++[ "$(sha "$PSRC/$S2REL/tests/run-predecessor.sh")" = "$(sha "$PRED")" ] || { echo "mirror copy mismatch"; exit 2; }
++( cd "$REPOROOT/scripts/live-ai-03b" && find . -path ./m7-step1-hb1-consolidated-remediation-01 -prune -o -path ./m7-step2-runtime-rebinding-offline-01 -prune -o -path '*/tests/*.test.mjs' -print ) | while read -r f; do mkdir -p "$PSRC/scripts/live-ai-03b/$(dirname "$f")"; : > "$PSRC/scripts/live-ai-03b/$f"; done
++FROZEN_N=$(cd "$PSRC/scripts/live-ai-03b" && find . -path '*/tests/*.test.mjs' | wc -l)
++echo "── run-predecessor.sh (frozen live-ai-03b suites discovered from the real repo: $FROZEN_N) ──"
++pred_case() {  # $1 name  $2 expected  $3 attribution regex (ERE) that must appear in the output  $4.. env
++  local name=$1 want=$2 attr=$3; shift 3
++  env "$@" M7S2_PG18_BIN="$W/pg18fake" "$REALBASH" "$PSRC/$S2REL/tests/run-predecessor.sh" > "$W/pout.$name.log" 2>&1; local rc=$?
++  if { [ "$want" = 0 ] && [ $rc -eq 0 ]; } || { [ "$want" = nonzero ] && [ $rc -ne 0 ]; }; then ok "predecessor $name → exit $rc (expected $want) :: $(grep -E 'predecessor suites:' "$W/pout.$name.log" | tail -1)"
++  else bad "predecessor $name → exit $rc (expected $want)"; sed 's/^/        | /' "$W/pout.$name.log" | tail -8; fi
++  if grep -qE "$attr" "$W/pout.$name.log"; then ok "predecessor $name attribution: /$attr/"; else bad "predecessor $name attribution: /$attr/ not found"; fi
++}
++pred_case PR8-all-suites-pass 0 "^RESULT: PASS \\(44/44 suites, 0 setup failures\\)" SHIM_FAIL=
++pred_case PR9a-one-repo-suite-fails nonzero "^FAIL\\(1\\) tests/live-ai/live-ai-03b.test.js" SHIM_FAIL="suite:live-ai-03b.test.js=1"
++pred_case PR9b-frozen-V1-runtime-suite-fails nonzero "^FAIL\\(1\\) scripts/live-ai-03b/trusted-executor-runtime-01/tests/runtime-integration.test.mjs" SHIM_FAIL="suite:runtime-integration.test.mjs=1"
++pred_case PR9c-step1-localpg-fails nonzero "^FAIL\\(1\\) .*m7-localpg.test.sh \\(PG16\\)" SHIM_FAIL="suite:m7-localpg=1"
++pred_case PR10-historical-checkout-bootstrap-fails nonzero "^SETUP-FAIL\\(128\\) historical 9270c282 checkout" SHIM_FAIL="git=128"
++# PR11: the suite inventory silently shrinking (one frozen suite file disappears) must not read as green.
++rm -f "$(find "$PSRC/scripts/live-ai-03b" -path '*/tests/*.test.mjs' | sort | head -1)"
++pred_case PR11-suite-inventory-shrinks nonzero "^INVENTORY-FAIL  ran 43 suites, expected exactly 44" SHIM_FAIL=
++
++echo "harness-fail-closed: $PASS passed, $FAILN failed"
++[ "$FAILN" -eq 0 ]

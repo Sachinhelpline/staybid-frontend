@@ -1,0 +1,86 @@
+
+• buildStagingLiveAi — budgetCore bound, legacy budget NULL, provider seam PRESERVED (P1-01)
+  ✓ legacy atomic budget stays NULL (03B text path uses budgetCore only)
+  ✓ budgetCore is bound (executionAdmissionGate present)
+  ✓ budgetCore structurally satisfies the 03b port (prepareExecutionLease present)
+  ✓ P1-01 — live03b OMITS apiKey (own property absent)
+  ✓ P1-01 — live03b OMITS responsesFetch (own property absent)
+  ✓ P1-01 — apiKey is undefined (NOT null ⇒ env-derived provider seam not suppressed)
+  ✓ P1-01 — responsesFetch is undefined (NOT null ⇒ real fetch seam not suppressed)
+  ✓ live03b.makeExecution is a factory function
+  ✓ live03b.prepareExecution is a function (P1-03 seam)
+  ✓ monotonicNowMs is a function (the ONE monotonic clock)
+  ✓ the runtime bundle + live03b are frozen
+
+• monotonic clock injection
+  ✓ injected monotonicNowMs is used verbatim
+  ✓ injected clock invoked exactly once
+
+• makeExecution — session-scoped 03A ExecutionSafety factory
+  ✓ makeExecution(loop, ctx) ⇒ a real ExecutionSafety
+  ✓ two distinct session contexts ⇒ two distinct execution instances (session-specific)
+  ✓ makeExecution(loop) with NO sessionCtx ⇒ still a fail-closed ExecutionSafety
+
+• projectScreenContext — HOTELS readiness (P1-06 A)
+  ✓ A1 — hotels + loadState=ready ⇒ ready true
+  ✓ A2 — hotels + loadState=loading ⇒ ready false
+  ✓ A3 — hotels + loadState=error ⇒ ready false
+  ✓ A4 — hotels + loading + validated:true still MUST NOT become ready (validated cannot elevate)
+  ✓ A5 — hotels projection currentHotelId = null
+  ✓ A6 — hotels projection sections = []
+  ✓ A7 — visiblePositions come ONLY from the validated visible-hotel snapshot
+  ✓ hotels projection carries the binding + frozen arrays
+
+• projectScreenContext — HOTEL DETAIL readiness (P1-06 B)
+  ✓ B8 — detail + ready + validated + currentHotelId ⇒ ready true
+  ✓ B9 — ready detail exposes currentHotelId
+  ✓ B10 — ready detail exposes BOTH closed target sections [rooms, about] (entity-gate membership for both)
+  ✓ B11 — current section=rooms still permits 'about' in ctx.sections
+  ✓ B12 — current section=about still permits 'rooms' in ctx.sections
+  ✓ B13 — detail + loading ⇒ ready false
+  ✓ B14 — detail + error ⇒ ready false
+  ✓ B15 — detail + validated=false ⇒ ready false
+  ✓ B16 — detail without currentHotelId ⇒ ready false
+  ✓ not-ready detail exposes NO executable authority (currentHotelId=null, sections=[])
+
+• projectScreenContext — §3 binding coherence + malformed inputs
+  ✓ C17 — binding.pageId(hotel-detail) != context.pageId(hotels) ⇒ FAIL CLOSED (null)
+  ✓ reverse coherence mismatch ⇒ null
+  ✓ unknown page ⇒ null
+  ✓ null published context ⇒ null
+  ✓ array context ⇒ null
+
+• loadStagingPriceCatalog — authoritative active snapshot, read-only, fail-closed (P1-02)
+  ✓ active version present ⇒ ok
+  ✓ catalog.version == the LATEST active version id (== store's selected priceCatalogVersionId)
+  ✓ both well-formed entries loaded
+  ✓ BIGINT columns converted to bigint + entry resolvable
+  ✓ zero active versions ⇒ fail closed (no_active_catalog_version)
+  ✓ two versions sharing the latest effective_from ⇒ ambiguous ⇒ fail closed
+  ✓ pool connect failure ⇒ catalog_load_error
+  ✓ query failure ⇒ catalog_load_error
+  ✓ a malformed row is dropped by the released validator (version preserved, size=1)
+
+• prepareExecution — EXACTLY ONE admission for an authenticated session, fail-closed (P1-03)
+  ✓ no prepared lease ⇒ executionAdmissionGate UNAVAILABLE (fail closed)
+  ✓ authenticated staging session ⇒ prepareExecution ok
+  ✓ first capability ⇒ ADMITTED (one admission authority)
+  ✓ second distinct capability ⇒ REFUSED (EXACTLY ONE admission reserved)
+  ✓ ZERO provider reservations recorded (execution admission consumes no provider money/calls)
+  ✓ the execution lease was acquired durably (exactly the staging session authority)
+  ✓ empty gatewaySessionId ⇒ prepareExecution fails closed
+  ✓ dormant store ⇒ prepareExecution fails closed (no execution authority)
+  ✓ dormant ⇒ gate UNAVAILABLE
+
+• stagingBootstrapPreflight — fail closed unless the accepted 03B constants match EXACTLY (P1-04)
+  ✓ the staging DSN env NAME is exact
+  ✓ no staging DSN ⇒ staging_db_url_absent
+  ✓ DSN present but no durable BUDGET binding ⇒ budget_binding_absent
+  ✓ P1-04 — wrong projectId (proj-staging) ⇒ budget_config_mismatch (no longer valid)
+  ✓ P1-04 — wrong control staleness (30000) ⇒ budget_config_mismatch
+  ✓ P1-04 — wrong lease TTL (120000) ⇒ budget_config_mismatch
+  ✓ exact accepted 03B constants (live-ai-03b / 60000 / 15000 / poll 5000) ⇒ preflight ok
+  ✓ the DSN is trimmed
+  ✓ preflight returns the durably-configured accepted binding
+
+✅ LIVE-AI-03B staging runtime suite: 66 passed, 0 failed

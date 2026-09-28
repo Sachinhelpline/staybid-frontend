@@ -1,0 +1,8 @@
+T. Resource containment (WORK v2 findings — application-visible timeout != underlying-work termination)
+U. Request-lifecycle cancellation matrix (WORK v3 — request authority == computation lifetime)
+V. Caller-timeline + observer-open cancellation (WORK final findings — different timer origins; cancel during open)
+
+══════════════════════════════════════════════════════════
+RESULT: 50 passed, 0 failed, 0 skipped  (executed assertions: 50)
+OFFLINE RESOURCE-CONTAINMENT VERIFICATION: PASS
+SCOPE: synthetic controllable physical connections + shared synthetic cluster + real loopback sockets. NOT live AI-STAGING, NOT a real pg driver.

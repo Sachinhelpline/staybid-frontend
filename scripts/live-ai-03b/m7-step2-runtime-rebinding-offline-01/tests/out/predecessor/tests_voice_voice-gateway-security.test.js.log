@@ -1,0 +1,17 @@
+• Local tsc compile (SB-04 gateway security): exit 0, clean
+
+• Control token (bound to session+subject, ≤10min, forgery/mismatch/expiry)
+
+• Control-socket open (subprotocol token only; query string never accepted)
+
+• Control frames (validate + bound; cancel/reset/close; drop unknown/oversized)
+
+• Provider event validation (untrusted; unknown/traversal/oversized fail closed)
+
+• Kill switch (HMAC, freshness, disable-only, fail closed)
+
+• Privacy: telemetry allowlist + no secret/transcript/audio logging
+
+──────────────────────────────────────────────────
+Voice AI SB-04 gateway security: 44 passed, 0 failed
+ALL VOICE-AI-SB-04 GATEWAY SECURITY CHECKS PASSED

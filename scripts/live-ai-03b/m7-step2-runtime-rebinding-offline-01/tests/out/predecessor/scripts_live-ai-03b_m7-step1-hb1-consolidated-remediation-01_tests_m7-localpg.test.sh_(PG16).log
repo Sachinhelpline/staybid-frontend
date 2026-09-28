@@ -1,0 +1,4 @@
+• server: 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+    
+    m7-gateway: 62 passed, 0 failed
+m7-localpg: 113 passed, 0 failed (16.13; throwaway local cluster)

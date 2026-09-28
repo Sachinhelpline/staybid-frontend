@@ -1,0 +1,31 @@
+{
+  "contract": "Step2RuntimePreservationBindingV1",
+  "status_now": "REQUIRED_AFTER_STEP2_PRESERVATION",
+  "placeholder": {
+    "contract": "Step2RuntimePreservationBindingV1",
+    "status": "REQUIRED_AFTER_STEP2_PRESERVATION",
+    "commit": null,
+    "tree": null,
+    "step2_dir_tree": null,
+    "runtime_manifest_digest": null
+  },
+  "later_binding_shape": {
+    "contract": "Step2RuntimePreservationBindingV1",
+    "status": "PRESERVED",
+    "provenance": "trusted-approved-step2-preservation-receipt",
+    "commit": "<40-hex of the future Owner-reviewed preservation commit: NOT KNOWN, NOT FABRICATED>",
+    "tree": "<40-hex tree of that commit>",
+    "step2_dir_tree": "<40-hex git tree of scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01 at that commit>",
+    "runtime_manifest_digest": "9a460078846eec885b726e7b54bdbd8a301c690b1f78a68439e151f462341998"
+  },
+  "how_to_produce": "node scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/tools/verify-step2-preservation.mjs --repo <clone> --commit <sha>   (read-only git)",
+  "verification_rules": [
+    "the commit resolves and is NONE of 9270c282 / 4f390b74 / 2b69ce28 (nor their trees)",
+    "4f390b74 (PIN B) is an ancestor of the commit",
+    "every path changed 4f390b74..commit is an ADDITION under scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01 (no frozen file modified or deleted)",
+    "the sha256 of each runtime module at the commit reproduces runtime_manifest_digest = measureRuntimeManifest() of the running code",
+    "the binding reaches the runtime ONLY through the Owner-controlled V2 production authority (validateProvisionedAuthorityV2 / validateReaderOnlyAuthorityV2); the provenance string alone is never authority",
+    "until then every V2 consumer fails closed with step2_runtime_pin_required_after_preservation"
+  ],
+  "expected_runtime_manifest_digest": "9a460078846eec885b726e7b54bdbd8a301c690b1f78a68439e151f462341998"
+}
