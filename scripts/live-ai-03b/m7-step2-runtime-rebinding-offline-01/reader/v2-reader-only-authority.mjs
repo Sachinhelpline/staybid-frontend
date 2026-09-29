@@ -8,12 +8,16 @@
 // no budget_envelope_allocations, fresh ≤ 5 min, bound to the reader token); a declared DB-side
 // statement bound ≤ 2000 ms; an AsyncLocalStorage abort gate per observation — and swaps in the V2
 // registry (content-verified), the V2 read adapter, the V2 source pin and the V2 outward boundary.
+// Lifecycle correction: the reader host is a POST-DEPLOYMENT (Phase-B / pre-probe) component — the Phase-A
+// activation path reads through the executor runtime's own V2 read adapter, never through this host — so its
+// `sourcePin` field must be a PreProbeSourceProofV2 (independent HEALTHY deployed PIN-B gateway observation).
+// The reader is NOT weakened: a static (activation) proof can never authorize it.
 // ─────────────────────────────────────────────────────────────────────────
 import { AsyncLocalStorage } from "node:async_hooks";
 import { verifyConnectionTargetBinding, CONNECTION_IDENTITY_PROOF_CONTRACT } from "../../trusted-executor-runtime-01/db-target-binding.mjs";
 import { READER_ROLE, READER_EXPECTED_SELECT_GRANTS, READER_STATEMENT_TIMEOUT_MAX_MS, READER_PRIVILEGE_PROOF_CONTRACT } from "../../private-reader-host-runtime-offline-01/reader-only-authority.mjs";
 import { TARGETS_V2 } from "../identity/v2-identity.mjs";
-import { checkSourcePinV2 } from "../identity/v2-source-identity.mjs";
+import { checkPreProbeSourceProofV2 } from "../identity/v2-source-identity.mjs";
 import { assertSuppliedRegistryV2, V2_REGISTRY_DIGEST } from "../runtime/v2-query-registry.mjs";
 import { makeTrustedReadAdapterV2 } from "../runtime/v2-trusted-read-adapter.mjs";
 import { OBSERVATIONS_V2, assertOutwardMessageV2, failMsgV2, successMsgV2, emitV2, observationFromAdapterResult, adapterCallFor } from "./v2-observation-contract.mjs";
@@ -65,7 +69,7 @@ export function validateReaderOnlyAuthorityV2(candidate, opts) {
   if (rp.issuedAtMs - now > READER_PRIVILEGE_PROOF_CONTRACT.clock_forward_tolerance_ms) return fail("reader_privilege_proof_future_dated");
   const reg = assertSuppliedRegistryV2(a.registry);
   if (!reg.ok) return fail("query_registry_" + reg.reason);
-  const sp = checkSourcePinV2(a.sourcePin, { testBoundary });
+  const sp = checkPreProbeSourceProofV2(a.sourcePin, { testBoundary });
   if (!sp.ok) return fail("source_pin_" + sp.reason);
   return { ok: true, version: READER_ONLY_AUTHORITY_VERSION_V2, registryDigest: V2_REGISTRY_DIGEST };
 }

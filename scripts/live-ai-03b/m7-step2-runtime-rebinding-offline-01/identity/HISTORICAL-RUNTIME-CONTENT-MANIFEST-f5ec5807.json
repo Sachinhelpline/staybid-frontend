@@ -9,7 +9,7 @@
     },
     {
       "path": "identity/v2-source-identity.mjs",
-      "sha256": "7f6f3e68cb72bc3281e11b50498263c9da3bfb3462c51d9262c9be856f214c97"
+      "sha256": "64e8511bae411719f6d22184ccc7be7507505ad154749aac88c8bce80fe858e7"
     },
     {
       "path": "probe/v2-first-text-probe.mjs",
@@ -25,7 +25,7 @@
     },
     {
       "path": "reader/v2-production-entrypoint.mjs",
-      "sha256": "20c852b8fab0fe9abe6f62cd182558fcee565ed7ff692641ec7e62fca57bc1d0"
+      "sha256": "a90a35596bab6d7b4ec478ee906f026fa810d0d751ce1f0c05e9103e73a6495c"
     },
     {
       "path": "reader/v2-production-reader-authority.mjs",
@@ -33,7 +33,7 @@
     },
     {
       "path": "reader/v2-reader-only-authority.mjs",
-      "sha256": "71b79529463f70878f5cae49d7e5e1601073775d808b004bdce7ad5eda805631"
+      "sha256": "0a50bd874f889a84be2acc5d9fa98b999bdc3ded7ee6b4a645b41af717c46c9c"
     },
     {
       "path": "reader/v2-serving-runtime.mjs",
@@ -41,11 +41,11 @@
     },
     {
       "path": "runtime/v2-preflight.mjs",
-      "sha256": "f1cea5c235c10cb7ca60e02d3b63b5bfe49154e8c1291127225df6e0582fee1f"
+      "sha256": "a2d7f005d1b3428aa8157042c57b1ed0d7515851f9aea5a89bc085ed8cc4d3c5"
     },
     {
       "path": "runtime/v2-production-authority.mjs",
-      "sha256": "4b0d08dea8b51816bdeb6e7e60a6d34e5482545532ab48651392930efa9f608f"
+      "sha256": "d629f6d64530a9cd26a43f775835ef3ee6bb85e6eb856898f77900b463a50d89"
     },
     {
       "path": "runtime/v2-query-registry.mjs",
@@ -61,17 +61,17 @@
     },
     {
       "path": "runtime/v2-trusted-activation-executor.mjs",
-      "sha256": "9a1290e6244caac1a92a7e1252959a6610bee57f3525c7f3633306c976b74e0f"
+      "sha256": "f46bac53601eb66e2357678857d9dbd656ae7986076d745873eb778ae2a742c6"
     },
     {
       "path": "runtime/v2-trusted-executor-runtime.mjs",
-      "sha256": "ce6fe9cd88b85f71fca175546731f114f01c6721ebfc771c2eec1f5931596860"
+      "sha256": "b5aa2734055848d47fcec94b6df1d2e6b01943495e804d37ad836826bbacd37f"
     },
     {
       "path": "runtime/v2-trusted-read-adapter.mjs",
       "sha256": "d35de138ad1caf89b764325ba1680916887c4bae5cc519096ef0460bbe175c34"
     }
   ],
-  "runtime_manifest_digest": "64c7031746bff227321e2e2506b4737938eafc3493ae472ab0f51e5e46987d9f",
+  "runtime_manifest_digest": "9a460078846eec885b726e7b54bdbd8a301c690b1f78a68439e151f462341998",
   "note": "PIN C binds THESE bytes. Recompute with measureRuntimeManifest(); the later preservation binding must carry this digest."
 }

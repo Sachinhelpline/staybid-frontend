@@ -24,17 +24,17 @@
   PASS S10 PIN C manifest for other bytes rejected
   PASS S11 PIN C extra key rejected
   PASS S12 PIN C malformed commit rejected
-  PASS S13 combined source pin: V1-shaped pin (no contract) rejected
-  PASS S14 combined source pin: placeholder step2 ⇒ fail
+  PASS S13 combined source pin RETIRED: a V1-shaped pin fails closed
+  PASS S14 combined source pin RETIRED: even a complete pre-probe proof fails closed through it
   PASS S15 runtime manifest covers every runtime module file
   PASS S16 gateway closure proof passes on the real clone (only the service_tier pin differs from 2b69ce)
   PASS S17 committed proof JSON equals a fresh recomputation
   PASS S18 preservation verifier: 4f390b74 is not a Step-2 commit
   PASS S19 preservation verifier: unknown commit ⇒ absent
-  PASS S20 preservation verifier (injected read-only git): additive Step-2 commit ⇒ binding
-  PASS S21 preservation: not descending from 4f390 ⇒ fail
-  PASS S22 preservation: a frozen predecessor modified ⇒ fail
-  PASS S23 preservation: Step-2 file modified-not-added ⇒ fail
+  PASS S20 preservation verifier (injected read-only git): three-segment lineage + Step-2-only correction ⇒ V2 binding
+  PASS S21 preservation: not descending from the M5 closure ⇒ fail
+  PASS S22 preservation: a frozen predecessor modified by the correction ⇒ fail
+  PASS S23 preservation: a Step-2 file DELETED by the correction ⇒ fail
   PASS S24 preservation: different runtime bytes at commit ⇒ fail
   PASS R01 registry self-check
   PASS R02 V2 registry digest ≠ V1 registry digest

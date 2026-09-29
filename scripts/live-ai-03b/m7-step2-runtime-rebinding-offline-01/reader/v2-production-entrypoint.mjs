@@ -5,8 +5,9 @@
 // composes the V1 authority manager + V1 serving runtime). Same startup contract and supervisor
 // (establish → serve; renew; suspend on expiry / drift / connection loss; bounded recovery; exit 72 on
 // exhausted recovery, 71 on degraded) — now composing the V2 manager + V2 serving runtime.
-// ADDITIONALLY the V2 production path requires a V2 SOURCE PIN (derivation base / gateway 4f390 / Step-2
-// preservation binding). None is provisioned in this repository state (acquireReaderSourcePinV2 ⇒
+// ADDITIONALLY the V2 production path requires a V2 SOURCE PIN — after the lifecycle correction this is the
+// PreProbeSourceProofV2 (derivation base / an independent HEALTHY DEPLOYED gateway 4f390 observation / Step-2
+// preservation binding); the reader host serves the post-deployment phases only. None is provisioned in this repository state (acquireReaderSourcePinV2 ⇒
 // UNPROVISIONED), so production refuses BEFORE any DB connection. Offline-test mode (explicit
 // offlineTestBoundary:true) is the only way to inject a session factory / attestation source / trust
 // root / clock / source pin.
@@ -18,7 +19,7 @@ import { loadIntegrationConfig } from "../../private-reader-production-integrati
 import { makePgPhysicalFactory } from "../../private-reader-production-integration-offline-01/reader-session.mjs";
 import { makeAttesterTrustRoot } from "../../private-reader-production-integration-offline-01/reader-attestation.mjs";
 import { composeProductionAttestationSource } from "../../private-reader-production-integration-offline-01/production-entrypoint.mjs";
-import { checkSourcePinV2 } from "../identity/v2-source-identity.mjs";
+import { checkPreProbeSourceProofV2 } from "../identity/v2-source-identity.mjs";
 import { createReaderAuthorityManagerV2 } from "./v2-production-reader-authority.mjs";
 import { startServingRuntimeV2 } from "./v2-serving-runtime.mjs";
 
@@ -65,7 +66,7 @@ export async function startProductionReaderServiceV2(opts = {}) {
     listen = resolveListenConfigFromEnv(env);
     transportSecretProvider = async () => { const v = env[ENV_TRANSPORT_SECRET]; return typeof v === "string" && v.length > 0 ? v : undefined; };
   }
-  const spc = checkSourcePinV2(sourcePin, { testBoundary: offline });
+  const spc = checkPreProbeSourceProofV2(sourcePin, { testBoundary: offline });
   if (!spc.ok) { logLine(log, "unprovisioned", { reason: "source_pin_" + spc.reason }); return { started: false, status: "unprovisioned", reason: "source_pin_" + spc.reason }; }
 
   const mgr = createReaderAuthorityManagerV2({ mode: offline ? "offline-test" : "production", physicalFactory, attestationSource, trustRoot, statementTimeoutMs, nowProvider, sourcePin,

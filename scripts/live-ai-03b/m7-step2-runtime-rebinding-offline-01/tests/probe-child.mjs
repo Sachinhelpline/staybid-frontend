@@ -1,14 +1,14 @@
 // TEST-ONLY child process: issues a V2 preflight receipt from fixtures IN THIS PROCESS (the probe only
 // accepts in-process-issued receipts) and sends the ONE probe through a SYNTHETIC broker returning the
 // given spend. argv[2] = spendMicros, argv[3] = providerCalls (default 1). Prints the bounded evidence.
-import { makeReviewer, makeApproval, testSourcePin, STATES, RAILWAY, DB, phaseBGates, consumedFixture, iso } from "./helpers.mjs";
+import { makeReviewer, makeApproval, testPreProbeSourceProof, STATES, RAILWAY, DB, phaseBGates, consumedFixture, iso } from "./helpers.mjs";
 import { runPreflightV2 } from "../runtime/v2-preflight.mjs";
 import { runProbeV2 } from "../probe/v2-first-text-probe.mjs";
 
 const THROW = process.argv[2] === "throw"; const spend = Number(process.argv[2]); const calls = process.argv[3] === undefined ? 1 : Number(process.argv[3]);
 const rv = makeReviewer(); const now = Date.now(); const ap = makeApproval(rv, { nowMs: now });
 const cf = consumedFixture(ap, iso(now - 60e3));
-const pf = runPreflightV2({ railway: RAILWAY(), sourcePin: testSourcePin(), db: DB(), nowIso: iso(now), testBoundary: true,
+const pf = runPreflightV2({ railway: RAILWAY(), preProbeSourceProof: testPreProbeSourceProof(), db: DB(), nowIso: iso(now), testBoundary: true,
   approvalEnvelope: ap.envelope, trustRoot: rv.trustRoot, suppliedEvidence: ap.suppliedEvidence, executionId: ap.executionId, ...cf,
   armedState: STATES.armed(), oneCallPolicy: STATES.ceilings(), counts: STATES.counts(), ...phaseBGates() });
 let sends = 0;

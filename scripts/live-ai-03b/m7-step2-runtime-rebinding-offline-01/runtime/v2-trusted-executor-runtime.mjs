@@ -4,7 +4,9 @@
 // Successor of trusted-executor-runtime-01/trusted-executor-runtime.mjs (V1, frozen). Sequence:
 //   config (V2) → trust root pinned to config → connection→AI-STAGING target binding → V2 read adapter
 //   (reader client, content-verified V2 registry) + V2 activation adapter (executor client) →
-//   source pins (A derivation base / B gateway 4f390 / C Step-2 preservation) →
+//   ActivationSourceProofV2 (A derivation base / B REVIEWED STATIC gateway 4f390 / C PRESERVED Step-2 binding —
+//   NO deployed gateway: the PIN-B gateway cannot start before this activation; the deployed-gateway proof
+//   belongs to the separate PHASE-B preflight) →
 //   PHASE A (pre-activation V2 state + authentic UNUSED approval, inside runActivationV2) →
 //   restricted activate_catalog_v2 (one-shot, no retry) → COMMITTED ledger (read AFTER the transaction) →
 //   PHASE-B CORRELATION (verifyConsumedApprovalV2: the SAME approval ↔ EXACTLY ONE committed ledger row ↔
@@ -15,21 +17,25 @@
 // state belongs to the separate PHASE-B preflight (runPreflightV2), after the Owner-run 04/05 steps.
 //
 // runTrustedExecutorProductionV2(request): request may carry ONLY { approvalEnvelope, suppliedEvidence,
-//   executionId }; every dependency comes from acquireProductionAuthorityV2() (UNPROVISIONED ⇒ fail closed).
-// runTrustedExecutorTestV2(ctx): dependency injection for the OFFLINE suite only (testBoundary:true).
+//   executionId }; NO provisioner ⇒ acquireProductionAuthorityV2() is UNPROVISIONED ⇒ fail closed (default).
+// composeTrustedExecutorProductionV2(provisioner): the bounded PRODUCTION COMPOSITION SEAM — a future,
+//   separately authorized entrypoint supplies a frozen provisioner at composition time; the returned one-shot
+//   run(request) accepts the same untrusted request only; the authority must pass the full production bar.
+// runTrustedExecutorTestV2(ctx) / composeTrustedExecutorTestV2(provisioner, {testBoundary:true}): the OFFLINE
+//   suite only.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { verifyConsumedApprovalV2 } from "../../m7-step1-hb1-consolidated-remediation-01/approval/approval-verify-v2.mjs";
 import { publicKeyFingerprintFromDerB64 } from "../../m7-step1-hb1-consolidated-remediation-01/approval/pricing-approval-contract-v2.mjs";
 import { verifyConnectionTargetBinding } from "../../trusted-executor-runtime-01/db-target-binding.mjs";
 import { TARGETS_V2, STORE_BINDING_REF, assertIdentityIntegrity } from "../identity/v2-identity.mjs";
-import { checkSourcePinV2 } from "../identity/v2-source-identity.mjs";
+import { checkActivationSourceProofV2 } from "../identity/v2-source-identity.mjs";
 import { loadRuntimeConfigV2 } from "./v2-runtime-config.mjs";
 import { makeTrustedReadAdapterV2 } from "./v2-trusted-read-adapter.mjs";
 import { makeRestrictedActivationAdapterV2 } from "./v2-restricted-activation-adapter.mjs";
 import { runActivationV2 } from "./v2-trusted-activation-executor.mjs";
 import { checkActivatedStateV2 } from "./v2-preflight.mjs";
-import { acquireProductionAuthorityV2, validateProvisionedAuthorityV2, rejectCallerSuppliedAuthorityV2 } from "./v2-production-authority.mjs";
+import { acquireProductionAuthorityV2, acquireAuthorityForTestV2, validateProvisionedAuthorityV2, rejectCallerSuppliedAuthorityV2, checkProvisionerV2 } from "./v2-production-authority.mjs";
 
 function hold(stage, reason, extra) { return { ok: false, activated: false, probeReady: false, stage, reason, ...(extra || {}) }; }
 
@@ -58,8 +64,8 @@ async function runInternal(mode, d) {
   } catch (e) { return hold("adapter", String((e && e.message) || "adapter_init_failed").slice(0, 96)); }
   if (d.readerDbClient === d.executorDbClient) return hold("adapter", "reader_and_executor_must_be_separate_clients");
 
-  const sp = checkSourcePinV2(d.sourcePin, { testBoundary: mode === "test" });
-  if (!sp.ok) return hold("source_pin", sp.reason);
+  const sp = checkActivationSourceProofV2(d.activationSourceProof, { testBoundary: mode === "test" });
+  if (!sp.ok) return hold("source_proof", sp.reason);
   if (!d.privilegeProof || d.privilegeProof.restricted_role_proof_present !== true) return hold("privilege_proof", "privilege_proof_absent");
   if (typeof d.nowProvider !== "function") return hold("clock", "now_provider_absent");
 
@@ -79,7 +85,7 @@ async function runInternal(mode, d) {
   const db = { resolved_postgres_service_id: targetBinding.verifiedServiceId, store_binding_ref: STORE_BINDING_REF, resolved_project_id: targetBinding.verifiedProjectId };
   const readState = Object.freeze({
     provenance: reader.readStateProvenance,
-    observe: () => ({ railway, sourcePin: d.sourcePin, db, preActivationState: pre.preActivationState, counts: pre.counts,
+    observe: () => ({ railway, activationSourceProof: d.activationSourceProof, db, preActivationState: pre.preActivationState, counts: pre.counts,
       approvalConsumed: consumedBefore, privilegeProof: d.privilegeProof }),
   });
 
@@ -113,17 +119,48 @@ async function runInternal(mode, d) {
   };
 }
 
-/** PRODUCTION entrypoint — untrusted request only; dependencies ONLY from the V2 authority (UNPROVISIONED offline). */
-export async function runTrustedExecutorProductionV2(request) {
+async function runWithAuthority(mode, acquire, request) {
   const rj = rejectCallerSuppliedAuthorityV2(request);
   if (!rj.ok) return hold("production_boundary", rj.reason);
   const req = request || {};
-  const auth = await acquireProductionAuthorityV2();
+  const auth = await acquire();
   if (!auth || auth.available !== true) return hold("production_authority", (auth && auth.reason) || "production_authority_unavailable");
-  const v = validateProvisionedAuthorityV2(auth.authority);
+  const v = validateProvisionedAuthorityV2(auth.authority, { testBoundary: mode === "test" });
   if (!v.ok) return hold("production_authority", v.reason);
   const a = auth.authority;
-  return runInternal("production", { ...a, approvalEnvelope: req.approvalEnvelope, suppliedEvidence: req.suppliedEvidence, executionId: req.executionId });
+  return runInternal(mode, { ...a, approvalEnvelope: req.approvalEnvelope, suppliedEvidence: req.suppliedEvidence, executionId: req.executionId });
+}
+
+/** PRODUCTION entrypoint (default) — untrusted request only; NO provisioner ⇒ UNPROVISIONED ⇒ fail closed. */
+export async function runTrustedExecutorProductionV2(request) {
+  return runWithAuthority("production", () => acquireProductionAuthorityV2(), request);
+}
+
+function composed(mode, provisioner, acquire) {
+  const pc = checkProvisionerV2(provisioner);
+  if (!pc.ok) return Object.freeze({ available: false, reason: pc.reason, run: async () => hold("production_authority", pc.reason) });
+  let used = false;
+  return Object.freeze({
+    available: true, mode,
+    async run(request) {
+      if (used) return hold("guard", "composed_executor_is_one_shot");
+      used = true; // claimed before any acquisition / I/O
+      return runWithAuthority(mode, () => acquire(provisioner), request);
+    },
+  });
+}
+/**
+ * PRODUCTION COMPOSITION SEAM. The future separately authorized production entrypoint composes the executor with
+ * its frozen provisioner; the result exposes ONLY a one-shot run(request). No global state is written; nothing in
+ * this repository calls it with a real provisioner (none exists).
+ */
+export function composeTrustedExecutorProductionV2(provisioner) {
+  return composed("production", provisioner, (p) => acquireProductionAuthorityV2(p));
+}
+/** TEST composition — explicit isolated test boundary only; the same seam with TEST-mode validation. */
+export function composeTrustedExecutorTestV2(provisioner, opts) {
+  if (!opts || opts.testBoundary !== true) return Object.freeze({ available: false, reason: "test_composition_requires_testBoundary_true", run: async () => hold("test_boundary", "test_composition_requires_testBoundary_true") });
+  return composed("test", provisioner, (p) => acquireAuthorityForTestV2(p, { testBoundary: true }));
 }
 
 /** TEST entrypoint — offline suite ONLY (synthetic keys + disposable local PG / fixtures). */
@@ -133,7 +170,7 @@ export async function runTrustedExecutorTestV2(ctx) {
   return runInternal("test", {
     cfg: loadRuntimeConfigV2(c.env), trustRoot: c.trustRoot, connectionIdentityProof: c.connectionIdentityProof,
     expectedIssuer: c.expectedIssuer, connectionToken: c.connectionToken, executorDbClient: c.executorDbClient, readerDbClient: c.readerDbClient,
-    registry: c.registry, sourcePin: c.sourcePin, privilegeProof: c.privilegeProof,
+    registry: c.registry, activationSourceProof: c.activationSourceProof, privilegeProof: c.privilegeProof,
     approvalEnvelope: c.approvalEnvelope, suppliedEvidence: c.suppliedEvidence, executionId: c.executionId, nowProvider: c.nowProvider,
   });
 }

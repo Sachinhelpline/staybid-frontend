@@ -45,6 +45,7 @@ case "$tgt" in
   write-identity-artifacts.mjs) force identity; echo "identity artifacts: OK (runtime manifest shim)"; exit 0;;
   prove-gateway-source.mjs)     force gateway;  echo '{"contract":"GatewayDeploySourceProofV2","pass":true}'; exit 0;;
   v2-unit.test.mjs)             force unit; [ "$(mode_for unit)" = partial ] && { echo "m7s2-unit: 289 passed, 1 failed"; exit 0; }; echo "m7s2-unit: 290 passed, 0 failed"; exit 0;;
+  v2-lifecycle-correction.test.mjs) force correction; [ "$(mode_for correction)" = partial ] && { echo "m7s2-lifecycle-correction: 112 passed, 1 failed"; exit 0; }; echo "m7s2-lifecycle-correction: 113 passed, 0 failed"; exit 0;;
   v2-preflight.mjs)             force preflight; exit 2;;
   v2-trusted-activation-executor.mjs) force executor; exit 2;;
   v2-first-text-probe.mjs)      force probe; exit 2;;
@@ -99,10 +100,10 @@ run_all_case() {  # $1 name  $2 expected: 0|nonzero  $3 attribution (nonzero: la
   env "$@" M7S2_PG18_BIN="${PG18OVERRIDE:-$W/pg18fake}" M6_PGBIN= "$REALBASH" "$ALLM/tests/run-all-m7s2.sh" > "$W/out.$name.log" 2>&1; local rc=$?
   if { [ "$want" = 0 ] && [ $rc -eq 0 ]; } || { [ "$want" = nonzero ] && [ $rc -ne 0 ]; }; then ok "run-all $name → exit $rc (expected $want)"
   else bad "run-all $name → exit $rc (expected $want)"; sed 's/^/        | /' "$W/out.$name.log" | tail -14; fi
-  # attribution: the failure is the INTENDED check (not an incidental one); the success case is a full 10/10 PASS
+  # attribution: the failure is the INTENDED check (not an incidental one); the success case is a full 11/11 PASS
   if [ "$want" = 0 ]; then
-    if grep -q "^RESULT: PASS (10/10 required checks)" "$W/out.$name.log" && ! grep -q "^FAIL" "$W/out.$name.log"; then ok "run-all $name attribution: RESULT: PASS (10/10), no FAIL line"
-    else bad "run-all $name attribution: expected RESULT: PASS (10/10) and no FAIL line"; fi
+    if grep -q "^RESULT: PASS (11/11 required checks)" "$W/out.$name.log" && ! grep -q "^FAIL" "$W/out.$name.log"; then ok "run-all $name attribution: RESULT: PASS (11/11), no FAIL line"
+    else bad "run-all $name attribution: expected RESULT: PASS (11/11) and no FAIL line"; fi
   else
     local fl; fl=$(grep "^FAIL" "$W/out.$name.log")
     if [ "$(printf '%s\n' "$fl" | grep -c .)" = 1 ] && printf '%s\n' "$fl" | grep -q "^FAIL  $attr" && grep -q "^RESULT: FAIL" "$W/out.$name.log"; then ok "run-all $name attribution: exactly one FAIL on '$attr'; RESULT: FAIL"
@@ -114,6 +115,8 @@ run_all_case RA1-all-contracts-satisfied 0 - SHIM_FAIL=
 run_all_case RA2-gateway-proof-fails nonzero "B " SHIM_FAIL="gateway=1"
 run_all_case RA3a-unit-fails nonzero "C " SHIM_FAIL="unit=1"
 run_all_case RA3b-unit-exit0-but-1-failed nonzero "C " SHIM_FAIL="unit=partial"
+run_all_case RA3c-lifecycle-correction-fails nonzero "I " SHIM_FAIL="correction=1"
+run_all_case RA3d-lifecycle-correction-exit0-but-1-failed nonzero "I " SHIM_FAIL="correction=partial"
 run_all_case RA4a-PG16-SKIPPED-exit2 nonzero "D " SHIM_FAIL="pg16=skip2"
 run_all_case RA4b-PG18-SKIPPED-exit0 nonzero "E " SHIM_FAIL="pg18=skip0"
 PG18OVERRIDE="$W/does-not-exist" run_all_case RA4c-PG18-binaries-unavailable nonzero "E " SHIM_FAIL=

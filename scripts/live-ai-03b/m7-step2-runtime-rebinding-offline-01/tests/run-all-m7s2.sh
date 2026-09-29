@@ -11,8 +11,9 @@
 # A PostgreSQL SKIP is a FAILURE here (this runner is the evidence for real PG16 + PG18 lifecycles).
 export M7S2_LIST=1
 set -u
-REQUIRED_CHECKS=10
+REQUIRED_CHECKS=11
 EXPECT_UNIT_LINE="m7s2-unit: 290 passed, 0 failed"
+EXPECT_CORRECTION_LINE="m7s2-lifecycle-correction: 113 passed, 0 failed"   # lifecycle correction (focused A–K + real-git PIN-C lineage)
 EXPECT_LIFECYCLE=60
 PG18_BIN=${M7S2_PG18_BIN:-/tmp/lai03b-pg18bin/bin}   # harness config only (local PG18 test build)
 HERE=$(cd "$(dirname "$0")" && pwd) || { echo "RESULT: FAIL (cannot resolve harness directory)"; exit 1; }
@@ -62,6 +63,8 @@ expect_lifecycle() {
 expect_exit    "A identity artifacts --check" 0 out/identity-artifacts.log node ../tools/write-identity-artifacts.mjs --check
 expect_exit    "B PIN B gateway closure proof" 0 out/gateway-source-proof.log node ../tools/prove-gateway-source.mjs --repo "$REPO"
 expect_summary "C unit + §19 negative matrix" out/v2-unit.log "$EXPECT_UNIT_LINE" node v2-unit.test.mjs
+# I. lifecycle correction: activation-source vs pre-probe deployed-source proofs, authority seam, PIN-C lineage
+expect_summary "I lifecycle correction suite" out/v2-lifecycle-correction.log "$EXPECT_CORRECTION_LINE" node v2-lifecycle-correction.test.mjs
 # D. real PG16 lifecycle   E. real PG18 lifecycle (binaries must exist — no silent fallback to PG16)
 expect_lifecycle "D lifecycle PostgreSQL 16" 16 out/v2-localpg-pg16.log env -u M6_PGBIN bash v2-localpg.test.sh
 if [ -x "$PG18_BIN/postgres" ] && [ -x "$PG18_BIN/initdb" ]; then

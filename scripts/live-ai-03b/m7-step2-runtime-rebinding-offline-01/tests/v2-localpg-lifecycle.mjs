@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import net from "node:net";
 import pg from "pg";
-import { makeReviewer, makeApproval, testSourcePin, phaseBGates, testEnv, testConnectionProof, makeRunner, iso, RAILWAY, DB } from "./helpers.mjs";
+import { makeReviewer, makeApproval, testActivationSourceProof, testPreProbeSourceProof, phaseBGates, testEnv, testConnectionProof, makeRunner, iso, RAILWAY, DB } from "./helpers.mjs";
 import { makeLocalPgAttester } from "./localpg-attester.mjs";
 import * as ID from "../identity/v2-identity.mjs";
 import * as SRC from "../identity/v2-source-identity.mjs";
@@ -50,7 +50,7 @@ const SECRET = "synthetic-transport-secret-localpg-0123456789";
 const readerSvc = await startProductionReaderServiceV2({
   mode: "offline-test", offlineTestBoundary: true, trustRootConfig: att.trustRootConfig,
   physicalFactory: makePgPhysicalFactory({ env: { R: `postgresql://live_ai_03b_reader@/railway?host=${encodeURIComponent(SOCK)}` }, connectionStringEnvName: "R" }),
-  attestationSource: att.source, sourcePin: testSourcePin(), listen: { mode: "loopback-tcp", host: "127.0.0.1", port },
+  attestationSource: att.source, sourcePin: testPreProbeSourceProof(), listen: { mode: "loopback-tcp", host: "127.0.0.1", port },
   transportSecretProvider: async () => SECRET, tickMs: 0, log: () => {},
 });
 ok("H00 V2 reader service starts against REAL PG (reader login, verified statement_timeout, independent attestation)", readerSvc.started === true && readerSvc.ready(), readerSvc.reason);
@@ -59,7 +59,7 @@ const viaReader = async (phase) => { const r = await gw.observe(phase); return r
 {
   const noPin = await startProductionReaderServiceV2({ mode: "offline-test", offlineTestBoundary: true, trustRootConfig: att.trustRootConfig,
     physicalFactory: { open: async () => { throw new Error("must not connect"); } }, attestationSource: att.source,
-    sourcePin: testSourcePin({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }), listen: { mode: "loopback-tcp", host: "127.0.0.1", port: port + 1 }, transportSecretProvider: async () => SECRET, tickMs: 0, log: () => {} });
+    sourcePin: testPreProbeSourceProof({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }), listen: { mode: "loopback-tcp", host: "127.0.0.1", port: port + 1 }, transportSecretProvider: async () => SECRET, tickMs: 0, log: () => {} });
   ok("H01 reader service with the unresolved Step-2 pin refuses BEFORE any DB connection", !noPin.started && noPin.reason === "source_pin_step2_runtime_pin_required_after_preservation");
 }
 
@@ -73,11 +73,11 @@ ok("A02 reader chain (loopback) returns the identical pre-activation observation
 ok("A03 the reader session is SELECT-only (write attempt refused by the DB)", await readerC.query("UPDATE public.budget_price_catalog_versions SET status='active' WHERE false").then(() => false, (e) => /permission denied/.test(e.message)));
 
 const base = { testBoundary: true, env: testEnv(rv), trustRoot: rv.trustRoot, connectionIdentityProof: testConnectionProof(), expectedIssuer: "TEST-ISSUER", connectionToken: "TEST-TOKEN",
-  executorDbClient: execC, readerDbClient: readerC, registry: REG.buildV2RegistrySupply(), sourcePin: testSourcePin(), privilegeProof: { restricted_role_proof_present: true },
+  executorDbClient: execC, readerDbClient: readerC, registry: REG.buildV2RegistrySupply(), activationSourceProof: testActivationSourceProof(), privilegeProof: { restricted_role_proof_present: true },
   approvalEnvelope: ap.envelope, suppliedEvidence: ap.suppliedEvidence, executionId: ap.executionId, nowProvider: nowUtc };
 {
-  const r1 = await runTrustedExecutorTestV2({ ...base, sourcePin: testSourcePin({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) });
-  const r2 = await runTrustedExecutorTestV2({ ...base, sourcePin: testSourcePin({ gatewaySource: { ...testSourcePin().gatewaySource, deployed_commit: SRC.SUPERSEDED_GATEWAY_SOURCE_V1.commit } }) });
+  const r1 = await runTrustedExecutorTestV2({ ...base, activationSourceProof: testActivationSourceProof({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) });
+  const r2 = await runTrustedExecutorTestV2({ ...base, activationSourceProof: testActivationSourceProof({ gatewayStaticSource: { ...SRC.staticGatewaySourceIdentityV2(), commit: SRC.SUPERSEDED_GATEWAY_SOURCE_V1.commit } }) });
   const r3 = await runTrustedExecutorTestV2({ ...base, executionId: "m7s2-lc-exec-other" });
   ok("A04 unresolved Step-2 pin / 2b69ce gateway / foreign execution ⇒ refused, ZERO ledger rows, V2 still inactive",
     r1.reason === "step2_runtime_pin_required_after_preservation" && r2.reason === "superseded_gateway_source_2b69ce_rejected" && /approval_for_another_execution/.test(r3.reason) && (await ledgerCount()) === 0
@@ -131,7 +131,7 @@ ok("B04 reader chain: activated observation passes the activated-state check", !
 const ledgerObs = await reader.observeCommittedLedger({ approvalId: ap.approvalId, executionId: ap.executionId });
 const phaseB = async (nowIso = nowUtc()) => {
   const armed = await reader.observeArmed(), ceil = await reader.observeCeilings(), cnt = await reader.observeExposureCounts();
-  return PF.runPreflightV2({ railway: RAILWAY(), sourcePin: testSourcePin(), db: DB(), nowIso, testBoundary: true,
+  return PF.runPreflightV2({ railway: RAILWAY(), preProbeSourceProof: testPreProbeSourceProof(), db: DB(), nowIso, testBoundary: true,
     approvalEnvelope: ap.envelope, trustRoot: rv.trustRoot, suppliedEvidence: ap.suppliedEvidence, executionId: ap.executionId,
     ledgerObservation: ledgerObs.observation, activationReceipt: act.activationReceipt,
     armedState: armed.ok ? armed.armedState : undefined, oneCallPolicy: ceil.ok ? ceil.oneCallPolicy : {}, counts: cnt.ok ? cnt.counts : {}, ...phaseBGates() });

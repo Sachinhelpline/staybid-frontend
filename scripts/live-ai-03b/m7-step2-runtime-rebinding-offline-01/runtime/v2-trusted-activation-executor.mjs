@@ -11,6 +11,8 @@
 // concrete PHASE-A verifier (runPreActivationV2) over V2 observations from an approved V2 read capability
 // (a V1 read capability is refused by provenance); NEVER retries after an ambiguous mutation; emits a
 // bounded CATALOG_ACTIVATION_COMPLETE receipt and NEVER PROBE_READY.
+// Lifecycle correction: Phase A consumes the ActivationSourceProofV2 (PIN A + REVIEWED STATIC PIN B + PRESERVED
+// PIN C). It does NOT require a deployed gateway — the PIN-B gateway cannot start before this activation.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { verifyApprovalV2 } from "../../m7-step1-hb1-consolidated-remediation-01/approval/approval-verify-v2.mjs";
@@ -26,7 +28,7 @@ let ALREADY_RAN = false; // process-lifetime one-shot (a second activation attem
 /**
  * deps (INJECTED by the credential-isolated V2 runtime; TEST-only under an explicit test boundary):
  *   trustRoot, approvalEnvelope, suppliedEvidence, nowIso, executionId, isConsumed(approvalId, executionId),
- *   readState { provenance (V2), observe() -> { railway, sourcePin, db, preActivationState, counts, approvalConsumed, privilegeProof } },
+ *   readState { provenance (V2), observe() -> { railway, activationSourceProof, db, preActivationState, counts, approvalConsumed, privilegeProof } },
  *   restrictedDbActivate({ claims, executionId }), targetBinding { resolvedPostgresServiceId, resolvedProjectId }, testBoundary?
  */
 export async function runActivationV2(deps) {
@@ -53,7 +55,7 @@ export async function runActivationV2(deps) {
   let phaseA;
   try {
     phaseA = runPreActivationV2({
-      railway: o.railway, sourcePin: o.sourcePin, db: o.db, nowIso: deps.nowIso, testBoundary: deps.testBoundary === true,
+      railway: o.railway, activationSourceProof: o.activationSourceProof, db: o.db, nowIso: deps.nowIso, testBoundary: deps.testBoundary === true,
       approvalEnvelope: deps.approvalEnvelope, trustRoot: deps.trustRoot, suppliedEvidence: deps.suppliedEvidence,
       executionId: deps.executionId, isApprovalConsumed: deps.isConsumed,
       preActivationState: o.preActivationState, counts: o.counts, approvalConsumed: o.approvalConsumed, privilegeProof: o.privilegeProof,

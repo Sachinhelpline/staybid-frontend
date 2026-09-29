@@ -5,7 +5,7 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import net from "node:net";
-import { makeReviewer, makeApproval, testSourcePin, STATES, RAILWAY, DB, phaseBGates, consumedFixture, testEnv, testConnectionProof, makeRunner, iso, clone, C, G } from "./helpers.mjs";
+import { makeReviewer, makeApproval, testActivationSourceProof, testPreProbeSourceProof, testStep2Binding, STATES, RAILWAY, DB, phaseBGates, consumedFixture, testEnv, testConnectionProof, makeRunner, iso, clone, C, G } from "./helpers.mjs";
 import * as ID from "../identity/v2-identity.mjs";
 import * as SRC from "../identity/v2-source-identity.mjs";
 import * as REG from "../runtime/v2-query-registry.mjs";
@@ -52,25 +52,26 @@ ok("I06 ceilingsExactV2 exact set passes", ID.ceilingsExactV2(STATES.ceilings())
 // ═══════════ S — source identity (three distinct pins) ═══════════
 ok("S01 PIN A derivation base = 9270c282/c46da041 and equals the signed bundle base", SRC.checkDerivationBase({ commit: "9270c282d5fd65e9fe49261391badfe92c777b8f", tree: "c46da04123dc44cd9954fe350de0b1bc20ff0948" }).ok);
 ok("S02 PIN A rewritten to the gateway commit is rejected", SRC.checkDerivationBase({ commit: SRC.GATEWAY_DEPLOY_SOURCE_V2.commit, tree: SRC.GATEWAY_DEPLOY_SOURCE_V2.tree }).reason === "derivation_base_rewritten");
-ok("S03 PIN B 4f390b74/72080256 accepted", SRC.checkGatewaySourcePinV2(testSourcePin().gatewaySource).ok);
+ok("S03 PIN B 4f390b74/72080256 accepted", SRC.checkGatewaySourcePinV2(testPreProbeSourceProof().gatewayDeployment).ok);
 for (const [k, v] of [["deployed_commit", SRC.SUPERSEDED_GATEWAY_SOURCE_V1.commit], ["deployed_tree", SRC.SUPERSEDED_GATEWAY_SOURCE_V1.tree], ["gateway_deployment_revision", SRC.SUPERSEDED_GATEWAY_SOURCE_V1.commit], ["voice_gateway_tree", SRC.SUPERSEDED_GATEWAY_SOURCE_V1.voice_gateway_tree]]) {
-  const g = { ...testSourcePin().gatewaySource, [k]: v };
+  const g = { ...testPreProbeSourceProof().gatewayDeployment, [k]: v };
   ok(`S04 old 2b69ce source cannot authorize (${k})`, SRC.checkGatewaySourcePinV2(g).reason === "superseded_gateway_source_2b69ce_rejected");
 }
 for (const k of ["deployed_commit", "deployed_tree", "gateway_deployment_revision", "voice_gateway_tree"]) {
-  ok(`S05 gateway pin mismatch (${k})`, !SRC.checkGatewaySourcePinV2({ ...testSourcePin().gatewaySource, [k]: "f".repeat(40) }).ok);
+  ok(`S05 gateway pin mismatch (${k})`, !SRC.checkGatewaySourcePinV2({ ...testPreProbeSourceProof().gatewayDeployment, [k]: "f".repeat(40) }).ok);
 }
 ok("S06 PIN C placeholder fails closed (test boundary too)", SRC.verifyStep2RuntimePin(SRC.STEP2_RUNTIME_PIN_PLACEHOLDER, { testBoundary: true }).reason === "step2_runtime_pin_required_after_preservation");
 ok("S07 PIN C placeholder carries NO commit/tree (nothing fabricated)", SRC.STEP2_RUNTIME_PIN_PLACEHOLDER.commit === null && SRC.STEP2_RUNTIME_PIN_PLACEHOLDER.tree === null);
-ok("S08 PIN C TEST binding accepted only under test boundary", SRC.verifyStep2RuntimePin(testSourcePin().step2Runtime, { testBoundary: true }).ok && SRC.verifyStep2RuntimePin(testSourcePin().step2Runtime).reason === "step2_runtime_pin_provenance_untrusted");
+ok("S08 PIN C TEST binding accepted only under test boundary", SRC.verifyStep2RuntimePin(testStep2Binding(), { testBoundary: true }).ok && SRC.verifyStep2RuntimePin(testStep2Binding()).reason === "step2_runtime_pin_provenance_untrusted");
 for (const c of [SRC.DERIVATION_BASE.commit, SRC.GATEWAY_DEPLOY_SOURCE_V2.commit, SRC.SUPERSEDED_GATEWAY_SOURCE_V1.commit]) {
-  ok(`S09 PIN C cannot reuse a non-Step-2 commit (${c.slice(0, 8)})`, SRC.verifyStep2RuntimePin({ ...testSourcePin().step2Runtime, commit: c }, { testBoundary: true }).reason === "step2_runtime_pin_reuses_non_step2_commit");
+  ok(`S09 PIN C cannot reuse a non-Step-2 commit (${c.slice(0, 8)})`, SRC.verifyStep2RuntimePin({ ...testStep2Binding(), commit: c }, { testBoundary: true }).reason === "step2_runtime_pin_reuses_non_step2_commit");
 }
-ok("S10 PIN C manifest for other bytes rejected", SRC.verifyStep2RuntimePin({ ...testSourcePin().step2Runtime, runtime_manifest_digest: "0".repeat(64) }, { testBoundary: true }).reason === "step2_runtime_manifest_mismatch");
-ok("S11 PIN C extra key rejected", SRC.verifyStep2RuntimePin({ ...testSourcePin().step2Runtime, approved: true }, { testBoundary: true }).reason === "step2_runtime_pin_shape_not_exact");
-ok("S12 PIN C malformed commit rejected", !SRC.verifyStep2RuntimePin({ ...testSourcePin().step2Runtime, commit: "HEAD" }, { testBoundary: true }).ok);
-ok("S13 combined source pin: V1-shaped pin (no contract) rejected", SRC.checkSourcePinV2({ commit: V1_FIXED.source_commit || "2b69ce28230fc9d56a035846e95d8de206d5db3b" }, { testBoundary: true }).reason === "source_pin_contract_not_v2");
-ok("S14 combined source pin: placeholder step2 ⇒ fail", SRC.checkSourcePinV2(testSourcePin({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }), { testBoundary: true }).reason === "step2_runtime_pin_required_after_preservation");
+ok("S10 PIN C manifest for other bytes rejected", SRC.verifyStep2RuntimePin({ ...testStep2Binding(), runtime_manifest_digest: "0".repeat(64) }, { testBoundary: true }).reason === "step2_runtime_manifest_mismatch");
+ok("S11 PIN C extra key rejected", SRC.verifyStep2RuntimePin({ ...testStep2Binding(), approved: true }, { testBoundary: true }).reason === "step2_runtime_pin_shape_not_exact");
+ok("S12 PIN C malformed commit rejected", !SRC.verifyStep2RuntimePin({ ...testStep2Binding(), commit: "HEAD" }, { testBoundary: true }).ok);
+ok("S13 combined source pin RETIRED: a V1-shaped pin fails closed", SRC.checkSourcePinV2({ commit: V1_FIXED.source_commit || "2b69ce28230fc9d56a035846e95d8de206d5db3b" }, { testBoundary: true }).reason === "combined_source_pin_v2_retired_phase_specific_proof_required");
+ok("S14 combined source pin RETIRED: even a complete pre-probe proof fails closed through it", SRC.checkSourcePinV2(testPreProbeSourceProof(), { testBoundary: true }).reason === "combined_source_pin_v2_retired_phase_specific_proof_required"
+  && SRC.checkPreProbeSourceProofV2(testPreProbeSourceProof({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }), { testBoundary: true }).reason === "step2_runtime_pin_required_after_preservation");
 ok("S15 runtime manifest covers every runtime module file", (() => { const all = []; for (const d of ["identity", "runtime", "probe", "reader"]) for (const f of readdirSync(join(STEP2, d))) if (f.endsWith(".mjs")) all.push(`${d}/${f}`); return all.sort().join() === [...SRC.RUNTIME_MANIFEST_FILES].sort().join(); })());
 // real-git gateway proof + preservation verifier fail-closed + injected-git positive path
 const gp = proveGatewaySource(makeGit(REPO));
@@ -79,20 +80,26 @@ ok("S17 committed proof JSON equals a fresh recomputation", JSON.stringify(JSON.
 ok("S18 preservation verifier: 4f390b74 is not a Step-2 commit", verifyStep2Preservation(makeGit(REPO), SRC.GATEWAY_DEPLOY_SOURCE_V2.commit).reason === "commit_is_a_non_step2_pin");
 ok("S19 preservation verifier: unknown commit ⇒ absent", verifyStep2Preservation(makeGit(REPO), "0123456789abcdef0123456789abcdef01234567").reason === "commit_absent");
 {
+  // three-segment lineage over an injected read-only git (S1 PIN B → historical PIN C; S2 → M5 closure; S3 → X)
   const measured = SRC.measureRuntimeManifest();
   const bytes = Object.fromEntries(SRC.RUNTIME_MANIFEST_FILES.map((p) => [p, readFileSync(join(STEP2, p))]));
   const X = "5e2c0de5e2c0de5e2c0de5e2c0de5e2c0de5e2c0";
+  const H = SRC.HISTORICAL_STEP2_PRESERVATION, M5 = SRC.ACCEPTED_M5_CLOSURE, B = SRC.GATEWAY_DEPLOY_SOURCE_V2.commit;
   const fakeGit = (o = {}) => ({
-    revParse: (x) => (x === `${X}^{commit}` ? X : x === `${X}^{tree}` ? "1".repeat(40) : x === `${X}:${SRC.STEP2_DIR}` ? "2".repeat(40) : null),
-    isAncestor: (a, b) => o.notAncestor ? false : a === SRC.GATEWAY_DEPLOY_SOURCE_V2.commit && b === X,
-    diffNameStatus: () => o.changes || SRC.RUNTIME_MANIFEST_FILES.map((p) => ({ status: "A", path: `${SRC.STEP2_DIR}/${p}` })),
+    revParse: (x) => ({ [`${X}^{commit}`]: X, [`${X}^{tree}`]: "1".repeat(40), [`${X}:${SRC.STEP2_DIR}`]: o.dirTree || "2".repeat(40),
+      [`${H.commit}^{tree}`]: H.tree, [`${H.commit}:${SRC.STEP2_DIR}`]: H.step2_dir_tree,
+      [`${M5.commit}^{tree}`]: M5.tree, [`${M5.commit}^1`]: M5.parent, [`${M5.commit}:${SRC.STEP2_DIR}`]: o.m5Step2Tree || M5.step2_dir_tree })[x] || null,
+    isAncestor: (a, b) => (a === B && b === H.commit) || (a === H.commit && b === M5.commit) || (!o.notAncestor && a === M5.commit && b === X),
+    diffNameStatus: (a, b) => (a === B && b === H.commit ? (o.s1 || [{ status: "A", path: `${SRC.STEP2_DIR}/README-OPERATOR.md` }])
+      : a === H.commit && b === M5.commit ? (o.s2 || [{ status: "A", path: `${M5.path_prefixes[0]}x.mjs` }, { status: "M", path: `${M5.path_prefixes[1]}y.mjs` }])
+      : (o.changes || SRC.RUNTIME_MANIFEST_FILES.map((p) => ({ status: "M", path: `${SRC.STEP2_DIR}/${p}` })))),
     blobBytes: (_r, p) => { const k = p.slice(SRC.STEP2_DIR.length + 1); if (o.tamper === k) return Buffer.from("tampered"); return bytes[k]; },
   });
   const pos = verifyStep2Preservation(fakeGit(), X, { measured });
-  ok("S20 preservation verifier (injected read-only git): additive Step-2 commit ⇒ binding", pos.ok && SRC.verifyStep2RuntimePin(pos.binding, { measured }).ok);
-  ok("S21 preservation: not descending from 4f390 ⇒ fail", verifyStep2Preservation(fakeGit({ notAncestor: true }), X, { measured }).reason === "gateway_deploy_source_not_ancestor");
-  ok("S22 preservation: a frozen predecessor modified ⇒ fail", verifyStep2Preservation(fakeGit({ changes: [{ status: "M", path: "scripts/live-ai-03b/first-text-probe-activation-01/first-text-probe.mjs" }] }), X, { measured }).reason.startsWith("non_step2_path_changed"));
-  ok("S23 preservation: Step-2 file modified-not-added ⇒ fail", verifyStep2Preservation(fakeGit({ changes: [{ status: "M", path: `${SRC.STEP2_DIR}/runtime/v2-preflight.mjs` }] }), X, { measured }).reason.startsWith("step2_path_not_additive"));
+  ok("S20 preservation verifier (injected read-only git): three-segment lineage + Step-2-only correction ⇒ V2 binding", pos.ok && SRC.verifyStep2RuntimePin({ ...pos.binding, provenance: SRC.STEP2_TRUSTED_PROVENANCE }, { measured }).ok, pos);
+  ok("S21 preservation: not descending from the M5 closure ⇒ fail", verifyStep2Preservation(fakeGit({ notAncestor: true }), X, { measured }).reason === "s3_m5_closure_not_ancestor");
+  ok("S22 preservation: a frozen predecessor modified by the correction ⇒ fail", verifyStep2Preservation(fakeGit({ changes: [{ status: "M", path: "scripts/live-ai-03b/first-text-probe-activation-01/first-text-probe.mjs" }] }), X, { measured }).reason.startsWith("s3_non_step2_path_changed"));
+  ok("S23 preservation: a Step-2 file DELETED by the correction ⇒ fail", verifyStep2Preservation(fakeGit({ changes: [{ status: "D", path: `${SRC.STEP2_DIR}/runtime/v2-preflight.mjs` }] }), X, { measured }).reason.startsWith("s3_step2_path_not_add_or_modify"));
   ok("S24 preservation: different runtime bytes at commit ⇒ fail", verifyStep2Preservation(fakeGit({ tamper: "probe/v2-first-text-probe.mjs" }), X, { measured }).reason === "runtime_manifest_at_commit_differs_from_reviewed_bytes");
 }
 
@@ -170,7 +177,7 @@ ok("AD03 strict conversion: NULL / '' / float never become 0", Number.isNaN(toIn
 }
 
 // ═══════════ PA — PHASE A pre-activation matrix ═══════════
-const phaseA = (o = {}) => PF.runPreActivationV2({ railway: RAILWAY(), sourcePin: testSourcePin(), db: DB(), nowIso, testBoundary: true,
+const phaseA = (o = {}) => PF.runPreActivationV2({ railway: RAILWAY(), activationSourceProof: testActivationSourceProof(), db: DB(), nowIso, testBoundary: true,
   approvalEnvelope: ap.envelope, trustRoot: rv.trustRoot, suppliedEvidence: ap.suppliedEvidence, executionId: ap.executionId, isApprovalConsumed: () => false,
   preActivationState: STATES.pre(), counts: STATES.counts(), approvalConsumed: false, privilegeProof: { restricted_role_proof_present: true }, ...o });
 const reasons = (r) => r.failures.map((f) => f.reason);
@@ -207,8 +214,8 @@ ok("PA26 approval already consumed (ledger)", reasons(phaseA({ isApprovalConsume
 ok("PA27 privilege proof absent", reasons(phaseA({ privilegeProof: {} })).includes("restricted_privilege_proof_absent"));
 ok("PA28 CORE-PROD db binding", reasons(phaseA({ db: { ...DB(), resolved_postgres_service_id: ID.TARGETS_V2.core_excluded_postgres } })).includes("db_resolves_to_CORE_postgres"));
 ok("PA29 wrong gateway service", reasons(phaseA({ railway: { ...RAILWAY(), gateway_service_id: "x" } })).includes("gateway_service_id_mismatch"));
-ok("PA30 old 2b69ce gateway source", reasons(phaseA({ sourcePin: testSourcePin({ gatewaySource: { ...testSourcePin().gatewaySource, deployed_commit: SRC.SUPERSEDED_GATEWAY_SOURCE_V1.commit } }) })).includes("superseded_gateway_source_2b69ce_rejected"));
-ok("PA31 unresolved Step-2 pin", reasons(phaseA({ sourcePin: testSourcePin({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) })).includes("step2_runtime_pin_required_after_preservation"));
+ok("PA30 old 2b69ce gateway source", reasons(phaseA({ activationSourceProof: testActivationSourceProof({ gatewayStaticSource: { ...SRC.staticGatewaySourceIdentityV2(), commit: SRC.SUPERSEDED_GATEWAY_SOURCE_V1.commit } }) })).includes("superseded_gateway_source_2b69ce_rejected"));
+ok("PA31 unresolved Step-2 pin", reasons(phaseA({ activationSourceProof: testActivationSourceProof({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) })).includes("step2_runtime_pin_required_after_preservation"));
 {
   // V1 approval envelope (V1 contract payload, signed by the same synthetic reviewer) is not a V2 approval.
   let v1env;
@@ -269,7 +276,7 @@ ok("PA34 envelope signed by another key rejected", reasons(phaseA({ approvalEnve
 const EXP = Date.parse(G.T0_PLUS_7_DAYS);
 {
   const apE = makeApproval(rv, { nowMs: EXP - 60e3 });
-  const at = (ms) => PF.runPreActivationV2({ railway: RAILWAY(), sourcePin: testSourcePin(), db: DB(), nowIso: iso(ms), testBoundary: true, approvalEnvelope: apE.envelope, trustRoot: rv.trustRoot,
+  const at = (ms) => PF.runPreActivationV2({ railway: RAILWAY(), activationSourceProof: testActivationSourceProof(), db: DB(), nowIso: iso(ms), testBoundary: true, approvalEnvelope: apE.envelope, trustRoot: rv.trustRoot,
     suppliedEvidence: apE.suppliedEvidence, executionId: apE.executionId, isApprovalConsumed: () => false, preActivationState: STATES.pre(), counts: STATES.counts(), approvalConsumed: false, privilegeProof: { restricted_role_proof_present: true } });
   ok("PA35 one second before V2 expiry ⇒ PASS", at(EXP - 1000).pass, reasons(at(EXP - 1000)));
   ok("PA36 AT V2 expiry ⇒ HOLD (fail closed)", reasons(at(EXP)).includes("catalog_v2_verification_expired_hold_for_fresh_successor"));
@@ -290,7 +297,7 @@ for (const [n, m, want] of [
 
 // ═══════════ PB — PHASE B pre-probe preflight matrix ═══════════
 const cf = consumedFixture(ap, iso(NOW - 60e3));
-const phaseB = (o = {}) => PF.runPreflightV2({ railway: RAILWAY(), sourcePin: testSourcePin(), db: DB(), nowIso, testBoundary: true,
+const phaseB = (o = {}) => PF.runPreflightV2({ railway: RAILWAY(), preProbeSourceProof: testPreProbeSourceProof(), db: DB(), nowIso, testBoundary: true,
   approvalEnvelope: ap.envelope, trustRoot: rv.trustRoot, suppliedEvidence: ap.suppliedEvidence, executionId: ap.executionId, ...cf,
   armedState: STATES.armed(), oneCallPolicy: STATES.ceilings(), counts: STATES.counts(), ...phaseBGates(), ...o });
 const good = phaseB();
@@ -326,7 +333,7 @@ ok("PB22 signing key mismatch", reasons(phaseB({ brokerPubFp: "c".repeat(64) }))
 ok("PB23 missing gateway env name", reasons(phaseB({ gatewayEnvNames: new Set(ID.REQUIRED_ENV_NAMES_GATEWAY.filter((n) => n !== "LIVE_AI_03B_FIRST_PROBE_ONE_CALL")) })).some((x) => x.startsWith("env_names_missing")));
 ok("PB24 provider credential absent", reasons(phaseB({ providerCredentialPresent: false })).includes("provider_credential_absent"));
 ok("PB25 operator subject leaked secret", reasons(phaseB({ operatorSubject: { ...phaseBGates().operatorSubject, hmac_secret_leaked: true } })).includes("subject_derivation_leaked_secret"));
-ok("PB26 unresolved Step-2 pin ⇒ NO receipt", (() => { const r = phaseB({ sourcePin: testSourcePin({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) }); return !r.pass && !r.receipt; })());
+ok("PB26 unresolved Step-2 pin ⇒ NO receipt", (() => { const r = phaseB({ preProbeSourceProof: testPreProbeSourceProof({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) }); return !r.pass && !r.receipt; })());
 ok("PB27 at V2 expiry ⇒ no receipt", !phaseB({ nowIso: G.T0_PLUS_7_DAYS }).receipt);
 ok("PB28 wrong reasoning model", reasons(phaseB({ reasoningModel: "gpt-5.6-terra-priority" })).includes("reasoning_model_mismatch"));
 
@@ -381,8 +388,8 @@ ok("PF07 credential still present ⇒ fail", reasons(post({ providerCredentialPr
 ok("EX01 production entry rejects caller-supplied authority", (await runTrustedExecutorProductionV2({ approvalEnvelope: ap.envelope, readerDbClient: {} })).reason === "production_rejects_caller_supplied_authority:readerDbClient");
 ok("EX02 production entry fails closed: authority UNPROVISIONED", (await runTrustedExecutorProductionV2({ approvalEnvelope: ap.envelope, suppliedEvidence: ap.suppliedEvidence, executionId: ap.executionId })).reason === "v2_production_authority_unprovisioned");
 ok("EX03 acquireProductionAuthorityV2 is unprovisioned", (await acquireProductionAuthorityV2()).available === false);
-ok("EX04 validateProvisionedAuthorityV2 rejects test fixtures", validateProvisionedAuthorityV2({ cfg: {}, trustRoot: {}, executorDbClient: { __testFixture: true, query() {} }, readerDbClient: { query() {} }, connectionIdentityProof: {}, expectedIssuer: "x", connectionToken: "t", privilegeProof: {}, registry: {}, sourcePin: {}, nowProvider() {} }).reason === "authority_rejects_test_fixture:executorDbClient");
-ok("EX04b validateProvisionedAuthorityV2 fails closed (no throw) on a cfg without reviewer/targets", (() => { try { return validateProvisionedAuthorityV2({ cfg: { ok: true, contractVersion: "V2" }, trustRoot: {}, executorDbClient: { query() {} }, readerDbClient: { query() {} }, connectionIdentityProof: {}, expectedIssuer: "x", connectionToken: "t", privilegeProof: {}, registry: {}, sourcePin: {}, nowProvider() {} }).reason === "authority_cfg_not_v2"; } catch { return false; } })());
+ok("EX04 validateProvisionedAuthorityV2 rejects test fixtures", validateProvisionedAuthorityV2({ cfg: {}, trustRoot: {}, executorDbClient: { __testFixture: true, query() {} }, readerDbClient: { query() {} }, connectionIdentityProof: {}, expectedIssuer: "x", connectionToken: "t", privilegeProof: {}, registry: {}, activationSourceProof: {}, nowProvider() {} }).reason === "authority_rejects_test_fixture:executorDbClient");
+ok("EX04b validateProvisionedAuthorityV2 fails closed (no throw) on a cfg without reviewer/targets", (() => { try { return validateProvisionedAuthorityV2({ cfg: { ok: true, contractVersion: "V2" }, trustRoot: {}, executorDbClient: { query() {} }, readerDbClient: { query() {} }, connectionIdentityProof: {}, expectedIssuer: "x", connectionToken: "t", privilegeProof: {}, registry: {}, activationSourceProof: {}, nowProvider() {} }).reason === "authority_cfg_not_v2"; } catch { return false; } })());
 ok("EX05 test entry requires testBoundary", (await runTrustedExecutorTestV2({})).reason === "test_entrypoint_requires_testBoundary_true");
 ok("EX06 runtime config: V1-era env (no contract selector) refused", loadRuntimeConfigV2(testEnv(rv, { LIVE_AI_03B_RUNTIME_CONTRACT_VERSION: undefined })).reason === "runtime_config_incomplete");
 ok("EX07 runtime config: contract V1 refused", loadRuntimeConfigV2(testEnv(rv, { LIVE_AI_03B_RUNTIME_CONTRACT_VERSION: "V1" })).reason === "runtime_contract_version_not_v2");
@@ -400,10 +407,10 @@ ok("EX10 runtime config: V2 env loads (names only, no secret values returned)", 
     state.ledger.push({ approval_id: cl.approval_id, execution_id: p[1], content_digest: cl.content_digest, active_catalog_digest: ID.CATALOG_V2.active_digest, action: "activate", consumed_at: at }); state.mode = "activated";
     return { rows: [{ receipt: { contract: "CatalogActivationReceiptV2", catalog_version_id: ID.CATALOG_V2.id, approval_id: cl.approval_id, execution_id: p[1], content_digest: cl.content_digest, active_catalog_digest: ID.CATALOG_V2.active_digest, action: "activate", consumed_at: at } }] }; } };
   const base = { testBoundary: true, env: testEnv(rv), trustRoot: rv.trustRoot, connectionIdentityProof: testConnectionProof(), expectedIssuer: "TEST-ISSUER", connectionToken: "TEST-TOKEN",
-    executorDbClient: executor, readerDbClient: reader, registry: REG.buildV2RegistrySupply(), sourcePin: testSourcePin(), privilegeProof: { restricted_role_proof_present: true },
+    executorDbClient: executor, readerDbClient: reader, registry: REG.buildV2RegistrySupply(), activationSourceProof: testActivationSourceProof(), privilegeProof: { restricted_role_proof_present: true },
     approvalEnvelope: ap.envelope, suppliedEvidence: ap.suppliedEvidence, executionId: ap.executionId, nowProvider: () => iso(Date.now()) };
   ok("EX11 V1 query map refused by the V2 runtime", (await runTrustedExecutorTestV2({ ...base, registry: V1_buildQueries() })).reason === "read_adapter_v2_registry_not_content_verified" && activations === 0);
-  ok("EX12 unresolved Step-2 pin refused before activation", (await runTrustedExecutorTestV2({ ...base, sourcePin: testSourcePin({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) })).reason === "step2_runtime_pin_required_after_preservation" && activations === 0);
+  ok("EX12 unresolved Step-2 pin refused before activation", (await runTrustedExecutorTestV2({ ...base, activationSourceProof: testActivationSourceProof({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) })).reason === "step2_runtime_pin_required_after_preservation" && activations === 0);
   ok("EX13 shared reader/executor client refused", (await runTrustedExecutorTestV2({ ...base, readerDbClient: executor })).reason === "reader_and_executor_must_be_separate_clients" && activations === 0);
   ok("EX14 wrong trust root refused", (await runTrustedExecutorTestV2({ ...base, trustRoot: makeReviewer().trustRoot })).reason === "trust_root_not_config_pinned" && activations === 0);
   ok("EX15 CORE-PROD connection proof refused", (await runTrustedExecutorTestV2({ ...base, connectionIdentityProof: { ...testConnectionProof(), serviceId: ID.TARGETS_V2.core_excluded_postgres } })).stage === "target_binding" && activations === 0);
@@ -422,7 +429,7 @@ ok("EX10 runtime config: V2 env loads (names only, no secret values returned)", 
   ok("EX21 V1 read-state capability (provenance) refused by the V2 executor", (await fresh.runActivationV2({ ...common, readState: { provenance: V1_TEST_READSTATE, observe: () => ({}) }, restrictedDbActivate: async () => ({ ok: true }) })).reason === "readonly_capability_provenance_untrusted_or_not_v2");
   ok("EX22 provider key handed to executor refused", (await fresh.runActivationV2({ ...common, providerApiKey: "x" })).stage === "secret_hygiene");
   const fresh2 = await import("../runtime/v2-trusted-activation-executor.mjs?fresh=2");
-  const obs = () => ({ railway: RAILWAY(), sourcePin: testSourcePin(), db: DB(), preActivationState: STATES.pre(), counts: STATES.counts(), approvalConsumed: false, privilegeProof: { restricted_role_proof_present: true } });
+  const obs = () => ({ railway: RAILWAY(), activationSourceProof: testActivationSourceProof(), db: DB(), preActivationState: STATES.pre(), counts: STATES.counts(), approvalConsumed: false, privilegeProof: { restricted_role_proof_present: true } });
   let n = 0;
   const amb = await fresh2.runActivationV2({ ...common, readState: { provenance: TEST_READSTATE_PROVENANCE_V2, observe: obs }, restrictedDbActivate: async () => { n++; throw new Error("socket closed"); } });
   const amb2 = await fresh2.runActivationV2({ ...common, readState: { provenance: TEST_READSTATE_PROVENANCE_V2, observe: obs }, restrictedDbActivate: async () => { n++; return { ok: true }; } });
@@ -443,13 +450,13 @@ const readerAuth = (o = {}) => ({ cfg: { ok: true, reviewer: { pinnedFingerprint
   readerDbClient: { __testFixture: true, statementTimeoutMs: 2000, async query(sql) { const k = REG.REGISTRY_KEYS.find((x) => REG.V2_QUERY_REGISTRY[x] === sql); return { rows: [{ ...STATES.armed(), ...STATES.ceilings(), ...STATES.counts(), ...(k === "preActivationCatalog" || k === "policyControl" ? STATES.pre() : {}) }] }; } },
   connectionIdentityProof: testConnectionProof(), expectedIssuer: "TEST-ISSUER", connectionToken: "TEST-TOKEN",
   readerPrivilegeProof: { provenance: "TEST-ONLY-reader-privilege-proof", role: "live_ai_03b_reader", pgServiceId: ID.TARGETS_V2.postgres, effectiveSelectOnly: true, writePrivilegeCount: 0, selectGrantCount: 12, forbiddenObjectAccessible: false, unapprovedRoleMembership: false, unapprovedRoutineAuthority: false, boundReaderToken: "TEST-TOKEN", issuedAtMs: Date.now() },
-  registry: REG.buildV2RegistrySupply(), sourcePin: testSourcePin(), nowProvider: () => Date.now(), ...o });
+  registry: REG.buildV2RegistrySupply(), sourcePin: testPreProbeSourceProof(), nowProvider: () => Date.now(), ...o });
 ok("RD09 reader-only V2 authority validates (test boundary)", validateReaderOnlyAuthorityV2(readerAuth(), { testBoundary: true }).ok, validateReaderOnlyAuthorityV2(readerAuth(), { testBoundary: true }));
 for (const [n, o, want] of [
   ["RD10 executor client present", { executorDbClient: { query() {} } }, "reader_only_rejects_executor_client"],
   ["RD11 V1 reviewedStateQueries supplied", { reviewedStateQueries: V1_buildQueries() }, "reader_only_v2_rejects_v1_query_map"],
   ["RD12 V1 registry as registry", { registry: V1_buildQueries() }, "query_registry_supplied_registry_key_set_mismatch"],
-  ["RD13 unresolved Step-2 pin", { sourcePin: testSourcePin({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) }, "source_pin_step2_runtime_pin_required_after_preservation"],
+  ["RD13 unresolved Step-2 pin", { sourcePin: testPreProbeSourceProof({ step2Runtime: SRC.STEP2_RUNTIME_PIN_PLACEHOLDER }) }, "source_pin_step2_runtime_pin_required_after_preservation"],
   ["RD14 11 SELECT grants", { readerPrivilegeProof: { ...readerAuth().readerPrivilegeProof, selectGrantCount: 11 } }, "reader_privilege_proof_grant_count"],
   ["RD15 statement timeout 5 s", { readerDbClient: { ...readerAuth().readerDbClient, statementTimeoutMs: 5000 } }, "reader_client_statement_timeout_invalid"],
 ]) { const r = validateReaderOnlyAuthorityV2(readerAuth(o), { testBoundary: true }); ok(n, r.reason === want, r); }
@@ -501,7 +508,11 @@ ok("ST05 no runtime module reads process.env OPENAI_API_KEY or a secret value", 
 ok("ST06 no runtime module imports test helpers / fixtures", runtimeFiles.every(({ s }) => !imports(s).some((i) => /tests\//.test(i))));
 ok("ST07 no model identifier / private key material in runtime or tests", [...runtimeFiles, ...readdirSync(HERE).filter((f) => f.endsWith(".mjs")).map((f) => ({ s: readFileSync(join(HERE, f), "utf8") }))].every(({ s }) => !/claude-(opus|sonnet|haiku|fable)|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk-[A-Za-z0-9]{20,}/.test(s)));
 ok("ST08 only fixed V2 function names in the activation adapter", (() => { const s = readFileSync(join(STEP2, "runtime/v2-restricted-activation-adapter.mjs"), "utf8"); return s.includes("live_ai_03b_trusted_v2.activate_catalog_v2") && !/live_ai_03b_trusted\.activate_catalog\b/.test(s.replace(/\/\/.*$/gm, "")); })());
-ok("ST09 production entrypoints never import tests or accept testBoundary in production signatures", !/testBoundary:\s*true/.test(readFileSync(join(STEP2, "runtime/v2-trusted-executor-runtime.mjs"), "utf8").split("runTrustedExecutorProductionV2")[1].split("runTrustedExecutorTestV2")[0]));
+ok("ST09 production entrypoints never import tests or accept testBoundary in production signatures", (() => {
+  const src = readFileSync(join(STEP2, "runtime/v2-trusted-executor-runtime.mjs"), "utf8");
+  const body = (name) => { const i = src.indexOf("export async function " + name) >= 0 ? src.indexOf("export async function " + name) : src.indexOf("export function " + name); return src.slice(i, src.indexOf("\n}\n", i)); };
+  return ["runTrustedExecutorProductionV2", "composeTrustedExecutorProductionV2"].every((n) => { const b = body(n); return b.length > 20 && !/testBoundary:\s*true|acquireAuthorityForTestV2|"test"/.test(b); });
+})());
 {
   const bad = runtimeFiles.filter(({ s }) => /\b(execSync|spawn|exec)\(/.test(s));
   ok("ST10 no runtime module spawns processes", bad.length === 0, bad.map((b) => b.p));

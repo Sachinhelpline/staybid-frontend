@@ -1,0 +1,114 @@
+  PASS A01 historical f5ec5807 runtime measures exactly the historical manifest 9a460078…
+  PASS A02 historical combined check BEFORE any gateway deployment ⇒ gateway_source_observation_absent (activation authority impossible)
+  PASS A03 historical combined check passes ONLY with an observed DEPLOYED PIN-B gateway (the dependency)
+  PASS A04 historical Phase A (pre-deployment reality) FAILS on the gateway observation ⇒ SQL 03 blocked
+  PASS A05 PIN-B gateway source (stagingMain): the catalog load + fail-closed exit precede app.listen() ⇒ no healthy gateway before activation
+  PASS A06 corrected runtime: the historical combined check is RETIRED (fails closed for the formerly-valid pin)
+  PASS A07 corrected runtime: a LiveAi03bSourcePinV2 object cannot be used as the Phase-A proof
+  PASS B01 exact PIN A + exact STATIC PIN B + valid TEST PIN-C (test boundary) ⇒ PASS
+  PASS B02 activation proof requires NO deployed gateway and claims none (gatewayDeployed:false, no deployment keys)
+  PASS B03 the static PIN-B object is the reviewed literal (not caller-chosen)
+  PASS B04 the reviewed static literal matches real git at PIN B (tree, voice-gateway tree, every closure blob incl. openai-responses 1a9e2ae8 / staging-main e211b25f)
+  PASS B05 the TEST PIN-C is accepted ONLY under the explicit test boundary
+  PASS C01 wrong PIN A commit
+  PASS C02 rewritten derivation base (= PIN B)
+  PASS C03 PIN A absent
+  PASS C04 wrong static PIN B commit (caller-chosen)
+  PASS C05 wrong static PIN B tree
+  PASS C06 wrong static voice-gateway tree
+  PASS C07 wrong closure digest
+  PASS C08 wrong repository
+  PASS C09 superseded PIN B commit 2b69ce
+  PASS C10 superseded PIN B tree 87aad22
+  PASS C11 superseded voice-gateway tree 8dd65435
+  PASS C12 static proof claiming deployment (healthy:true)
+  PASS C13 activation proof carrying a deployment observation
+  PASS C14 pre-probe proof supplied as an activation proof
+  PASS C15 PIN-C placeholder (not preserved)
+  PASS C16 PIN-C missing
+  PASS C17 PIN-C malformed commit
+  PASS C18 PIN-C extra key
+  PASS C19 historical runtime manifest 9a460078… against the corrected runtime
+  PASS C20 historical PIN-C commit f5ec5807
+  PASS C21 historical PIN-C Step-2 dir tree
+  PASS C22 historical V1 binding contract
+  PASS C23 fabricated / non-preserved PIN-C (status DRAFT)
+  PASS C24 PIN-C for other bytes
+  PASS C25 PIN-C = the uncorrected baseline 3fda6af1
+  PASS C26 PIN-C wrong lineage (correction base)
+  PASS C27 PIN-C wrong provenance (trusted string under the test boundary)
+  PASS C28 PIN-C old V1 provenance string
+  PASS C29 activation proof wrong contract
+  PASS C30 activation proof extra key
+  PASS D01 independent HEALTHY deployed PIN-B observation + PIN A + PIN C ⇒ PASS (gatewayDeployed:true)
+  PASS D02 the observation object must be the live deployment observation (commit/tree/revision/voice-gateway tree all exact)
+  PASS E01 static-only proof (the activation proof) cannot satisfy Phase B
+  PASS E02 static PIN-B object in the deployment slot
+  PASS E03 extra static key alongside the observation
+  PASS E04 absent gateway observation
+  PASS E05 gateway observation key missing
+  PASS E06 wrong deployed commit
+  PASS E07 wrong deployment revision
+  PASS E08 wrong deployed tree
+  PASS E09 wrong voice-gateway tree
+  PASS E10 superseded V1 deployed commit 2b69ce
+  PASS E11 superseded V1 tree 87aad22
+  PASS E12 superseded V1 revision
+  PASS E13 superseded V1 voice-gateway tree 8dd65435
+  PASS E14 unhealthy deployed gateway
+  PASS E15 self-reported (non-independent) observation
+  PASS E16 TEST observation in production
+  PASS E17 observation kind absent
+  PASS E18 unresolved PIN-C
+  PASS F01 default (no provisioner) ⇒ deterministic UNPROVISIONED
+  PASS F02 default production executor ⇒ fail closed before any I/O
+  PASS F03 synthetic TEST authority passes ONLY under the explicit isolated test boundary
+  PASS F04 test acquisition without the boundary refused
+  PASS F05 the SAME synthetic authority is REJECTED by production validation (test fixture)
+  PASS F06 non-fixture clients but TEST connection proof ⇒ production rejects
+  PASS F07 same DB client for executor + reader rejected
+  PASS F08 missing connection identity proof rejected
+  PASS F09 connection proof not bound to the client token rejected
+  PASS F10 missing restricted privilege proof rejected
+  PASS F11 wrong (V1-shaped / tampered) registry rejected
+  PASS F12 wrong-phase source proof (pre-probe proof as the activation proof) rejected
+  PASS F13 legacy combined `sourcePin` field rejected (unexpected field)
+  PASS F14 secret-bearing extra field rejected (providerApiKey)
+  PASS F15 missing trusted clock rejected
+  PASS F16 activation proof with unresolved PIN-C rejected
+  PASS F17 provisioner must be frozen
+  PASS F18 provisioner exact shape
+  PASS F19 provisioner contract
+  PASS F20 provisioner throw ⇒ fail closed
+  PASS F21 provisioner unavailable ⇒ sanitized reason, fail closed
+  PASS F22 caller-supplied authority field in the request refused BEFORE acquisition
+  PASS F23 production composition with a TEST authority ⇒ rejected by the production bar; acquire() called with NO arguments; zero activation
+  PASS F24 composing without a valid provisioner ⇒ unavailable
+  PASS F25 test composition requires the explicit test boundary
+  PASS F26 no global mutable authority slot / setter / env authority blob in the authority module
+  PASS G00 the Phase-A authority contains no gateway deployment observation
+  PASS G01 Phase A + genuine (synthetic) approval + restricted executor ⇒ exactly ONE activate_catalog_v2, committed + correlated, BEFORE any gateway deployment
+  PASS G02 still NOT probe-ready after activation
+  PASS I01 the composed executor is one-shot (second run refused before acquisition)
+  PASS I02 a fresh composition cannot re-activate (process one-shot / replay) — no second mutation
+  PASS I03 SQL 03 ambiguous mutation ⇒ uncertain, NO retry (second attempt refused before I/O)
+  PASS G03 Phase A PASSES with no gateway observation injected at all
+  PASS G04 Phase A still fails closed on a wrong PIN A
+  PASS G05 Phase A still requires the genuine pinned-reviewer approval
+  PASS H01 Phase B with only the static (activation) proof ⇒ NO receipt
+  PASS H02 Phase B with no source proof at all ⇒ refused, NO receipt
+  PASS H03 Phase B with an UNHEALTHY deployed gateway ⇒ NO receipt
+  PASS H04 Phase B with the superseded V1 gateway deployed ⇒ NO receipt
+  PASS H05 Phase B with the independent healthy deployed PIN-B observation ⇒ receipt bound to PIN B + the resolved PIN C
+  PASS H06 V2 reader host is NOT weakened: a static (activation) proof is refused
+  PASS H07 V2 reader entrypoint with a static proof refuses before any DB/attester contact
+  PASS P01 real lineage: S1 = 108 historical Step-2 additions, S2 = 63 accepted M5 changes retained (0 Step-2), S3 = this correction (Step-2 only, no deletion) ⇒ V2 binding
+  PASS P02 the emitted binding carries the corrected manifest + lineage and verifies (trusted)
+  PASS P03 an M5 file touched by the correction segment ⇒ fail
+  PASS P04 the historical PIN C itself ⇒ refused
+  PASS P05 the uncorrected baseline 3fda6af1 ⇒ refused
+  PASS P06 real git confirms: 3fda6af1 parent = f5ec5807; Step-2 dir tree unchanged across the M5 closure
+  PASS P07 corrected runtime manifest ≠ historical 9a460078…
+  PASS J01 no provider/network call: fetch=0 http(s)=0 socket connects=0
+  PASS K01 only local read-only git (+ local tar extract to a temp dir) was spawned — no railway / psql / curl / network tool
+m7s2-lifecycle-correction: 113 passed, 0 failed

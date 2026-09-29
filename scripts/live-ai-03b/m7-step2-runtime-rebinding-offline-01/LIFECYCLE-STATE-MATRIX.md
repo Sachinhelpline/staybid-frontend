@@ -20,5 +20,7 @@ judged by `runtime/v2-preflight.mjs`. Values are converted **strictly**: NULL, m
 | M6 ledger `approval_consumption` | no row for this approval | exactly 1 `activate` row, correlated to the receipt commitment | same | same (never deleted) |
 | M6 canonical verifier | PASS | PASS | PASS | PASS |
 | Gate | `runPreActivationV2` | `checkActivatedStateV2` (executor runtime) | `runPreflightV2` → issues `FirstProbePreflightReceiptV2` | `runPostflightV2`; `runPreflightV2` FAILS (no receipt ⇒ no probe) |
+| Source proof (lifecycle correction) | `ActivationSourceProofV2`: PIN A + **static reviewed** PIN B + preserved PIN C; **no gateway deployed** (it cannot start yet) | — | `PreProbeSourceProofV2`: PIN A + **independent healthy deployed** PIN-B observation + PIN C (a static proof is refused) | — |
+| PIN-B gateway | not deployable (exits `no_active_catalog_version` before `app.listen()`) | deploy exactly `4f390b74`, then verify healthy identity | deployed + healthy (observed) | ingress closed |
 
 All four states were exercised on **real PostgreSQL 16.13 and 18.4** (`tests/v2-localpg-lifecycle.mjs`, A00–H03).

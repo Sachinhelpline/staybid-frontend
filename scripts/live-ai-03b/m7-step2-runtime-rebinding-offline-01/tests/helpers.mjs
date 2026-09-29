@@ -6,7 +6,9 @@ import * as G from "../../m7-step1-hb1-consolidated-remediation-01/catalog/v2-di
 import { TEST_LEDGER_PROVENANCE } from "../../m7-step1-hb1-consolidated-remediation-01/approval/approval-verify-v2.mjs";
 import { CONNECTION_IDENTITY_PROOF_CONTRACT } from "../../trusted-executor-runtime-01/db-target-binding.mjs";
 import { CATALOG_V2, V1_HISTORICAL, POLICY_V2, CONTROLS_V2, DORMANT_V2_VIEW, TARGETS_V2, STORE_BINDING_REF, REQUIRED_ENV_NAMES_GATEWAY, REQUIRED_ENV_NAMES_BROKER } from "../identity/v2-identity.mjs";
-import { SOURCE_PIN_CONTRACT_V2, DERIVATION_BASE, GATEWAY_DEPLOY_SOURCE_V2, STEP2_BINDING_CONTRACT, STEP2_PIN_STATUS_PRESERVED, STEP2_TEST_PROVENANCE, measureRuntimeManifest } from "../identity/v2-source-identity.mjs";
+import { DERIVATION_BASE, GATEWAY_DEPLOY_SOURCE_V2, STEP2_BINDING_CONTRACT, STEP2_PIN_STATUS_PRESERVED, STEP2_TEST_PROVENANCE, measureRuntimeManifest,
+  ACTIVATION_SOURCE_PROOF_CONTRACT_V2, PRE_PROBE_SOURCE_PROOF_CONTRACT_V2, GATEWAY_DEPLOYMENT_OBSERVATION_KIND, GATEWAY_OBSERVATION_TEST_PROVENANCE,
+  HISTORICAL_STEP2_PRESERVATION, ACCEPTED_M5_CLOSURE, staticGatewaySourceIdentityV2 } from "../identity/v2-source-identity.mjs";
 import { REQUIRED_ENV_NAMES_V2 } from "../runtime/v2-runtime-config.mjs";
 
 export const iso = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -35,17 +37,28 @@ export function makeApproval(rv, { approvalId = "m7s2-approval-0001", executionI
   return { envelope: { alg: "ed25519", payload, signature_b64: rv.sign(payload) }, suppliedEvidence: { id: "m7s2-test-receipt-0001", digest, content }, approvalId, executionId };
 }
 
-export function testSourcePin(over = {}) {
-  return {
-    contract: SOURCE_PIN_CONTRACT_V2,
-    derivationBase: { commit: DERIVATION_BASE.commit, tree: DERIVATION_BASE.tree },
-    gatewaySource: { deployed_commit: GATEWAY_DEPLOY_SOURCE_V2.commit, deployed_tree: GATEWAY_DEPLOY_SOURCE_V2.tree,
-      gateway_deployment_revision: GATEWAY_DEPLOY_SOURCE_V2.commit, voice_gateway_tree: GATEWAY_DEPLOY_SOURCE_V2.voice_gateway_tree },
-    step2Runtime: { contract: STEP2_BINDING_CONTRACT, status: STEP2_PIN_STATUS_PRESERVED, provenance: STEP2_TEST_PROVENANCE,
-      commit: "5e2c0de5e2c0de5e2c0de5e2c0de5e2c0de5e2c0", tree: "7ee57ee57ee57ee57ee57ee57ee57ee57ee57ee5",
-      step2_dir_tree: "d12d12d12d12d12d12d12d12d12d12d12d12d12d", runtime_manifest_digest: measureRuntimeManifest().digest },
-    ...over,
-  };
+/** A synthetic TEST-provenance PIN-C V2 binding for the CORRECTED runtime (never a real commit). */
+export function testStep2Binding(over = {}) {
+  return { contract: STEP2_BINDING_CONTRACT, status: STEP2_PIN_STATUS_PRESERVED, provenance: STEP2_TEST_PROVENANCE,
+    commit: "5e2c0de5e2c0de5e2c0de5e2c0de5e2c0de5e2c0", tree: "7ee57ee57ee57ee57ee57ee57ee57ee57ee57ee5",
+    step2_dir_tree: "d12d12d12d12d12d12d12d12d12d12d12d12d12d", runtime_manifest_digest: measureRuntimeManifest().digest,
+    correction_base: ACCEPTED_M5_CLOSURE.commit, historical_pin_c: HISTORICAL_STEP2_PRESERVATION.commit, ...over };
+}
+/** A synthetic TEST-provenance observation of a HEALTHY gateway deployed from exactly PIN B. */
+export function testDeployedGateway(over = {}) {
+  return { kind: GATEWAY_DEPLOYMENT_OBSERVATION_KIND, observation_provenance: GATEWAY_OBSERVATION_TEST_PROVENANCE, healthy: true,
+    deployed_commit: GATEWAY_DEPLOY_SOURCE_V2.commit, deployed_tree: GATEWAY_DEPLOY_SOURCE_V2.tree,
+    gateway_deployment_revision: GATEWAY_DEPLOY_SOURCE_V2.commit, voice_gateway_tree: GATEWAY_DEPLOY_SOURCE_V2.voice_gateway_tree, ...over };
+}
+/** Phase-A proof: PIN A + the reviewed STATIC PIN-B literal + PIN C. No deployment observation exists or is needed. */
+export function testActivationSourceProof(over = {}) {
+  return { contract: ACTIVATION_SOURCE_PROOF_CONTRACT_V2, derivationBase: { commit: DERIVATION_BASE.commit, tree: DERIVATION_BASE.tree },
+    gatewayStaticSource: staticGatewaySourceIdentityV2(), step2Runtime: testStep2Binding(), ...over };
+}
+/** Phase-B proof: PIN A + an independent HEALTHY deployed PIN-B observation + PIN C. */
+export function testPreProbeSourceProof(over = {}) {
+  return { contract: PRE_PROBE_SOURCE_PROOF_CONTRACT_V2, derivationBase: { commit: DERIVATION_BASE.commit, tree: DERIVATION_BASE.tree },
+    gatewayDeployment: testDeployedGateway(), step2Runtime: testStep2Binding(), ...over };
 }
 
 const CAT_BASE = { catalog_version_count: 2, catalog_entry_count: 5, v1_inactive_digest: V1_HISTORICAL.inactive_digest, v1_inactive_entry_count: 2,

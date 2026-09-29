@@ -9,13 +9,18 @@
 //
 //   runPreActivationV2  — PHASE A: exact pre-activation state (2 versions / 5 entries; V1 historical;
 //                         V2 inactive with 3 entries; 0 active; dormant policy; epoch-1 controls; zero
-//                         exposure) + an authentic, UNUSED V2 approval (verifyApprovalV2).
+//                         exposure) + an authentic, UNUSED V2 approval (verifyApprovalV2) + the
+//                         ActivationSourceProofV2 (PIN A + REVIEWED STATIC PIN B + PRESERVED PIN C). Phase A
+//                         runs BEFORE any gateway can be deployed (the PIN-B gateway cannot start without an
+//                         active catalog), so it never requires a deployed-gateway observation.
 //   checkActivatedStateV2 — after the trusted activation: V2 SOLE active; policy NOT yet active;
 //                         controls still dormant; V1 still historical.
 //   runPreflightV2      — PHASE B: armed state (V2 sole active; policy-v2 SOLE active; seven exact
 //                         ceilings; epoch 2) + the SAME approval correlated to EXACTLY ONE committed
 //                         ledger row + receipt (verifyConsumedApprovalV2) + gateway/env/key/gate checks
-//                         + the three source pins. On PASS it ISSUES a FirstProbePreflightReceiptV2
+//                         + the PreProbeSourceProofV2 (PIN A + an INDEPENDENT observation of a HEALTHY
+//                         gateway DEPLOYED from exactly PIN B + PIN C; a static proof can never satisfy it).
+//                         On PASS it ISSUES a FirstProbePreflightReceiptV2
 //                         bound to this exact V2 identity (the ONLY receipt the V2 probe accepts).
 //   runPostflightV2     — after the single probe + restoration: ≤1 call, spend ≤ 105,920, closed
 //                         ingress, V2 restored inactive, policy-v2 restored, epoch 3, V1 never revived.
@@ -27,7 +32,7 @@ import {
   STORE_BINDING_REF, REASONING_MODEL, REQUIRED_ENV_NAMES_GATEWAY, REQUIRED_ENV_NAMES_BROKER, PROBE_TEXT_SHA256,
   canonicalize, sha256hex, exactInt, ceilingsExactV2, assertIdentityIntegrity,
 } from "../identity/v2-identity.mjs";
-import { checkSourcePinV2 } from "../identity/v2-source-identity.mjs";
+import { checkActivationSourceProofV2, checkPreProbeSourceProofV2 } from "../identity/v2-source-identity.mjs";
 import { V2_REGISTRY_DIGEST } from "./v2-query-registry.mjs";
 
 const OPERATOR_SUBJECT_SHAPE = /^stg1\.[0-9a-f]{64}$/;
@@ -85,7 +90,10 @@ export const checks = {
     if (o.postgres_service_id !== TARGETS_V2.postgres) return fail("postgres_service_id_mismatch");
     return ok();
   },
-  sourcePins(sp, testBoundary) { return checkSourcePinV2(sp, { testBoundary }); },
+  /** Phase A — reviewed static source identity; NEVER a deployed-gateway claim. */
+  activationSourceProof(sp, testBoundary) { return checkActivationSourceProofV2(sp, { testBoundary }); },
+  /** Phase B — independent healthy deployed PIN-B gateway observation; a static proof never satisfies it. */
+  preProbeSourceProof(sp, testBoundary) { return checkPreProbeSourceProofV2(sp, { testBoundary }); },
   dbBindingToAiStaging(o) {
     if (!o || typeof o !== "object") return fail("db_binding_absent");
     if (o.resolved_postgres_service_id !== TARGETS_V2.postgres) return fail("db_binding_not_ai_staging");
@@ -219,11 +227,11 @@ export const checks = {
 };
 
 function collect(results) { const failures = results.filter((r) => !r || r.ok === false).map((r) => (r ? r : fail("check_absent"))); return { pass: failures.length === 0, failures }; }
+// the source proof is PHASE-SPECIFIC and checked by each phase itself (never here).
 function railwayAndTarget(deps) {
   return [
     checks.identityIntegrity(),
     checks.railwayIds(need(deps.railway, "railway")),
-    checks.sourcePins(need(deps.sourcePin, "sourcePin"), deps.testBoundary === true),
     checks.dbBindingToAiStaging(need(deps.db, "db")),
     checks.coreExclusion(need(deps.db, "db")),
     checks.catalogFreshnessV2(need(deps.nowIso, "nowIso")),
@@ -235,6 +243,7 @@ export function runPreActivationV2(deps) {
   need(deps, "deps");
   return collect([
     ...railwayAndTarget(deps),
+    checks.activationSourceProof(need(deps.activationSourceProof, "activationSourceProof"), deps.testBoundary === true),
     checks.independentApprovalVerifiedV2({
       envelope: need(deps.approvalEnvelope, "approvalEnvelope"), trustRoot: need(deps.trustRoot, "trustRoot"),
       suppliedEvidence: need(deps.suppliedEvidence, "suppliedEvidence"), nowIso: need(deps.nowIso, "nowIso"),
@@ -269,9 +278,10 @@ export function runPreflightV2(deps) {
     // lifecycle inputs pass through as-is: absence must FAIL CLOSED inside the verifier, never throw.
     ledgerObservation: deps.ledgerObservation, activationReceipt: deps.activationReceipt, testBoundary,
   });
-  const source = checks.sourcePins(need(deps.sourcePin, "sourcePin"), testBoundary);
+  const source = checks.preProbeSourceProof(need(deps.preProbeSourceProof, "preProbeSourceProof"), testBoundary);
   const R = collect([
     ...railwayAndTarget(deps),
+    source,
     consumed,
     checks.armedStateV2(need(deps.armedState, "armedState")),
     checks.oneCallCeilingsExactV2(need(deps.oneCallPolicy, "oneCallPolicy")),

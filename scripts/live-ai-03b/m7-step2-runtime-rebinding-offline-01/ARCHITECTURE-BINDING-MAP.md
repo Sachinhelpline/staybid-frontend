@@ -76,5 +76,11 @@ and remain compatible with the V2 reader (proven end-to-end in lifecycle H with 
 | Pin | Identity | Enforced by |
 |---|---|---|
 | A — Step-1 derivation base | `9270c282d5fd65e9fe49261391badfe92c777b8f` / `c46da04123dc44cd9954fe350de0b1bc20ff0948` | the signed bundle (`base_commit`/`base_tree`), `activate_catalog_v2` (`base_commit`), and `checkDerivationBase` (rejects rewriting) |
-| B — gateway deploy source | `4f390b74132b087b757faa655bdcb73be6c14a8f` / `72080256d4cc2a97a2a15058931e838ebef5ec48`; `server/voice-gateway` tree `2092d9de…`; `openai-responses.ts` `1a9e2ae8…` | `checkGatewaySourcePinV2` (rejects 2b69ce / 87aad22 / 8dd65435 explicitly) and `tools/prove-gateway-source.mjs` |
-| C — Step-2 runtime preservation | `REQUIRED_AFTER_STEP2_PRESERVATION` (no SHA fabricated) | `verifyStep2RuntimePin` (placeholder ⇒ fail) and `tools/verify-step2-preservation.mjs` (ancestry + additive-only + manifest) |
+| B — gateway deploy source | `4f390b74132b087b757faa655bdcb73be6c14a8f` / `72080256d4cc2a97a2a15058931e838ebef5ec48`; `server/voice-gateway` tree `2092d9de…`; `openai-responses.ts` `1a9e2ae8…` | Phase A: `checkStaticGatewaySourceV2` (the REVIEWED STATIC literal + closure digest; no deployment claim accepted). Phase B / reader: `checkDeployedGatewayObservationV2` (independent, healthy, deployed commit/tree/revision/voice-gateway tree exact). Both reject 2b69ce / 87aad22 / 8dd65435 explicitly. `tools/prove-gateway-source.mjs` proves the literal from git. |
+| C — Step-2 runtime preservation | `REQUIRED_AFTER_STEP2_PRESERVATION` (no SHA fabricated). Historical `f5ec5807` / manifest `9a460078…` = evidence only | `verifyStep2RuntimePin` (V2 binding; placeholder, V1 binding, historical commit/tree/dir-tree/manifest ⇒ fail) and `tools/verify-step2-preservation.mjs` (three-segment lineage S1/S2/S3 + corrected manifest) |
+
+**Lifecycle correction.** The retired combined check (`checkSourcePinV2`) required the deployed PIN-B observation
+for every phase. The phase-specific proofs are `ActivationSourceProofV2` (Phase A / SQL 03 — PIN A + static PIN B +
+PIN C; used by `runPreActivationV2`, `runActivationV2`, `v2-trusted-executor-runtime` and the production authority)
+and `PreProbeSourceProofV2` (Phase B — PIN A + live deployed healthy PIN B + PIN C; used by `runPreflightV2`, the
+reader-only authority and the reader production entrypoint). See `LIFECYCLE-CORRECTION-RECORD.md`.

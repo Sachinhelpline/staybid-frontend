@@ -45,4 +45,4 @@ PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-loca
 PASS  scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/tests/m7-localpg.test.sh (PG18)  (m7-localpg: 113 passed, 0 failed (18.4; throwaway local cluster))
 predecessor suites: 44/44 passed; suite failures: 0; required-setup failures: 0; expected inventory: 44
 RESULT: PASS (44/44 suites, 0 setup failures)
-run-predecessor.sh EXIT=0
+exit=0

@@ -1,5 +1,11 @@
 # M7 Step 2 — offline runtime rebinding (V1 / 89,536 → V2 / 105,920): implementation receipt
 
+> **Superseding note (M7-STEP2-LIFECYCLE-CORRECTION-OFFLINE-01).** This receipt is kept unchanged as the historical
+> record of the accepted Step-2 runtime (runtime manifest `9a460078…`, preserved at `f5ec5807`). A later WORK review
+> found a lifecycle dependency cycle in it (activation authority required a deployed gateway that cannot start before
+> activation). The correction, its new runtime manifest and the corrected live order are recorded in
+> `LIFECYCLE-CORRECTION-RECORD.md`; the operator sequence in `README-OPERATOR.md` supersedes the one described here.
+
 This work was done offline, in an isolated scratchpad clone.
 
 > **Closure-harness remediation (after the WORK closure HOLD).** The independent closure review returned
