@@ -1,0 +1,36 @@
+{
+  "contract": "V2ProductionAuthorityProvisioningPreservationBindingV1",
+  "status_now": "REQUIRED_AFTER_AUTHORITY_PACKAGE_PRESERVATION",
+  "placeholder": {
+    "contract": "V2ProductionAuthorityProvisioningPreservationBindingV1",
+    "status": "REQUIRED_AFTER_AUTHORITY_PACKAGE_PRESERVATION",
+    "commit": null,
+    "tree": null,
+    "package_dir_tree": null
+  },
+  "later_binding_shape": {
+    "contract": "V2ProductionAuthorityProvisioningPreservationBindingV1",
+    "status": "PRESERVED",
+    "provenance": "trusted-approved-authority-provisioning-preservation-receipt-v1",
+    "commit": "<40-hex of the future Owner-reviewed preservation commit of THIS package: NOT KNOWN, NOT FABRICATED>",
+    "tree": "<40-hex tree of that commit>",
+    "package_dir_tree": "<40-hex git tree of scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01 at that commit>",
+    "package_runtime_digest": "565031c23aa07b27ad2340fd371f00ff5472f43e4a84aa143010d31b37ab099c",
+    "package_content_digest": "3b4a19bae84b883633ec3aa50dcc3a414de4fb75edcdaa13e8a922bb6db38c51",
+    "base_commit": "0afe4b6bedeb12f756cc9027367d323acb264464",
+    "step2_pin_c_commit": "0afe4b6bedeb12f756cc9027367d323acb264464",
+    "step2_dir_tree": "bacac441271856966c9b7983c4fa1625f7a6a2d2"
+  },
+  "authoritative_verifier": "EXTERNAL review bundle only: verify-preservation-external.mjs + its fixed sibling REVIEW-ANCHOR.json, run FROM the independently recorded review bundle (never from the target commit). The target commit is untrusted input and cannot define its own acceptance criteria.",
+  "how_to_produce": "node <verified review bundle>/verify-preservation-external.mjs --repo <clone> --commit <sha>   (read-only git; no other arguments or override environment accepted)",
+  "in_package_diagnostic": "node scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/tools/verify-package-preservation.mjs --repo <clone> --commit <sha>   (NON-AUTHORITATIVE: internal consistency only)",
+  "verification_rules": [
+    "AUTHORITATIVE: the external verifier compares the target commit against the externally anchored reviewed bytes (exact file set, per-file SHA-256, runtime/content/manifest digests, frozen dependencies, baseline tree + package subtree); the in-package rules below are diagnostic only",
+    "0afe4b6b (the reviewed baseline = Step-2 PIN C) is an ancestor of the commit, and the commit is not 0afe4b6b itself",
+    "every path changed 0afe4b6b..commit is an ADDITION under scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01 (no existing file modified or deleted)",
+    "the Step-2 dir tree at the commit is still bacac441 and the preserved Step-2 verifier still re-derives PIN C 0afe4b6b unchanged",
+    "every frozen dependency imported by src/ has, at the commit, exactly the recorded sha256",
+    "package_runtime_digest and package_content_digest recomputed from the bytes at the commit equal the reviewed values",
+    "this binding is NOT a PIN C and never satisfies verifyStep2RuntimePin; it identifies only this additive authority-provisioning package"
+  ]
+}

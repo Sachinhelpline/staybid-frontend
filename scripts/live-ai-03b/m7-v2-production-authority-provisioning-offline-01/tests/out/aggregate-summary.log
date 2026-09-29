@@ -1,0 +1,13 @@
+PASS  A package identity --check  —  exit 0 (expected exactly 0)
+PASS  B authority-provisioning focused suite  —  exit 0; m7-v2-authority-provisioning: 178 passed, 0 failed
+PASS  C production entrypoint CLI fail-closed  —  exit 2 (expected exactly 2)
+PASS  D Step-2 identity artifacts --check  —  exit 0 (expected exactly 0)
+PASS  E Step-2 PIN C re-derived at 0afe4b6b  —  exit 0;     "runtime_manifest_digest": "64c7031746bff227321e2e2506b4737938eafc3493ae472ab0f51e5e46987d9f",
+PASS  F Step-2 unit + negative matrix  —  exit 0; m7s2-unit: 290 passed, 0 failed
+PASS  G Step-2 lifecycle-correction suite  —  exit 0; m7s2-lifecycle-correction: 113 passed, 0 failed
+PASS  H M6 trusted-executor runtime (target binding)  —  exit 0; RESULT: 66 passed, 0 failed
+PASS  I trusted-runtime live binding  —  exit 0; RESULT: 82 passed, 0 failed
+PASS  J reader-only authority / host runtime  —  exit 0; RESULT: 125 passed, 0 failed, 0 skipped  (executed assertions: 125)
+PASS  K reader production integration (session/attestation)  —  exit 0; RESULT: 157 passed, 0 failed, 0 skipped  (executed assertions: 157)
+PASS  L attester containment (reader attestation issuer)  —  exit 0; RESULT: 50 passed, 0 failed, 0 skipped  (executed assertions: 50)
+RESULT: PASS (12/12 required checks)

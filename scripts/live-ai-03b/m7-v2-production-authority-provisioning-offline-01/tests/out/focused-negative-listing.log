@@ -1,0 +1,179 @@
+  PASS SETUP config / reviewer trust root / test source proof
+  PASS A01 no provisioner ⇒ v2_production_authority_unprovisioned (preserved default)
+  PASS A02 production entrypoint with an empty environment ⇒ unavailable (no implicit fallback)
+  PASS A03 production entrypoint refuses injected composition inputs
+  PASS A04 full production-shaped env: config ✓ reviewer root ✓ PIN C re-derived from git ✓ ⇒ STOPS at executor_attestation_source_unprovisioned (before any DB connection)
+  PASS A05 the unavailable boundary never runs
+  PASS A06 executor attestation source acquisition is deterministic UNPROVISIONED
+  PASS A07 production provisioner refuses TEST-ONLY attester trust roots / test clock / test source proof (no production authority from test fixtures)
+  PASS A08 a TEST-built authority is REJECTED by the preserved production validator
+  PASS A09 production entrypoint CLI is fail-closed (exit 2, no request intake)
+  PASS B executorDbClient in the request ⇒ refused before acquisition (0 connections)
+  PASS B readerDbClient in the request ⇒ refused before acquisition (0 connections)
+  PASS B authority in the request ⇒ refused before acquisition (0 connections)
+  PASS B dbUrl in the request ⇒ refused before acquisition (0 connections)
+  PASS B password in the request ⇒ refused before acquisition (0 connections)
+  PASS B trustRoot in the request ⇒ refused before acquisition (0 connections)
+  PASS B connectionIdentityProof in the request ⇒ refused before acquisition (0 connections)
+  PASS B privilegeProof in the request ⇒ refused before acquisition (0 connections)
+  PASS B registry in the request ⇒ refused before acquisition (0 connections)
+  PASS B activationSourceProof in the request ⇒ refused before acquisition (0 connections)
+  PASS B nowProvider in the request ⇒ refused before acquisition (0 connections)
+  PASS B nowIso in the request ⇒ refused before acquisition (0 connections)
+  PASS B provisioner in the request ⇒ refused before acquisition (0 connections)
+  PASS C01 acquire ⇒ exact frozen authority; executor and reader are DIFFERENT client objects
+  PASS C02 the frozen single proof slot carries the EXECUTOR binding (token of the executor connection)
+  PASS C03 two attestations were requested: one executor, one reader, different tokens + nonces
+  PASS C04 same physical factory object for both roles refused
+  PASS C05 one physical connection offered for both roles refused
+  PASS C06 one credential for both roles refused (distinct credential identities)
+  PASS C07 reader connection that is really the executor role refused
+  PASS C08 executor connection that is really the reader role refused
+  PASS C09 superuser/owner login as executor refused
+  PASS C10 independent bindings: both pass and are pairwise distinct
+  PASS C11 an executor attestation issued for the READER connection cannot bind the executor
+  PASS C12 the executor attestation replayed against the reader binding fails
+  PASS C13 the reader attestation replayed against the executor binding fails
+  PASS C14 swapped proofs: the executor identity proof does not authorize the reader token (and vice versa)
+  PASS C15 two bindings for ONE connection (same token/pid) are refused
+  PASS D01 executor attestation missing
+  PASS D02 wrong issuer (re-signed by the same key)
+  PASS D03 wrong connection token
+  PASS D04 wrong service
+  PASS D05 wrong project
+  PASS D06 wrong environment
+  PASS D07 CORE-PROD postgres
+  PASS D08 CORE-PROD project
+  PASS D09 wrong request nonce (replay)
+  PASS D10 reader: wrong project
+  PASS D11 reader: CORE-PROD
+  PASS D12 reader: wrong token
+  PASS D13 forged signature (another key claiming the pinned issuer AND key-id) refused
+  PASS D13b attestation claiming another key-id refused
+  PASS D14 a static/public-ID assertion object instead of a signed attestation refused
+  PASS D15 a pre-made proof cannot be injected (deps key set is exact)
+  PASS D16 TEST-provenance proof refused in production by the accepted target binding
+  PASS D17 a TEST-ONLY attester root is refused in production binding
+  PASS D18 production config refuses TEST-ONLY attester issuers
+  PASS D19 production config refuses loopback attester channels
+  PASS D20 the frozen config's connection-identity-proof reference must name the executor issuer
+  PASS E01 wrong role (reader)
+  PASS E02 superuser
+  PASS E03 CREATEROLE
+  PASS E04 CREATEDB
+  PASS E05 REPLICATION
+  PASS E06 BYPASSRLS
+  PASS E07 unexpected role membership
+  PASS E08 budget table write privilege
+  PASS E09 ledger mutation privilege
+  PASS E10 schema CREATE
+  PASS E11 unexpected routine EXECUTE (extra function)
+  PASS E12 missing successor EXECUTE
+  PASS E13 unapproved routine execute elsewhere
+  PASS E14 extra schema USAGE
+  PASS E15 PUBLIC/default privilege widening
+  PASS E16 stale proof (> 5 min)
+  PASS E17 future-dated proof
+  PASS E18 lifetime too long
+  PASS E19 client-token mismatch
+  PASS E20 extra privilege field
+  PASS E21 missing privilege field
+  PASS E22 a bare boolean `restricted_role_proof_present:true` is not an executor proof
+  PASS E23 a frozen-shape privilegeProof cannot be injected (deps key set is exact)
+  PASS E24 test-provenance executor attestation refused in production (TEST-ONLY issuer root)
+  PASS E25 the accepted executor privilege set is exactly 2 schemas USAGE + 4 routines EXECUTE (2 M6 + 2 successor)
+  PASS E26 executor statement_timeout must really apply (read-back)
+  PASS F01 write capability
+  PASS F02 wrong SELECT grant count
+  PASS F03 forbidden object accessible
+  PASS F04 unexpected routine authority
+  PASS F05 unexpected membership
+  PASS F06 owner/executor authority
+  PASS F07 not SELECT-only
+  PASS F08 stale
+  PASS F09 future-dated
+  PASS F10 wrong client binding
+  PASS F11 invalid statement timeout (not applied on the reader connection)
+  PASS F12 the reader session is read-only and ≤ 2000 ms (accepted establishReaderSession)
+  PASS G01 exact pinned public key ⇒ PASS
+  PASS G02 missing key
+  PASS G03 invalid DER
+  PASS G04 wrong fingerprint
+  PASS G05 private key material (PKCS#8 DER) refused
+  PASS G06 private key material (PEM text) refused
+  PASS G07 trust root that does not match the V2 config refused
+  PASS G08 non-Ed25519 key refused
+  PASS G09 envelope-carried key override ignored ⇒ refused, 0 activations
+  PASS H01 the authority registry is the preserved content-verified V2 registry
+  PASS H02 arbitrary registry refused by the preserved validator
+  PASS H03 changed query refused by the preserved validator
+  PASS H04 V1 registry refused by the preserved validator
+  PASS H05 digest marker mismatch refused by the preserved validator
+  PASS H06 a registry cannot be injected into the provisioner (deps key set is exact)
+  PASS H07 reader client refuses caller SQL
+  PASS H08 reader client refuses a changed registry query
+  PASS H09 reader client refuses the activation statement
+  PASS H10 reader client refuses parameters on a parameter-free query
+  PASS H11 reader client admits the preserved registry query
+  PASS H12 executor client refuses restoration / DML / registry reads
+  PASS H13 a dead reader connection is never silently replaced
+  PASS I01 PRODUCTION source proof: PIN A + static PIN B + PIN C RE-DERIVED from git (0afe4b6b) ⇒ preserved checker PASS
+  PASS I02 PIN B in the proof is the reviewed static literal (4f390b74 / 72080256 / 2092d9de) — no deployed-gateway claim
+  PASS I03 PIN A 9270c282 / c46da041
+  PASS I04 historical f5ec5807 PIN C refused
+  PASS I05 baseline 3fda6af1 as PIN C refused
+  PASS I06 wrong runtime digest refused
+  PASS I07 historical manifest 9a460078 refused
+  PASS I08 wrong PIN A refused
+  PASS I09 wrong PIN B refused
+  PASS I10 superseded PIN B 2b69ce refused
+  PASS I11 deployed-gateway claim in the Phase-A proof refused
+  PASS I12 PreProbe proof substituted for the activation proof refused (provisioner deps)
+  PASS I13 PIN C that cannot be re-derived from git ⇒ fail closed
+  PASS I14 the source-proof module never imports the Phase-B pre-probe proof
+  PASS I15 the recorded PIN C equals the preserved verifier output bit-for-bit
+  PASS J01 provisioner is frozen with EXACTLY { contract, acquire }
+  PASS J02 acquire refuses any argument (a request can never reach it)
+  PASS J03 acquire is one-shot
+  PASS J04 acquisition failure (executor connection) stays fail-closed with a fixed code
+  PASS J05 attester unreachable ⇒ fail closed, both connections closed
+  PASS J06 deps key set exact (extra key refused)
+  PASS J07 TEST clock requires the explicit test boundary
+  PASS J08 production clock unusable before DB binding
+  PASS J09 production validator refuses the TEST clock
+  PASS J10 host/DB clock skew beyond 5 s ⇒ fail closed
+  PASS J11 a pre-bound clock is refused (binding happens on the actual executor connection only)
+  PASS J12 clock never moves backwards
+  PASS J13 forbidden secret class in the authority env ⇒ refused (OPENAI_API_KEY)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (LIVE_AI_SESSION_SIGNING_PRIVATE_KEY)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (LIVE_AI_03B_REVIEWER_PRIVATE_KEY)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (CORE_DATABASE_URL)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (LIVE_AI_03B_STAGING_DATABASE_URL)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (LIVE_AI_CONTROL_TOKEN_SECRET)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (DATABASE_URL)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (PGPASSWORD)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (SOME_GATEWAY_SIGNING_SECRET)
+  PASS J13 forbidden secret class in the authority env ⇒ refused (X_PRIVATE_KEY)
+  PASS P01 composed boundary: exactly ONE activate_catalog_v2, committed + correlated, NOT probe-ready
+  PASS P02 both physical connections released after the run
+  PASS P03 the executor connection carried ONLY lifecycle SQL + exactly one ACTIVATE
+  PASS P04 the reader connection carried ONLY lifecycle + registry SQL
+  PASS P05 second run of the same boundary refused (one-shot), no second mutation
+  PASS P06 a fresh composition cannot re-activate (preserved executor one-shot / replay) — still one mutation
+  PASS P07 no gateway observation, deployment or provider input exists anywhere in the authority dependencies
+  PASS S01 no src module imports test helpers
+  PASS S02 no module-scope mutable authority slot / setter / env-JSON blob
+  PASS S03 no logging of values (no console.* in src)
+  PASS S04 process.env is read only by the production entrypoint
+  PASS S05 no private key / DSN / provider credential literal in src or tests
+  PASS S06 the preserved Step-2 runtime is composed, never copied (imports of v2-trusted-executor-runtime / v2-production-authority)
+  PASS Z01 future package preservation: additive-only on top of 0afe4b6b, Step-2 tree unchanged, PIN C re-derived, deps + digests exact ⇒ V2ProductionAuthorityProvisioningPreservationBindingV1
+  PASS Z02 the package binding is NOT a PIN C (refused by the preserved verifyStep2RuntimePin)
+  PASS Z03 a Step-2 file changed by the package commit ⇒ fail
+  PASS Z04 a frozen dependency different at the commit ⇒ fail
+  PASS Z05 package runtime bytes different at the commit ⇒ fail
+  PASS Z06 the baseline commit itself ⇒ refused
+  PASS Z07 package identity files are current (tools/package-identity.mjs --check semantics)
+  PASS K01 zero network: fetch=0 http(s)=0 socket connects=0 (⇒ 0 DB / Railway / provider calls)
+  PASS K02 only local read-only git (PIN-C re-derivation) and the fail-closed CLI child were spawned — no railway / psql / curl
+m7-v2-authority-provisioning: 178 passed, 0 failed

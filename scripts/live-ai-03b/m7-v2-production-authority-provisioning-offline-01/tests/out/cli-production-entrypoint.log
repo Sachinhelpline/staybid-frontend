@@ -1,0 +1,1 @@
+[live-ai-03b V2 production-authority entrypoint] FAIL-CLOSED: library composition only; it accepts no activation request from argv/stdin and performs no DB/network access on its own. Exit 2.

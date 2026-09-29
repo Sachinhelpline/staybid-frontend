@@ -1,0 +1,12 @@
+A. Source + authority separation (accepted baseline unchanged; no executor)
+B. Reader-only authority validation matrix
+C. Authenticated loopback transport (real Unix socket integration)
+D. Serving lifecycle (startServingRuntime)
+E. Offline / protected boundaries
+F. Private-network serving mode (Finding 1) — config validation + REAL cross-process connectivity
+G. Observation deadline + quarantine (Finding 2) — stalled / hung observations
+
+══════════════════════════════════════════════════════════
+RESULT: 125 passed, 0 failed, 0 skipped  (executed assertions: 125)
+OFFLINE SERVING-RUNTIME VERIFICATION: PASS
+SCOPE: synthetic authority/secret + real local Unix/loopback/private-network-mode sockets (independent child caller) + observation deadline/quarantine + fail-closed lifecycle + accepted-boundary reuse — NOT live Railway isolation/DB/credential/serving-in-production proof.
