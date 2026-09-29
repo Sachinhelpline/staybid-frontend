@@ -1,0 +1,290 @@
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs
+index 3a0eff3..1e3e11f 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs
+@@ -33,6 +33,9 @@ export const RECOVERY_BACKOFF_MS = Object.freeze([5000, 10000, 20000, 40000, 600
+ // before the invalidation has then provably lost its authority window (ctx deadline + server budget timer).
+ export const RECOVERY_QUIESCENCE_MARGIN_MS = 250;
+ export const RECOVERY_QUIESCENCE_MS = V2_REQUEST_BUDGET_MS + RECOVERY_QUIESCENCE_MARGIN_MS;
++// stop() waits at most this long for an in-flight recovery to settle (it can only be finishing a sample that had
++// already started; nothing new starts after stop). An uncooperative promise is detached, never awaited forever.
++export const STOP_RECOVERY_CONTAIN_MS = 2500;
+ 
+ const SAFE_REASON = /^[a-z0-9_]{1,48}$/;
+ /** Map an invalidation reason to a fixed, non-sensitive class (peer resolver detail is never propagated). */
+@@ -94,6 +97,8 @@ export async function startAttesterBootstrap(opts) {
+   let lastReasonClass = null;
+   let monitorFailSeq = 0;                // count of failed monitor samples (binds regate samples to "no interleaved failure")
+   let regating = false;
++  let activeRegate = null;               // the in-flight regate promise (auto or manual), for bounded stop containment
++  const pendingDelays = new Set();       // abortable quiescence waits (released immediately by stop())
+   let monitorStarted = false;
+   let server = null;
+   const rc = { timer: null, inFlight: false, attempt: 0, scheduled: 0, started: 0, passed: 0, failed: 0, lastNextDelayMs: null };
+@@ -182,20 +187,23 @@ export async function startAttesterBootstrap(opts) {
+     const stale = () => stopped || peerInvalid !== null || epoch !== startEpoch;
+     let failSeq = monitorFailSeq;
+     const guardedTake = async () => {
++      if (stale()) return { ok: false, reason: "epoch_superseded" };   // never START a sample once stopped/superseded
+       const s = await takeSampleFn();
+       if (stale()) return { ok: false, reason: "epoch_superseded" };
+       if (monitorFailSeq !== failSeq) { failSeq = monitorFailSeq; return { ok: false, reason: "monitor_sample_failed" }; }   // resets the run
+       return s;
+     };
+-    const r = await runStartupClockGate({ takeSampleFn: guardedTake });
++    // stop / a superseded epoch is TERMINAL for this attempt: the gate aborts at once (no remaining attempts)
++    const r = await runStartupClockGate({ takeSampleFn: guardedTake, shouldAbort: stale });
+     if (stale()) return { ok: false, reason: stopped ? "stopped" : (peerInvalid !== null ? "peer_invalid" : "epoch_superseded") };
+     if (!r.ok) { signingReady = false; status = STATES.CLOCK_INVALID; return { ok: false, reason: r.reason }; }
+     // quiescence floor: no request accepted before the last invalidation may still hold a live authority window
+     if (lastInvalidationAtMs !== null) {
+       const waitMs = Math.ceil(lastInvalidationAtMs + quiescenceMs - localMs());
+-      if (waitMs > 0) await new Promise((res) => { const t = setTimeout(res, waitMs); if (t && typeof t.unref === "function") t.unref(); });
++      if (waitMs > 0) await abortableDelay(waitMs);
+       if (stale()) return { ok: false, reason: stopped ? "stopped" : (peerInvalid !== null ? "peer_invalid" : "epoch_superseded") };
+     }
++    if (stale()) return { ok: false, reason: stopped ? "stopped" : (peerInvalid !== null ? "peer_invalid" : "epoch_superseded") };
+     const seed = await monitor.sampleOnce();
+     if (stale()) return { ok: false, reason: stopped ? "stopped" : (peerInvalid !== null ? "peer_invalid" : "epoch_superseded") };
+     if (!seed.ok) { signingReady = false; status = STATES.CLOCK_INVALID; return { ok: false, reason: seed.reason }; }
+@@ -205,10 +213,20 @@ export async function startAttesterBootstrap(opts) {
+     generation = createBootGeneration(); signingReady = true; status = STATES.BOOTSTRAP_LISTENING;
+     return { ok: true };
+   }
++  function abortableDelay(ms) {
++    return new Promise((res) => {
++      const entry = { done: () => { clearTimeout(entry.t); pendingDelays.delete(entry); res(); } };
++      entry.t = setTimeout(entry.done, ms); if (entry.t && typeof entry.t.unref === "function") entry.t.unref();
++      pendingDelays.add(entry);
++    });
++  }
+   async function regateSerialized() {
++    if (stopped) return { ok: false, reason: "stopped" };
+     if (regating) return { ok: false, reason: "recovery_in_flight" };
+     regating = true;
+-    try { return await regateOnce(); } catch { return { ok: false, reason: "recovery_threw" }; } finally { regating = false; }
++    const p = (async () => { try { return await regateOnce(); } catch { return { ok: false, reason: "recovery_threw" }; } finally { regating = false; } })();
++    activeRegate = p;
++    try { return await p; } finally { if (activeRegate === p) activeRegate = null; }
+   }
+   /** Public manual re-gate (unchanged contract; now serialized + epoch-bound). */
+   async function regate() {
+@@ -236,7 +254,7 @@ export async function startAttesterBootstrap(opts) {
+     let r;
+     try { r = await regateSerialized(); } catch { r = { ok: false, reason: "recovery_threw" }; }
+     rc.inFlight = false;
+-    if (stopped) return;
++    if (stopped) { rc.failed++; emit("recovery_fail", { attempt, reasonClass: "stopped", nextDelayMs: null }); return; }   // terminal: no backoff
+     if (r.ok) {
+       rc.passed++; rc.attempt = 0;
+       emit("recovery_pass", { attempt });
+@@ -277,12 +295,29 @@ export async function startAttesterBootstrap(opts) {
+     stats: () => ({ status, signingReady, startupPassed: startup.ok, generation: generation.id, server: server.stats(), monitor: monitor.stats(),
+       epoch, peerInvalid, invalidations: { ...inv }, lastReasonClass,
+       recovery: { autoRecover, inFlight: rc.inFlight, pending: rc.timer !== null, attempt: rc.attempt, scheduled: rc.scheduled, started: rc.started, passed: rc.passed, failed: rc.failed } }),
++    /**
++     * Stop (shutdown containment). SYNCHRONOUSLY: signing off, STOPPED, epoch bumped (supersedes any recovery),
++     * recovery timer + heartbeat cancelled, monitor scheduler stopped, quiescence waits released — so no new
++     * recovery attempt, gate sample or seed can start. Then a BOUNDED wait (STOP_RECOVERY_CONTAIN_MS) for an
++     * in-flight recovery to settle (its late result is discarded: every bind is epoch-checked), then the listener
++     * closes. STOPPED is final: nothing can restore signing or change the status afterwards.
++     */
+     async stop() {
+-      if (!stopped) emit("stopped", {});
+-      stopped = true; epoch++; signingReady = false; status = STATES.STOPPED;
+-      if (rc.timer) { try { clearTimer(rc.timer); } catch {} rc.timer = null; }
+-      if (hb) { clearInterval(hb); hb = null; }
+-      monitor.stop(); try { await server.close(); } catch {} return true;
++      if (!stopped) {
++        stopped = true; epoch++; signingReady = false; status = STATES.STOPPED;
++        if (rc.timer) { try { clearTimer(rc.timer); } catch {} rc.timer = null; }
++        if (hb) { clearInterval(hb); hb = null; }
++        monitor.stop();
++        for (const d of Array.from(pendingDelays)) { try { d.done(); } catch {} }
++        emit("stopped", { recovering: rc.inFlight || regating });
++      }
++      const inflight = activeRegate;
++      if (inflight) {
++        let t; const bound = new Promise((res) => { t = setTimeout(res, STOP_RECOVERY_CONTAIN_MS); if (t && typeof t.unref === "function") t.unref(); });
++        await Promise.race([inflight.then(() => {}, () => {}), bound]); clearTimeout(t);
++      }
++      try { await server.close(); } catch {}
++      return true;
+     },
+   });
+ }
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs
+index f5ff00d..5e8e54d 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs
+@@ -17,19 +17,27 @@ import {
+  * @param deps.takeSampleFn async () → sample ({ ok, L, U, absBoundUs, ... } | { ok:false, reason })
+  * @param deps.needed default STARTUP_SAMPLES
+  * @param deps.maxAttempts default STARTUP_MAX_ATTEMPTS
++ * @param deps.shouldAbort OPTIONAL () → boolean: an explicit TERMINAL lifecycle cancellation (e.g. the caller was
++ *   stopped / its recovery epoch was superseded). Checked before each attempt and after each sample; when true the
++ *   gate returns at once ({ ok:false, reason:"gate_aborted", aborted:true }) WITHOUT starting another sample or
++ *   consuming the remaining attempts. Absent (every pre-existing caller) ⇒ behaviour is exactly unchanged.
+  * @returns { ok:true, interval:{L,U,absBoundUs}, samples } | { ok:false, reason, attempts }
+  */
+ export async function runStartupClockGate(deps) {
+   const takeSampleFn = deps && deps.takeSampleFn;
+   const needed = deps && Number.isInteger(deps.needed) ? deps.needed : STARTUP_SAMPLES;
+   const maxAttempts = deps && Number.isInteger(deps.maxAttempts) ? deps.maxAttempts : STARTUP_MAX_ATTEMPTS;
++  const shouldAbort = deps && typeof deps.shouldAbort === "function" ? deps.shouldAbort : null;
+   if (typeof takeSampleFn !== "function") return { ok: false, reason: "take_sample_fn_required", attempts: 0 };
+   let run = [];               // current consecutive-valid run
+   let attempts = 0;
+   let lastReason = "insufficient_samples";
++  const aborted = () => { let a = false; try { a = !!(shouldAbort && shouldAbort()); } catch { a = true; } return a; };
+   while (attempts < maxAttempts) {
++    if (aborted()) return { ok: false, reason: "gate_aborted", attempts, aborted: true };
+     attempts++;
+     let s; try { s = await takeSampleFn(); } catch { s = { ok: false, reason: "sample_threw" }; }
++    if (aborted()) return { ok: false, reason: "gate_aborted", attempts, aborted: true };
+     if (!s || s.ok !== true) { run = []; lastReason = (s && s.reason) || "sample_invalid"; continue; } // reset run
+     if (!serviceGateOk(s)) { run = []; lastReason = "service_bound_exceeded"; continue; }              // per-sample bound
+     run.push({ L: s.L, U: s.U, absBoundUs: s.absBoundUs });
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs
+index bb42b85..da3d384 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs
+@@ -95,6 +95,25 @@ export async function composeAttesterProduction(opts = {}) {
+ 
+   attRef = att;              // wire the supervisor's invalidation to the running attester, then start supervision
+   supervisor.start();
+-  const baseStop = att.stop;
+-  return Object.freeze({ ...att, version: ATTESTER_PRODUCTION_VERSION, async stop() { try { supervisor.stop(); } catch {} try { await baseStop(); } catch {} try { await sampler.close(); } catch {} return true; } });
++  return Object.freeze({ ...att, version: ATTESTER_PRODUCTION_VERSION, stop: makeContainedAttesterStop({ supervisor, baseStop: att.stop, sampler }) });
++}
++
++/**
++ * Shutdown containment for the production composition. The clock sampler's CLOSED latch and the attester's
++ * STOPPED latch are both committed in the SAME synchronous turn (sampler.close() and baseStop() each latch before
++ * their first await), so from that instant no DB open, SQL or clock sample can start — including a recovery
++ * attempt that is already in flight, or a factory.open() that completes late (it is retired, never installed).
++ * Then both bounded teardowns are awaited. Exported for deterministic offline tests of the exact ordering.
++ */
++export function makeContainedAttesterStop({ supervisor, baseStop, sampler }) {
++  return async function stop() {
++    try { if (supervisor) supervisor.stop(); } catch {}
++    let closing = null;
++    try { closing = sampler && typeof sampler.close === "function" ? sampler.close() : null; } catch {}   // sync CLOSED latch
++    let stopping = null;
++    try { stopping = baseStop(); } catch {}                                                                // sync STOPPED latch
++    try { await stopping; } catch {}
++    try { await closing; } catch {}
++    return true;
++  };
+ }
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs
+index 8f85aac..e385e8e 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs
+@@ -62,15 +62,22 @@ export function makeProductionClockSampler(deps) {
+     ? physicalFactory : makePgPhysicalFactory({ env, connectionStringEnvName, connectTimeoutMs });
+   let physical = null;
+   let opening = null;
++  // Shutdown containment: MONOTONIC lifecycle OPEN → CLOSED, committed SYNCHRONOUSLY when close() begins. Once
++  // CLOSED no factory.open() is initiated, no SQL starts (run() is the single choke point), no sample starts,
++  // queued callers fail closed, and a late-completing open is retired instead of installed. Never reopens.
++  let closed = false;
+   const retired = new WeakSet();          // physicals that must never carry another query
+   const active = new WeakMap();           // physical → outstanding query count (asserted ≤ 1)
+   const st = { opened: 0, openFailures: 0, retiredUnresolved: 0, retiredFailed: 0, closeTimeouts: 0,
+-    cancelledBeforeQuery: 0, samples: 0, maxConcurrentQueriesPerPhysical: 0, concurrencyViolations: 0 };
++    cancelledBeforeQuery: 0, samples: 0, maxConcurrentQueriesPerPhysical: 0, concurrencyViolations: 0,
++    opensStarted: 0, sqlStarted: 0, lateOpensRetired: 0, refusedAfterClose: 0 };
+ 
+   async function run(p, sql, params) {    // the ONLY place a query reaches a physical
++    if (closed || retired.has(p)) { st.refusedAfterClose += closed ? 1 : 0; throw new Error(closed ? "clock_sampler_closed" : "clock_session_retired"); }
+     const n = (active.get(p) || 0) + 1;
+     if (n > 1) { st.concurrencyViolations++; throw new Error("clock_physical_busy"); }   // defence in depth: never overlap
+     active.set(p, n); if (n > st.maxConcurrentQueriesPerPhysical) st.maxConcurrentQueriesPerPhysical = n;
++    st.sqlStarted++;
+     try { return await p.query(sql, params); } finally { active.set(p, (active.get(p) || 1) - 1); }
+   }
+   function usable(p) { return !!p && !retired.has(p) && !(typeof p.isDead === "function" && p.isDead()); }
+@@ -82,13 +89,22 @@ export function makeProductionClockSampler(deps) {
+     void boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }); // close() marks dead synchronously first
+   }
+ 
++  function retireLate(p) {                // a physical that finished opening after close(): never usable
++    if (!p || retired.has(p)) return;
++    retired.add(p); st.lateOpensRetired++;
++    if (physical === p) physical = null;
++    void boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; });
++  }
+   async function ensure() {
++    if (closed) { st.refusedAfterClose++; throw new Error("clock_sampler_closed"); }
+     if (usable(physical)) return physical;
+     if (opening) return opening;
+     physical = null;
+     opening = (async () => {
+       let p;
++      st.opensStarted++;
+       try { p = await factory.open(); } catch (e) { st.openFailures++; throw e; }   // reader_db_url_absent / reader_db_connect_failed
++      if (closed) { retireLate(p); throw new Error("clock_sampler_closed"); }       // late open: retire, never harden/install
+       try {
+         // each step re-checks retirement, so a harden sequence abandoned at its deadline issues nothing further
+         const step = (sql, params) => { if (retired.has(p)) throw new Error("clock_session_retired"); return run(p, sql, params); };
+@@ -98,7 +114,11 @@ export function makeProductionClockSampler(deps) {
+           const ro = await step(LIFECYCLE_SQL.readReadOnly, []);
+           if (!ro || !ro.rows || !ro.rows[0] || ro.rows[0].v !== "on") throw new Error("read_only_not_applied");
+         })(), deadlineMs);
+-      } catch (e) { st.openFailures++; retired.add(p); void boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }); throw new Error("clock_session_harden_failed"); }
++      } catch (e) {
++        if (closed) { retireLate(p); throw new Error("clock_sampler_closed"); }
++        st.openFailures++; retired.add(p); void boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }); throw new Error("clock_session_harden_failed");
++      }
++      if (closed) { retireLate(p); throw new Error("clock_sampler_closed"); }         // closed during harden: never install
+       if (typeof p.onDead === "function") p.onDead(() => { if (physical === p) physical = null; });
+       st.opened++;
+       physical = p; return p;
+@@ -110,10 +130,12 @@ export function makeProductionClockSampler(deps) {
+   // single current sample (samples are serialized); a probe whose deadline already fired is CANCELLED so a late
+   // ensure() can never issue a query after its sample has been abandoned.
+   let attempt = null;
++  let closePromise = null;
+   const query = async (sql, params) => {
+     if (sql !== DB_CLOCK_QUERY) throw new Error("clock_query_not_permitted");
+     const a = attempt;
+     const p = await ensure();
++    if (closed) { st.refusedAfterClose++; throw new Error("clock_sampler_closed"); }
+     if (!a || a.cancelled) { st.cancelledBeforeQuery++; throw new Error("clock_probe_cancelled"); }
+     const rec = { p, settled: false, failed: false };
+     a.rec = rec;
+@@ -125,6 +147,7 @@ export function makeProductionClockSampler(deps) {
+   const serial = makeSerializer();
+   // Serialized: RTT is measured INSIDE takeSample, i.e. only after this sample holds the single-flight slot.
+   const takeSampleFn = () => serial(async () => {
++    if (closed) { st.refusedAfterClose++; return { ok: false, reason: "sampler_closed" }; }   // queued callers fail closed; no sample starts
+     const a = { cancelled: false, rec: null };
+     attempt = a; st.samples++;
+     try { return await takeSample({ wallNowMs, monoNowUs, probe }); }
+@@ -140,8 +163,23 @@ export function makeProductionClockSampler(deps) {
+     version: PRODUCTION_CLOCK_VERSION,
+     takeSampleFn,
+     monoNowUs,
+-    stats() { return { ...st, hasPhysical: usable(physical), opening: !!opening }; },
+-    async close() { const p = physical; physical = null; if (p) { retired.add(p); await boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }); } },
++    stats() { return { ...st, closed, hasPhysical: usable(physical), opening: !!opening }; },
++    get closed() { return closed; },
++    /**
++     * Close: the CLOSED latch is committed SYNCHRONOUSLY (before the first await), so no open/SQL/sample can start
++     * after this call begins. The current sample is cancelled, the installed physical is retired and closed within
++     * `closeDeadlineMs`; a still-pending open is NOT awaited — its late result retires itself (never installed).
++     * Idempotent and monotonic (never reopens). Resolves within the bounded close deadline.
++     */
++    close() {
++      if (closePromise) return closePromise;
++      closed = true;
++      if (attempt) attempt.cancelled = true;
++      const p = physical; physical = null;
++      if (p) retired.add(p);
++      closePromise = p ? boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }).then(() => undefined) : Promise.resolve();
++      return closePromise;
++    },
+   });
+ }
+ 

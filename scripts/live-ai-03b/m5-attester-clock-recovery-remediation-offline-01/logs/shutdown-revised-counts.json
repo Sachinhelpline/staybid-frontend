@@ -1,0 +1,78 @@
+{
+  "A": {
+    "atStop": {
+      "openCalls": 2,
+      "sqlStarts": 10,
+      "sampleCalls": 8,
+      "samplerSamples": 8,
+      "physicals": 1
+    },
+    "after": {
+      "openCalls": 2,
+      "sqlStarts": 10,
+      "sampleCalls": 8,
+      "samplerSamples": 8,
+      "physicals": 2
+    },
+    "delta": {
+      "openCalls": 0,
+      "sqlStarts": 0,
+      "sampleCalls": 0,
+      "samplerSamples": 0,
+      "physicals": 1
+    },
+    "stopMs": 51,
+    "lateOpensRetired": 1
+  },
+  "A_uncooperative": {
+    "delta": {
+      "openCalls": 0,
+      "sqlStarts": 0,
+      "sampleCalls": 0,
+      "samplerSamples": 0,
+      "physicals": 0
+    },
+    "stopMs": 290
+  },
+  "B": {
+    "callsAtStop": 10,
+    "callsAfter": 10,
+    "stopMs": 30
+  },
+  "C": {
+    "delta": {
+      "openCalls": 0,
+      "sqlStarts": 0,
+      "sampleCalls": 0,
+      "samplerSamples": 0,
+      "physicals": 0
+    },
+    "stopMs": 2504
+  },
+  "D": {
+    "delta": {
+      "openCalls": 0,
+      "sqlStarts": 0,
+      "sampleCalls": 0,
+      "samplerSamples": 0,
+      "physicals": 0
+    }
+  },
+  "E": {
+    "delta": {
+      "openCalls": 0,
+      "sqlStarts": 0,
+      "sampleCalls": 0,
+      "samplerSamples": 0,
+      "physicals": 0
+    },
+    "stopMs": 1,
+    "atStop": {
+      "openCalls": 2,
+      "sqlStarts": 18,
+      "sampleCalls": 12,
+      "samplerSamples": 12,
+      "physicals": 2
+    }
+  }
+}

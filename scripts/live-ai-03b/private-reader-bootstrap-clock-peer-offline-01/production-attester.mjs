@@ -22,6 +22,7 @@ import { makeObserverPgFactory, establishObserverSession } from "../private-read
 
 export const ATTESTER_PRODUCTION_VERSION = "reader-attester-bootstrap-production-v1";
 export const ATTESTER_PROOF_LIFETIME_MS = 60000;   // ≤ accepted 5-min ceiling
+export const ATTESTER_HEARTBEAT_MS = 60000;        // sanitized periodic state marker (M5 remediation)
 
 /**
  * Compose + start the attester bootstrap.
@@ -50,11 +51,13 @@ export async function composeAttesterProduction(opts = {}) {
   // the private-peer allowlist for the READER, resolved + SUPERVISED from its .railway.internal identity (§21/§22).
   // An unsafe refresh keeps the last-good set (never widens) and invalidates signing; a validated peer-identity
   // change invalidates signing too (the operator/orchestrator performs the controlled listener recreation).
+  // M5 remediation: both route to the attester's STICKY peer latch (invalidatePeer) — a peer invalidation is
+  // never auto-restored by clock recovery; it requires a controlled restart.
   let attRef = null;
   const supervisor = createPeerSupervisor({
     serviceName: cfg.readerServiceName,
-    onUnsafe: (reason) => { try { if (attRef) attRef.monitor.invalidate("peer_unsafe:" + reason); } catch {} },
-    onChange: () => { try { if (attRef) attRef.monitor.invalidate("peer_identity_changed"); } catch {} log(JSON.stringify({ attester: ATTESTER_PRODUCTION_VERSION, event: "peer_identity_changed" })); },
+    onUnsafe: (reason) => { try { if (attRef) attRef.invalidatePeer("peer_unsafe:" + reason); } catch {} },
+    onChange: () => { try { if (attRef) attRef.invalidatePeer("peer_identity_changed"); } catch {} log(JSON.stringify({ attester: ATTESTER_PRODUCTION_VERSION, event: "peer_identity_changed" })); },
   });
   const first = await supervisor.refreshOnce();
   if (!first.ok) return { started: false, status: STATES.UNPROVISIONED, reason: "reader_peer_" + first.reason };
@@ -84,12 +87,33 @@ export async function composeAttesterProduction(opts = {}) {
       monoNowUs: sampler.monoNowUs,
       offlineTestBoundary: true,   // internal composition seam; signing still requires the full clock/anchor/observer/request gates
       log,
+      autoRecover: true,           // M5 remediation: bounded, serialized, startup-grade automatic clock recovery
+      heartbeatMs: ATTESTER_HEARTBEAT_MS,
     });
   } catch (e) { try { await sampler.close(); } catch {} return { started: false, status: STATES.UNPROVISIONED, reason: "attester_bootstrap_start_failed" }; }
   if (!att.started) { try { await sampler.close(); } catch {} return att; }
 
   attRef = att;              // wire the supervisor's invalidation to the running attester, then start supervision
   supervisor.start();
-  const baseStop = att.stop;
-  return Object.freeze({ ...att, version: ATTESTER_PRODUCTION_VERSION, async stop() { try { supervisor.stop(); } catch {} try { await baseStop(); } catch {} try { await sampler.close(); } catch {} return true; } });
+  return Object.freeze({ ...att, version: ATTESTER_PRODUCTION_VERSION, stop: makeContainedAttesterStop({ supervisor, baseStop: att.stop, sampler }) });
+}
+
+/**
+ * Shutdown containment for the production composition. The clock sampler's CLOSED latch and the attester's
+ * STOPPED latch are both committed in the SAME synchronous turn (sampler.close() and baseStop() each latch before
+ * their first await), so from that instant no DB open, SQL or clock sample can start — including a recovery
+ * attempt that is already in flight, or a factory.open() that completes late (it is retired, never installed).
+ * Then both bounded teardowns are awaited. Exported for deterministic offline tests of the exact ordering.
+ */
+export function makeContainedAttesterStop({ supervisor, baseStop, sampler }) {
+  return async function stop() {
+    try { if (supervisor) supervisor.stop(); } catch {}
+    let closing = null;
+    try { closing = sampler && typeof sampler.close === "function" ? sampler.close() : null; } catch {}   // sync CLOSED latch
+    let stopping = null;
+    try { stopping = baseStop(); } catch {}                                                                // sync STOPPED latch
+    try { await stopping; } catch {}
+    try { await closing; } catch {}
+    return true;
+  };
 }

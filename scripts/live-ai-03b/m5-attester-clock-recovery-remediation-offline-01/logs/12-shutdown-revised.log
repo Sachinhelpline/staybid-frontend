@@ -1,0 +1,30 @@
+  ok   A0 precondition: active recovery + a pending (unresolved) DB open at the stop boundary
+  ok   A1 the CLOSED + STOPPED latches are committed synchronously (before any await)
+  ok   A2 physical opens INITIATED after stop = 0
+  ok   A3 SQL starts after stop = 0 (no harden, no clock query on the late physical)
+  ok   A4 sample starts after stop = 0 (attester calls + sampler samples)
+  ok   A5 late physical installs = 0: it was retired (closed) and is not current
+  ok   A6 no later caller can reuse it: a post-close sample fails closed without any open/SQL
+  ok   A7 signing restorations = 0; status STOPPED; recovery settled with no retry timer
+  ok   A8 stop completed within the bounded contract (≤ STOP_RECOVERY_CONTAIN_MS + listener close)
+  ok   A9 a manual regate after stop is refused without sampling
+  ok   A10 never-resolving open: stop returns within the bound, and zero opens/SQL/samples start afterwards
+  ok   B0 precondition: recovery ACTIVE with 3 of the startup samples consumed (not all 5)
+  ok   B1 the active recovery aborted TERMINALLY: zero further samples started (no remaining 30-attempt loop)
+  ok   B2 recovery reports reasonClass 'stopped' with no next delay; NO retry/backoff timer scheduled
+  ok   B3 the recovery promise settled within the bound; signing false; STOPPED sticky
+  ok   B4 late invalidations after stop change nothing (status STOPPED, no new timer, no event)
+  ok   B5 gate: terminal abort returns immediately (2 samples, not 30); without shouldAbort invalid samples still use all 30
+  ok   C0 precondition held: a clock query was IN FLIGHT at the stop boundary
+  ok   C1 the in-flight query settled but its result was discarded: no seed/gate continuation (zero new samples)
+  ok   C2 zero SQL / open starts after stop
+  ok   C3 the physical was retired + closed at stop
+  ok   C4 STOPPED + signing false are final; stop bounded
+  ok   D0 precondition: a failed recovery left a future backoff timer (10 s)
+  ok   D1 the backoff timer was cancelled by stop
+  ok   D2 no recovery starts; zero sample / open / SQL starts after stop; STOPPED final
+  ok   E0 precondition: the recovery gate had passed and the attempt was waiting in the quiescence floor
+  ok   E1 stop during the quiescence floor: the wait is released at once (stop fast), no seed sample, no restore
+  ok   F1 supervisor stopped, sampler CLOSED and attester STOPPED synchronously within the stop() call
+  ok   F2 the CLOSED latch is monotonic + idempotent (never reopens; queued/late callers fail closed)
+m5acr-shutdown(revised): 29 passed, 0 failed (checks run: 29, expected: 29)

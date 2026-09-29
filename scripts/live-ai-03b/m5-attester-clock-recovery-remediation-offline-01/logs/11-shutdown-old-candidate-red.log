@@ -1,0 +1,11 @@
+  ok   V0 the tree under test is byte-identical to the prior reviewed candidate (5 runtime SHA-256s)
+  ok   V1 precondition: one recovery is ACTIVE and a DB open is pending (unresolved) at the stop boundary
+  at stop: {"openCalls":2,"sqlStarts":10,"sampleCalls":8,"samplerSamples":8,"physicals":1}
+  after  : {"openCalls":2,"sqlStarts":43,"sampleCalls":37,"samplerSamples":37,"physicals":2}
+  delta  : {"openCalls":0,"sqlStarts":33,"sampleCalls":29,"samplerSamples":29,"physicals":1}
+  ok   V2 DEFECT: the late-completing open produced a physical AFTER stop began
+  ok   V3 DEFECT: that late physical was hardened + USED after stop (SQL ran on it)
+  ok   V4 DEFECT: the active recovery kept STARTING samples after stop (gate kept consuming its 30 attempts)
+  ok   V5 DEFECT: post-stop SQL starts > 0
+  ok   V6 (authority unaffected, as WORK found) signing was NOT restored and status stayed STOPPED
+m5acr-shutdown-old-candidate(v1, RED side): 7 passed, 0 failed (checks run: 7, expected: 7)

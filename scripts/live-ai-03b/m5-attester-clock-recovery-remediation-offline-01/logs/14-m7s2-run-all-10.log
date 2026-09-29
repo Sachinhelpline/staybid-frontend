@@ -1,0 +1,12 @@
+PASS  A identity artifacts --check  —  exit 0 (expected exactly 0)
+PASS  B PIN B gateway closure proof  —  exit 0 (expected exactly 0)
+PASS  C unit + §19 negative matrix  —  exit 0; m7s2-unit: 290 passed, 0 failed
+PASS  D lifecycle PostgreSQL 16  —  exit 0; m7s2-localpg-lifecycle[PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)]: 60 passed, 0 failed
+PASS  E lifecycle PostgreSQL 18  —  exit 0; m7s2-localpg-lifecycle[PostgreSQL 18.4]: 60 passed, 0 failed
+PASS  F CLI v2-preflight.mjs  —  exit 2 (expected exactly 2)
+PASS  F CLI v2-trusted-activation-executor.mjs  —  exit 2 (expected exactly 2)
+PASS  F CLI v2-first-text-probe.mjs  —  exit 2 (expected exactly 2)
+PASS  G reader production entrypoint (no env)  —  exit 70 (expected exactly 70)
+PASS  H serving runtime (no authority)  —  exit 70 (expected exactly 70)
+RESULT: PASS (10/10 required checks)
+EXIT=0

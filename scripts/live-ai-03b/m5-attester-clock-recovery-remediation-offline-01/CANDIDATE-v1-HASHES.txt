@@ -1,0 +1,16 @@
+# PRIOR reviewed candidate (v1, package OFFLINE-01 0de6cdd6…) hashes — kept for delta-B review
+# path  git-blob  sha256  changed?
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs  f5ff00d7183f61f5c08c2d0f394c40da4951d06a  3b30dd0fbcd23ca00c3ec2c0460d27cf4b9777b99667d228cbd2e588bdba9b50  CHANGED
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs  8f85aac4afbd0a63a20a97ad7a8043c457f6a170  d919b6ec3a965f3d20f8f5600fc85f5ded2d66cecdaf985167d42372ee071de2  CHANGED
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs  3a0eff36f17736d800ba93c0588566126f207066  56a44b7fbd5ff426f0bba530e06136cd0ab0062a1c2a966d1840c16a509e24ff  CHANGED
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs  bb42b85bebbf0f6c5d07c9190c7be72c83133a05  a36c66ee3fbc66be2ca16c365370de7b4f594ee25be4621808c495e1c74998fc  CHANGED
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-entrypoint-attester.mjs  d28c18519b114d1b75b947f8cabf667739e1da3f  3eb85ee323c5673e59fdf2627522b88326454dfeab477ca95173ad5b5cd69820  CHANGED
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/reader-bootstrap.mjs  eb547bb69dad6b5c6f8becdb4988ef364cd8d03d  a6d5b75d00e035a8e8f66f818e6a6a0add72f3c506d88c116439c0519fb0d683  unchanged
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-reader.mjs  470eb5bb7f1a784ea9577af69b8aefb0959e2aef  513b5f258400e873041f5200c388a47e4ebceeb4db1e5d3f07baa71766034268  unchanged
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attestation-channel-v2.mjs  cacc2c0cb25f4f70dd17594ec365dbd4f22a0a36  f30d01598fd97cee7888e06833a52ebaae35680636925e109ec6b1209c6392fa  unchanged
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/private-peer-resolver.mjs  967d81a721e76e339274c11630a7401b29305ccc  bb2f8d1d07cf6124a6f901ea4f1f6b18174fb68dda408e8a9a8cbc10d7617282  unchanged
+scripts/live-ai-03b/private-reader-attester-offline-01/observer-connection.mjs  632a3b624087d4d268e969b1ba75e3a9c1090f80  37b9672535291e5444bd6b10aea8700be1782bc310a877bbf707ba731015c1cc  unchanged
+scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-session.mjs  c24a2781b7b5f435edd653fc7fc29b84160df72f  064021ba88e39da431249a4b5b86a2313a787c7b1c35f0190587270741b1d011  unchanged
+scripts/live-ai-03b/private-reader-attester-offline-01/signing-adapter.mjs  a21a50f5e30d4f585e324234c44a4fbdce4ea52b  741bc14b3e634c7b657c05c2b6d3b42c67f047c606453ed6a3fb266cb39d2e65  unchanged
+scripts/live-ai-03b/private-reader-attester-offline-01/target-binding.mjs  198d4dc66b048c3b9580afa1da14075a9b8d892a  6ea5cde145d8db68286bbde8dc30cbf13040ba2b32c09bb1905e1170945215b0  unchanged
+scripts/live-ai-03b/private-reader-attester-offline-01/evidence-evaluator.mjs  543fbae3e3da5509199d878cdbebafcdf7447063  c79e7177d2ef481960d87c6a657d87f41fa1d7a0d09ff04924b1d31aea47c8e2  unchanged

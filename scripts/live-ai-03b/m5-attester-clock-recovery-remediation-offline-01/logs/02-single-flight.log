@@ -1,0 +1,30 @@
+  ok   S1.1 at most ONE monitor probe in flight while a probe hangs (maxConcurrent=1)
+  ok   S1.2 the scheduler SKIPPED ticks instead of launching overlapping probes (skippedTicks>0, calls bounded)
+  ok   S1.3 a skipped tick is never a fresh sample (lastGood unchanged → cleared by the watchdog, never advanced)
+  ok   S1.4 the independent watchdog failed closed on staleness while the probe was unresolved (sample_stale)
+  ok   S1.5 exactly one onInvalid transition per invalidation (no repeated callbacks per skipped tick)
+  ok   S1.6 once the probe settles the scheduler resumes and a fresh good sample restores monitor health
+  ok   S2.1 a normal sample succeeds over a freshly hardened session
+  ok   S2.2 overlapping takeSampleFn() callers are serialized (all ok, zero driver-level overlap)
+  ok   S2.3 a hanging probe fails closed at its bounded deadline with the unchanged reason db_probe_failed
+  ok   S2.4 the physical with UNRESOLVED work was retired: marked dead + close() called + detached
+  ok   S2.5 the NEXT probe opens a FRESH read-only session (new physical) and succeeds
+  ok   S2.6 no query was ever issued on the retired physical (no second query behind unresolved work)
+  ok   S2.7 the late settlement of the abandoned query does not revive the retired session
+  ok   S2.8 per-physical outstanding queries never exceeded 1 (sampler + fake driver agree)
+  ok   S3.1 a sample whose open() outlives the deadline fails closed (db_probe_failed)
+  ok   S3.2 the late-opened session issued NO clock query for the abandoned sample (cancel token)
+  ok   S3.3 the late-opened (idle, hardened) session is reused by the next sample
+  ok   S4.1 a hanging harden step fails the sample closed
+  ok   S4.2 the harden step itself is bounded (opening cleared, session discarded + closed)
+  ok   S4.3 a reopen failure fails the sample closed (db_probe_failed), no query issued
+  ok   S4.4 after the fault clears a fresh session is opened and sampling succeeds
+  ok   S4.5 no driver-level overlap anywhere in the fault sequence
+  ok   S5.1 a failed (settled) clock query fails that sample closed and retires the session; next sample reopens
+  ok   S6.1 reader sampler: normal sample succeeds on its own session
+  ok   S6.2 reader sampler: a hanging probe fails closed at the deadline (db_probe_failed)
+  ok   S6.3 reader sampler: while that probe is UNRESOLVED the next sample fails closed WITHOUT a query (same reason)
+  ok   S6.4 reader sampler: once the prior probe settles, sampling resumes on the SAME session
+  ok   S6.5 reader sampler: overlapping callers are serialized (no driver overlap)
+  ok   S6.6 reader sampler: a DEAD session is never queried (fails closed db_probe_failed)
+m5acr-single-flight: 29 passed, 0 failed (checks run: 29, expected: 29)

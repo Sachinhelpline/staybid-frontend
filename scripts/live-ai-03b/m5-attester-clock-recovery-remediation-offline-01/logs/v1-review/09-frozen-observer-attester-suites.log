@@ -1,0 +1,40 @@
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-attester-offline-01/tests/attester-containment.test.mjs
+T. Resource containment (WORK v2 findings — application-visible timeout != underlying-work termination)
+U. Request-lifecycle cancellation matrix (WORK v3 — request authority == computation lifetime)
+V. Caller-timeline + observer-open cancellation (WORK final findings — different timer origins; cancel during open)
+
+══════════════════════════════════════════════════════════
+RESULT: 50 passed, 0 failed, 0 skipped  (executed assertions: 50)
+OFFLINE RESOURCE-CONTAINMENT VERIFICATION: PASS
+SCOPE: synthetic controllable physical connections + shared synthetic cluster + real loopback sockets. NOT live AI-STAGING, NOT a real pg driver.
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-attester-offline-01/tests/attester-integration.test.mjs
+A. Attester configuration (fail closed; no foreign credential; no TEST-ONLY issuer in production)
+B. Deployment anchor (Railway target binding — honest boundary)
+C. Observer connection (statement_timeout + read-only enforcement; capability self-check)
+D. Independent evidence evaluation (measured, not inferred)
+E. Ed25519 signing adapter (issues only from measured evidence; no caller-supplied payload)
+F. Authenticated attestation channel (real server + real reader-host-side client)
+N. Observer connection loss / source unavailability (bounded recovery, no fallback)
+O. Signing failure never yields an unsigned/partial envelope
+S. Bounded channel concurrency + serialized observer work + clean shutdown
+P. No production-mode fixture injection (attester + reader host)
+G. FULL production composition: real attester entrypoint + accepted reader-host entrypoint + gateway
+M. Reader reconnection -> fresh attestation required (old token invalid for the new session)
+I. Accepted/frozen source preservation + new-attester source boundaries
+
+══════════════════════════════════════════════════════════
+RESULT: 107 passed, 0 failed, 0 skipped  (executed assertions: 107)
+OFFLINE GENUINE-ATTESTER VERIFICATION: PASS
+SCOPE: synthetic PostgreSQL cluster (shared reader+observer sessions) + in-memory Ed25519 fixture keys + real local loopback sockets through the REAL attester entrypoint AND the ACCEPTED reader-host production entrypoint — NOT live AI-STAGING privileges, a real deployment anchor, Railway isolation, or a deployed attester service.
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-attester-offline-01/tests/attester-localpg.test.mjs
+R1. Accepted reader role (Sections I–III shape) + proposed observer role on a THROWAWAY cluster
+R2. ACCEPTED reader connection + REAL attester observation against real PostgreSQL
+R3. Real PostgreSQL privilege semantics — every drift is detected and refused
+R4. Observer capability boundaries on real PostgreSQL
+R5. Session drift on real PostgreSQL
+
+══════════════════════════════════════════════════════════
+RESULT: 25 passed, 0 failed, 0 skipped  (executed assertions: 25)
+REAL-POSTGRESQL EVIDENCE VERIFICATION (throwaway local cluster): PASS
+SCOPE: local PostgreSQL cluster created and destroyed by this test — NOT AI-STAGING, NOT a live database, NOT hosted-PostgreSQL behaviour.
+frozen suites: PASS (3 suites)

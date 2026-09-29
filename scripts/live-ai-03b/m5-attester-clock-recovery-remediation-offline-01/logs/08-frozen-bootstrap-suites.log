@@ -1,0 +1,61 @@
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/clock.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 43 passed, 0 failed  (executed assertions: 43)
+OFFLINE CLOCK MATRIX (§27): PASS
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/db-probe.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 13 passed, 0 failed  (executed assertions: 13)
+OFFLINE DB CLOCK PROBE CONTRACT (§27b): PASS
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/inventory.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 13 passed, 0 failed  (executed assertions: 13)
+OFFLINE TRUST-STATE WRITER INVARIANT COVERAGE (§M1-R1 final): PASS
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/lifecycle.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 36 passed, 0 failed  (executed assertions: 36)
+OFFLINE FULL LIFECYCLE + ENTRYPOINT FAIL-CLOSED (§30): PASS
+SCOPE: real bootstraps + synthetic env + real loopback sockets. NOT live AI-STAGING.
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/network.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 33 passed, 0 failed  (executed assertions: 33)
+OFFLINE PRIVATE-PEER RESOLVER MATRIX (§29 + §21/§22 supervisor): PASS
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/preservation.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 21 passed, 0 failed  (executed assertions: 21)
+OFFLINE FROZEN-PREDECESSOR PRESERVATION (§26): PASS
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/production.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 31 passed, 0 failed  (executed assertions: 31)
+OFFLINE PRODUCTION COMPOSITION / CONFIG / ENTRYPOINTS (§M1-R2): PASS
+SCOPE: config + composition wiring with synthetic approved deps + real loopback. NO live DB/DNS. NOT live AI-STAGING.
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/race.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 13 passed, 0 failed  (executed assertions: 13)
+OFFLINE READER INVALIDATION / RE-ENTRY RACE (§M1-R1): PASS
+SCOPE: deterministic barriers + real Ed25519 attester + synthetic cluster + loopback. NOT live AI-STAGING.
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/regate.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 27 passed, 0 failed  (executed assertions: 27)
+OFFLINE REGATE / GATE-ELIGIBILITY GENERATION LIFECYCLE (§M1-R1 final): PASS
+SCOPE: deterministic barriers + real Ed25519 attester + synthetic cluster + loopback. NOT live AI-STAGING.
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/signing-authority.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 28 passed, 0 failed  (executed assertions: 28)
+OFFLINE CLOCK-GATED SIGNING AUTHORITY (§28): PASS
+SCOPE: real Ed25519 + synthetic least-privilege observer + real loopback sockets. NOT live AI-STAGING.
+### /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/wt/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/tests/target-contract.test.mjs
+
+══════════════════════════════════════════════════════════
+RESULT: 20 passed, 0 failed  (executed assertions: 20)
+OFFLINE DATABASE-CLOCK TARGET CONTRACT (§M1-R3): PASS
+frozen suites: PASS (11 suites)

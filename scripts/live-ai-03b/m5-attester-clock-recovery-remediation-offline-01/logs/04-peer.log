@@ -1,0 +1,15 @@
+  ok   P0 precondition: clock recovery timer pending
+  ok   P1 peer_unsafe: signing off, status PEER_INVALID, generation rotated
+  ok   P2 the pending CLOCK recovery timer is cancelled by the peer latch
+  ok   P3 peer_invalidated event: class only, recovery=controlled_restart_required, resolver detail NOT logged
+  ok   P4 the clock monitor heals (fresh good sample) yet signing stays OFF
+  ok   P5 a clock regate never restores a peer-invalid attester (peer_invalid)
+  ok   P6 a later clock invalidation schedules NO recovery while peer-invalid; status stays PEER_INVALID
+  ok   P7 the peer latch is sticky (first class kept; no duplicate peer_invalidated event)
+  ok   P8 peer_identity_changed during an in-flight recovery: attempt aborts, never restores, no reschedule
+  ok   P9 the aborted attempt reports reasonClass peer_invalid and nextDelayMs null
+  ok   P10 monitor.invalidate('peer_…') lands in the sticky peer latch (no clock recovery scheduled)
+  ok   P11 production supervisor onUnsafe → attRef.invalidatePeer("peer_unsafe:" + reason)
+  ok   P12 production supervisor onChange → attRef.invalidatePeer("peer_identity_changed") (existing log line kept)
+  ok   P13 production no longer routes peer events through the healable monitor latch
+m5acr-peer: 14 passed, 0 failed (checks run: 14, expected: 14)

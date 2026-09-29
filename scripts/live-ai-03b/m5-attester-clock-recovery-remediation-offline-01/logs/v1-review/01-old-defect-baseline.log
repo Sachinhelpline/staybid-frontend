@@ -1,0 +1,13 @@
+  ok   O1 BASELINE: a hanging probe is overlapped by the scheduler (≥3 concurrent probes = pg's queue-warning condition)
+  ok   O2 BASELINE: the monitor has no single-flight state (no tick/inFlight/skippedTicks)
+  ok   O3 BASELINE: abandoned probes stay queued on the SAME session and new probes pile up behind them
+  ok   O4 BASELINE: a clock invalidation disables signing (CLOCK_INVALID)
+  ok   O5 BASELINE: the monitor HEALS by itself (fresh good samples) …
+  ok   O6 BASELINE: … but signing stays DISABLED — no automatic regate exists (permanent latch)
+  ok   O7 BASELINE: the only log line is clock_invalidated — nothing reports the stuck state
+  ok   O8 BASELINE: a peer_unsafe invalidation is restored by a mere clock regate (not a sticky peer latch)
+  ok   O9 BASELINE: no production caller of regate() (composition + entrypoint)
+  ok   O10 BASELINE: production logging is a no-op (entrypoint passes no log; composition defaults to () => {})
+  ok   O11 BASELINE: the pre-sign attester interval is not gated on signing being enabled
+  ok   O12 BASELINE: peer events route to monitor.invalidate (healable)
+m5acr-old-defect(baseline): 12 passed, 0 failed (checks run: 12, expected: 12)

@@ -1,0 +1,43 @@
+  ok   A0 attester signing at startup
+  ok   A1 clock invalidation: signingReady=false, status CLOCK_INVALID, generation rotated
+  ok   A2 events clock_invalidated + signing_disabled + recovery_scheduled (bounded delay) emitted
+  ok   A3 signing NOT restored after gate samples 1, 2, 3 and 4 (status stays CLOCK_INVALID)
+  ok   A4 a request during recovery is refused with the fast unavailable frame (never signed)
+  ok   A5 after the 5th consecutive sample + quiescence + fresh seed, signing is restored AUTOMATICALLY
+  ok   A6 restore happened no earlier than the quiescence floor after the invalidation
+  ok   A7 recovery bound a FRESH generation (≠ boot generation, ≠ invalidation generation)
+  ok   A8 a new valid request after recovery is signed
+  ok   A9 recovery attempt counter reset on success; no timer left pending
+  ok   B1 the pre-invalidation in-flight request is NOT signed (refused), although the gate samples had already passed
+  ok   B2 (counterfactual timing) gate samples completed well inside the request budget, so only the quiescence floor kept signing off
+  ok   B3 recovery completed only after the floor (≥ budget + margin after the invalidation)
+  ok   B4 a fresh post-recovery request is signed
+  ok   C1 backoff is exactly 5 s, 10 s, 20 s, 40 s, 60 s, then 60 s
+  ok   C2 never more than ONE pending recovery timer; each attempt is one bounded gate (30 samples max)
+  ok   C3 recovery_fail events carry attempt, reasonClass and nextDelayMs
+  ok   C4 signing stays disabled throughout the failed attempts
+  ok   C5 once the clock is valid again the next scheduled attempt restores signing (attempt counter reset)
+  ok   D1 a THROWING sampler fails recovery closed (reasonClass sample_threw), signing stays off, retry scheduled
+  ok   D2 a sample beyond the 250 ms service bound fails recovery closed (reasonClass service_bound_exceeded), signing stays off, retry scheduled
+  ok   D3 a set whose conservative HULL exceeds the bound fails recovery closed (reasonClass hull_bound_exceeded), signing stays off, retry scheduled
+  ok   D4 an invalid sample resets the consecutive run (startup needed 3+1+5 samples, then a seed)
+  ok   D5 precondition: attester up over the (fake-driver) production sampler
+  ok   D6 a timed-out probe invalidates signing and retires its session
+  ok   D7 REOPEN failure during recovery fails closed (db_probe_failed), retry scheduled
+  ok   D8 after the reopen fault clears, recovery opens a fresh session and restores signing
+  ok   E1 a manual regate while automatic recovery is in flight is refused (recovery_in_flight)
+  ok   E2 a second invalidation during recovery schedules NO concurrent attempt (no timer while in flight)
+  ok   E3 the superseded attempt fails (epoch_superseded) instead of restoring signing
+  ok   E4 exactly one retry is scheduled afterwards with the next backoff step
+  ok   E5 the next attempt restores signing
+  ok   F1 stop() during recovery: never restored, STOPPED, no timer scheduled, regate refused
+  ok   F2 a stopped event is emitted once
+  ok   F3 a failed STARTUP gate leaves the listener up, signing off, and schedules bounded recovery
+  ok   F4 startup recovery restores signing (no quiescence wait: nothing was ever signable)
+  ok   F5 autoRecover defaults OFF (frozen deterministic semantics): no recovery scheduled
+  ok   F6 manual regate still restores signing (unchanged contract)
+  ok   G1 the live scheduler + watchdog disable signing while probes hang (no manual driving)
+  ok   G2 while hanging: no driver overlap, and the stalled session was retired (not re-queried)
+  ok   G3 once the DB answers again, signing is restored automatically on a fresh session
+  ok   G4 a valid request after automatic recovery is signed
+m5acr-recovery: 42 passed, 0 failed (checks run: 42, expected: 42)

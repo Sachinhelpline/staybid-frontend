@@ -17,19 +17,27 @@ import {
  * @param deps.takeSampleFn async () → sample ({ ok, L, U, absBoundUs, ... } | { ok:false, reason })
  * @param deps.needed default STARTUP_SAMPLES
  * @param deps.maxAttempts default STARTUP_MAX_ATTEMPTS
+ * @param deps.shouldAbort OPTIONAL () → boolean: an explicit TERMINAL lifecycle cancellation (e.g. the caller was
+ *   stopped / its recovery epoch was superseded). Checked before each attempt and after each sample; when true the
+ *   gate returns at once ({ ok:false, reason:"gate_aborted", aborted:true }) WITHOUT starting another sample or
+ *   consuming the remaining attempts. Absent (every pre-existing caller) ⇒ behaviour is exactly unchanged.
  * @returns { ok:true, interval:{L,U,absBoundUs}, samples } | { ok:false, reason, attempts }
  */
 export async function runStartupClockGate(deps) {
   const takeSampleFn = deps && deps.takeSampleFn;
   const needed = deps && Number.isInteger(deps.needed) ? deps.needed : STARTUP_SAMPLES;
   const maxAttempts = deps && Number.isInteger(deps.maxAttempts) ? deps.maxAttempts : STARTUP_MAX_ATTEMPTS;
+  const shouldAbort = deps && typeof deps.shouldAbort === "function" ? deps.shouldAbort : null;
   if (typeof takeSampleFn !== "function") return { ok: false, reason: "take_sample_fn_required", attempts: 0 };
   let run = [];               // current consecutive-valid run
   let attempts = 0;
   let lastReason = "insufficient_samples";
+  const aborted = () => { let a = false; try { a = !!(shouldAbort && shouldAbort()); } catch { a = true; } return a; };
   while (attempts < maxAttempts) {
+    if (aborted()) return { ok: false, reason: "gate_aborted", attempts, aborted: true };
     attempts++;
     let s; try { s = await takeSampleFn(); } catch { s = { ok: false, reason: "sample_threw" }; }
+    if (aborted()) return { ok: false, reason: "gate_aborted", attempts, aborted: true };
     if (!s || s.ok !== true) { run = []; lastReason = (s && s.reason) || "sample_invalid"; continue; } // reset run
     if (!serviceGateOk(s)) { run = []; lastReason = "service_bound_exceeded"; continue; }              // per-sample bound
     run.push({ L: s.L, U: s.U, absBoundUs: s.absBoundUs });
@@ -64,6 +72,12 @@ export function createClockMonitor(deps) {
   let invalidated = null;       // reason string once invalid, until a fresh good sample
   let stopped = false;
   let timer = null;
+  // M5 clock-recovery remediation — SINGLE-FLIGHT scheduler. `inFlight` counts monitor samples whose
+  // takeSampleFn() is still unresolved (scheduled or manual). The 1 s scheduler NEVER launches a new probe while
+  // one is unresolved (no overlap, no queue build-up); a skipped tick is never a measurement — it only runs the
+  // independent freshness WATCHDOG, so a stalled probe still fails closed once the last good sample is stale.
+  let inFlight = 0;
+  let launchedTicks = 0, skippedTicks = 0;
 
   function invalidate(reason) {
     lastGood = null;
@@ -75,7 +89,9 @@ export function createClockMonitor(deps) {
 
   async function sampleOnce() {
     if (stopped) return { ok: false, reason: "monitor_stopped" };
-    let s; try { s = await takeSampleFn(); } catch { s = { ok: false, reason: "sample_threw" }; }
+    inFlight++;
+    let s;
+    try { s = await takeSampleFn(); } catch { s = { ok: false, reason: "sample_threw" }; } finally { inFlight--; }
     if (!s || s.ok !== true) { invalidate(s && s.reason ? s.reason : "sample_invalid"); return { ok: false, reason: (s && s.reason) || "sample_invalid" }; }
     if (!serviceGateOk(s)) { invalidate("service_bound_exceeded"); return { ok: false, reason: "service_bound_exceeded" }; }
     lastGood = { interval: { L: s.L, U: s.U, absBoundUs: s.absBoundUs }, atMonoUs: monoNowUs() };
@@ -83,18 +99,28 @@ export function createClockMonitor(deps) {
     return { ok: true, interval: lastGood.interval };
   }
 
+  /** One scheduler period. Exported for deterministic tests; production drives it from the 1 s interval. */
+  function tick() {
+    if (stopped) return;
+    if (inFlight > 0) {                    // a probe is still unresolved: never start a second one
+      skippedTicks++;
+      if (!fresh(monoNowUs())) invalidate("sample_stale");   // watchdog: stale evidence fails closed now
+      return;
+    }
+    launchedTicks++;
+    void sampleOnce().finally(() => { if (!stopped && !fresh(monoNowUs())) invalidate("sample_stale"); });
+  }
+
   function start() {
     if (timer || stopped) return;
-    timer = setInterval(() => {
-      void sampleOnce().finally(() => { if (!stopped && !fresh(monoNowUs())) invalidate("sample_stale"); });
-    }, periodMs);
+    timer = setInterval(tick, periodMs);
     if (typeof timer.unref === "function") timer.unref();
   }
   function stop() { stopped = true; if (timer) { clearInterval(timer); timer = null; } }
 
   return Object.freeze({
-    sampleOnce, currentInterval, fresh, healthy, invalidate, start, stop,
+    sampleOnce, currentInterval, fresh, healthy, invalidate, start, stop, tick,
     get invalidatedReason() { return invalidated; },
-    stats() { return { healthy: healthy(monoNowUs()), invalidatedReason: invalidated, lastGoodAtMonoUs: lastGood ? lastGood.atMonoUs : null }; },
+    stats() { return { healthy: healthy(monoNowUs()), invalidatedReason: invalidated, lastGoodAtMonoUs: lastGood ? lastGood.atMonoUs : null, inFlight, launchedTicks, skippedTicks }; },
   });
 }

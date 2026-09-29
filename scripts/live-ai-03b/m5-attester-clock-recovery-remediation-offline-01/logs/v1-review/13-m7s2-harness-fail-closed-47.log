@@ -1,0 +1,52 @@
+run-all under test:     /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/rw/scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/tests/run-all-m7s2.sh  sha256=9851dc5962d12318513bae8fb482cdada22a54575dd88e8744b8cdf903c7a51a
+predecessor under test: /tmp/claude-0/-home-user/7f5e9877-53b5-5778-a83b-c2387c48ae0d/scratchpad/m5acr/rw/scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/tests/run-predecessor.sh  sha256=cccae893d5d49cbca4ee33d7223fa2bb3d65a065bb334ee22e2cb128b580d942
+── run-all-m7s2.sh ──
+  OK        run-all RA1-all-contracts-satisfied → exit 0 (expected 0)
+  OK        run-all RA1-all-contracts-satisfied attribution: RESULT: PASS (10/10), no FAIL line
+  OK        run-all RA2-gateway-proof-fails → exit 1 (expected nonzero)
+  OK        run-all RA2-gateway-proof-fails attribution: exactly one FAIL on 'B '; RESULT: FAIL
+  OK        run-all RA3a-unit-fails → exit 1 (expected nonzero)
+  OK        run-all RA3a-unit-fails attribution: exactly one FAIL on 'C '; RESULT: FAIL
+  OK        run-all RA3b-unit-exit0-but-1-failed → exit 1 (expected nonzero)
+  OK        run-all RA3b-unit-exit0-but-1-failed attribution: exactly one FAIL on 'C '; RESULT: FAIL
+  OK        run-all RA4a-PG16-SKIPPED-exit2 → exit 1 (expected nonzero)
+  OK        run-all RA4a-PG16-SKIPPED-exit2 attribution: exactly one FAIL on 'D '; RESULT: FAIL
+  OK        run-all RA4b-PG18-SKIPPED-exit0 → exit 1 (expected nonzero)
+  OK        run-all RA4b-PG18-SKIPPED-exit0 attribution: exactly one FAIL on 'E '; RESULT: FAIL
+  OK        run-all RA4c-PG18-binaries-unavailable → exit 1 (expected nonzero)
+  OK        run-all RA4c-PG18-binaries-unavailable attribution: exactly one FAIL on 'E '; RESULT: FAIL
+  OK        run-all RA4d-PG18-run-reports-PG16 → exit 1 (expected nonzero)
+  OK        run-all RA4d-PG18-run-reports-PG16 attribution: exactly one FAIL on 'E '; RESULT: FAIL
+  OK        run-all RA4e-PG16-no-lifecycle-summary → exit 1 (expected nonzero)
+  OK        run-all RA4e-PG16-no-lifecycle-summary attribution: exactly one FAIL on 'D '; RESULT: FAIL
+  OK        run-all RA4f-PG18-59-of-60 → exit 1 (expected nonzero)
+  OK        run-all RA4f-PG18-59-of-60 attribution: exactly one FAIL on 'E '; RESULT: FAIL
+  OK        run-all RA4g-PG16-exit1 → exit 1 (expected nonzero)
+  OK        run-all RA4g-PG16-exit1 attribution: exactly one FAIL on 'D '; RESULT: FAIL
+  OK        run-all RA5a-preflight-CLI-exit9 → exit 1 (expected nonzero)
+  OK        run-all RA5a-preflight-CLI-exit9 attribution: exactly one FAIL on 'F CLI v2-preflight'; RESULT: FAIL
+  OK        run-all RA5b-executor-CLI-exit0 → exit 1 (expected nonzero)
+  OK        run-all RA5b-executor-CLI-exit0 attribution: exactly one FAIL on 'F CLI v2-trusted-activation-executor'; RESULT: FAIL
+  OK        run-all RA5c-probe-CLI-exit9 → exit 1 (expected nonzero)
+  OK        run-all RA5c-probe-CLI-exit9 attribution: exactly one FAIL on 'F CLI v2-first-text-probe'; RESULT: FAIL
+  OK        run-all RA6a-reader-entrypoint-exit9 → exit 1 (expected nonzero)
+  OK        run-all RA6a-reader-entrypoint-exit9 attribution: exactly one FAIL on 'G '; RESULT: FAIL
+  OK        run-all RA6b-serving-runtime-exit0 → exit 1 (expected nonzero)
+  OK        run-all RA6b-serving-runtime-exit0 attribution: exactly one FAIL on 'H '; RESULT: FAIL
+  OK        run-all RA7-first-check-fails-all-later-pass → exit 1 (expected nonzero)
+  OK        run-all RA7-first-check-fails-all-later-pass attribution: exactly one FAIL on 'A '; RESULT: FAIL
+  OK        run-all RA7 later PASS lines do not produce a success verdict
+── run-predecessor.sh (frozen live-ai-03b suites discovered from the real repo: 20) ──
+  OK        predecessor PR8-all-suites-pass → exit 0 (expected 0) :: predecessor suites: 44/44 passed; suite failures: 0; required-setup failures: 0; expected inventory: 44
+  OK        predecessor PR8-all-suites-pass attribution: /^RESULT: PASS \(44/44 suites, 0 setup failures\)/
+  OK        predecessor PR9a-one-repo-suite-fails → exit 1 (expected nonzero) :: predecessor suites: 43/44 passed; suite failures: 1; required-setup failures: 0; expected inventory: 44
+  OK        predecessor PR9a-one-repo-suite-fails attribution: /^FAIL\(1\) tests/live-ai/live-ai-03b.test.js/
+  OK        predecessor PR9b-frozen-V1-runtime-suite-fails → exit 1 (expected nonzero) :: predecessor suites: 43/44 passed; suite failures: 1; required-setup failures: 0; expected inventory: 44
+  OK        predecessor PR9b-frozen-V1-runtime-suite-fails attribution: /^FAIL\(1\) scripts/live-ai-03b/trusted-executor-runtime-01/tests/runtime-integration.test.mjs/
+  OK        predecessor PR9c-step1-localpg-fails → exit 1 (expected nonzero) :: predecessor suites: 42/44 passed; suite failures: 2; required-setup failures: 0; expected inventory: 44
+  OK        predecessor PR9c-step1-localpg-fails attribution: /^FAIL\(1\) .*m7-localpg.test.sh \(PG16\)/
+  OK        predecessor PR10-historical-checkout-bootstrap-fails → exit 1 (expected nonzero) :: predecessor suites: 44/44 passed; suite failures: 0; required-setup failures: 1; expected inventory: 44
+  OK        predecessor PR10-historical-checkout-bootstrap-fails attribution: /^SETUP-FAIL\(128\) historical 9270c282 checkout/
+  OK        predecessor PR11-suite-inventory-shrinks → exit 1 (expected nonzero) :: predecessor suites: 43/43 passed; suite failures: 0; required-setup failures: 0; expected inventory: 44
+  OK        predecessor PR11-suite-inventory-shrinks attribution: /^INVENTORY-FAIL  ran 43 suites, expected exactly 44/
+harness-fail-closed: 47 passed, 0 failed

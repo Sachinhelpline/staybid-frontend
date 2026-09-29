@@ -1,0 +1,16 @@
+# BASELINE hashes — commit f5ec5807014442884c1d156c51a4edd1563b25bd (identical runtime bytes at deployed f48936f067a7fc087d436583a02eccb2ab53f720)
+# path  git-blob  sha256
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs  5e3d16332af936ab172c5b69d33ac2970e5066e0  d39eb882926534b18971a13baff795f6573493024e47a50fe945d384894c22e0
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs  1cd356c6ac69f20037af9b54ec48ba3987729b5b  392de11175f3a8b68a308e31d9e1389aa63c46400486c3de367f4fbcdef7d9b2
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs  bba398f07c9fd97725d48feff8909326aec83f3d  fc163c432c98153ae227bcdc1fda1afdbe24057b09732fd5644c2bdeb95fa867
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs  36a193adec97f85720eea8f21ac88d808d7b527e  a7d48047cdea0f7bf0e5d64cb84133fc31c65953276a1d176ecbf376bc1b93ba
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-entrypoint-attester.mjs  acd1c31dff149467faa5f7c0b4894839b824b909  eaad4603610c4691433f478f6ac871a4bdc66237d7891d8bff73474e71e88437
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/reader-bootstrap.mjs  eb547bb69dad6b5c6f8becdb4988ef364cd8d03d  a6d5b75d00e035a8e8f66f818e6a6a0add72f3c506d88c116439c0519fb0d683
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-reader.mjs  470eb5bb7f1a784ea9577af69b8aefb0959e2aef  513b5f258400e873041f5200c388a47e4ebceeb4db1e5d3f07baa71766034268
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attestation-channel-v2.mjs  cacc2c0cb25f4f70dd17594ec365dbd4f22a0a36  f30d01598fd97cee7888e06833a52ebaae35680636925e109ec6b1209c6392fa
+scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/private-peer-resolver.mjs  967d81a721e76e339274c11630a7401b29305ccc  bb2f8d1d07cf6124a6f901ea4f1f6b18174fb68dda408e8a9a8cbc10d7617282
+scripts/live-ai-03b/private-reader-attester-offline-01/observer-connection.mjs  632a3b624087d4d268e969b1ba75e3a9c1090f80  37b9672535291e5444bd6b10aea8700be1782bc310a877bbf707ba731015c1cc
+scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-session.mjs  c24a2781b7b5f435edd653fc7fc29b84160df72f  064021ba88e39da431249a4b5b86a2313a787c7b1c35f0190587270741b1d011
+scripts/live-ai-03b/private-reader-attester-offline-01/signing-adapter.mjs  a21a50f5e30d4f585e324234c44a4fbdce4ea52b  741bc14b3e634c7b657c05c2b6d3b42c67f047c606453ed6a3fb266cb39d2e65
+scripts/live-ai-03b/private-reader-attester-offline-01/target-binding.mjs  198d4dc66b048c3b9580afa1da14075a9b8d892a  6ea5cde145d8db68286bbde8dc30cbf13040ba2b32c09bb1905e1170945215b0
+scripts/live-ai-03b/private-reader-attester-offline-01/evidence-evaluator.mjs  543fbae3e3da5509199d878cdbebafcdf7447063  c79e7177d2ef481960d87c6a657d87f41fa1d7a0d09ff04924b1d31aea47c8e2

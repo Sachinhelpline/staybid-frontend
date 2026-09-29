@@ -1,0 +1,16 @@
+  ok   B0 HEAD is the baseline commit (candidate changes are uncommitted working-tree edits only)
+  ok   B1 tracked changes vs baseline are EXACTLY the 5 allowed runtime files
+  ok   B2 every untracked file lives in the new evidence directory only
+  ok   B3 the 9 protected runtime files are byte-identical to the baseline (reader/v2 channel/peer/observer/session/signing/target/evidence)
+  ok   B4 nothing is staged; no commit was made
+  ok   B5 frozen clock constants unchanged (RTT 100, discrepancy 10, service 250, pairwise 500, ceiling 600, 5/30, 1 s, 2 s)
+  ok   B6 v2 request budget + wire codes unchanged (1900 ms)
+  ok   B7 attester bootstrap version string + exit codes unchanged
+  ok   B8 the changed files import only built-ins already in use + in-tree modules (no network/child_process/fs/new deps)
+  ok   B9 no secret-looking literal added (no DSN, no key/secret assignment, no rzp_ key)
+  ok   B10 no Railway / provider / gateway surface introduced by the diff
+  ok   B11 exact-host peer allowlist, observer provider, signer and anchor wiring unchanged in the production composition
+  changed vs prior candidate: attester-bootstrap.mjs clock-gate.mjs production-attester.mjs production-db-clock.mjs
+  ok   B12 delta B (prior candidate → revised) touches only clock-gate / production-db-clock / attester-bootstrap / production-attester; the entrypoint is byte-identical to the prior candidate
+  protected blobs: reader-bootstrap.mjs=eb547bb69dad production-reader.mjs=470eb5bb7f1a attestation-channel-v2.mjs=cacc2c0cb25f private-peer-resolver.mjs=967d81a721e7 observer-connection.mjs=632a3b624087 reader-session.mjs=c24a2781b7b5 signing-adapter.mjs=a21a50f5e30d target-binding.mjs=198d4dc66b04 evidence-evaluator.mjs=543fbae3e3da
+m5acr-boundary: 13 passed, 0 failed (checks run: 13, expected: 13)

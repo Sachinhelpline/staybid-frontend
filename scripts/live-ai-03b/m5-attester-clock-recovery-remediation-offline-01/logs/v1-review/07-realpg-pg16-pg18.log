@@ -1,0 +1,56 @@
+  server_version=16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+  ok   R0 attester up over a REAL pg session: startup gate + seed passed, signing ready
+  ok   R1 exactly one physical clock session serves the attester monitor
+  ok   R2 a valid request is signed before the stall
+(node:15396) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ok   R3 the stall invalidated signing (clock_invalidated)
+  ok   R4 OLD: pg emitted the concurrent-query DeprecationWarning (≥3 overlapping query() on ONE client)
+  ok   R5 OLD: 12 s later the monitor is healthy again …
+  ok   R6 OLD: … yet signing is still disabled and a valid request gets 'unavailable' (permanent latch)
+  ok   R7 OLD: the stalled session was reused, never retired (same backend still first)
+m5acr-realpg[old]: 8 passed, 0 failed (checks run: 8, expected: 8)
+  server_version=16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+  ok   R0 attester up over a REAL pg session: startup gate + seed passed, signing ready
+  ok   R1 exactly one physical clock session serves the attester monitor
+  ok   R2 a valid request is signed before the stall
+  ok   R3 the stall invalidated signing (clock_invalidated)
+  ok   R4 NEW: NO pg concurrent-query DeprecationWarning (never >1 query on a physical)
+  ok   R5 NEW: the stalled session was RETIRED (unresolved probe) — never re-queried
+  ok   R6 NEW: the next probe opened a FRESH session (new backend pid serves the clock)
+  ok   R7 NEW: the retired session was actually closed (old backend gone after it resumed)
+  ok   R8 NEW: signing restored AUTOMATICALLY with the production backoff (no manual regate, no restart)
+  ok   R9 NEW: a valid request after recovery is signed
+  ok   R10 NEW: the recovery is visible as sanitized markers
+  ok   R11 NEW reader sampler: normal sample on the reader's own session
+  ok   R12 NEW reader sampler: during the stall samples fail closed (db_probe_failed) and later ones issue NO query
+  ok   R13 NEW reader sampler: after the stall clears, sampling resumes on the SAME session; still no pg warning
+m5acr-realpg[new]: 14 passed, 0 failed (checks run: 14, expected: 14)
+  server_version=18.4
+  ok   R0 attester up over a REAL pg session: startup gate + seed passed, signing ready
+  ok   R1 exactly one physical clock session serves the attester monitor
+  ok   R2 a valid request is signed before the stall
+(node:15481) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ok   R3 the stall invalidated signing (clock_invalidated)
+  ok   R4 OLD: pg emitted the concurrent-query DeprecationWarning (≥3 overlapping query() on ONE client)
+  ok   R5 OLD: 12 s later the monitor is healthy again …
+  ok   R6 OLD: … yet signing is still disabled and a valid request gets 'unavailable' (permanent latch)
+  ok   R7 OLD: the stalled session was reused, never retired (same backend still first)
+m5acr-realpg[old]: 8 passed, 0 failed (checks run: 8, expected: 8)
+  server_version=18.4
+  ok   R0 attester up over a REAL pg session: startup gate + seed passed, signing ready
+  ok   R1 exactly one physical clock session serves the attester monitor
+  ok   R2 a valid request is signed before the stall
+  ok   R3 the stall invalidated signing (clock_invalidated)
+  ok   R4 NEW: NO pg concurrent-query DeprecationWarning (never >1 query on a physical)
+  ok   R5 NEW: the stalled session was RETIRED (unresolved probe) — never re-queried
+  ok   R6 NEW: the next probe opened a FRESH session (new backend pid serves the clock)
+  ok   R7 NEW: the retired session was actually closed (old backend gone after it resumed)
+  ok   R8 NEW: signing restored AUTOMATICALLY with the production backoff (no manual regate, no restart)
+  ok   R9 NEW: a valid request after recovery is signed
+  ok   R10 NEW: the recovery is visible as sanitized markers
+  ok   R11 NEW reader sampler: normal sample on the reader's own session
+  ok   R12 NEW reader sampler: during the stall samples fail closed (db_probe_failed) and later ones issue NO query
+  ok   R13 NEW reader sampler: after the stall clears, sampling resumes on the SAME session; still no pg warning
+m5acr-realpg[new]: 14 passed, 0 failed (checks run: 14, expected: 14)

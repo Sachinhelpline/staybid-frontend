@@ -1,0 +1,640 @@
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs
+index bba398f..3a0eff3 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attester-bootstrap.mjs
+@@ -8,15 +8,48 @@
+ // COMPLETE fresh startup-grade clock pass (regate), not a single good sample. Anchor/observer may be valid
+ // before signing — a valid anchor proves target identity only, never clock safety.
+ //
++// M5 clock-recovery remediation: every clock invalidation immediately disables signing, sets CLOCK_INVALID and
++// rotates the generation, then a bounded, SERIALIZED recovery controller (opt-in `autoRecover`; the production
++// composition enables it) re-runs the COMPLETE startup-grade gate with deterministic backoff. Recovery re-enables
++// signing only after: a fresh 5-consecutive-sample gate whose samples are bound to one unchanged invalidation
++// epoch (and to zero interleaved monitor failures), the request-budget QUIESCENCE floor (so no request accepted
++// before the invalidation can still be live), a fresh monitor seed, and a final synchronous recheck. A PEER
++// invalidation (unsafe refresh / identity change) is a separate sticky latch: never restored by clock recovery.
++//
+ // Offline-test boundary: takeSampleFn / observerProvider / signer / clocks / peer CIDRs are injected. A future
+ // live wiring (real dedicated clock session, observer credential, DNS peer resolver) is a separate gate.
+ // ─────────────────────────────────────────────────────────────────────────
++import { performance } from "node:perf_hooks";
+ import { runStartupClockGate, createClockMonitor } from "./clock-gate.mjs";
+-import { startV2AttestationServer } from "./attestation-channel-v2.mjs";
++import { startV2AttestationServer, V2_REQUEST_BUDGET_MS } from "./attestation-channel-v2.mjs";
+ import { STATES, createBootGeneration } from "./bootstrap-state.mjs";
++import { serviceGateOk } from "./clock-interval.mjs";
+ 
+ export const ATTESTER_BOOTSTRAP_VERSION = "reader-attester-bootstrap-v1";
+ export const EXIT = Object.freeze({ unprovisioned: 70, clock_lost: 74 });
++// Deterministic recovery backoff (ms) for attempt 1..5; every later attempt waits the last value (60 s).
++export const RECOVERY_BACKOFF_MS = Object.freeze([5000, 10000, 20000, 40000, 60000]);
++// A re-enable may happen no earlier than lastInvalidation + V2 request budget + this margin: any request accepted
++// before the invalidation has then provably lost its authority window (ctx deadline + server budget timer).
++export const RECOVERY_QUIESCENCE_MARGIN_MS = 250;
++export const RECOVERY_QUIESCENCE_MS = V2_REQUEST_BUDGET_MS + RECOVERY_QUIESCENCE_MARGIN_MS;
++
++const SAFE_REASON = /^[a-z0-9_]{1,48}$/;
++/** Map an invalidation reason to a fixed, non-sensitive class (peer resolver detail is never propagated). */
++function peerClassOf(reason) {
++  const r = typeof reason === "string" ? reason : "";
++  if (r.startsWith("peer_identity_changed")) return "peer_identity_changed";
++  if (r.startsWith("peer_unsafe")) return "peer_unsafe";
++  return "peer_other";
++}
++export function reasonClassOf(reason) {
++  const r = typeof reason === "string" ? reason : "";
++  if (r.startsWith("peer_") && !SAFE_REASON.test(r)) return peerClassOf(r);   // e.g. "peer_unsafe:<resolver code>"
++  return SAFE_REASON.test(r) ? r : "other";
++}
++const isPeerReason = (reason) => typeof reason === "string" && reason.startsWith("peer_");
++const defaultSetTimer = (fn, ms) => { const t = setTimeout(fn, ms); if (t && typeof t.unref === "function") t.unref(); return t; };
++const defaultClearTimer = (t) => clearTimeout(t);
+ 
+ /**
+  * Start the attester bootstrap.
+@@ -29,72 +62,227 @@ export const EXIT = Object.freeze({ unprovisioned: 70, clock_lost: 74 });
+  * @param opts.peerCidrs exact-host allowlist for the reader peer (from the private-peer resolver)
+  * @param opts.monoNowUs / opts.nowMs clocks
+  * @param opts.offlineTestBoundary must be true to accept injected deps
++ * @param opts.autoRecover opt-in automatic, serialized clock recovery (default false; production passes true)
++ * @param opts.recoveryBackoffMs deterministic backoff schedule (default RECOVERY_BACKOFF_MS)
++ * @param opts.quiescenceMs re-enable floor after an invalidation (default RECOVERY_QUIESCENCE_MS; never below it
++ *   in production — tests may only RAISE or keep it)
++ * @param opts.setTimer / opts.clearTimer injectable one-shot timers (deterministic tests)
++ * @param opts.heartbeatMs periodic sanitized `state` event (0 = off; production passes 60000)
+  * Returns a control handle, or { started:false, status, reason }.
+  */
+ export async function startAttesterBootstrap(opts) {
+-  const { takeSampleFn, observerProvider, signer, anchor, channelSecret, listen, peerCidrs, monoNowUs, nowMs = Date.now, log = () => {}, offlineTestBoundary = false, onClockLost, startMonitor = true } = opts;
++  const { takeSampleFn, observerProvider, signer, anchor, channelSecret, listen, peerCidrs, monoNowUs, nowMs = Date.now, log = () => {}, offlineTestBoundary = false, onClockLost, startMonitor = true,
++    autoRecover = false, recoveryBackoffMs = RECOVERY_BACKOFF_MS, setTimer = defaultSetTimer, clearTimer = defaultClearTimer, heartbeatMs = 0 } = opts;
+   if (!offlineTestBoundary) return { started: false, status: STATES.UNPROVISIONED, reason: "offline_test_boundary_required" };
+   if (typeof takeSampleFn !== "function" || typeof observerProvider !== "function" || !signer || !anchor || typeof monoNowUs !== "function") {
+     return { started: false, status: STATES.UNPROVISIONED, reason: "attester_bootstrap_deps_incomplete" };
+   }
++  const backoff = Array.isArray(recoveryBackoffMs) && recoveryBackoffMs.length > 0 && recoveryBackoffMs.every((n) => Number.isInteger(n) && n >= 0)
++    ? recoveryBackoffMs.slice() : RECOVERY_BACKOFF_MS.slice();
++  const quiescenceMs = Number.isInteger(opts.quiescenceMs) && opts.quiescenceMs >= RECOVERY_QUIESCENCE_MS ? opts.quiescenceMs : RECOVERY_QUIESCENCE_MS;
++  const localMs = () => performance.now();          // process-monotonic, independent of any injected clock
++
++  const emit = (event, fields) => { try { log(JSON.stringify({ attester: ATTESTER_BOOTSTRAP_VERSION, event, ...(fields || {}) })); } catch {} };
+ 
+   let generation = createBootGeneration();
+   let signingReady = false;
+   let status = STATES.WAITING_FOR_CLOCK;
++  let stopped = false;
++  let epoch = 0;                         // bumps on EVERY invalidation (clock or peer) and on stop
++  let peerInvalid = null;                // sticky: "peer_unsafe" | "peer_identity_changed" | "peer_other"
++  let lastInvalidationAtMs = null;       // localMs() of the last invalidation that could have followed signing
++  let lastReasonClass = null;
++  let monitorFailSeq = 0;                // count of failed monitor samples (binds regate samples to "no interleaved failure")
++  let regating = false;
++  let monitorStarted = false;
++  let server = null;
++  const rc = { timer: null, inFlight: false, attempt: 0, scheduled: 0, started: 0, passed: 0, failed: 0, lastNextDelayMs: null };
++  const inv = { clock: 0, peer: 0 };
++
++  // monitor samples are wrapped only to COUNT failures (the sample itself is passed through unchanged)
++  const monitorTake = async () => {
++    let s; try { s = await takeSampleFn(); } catch { s = { ok: false, reason: "sample_threw" }; }
++    if (!s || s.ok !== true || !serviceGateOk(s)) monitorFailSeq++;
++    return s;
++  };
+ 
+   // (1) startup clock gate — signing stays disabled until it passes
+   const startup = await runStartupClockGate({ takeSampleFn });
+-  if (!startup.ok) { status = STATES.CLOCK_INVALID; }
++  if (!startup.ok) { status = STATES.CLOCK_INVALID; lastReasonClass = reasonClassOf(startup.reason); }
+ 
+   // (2) runtime monitor — invalidation disables signing + voids the generation
+-  const monitor = createClockMonitor({
+-    takeSampleFn, monoNowUs, onInvalid: (reason) => {
+-      signingReady = false; status = STATES.CLOCK_INVALID; generation = createBootGeneration();
+-      log(JSON.stringify({ attester: ATTESTER_BOOTSTRAP_VERSION, event: "clock_invalidated", reason }));
+-      try { if (typeof onClockLost === "function") onClockLost(reason); } catch {}
+-    },
+-  });
++  let inPeer = false;
++  function invalidatePeer(reason) {
++    if (stopped) return false;
++    const peerCls = peerClassOf(reason);
++    const first = peerInvalid === null;
++    if (first) peerInvalid = peerCls;
++    const wasSigning = signingReady;
++    epoch++; inv.peer++;
++    signingReady = false; status = STATES.PEER_INVALID; generation = createBootGeneration();
++    lastInvalidationAtMs = localMs(); lastReasonClass = peerCls;
++    if (rc.timer) { try { clearTimer(rc.timer); } catch {} rc.timer = null; }
++    if (first) {
++      emit("peer_invalidated", { reasonClass: peerCls, recovery: "controlled_restart_required" });
++      emit("signing_disabled", { reasonClass: peerCls, wasSigning });
++    }
++    if (!inPeer) { inPeer = true; try { monitor.invalidate("peer_" + (peerCls === "peer_identity_changed" ? "identity_changed" : "unsafe")); } catch {} inPeer = false; }
++    try { if (typeof onClockLost === "function") onClockLost(peerCls); } catch {}
++    return true;
++  }
++  function onMonitorInvalid(reason) {
++    if (stopped) return;
++    if (isPeerReason(reason)) { if (!inPeer) invalidatePeer(reason); return; }
++    const cls = reasonClassOf(reason);
++    const wasSigning = signingReady;
++    epoch++; inv.clock++;
++    signingReady = false; generation = createBootGeneration();
++    status = peerInvalid !== null ? STATES.PEER_INVALID : STATES.CLOCK_INVALID;
++    lastInvalidationAtMs = localMs(); lastReasonClass = cls;
++    emit("clock_invalidated", { reason: cls, reasonClass: cls });
++    emit("signing_disabled", { reasonClass: cls, wasSigning });
++    try { if (typeof onClockLost === "function") onClockLost(reason); } catch {}
++    scheduleRecovery("clock_invalidated");
++  }
++  const monitor = createClockMonitor({ takeSampleFn: monitorTake, monoNowUs, onInvalid: onMonitorInvalid });
++
++  function signingEnabledNow() { return !stopped && peerInvalid === null && signingReady && monitor.healthy(monoNowUs()); }
++
+   if (startup.ok) {
+     // seed the monitor with a fresh good sample so it is immediately fresh
+     const seed = await monitor.sampleOnce();
+-    if (seed.ok) { signingReady = true; status = STATES.BOOTSTRAP_LISTENING; }
+-    else { status = STATES.CLOCK_INVALID; }
++    if (seed.ok && epoch === 0) { signingReady = true; status = STATES.BOOTSTRAP_LISTENING; }
++    else { signingReady = false; status = peerInvalid !== null ? STATES.PEER_INVALID : STATES.CLOCK_INVALID; if (!seed.ok) lastReasonClass = reasonClassOf(seed.reason); }
+   }
+   // (2b) start the 1 s runtime probe so freshness is maintained and staleness fires onInvalid. Off in
+   // deterministic offline tests (which drive monitor.sampleOnce manually); ON by default for the live path.
+-  if (startMonitor && startup.ok) monitor.start();
++  if (startMonitor && startup.ok) { monitor.start(); monitorStarted = true; }
+ 
+-  // (3) v2 listener — exists regardless; signing is gated by signingEnabled()
+-  let server;
++  // (3) v2 listener — exists regardless; signing is gated by signingEnabled(). The attester clock interval is
++  //     only offered while signing is enabled, so a request that raced an invalidation can never pick up a
++  //     monitor interval that healed before the full recovery completed.
+   try {
+     server = await startV2AttestationServer({
+       channelSecret, listen, observerProvider, signer, anchor,
+-      attesterClockInterval: () => monitor.currentInterval(monoNowUs()),
+-      signingEnabled: () => signingReady && monitor.healthy(monoNowUs()),
++      attesterClockInterval: () => (signingEnabledNow() ? monitor.currentInterval(monoNowUs()) : null),
++      signingEnabled: signingEnabledNow,
+       peerCidrs, nowMs, log, offlineTestBoundary,
+     });
+-  } catch (e) { return { started: false, status: STATES.UNPROVISIONED, reason: "v2_listen_failed", detail: String(e && e.message) }; }
++  } catch (e) { stopped = true; monitor.stop(); return { started: false, status: STATES.UNPROVISIONED, reason: "v2_listen_failed", detail: String(e && e.message) }; }
+ 
+-  // re-gate: a COMPLETE fresh startup pass is required to restore signing after invalidation
+-  async function regate() {
+-    const r = await runStartupClockGate({ takeSampleFn });
++  /**
++   * Re-gate: a COMPLETE fresh startup-grade pass is required to restore signing after a CLOCK invalidation.
++   * Serialized (never concurrent), bound to the invalidation epoch captured at its start, refused while
++   * peer-invalid or stopped, and it re-enables only after the quiescence floor.
++   */
++  async function regateOnce() {
++    if (stopped) return { ok: false, reason: "stopped" };
++    if (peerInvalid !== null) return { ok: false, reason: "peer_invalid" };
++    const startEpoch = epoch;
++    const stale = () => stopped || peerInvalid !== null || epoch !== startEpoch;
++    let failSeq = monitorFailSeq;
++    const guardedTake = async () => {
++      const s = await takeSampleFn();
++      if (stale()) return { ok: false, reason: "epoch_superseded" };
++      if (monitorFailSeq !== failSeq) { failSeq = monitorFailSeq; return { ok: false, reason: "monitor_sample_failed" }; }   // resets the run
++      return s;
++    };
++    const r = await runStartupClockGate({ takeSampleFn: guardedTake });
++    if (stale()) return { ok: false, reason: stopped ? "stopped" : (peerInvalid !== null ? "peer_invalid" : "epoch_superseded") };
+     if (!r.ok) { signingReady = false; status = STATES.CLOCK_INVALID; return { ok: false, reason: r.reason }; }
++    // quiescence floor: no request accepted before the last invalidation may still hold a live authority window
++    if (lastInvalidationAtMs !== null) {
++      const waitMs = Math.ceil(lastInvalidationAtMs + quiescenceMs - localMs());
++      if (waitMs > 0) await new Promise((res) => { const t = setTimeout(res, waitMs); if (t && typeof t.unref === "function") t.unref(); });
++      if (stale()) return { ok: false, reason: stopped ? "stopped" : (peerInvalid !== null ? "peer_invalid" : "epoch_superseded") };
++    }
+     const seed = await monitor.sampleOnce();
++    if (stale()) return { ok: false, reason: stopped ? "stopped" : (peerInvalid !== null ? "peer_invalid" : "epoch_superseded") };
+     if (!seed.ok) { signingReady = false; status = STATES.CLOCK_INVALID; return { ok: false, reason: seed.reason }; }
++    if (monitorFailSeq !== failSeq || !monitor.healthy(monoNowUs())) { signingReady = false; status = STATES.CLOCK_INVALID; return { ok: false, reason: "monitor_unhealthy" }; }
++    if (startMonitor && !monitorStarted) { monitor.start(); monitorStarted = true; }
++    // final SYNCHRONOUS bind (no await between the recheck above and here)
+     generation = createBootGeneration(); signingReady = true; status = STATES.BOOTSTRAP_LISTENING;
+     return { ok: true };
+   }
++  async function regateSerialized() {
++    if (regating) return { ok: false, reason: "recovery_in_flight" };
++    regating = true;
++    try { return await regateOnce(); } catch { return { ok: false, reason: "recovery_threw" }; } finally { regating = false; }
++  }
++  /** Public manual re-gate (unchanged contract; now serialized + epoch-bound). */
++  async function regate() {
++    const r = await regateSerialized();
++    if (r.ok) { if (rc.timer) { try { clearTimer(rc.timer); } catch {} rc.timer = null; } rc.attempt = 0; }
++    return r;
++  }
++
++  // ── bounded, serialized automatic recovery controller ──
++  function scheduleRecovery(trigger) {
++    if (!autoRecover || stopped || peerInvalid !== null || rc.timer || rc.inFlight) return false;
++    const delayMs = backoff[Math.min(rc.attempt, backoff.length - 1)];
++    rc.scheduled++; rc.lastNextDelayMs = delayMs;
++    emit("recovery_scheduled", { attempt: rc.attempt + 1, delayMs, trigger });
++    rc.timer = setTimer(runRecovery, delayMs);
++    return true;
++  }
++  async function runRecovery() {
++    rc.timer = null;
++    if (!autoRecover || stopped || peerInvalid !== null || rc.inFlight) return;
++    if (regating) { scheduleRecovery("regate_busy"); return; }
++    rc.inFlight = true; rc.attempt++; rc.started++;
++    const attempt = rc.attempt;
++    emit("recovery_started", { attempt });
++    let r;
++    try { r = await regateSerialized(); } catch { r = { ok: false, reason: "recovery_threw" }; }
++    rc.inFlight = false;
++    if (stopped) return;
++    if (r.ok) {
++      rc.passed++; rc.attempt = 0;
++      emit("recovery_pass", { attempt });
++      emit("signing_restored", { attempt, generationRotated: true });
++      return;
++    }
++    rc.failed++;
++    const reasonClass = reasonClassOf(r.reason);
++    const nextDelayMs = peerInvalid !== null ? null : backoff[Math.min(rc.attempt, backoff.length - 1)];
++    emit("recovery_fail", { attempt, reasonClass, nextDelayMs });
++    scheduleRecovery("retry");
++  }
++  // a failed STARTUP gate is recovered by the same bounded controller (production); no signing ever happened
++  if (!signingReady && !stopped) scheduleRecovery("startup_gate_failed");
++
++  function snapshot() {
++    return { status, signingReady: signingEnabledNow(), monitorHealthy: monitor.healthy(monoNowUs()), recovering: rc.inFlight || rc.timer !== null,
++      recoveryAttempt: rc.attempt, peerInvalid, lastReasonClass };
++  }
++  let hb = null;
++  if (Number.isInteger(heartbeatMs) && heartbeatMs > 0) {
++    hb = setInterval(() => { const sv = server.stats(); emit("state", { ...snapshot(), requests: sv.requests, signed: sv.signed, refused: sv.refused, clockRefused: sv.clockRefused }); }, heartbeatMs);
++    if (typeof hb.unref === "function") hb.unref();
++  }
+ 
+   return Object.freeze({
+     started: true,
+     status: () => status,
+     address: server.address,
+     generation: () => generation.id,
+-    signingReady: () => signingReady && monitor.healthy(monoNowUs()),
++    signingReady: signingEnabledNow,
+     startupPassed: startup.ok,
+     monitor,               // exposed for deterministic offline driving (sampleOnce / invalidate)
+     regate,
+-    stats: () => ({ status, signingReady, startupPassed: startup.ok, generation: generation.id, server: server.stats(), monitor: monitor.stats() }),
+-    async stop() { status = STATES.STOPPED; monitor.stop(); try { await server.close(); } catch {} return true; },
++    invalidatePeer,
++    peerInvalid: () => peerInvalid,
++    recovery: () => ({ autoRecover, inFlight: rc.inFlight, pending: rc.timer !== null, attempt: rc.attempt, scheduled: rc.scheduled, started: rc.started, passed: rc.passed, failed: rc.failed, lastNextDelayMs: rc.lastNextDelayMs }),
++    stats: () => ({ status, signingReady, startupPassed: startup.ok, generation: generation.id, server: server.stats(), monitor: monitor.stats(),
++      epoch, peerInvalid, invalidations: { ...inv }, lastReasonClass,
++      recovery: { autoRecover, inFlight: rc.inFlight, pending: rc.timer !== null, attempt: rc.attempt, scheduled: rc.scheduled, started: rc.started, passed: rc.passed, failed: rc.failed } }),
++    async stop() {
++      if (!stopped) emit("stopped", {});
++      stopped = true; epoch++; signingReady = false; status = STATES.STOPPED;
++      if (rc.timer) { try { clearTimer(rc.timer); } catch {} rc.timer = null; }
++      if (hb) { clearInterval(hb); hb = null; }
++      monitor.stop(); try { await server.close(); } catch {} return true;
++    },
+   });
+ }
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-entrypoint-attester.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-entrypoint-attester.mjs
+index acd1c31..d28c185 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-entrypoint-attester.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-entrypoint-attester.mjs
+@@ -18,6 +18,45 @@ import { ATTESTER_BOOTSTRAP_VERSION, EXIT } from "./attester-bootstrap.mjs";
+ export { EXIT, ATTESTER_BOOTSTRAP_VERSION, ATTESTER_PRODUCTION_VERSION };
+ export const START_COMMAND = "node scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-entrypoint-attester.mjs";
+ 
++// ── M5 clock-recovery remediation: SAFE production logger ──────────────────────────────────────────────────────
++// The composition's structured JSON events are re-emitted as sanitized markers `M5_ATTESTER_<EVENT> {json}`.
++// Only ALLOWLISTED event names and ALLOWLISTED keys survive; values must be booleans, finite numbers, null, or
++// short strings over a restricted charset — anything else is replaced by "<redacted>". No secret, DSN, env value,
++// token, key, IP address, hostname, SQL or stack can pass (they fail the key allowlist or the value charset).
++export const ATTESTER_LOG_EVENTS = Object.freeze([
++  "startup", "clock_invalidated", "signing_disabled", "recovery_scheduled", "recovery_started", "recovery_pass",
++  "recovery_fail", "signing_restored", "peer_invalidated", "peer_identity_changed", "state", "stopped",
++]);
++export const ATTESTER_LOG_KEYS = Object.freeze([
++  "reason", "reasonClass", "wasSigning", "attempt", "delayMs", "trigger", "nextDelayMs", "generationRotated", "recovery",
++  "status", "signingReady", "monitorHealthy", "recovering", "recoveryAttempt", "peerInvalid", "lastReasonClass",
++  "requests", "signed", "refused", "clockRefused", "started", "composition", "servesPublicDomain",
++]);
++// every legitimate value is one of the composition's own single-case identifiers (e.g. db_probe_failed,
++// BOOTSTRAP_LISTENING); mixed case (base64/JWT-like), punctuation, whitespace and long hex runs are refused
++const SAFE_LOG_STRING = /^(?:[a-z0-9_]{0,48}|[A-Z0-9_]{1,48})$/;
++const IPV4_LIKE = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
++const LONG_HEX_RUN = /[0-9a-fA-F]{16,}/;          // key/token/generation-like material
++function safeLogValue(v) {
++  if (v === null || typeof v === "boolean") return v;
++  if (typeof v === "number") return Number.isFinite(v) ? v : "<redacted>";
++  if (typeof v === "string") return SAFE_LOG_STRING.test(v) && !IPV4_LIKE.test(v) && !LONG_HEX_RUN.test(v) ? v : "<redacted>";
++  return "<redacted>";
++}
++/** Build the safe marker logger. `write(line)` receives exactly one sanitized marker line per accepted event. */
++export function makeSafeAttesterLogger(write) {
++  const out = typeof write === "function" ? write : (line) => { try { process.stdout.write(line + "\n"); } catch {} };
++  return function safeLog(line) {
++    let o; try { o = typeof line === "string" ? JSON.parse(line) : null; } catch { return; }
++    if (!o || typeof o !== "object" || Array.isArray(o)) return;
++    const event = typeof o.event === "string" ? o.event : "";
++    if (!ATTESTER_LOG_EVENTS.includes(event)) return;                // unknown events are dropped, never echoed
++    const clean = {};
++    for (const k of ATTESTER_LOG_KEYS) if (Object.prototype.hasOwnProperty.call(o, k)) clean[k] = safeLogValue(o[k]);
++    try { out("M5_ATTESTER_" + event.toUpperCase() + " " + JSON.stringify(clean)); } catch {}
++  };
++}
++
+ /** Production service composition from process.env (no test injection accepted here). */
+ export async function startAttesterBootstrapService(opts = {}) {
+   if (opts.mode === "offline-test" && opts.offlineTestBoundary === true) {
+@@ -27,8 +66,10 @@ export async function startAttesterBootstrapService(opts = {}) {
+ }
+ 
+ async function main() {
+-  const r = await startAttesterBootstrapService({});
++  const safeLog = makeSafeAttesterLogger((line) => console.log(line));
++  const r = await startAttesterBootstrapService({ log: safeLog });
+   console.log(JSON.stringify({ attester: ATTESTER_BOOTSTRAP_VERSION, composition: ATTESTER_PRODUCTION_VERSION, status: r.status || "unprovisioned", reason: r.reason, servesPublicDomain: false, signingReady: typeof r.signingReady === "function" ? r.signingReady() : false }));
++  safeLog(JSON.stringify({ event: "startup", started: !!r.started, status: typeof r.status === "function" ? r.status() : (r.status || "unprovisioned"), signingReady: typeof r.signingReady === "function" ? r.signingReady() : false, servesPublicDomain: false }));
+   if (!r.started) { process.exitCode = EXIT.unprovisioned; return; }
+   process.on("SIGTERM", () => { Promise.resolve(r.stop && r.stop()).finally(() => process.exit(0)); });
+   process.on("SIGINT", () => { Promise.resolve(r.stop && r.stop()).finally(() => process.exit(0)); });
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs
+index 5e3d163..f5ff00d 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs
+@@ -64,6 +64,12 @@ export function createClockMonitor(deps) {
+   let invalidated = null;       // reason string once invalid, until a fresh good sample
+   let stopped = false;
+   let timer = null;
++  // M5 clock-recovery remediation — SINGLE-FLIGHT scheduler. `inFlight` counts monitor samples whose
++  // takeSampleFn() is still unresolved (scheduled or manual). The 1 s scheduler NEVER launches a new probe while
++  // one is unresolved (no overlap, no queue build-up); a skipped tick is never a measurement — it only runs the
++  // independent freshness WATCHDOG, so a stalled probe still fails closed once the last good sample is stale.
++  let inFlight = 0;
++  let launchedTicks = 0, skippedTicks = 0;
+ 
+   function invalidate(reason) {
+     lastGood = null;
+@@ -75,7 +81,9 @@ export function createClockMonitor(deps) {
+ 
+   async function sampleOnce() {
+     if (stopped) return { ok: false, reason: "monitor_stopped" };
+-    let s; try { s = await takeSampleFn(); } catch { s = { ok: false, reason: "sample_threw" }; }
++    inFlight++;
++    let s;
++    try { s = await takeSampleFn(); } catch { s = { ok: false, reason: "sample_threw" }; } finally { inFlight--; }
+     if (!s || s.ok !== true) { invalidate(s && s.reason ? s.reason : "sample_invalid"); return { ok: false, reason: (s && s.reason) || "sample_invalid" }; }
+     if (!serviceGateOk(s)) { invalidate("service_bound_exceeded"); return { ok: false, reason: "service_bound_exceeded" }; }
+     lastGood = { interval: { L: s.L, U: s.U, absBoundUs: s.absBoundUs }, atMonoUs: monoNowUs() };
+@@ -83,18 +91,28 @@ export function createClockMonitor(deps) {
+     return { ok: true, interval: lastGood.interval };
+   }
+ 
++  /** One scheduler period. Exported for deterministic tests; production drives it from the 1 s interval. */
++  function tick() {
++    if (stopped) return;
++    if (inFlight > 0) {                    // a probe is still unresolved: never start a second one
++      skippedTicks++;
++      if (!fresh(monoNowUs())) invalidate("sample_stale");   // watchdog: stale evidence fails closed now
++      return;
++    }
++    launchedTicks++;
++    void sampleOnce().finally(() => { if (!stopped && !fresh(monoNowUs())) invalidate("sample_stale"); });
++  }
++
+   function start() {
+     if (timer || stopped) return;
+-    timer = setInterval(() => {
+-      void sampleOnce().finally(() => { if (!stopped && !fresh(monoNowUs())) invalidate("sample_stale"); });
+-    }, periodMs);
++    timer = setInterval(tick, periodMs);
+     if (typeof timer.unref === "function") timer.unref();
+   }
+   function stop() { stopped = true; if (timer) { clearInterval(timer); timer = null; } }
+ 
+   return Object.freeze({
+-    sampleOnce, currentInterval, fresh, healthy, invalidate, start, stop,
++    sampleOnce, currentInterval, fresh, healthy, invalidate, start, stop, tick,
+     get invalidatedReason() { return invalidated; },
+-    stats() { return { healthy: healthy(monoNowUs()), invalidatedReason: invalidated, lastGoodAtMonoUs: lastGood ? lastGood.atMonoUs : null }; },
++    stats() { return { healthy: healthy(monoNowUs()), invalidatedReason: invalidated, lastGoodAtMonoUs: lastGood ? lastGood.atMonoUs : null, inFlight, launchedTicks, skippedTicks }; },
+   });
+ }
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs
+index 36a193a..bb42b85 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-attester.mjs
+@@ -22,6 +22,7 @@ import { makeObserverPgFactory, establishObserverSession } from "../private-read
+ 
+ export const ATTESTER_PRODUCTION_VERSION = "reader-attester-bootstrap-production-v1";
+ export const ATTESTER_PROOF_LIFETIME_MS = 60000;   // ≤ accepted 5-min ceiling
++export const ATTESTER_HEARTBEAT_MS = 60000;        // sanitized periodic state marker (M5 remediation)
+ 
+ /**
+  * Compose + start the attester bootstrap.
+@@ -50,11 +51,13 @@ export async function composeAttesterProduction(opts = {}) {
+   // the private-peer allowlist for the READER, resolved + SUPERVISED from its .railway.internal identity (§21/§22).
+   // An unsafe refresh keeps the last-good set (never widens) and invalidates signing; a validated peer-identity
+   // change invalidates signing too (the operator/orchestrator performs the controlled listener recreation).
++  // M5 remediation: both route to the attester's STICKY peer latch (invalidatePeer) — a peer invalidation is
++  // never auto-restored by clock recovery; it requires a controlled restart.
+   let attRef = null;
+   const supervisor = createPeerSupervisor({
+     serviceName: cfg.readerServiceName,
+-    onUnsafe: (reason) => { try { if (attRef) attRef.monitor.invalidate("peer_unsafe:" + reason); } catch {} },
+-    onChange: () => { try { if (attRef) attRef.monitor.invalidate("peer_identity_changed"); } catch {} log(JSON.stringify({ attester: ATTESTER_PRODUCTION_VERSION, event: "peer_identity_changed" })); },
++    onUnsafe: (reason) => { try { if (attRef) attRef.invalidatePeer("peer_unsafe:" + reason); } catch {} },
++    onChange: () => { try { if (attRef) attRef.invalidatePeer("peer_identity_changed"); } catch {} log(JSON.stringify({ attester: ATTESTER_PRODUCTION_VERSION, event: "peer_identity_changed" })); },
+   });
+   const first = await supervisor.refreshOnce();
+   if (!first.ok) return { started: false, status: STATES.UNPROVISIONED, reason: "reader_peer_" + first.reason };
+@@ -84,6 +87,8 @@ export async function composeAttesterProduction(opts = {}) {
+       monoNowUs: sampler.monoNowUs,
+       offlineTestBoundary: true,   // internal composition seam; signing still requires the full clock/anchor/observer/request gates
+       log,
++      autoRecover: true,           // M5 remediation: bounded, serialized, startup-grade automatic clock recovery
++      heartbeatMs: ATTESTER_HEARTBEAT_MS,
+     });
+   } catch (e) { try { await sampler.close(); } catch {} return { started: false, status: STATES.UNPROVISIONED, reason: "attester_bootstrap_start_failed" }; }
+   if (!att.started) { try { await sampler.close(); } catch {} return att; }
+diff --git a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs
+index 1cd356c..8f85aac 100644
+--- a/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs
++++ b/scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs
+@@ -27,52 +27,121 @@ export const PRODUCTION_CLOCK_VERSION = "reader-bootstrap-production-clock-v1";
+  * @param deps.connectTimeoutMs / deps.deadlineMs bounds
+  * Returns { takeSampleFn, monoNowUs, close }.
+  */
++// ── M5 clock-recovery remediation — connection-level SINGLE-FLIGHT helpers ─────────────────────────────────────
++// Invariant: AT MOST ONE clock DB query is ever outstanding on a given physical connection. A probe that is still
++// unresolved when its bounded deadline fires (or that failed at the driver) RETIRES its physical: it is marked
++// dead + detached immediately and closed within a bound; the next probe opens a fresh, re-hardened read-only
++// session. No query is ever issued on a physical that still has unresolved work, and nothing queues behind it.
++export const CLOCK_CLOSE_DEADLINE_MS = 2000;     // bound on awaiting a retired session's close
++function boundedClose(p, ms, onTimeout) {
++  let t; const d = new Promise((res) => { t = setTimeout(() => { try { onTimeout(); } catch {} res(false); }, Math.max(1, ms)); });
++  const c = Promise.resolve().then(() => p.close()).then(() => true, () => true);
++  return Promise.race([c, d]).finally(() => clearTimeout(t));
++}
++function withHardenDeadline(promise, ms) {
++  let t; const d = new Promise((_, rej) => { t = setTimeout(() => rej(new Error("clock_session_harden_deadline")), Math.max(1, ms)); });
++  return Promise.race([promise, d]).finally(() => clearTimeout(t));
++}
++/** Promise-chain serializer: calls run strictly one after another (no overlap, bounded by the caller's cadence). */
++function makeSerializer() {
++  let tail = Promise.resolve();
++  return (fn) => { const run = tail.then(fn, fn); tail = run.then(() => {}, () => {}); return run; };
++}
++
+ export function makeProductionClockSampler(deps) {
+   const { env, connectionStringEnvName, expectedFingerprint, readerRole = READER_ROLE,
+-    statementTimeoutMs = 2000, connectTimeoutMs = 5000, deadlineMs = DEFAULT_PROBE_DEADLINE_MS } = deps || {};
++    statementTimeoutMs = 2000, connectTimeoutMs = 5000, deadlineMs = DEFAULT_PROBE_DEADLINE_MS,
++    closeDeadlineMs = CLOCK_CLOSE_DEADLINE_MS, physicalFactory } = deps || {};
+   if (!env || typeof env !== "object") throw new Error("clock_sampler_env_required");
+   if (typeof connectionStringEnvName !== "string" || !connectionStringEnvName) throw new Error("clock_sampler_conn_name_required");
+   if (typeof expectedFingerprint !== "string" || !/^[0-9a-f]{64}$/.test(expectedFingerprint)) throw new Error("clock_sampler_fingerprint_required");
+   if (!Number.isInteger(statementTimeoutMs) || statementTimeoutMs < 1) throw new Error("clock_sampler_statement_timeout_invalid");
+ 
+-  const factory = makePgPhysicalFactory({ env, connectionStringEnvName, connectTimeoutMs });
++  // `physicalFactory` is a TEST-ONLY seam (a fake pg-like physical); production always uses the accepted factory.
++  const factory = physicalFactory && typeof physicalFactory.open === "function"
++    ? physicalFactory : makePgPhysicalFactory({ env, connectionStringEnvName, connectTimeoutMs });
+   let physical = null;
+   let opening = null;
++  const retired = new WeakSet();          // physicals that must never carry another query
++  const active = new WeakMap();           // physical → outstanding query count (asserted ≤ 1)
++  const st = { opened: 0, openFailures: 0, retiredUnresolved: 0, retiredFailed: 0, closeTimeouts: 0,
++    cancelledBeforeQuery: 0, samples: 0, maxConcurrentQueriesPerPhysical: 0, concurrencyViolations: 0 };
++
++  async function run(p, sql, params) {    // the ONLY place a query reaches a physical
++    const n = (active.get(p) || 0) + 1;
++    if (n > 1) { st.concurrencyViolations++; throw new Error("clock_physical_busy"); }   // defence in depth: never overlap
++    active.set(p, n); if (n > st.maxConcurrentQueriesPerPhysical) st.maxConcurrentQueriesPerPhysical = n;
++    try { return await p.query(sql, params); } finally { active.set(p, (active.get(p) || 1) - 1); }
++  }
++  function usable(p) { return !!p && !retired.has(p) && !(typeof p.isDead === "function" && p.isDead()); }
++  function retire(p, why) {
++    if (!p || retired.has(p)) return;
++    retired.add(p);
++    if (why === "unresolved") st.retiredUnresolved++; else st.retiredFailed++;
++    if (physical === p) physical = null;                                  // detach now; next probe reopens
++    void boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }); // close() marks dead synchronously first
++  }
+ 
+   async function ensure() {
+-    if (physical && !physical.isDead()) return physical;
++    if (usable(physical)) return physical;
+     if (opening) return opening;
+     physical = null;
+     opening = (async () => {
+-      const p = await factory.open();                       // throws reader_db_url_absent / reader_db_connect_failed
++      let p;
++      try { p = await factory.open(); } catch (e) { st.openFailures++; throw e; }   // reader_db_url_absent / reader_db_connect_failed
+       try {
+-        await p.query(LIFECYCLE_SQL.setStatementTimeout, [String(statementTimeoutMs) + "ms"]);
+-        await p.query(LIFECYCLE_SQL.setReadOnly, []);
+-        const ro = await p.query(LIFECYCLE_SQL.readReadOnly, []);
+-        if (!ro || !ro.rows || !ro.rows[0] || ro.rows[0].v !== "on") throw new Error("read_only_not_applied");
+-      } catch (e) { try { await p.close(); } catch {} throw new Error("clock_session_harden_failed"); }
+-      p.onDead(() => { if (physical === p) physical = null; });
++        // each step re-checks retirement, so a harden sequence abandoned at its deadline issues nothing further
++        const step = (sql, params) => { if (retired.has(p)) throw new Error("clock_session_retired"); return run(p, sql, params); };
++        await withHardenDeadline((async () => {
++          await step(LIFECYCLE_SQL.setStatementTimeout, [String(statementTimeoutMs) + "ms"]);
++          await step(LIFECYCLE_SQL.setReadOnly, []);
++          const ro = await step(LIFECYCLE_SQL.readReadOnly, []);
++          if (!ro || !ro.rows || !ro.rows[0] || ro.rows[0].v !== "on") throw new Error("read_only_not_applied");
++        })(), deadlineMs);
++      } catch (e) { st.openFailures++; retired.add(p); void boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }); throw new Error("clock_session_harden_failed"); }
++      if (typeof p.onDead === "function") p.onDead(() => { if (physical === p) physical = null; });
++      st.opened++;
+       physical = p; return p;
+     })();
+     try { return await opening; } finally { opening = null; }
+   }
+ 
+-  // The ONLY SQL this adapter will run is the fixed clock probe. Anything else fails closed.
++  // The ONLY SQL this adapter will run is the fixed clock probe. Anything else fails closed. `attempt` is the
++  // single current sample (samples are serialized); a probe whose deadline already fired is CANCELLED so a late
++  // ensure() can never issue a query after its sample has been abandoned.
++  let attempt = null;
+   const query = async (sql, params) => {
+     if (sql !== DB_CLOCK_QUERY) throw new Error("clock_query_not_permitted");
++    const a = attempt;
+     const p = await ensure();
+-    return p.query(sql, params);
++    if (!a || a.cancelled) { st.cancelledBeforeQuery++; throw new Error("clock_probe_cancelled"); }
++    const rec = { p, settled: false, failed: false };
++    a.rec = rec;
++    try { return await run(p, sql, params); } catch (e) { rec.failed = true; throw e; } finally { rec.settled = true; }
+   };
+   const probe = makeDbClockProbe({ query, readerRole, expectedFingerprint, deadlineMs });
+   const monoNowUs = defaultMonoNowUs(performance);
+   const wallNowMs = () => Date.now();
+-  const takeSampleFn = () => takeSample({ wallNowMs, monoNowUs, probe });
++  const serial = makeSerializer();
++  // Serialized: RTT is measured INSIDE takeSample, i.e. only after this sample holds the single-flight slot.
++  const takeSampleFn = () => serial(async () => {
++    const a = { cancelled: false, rec: null };
++    attempt = a; st.samples++;
++    try { return await takeSample({ wallNowMs, monoNowUs, probe }); }
++    finally {
++      a.cancelled = true; if (attempt === a) attempt = null;
++      const rec = a.rec;
++      if (rec && !rec.settled) retire(rec.p, "unresolved");      // abandoned at the deadline: never reuse
++      else if (rec && rec.failed) retire(rec.p, "failed");       // driver/statement error: reopen fresh
++    }
++  });
+ 
+   return Object.freeze({
+     version: PRODUCTION_CLOCK_VERSION,
+     takeSampleFn,
+     monoNowUs,
+-    async close() { const p = physical; physical = null; if (p) { try { await p.close(); } catch {} } },
++    stats() { return { ...st, hasPhysical: usable(physical), opening: !!opening }; },
++    async close() { const p = physical; physical = null; if (p) { retired.add(p); await boundedClose(p, closeDeadlineMs, () => { st.closeTimeouts++; }); } },
+   });
+ }
+ 
+@@ -80,12 +149,31 @@ export function makeProductionClockSampler(deps) {
+  * Build a clock sampler over an ALREADY-ESTABLISHED read-only physical session (e.g. the reader's own observed
+  * session, so its clock probes and its connection-token identity come from ONE session). Runs ONLY the fixed
+  * clock probe on that session. The caller owns the session lifecycle.
++ *
++ * M5 remediation: samples are SERIALIZED, and while a previous clock probe on this physical is still UNRESOLVED
++ * (abandoned at its deadline) — or the physical is dead — a sample fails closed with the unchanged reason
++ * `db_probe_failed` WITHOUT issuing a query (no second query ever queues behind unresolved work). Once the prior
++ * probe settles, sampling resumes on the same session. The reader's lifecycle/recovery semantics are unchanged.
+  */
+ export function makeClockSamplerOverPhysical(physical, { expectedFingerprint, readerRole = READER_ROLE, deadlineMs = DEFAULT_PROBE_DEADLINE_MS } = {}) {
+   if (!physical || typeof physical.query !== "function") throw new Error("clock_sampler_physical_required");
+   if (typeof expectedFingerprint !== "string" || !/^[0-9a-f]{64}$/.test(expectedFingerprint)) throw new Error("clock_sampler_fingerprint_required");
+-  const query = async (sql, params) => { if (sql !== DB_CLOCK_QUERY) throw new Error("clock_query_not_permitted"); return physical.query(sql, params); };
++  let unresolved = 0;                      // clock probes issued on this physical that have not yet settled
++  const st = { samples: 0, skippedBusy: 0, skippedDead: 0, maxConcurrentQueries: 0 };
++  const query = async (sql, params) => {
++    if (sql !== DB_CLOCK_QUERY) throw new Error("clock_query_not_permitted");
++    if (unresolved > 0) { st.skippedBusy++; throw new Error("clock_physical_busy"); }
++    if (typeof physical.isDead === "function" && physical.isDead()) { st.skippedDead++; throw new Error("clock_physical_dead"); }
++    unresolved++; if (unresolved > st.maxConcurrentQueries) st.maxConcurrentQueries = unresolved;
++    try { return await physical.query(sql, params); } finally { unresolved--; }
++  };
+   const probe = makeDbClockProbe({ query, readerRole, expectedFingerprint, deadlineMs });
+   const monoNowUs = defaultMonoNowUs(performance);
+-  return Object.freeze({ version: PRODUCTION_CLOCK_VERSION, takeSampleFn: () => takeSample({ wallNowMs: () => Date.now(), monoNowUs, probe }), monoNowUs });
++  const serial = makeSerializer();
++  return Object.freeze({
++    version: PRODUCTION_CLOCK_VERSION,
++    takeSampleFn: () => serial(() => { st.samples++; return takeSample({ wallNowMs: () => Date.now(), monoNowUs, probe }); }),
++    monoNowUs,
++    stats() { return { ...st, unresolved }; },
++  });
+ }

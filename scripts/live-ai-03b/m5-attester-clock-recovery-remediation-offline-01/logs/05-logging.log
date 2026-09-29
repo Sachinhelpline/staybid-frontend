@@ -1,0 +1,17 @@
+  ok   L1 an allowlisted event becomes exactly one marker line in the runner grammar
+  ok   L2 marker payload keeps allowlisted keys only (version key dropped)
+  ok   L3 DSN / IP / long-hex / JWT / oversized / object / whitespace values are all redacted
+  ok   L4 non-allowlisted keys are dropped entirely
+  ok   L5 unknown events, non-JSON and non-object lines are dropped (never echoed)
+  ok   L6 NaN/Infinity become <redacted>; booleans/null/finite numbers pass
+  ok   L7 invalidation → recovery emits the ordered marker sequence
+  ok   L8 the periodic heartbeat emits a STATE marker with status/signingReady/monitorHealthy/recovering + counters
+  ok   L9 peer + stop markers emitted (PEER_INVALIDATED, STOPPED)
+  ok   L10 every emitted line matches the runner marker grammar
+  ok   L11 no line contains the channel secret, connection token, key material, generation id, resolver detail or an address
+  ok   L12 every emitted event is in the published allowlist
+  ok   L13 main() passes the safe marker logger into the production composition
+  ok   L14 production composition enables autoRecover and a 60 s heartbeat
+  ok   L15 entrypoint with no provisioning: exit 70; first line is the ORIGINAL startup JSON (same keys)
+  ok   L16 …followed by one sanitized M5_ATTESTER_STARTUP marker (started:false, signingReady:false)
+m5acr-logging: 16 passed, 0 failed (checks run: 16, expected: 16)
