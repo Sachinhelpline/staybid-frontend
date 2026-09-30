@@ -1,0 +1,10 @@
+R1. Accepted reader role (Sections I–III shape) + proposed observer role on a THROWAWAY cluster
+R2. ACCEPTED reader connection + REAL attester observation against real PostgreSQL
+R3. Real PostgreSQL privilege semantics — every drift is detected and refused
+R4. Observer capability boundaries on real PostgreSQL
+R5. Session drift on real PostgreSQL
+
+══════════════════════════════════════════════════════════
+RESULT: 25 passed, 0 failed, 0 skipped  (executed assertions: 25)
+REAL-POSTGRESQL EVIDENCE VERIFICATION (throwaway local cluster): PASS
+SCOPE: local PostgreSQL cluster created and destroyed by this test — NOT AI-STAGING, NOT a live database, NOT hosted-PostgreSQL behaviour.

@@ -1,0 +1,87 @@
+  PASS L00 base = accepted post-Step-1 state; executor-observer role proposal body applies
+  PASS L00b server is PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+  PASS L00c accepted Step-1 post-apply verifier (SQL 08, read-only) passes on the base
+  PASS L01 PRESERVED establishExecutorSession on a REAL executor connection → token
+  PASS L02 accepted post-Step-1 executor state measures CLEAN (distinct executor-observer role)
+  PASS L02b …and CLEAN with the SHARED accepted observer role shape (documented future option; no widening)
+  PASS L03 measured routines == exactly the 4 accepted routines
+  PASS L03b trusted schema USAGE == exactly the two trusted schemas; 0 budget/ledger privileges; no widening
+  PASS L03c re-derived token == the PRESERVED session's token (independent derivation from pg_stat_activity)
+  PASS L04 issuer envelope from a REAL measurement → PRESERVED verifyExecutorAttestation → PASS (verifier unmodified)
+  PASS L05 PRESERVED bindExecutorConnection (identity proof + target binding) → PASS
+  PASS D real drift — budget-table SELECT: issuer REFUSES (drift_budget_table_privilege) and the PRESERVED verifier rejects a force-signed copy (executor_drift_budget_table_privilege)
+  PASS D real drift — budget-table column UPDATE: issuer REFUSES (drift_budget_table_privilege) and the PRESERVED verifier rejects a force-signed copy (executor_drift_budget_table_privilege)
+  PASS D real drift — forbidden allocation table: issuer REFUSES (drift_budget_table_privilege) and the PRESERVED verifier rejects a force-signed copy (executor_drift_budget_table_privilege)
+  PASS D real drift — ledger INSERT: issuer REFUSES (drift_ledger_privilege) and the PRESERVED verifier rejects a force-signed copy (executor_drift_ledger_privilege)
+  PASS D real drift — executor SUPERUSER: issuer REFUSES (drift_superuser) and the PRESERVED verifier rejects a force-signed copy (executor_drift_wrong_role)
+  PASS D real drift — executor CREATEROLE: issuer REFUSES (drift_createrole) and the PRESERVED verifier rejects a force-signed copy (executor_drift_createrole)
+  PASS D real drift — executor CREATEDB: issuer REFUSES (drift_createdb) and the PRESERVED verifier rejects a force-signed copy (executor_drift_createdb)
+  PASS D real drift — executor REPLICATION: issuer REFUSES (drift_replication) and the PRESERVED verifier rejects a force-signed copy (executor_drift_replication)
+  PASS D real drift — executor BYPASSRLS: issuer REFUSES (drift_bypassrls) and the PRESERVED verifier rejects a force-signed copy (executor_drift_bypassrls)
+  PASS D real drift — executor role membership (pg_read_all_data): issuer REFUSES (drift_role_membership) and the PRESERVED verifier rejects a force-signed copy (executor_drift_wrong_role)
+  PASS D real drift — executor role membership (reader): issuer REFUSES (drift_role_membership) and the PRESERVED verifier rejects a force-signed copy (executor_drift_wrong_role)
+  PASS D real drift — schema CREATE on public: issuer REFUSES (drift_schema_create) and the PRESERVED verifier rejects a force-signed copy (executor_drift_schema_create)
+  PASS D real drift — schema CREATE on trusted_v2: issuer REFUSES (drift_schema_create) and the PRESERVED verifier rejects a force-signed copy (executor_drift_schema_create)
+  PASS D real drift — missing trusted-schema USAGE: issuer REFUSES (drift_trusted_schema_usage) and the PRESERVED verifier rejects a force-signed copy (executor_drift_schema_usage)
+  PASS D real drift — extra trusted-schema USAGE: issuer REFUSES (drift_trusted_schema_usage) and the PRESERVED verifier rejects a force-signed copy (executor_drift_schema_usage)
+  PASS D real drift — unexpected other-schema USAGE: issuer REFUSES (drift_unexpected_schema_usage)
+  PASS D real drift — missing expected routine: issuer REFUSES (drift_routine_execute) and the PRESERVED verifier rejects a force-signed copy (executor_drift_routine_execute)
+  PASS D real drift — extra routine EXECUTE (PUBLIC default on a new public function): issuer REFUSES (drift_routine_execute) and the PRESERVED verifier rejects a force-signed copy (executor_drift_routine_execute)
+  PASS D real drift — PUBLIC EXECUTE on a trusted routine: issuer REFUSES (drift_public_or_default_widening) and the PRESERVED verifier rejects a force-signed copy (executor_drift_public_or_default_widening)
+  PASS D real drift — DEFAULT privileges to PUBLIC: issuer REFUSES (drift_public_or_default_widening) and the PRESERVED verifier rejects a force-signed copy (executor_drift_public_or_default_widening)
+  PASS D real drift — DEFAULT privileges to the executor: issuer REFUSES (drift_public_or_default_widening) and the PRESERVED verifier rejects a force-signed copy (executor_drift_public_or_default_widening)
+  PASS D real drift — database CREATE: issuer REFUSES (drift_owner_or_database_authority)
+  PASS D real drift — executor owns an object: issuer REFUSES (drift_owner_or_database_authority)
+  PASS D real drift — reviewed object renamed (schema drift): issuer REFUSES (reviewed_object_absent)
+  PASS D-post every drift reverted → CLEAN again
+  PASS R00 clean real state: 0 extended findings; reviewed ACL-bearing catalog set matched; server major 16
+  PASS R1 real drift — large object SELECT (direct): detected (effective:largeobject:424242|shdepend:a:pg_large), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — large object UPDATE (direct): detected (effective:largeobject:424242), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — large object PUBLIC SELECT: detected (public:largeobject-public:424242), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — large object OWNED by the executor: detected (owner:pg_largeobject_metadata), issuer REFUSES (drift_owner_or_database_authority), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — foreign-data wrapper USAGE (direct): detected (effective:fdw-usage:m7ea_fdw), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — foreign-data wrapper USAGE to PUBLIC: detected (public:fdw-public:m7ea_fdw), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — foreign server USAGE (direct): detected (effective:server-usage:m7ea_srv), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — foreign server USAGE to PUBLIC: detected (public:server-public:m7ea_srv), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — user mapping for the executor: detected (effective:user-mapping:m7ea_srv), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — user mapping for PUBLIC: detected (effective:user-mapping:m7ea_srv), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — foreign server OWNED by the executor: detected (owner:pg_foreign_server), issuer REFUSES (drift_owner_or_database_authority), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — tablespace CREATE (direct): detected (effective:tablespace-create:m7ea_ts), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — tablespace CREATE to PUBLIC: detected (public:tablespace-public:m7ea_ts), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — parameter SET (lo_compat_privileges): detected (effective:parameter:lo_compat_privileges), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — parameter ALTER SYSTEM (work_mem): detected (effective:parameter:work_mem), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — parameter SET to PUBLIC: detected (public:parameter-public:lo_compat_privileges), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — domain USAGE (explicit grant): detected (shdepend:a:pg_type|public:type-acl:public\.m7ea_), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — type USAGE (explicit grant on a PUBLIC-revoked type): detected (shdepend:a:pg_type), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — language USAGE (explicit grant on plpgsql): detected (shdepend:a:pg_language|public:language-acl:plpgs), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — system catalog relation granted (pg_authid SELECT): detected (public:catalog-relation-acl:pg_authid), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — system function granted to PUBLIC (pg_read_file): detected (public:catalog-routine-acl:pg_catalog\.pg_read_f), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — system function granted to the executor (pg_ls_dir): detected (shdepend:a:pg_proc|public:catalog-routine-acl:pg), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — schema CREATE on pg_catalog: detected (effective:schema-create:pg_catalog), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — CREATE on ANOTHER database (postgres): detected (effective:database-create:postgres), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — CONNECT-only explicit grant on another database: detected (database-grant:postgres:CONNECT), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — cross-database table grant (in database postgres): detected (shdepend:a:pg_class:other-db-or-shared), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — role-level setting on the executor: detected (effective:role-setting), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — database-wide lo_compat_privileges = on: detected (public:(lo-compat-privileges|database-setting-lo), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — row-level policy naming the executor: detected (shdepend:r:pg_policy), issuer REFUSES (drift_public_or_default_widening), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — collation OWNED by the executor (new owner class): detected (owner:pg_collation), issuer REFUSES (drift_owner_or_database_authority), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R1 real drift — text-search dictionary OWNED by the executor: detected (owner:pg_ts_dict), issuer REFUSES (drift_owner_or_database_authority), PRESERVED verifier rejects the force-signed copy, clean after revert
+  PASS R-post every R1 drift reverted → CLEAN again (0 extended findings)
+  PASS O1 observer is SUPERUSER → refused
+  PASS O2 observer IS the executor → refused
+  PASS O3 observer IS the reader → refused
+  PASS O4 observer holds executor membership → refused
+  PASS O5 observer without pg_read_all_stats (backend_start invisible) → refused
+  PASS O6 observer with membership beyond pg_read_all_stats (pg_monitor) → refused
+  PASS S1 token of no session → no_such_session
+  PASS S2 a SECOND real executor session is attested only for ITS own token (distinct pids/app names)
+  PASS S3 a CLOSED session's token is no longer attestable
+  PASS S4 clock skew between host and DB > 5 s → refused
+  PASS E1 executor attester service starts (offline-test) with a REAL observer
+  PASS E2 channel obtain() → envelope → PRESERVED verifyExecutorAttestation PASS (end to end on real PostgreSQL)
+  PASS E3 PRESERVED bindExecutorConnection on the channel envelope → PASS
+  PASS E4 live drift during service → channel refuses (no envelope, fixed code)
+  PASS E5 service counters: signed == 1, selfVerifyFailed == 0
+  PASS N01 zero external network: every connect was the throwaway unix socket or 127.0.0.1 loopback, fetch never called
+  (network counters: loopback_socket_connects=2 unix_socket_connects=103 external_network_connects=0 fetch_calls=0)
+m7-v2-executor-attester-localpg: 85 passed, 0 failed

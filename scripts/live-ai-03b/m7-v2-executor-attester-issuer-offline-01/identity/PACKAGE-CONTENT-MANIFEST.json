@@ -1,0 +1,249 @@
+{
+  "contract": "M7V2ExecutorAttesterIssuerContentManifestV1",
+  "authoritative": false,
+  "package_dir": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01",
+  "baseline": {
+    "commit": "dcab7c5b8884db4826d3fc9188ae042a1ed298d6",
+    "tree": "c5b2bb3a22e919475caa1f379f9f6cdb6a186102",
+    "authority_package_tree": "c22ca7cf4b67aaa374016e3da5827ca121d26726",
+    "step2_dir_tree": "bacac441271856966c9b7983c4fa1625f7a6a2d2",
+    "step2_pin_c": "0afe4b6bedeb12f756cc9027367d323acb264464"
+  },
+  "statement": "Additive package on top of dcab7c5b. DESCRIPTIVE ONLY: preservation acceptance is decided by the external review-bundle verifier, never by this file.",
+  "package_runtime_digest": "5a920a9f66c0faf8eb8fb58d1772a3eec86d7f6576e97fe128276b9a9d31544a",
+  "package_content_digest": "92d95524a0623aaf96918be26a77d2ba8d5fd662b37dfe1c0622b415cd9cde79",
+  "runtime_files": [
+    {
+      "path": "src/executor-attestation-channel.mjs",
+      "sha256": "223441a143ba32a04737f7f8111c0b18c16d9c211f8c771525f537561b4b8cd0"
+    },
+    {
+      "path": "src/executor-attestation-server.mjs",
+      "sha256": "c2ee92fb8d2c95b0e40c06d1fc655dd538e5c7c09466b3db04a43b6f21f8ec64"
+    },
+    {
+      "path": "src/executor-attester-config.mjs",
+      "sha256": "e0662d987b52cfcf7a64ce5aad5cf11b6490c5571afa092fa84d9ddfeb4db225"
+    },
+    {
+      "path": "src/executor-attester-entrypoint.mjs",
+      "sha256": "da189b1237445ea9d7057ca8f69ca4d60d8c0a8afbe5193a5a16b54346ec104b"
+    },
+    {
+      "path": "src/executor-evidence-evaluator.mjs",
+      "sha256": "3666115cd2e891e491c96da6059d60868b17e7e3803560263af411f60a8ea992"
+    },
+    {
+      "path": "src/executor-evidence-queries.mjs",
+      "sha256": "7fd7bb0ad73ea4aabc2d7cdb699839bd40ec9b11c2b5fd7a30daa4b4ce5e233d"
+    },
+    {
+      "path": "src/executor-observer.mjs",
+      "sha256": "0f9b699c43428672c05e611bfc76f36b0e453c4318eb353c6e8f1edeb87728de"
+    },
+    {
+      "path": "src/executor-signing-adapter.mjs",
+      "sha256": "f1720a760a4e8675a44482bf28e9d26d9ddc7e8eab355c41d8d12a330882f7e7"
+    },
+    {
+      "path": "src/executor-target-binding.mjs",
+      "sha256": "6a70344aaa30d0a250fd2eed1707f2d7f87194f08811ca32081acd9b61c2be16"
+    }
+  ],
+  "content_files": [
+    {
+      "path": "DEPENDENCY-MAP.md",
+      "sha256": "61f0d13af259d4c4256528419822f5f4a19722b6c777f53f631898283d54e74b"
+    },
+    {
+      "path": "FUTURE-LIVE-SEQUENCE.md",
+      "sha256": "8762631526a397aafe1a39ad4b7a8b28cfc375420f6ed94d6b0fdb6f959348a4"
+    },
+    {
+      "path": "README.md",
+      "sha256": "2120464843ffa3a8942108f8784da7fe6167760e2037c94b34be65d0efc99b50"
+    },
+    {
+      "path": "executor-observer-role-proposal.sql",
+      "sha256": "cf5225ed1847e4ba3118d5b82721b9bb8c75229ed9dae15f383fd44ca5548281"
+    },
+    {
+      "path": "src/executor-attestation-channel.mjs",
+      "sha256": "223441a143ba32a04737f7f8111c0b18c16d9c211f8c771525f537561b4b8cd0"
+    },
+    {
+      "path": "src/executor-attestation-server.mjs",
+      "sha256": "c2ee92fb8d2c95b0e40c06d1fc655dd538e5c7c09466b3db04a43b6f21f8ec64"
+    },
+    {
+      "path": "src/executor-attester-config.mjs",
+      "sha256": "e0662d987b52cfcf7a64ce5aad5cf11b6490c5571afa092fa84d9ddfeb4db225"
+    },
+    {
+      "path": "src/executor-attester-entrypoint.mjs",
+      "sha256": "da189b1237445ea9d7057ca8f69ca4d60d8c0a8afbe5193a5a16b54346ec104b"
+    },
+    {
+      "path": "src/executor-evidence-evaluator.mjs",
+      "sha256": "3666115cd2e891e491c96da6059d60868b17e7e3803560263af411f60a8ea992"
+    },
+    {
+      "path": "src/executor-evidence-queries.mjs",
+      "sha256": "7fd7bb0ad73ea4aabc2d7cdb699839bd40ec9b11c2b5fd7a30daa4b4ce5e233d"
+    },
+    {
+      "path": "src/executor-observer.mjs",
+      "sha256": "0f9b699c43428672c05e611bfc76f36b0e453c4318eb353c6e8f1edeb87728de"
+    },
+    {
+      "path": "src/executor-signing-adapter.mjs",
+      "sha256": "f1720a760a4e8675a44482bf28e9d26d9ddc7e8eab355c41d8d12a330882f7e7"
+    },
+    {
+      "path": "src/executor-target-binding.mjs",
+      "sha256": "6a70344aaa30d0a250fd2eed1707f2d7f87194f08811ca32081acd9b61c2be16"
+    },
+    {
+      "path": "tests/executor-attester.test.mjs",
+      "sha256": "9fa846e966f58a4c928008dbf41a41fb00841fd9513a850533662da7453bdc72"
+    },
+    {
+      "path": "tests/fixtures/synthetic-executor-cluster.mjs",
+      "sha256": "1a94a122cdd96b783450f24719785046cce59140815287f22421e67f70f54eb5"
+    },
+    {
+      "path": "tests/localpg/executor-attester-localpg.test.mjs",
+      "sha256": "5d1476743551276dedbf36ed5cf03843db0a5f00fa270b4f34a4d21b2122d8ac"
+    },
+    {
+      "path": "tests/run-all.sh",
+      "sha256": "55419d8e02e825dc01d14ad67dafccd98573c77d6171218957e1f9f2c583adfe"
+    },
+    {
+      "path": "tools/package-identity.mjs",
+      "sha256": "124ccce33ceacc3522c468edf18d7ef0a76cbb49ad5308ccc63b8d71bd9265e2"
+    }
+  ],
+  "frozen_dependencies": [
+    {
+      "path": "scripts/live-ai-03b/first-text-probe-activation-01/first-text-probe.mjs",
+      "sha256": "3412137c70fb652a14cc04bfcda85c1d18d07d62766d025550ca1bf5733b8d76"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/approval/pricing-approval-contract-v2.mjs",
+      "sha256": "631c7635fad5e8676dcd1fefc514976254711d1e6b25a3cd8888a3d4a85004bf"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/catalog/v2-digest-gen.mjs",
+      "sha256": "b1e2d5485e0fbf8ef8ae7210be53d58b76aafd65d3bcf47986243af7d8991a65"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/identity/v2-identity.mjs",
+      "sha256": "5d6adba97a5374c616f3095b0a066df15f01826f17b0dee9a5b98e0061cff150"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/runtime/v2-runtime-config.mjs",
+      "sha256": "dba84a7d04d6f95302838b173bfa65ab8066b0f77dfa20402d765b90dde6aa04"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/executor-attestation.mjs",
+      "sha256": "5a21ac89078bdfa86adcd0aecdab4d17331d7769bceb823878c74f0cdb7e4537"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/executor-session.mjs",
+      "sha256": "547e89afdad942478a8c34598ee8521d3ddb1acdc46c0d97c88bcc1b6e906dd0"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/provisioning-config.mjs",
+      "sha256": "04b8b548725e2b6eaa3a9715f351d72554cbd9d790e656797e62cfd13df4358d"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-attester-offline-01/attester-config.mjs",
+      "sha256": "c2912a9d8a3ca0b4dceb73862a3521cd4ccf6b9c6f64de3ca01f23b525b589a0"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-attester-offline-01/evidence-evaluator.mjs",
+      "sha256": "c79e7177d2ef481960d87c6a657d87f41fa1d7a0d09ff04924b1d31aea47c8e2"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-attester-offline-01/evidence-queries.mjs",
+      "sha256": "05bf3e2895b0cb52ac5c575f7de69127e1b9e5f7ad159b938027c46714ed667e"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-attester-offline-01/observer-connection.mjs",
+      "sha256": "37b9672535291e5444bd6b10aea8700be1782bc310a877bbf707ba731015c1cc"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-offline-01/private-reader-host.mjs",
+      "sha256": "3f25bcd3975318cca5c6619beb016e6159ba06c263eb32f11d8873e650723525"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/observation-transport.mjs",
+      "sha256": "06c01348d20c3e8b118b74aae086e24de8945e7ab043df4d4715eff21b4f6ca3"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/reader-only-authority.mjs",
+      "sha256": "ff38a8cc18184281e153dee0bd1b38d620015cc98ba281c7a241b39437efd3f8"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/runtime-config.mjs",
+      "sha256": "4843ecb038f9d91b9f5725f9476838a95ae4e4e49a99ec82fbd846a5a846c62e"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/attestation-source-channel.mjs",
+      "sha256": "eb484e7a558de4fc59883718340e98bc6489acefdf53d295e41df9b96a8306ed"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/gateway-observation-caller.mjs",
+      "sha256": "d710087d28cf02a7a7676290f87b0d1da28f293cc035291870d1ccbdabeef8e7"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/integration-config.mjs",
+      "sha256": "d3c86a6fd9ecc3607f904f684791e2269f6428b79ecd765ad9e803b7f2446adb"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-attestation.mjs",
+      "sha256": "42964752dcb7035abddd7decd6ea40a7c27321112f96176379c8983ce72b3d5e"
+    },
+    {
+      "path": "scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-session.mjs",
+      "sha256": "064021ba88e39da431249a4b5b86a2313a787c7b1c35f0190587270741b1d011"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-activation-boundary-01/approval-verify.mjs",
+      "sha256": "88212feed6e30a08069a12e1e0c1999f7df07487b3c52e035f5e5b1486fb29f3"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-activation-boundary-01/pricing-approval-contract.mjs",
+      "sha256": "59ef03ea3b0532100cf59c19a7f4f174543a4dea0e688359ced858e974312ad3"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/canonical-timestamp.mjs",
+      "sha256": "d0c48f3af5e8e802ff129d178ed6064eff99b49877db5616f257f928ec810e8e"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/db-target-binding.mjs",
+      "sha256": "c1fec8b68fe79ec2d7615ff9b401034d8f96a7e8b82ab342a5b53f1c6fbdd0ea"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/production-authority.mjs",
+      "sha256": "6da4a3a98b98bf84d74955ddceb65ab073069f84f1852e48141976e6020890f6"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/runtime-config.mjs",
+      "sha256": "c0035996b6fcf3a36a402d220ac1559bdcb8cdf2f943d72deaa714c72ec197ae"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-executor-runtime-01/trusted-read-adapter.mjs",
+      "sha256": "12f9c439371b2cb11728fde821ac29208553797e72fb7be5d0db561e476d660b"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-authority-composition.mjs",
+      "sha256": "a0e84399bd3c858b61a3a57b3590ff8115335ea5942a78685ad753403b651f69"
+    },
+    {
+      "path": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-read-queries.mjs",
+      "sha256": "42ddf87d268183183d3851a91e9df57b8e9e2a1c3d629412a24a489e9646ed0c"
+    }
+  ]
+}

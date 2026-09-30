@@ -1,0 +1,16 @@
+PASS  01-old-defect-baseline  (m5acr-old-defect(baseline): 12 passed, 0 failed (checks run: 12, expected: 12))
+PASS  02-single-flight  (m5acr-single-flight: 29 passed, 0 failed (checks run: 29, expected: 29))
+PASS  03-recovery  (m5acr-recovery: 42 passed, 0 failed (checks run: 42, expected: 42))
+PASS  04-peer  (m5acr-peer: 14 passed, 0 failed (checks run: 14, expected: 14))
+PASS  05-logging  (m5acr-logging: 16 passed, 0 failed (checks run: 16, expected: 16))
+FAIL(1) 06-boundary  (m5acr-boundary: 11 passed, 2 failed (checks run: 13, expected: 13))
+PASS  07-realpg-pg16-pg18  (m5acr-realpg[new]: 18 passed, 0 failed (checks run: 18, expected: 18))
+PASS  11-shutdown-old-candidate-red  (m5acr-shutdown-old-candidate(v1, RED side): 7 passed, 0 failed (checks run: 7, expected: 7))
+PASS  12-shutdown-revised  (m5acr-shutdown(revised): 29 passed, 0 failed (checks run: 29, expected: 29))
+PASS  08-frozen-bootstrap-suites  (frozen suites: PASS (11 suites))
+PASS  09-frozen-observer-attester-suites  (frozen suites: PASS (3 suites))
+PASS  10-frozen-production-integration  (frozen suites: PASS (1 suites))
+m5acr checks: 11/12 passed (required: 12)
+RESULT: FAIL
+06-boundary failing assertions: FAILB0,FAILB1,
+M5: 11/11 behavioral checks PASS; 06-boundary only B0+B1 (pre-preservation pins, N/A at dcab7c5b)

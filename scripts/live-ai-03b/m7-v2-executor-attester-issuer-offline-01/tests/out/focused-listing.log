@@ -1,0 +1,244 @@
+  PASS A01 synthetic clean accepted state measures CLEAN
+  PASS A02 envelope shape is exactly { payload, signatureB64 }
+  PASS A03 payload top-level keys are exactly the accepted 10
+  PASS A04 contract/domain exact
+  PASS A05 target keys exact + AI-STAGING ids
+  PASS A06 connection keys exact, role live_ai_03b_executor
+  PASS A07 privilege keys == the preserved EXECUTOR_PRIVILEGE_KEYS
+  PASS A08 lifetime ≤ ATTESTATION_MAX_LIFETIME_MS; canonical bytes computable
+  PASS A09 issuer envelope → PRESERVED verifyExecutorAttestation → PASS (verifier unmodified)
+  PASS A10 PRESERVED bindExecutorConnection (identity proof + verifyConnectionTargetBinding) → PASS
+  PASS A11 the PRESERVED READER verifier refuses the executor envelope (no cross-contract acceptance)
+  PASS A12 preserved authority acquisition is STILL unprovisioned (not bound by this candidate)
+  PASS A13 future-dated proof (issuer clock +10 s) → executor_attestation_future_dated
+  PASS A14 stale proof (issued 301 s ago) → executor_attestation_stale
+  PASS A15 expired proof (issued 121 s ago, 120 s lifetime) → executor_attestation_expired
+  PASS A16 nonce mismatch → executor_attestation_request_nonce_mismatch
+  PASS A17 token mismatch → executor_attestation_connection_mismatch
+  PASS A18 wrong issuer pinned → executor_attestation_issuer_untrusted
+  PASS A19 wrong key/fingerprint pinned → executor_attestation_key_untrusted
+  PASS A20 a caller-edited payload (CORE-PROD target) fails the signature
+  PASS B01 complete production config loads (names only; values of secrets not returned)
+  PASS B02 names shared with the PRESERVED authority are identical (ISSUER/PUBKEY/FINGERPRINT/PORT/CHANNEL_SECRET)
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_ISSUER ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_PUBKEY_DER_B64 ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_FINGERPRINT ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_PORT ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_CHANNEL_SECRET ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_SIGNING_KEY_PKCS8_B64 ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_OBSERVER_DB_URL ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_BIND_HOST ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_ALLOWED_PEER_CIDRS ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_DEPLOYMENT_ANCHOR ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_DISTINCT_READER_ISSUER ⇒ executor_attester_config_incomplete
+  PASS B03 missing LIVE_AI_03B_EXECUTOR_ATTESTER_DISTINCT_READER_FINGERPRINT ⇒ executor_attester_config_incomplete
+  PASS B04 foreign credential present: LIVE_AI_03B_TRUSTED_EXECUTOR_DB_URL ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_TRUSTED_READER_DB_URL ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_STAGING_DATABASE_URL ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_READER_TRANSPORT_SECRET ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_ATTESTER_SIGNING_KEY_PKCS8_B64 ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_ATTESTER_OBSERVER_DB_URL ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_READER_ATTESTER_CHANNEL_SECRET ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_READER_ATTESTER_CHANNEL_SECRET ⇒ refused
+  PASS B04 foreign credential present: OPENAI_API_KEY ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_SESSION_SIGNING_PRIVATE_KEY ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_REVIEWER_PRIVATE_KEY ⇒ refused
+  PASS B04 foreign credential present: CORE_DATABASE_URL ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_CONTROL_TOKEN_SECRET ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_KILL_SWITCH_HMAC_SECRET ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_IP_HASH_SALT ⇒ refused
+  PASS B04 foreign credential present: LIVE_AI_03B_STAGING_SUBJECT_HMAC_SECRET ⇒ refused
+  PASS B04 foreign credential present: DATABASE_URL ⇒ refused
+  PASS B04 foreign credential present: DATABASE_PUBLIC_URL ⇒ refused
+  PASS B04 foreign credential present: PGPASSWORD ⇒ refused
+  PASS B04 foreign credential present: POSTGRES_PASSWORD ⇒ refused
+  PASS B04 foreign credential present: PGUSER ⇒ refused
+  PASS B05 forbidden pattern OPENAI_ORG_TOKEN ⇒ refused
+  PASS B05 forbidden pattern CORE_READONLY_URL ⇒ refused
+  PASS B05 forbidden pattern SOME_PRIVATE_KEY ⇒ refused
+  PASS B05 forbidden pattern GATEWAY_SIGNING_SECRET ⇒ refused
+  PASS B05 forbidden pattern ANTHROPIC_API_KEY ⇒ refused
+  PASS B06 TEST-ONLY issuer in production ⇒ refused
+  PASS B07 issuer == the reader attester's issuer ⇒ refused
+  PASS B08 issuer == reader attester id ⇒ refused
+  PASS B09 own fingerprint == reader attester fingerprint (key reuse) ⇒ refused
+  PASS B10 malformed fingerprint ⇒ refused
+  PASS B11 short channel secret ⇒ refused
+  PASS B12 reader-attester channel secret present in env (reuse risk) ⇒ refused
+  PASS B13 loopback bind in production ⇒ refused
+  PASS B14 public bind ⇒ refused
+  PASS B15 hostname bind ⇒ refused
+  PASS B16 wildcard bind without acknowledgement ⇒ refused
+  PASS B17 invalid port ⇒ refused
+  PASS B18 proof lifetime > max ⇒ refused
+  PASS B19 proof lifetime < 1 s ⇒ refused
+  PASS B20 anchor malformed ⇒ refused
+  PASS B21 READER deployment anchor contract replayed ⇒ refused
+  PASS B22 anchor → CORE-PROD project ⇒ refused
+  PASS B23 anchor → CORE-PROD Postgres ⇒ refused
+  PASS B24 anchor → wrong project ⇒ refused
+  PASS B25 anchor → wrong environment ⇒ refused
+  PASS B26 anchor → wrong Postgres ⇒ refused
+  PASS B27 TEST-ONLY anchor in production ⇒ refused
+  PASS B28 anchor with an extra key ⇒ refused
+  PASS B29 every SECRET name is a distinct executor-attester name (none reuses a reader-attester name)
+  PASS C01 non-Ed25519 key ⇒ refused
+  PASS C02 undecodable key ⇒ refused
+  PASS C03 key ≠ configured public identity (override attempt) ⇒ refused
+  PASS C04 key == reader attester key ⇒ refused
+  PASS C05 TEST-ONLY issuer outside the test boundary ⇒ refused
+  PASS C06 lifetime > max ⇒ refused
+  PASS C07 caller-supplied privilege claim key (restricted_role_proof_present) ⇒ refused
+  PASS C08 malformed request nonce ⇒ refused
+  PASS C09 non-executor connection role ⇒ refused
+  PASS C10 signer exposes no private key material
+  PASS D01 no observed executor session ⇒ refused
+  PASS D02 token of no observed session (mismatch) ⇒ no_such_session
+  PASS D03 two sessions re-deriving the same token ⇒ ambiguous_session
+  PASS D04 session of the WRONG role (reader) is never attested
+  PASS D05 backend_start not visible ⇒ refused
+  PASS D06 empty application name ⇒ never matched
+  PASS D07 application name not the executor prefix ⇒ refused
+  PASS D08 session in a different database ⇒ refused
+  PASS D09 observer is superuser ⇒ refused
+  PASS D10 observer IS the executor ⇒ refused
+  PASS D11 observer IS the reader ⇒ refused
+  PASS D12 observer member of the executor ⇒ refused
+  PASS D13 observer member of the reader ⇒ refused
+  PASS D14 observer without pg_read_all_stats ⇒ refused
+  PASS D15 observer extra membership ⇒ refused
+  PASS D16 observer CREATEROLE ⇒ refused
+  PASS D17 observer SET ROLE'd (current ≠ session) ⇒ refused
+  PASS D18 host/DB clock skew > 5 s ⇒ refused
+  PASS D drift — executor superuser ⇒ drift_superuser
+  PASS D drift — CREATEROLE ⇒ drift_createrole
+  PASS D drift — CREATEDB ⇒ drift_createdb
+  PASS D drift — REPLICATION ⇒ drift_replication
+  PASS D drift — BYPASSRLS ⇒ drift_bypassrls
+  PASS D drift — role membership ⇒ drift_role_membership
+  PASS D drift — prohibited role reachable ⇒ drift_role_membership
+  PASS D drift — schema CREATE ⇒ drift_schema_create
+  PASS D drift — budget-table privilege ⇒ drift_budget_table_privilege
+  PASS D drift — budget sequence USAGE ⇒ drift_budget_table_privilege
+  PASS D drift — MAINTAIN (PG17+) ⇒ drift_budget_table_privilege
+  PASS D drift — ledger privilege ⇒ drift_ledger_privilege
+  PASS D drift — missing trusted-schema USAGE ⇒ drift_trusted_schema_usage
+  PASS D drift — extra trusted-schema USAGE ⇒ drift_trusted_schema_usage
+  PASS D drift — unexpected schema USAGE ⇒ drift_unexpected_schema_usage
+  PASS D drift — missing expected routine ⇒ drift_routine_execute
+  PASS D drift — extra routine EXECUTE ⇒ drift_routine_execute
+  PASS D drift — PUBLIC relation grant ⇒ drift_public_or_default_widening
+  PASS D drift — PUBLIC schema grant ⇒ drift_public_or_default_widening
+  PASS D drift — PUBLIC trusted routine ⇒ drift_public_or_default_widening
+  PASS D drift — default ACL widening ⇒ drift_public_or_default_widening
+  PASS D drift — database CREATE ⇒ drift_owner_or_database_authority
+  PASS D drift — database owner ⇒ drift_owner_or_database_authority
+  PASS D drift — schema owner ⇒ drift_owner_or_database_authority
+  PASS D drift — owns objects ⇒ drift_owner_or_database_authority
+  PASS D drift — reviewed object absent ⇒ reviewed_object_absent
+  PASS D drift — measurement incomplete (null attribute) ⇒ privilege_measurement_incomplete
+  PASS D drift — executor role absent ⇒ executor_role_absent
+  PASS D drift — executor cannot login ⇒ executor_role_cannot_login
+  PASS D drift — evidence query failure ⇒ evidence_unavailable
+  PASS DR01 PostgreSQL 17 (untested major) ⇒ server_version_unsupported
+  PASS DR02 PostgreSQL 15 ⇒ server_version_unsupported
+  PASS DR03 PostgreSQL 16 accepted (clean)
+  PASS DR04 an UNREVIEWED ACL-bearing catalog column appears ⇒ privilege_class_coverage_incomplete (never skipped)
+  PASS DR05 a reviewed ACL catalog missing ⇒ privilege_class_coverage_incomplete
+  PASS DR shdepend catch-all — unknown object class ⇒ refused as widening
+  PASS DR shdepend catch-all — ownership of anything ('o') ⇒ refused as widening
+  PASS DR shdepend catch-all — an object in ANOTHER database ⇒ refused as widening
+  PASS DR shdepend catch-all — a routine outside the reviewed 4 ⇒ refused as widening
+  PASS DR shdepend catch-all — a policy naming the executor ('r') ⇒ refused as widening
+  PASS DR shdepend catch-all — an init-privilege entry ('i') ⇒ refused as widening
+  PASS DR12 explicit CONNECT grant on THIS database is reviewed (clean)
+  PASS DR13 explicit CREATE grant on THIS database ⇒ refused
+  PASS DR14 every extended finding is folded into the SIGNED field ⇒ a force-signed copy fails the PRESERVED verifier
+  PASS D30 arbitrary SQL through the observer ⇒ refused before reaching the driver
+  PASS D31 oversize/unbounded parameter ⇒ refused
+  PASS D32 observer session not read-only (read back) ⇒ refused
+  PASS E01 channel obtain() → envelope → PRESERVED verifier PASS
+  PASS E02 malformed JSON ⇒ bad_request
+  PASS E03 extra top-level field ⇒ bad_request
+  PASS E04 READER channel version ⇒ unsupported_version
+  PASS E05 unknown op ⇒ unknown_op
+  PASS E06 stale ts (−60 s) ⇒ stale
+  PASS E07 future ts (+60 s) ⇒ stale
+  PASS E08 wrong channel secret ⇒ unauthenticated
+  PASS E09 READER channel secret ⇒ unauthenticated (no cross-plane secret)
+  PASS E10 replayed channel nonce ⇒ replayed
+  PASS E11 caller-supplied 'privileges' in args ⇒ bad_request
+  PASS E11 caller-supplied 'target' in args ⇒ bad_request
+  PASS E11 caller-supplied 'issuer' in args ⇒ bad_request
+  PASS E11 caller-supplied 'publicKeyDerB64' in args ⇒ bad_request
+  PASS E11 caller-supplied 'keyId' in args ⇒ bad_request
+  PASS E11 caller-supplied 'expiresAtMs' in args ⇒ bad_request
+  PASS E11 caller-supplied 'issuedAtMs' in args ⇒ bad_request
+  PASS E11 caller-supplied 'sql' in args ⇒ bad_request
+  PASS E11 caller-supplied 'dbUrl' in args ⇒ bad_request
+  PASS E11 caller-supplied 'expectedPrivileges' in args ⇒ bad_request
+  PASS E11 caller-supplied 'signingKey' in args ⇒ bad_request
+  PASS E12 reader contract requested ⇒ bad_request
+  PASS E13 reader role requested ⇒ bad_request
+  PASS E14 malformed token ⇒ bad_request
+  PASS E15 malformed request nonce ⇒ bad_request
+  PASS E16 oversize request ⇒ bad_request
+  PASS E17 token of no session ⇒ no_such_session (no envelope)
+  PASS E18 server counters: signed == 2 (E01 + the first, valid E10 request), selfVerifyFailed == 0
+  PASS E19 request log lines carry only {ok, code, ms} (no token, nonce, secret, envelope)
+  PASS E20 adverse state ⇒ unavailable, no envelope (never signed)
+  PASS E21 ambiguous session ⇒ no_such_session
+  PASS E22 stalled evidence ⇒ deadline, unavailable, signed == 0
+  PASS E23 envelope the PRESERVED verifier rejects ⇒ internal, never released (conformance gate)
+  PASS E24 peer outside the allowlist ⇒ unauthenticated
+  PASS E25 TEST-ONLY signer outside the test boundary ⇒ server refuses to start
+  PASS E26 ACCEPTED reader attester (unmodified) refuses the executor channel ⇒ unsupported_version
+  PASS E27 ACCEPTED reader channel client refuses an executor request (contract/role)
+  PASS E28 client: public destination ⇒ refused
+  PASS E29 client: loopback outside test boundary ⇒ refused
+  PASS E30 client: short secret ⇒ refused
+  PASS E31 client: channel secret == reader channel secret ⇒ refused
+  PASS E32 client: extra request field ⇒ refused before any connection
+  PASS F01 production refuses test injection 'observerFactory'
+  PASS F01 production refuses test injection 'nowProvider'
+  PASS F01 production refuses test injection 'offlineTestBoundary'
+  PASS F01 production refuses test injection 'testListen'
+  PASS F01 production refuses test injection 'requestBudgetMs'
+  PASS F01 production refuses test injection 'watchMs'
+  PASS F02 invalid mode ⇒ refused
+  PASS F03 offline mode without explicit boundary ⇒ refused
+  PASS F04 fail closed — signing key absent ⇒ executor_attester_config_incomplete, 0 observer connections
+  PASS F04 fail closed — observer credential absent ⇒ executor_attester_config_incomplete, 0 observer connections
+  PASS F04 fail closed — issuer invalid ⇒ issuer_invalid, 0 observer connections
+  PASS F04 fail closed — target anchor invalid (CORE-PROD) ⇒ anchor_targets_core_prod, 0 observer connections
+  PASS F04 fail closed — channel secret absent ⇒ executor_attester_config_incomplete, 0 observer connections
+  PASS F04 fail closed — bind policy invalid (public) ⇒ listen_bind_not_private, 0 observer connections
+  PASS F04 fail closed — foreign executor credential ⇒ foreign_credential_present, 0 observer connections
+  PASS F04 fail closed — foreign reader credential ⇒ foreign_credential_present, 0 observer connections
+  PASS F04 fail closed — gateway-store credential ⇒ foreign_credential_present, 0 observer connections
+  PASS F04 fail closed — provider key ⇒ foreign_credential_present, 0 observer connections
+  PASS F04 fail closed — CORE credential ⇒ foreign_credential_present, 0 observer connections
+  PASS F04 fail closed — reviewer private key ⇒ foreign_credential_present, 0 observer connections
+  PASS F04 fail closed — reader-attester signing key ⇒ foreign_credential_present, 0 observer connections
+  PASS F04 fail closed — key ≠ configured identity ⇒ signing_key_not_configured_identity, 0 observer connections
+  PASS F05 production: TEST-ONLY issuer refused before any I/O
+  PASS F06 offline-test service starts with synthetic observer + loopback test listener
+  PASS F07 service envelope → PRESERVED verifier PASS
+  PASS F08 non-loopback test listener refused even in offline mode
+  PASS F09 CLI with no configuration ⇒ exit 70 (unprovisioned), no listener
+  PASS F10 no secret value (channel secret, signing key, observer URL/password) in any log line
+  PASS G01 src imports only node: builtins, ./ modules and frozen accepted packages (never tests/ or fixtures)
+  PASS G02 no eval / new Function / dynamic import other than the lazy pg driver
+  PASS G03 no network API in src (fetch/http/https/dgram)
+  PASS G04 registry: every statement is a read-only SELECT/WITH (no DML/DDL/GRANT/SET ROLE)
+  PASS G05 registry never selects pg_stat_activity query text or client address
+  PASS G06 registry values are parameterised ($n); nothing is interpolated from a request
+  PASS G07 isPermittedExecutorSql refuses non-registry text
+  PASS G08 only the entrypoint reads process.env (default); secret values read only at point of use
+  PASS G09 src never logs env values (only issuer/keyId/port/reason)
+  PASS G10 no file outside the new package changed (reader attester, M5, integration, authority package, Step-2 all untouched)
+  PASS G11 baseline dcab7c5b; authority package tree c22ca7cf; Step-2 tree bacac441
+  PASS G12 PRESERVED authority config still refuses a shared reader/executor channel secret (compatibility unchanged)
+  PASS K01 zero non-loopback network: every socket connect was 127.0.0.1 and fetch was never called
+  (network counters: loopback_socket_connects=35 unix_socket_connects=0 external_network_connects=0 fetch_calls=0)
+m7-v2-executor-attester: 242 passed, 0 failed

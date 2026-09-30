@@ -1,0 +1,16 @@
+PASS  A package identity --check (diagnostic)  —  exit 0 (expected 0)
+PASS  B focused suite (synthetic, loopback)  —  exit 0; m7-v2-executor-attester: 242 passed, 0 failed
+PASS  C real PostgreSQL 16 (accepted post-Step-1 state)  —  exit 0; m7-v2-executor-attester-localpg: 85 passed, 0 failed
+PASS  D real PostgreSQL 18 (live AI-STAGING major)  —  exit 0; m7-v2-executor-attester-localpg: 85 passed, 0 failed
+PASS  E production entrypoint CLI fail-closed  —  exit 70 (expected 70)
+PASS  F preserved M7 V2 production-authority suite  —  exit 0; m7-v2-authority-provisioning: 178 passed, 0 failed
+PASS  G reader production integration (reader attestation verification)  —  exit 0; RESULT: 157 passed, 0 failed, 0 skipped  (executed assertions: 157)
+PASS  H reader attester containment  —  exit 0; RESULT: 50 passed, 0 failed, 0 skipped  (executed assertions: 50)
+PASS  I reader attester integration  —  exit 0; RESULT: 107 passed, 0 failed, 0 skipped  (executed assertions: 107)
+PASS  J reader attester real PostgreSQL  —  exit 0; RESULT: 25 passed, 0 failed, 0 skipped  (executed assertions: 25)
+PASS  K M5 attester clock-recovery (11 behavioral checks; boundary pins N/A post-preservation; throwaway clone)  —  exit 0; M5: 11/11 behavioral checks PASS; 06-boundary only B0+B1 (pre-preservation pins, N/A at dcab7c5b)
+PASS  L Step-2 identity artifacts --check  —  exit 0 (expected 0)
+PASS  M Step-2 PIN C re-derived at 0afe4b6b  —  exit 0;     "runtime_manifest_digest": "64c7031746bff227321e2e2506b4737938eafc3493ae472ab0f51e5e46987d9f",
+PASS  N preserved authority acquisition still UNPROVISIONED  —  exit 0; {"available":false,"reason":"executor_attestation_source_unprovisioned"}
+PASS  O no frozen file changed; HEAD = dcab7c5b  —  exit 0; paths changed outside the new package: 0
+RESULT: PASS (15/15 required checks)

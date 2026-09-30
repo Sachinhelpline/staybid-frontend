@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "lineage": {
+    "s1_historical_additions": 108,
+    "s2_m5_changes_retained": 63,
+    "s3_step2_correction_changes": 32
+  },
+  "binding": {
+    "contract": "Step2RuntimePreservationBindingV2",
+    "status": "PRESERVED",
+    "provenance": "trusted-approved-step2-preservation-receipt-v2",
+    "commit": "0afe4b6bedeb12f756cc9027367d323acb264464",
+    "tree": "e7bb3733cb3206e5ad1a1b0e9121b7010741734f",
+    "step2_dir_tree": "bacac441271856966c9b7983c4fa1625f7a6a2d2",
+    "runtime_manifest_digest": "64c7031746bff227321e2e2506b4737938eafc3493ae472ab0f51e5e46987d9f",
+    "correction_base": "3fda6af1eb9bf2681a39e4b90bddec270ac86395",
+    "historical_pin_c": "f5ec5807014442884c1d156c51a4edd1563b25bd"
+  }
+}
