@@ -12,8 +12,8 @@
     }
   },
   "statement": "Additive package. The preserved Step-2 bytes (PIN C 0afe4b6b, runtime manifest 64c70317…) are imported, never modified; this package is NOT covered by PIN C and is NOT a PIN C.",
-  "package_runtime_digest": "565031c23aa07b27ad2340fd371f00ff5472f43e4a84aa143010d31b37ab099c",
-  "package_content_digest": "3b4a19bae84b883633ec3aa50dcc3a414de4fb75edcdaa13e8a922bb6db38c51",
+  "package_runtime_digest": "bda9c5a1c29c60f9a18bb9e42e82b21a83a8de2a27a42e3d966d471207eab58e",
+  "package_content_digest": "b0297047db5e58577a7b1335238304745a7a192a8f57a3659b2167baf809fa02",
   "runtime_files": [
     {
       "path": "src/activation-source.mjs",
@@ -33,7 +33,7 @@
     },
     {
       "path": "src/production-entrypoint.mjs",
-      "sha256": "4e009d0b565d0bac18d318c4ebaadf9e4f703eeb537607c5fbe097382b78675b"
+      "sha256": "555d7952ffc21ca22fa1493274efd95033d9ce125ab6eaedab8804bde8baa482"
     },
     {
       "path": "src/provisioner.mjs",
@@ -59,15 +59,15 @@
   "content_files": [
     {
       "path": "DEPENDENCY-MAP.md",
-      "sha256": "37753fabc734b8617dfd568f0e641cb3a847a7749bff6ad311f26b38b4420d1f"
+      "sha256": "d8b7406dad6dd1cd1b2b20f463ca000197bb780a923638a9d0d63d808101c707"
     },
     {
       "path": "FUTURE-LIVE-BOUNDARY.md",
-      "sha256": "42049e520525d771de058dc9b704195a7d45a41815b89005caa863a4f9d6f1f5"
+      "sha256": "7efb0f550e6a47373efbb6a0bf5d03e05f39499d168451f4c49affa730ad452f"
     },
     {
       "path": "README.md",
-      "sha256": "7098819b7169d1c518d644077089b1fbdcad4341af1326392c54dac85e83f980"
+      "sha256": "b28a1a298b4e619821fbbf3ac3ec82a2b37a2099a7814d823af0eff66c8aa6de"
     },
     {
       "path": "src/activation-source.mjs",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/production-entrypoint.mjs",
-      "sha256": "4e009d0b565d0bac18d318c4ebaadf9e4f703eeb537607c5fbe097382b78675b"
+      "sha256": "555d7952ffc21ca22fa1493274efd95033d9ce125ab6eaedab8804bde8baa482"
     },
     {
       "path": "src/provisioner.mjs",
@@ -111,7 +111,7 @@
     },
     {
       "path": "tests/authority-provisioning.test.mjs",
-      "sha256": "0d876e79dfdcedbad6307e76c7820859d58dcf03afa42317c3a631bdfdb650c0"
+      "sha256": "2b4c78ffb152eef1dfa150e6caf302856be6c49919d0c04aaa3193f62a92a299"
     },
     {
       "path": "tests/helpers.mjs",
@@ -119,11 +119,11 @@
     },
     {
       "path": "tests/run-all.sh",
-      "sha256": "1f750daf352294ec6f3f3fa5423db5882ccb7618e41b5386c38ac53d1724f13b"
+      "sha256": "52ce979b668632060b2fe4336d6e6e7e24638c2c26e7b085a76d567b5cbcca41"
     },
     {
       "path": "tools/package-identity.mjs",
-      "sha256": "3bd7883445bf5a443c8e6903ede353d9210337861ee99644f2c9c3e5a7f0e3f8"
+      "sha256": "8fc91f351508324200e062e97840dd90573d5ba8cc44dccae9c495ffe23337d3"
     },
     {
       "path": "tools/verify-package-preservation.mjs",
@@ -175,6 +175,11 @@
       "path": "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/tools/verify-step2-preservation.mjs",
       "sha256": "f75bc0e231a04f922973ec0948664a4a1c78c971335a7ea5fe2a2a69bc1fc990",
       "covered_by": "step2_pin_c_0afe4b6b"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-attestation-channel.mjs",
+      "sha256": "223441a143ba32a04737f7f8111c0b18c16d9c211f8c771525f537561b4b8cd0",
+      "covered_by": "executor_attester_issuer_preservation_02345082"
     },
     {
       "path": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/reader-only-authority.mjs",

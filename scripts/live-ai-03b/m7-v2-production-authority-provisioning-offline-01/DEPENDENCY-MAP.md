@@ -32,6 +32,16 @@ import them; test I14 asserts this.
 | `trusted-activation-boundary-01/pricing-approval-contract.mjs` | `FIXED` (the six target ids only), `canonicalize`, `verifyEnvelopeSignature` | executor-attestation |
 | `m7-step1-hb1-consolidated-remediation-01/approval/pricing-approval-contract-v2.mjs` | `publicKeyFingerprintFromDerB64` | reviewer-trust-root |
 
+## Step 10 — preserved executor-attester issuer (commit `02345082`, runtime digest `5a920a9f…`)
+
+| Frozen module | Symbols used | Used by |
+|---|---|---|
+| `m7-v2-executor-attester-issuer-offline-01/src/executor-attestation-channel.mjs` | `createExecutorAttestationSourceChannel` | production-entrypoint (`acquireExecutorAttestationSourceV2`) |
+
+It is imported unchanged; its channel protocol is not re-implemented here. The adapter itself imports
+`executor-attestation.mjs` and `executor-session.mjs` from this package; nothing imports `production-entrypoint.mjs`,
+so there is no import cycle. The identity manifest records it as `covered_by: executor_attester_issuer_preservation_02345082`.
+
 `loadIntegrationConfig` of the reader host is deliberately not used. It refuses an environment that contains the
 executor credential, which is correct for the standalone reader host but not for the executor authority process. So
 this package reuses only the accepted names (`ENV`) and the accepted validators.

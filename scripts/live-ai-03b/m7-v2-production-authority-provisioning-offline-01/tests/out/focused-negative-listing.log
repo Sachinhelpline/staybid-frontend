@@ -2,12 +2,65 @@
   PASS A01 no provisioner ⇒ v2_production_authority_unprovisioned (preserved default)
   PASS A02 production entrypoint with an empty environment ⇒ unavailable (no implicit fallback)
   PASS A03 production entrypoint refuses injected composition inputs
-  PASS A04 full production-shaped env: config ✓ reviewer root ✓ PIN C re-derived from git ✓ ⇒ STOPS at executor_attestation_source_unprovisioned (before any DB connection)
-  PASS A05 the unavailable boundary never runs
-  PASS A06 executor attestation source acquisition is deterministic UNPROVISIONED
+  PASS A04 full production-shaped env: config ✓ reviewer root ✓ PIN C re-derived from git ✓ executor source BOUND ✓ ⇒ production boundary composed, 0 socket connects
+  PASS A05 an unavailable boundary (executor channel secret absent) never runs
+  PASS A06 executor attestation source acquisition WITHOUT the trusted composition inputs fails closed (fixed reason, no source) — never the retired unprovisioned default
   PASS A07 production provisioner refuses TEST-ONLY attester trust roots / test clock / test source proof (no production authority from test fixtures)
   PASS A08 a TEST-built authority is REJECTED by the preserved production validator
   PASS A09 production entrypoint CLI is fail-closed (exit 2, no request intake)
+  PASS X01 production-shaped config ⇒ executor source constructed = the reviewed executor-attestation-channel-v1 adapter (no DB connection, no request)
+  PASS X02 destination is EXACTLY LIVE_AI_03B_EXECUTOR_ATTESTER_HOST / _PORT (= provisioningConfig.executorAttester.channel), never the reader destination
+  PASS X02b unrelated look-alike env names cannot redirect the destination (only the six reviewed EXECUTOR_ATTESTER_ENV names are read)
+  PASS X02c a validated config whose destination does not equal the env it is paired with ⇒ refused (host)
+  PASS X02d …(port)
+  PASS X02e a crafted provisioning config (destination swapped) ⇒ refused before construction
+  PASS X02f a config naming the READER channel-secret env for the executor ⇒ refused
+  PASS X02g a config that is not a loadProvisioningConfig result (version / ok) ⇒ refused
+  PASS X03 compose with LIVE_AI_03B_EXECUTOR_ATTESTER_HOST absent ⇒ fail closed (executor_attester_config_incomplete), 0 connections
+  PASS X03 compose with LIVE_AI_03B_EXECUTOR_ATTESTER_PORT absent ⇒ fail closed (executor_attester_config_incomplete), 0 connections
+  PASS X03 compose with LIVE_AI_03B_EXECUTOR_ATTESTER_CHANNEL_SECRET absent ⇒ fail closed (executor_attester_config_incomplete), 0 connections
+  PASS X03b direct acquisition with the executor channel secret absent ⇒ executor_attestation_source_channel_secret_absent
+  PASS X03c direct acquisition with the reader channel secret absent ⇒ refused (the executor ≠ reader secret check can never be skipped)
+  PASS X03d malformed LIVE_AI_03B_EXECUTOR_ATTESTER_PORT="abc" ⇒ fail closed with a fixed bounded reason
+  PASS X03d malformed LIVE_AI_03B_EXECUTOR_ATTESTER_PORT="70000" ⇒ fail closed with a fixed bounded reason
+  PASS X03d malformed LIVE_AI_03B_EXECUTOR_ATTESTER_CHANNEL_SECRET="short-secret" ⇒ fail closed with a fixed bounded reason
+  PASS X04 production executor destination 8.8.8.8 ⇒ refused (executor_attester_destination_not_private)
+  PASS X04 production executor destination 127.0.0.1 ⇒ refused (executor_attester_destination_loopback)
+  PASS X04 production executor destination executor-attester.example.com ⇒ refused (executor_attester_destination_not_private_dns)
+  PASS X04b a loopback destination that passed only the TEST-boundary config is still refused by the reviewed adapter in production mode
+  PASS X05 compose with executor channel secret == reader channel secret ⇒ refused
+  PASS X05b …and the reviewed adapter's own independent check refuses it too (executor_attester_channel_secret_reuses_reader)
+  PASS X06 production composition refuses a caller-supplied executorAttestationSource (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied readerAttestationSource (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied source (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied host (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied port (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied channelSecret (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied trustRoot (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied executorAttester (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied provisioner (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied provisioningConfig (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied clock (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied dbUrl (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied fingerprint (production_entrypoint_rejects_injection)
+  PASS X06 production composition refuses a caller-supplied issuer (production_entrypoint_rejects_injection)
+  PASS X06b the acquisition refuses any extra input key (e.g. a caller source / host / secret)
+  PASS X06c the entrypoint exposes no setter / override for the executor source
+  PASS X06d an activation REQUEST carrying executorAttestationSource ⇒ refused before acquisition (0 connections, 0 attestation requests)
+  PASS X06d an activation REQUEST carrying readerAttestationSource ⇒ refused before acquisition (0 connections, 0 attestation requests)
+  PASS X06d an activation REQUEST carrying channelSecret ⇒ refused before acquisition (0 connections, 0 attestation requests)
+  PASS X06d an activation REQUEST carrying host ⇒ refused before acquisition (0 connections, 0 attestation requests)
+  PASS X06d an activation REQUEST carrying issuer ⇒ refused before acquisition (0 connections, 0 attestation requests)
+  PASS X06d an activation REQUEST carrying fingerprint ⇒ refused before acquisition (0 connections, 0 attestation requests)
+  PASS X06d an activation REQUEST carrying source ⇒ refused before acquisition (0 connections, 0 attestation requests)
+  PASS X07 all Step-10 compositions above: 0 socket connects (no DB connection, no attester request)
+  PASS X07b the bound source enforces the reviewed request shape BEFORE any I/O (executor_attester_request_invalid, still 0 sockets)
+  PASS X08 rejected executor config ⇒ unavailable with an EXECUTOR reason (no reader-source fallback, no source returned)
+  PASS X08b a valid executor source never aliases the reader destination or the reader secret
+  PASS X09 production CLI with a full production env + a request on argv/stdin ⇒ exit 2, fail-closed, no request intake
+  PASS X10 production-entrypoint imports createExecutorAttestationSourceChannel from the preserved issuer package and does not re-implement the channel (no net / HMAC / wire in this package)
+  PASS X10b the executor source is built in PRODUCTION mode only (offlineTestBoundary:false literal; no test flag reaches it)
+  PASS X10c lifecycle order preserved: config → reviewer root → PIN C → EXECUTOR source → reader source → factories/clock → provisioner → preserved runtime
   PASS B executorDbClient in the request ⇒ refused before acquisition (0 connections)
   PASS B readerDbClient in the request ⇒ refused before acquisition (0 connections)
   PASS B authority in the request ⇒ refused before acquisition (0 connections)
@@ -167,7 +220,7 @@
   PASS S04 process.env is read only by the production entrypoint
   PASS S05 no private key / DSN / provider credential literal in src or tests
   PASS S06 the preserved Step-2 runtime is composed, never copied (imports of v2-trusted-executor-runtime / v2-production-authority)
-  PASS Z01 future package preservation: additive-only on top of 0afe4b6b, Step-2 tree unchanged, PIN C re-derived, deps + digests exact ⇒ V2ProductionAuthorityProvisioningPreservationBindingV1
+  PASS Z01 in-package preservation DIAGNOSTIC (non-authoritative; synthetic overlay = preserved tree 02345082 + this package): Step-2 tree unchanged, PIN C re-derived, every frozen dep (incl. the Step-10 issuer adapter) + digests exact ⇒ V2ProductionAuthorityProvisioningPreservationBindingV1
   PASS Z02 the package binding is NOT a PIN C (refused by the preserved verifyStep2RuntimePin)
   PASS Z03 a Step-2 file changed by the package commit ⇒ fail
   PASS Z04 a frozen dependency different at the commit ⇒ fail
@@ -176,4 +229,4 @@
   PASS Z07 package identity files are current (tools/package-identity.mjs --check semantics)
   PASS K01 zero network: fetch=0 http(s)=0 socket connects=0 (⇒ 0 DB / Railway / provider calls)
   PASS K02 only local read-only git (PIN-C re-derivation) and the fail-closed CLI child were spawned — no railway / psql / curl
-m7-v2-authority-provisioning: 178 passed, 0 failed
+m7-v2-authority-provisioning: 231 passed, 0 failed

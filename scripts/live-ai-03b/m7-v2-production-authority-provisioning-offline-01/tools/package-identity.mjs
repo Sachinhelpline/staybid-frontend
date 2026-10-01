@@ -51,7 +51,8 @@ export function measureFrom(list, read, readRepo) {
   for (const f of runtime) for (const m of read(f.path).toString("utf8").matchAll(/from\s+"(\.\.\/\.\.\/[^"]+)"/g)) {
     deps.add(posix.normalize(posix.join(PACKAGE_DIR, "src", m[1])));
   }
-  const frozen_dependencies = [...deps].sort().map((p) => ({ path: p, sha256: sha(readRepo(p)), covered_by: p.startsWith("scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/") ? "step2_pin_c_0afe4b6b" : "baseline_tree_0afe4b6b" }));
+  const frozen_dependencies = [...deps].sort().map((p) => ({ path: p, sha256: sha(readRepo(p)), covered_by: p.startsWith("scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/") ? "step2_pin_c_0afe4b6b"
+    : p.startsWith("scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/") ? "executor_attester_issuer_preservation_02345082" : "baseline_tree_0afe4b6b" }));
   return { content, runtime, frozen_dependencies, package_runtime_digest: digestOf(PACKAGE_DOMAIN_RUNTIME, runtime), package_content_digest: digestOf(PACKAGE_DOMAIN_CONTENT, content) };
 }
 export function measurePackage() {

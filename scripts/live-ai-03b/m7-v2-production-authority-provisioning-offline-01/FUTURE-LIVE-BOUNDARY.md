@@ -27,8 +27,10 @@ Detail for the steps that need it:
   BYPASSRLS. It holds only USAGE on the two trusted schemas and EXECUTE on the 4 functions.
 - **Step 5 — reader credential:** SELECT on the 12 allow-listed tables, plus the accepted deferred ledger SELECT.
 - **Step 7 — connection identity:**
-  - The attester must first support `AiStagingExecutorAttestationV1` through a separately reviewed change.
-  - Then `acquireExecutorAttestationSourceV2()` receives a reviewed, preserved source.
+  - The independent executor-attester issuer (`AiStagingExecutorAttestationV1`) is preserved at `02345082`.
+  - Step 10 (offline candidate, README §7a) binds `acquireExecutorAttestationSourceV2()` to its reviewed channel
+    adapter using the existing `LIVE_AI_03B_EXECUTOR_ATTESTER_*` names. The binding still needs WORK review and its
+    own preservation before any live use.
 - **Step 9 — composition:**
   - It opens two connections, binds both, seals both clients and validates the frozen authority.
   - The result is one `run()`.

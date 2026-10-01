@@ -60,6 +60,9 @@ const REQ = () => ({ approvalEnvelope: ap.envelope, suppliedEvidence: ap.supplie
 const exAtt = H.makeTestAttester("TEST-ONLY-executor-attester");
 const rdAtt = H.makeTestAttester("TEST-ONLY-reader-attester");
 const ENV = H.testProvisioningEnv(reviewer, exAtt, rdAtt);
+// a NON-test, production-shaped environment (ops issuers, private *.railway.internal destinations, synthetic values)
+const PROD_ENV = { ...H.testProvisioningEnv(reviewer, H.makeTestAttester("ops-executor-attester"), H.makeTestAttester("ops-reader-attester")),
+  [CFG.EXECUTOR_ATTESTER_ENV.host]: "executor-attester.railway.internal", [CFG.READER_ATTESTER_ENV.host]: "live-ai-03b-reader-attester.railway.internal" };
 const PC = CFG.loadProvisioningConfig(ENV, { testBoundary: true });
 const RT = loadReviewerTrustRootV2(PC.cfg);
 const SP = AS.testActivationSourceProofV2(H.testPinC(), { testBoundary: true });
@@ -92,13 +95,16 @@ const acquireWith = async (o) => { const m = mkDeps(o); const p = PV.createAutho
   const e0 = await EP.composeProductionActivationBoundaryV2({ env: {} });
   ok("A02 production entrypoint with an empty environment ⇒ unavailable (no implicit fallback)", e0.available === false && /runtime_config_v2_/.test(e0.reason), e0.reason);
   ok("A03 production entrypoint refuses injected composition inputs", (await EP.composeProductionActivationBoundaryV2({ env: {}, executorPhysicalFactory: {} })).reason === "production_entrypoint_rejects_injection");
-  // a complete, NON-test production-shaped environment reaches the final gate and fails closed there (0 connections)
-  const exP = H.makeTestAttester("ops-executor-attester"), rdP = H.makeTestAttester("ops-reader-attester");
-  const prodEnv = { ...H.testProvisioningEnv(reviewer, exP, rdP), [CFG.EXECUTOR_ATTESTER_ENV.host]: "executor-attester.railway.internal", [CFG.READER_ATTESTER_ENV.host]: "live-ai-03b-reader-attester.railway.internal" };
-  const e1 = await EP.composeProductionActivationBoundaryV2({ env: prodEnv, repoRoot: REPO });
-  ok("A04 full production-shaped env: config ✓ reviewer root ✓ PIN C re-derived from git ✓ ⇒ STOPS at executor_attestation_source_unprovisioned (before any DB connection)", e1.available === false && e1.reason === "executor_attestation_source_unprovisioned", e1.reason);
-  ok("A05 the unavailable boundary never runs", (await e1.run(REQ())).ok === false);
-  ok("A06 executor attestation source acquisition is deterministic UNPROVISIONED", (await EP.acquireExecutorAttestationSourceV2()).reason === "executor_attestation_source_unprovisioned");
+  // (Step 10) a complete, NON-test production-shaped environment now COMPOSES — the executor source is the reviewed
+  // executor-attester channel adapter — and composing opens NO connection (the boundary is NOT run offline: its
+  // first I/O would be the executor DB connection inside the provisioner's acquire()).
+  const sock0 = COUNTS.socket;
+  const e1 = await EP.composeProductionActivationBoundaryV2({ env: PROD_ENV, repoRoot: REPO });
+  ok("A04 full production-shaped env: config ✓ reviewer root ✓ PIN C re-derived from git ✓ executor source BOUND ✓ ⇒ production boundary composed, 0 socket connects", e1.available === true && e1.mode === "production" && typeof e1.run === "function" && COUNTS.socket === sock0, e1.reason);
+  const e1u = await EP.composeProductionActivationBoundaryV2({ env: { ...PROD_ENV, [CFG.EXECUTOR_ATTESTER_ENV.channelSecret]: "" }, repoRoot: REPO });
+  ok("A05 an unavailable boundary (executor channel secret absent) never runs", e1u.available === false && (await e1u.run(REQ())).ok === false, e1u.reason);
+  const a6 = await EP.acquireExecutorAttestationSourceV2();
+  ok("A06 executor attestation source acquisition WITHOUT the trusted composition inputs fails closed (fixed reason, no source) — never the retired unprovisioned default", a6.available === false && a6.reason === "executor_attestation_source_inputs_invalid" && !("source" in a6), a6);
   // production mode refuses TEST composition dependencies before any connection
   const m = mkDeps();
   const pp = PV.createAuthorityProvisionerV2(m.deps, { testBoundary: false });
@@ -106,6 +112,92 @@ const acquireWith = async (o) => { const m = mkDeps(o); const p = PV.createAutho
   const tm = await acquireWith({});
   ok("A08 a TEST-built authority is REJECTED by the preserved production validator", tm.r.available === true && PA.validateProvisionedAuthorityV2(tm.r.authority).ok === false);
   ok("A09 production entrypoint CLI is fail-closed (exit 2, no request intake)", cp.spawnSync(process.execPath, [join(PKG, "src/production-entrypoint.mjs")], { encoding: "utf8" }).status === 2);
+}
+
+// ═══════════ X — Step 10: authority binding to the reviewed executor-attester channel ═══════════
+{
+  const EXN = CFG.EXECUTOR_ATTESTER_ENV, RDN = CFG.READER_ATTESTER_ENV;
+  const PPC = CFG.loadProvisioningConfig(PROD_ENV, { testBoundary: false });
+  const acq = (env, pc = PPC) => EP.acquireExecutorAttestationSourceV2({ provisioningConfig: pc, env });
+  const compose = (env, extra = {}) => EP.composeProductionActivationBoundaryV2({ env, repoRoot: REPO, ...extra });
+  const sock0 = COUNTS.socket;
+  // 1 + 2 — valid production config ⇒ the reviewed adapter; destination only from the validated env NAMES
+  const s1 = await acq(PROD_ENV);
+  ok("X01 production-shaped config ⇒ executor source constructed = the reviewed executor-attestation-channel-v1 adapter (no DB connection, no request)",
+    PPC.ok === true && s1.available === true && s1.source.version === "executor-attestation-channel-v1" && typeof s1.source.obtain === "function" && Object.isFrozen(s1) && COUNTS.socket === sock0, s1.reason);
+  ok("X02 destination is EXACTLY LIVE_AI_03B_EXECUTOR_ATTESTER_HOST / _PORT (= provisioningConfig.executorAttester.channel), never the reader destination",
+    s1.source.destination.host === PROD_ENV[EXN.host] && s1.source.destination.port === Number(PROD_ENV[EXN.port]) && s1.source.destination.host === PPC.executorAttester.channel.host
+    && PPC.executorAttester.channel.channelSecretEnvName === EXN.channelSecret && s1.source.destination.host !== PROD_ENV[RDN.host] && s1.source.destination.port !== Number(PROD_ENV[RDN.port]), s1.source.destination);
+  const ign = await acq({ ...PROD_ENV, LIVE_AI_03B_EXECUTOR_ATTESTER_URL: "http://attacker.example", LIVE_AI_03B_EXECUTOR_ATTESTER_SOURCE: "reader" });
+  ok("X02b unrelated look-alike env names cannot redirect the destination (only the six reviewed EXECUTOR_ATTESTER_ENV names are read)", ign.available === true && ign.source.destination.host === PROD_ENV[EXN.host]);
+  ok("X02c a validated config whose destination does not equal the env it is paired with ⇒ refused (host)", (await acq({ ...PROD_ENV, [EXN.host]: "other-attester.railway.internal" })).reason === "executor_attestation_source_destination_mismatch");
+  ok("X02d …(port)", (await acq({ ...PROD_ENV, [EXN.port]: "7199" })).reason === "executor_attestation_source_destination_mismatch");
+  const crafted = { ...PPC, executorAttester: { ...PPC.executorAttester, channel: { ...PPC.executorAttester.channel, host: "attacker-attester.railway.internal" } } };
+  ok("X02e a crafted provisioning config (destination swapped) ⇒ refused before construction", (await acq(PROD_ENV, crafted)).reason === "executor_attestation_source_destination_mismatch");
+  const swapped = { ...PPC, executorAttester: { ...PPC.executorAttester, channel: { ...PPC.executorAttester.channel, channelSecretEnvName: RDN.channelSecret } } };
+  ok("X02f a config naming the READER channel-secret env for the executor ⇒ refused", (await acq(PROD_ENV, swapped)).reason === "executor_attestation_source_config_invalid");
+  ok("X02g a config that is not a loadProvisioningConfig result (version / ok) ⇒ refused", (await acq(PROD_ENV, { ...PPC, version: "x" })).reason === "executor_attestation_source_config_invalid"
+    && (await acq(PROD_ENV, { ...PPC, ok: false })).reason === "executor_attestation_source_config_invalid");
+  // 3 — missing host / port / channel secret ⇒ fixed reasons, fail closed
+  for (const k of ["host", "port", "channelSecret"]) {
+    const env = { ...PROD_ENV }; delete env[EXN[k]];
+    const c = await compose(env);
+    ok(`X03 compose with ${EXN[k]} absent ⇒ fail closed (executor_attester_config_incomplete), 0 connections`, c.available === false && c.reason === "executor_attester_config_incomplete" && COUNTS.socket === sock0, c.reason);
+  }
+  { const env = { ...PROD_ENV }; delete env[EXN.channelSecret]; ok("X03b direct acquisition with the executor channel secret absent ⇒ executor_attestation_source_channel_secret_absent", (await acq(env)).reason === "executor_attestation_source_channel_secret_absent"); }
+  { const env = { ...PROD_ENV }; delete env[RDN.channelSecret]; ok("X03c direct acquisition with the reader channel secret absent ⇒ refused (the executor ≠ reader secret check can never be skipped)", (await acq(env)).reason === "executor_attestation_source_reader_channel_secret_absent"); }
+  for (const [k, v, re] of [["port", "abc", /^executor_attester_destination_port$/], ["port", "70000", /^executor_attester_destination_port$/], ["channelSecret", "short-secret", /^executor_attester_channel_secret_invalid$/]]) {
+    const c = await compose({ ...PROD_ENV, [EXN[k]]: v });
+    ok(`X03d malformed ${EXN[k]}=${JSON.stringify(v)} ⇒ fail closed with a fixed bounded reason`, c.available === false && re.test(c.reason), c.reason);
+  }
+  // 4 — public / loopback destination refused outside the test boundary (config layer AND the adapter itself)
+  for (const [h, why] of [["8.8.8.8", "destination_not_private"], ["127.0.0.1", "destination_loopback"], ["executor-attester.example.com", "destination_not_private_dns"]]) {
+    const c = await compose({ ...PROD_ENV, [EXN.host]: h });
+    ok(`X04 production executor destination ${h} ⇒ refused (executor_attester_${why})`, c.available === false && c.reason === "executor_attester_" + why, c.reason);
+  }
+  { const lenv = { ...PROD_ENV, [EXN.host]: "127.0.0.1" }; const tpc = CFG.loadProvisioningConfig(lenv, { testBoundary: true }); const r = await acq(lenv, tpc);
+    ok("X04b a loopback destination that passed only the TEST-boundary config is still refused by the reviewed adapter in production mode", tpc.ok === true && r.available === false && r.reason === "executor_attester_destination_loopback", r); }
+  // 5 — executor secret equal to reader secret
+  { const same = { ...PROD_ENV, [RDN.channelSecret]: PROD_ENV[EXN.channelSecret] };
+    const c = await compose(same);
+    ok("X05 compose with executor channel secret == reader channel secret ⇒ refused", c.available === false && c.reason === "attester_channel_secret_reused", c.reason);
+    ok("X05b …and the reviewed adapter's own independent check refuses it too (executor_attester_channel_secret_reuses_reader)", (await acq(same)).reason === "executor_attester_channel_secret_reuses_reader"); }
+  // 6 — the caller cannot inject or replace the executor source
+  for (const k of ["executorAttestationSource", "readerAttestationSource", "source", "host", "port", "channelSecret", "trustRoot", "executorAttester", "provisioner", "provisioningConfig", "clock", "dbUrl", "fingerprint", "issuer"]) {
+    const c = await compose(PROD_ENV, { [k]: { obtain: async () => ({}) } });
+    ok(`X06 production composition refuses a caller-supplied ${k} (production_entrypoint_rejects_injection)`, c.available === false && c.reason === "production_entrypoint_rejects_injection");
+  }
+  ok("X06b the acquisition refuses any extra input key (e.g. a caller source / host / secret)", (await EP.acquireExecutorAttestationSourceV2({ provisioningConfig: PPC, env: PROD_ENV, source: { obtain() {} } })).reason === "executor_attestation_source_inputs_invalid"
+    && (await EP.acquireExecutorAttestationSourceV2({ provisioningConfig: PPC, env: PROD_ENV, host: "x.railway.internal" })).reason === "executor_attestation_source_inputs_invalid"
+    && (await EP.acquireExecutorAttestationSourceV2([PPC, PROD_ENV])).reason === "executor_attestation_source_inputs_invalid");
+  ok("X06c the entrypoint exposes no setter / override for the executor source", Object.keys(EP).sort().join() === "ENTRYPOINT_VERSION,acquireExecutorAttestationSourceV2,composeActivationBoundaryForTestV2,composeProductionActivationBoundaryV2", Object.keys(EP));
+  for (const k of ["executorAttestationSource", "readerAttestationSource", "channelSecret", "host", "issuer", "fingerprint", "source"]) {
+    const m = mkDeps();
+    const r = await EP.composeActivationBoundaryForTestV2(m.deps, { testBoundary: true }).run({ ...REQ(), [k]: { x: 1 } });
+    ok(`X06d an activation REQUEST carrying ${k} ⇒ refused before acquisition (0 connections, 0 attestation requests)`, r.ok === false && m.spy.ex.opens === undefined && m.spy.rd.opens === undefined
+      && m.deps.executorAttestationSource.calls.length === 0 && m.deps.readerAttestationSource.calls.length === 0, r.reason);
+  }
+  // 7 — composition performs no DB connection and no channel request; the bound source is the reviewed protocol
+  ok("X07 all Step-10 compositions above: 0 socket connects (no DB connection, no attester request)", COUNTS.socket === sock0, COUNTS);
+  let x7; try { await s1.source.obtain({ contract: "AiStagingExecutorAttestationV1", role: "live_ai_03b_executor", connectionToken: "not-hex", requestNonce: "x" }); x7 = "no-throw"; } catch (e) { x7 = e.code; }
+  ok("X07b the bound source enforces the reviewed request shape BEFORE any I/O (executor_attester_request_invalid, still 0 sockets)", x7 === "executor_attester_request_invalid" && COUNTS.socket === sock0, x7);
+  // 8 — rejected executor configuration never falls back to the reader source
+  { const env = { ...PROD_ENV, [EXN.host]: "8.8.8.8" };
+    const c = await compose(env), d = await acq({ ...PROD_ENV, [EXN.channelSecret]: "" });
+    ok("X08 rejected executor config ⇒ unavailable with an EXECUTOR reason (no reader-source fallback, no source returned)", c.available === false && /^executor_/.test(c.reason) && d.available === false && !("source" in d) && /^executor_/.test(d.reason), { c: c.reason, d: d.reason });
+    const rd = CFG.loadProvisioningConfig(PROD_ENV, { testBoundary: false }).readerAttester.channel;
+    ok("X08b a valid executor source never aliases the reader destination or the reader secret", !(s1.source.destination.host === rd.host && s1.source.destination.port === rd.port) && PROD_ENV[EXN.channelSecret] !== PROD_ENV[RDN.channelSecret]); }
+  // 9 — production CLI stays fail-closed even with a complete production-shaped env and a request on argv/stdin
+  { const r = cp.spawnSync(process.execPath, [join(PKG, "src/production-entrypoint.mjs"), JSON.stringify(REQ())], { encoding: "utf8", env: { PATH: process.env.PATH, ...PROD_ENV }, input: JSON.stringify(REQ()) });
+    ok("X09 production CLI with a full production env + a request on argv/stdin ⇒ exit 2, fail-closed, no request intake", r.status === 2 && /FAIL-CLOSED/.test(r.stderr) && r.stdout === "", r.status); }
+  // static: the binding imports the reviewed adapter (no protocol duplication) and reads env only through validated names
+  { const src = readFileSync(join(PKG, "src/production-entrypoint.mjs"), "utf8");
+    ok("X10 production-entrypoint imports createExecutorAttestationSourceChannel from the preserved issuer package and does not re-implement the channel (no net / HMAC / wire in this package)",
+      /import \{ createExecutorAttestationSourceChannel \} from "\.\.\/\.\.\/m7-v2-executor-attester-issuer-offline-01\/src\/executor-attestation-channel\.mjs";/.test(src)
+      && readdirSync(join(PKG, "src")).every((f) => !/from\s+"node:net"|createHmac|executorChannelMac|attest-executor/.test(readFileSync(join(PKG, "src", f), "utf8"))));
+    ok("X10b the executor source is built in PRODUCTION mode only (offlineTestBoundary:false literal; no test flag reaches it)", /createExecutorAttestationSourceChannel\(\{ host: ch\.host, port: ch\.port, channelSecret, readerChannelSecret \}, \{ offlineTestBoundary: false \}\)/.test(src) && !/offlineTestBoundary: (true|testBoundary|opts)/.test(src));
+    ok("X10c lifecycle order preserved: config → reviewer root → PIN C → EXECUTOR source → reader source → factories/clock → provisioner → preserved runtime",
+      (() => { const i = ["loadProvisioningConfig(env", "loadReviewerTrustRootV2(pc.cfg)", "productionActivationSourceProofV2(", "acquireExecutorAttestationSourceV2({ provisioningConfig: pc, env })", "createAttestationSourceChannel({", "createAuthorityProvisionerV2({", "composeTrustedExecutorProductionV2(prov.provisioner)"].map((t) => src.indexOf(t, src.indexOf("export async function composeProductionActivationBoundaryV2"))); return i.every((x) => x > 0) && i.every((x, j) => j === 0 || x > i[j - 1]); })()); }
 }
 
 // ═══════════ B — the activation request is untrusted ═══════════
@@ -383,17 +475,22 @@ for (const k of ["executorDbClient", "readerDbClient", "authority", "dbUrl", "pa
   const pkgFiles = walk(PKG).map((p) => rel(PKG, p).split("\\").join("/"));
   const real = VP.makeGit(REPO);
   const X = "c0ffee11c0ffee11c0ffee11c0ffee11c0ffee11";
+  // Step 10: src/ now imports the preserved executor-attester issuer adapter, which first exists at 02345082. The
+  // synthetic overlay therefore takes every NON-package byte from that real preserved tree (Step-2 tree unchanged =
+  // bacac441; every other frozen dependency byte-identical to 0afe4b6b), and the package bytes from the working tree.
+  const STEP10_BASE = "023450821bc7dbf75165acbf3ee349a3d5984b1b";
   const overlay = (o = {}) => ({
     revParse: (x) => (x === `${X}^{commit}` ? X : x === `${X}^{tree}` ? "5".repeat(40) : x === `${X}:${PI.PACKAGE_DIR}` ? "6".repeat(40)
-      : x.startsWith(X + ":") ? real.revParse(PI.BASELINE.commit + x.slice(X.length)) : real.revParse(x)),
+      : x.startsWith(X + ":") ? real.revParse(STEP10_BASE + x.slice(X.length)) : real.revParse(x)),
     isAncestor: (a, b) => (b === X ? a === PI.BASELINE.commit || real.isAncestor(a, PI.BASELINE.commit) : real.isAncestor(a, b)),
     diffNameStatus: (a, b) => (b === X ? (o.changes || pkgFiles.map((p) => ({ status: "A", path: `${PI.PACKAGE_DIR}/${p}` }))) : real.diffNameStatus(a, b)),
     blobBytes: (rev, p) => { if (rev !== X) return real.blobBytes(rev, p); if (o.tamper && p === o.tamper) return Buffer.from("tampered");
-      return p.startsWith(PI.PACKAGE_DIR + "/") ? readFileSync(join(REPO, p)) : real.blobBytes(PI.BASELINE.commit, p); },
+      return p.startsWith(PI.PACKAGE_DIR + "/") ? readFileSync(join(REPO, p)) : real.blobBytes(STEP10_BASE, p); },
     listFiles: (rev, dir) => (rev === X ? pkgFiles : real.listFiles(rev, dir)),
   });
   const v = VP.verifyPackagePreservation(overlay(), X);
-  ok("Z01 future package preservation: additive-only on top of 0afe4b6b, Step-2 tree unchanged, PIN C re-derived, deps + digests exact ⇒ V2ProductionAuthorityProvisioningPreservationBindingV1", v.ok === true
+  ok("Z01 in-package preservation DIAGNOSTIC (non-authoritative; synthetic overlay = preserved tree 02345082 + this package): Step-2 tree unchanged, PIN C re-derived, every frozen dep (incl. the Step-10 issuer adapter) + digests exact ⇒ V2ProductionAuthorityProvisioningPreservationBindingV1", v.ok === true
+    && v.binding.package_runtime_digest === PI.measurePackage().package_runtime_digest
     && v.binding.contract === "V2ProductionAuthorityProvisioningPreservationBindingV1" && v.binding.base_commit === "0afe4b6bedeb12f756cc9027367d323acb264464", v);
   ok("Z02 the package binding is NOT a PIN C (refused by the preserved verifyStep2RuntimePin)", v.ok && SRC.verifyStep2RuntimePin(v.binding).ok === false);
   ok("Z03 a Step-2 file changed by the package commit ⇒ fail", VP.verifyPackagePreservation(overlay({ changes: [{ status: "M", path: "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/runtime/v2-production-authority.mjs" }] }), X).reason.startsWith("non_package_path_changed"));

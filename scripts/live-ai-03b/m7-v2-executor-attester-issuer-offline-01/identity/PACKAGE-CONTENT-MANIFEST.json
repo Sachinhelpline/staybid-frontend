@@ -11,7 +11,7 @@
   },
   "statement": "Additive package on top of dcab7c5b. DESCRIPTIVE ONLY: preservation acceptance is decided by the external review-bundle verifier, never by this file.",
   "package_runtime_digest": "5a920a9f66c0faf8eb8fb58d1772a3eec86d7f6576e97fe128276b9a9d31544a",
-  "package_content_digest": "92d95524a0623aaf96918be26a77d2ba8d5fd662b37dfe1c0622b415cd9cde79",
+  "package_content_digest": "c5a9085371eecd078ebb7ba67c9b2ca46ac3f05b9431c6192b17376ea9166254",
   "runtime_files": [
     {
       "path": "src/executor-attestation-channel.mjs",
@@ -61,7 +61,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "2120464843ffa3a8942108f8784da7fe6167760e2037c94b34be65d0efc99b50"
+      "sha256": "25c1b876f827df0dc1f7fe7d9939184ee6ebaf100dadb0160ea32e20c4f786d5"
     },
     {
       "path": "executor-observer-role-proposal.sql",
@@ -105,7 +105,7 @@
     },
     {
       "path": "tests/executor-attester.test.mjs",
-      "sha256": "9fa846e966f58a4c928008dbf41a41fb00841fd9513a850533662da7453bdc72"
+      "sha256": "17d51d6704916e43724024d67d080f154669871884acb6cd26f954559ecf13b3"
     },
     {
       "path": "tests/fixtures/synthetic-executor-cluster.mjs",
@@ -117,7 +117,7 @@
     },
     {
       "path": "tests/run-all.sh",
-      "sha256": "55419d8e02e825dc01d14ad67dafccd98573c77d6171218957e1f9f2c583adfe"
+      "sha256": "4661169e8547f185969a421e16b07d9787b4f1a68b79f18639c270c569dda1d1"
     },
     {
       "path": "tools/package-identity.mjs",

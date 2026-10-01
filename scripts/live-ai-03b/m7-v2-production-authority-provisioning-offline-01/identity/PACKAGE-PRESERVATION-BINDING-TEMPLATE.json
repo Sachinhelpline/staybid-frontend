@@ -15,8 +15,8 @@
     "commit": "<40-hex of the future Owner-reviewed preservation commit of THIS package: NOT KNOWN, NOT FABRICATED>",
     "tree": "<40-hex tree of that commit>",
     "package_dir_tree": "<40-hex git tree of scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01 at that commit>",
-    "package_runtime_digest": "565031c23aa07b27ad2340fd371f00ff5472f43e4a84aa143010d31b37ab099c",
-    "package_content_digest": "3b4a19bae84b883633ec3aa50dcc3a414de4fb75edcdaa13e8a922bb6db38c51",
+    "package_runtime_digest": "bda9c5a1c29c60f9a18bb9e42e82b21a83a8de2a27a42e3d966d471207eab58e",
+    "package_content_digest": "b0297047db5e58577a7b1335238304745a7a192a8f57a3659b2167baf809fa02",
     "base_commit": "0afe4b6bedeb12f756cc9027367d323acb264464",
     "step2_pin_c_commit": "0afe4b6bedeb12f756cc9027367d323acb264464",
     "step2_dir_tree": "bacac441271856966c9b7983c4fa1625f7a6a2d2"

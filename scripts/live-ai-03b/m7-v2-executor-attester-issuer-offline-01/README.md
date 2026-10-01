@@ -5,8 +5,9 @@ signed a real attestation.
 
 The package is the missing upstream capability behind the preserved production authority. That authority package
 (`m7-v2-production-authority-provisioning-offline-01`, tree `c22ca7cf`) verifies `AiStagingExecutorAttestationV1` but
-has no issuer. Its `acquireExecutorAttestationSourceV2()` still returns `executor_attestation_source_unprovisioned`,
-and this candidate does not change that.
+had no issuer. This candidate did not change that authority. The separate Step-10 authority-binding candidate binds
+`acquireExecutorAttestationSourceV2()` to this package's reviewed `createExecutorAttestationSourceChannel`; this
+package's runtime is unchanged by it.
 
 | Field | Value |
 |---|---|

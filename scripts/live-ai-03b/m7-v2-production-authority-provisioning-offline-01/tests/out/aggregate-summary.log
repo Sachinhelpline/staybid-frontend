@@ -1,5 +1,5 @@
 PASS  A package identity --check  —  exit 0 (expected exactly 0)
-PASS  B authority-provisioning focused suite  —  exit 0; m7-v2-authority-provisioning: 178 passed, 0 failed
+PASS  B authority-provisioning focused suite  —  exit 0; m7-v2-authority-provisioning: 231 passed, 0 failed
 PASS  C production entrypoint CLI fail-closed  —  exit 2 (expected exactly 2)
 PASS  D Step-2 identity artifacts --check  —  exit 0 (expected exactly 0)
 PASS  E Step-2 PIN C re-derived at 0afe4b6b  —  exit 0;     "runtime_manifest_digest": "64c7031746bff227321e2e2506b4737938eafc3493ae472ab0f51e5e46987d9f",

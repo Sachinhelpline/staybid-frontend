@@ -5,9 +5,11 @@ against a live system.
 
 - **Not authority by itself.** Nothing in this directory is authority on its own.
 - **Default is unchanged.** The preserved default (`v2_production_authority_unprovisioned`) is not changed.
-- **Stops before any connection.** The production entrypoint fails closed before any database connection:
-  - the executor-attestation source is unprovisioned;
-  - see §7.
+- **Composition performs no I/O.** Composing the production boundary opens no database connection and sends no
+  attester request; the first I/O happens only inside the one-shot provisioner `acquire()` (§7a).
+- **Step 10 (offline candidate, not preserved, not deployed):** `acquireExecutorAttestationSourceV2()` is bound to the
+  reviewed `executor-attestation-channel-v1` client of the preserved executor-attester issuer (§7a). It replaces the
+  former `executor_attestation_source_unprovisioned` stop.
 
 It is an additive layer on top of the Step-2 runtime preserved at PIN C.
 
@@ -145,13 +147,34 @@ The external verifier:
 Neither verifier is made trustworthy by storing its own hash; the trust anchor is the externally recorded
 review-bundle hash.
 
+## 7a. Step 10 — executor-attestation source binding (offline candidate)
+
+The independent issuer of `AiStagingExecutorAttestationV1` now exists: `m7-v2-executor-attester-issuer-offline-01`,
+preserved at `02345082`. `acquireExecutorAttestationSourceV2({ provisioningConfig, env })` builds the source with that
+package's reviewed `createExecutorAttestationSourceChannel`. The channel protocol is not re-implemented here.
+
+- **Inputs:** only `composeProductionActivationBoundaryV2`'s own trusted composition inputs — the
+  `loadProvisioningConfig` result and the same env. Any other key, or a missing input, returns
+  `executor_attestation_source_inputs_invalid`. There is no setter, env switch or injection path, and the activation
+  request can never reach it.
+- **Destination:** `provisioningConfig.executorAttester.channel` only. It must equal
+  `LIVE_AI_03B_EXECUTOR_ATTESTER_HOST` / `_PORT` exactly; otherwise `executor_attestation_source_destination_mismatch`.
+- **Secret:** `env[LIVE_AI_03B_EXECUTOR_ATTESTER_CHANNEL_SECRET]`. The reader channel secret is also passed, so the
+  adapter's own "executor secret ≠ reader secret" check stays active on top of `loadProvisioningConfig`'s check.
+- **Production mode only:** the source is built with `offlineTestBoundary: false`, so the adapter refuses a loopback,
+  public or non-`*.railway.internal` destination even if a config somehow validated it.
+- **No I/O at composition.** The first attester request is made inside `acquire()`, bound to the executor connection
+  token and a fresh nonce. The envelope is verified by `bindExecutorConnection` → `verifyExecutorAttestation` against
+  the PINNED executor trust root; no key or destination inside a response is used.
+- **No fallback:** any defect returns `{ available:false, reason }` with a fixed bounded reason. It never falls back to
+  the reader source, a public endpoint or a caller source.
+- **Order:** the lifecycle order is unchanged (step 4 of the composition).
+- **Tests:** A04–A06 and X01–X10 in `tests/authority-provisioning.test.mjs`.
+
 ## 7. Remaining blockers before any live provisioning (honest)
-1. **No independent executor-attestation issuer exists.** The accepted M5 attester issues only
-   `AiStagingReaderAttestationV1` for `live_ai_03b_reader`: `attestation-server.mjs` refuses any other role or contract.
-   - `acquireExecutorAttestationSourceV2()` is therefore deterministically UNPROVISIONED, and the production entrypoint
-     stops there (A04) before opening any connection.
-   - A reviewed issuer extension, which is a change outside this package, must exist first. Then this package can
-     receive a reviewed, preserved source.
+1. **The executor-attestation source is bound (Step 10, §7a) but not yet preserved or deployed.** This binding needs
+   WORK review, then its own separately authorized preservation. The former blocker, "no independent issuer exists",
+   is closed by the preserved and live-verified executor-attester issuer.
 2. **Deployment topology.** The accepted reader-attestation channel is private (`*.railway.internal`). The future
    trusted entrypoint must therefore run where it can reach the attester privately, and where the restricted
    credentials are provisioned. This is decided at the live boundary, not here.

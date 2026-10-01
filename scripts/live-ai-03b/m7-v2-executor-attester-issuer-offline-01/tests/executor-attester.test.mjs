@@ -94,7 +94,9 @@ async function measure(state, token) {
   const b = bindExecutorConnection({ session: sess, envelope: env, trustRoot: TR, requestNonce: n, nowMs: Date.now(), testBoundary: true });
   ok("A10 PRESERVED bindExecutorConnection (identity proof + verifyConnectionTargetBinding) → PASS", b.ok === true, b.reason);
   ok("A11 the PRESERVED READER verifier refuses the executor envelope (no cross-contract acceptance)", verifyReaderAttestation(env, { trustRoot: TR, expectedConnectionToken: tokenOf(s.sessions[0]), expectedRequestNonce: n, now: Date.now() }).ok === false);
-  ok("A12 preserved authority acquisition is STILL unprovisioned (not bound by this candidate)", (await acquireExecutorAttestationSourceV2()).available === false && (await acquireExecutorAttestationSourceV2()).reason === "executor_attestation_source_unprovisioned");
+  { const a12 = await acquireExecutorAttestationSourceV2();   // Step 10: the authority is now BOUND to this package's reviewed channel adapter
+    ok("A12 preserved authority acquisition (Step-10 bound): without its trusted composition inputs it fails closed with a fixed reason and no source — never the retired unprovisioned default",
+      a12.available === false && a12.reason === "executor_attestation_source_inputs_invalid" && !("source" in a12), a12); }
   // freshness / binding / trust — PRESERVED verifier on issuer output
   const at = (t) => signer({ nowProvider: () => t }).signer.issue({ requestNonce: n, target: tgt.target, connection: m.ev.connection, privileges: m.ev.privileges }).envelope;
   const V = (e, o = {}) => verifyExecutorAttestation(e, { trustRoot: TR, expectedConnectionToken: tokenOf(s.sessions[0]), expectedRequestNonce: n, now: Date.now(), ...o }).reason;

@@ -24,7 +24,7 @@ expect_pass_line() { local label=$1 log=$2 re=$3; shift 3; "$@" > "$log" 2>&1; l
 
 # ── this package ──
 expect_exit    "A package identity --check"                0 out/package-identity.log node ../tools/package-identity.mjs --check
-expect_summary "B authority-provisioning focused suite"      out/authority-provisioning.log "m7-v2-authority-provisioning: 178 passed, 0 failed" node authority-provisioning.test.mjs
+expect_summary "B authority-provisioning focused suite"      out/authority-provisioning.log "m7-v2-authority-provisioning: 231 passed, 0 failed" node authority-provisioning.test.mjs
 expect_exit    "C production entrypoint CLI fail-closed"     2 out/cli-production-entrypoint.log node ../src/production-entrypoint.mjs
 # ── preserved Step-2 (PIN C 0afe4b6b) — composed, unchanged ──
 expect_exit    "D Step-2 identity artifacts --check"         0 out/step2-identity-artifacts.log node "$S2/tools/write-identity-artifacts.mjs" --check
