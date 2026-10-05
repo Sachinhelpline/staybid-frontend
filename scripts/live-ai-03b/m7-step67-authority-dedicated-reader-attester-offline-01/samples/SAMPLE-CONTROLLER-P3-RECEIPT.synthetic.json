@@ -1,0 +1,41 @@
+{
+  "note": "SYNTHETIC SAMPLE from an OFFLINE run (loopback attesters / mock Railway CLI, TEST-ONLY keys). Shape illustration only; grants no authorization.",
+  "receipt": {
+    "schema": "staybid-m7-step67-controller-phase-receipt-v1",
+    "version": "m7-step67-controller-v1",
+    "phase": "P3",
+    "actionId": "M7-STEP6-7-P3-DEDICATED-ATTESTER-VARIABLES",
+    "mutationClass": "RAILWAY_SERVICE_VARIABLE",
+    "runId": "synthetic-sample-p3",
+    "startedUtc": "2026-10-05T07:41:37.070Z",
+    "finishedUtc": "2026-10-05T07:41:37.073Z",
+    "ownerAuthorizationRef": "SYNTHETIC-SAMPLE-AUTH-P3",
+    "collisionGuardOutcome": "CLEAR_OF_RECORDED_COLLISION",
+    "outcome": "PASS",
+    "reason": null,
+    "facts": {
+      "dedicatedServiceId": "6972076c-a4a1-450f-a75d-8e3026d0a10b",
+      "issuer": "staybid-live-ai-03b-authority-reader-attester-v1",
+      "expectedReaderAttesterFingerprint": "d0e0c1fee5bb8ee45571f42a6b92ea9f4f20541b6135896f0071a5af10b46b6d",
+      "forbiddenReaderAttesterFingerprint": "b681e0f85d8cc5aca65cd90a603bea4d1bb4a8aacb2e33f558f2e1b55b2ce964",
+      "expectedExecutorAttesterFingerprint": "a081963c6db6ad5f68a5a2281679ab63b105477d936fdf9c29fd2bb16f7ca7f2",
+      "variableNamesWritten": [
+        "LIVE_AI_03B_ATTESTER_OBSERVER_DB_URL",
+        "LIVE_AI_03B_DEPLOYMENT_ANCHOR_JSON",
+        "LIVE_AI_03B_READER_SERVICE_NAME",
+        "LIVE_AI_03B_ATTESTER_PUBLIC_KEY_DER_B64",
+        "LIVE_AI_03B_ATTESTER_KEY_FINGERPRINT",
+        "LIVE_AI_03B_ATTESTER_ISSUER",
+        "LIVE_AI_03B_ATTESTER_BIND_HOST",
+        "LIVE_AI_03B_ATTESTER_PORT",
+        "LIVE_AI_03B_AI_STAGING_PROJECT_ID",
+        "LIVE_AI_03B_AI_STAGING_ENVIRONMENT_ID",
+        "LIVE_AI_03B_AI_STAGING_PG_SERVICE_ID",
+        "LIVE_AI_03B_ATTESTER_SIGNING_KEY_PKCS8_B64",
+        "LIVE_AI_03B_READER_ATTESTER_CHANNEL_SECRET"
+      ]
+    },
+    "marker": "M7_STEP6_7_CONTROLLER_P3_PASS",
+    "liveAuthorization": "THIS_RECEIPT_GRANTS_NO_AUTHORIZATION"
+  }
+}

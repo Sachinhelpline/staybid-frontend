@@ -1,0 +1,79 @@
+{
+  "note": "SYNTHETIC SAMPLE from an OFFLINE run (loopback attesters / mock Railway CLI, TEST-ONLY keys). Shape illustration only; grants no authorization.",
+  "receipt": {
+    "schema": "staybid-m7-step67-authority-host-receipt-v1",
+    "version": "m7-step67-authority-dedicated-reader-attester-v2-offline-01",
+    "canonicalActionId": "M7-STEP6-7-EFFECTIVE-PRIVILEGE-DUAL-IDENTITY-BINDING",
+    "runId": "synthetic-offline-sample-hold",
+    "startedUtc": "2026-10-05T07:41:36.677Z",
+    "finishedUtc": "2026-10-05T07:41:36.685Z",
+    "manifestSha256": null,
+    "reviewedGitCommit": null,
+    "target": {
+      "projectId": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+      "environmentId": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+      "postgresServiceId": "b7362594-a01b-4623-a982-394707a6cec2"
+    },
+    "authorityServiceId": "1f7daf27-7489-410f-8969-da758459fb4d",
+    "executorAttester": {
+      "serviceId": "c74d7558-2e04-46fc-b5a1-871b5931b0cc",
+      "preBindingDeploymentPin": "52c7c0b2-7863-45e4-987f-5587415d67a7",
+      "sourceCommitPin": "023450821bc7dbf75165acbf3ee349a3d5984b1b"
+    },
+    "dedicatedReaderAttester": {
+      "serviceName": "live-ai-03b-authority-reader-attester",
+      "protocol": "reader-attestation-channel-v2"
+    },
+    "coreProdExclusion": "PASS",
+    "pins": {
+      "expectedExecutorAttesterFingerprint": "7a77a5869b152078e491b069056baf28ea26e3d5deb9f9a94645eeba9cf22116",
+      "expectedReaderAttesterFingerprint": "fcd05fe7f7d49617eee6d8fd53c7652b60c8932be241286dba187cd107a4353a",
+      "forbiddenReaderAttesterFingerprint": "10a387c04f77c03aa40692373975580469fd860b3c2a559d39627b7e7dee41c6"
+    },
+    "authorityCallerConfigNames": "PASS",
+    "privatePeerAuthorization": "NOT_PROVEN",
+    "checks": {
+      "executorConnectionEstablished": "PASS",
+      "executorSessionRole": "PASS",
+      "trustedClockBoundToDb": "PASS",
+      "readerConnectionEstablished": "PASS",
+      "readerSessionRole": "PASS",
+      "readerReadOnlySession": "PASS",
+      "readerStatementTimeoutBounded": "PASS",
+      "readerProtocolV2ClockGated": "NOT_PROVEN",
+      "executorAttestationSignatureTrustFreshness": "NOT_PROVEN",
+      "executorPrivilegeContract": "NOT_PROVEN",
+      "executorTargetBinding": "NOT_PROVEN",
+      "readerAttestationSignatureTrustFreshness": "NOT_PROVEN",
+      "readerPrivilegeContract": "NOT_PROVEN",
+      "readerTargetBinding": "NOT_PROVEN",
+      "distinctRoles": "NOT_PROVEN",
+      "distinctPhysicalSessions": "NOT_PROVEN",
+      "distinctConnectionTokens": "NOT_PROVEN",
+      "distinctBackendPids": "NOT_PROVEN",
+      "distinctApplicationNames": "NOT_PROVEN",
+      "distinctRequestNonces": "NOT_PROVEN",
+      "distinctBoundConnectionTokens": "NOT_PROVEN",
+      "noReconnectUnderBoundProof": "NOT_PROVEN",
+      "connectionsClosed": "PASS"
+    },
+    "counters": {
+      "realConnectionsOpened": 2,
+      "attestationRequestsIssued": 2
+    },
+    "dbMutations": 0,
+    "credentialMutations": 0,
+    "railwayMutationsDuringVerify": 0,
+    "guardedActivationClientConstructed": 0,
+    "sql03": "not_executed",
+    "phaseA": "not_executed",
+    "gatewayProvider": "untouched",
+    "coreProd": "untouched",
+    "outcome": "HOLD",
+    "stage": "S7_reader_v2_attestation",
+    "reason": "reader_v2_attestation_clock_gate_failed",
+    "nextBoundary": "OWNER_CONTROL_ROOM_RECONCILIATION_REQUIRED_NO_AUTO_RETRY",
+    "marker": "HOLD_M7_STEP6_7_AUTHORITY_HOST_READER_V2_ATTESTATION_CLOCK_GATE_FAILED",
+    "liveAuthorization": "THIS_RECEIPT_GRANTS_NO_AUTHORIZATION"
+  }
+}

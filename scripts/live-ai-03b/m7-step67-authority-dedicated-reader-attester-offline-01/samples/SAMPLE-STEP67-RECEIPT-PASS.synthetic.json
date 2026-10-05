@@ -1,0 +1,79 @@
+{
+  "note": "SYNTHETIC SAMPLE from an OFFLINE run (loopback attesters / mock Railway CLI, TEST-ONLY keys). Shape illustration only; grants no authorization.",
+  "receipt": {
+    "schema": "staybid-m7-step67-authority-host-receipt-v1",
+    "version": "m7-step67-authority-dedicated-reader-attester-v2-offline-01",
+    "canonicalActionId": "M7-STEP6-7-EFFECTIVE-PRIVILEGE-DUAL-IDENTITY-BINDING",
+    "runId": "synthetic-offline-sample-pass",
+    "startedUtc": "2026-10-05T07:41:36.640Z",
+    "finishedUtc": "2026-10-05T07:41:36.672Z",
+    "manifestSha256": null,
+    "reviewedGitCommit": null,
+    "target": {
+      "projectId": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+      "environmentId": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+      "postgresServiceId": "b7362594-a01b-4623-a982-394707a6cec2"
+    },
+    "authorityServiceId": "1f7daf27-7489-410f-8969-da758459fb4d",
+    "executorAttester": {
+      "serviceId": "c74d7558-2e04-46fc-b5a1-871b5931b0cc",
+      "preBindingDeploymentPin": "52c7c0b2-7863-45e4-987f-5587415d67a7",
+      "sourceCommitPin": "023450821bc7dbf75165acbf3ee349a3d5984b1b"
+    },
+    "dedicatedReaderAttester": {
+      "serviceName": "live-ai-03b-authority-reader-attester",
+      "protocol": "reader-attestation-channel-v2"
+    },
+    "coreProdExclusion": "PASS",
+    "pins": {
+      "expectedExecutorAttesterFingerprint": "b76ed49abbc5292178b4e27f0db2f3f4d004d20ab99450664e08d393de5caf3b",
+      "expectedReaderAttesterFingerprint": "3b25ae97b88d5c6d7c7f687edb45b0b5e739e54b1894ca4a145034e9de3fd660",
+      "forbiddenReaderAttesterFingerprint": "380460c1b41c301dd718c67e28fd5af6712ce4b51b61a06667b7be0851a9847e"
+    },
+    "authorityCallerConfigNames": "PASS",
+    "privatePeerAuthorization": "PASS",
+    "checks": {
+      "executorConnectionEstablished": "PASS",
+      "executorSessionRole": "PASS",
+      "trustedClockBoundToDb": "PASS",
+      "readerConnectionEstablished": "PASS",
+      "readerSessionRole": "PASS",
+      "readerReadOnlySession": "PASS",
+      "readerStatementTimeoutBounded": "PASS",
+      "readerProtocolV2ClockGated": "PASS",
+      "executorAttestationSignatureTrustFreshness": "PASS",
+      "executorPrivilegeContract": "PASS",
+      "executorTargetBinding": "PASS",
+      "readerAttestationSignatureTrustFreshness": "PASS",
+      "readerPrivilegeContract": "PASS",
+      "readerTargetBinding": "PASS",
+      "distinctRoles": "PASS",
+      "distinctPhysicalSessions": "PASS",
+      "distinctConnectionTokens": "PASS",
+      "distinctBackendPids": "PASS",
+      "distinctApplicationNames": "PASS",
+      "distinctRequestNonces": "PASS",
+      "distinctBoundConnectionTokens": "PASS",
+      "noReconnectUnderBoundProof": "PASS",
+      "connectionsClosed": "PASS"
+    },
+    "counters": {
+      "realConnectionsOpened": 2,
+      "attestationRequestsIssued": 2
+    },
+    "dbMutations": 0,
+    "credentialMutations": 0,
+    "railwayMutationsDuringVerify": 0,
+    "guardedActivationClientConstructed": 0,
+    "sql03": "not_executed",
+    "phaseA": "not_executed",
+    "gatewayProvider": "untouched",
+    "coreProd": "untouched",
+    "outcome": "PASS",
+    "stage": "S12_complete",
+    "reason": null,
+    "nextBoundary": "READY_FOR_REVIEWER_TRUST_ROOT",
+    "marker": "M7_STEP6_7_AUTHORITY_HOST_EFFECTIVE_PRIVILEGE_DUAL_BINDING_PASS_READY_FOR_REVIEWER_TRUST_ROOT",
+    "liveAuthorization": "THIS_RECEIPT_GRANTS_NO_AUTHORIZATION"
+  }
+}

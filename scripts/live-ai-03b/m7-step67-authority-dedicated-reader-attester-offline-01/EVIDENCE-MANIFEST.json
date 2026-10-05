@@ -1,0 +1,723 @@
+{
+  "schema": "staybid-m7-step67-evidence-manifest-v1",
+  "version": "m7-step67-authority-dedicated-reader-attester-v2-offline-01",
+  "packageDir": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01",
+  "baseline": {
+    "head": "1f5e8f66fe5892253d4b68eab006fe3e77107ee4",
+    "tree": "ade2cf551a7fd0a2e06233f3ea5552328f784860",
+    "parent": "023450821bc7dbf75165acbf3ee349a3d5984b1b",
+    "branch": "claude/live-ai-budget-01-price-catalog-inactive-artifact-01"
+  },
+  "counts": {
+    "packageFiles": 39,
+    "acceptedDependencies": 52
+  },
+  "bareSpecifiers": [
+    "node:async_hooks",
+    "node:child_process",
+    "node:crypto",
+    "node:dns",
+    "node:fs",
+    "node:net",
+    "node:os",
+    "node:path",
+    "node:perf_hooks",
+    "node:process",
+    "node:url",
+    "node:zlib",
+    "pg"
+  ],
+  "bareSpecifierNote": "node:* built-ins; 'pg' is resolved only by the accepted pg physical factories at future production run time inside the deployed Authority (repo dependency pg ^8.11.5); no offline test loads it.",
+  "files": [
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/ARCHITECTURE-DECISIONS.md",
+      "role": "package",
+      "sha256": "efcb04c9fd98a96eff5858ed3fdfb503323f9760fc26da6489d08edfa3a67d58",
+      "gitBlobSha1": "6c6bd542b3bb9bc3bd1ba209c9e6c7e904bc59c5",
+      "bytes": 5700
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/FAILURE-RECOVERY-MATRIX.md",
+      "role": "package",
+      "sha256": "fdb363a0ab529be75e0940956263170b5ce3b89cf8710dc1449c5d0010703c96",
+      "gitBlobSha1": "5426dd5939d90585fd7f612c56c166837995c07c",
+      "bytes": 2855
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/FUTURE-LIVE-SEQUENCE.md",
+      "role": "package",
+      "sha256": "c17f18f2b3c09e5f6a2924093c92b8184cc2824151e1acd008c7d34d18b03152",
+      "gitBlobSha1": "78153be33836c15db0464dc10ebb65b875894e0d",
+      "bytes": 6920
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/PROVENANCE.md",
+      "role": "package",
+      "sha256": "b1d1f30da4b9ed7d77da06c73df4ce9b50b33843a4b67bbbd2b05a95d447ea7f",
+      "gitBlobSha1": "3313c13649223b4bafa8c926283ecc60c567e056",
+      "bytes": 2593
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/README-OWNER.md",
+      "role": "package",
+      "sha256": "2395ab1d5cceb204e6245f1cb8005354d490cee1f10b79d97588b74a6bd4e6b1",
+      "gitBlobSha1": "8c03492fe51d46281ec363d53b2cb6ef66c9cac8",
+      "bytes": 5577
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/SECURITY-CONTRACT.md",
+      "role": "package",
+      "sha256": "ca4285446c9d543cccf0cad31df80ce94e65ef346aad638068ae618ee7705e64",
+      "gitBlobSha1": "80ac29795c31f9ca196d961005dc755c76be8065",
+      "bytes": 3609
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/controller/dedicated-attester-provisioning.mjs",
+      "role": "package",
+      "sha256": "ffd61c039d5624af574d5e09ee621f50629b44582c2c0d09dc709a217a941178",
+      "gitBlobSha1": "e8ca243d3ba94383a3bf207b1952ceda252f4c52",
+      "bytes": 4586
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/controller/dedicated-service-spec.mjs",
+      "role": "package",
+      "sha256": "5c24d833d7a58d5dd6a011f7e1bd4089d9c377a4ecd05dbd0f23f6b17dcd16a9",
+      "gitBlobSha1": "38058bd8fda0eefd318b78abee7249ae19090835",
+      "bytes": 3671
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/controller/future-live-phase-plan.mjs",
+      "role": "package",
+      "sha256": "a15ae5cf1d1dfbb79fb6df07f763f20d45579b4e6dab03a0e6dc88cde0bf6bc8",
+      "gitBlobSha1": "f6781c0a7f10791fa527de7da33748e94d158ea2",
+      "bytes": 10507
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/controller/names-only-state.mjs",
+      "role": "package",
+      "sha256": "33a9f9c4154a1452fffd2039836dec50eca4cfe9e8bc1c7c8a8a09669a521ae8",
+      "gitBlobSha1": "d10cf5d3118b89a3050fb635d13ef35ac0bc9015",
+      "bytes": 5833
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/controller/railway-argv.mjs",
+      "role": "package",
+      "sha256": "f187f7e234517aee9f3577c7324d6501066cb0e48807cbc891ae06400df8cc30",
+      "gitBlobSha1": "a79eb0da8296742a6b86ecd513efd9db56168ee9",
+      "bytes": 4137
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/controller/reference-plan.mjs",
+      "role": "package",
+      "sha256": "71f5142acf786f716f0404f6930421ce0d564af791fab27c30db20cf1cc11d9c",
+      "gitBlobSha1": "e7a9fa61a7f38d3c8a41690db867327ab9c03ca2",
+      "bytes": 10577
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/controller/step67-controller.mjs",
+      "role": "package",
+      "sha256": "3b6b223b1fe5c73fc0305288ff9d4221945f944bc106694872c0b0471d3a7ee4",
+      "gitBlobSha1": "71a61dcfc9d2ce27e95f4bb37bbeb76569857e9c",
+      "bytes": 30714
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/samples/SAMPLE-CONTROLLER-P3-RECEIPT.synthetic.json",
+      "role": "package",
+      "sha256": "6b4c7c63b5179f3a1107ecdec1e22ec42aa4002d351028693e722c167651d476",
+      "gitBlobSha1": "21d8b060ea1842519c403ed3ee1476fa1a8c9fc9",
+      "bytes": 1952
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/samples/SAMPLE-STEP67-RECEIPT-HOLD.synthetic.json",
+      "role": "package",
+      "sha256": "8139828018e56e950e76adab15c286e79cd7c3fac51550d3066e60193151b62c",
+      "gitBlobSha1": "a00bceb3d9fceb3e4161d7028e9cc9a9b42e1240",
+      "bytes": 3528
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/samples/SAMPLE-STEP67-RECEIPT-PASS.synthetic.json",
+      "role": "package",
+      "sha256": "48d596787457e90193aa782cc4825341ee1a8ab08c6afebfadf136859e6d7c6f",
+      "gitBlobSha1": "b72dd3ea5f1262cf702da12dc7eb47c188c37076",
+      "bytes": 3379
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/authority-peer-identity.mjs",
+      "role": "package",
+      "sha256": "35f5fccb0e6602bc305162557ec340788096eb62a46e218ad92ed45dbe7a4029",
+      "gitBlobSha1": "963d7ab04107b9d19760c723838b4b8ce70c89bb",
+      "bytes": 2884
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/authority-standby-entrypoint.mjs",
+      "role": "package",
+      "sha256": "bb58a3ffe0d202932ccf1e207217dc4f704a5491eb2fe49431f711b33726ea2f",
+      "gitBlobSha1": "f1cdd5fdfda4db6ef6d8fa59c934b2fc58ef4cd8",
+      "bytes": 2514
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/constants.mjs",
+      "role": "package",
+      "sha256": "612200b45c8e8ce03dc92e07b9376f6384528817e4e399aef6afb58aad62a71d",
+      "gitBlobSha1": "96c071ee31c82c968b4257226502cfdabe9ff9f9",
+      "bytes": 6803
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/one-shot-guard.mjs",
+      "role": "package",
+      "sha256": "21ab35ced2430cbd9352e90b92ea1ce794b00771c502c8da53d9bc79e2244d26",
+      "gitBlobSha1": "b663d87c040925a30f306280083de16689bed697",
+      "bytes": 3688
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/reader-v2-attestation-source.mjs",
+      "role": "package",
+      "sha256": "092c8d64bf121afc902f0dae87fe2e136667efe53e46c78076863e82234f3a66",
+      "gitBlobSha1": "ec6119d80b8d53b398bb74b0037162556fd36fc9",
+      "bytes": 8349
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/receipt.mjs",
+      "role": "package",
+      "sha256": "afc5debf3f865b7a1edc1dbda07f0ab7a28a0e6acd26e570eba0659e5f3c568f",
+      "gitBlobSha1": "5305cc29bd41847457265b1a00d4301ae5d6b345",
+      "bytes": 6492
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/step67-config.mjs",
+      "role": "package",
+      "sha256": "5c6e37d974194cb858bd283f8543e3857eb9ca4fd372dc53e8c141c2ae4db233",
+      "gitBlobSha1": "7e28e8661fc5653f7842bbf0e64737c3f4e35aa4",
+      "bytes": 8823
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/step67-verification-entrypoint.mjs",
+      "role": "package",
+      "sha256": "5e42b014773e4d8ccf53a99f0686900f15703cf7db9333190ac9f2c3f2d1a407",
+      "gitBlobSha1": "e76a6b7e2b092c94d2f50c3a3f5821cccdf2d234",
+      "bytes": 6824
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/step67-verifier.mjs",
+      "role": "package",
+      "sha256": "702374fba7e1116325dbac2dfe5882dea7673bbe226c5f32dda31abfb1dfeda1",
+      "gitBlobSha1": "c445ea9a26eeacca2a058b784591a2cf40cc6a91",
+      "bytes": 10824
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/_harness.mjs",
+      "role": "package",
+      "sha256": "334e875b918ac5c9736e457b981c6cee1c719a3d8f827e7cc7cd6d86cdbbb281",
+      "gitBlobSha1": "99b047335573f8f834483491a0582c282013ca45",
+      "bytes": 1036
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/config-and-plans.test.mjs",
+      "role": "package",
+      "sha256": "3685a9b35274ef8f3ca4972cf2e584d1140620f9f0b8827918aa1a34d543552b",
+      "gitBlobSha1": "8837d3aea35fd82232a7270ac4e0b7db21986b3c",
+      "bytes": 18848
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/controller.test.mjs",
+      "role": "package",
+      "sha256": "f55d387a2e967d0ea22b1271b27829802e8c39cc3606ab8d256bf736752b49c7",
+      "gitBlobSha1": "84f9610c8a33f07724e084cee49dd51a35275ec2",
+      "bytes": 17304
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/fixtures/dual-env.mjs",
+      "role": "package",
+      "sha256": "2b1137b439feab6a6f2e1cc6cd6a2ae0b1319c0951678292b3ee54f753fa0089",
+      "gitBlobSha1": "c2e792c53522316b4aa798a9cd015144380eda4d",
+      "bytes": 11811
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/fixtures/mock-railway.mjs",
+      "role": "package",
+      "sha256": "52f32366c6c9db8c9ace643872ed4bb2215318de8f1e18e0bc6058c2add5b2d1",
+      "gitBlobSha1": "ee19292e68be6e56e8d51ba78591d72dd4f53583",
+      "bytes": 9697
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/run-all.mjs",
+      "role": "package",
+      "sha256": "5b9ab5a353a0fc5ffb77762f79d3bed1e65089461d7e1b85867ce2e1eb525343",
+      "gitBlobSha1": "cbd04a0b327001494428b0b4b9afea7b7d0fa578",
+      "bytes": 1315
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/static-audit.test.mjs",
+      "role": "package",
+      "sha256": "bde456d2f002edd6ae1efa11fda7b5fc0947ce4dd686031f3e868d70ea9d67fe",
+      "gitBlobSha1": "a17f136a9b10f27abf9774e473715f2c2d02f6aa",
+      "bytes": 5447
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tests/verifier-e2e.test.mjs",
+      "role": "package",
+      "sha256": "0942b48ea371a06613267006358c1aee7756a9d686ff81fe944ba3e708dd8259",
+      "gitBlobSha1": "6616c95cc617d6f0898dc2cef27e4a2687951f47",
+      "bytes": 13954
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tools/build-manifest.mjs",
+      "role": "package",
+      "sha256": "a9030d3f12c9ce86d5c5ffc3896ecd4cd0b5be6af905551de4c39e036513ac31",
+      "gitBlobSha1": "480b30af2923bce3f923b6674bb959bd75848f7d",
+      "bytes": 2642
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tools/build-samples.mjs",
+      "role": "package",
+      "sha256": "8610e76bd24d68dc94d7923d3458e597b2ddcfe87de7afb44ae10cfbf0188238",
+      "gitBlobSha1": "25757c2b0fd9320e6c1cbb51a793d7f426c4232e",
+      "bytes": 3712
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tools/build-zip.mjs",
+      "role": "package",
+      "sha256": "fe60e54f60d3eda781b611c2c0f99690b53d83668974d9b46106fe00aa3ebd51",
+      "gitBlobSha1": "974408c67144bc79cecbb2d33fa9a0a9cc597d40",
+      "bytes": 3152
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tools/check-predecessors.mjs",
+      "role": "package",
+      "sha256": "fd68244a77a5b3527212358c8081ee382241604bc0b59781c666c7e953a7a5bb",
+      "gitBlobSha1": "34b56f1101e640d86b0674c5bf8306eb5ccb329f",
+      "bytes": 3167
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tools/import-closure.mjs",
+      "role": "package",
+      "sha256": "7e4b7bdcadb5c4e7f2d5678de1ecd5162b5008038db49bfbf98907ba9a4647f3",
+      "gitBlobSha1": "d7997108337261e53a8ed77778e03a05b430a724",
+      "bytes": 2596
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/tools/static-audit.mjs",
+      "role": "package",
+      "sha256": "38ada0dacbe16a68ed38ebc53d550030d756090f049a7370acbbc3799d6c23f8",
+      "gitBlobSha1": "5fefd5cb58a7acc6413025af4acf7f02af368af0",
+      "bytes": 4630
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/first-text-probe-activation-01/first-text-probe.mjs",
+      "role": "accepted-dependency",
+      "sha256": "3412137c70fb652a14cc04bfcda85c1d18d07d62766d025550ca1bf5733b8d76",
+      "gitBlobSha1": "c2b4637c3f88ee3448b71d0bc41f75abb99325ed",
+      "bytes": 6577,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/approval/pricing-approval-contract-v2.mjs",
+      "role": "accepted-dependency",
+      "sha256": "631c7635fad5e8676dcd1fefc514976254711d1e6b25a3cd8888a3d4a85004bf",
+      "gitBlobSha1": "e9acd06218deb9ca2504d3389f5ed5b760f9e7d5",
+      "bytes": 11872,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step1-hb1-consolidated-remediation-01/catalog/v2-digest-gen.mjs",
+      "role": "accepted-dependency",
+      "sha256": "b1e2d5485e0fbf8ef8ae7210be53d58b76aafd65d3bcf47986243af7d8991a65",
+      "gitBlobSha1": "1a043d4287a1e5ba08f9fe4ff5549d9268a71d9e",
+      "bytes": 16531,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/identity/v2-identity.mjs",
+      "role": "accepted-dependency",
+      "sha256": "5d6adba97a5374c616f3095b0a066df15f01826f17b0dee9a5b98e0061cff150",
+      "gitBlobSha1": "8a66ce37732a6a899b42f4823689e957146db855",
+      "bytes": 9677,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/runtime/v2-runtime-config.mjs",
+      "role": "accepted-dependency",
+      "sha256": "dba84a7d04d6f95302838b173bfa65ab8066b0f77dfa20402d765b90dde6aa04",
+      "gitBlobSha1": "fefd0e7e2d814fdb89ea3c55b491c01eaab5dc00",
+      "bytes": 4758,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-attestation-channel.mjs",
+      "role": "accepted-dependency",
+      "sha256": "223441a143ba32a04737f7f8111c0b18c16d9c211f8c771525f537561b4b8cd0",
+      "gitBlobSha1": "40f7c7bbeed3f21416a9740334c4f935c778a8d4",
+      "bytes": 6790,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-attestation-server.mjs",
+      "role": "accepted-dependency",
+      "sha256": "c2ee92fb8d2c95b0e40c06d1fc655dd538e5c7c09466b3db04a43b6f21f8ec64",
+      "gitBlobSha1": "4c4e2986204d576a8193aa7ac017d0bc4bb8d900",
+      "bytes": 16343,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-evidence-evaluator.mjs",
+      "role": "accepted-dependency",
+      "sha256": "3666115cd2e891e491c96da6059d60868b17e7e3803560263af411f60a8ea992",
+      "gitBlobSha1": "b9f919659b482a2e8f1ae5f0d3c4665ddba99629",
+      "bytes": 19133,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-evidence-queries.mjs",
+      "role": "accepted-dependency",
+      "sha256": "7fd7bb0ad73ea4aabc2d7cdb699839bd40ec9b11c2b5fd7a30daa4b4ce5e233d",
+      "gitBlobSha1": "f609d5e5f1dc470aec0aed99f9e05d4e051f59bb",
+      "bytes": 24751,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-observer.mjs",
+      "role": "accepted-dependency",
+      "sha256": "0f9b699c43428672c05e611bfc76f36b0e453c4318eb353c6e8f1edeb87728de",
+      "gitBlobSha1": "4b18cc0ea37cf3da3f2bfc055d13134a3743fb24",
+      "bytes": 13835,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-signing-adapter.mjs",
+      "role": "accepted-dependency",
+      "sha256": "f1720a760a4e8675a44482bf28e9d26d9ddc7e8eab355c41d8d12a330882f7e7",
+      "gitBlobSha1": "338dff144d3d6755ee79a6d61c93747cc9c585c7",
+      "bytes": 6431,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-target-binding.mjs",
+      "role": "accepted-dependency",
+      "sha256": "6a70344aaa30d0a250fd2eed1707f2d7f87194f08811ca32081acd9b61c2be16",
+      "gitBlobSha1": "77b3d4e110c6518c1768404e4e20cd1c8dacc970",
+      "bytes": 5045,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/tests/fixtures/synthetic-executor-cluster.mjs",
+      "role": "accepted-dependency",
+      "sha256": "1a94a122cdd96b783450f24719785046cce59140815287f22421e67f70f54eb5",
+      "gitBlobSha1": "6f2353c9e80478efe593c18efebb8bbd2b7cbff6",
+      "bytes": 7902,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/executor-attestation.mjs",
+      "role": "accepted-dependency",
+      "sha256": "5a21ac89078bdfa86adcd0aecdab4d17331d7769bceb823878c74f0cdb7e4537",
+      "gitBlobSha1": "f0c8dd3a9b35cf56c35479ac9e67b7925ed21f23",
+      "bytes": 9640,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/executor-session.mjs",
+      "role": "accepted-dependency",
+      "sha256": "547e89afdad942478a8c34598ee8521d3ddb1acdc46c0d97c88bcc1b6e906dd0",
+      "gitBlobSha1": "566480c145f608a06cc13d38f1bbcf9881b4cb74",
+      "bytes": 7284,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/provisioning-config.mjs",
+      "role": "accepted-dependency",
+      "sha256": "04b8b548725e2b6eaa3a9715f351d72554cbd9d790e656797e62cfd13df4358d",
+      "gitBlobSha1": "782763180203755bc9da2ebc68b912b1e4fcddda",
+      "bytes": 8480,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/role-binding.mjs",
+      "role": "accepted-dependency",
+      "sha256": "919cdea9a8be53810696fc293692c8b57a5ba9a54bfbc12b8e03141a9db780d2",
+      "gitBlobSha1": "c154a884e58ab1d1609c74eb4148754c30bc14a7",
+      "bytes": 7068,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/trusted-clock.mjs",
+      "role": "accepted-dependency",
+      "sha256": "8bb2d26e219a38e4c87495c1cbbf091acc28e3af138e60101d9b21c0d7305926",
+      "gitBlobSha1": "07ddb1eadd1a8a2fc832a105e35f09e7db238428",
+      "bytes": 3671,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-attester-offline-01/attester-config.mjs",
+      "role": "accepted-dependency",
+      "sha256": "c2912a9d8a3ca0b4dceb73862a3521cd4ccf6b9c6f64de3ca01f23b525b589a0",
+      "gitBlobSha1": "7e6d3727e520ffc006392408a67286f8727bb458",
+      "bytes": 6636,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-attester-offline-01/evidence-evaluator.mjs",
+      "role": "accepted-dependency",
+      "sha256": "c79e7177d2ef481960d87c6a657d87f41fa1d7a0d09ff04924b1d31aea47c8e2",
+      "gitBlobSha1": "543fbae3e3da5509199d878cdbebafcdf7447063",
+      "bytes": 12773,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-attester-offline-01/evidence-queries.mjs",
+      "role": "accepted-dependency",
+      "sha256": "05bf3e2895b0cb52ac5c575f7de69127e1b9e5f7ad159b938027c46714ed667e",
+      "gitBlobSha1": "99a028adaafc425fec0671aebbe4c2219d9aeb79",
+      "bytes": 9842,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-attester-offline-01/observer-connection.mjs",
+      "role": "accepted-dependency",
+      "sha256": "37b9672535291e5444bd6b10aea8700be1782bc310a877bbf707ba731015c1cc",
+      "gitBlobSha1": "632a3b624087d4d268e969b1ba75e3a9c1090f80",
+      "bytes": 20113,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-attester-offline-01/signing-adapter.mjs",
+      "role": "accepted-dependency",
+      "sha256": "741bc14b3e634c7b657c05c2b6d3b42c67f047c606453ed6a3fb266cb39d2e65",
+      "gitBlobSha1": "a21a50f5e30d4f585e324234c44a4fbdce4ea52b",
+      "bytes": 4340,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-attester-offline-01/target-binding.mjs",
+      "role": "accepted-dependency",
+      "sha256": "6ea5cde145d8db68286bbde8dc30cbf13040ba2b32c09bb1905e1170945215b0",
+      "gitBlobSha1": "198d4dc66b048c3b9580afa1da14075a9b8d892a",
+      "bytes": 4481,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-attester-offline-01/tests/fixtures/synthetic-cluster.mjs",
+      "role": "accepted-dependency",
+      "sha256": "7cceb6600dd522572a7733273c41df931d286931cae6ecdd4e91426fb9d637ed",
+      "gitBlobSha1": "12f96a1fc64b78004d7dd4ab2174f6de61818279",
+      "bytes": 12958,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attestation-channel-v2.mjs",
+      "role": "accepted-dependency",
+      "sha256": "f30d01598fd97cee7888e06833a52ebaae35680636925e109ec6b1209c6392fa",
+      "gitBlobSha1": "cacc2c0cb25f4f70dd17594ec365dbd4f22a0a36",
+      "bytes": 15135,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-state.mjs",
+      "role": "accepted-dependency",
+      "sha256": "c9001aabda2bdb52035ab55d38eb3a1b13be8b8eeaec11f3de2589b6cd75a1c5",
+      "gitBlobSha1": "20b5ae828475f3a3f05d6cb90e5d4f61679b388d",
+      "bytes": 3648,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-gate.mjs",
+      "role": "accepted-dependency",
+      "sha256": "beff2bc9027410984f2829dd6ad26a6e5884d529ea9ca95cf707b851f5f1aeb6",
+      "gitBlobSha1": "5e8e54d0b225cd2ac9b392a2d0866d6edffa754e",
+      "bytes": 8010,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/clock-interval.mjs",
+      "role": "accepted-dependency",
+      "sha256": "4af75f8fccbf3315c675c982ef8f13f654843ff8694154fb55396e6912e6cdd7",
+      "gitBlobSha1": "4a79895fe1016ca5dc51fd3b33bcef02c041e493",
+      "bytes": 9130,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/db-clock-probe.mjs",
+      "role": "accepted-dependency",
+      "sha256": "8eefbb6ca35faf77203762b94eee46d8e64e8606ade7be92ee5489b7babb30bf",
+      "gitBlobSha1": "d6362c889b252bbdfbdaba7321cd1b2b51fa9c5e",
+      "bytes": 4726,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/private-peer-resolver.mjs",
+      "role": "accepted-dependency",
+      "sha256": "bb2f8d1d07cf6124a6f901ea4f1f6b18174fb68dda408e8a9a8cbc10d7617282",
+      "gitBlobSha1": "967d81a721e76e339274c11630a7401b29305ccc",
+      "bytes": 8438,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-config.mjs",
+      "role": "accepted-dependency",
+      "sha256": "2016a8ca7b0e1f53d3162b611cad8eb12a9352eb92c18176e5ae1468c24081fe",
+      "gitBlobSha1": "8ac2b5f2c6f570d5035355342d2682ad0150a5ec",
+      "bytes": 12489,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs",
+      "role": "accepted-dependency",
+      "sha256": "1e43306495bc5a4c33fd6c3c463922710015b3d2ada2046038ae3ba19e30b17f",
+      "gitBlobSha1": "e385e8e5c1f454d9616d00e632b7ec305dfcf78b",
+      "bytes": 14729,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/reader-bootstrap.mjs",
+      "role": "accepted-dependency",
+      "sha256": "a6d5b75d00e035a8e8f66f818e6a6a0add72f3c506d88c116439c0519fb0d683",
+      "gitBlobSha1": "eb547bb69dad6b5c6f8becdb4988ef364cd8d03d",
+      "bytes": 12787,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-host-offline-01/private-reader-host.mjs",
+      "role": "accepted-dependency",
+      "sha256": "3f25bcd3975318cca5c6619beb016e6159ba06c263eb32f11d8873e650723525",
+      "gitBlobSha1": "f5ccce9c5c3d542c4cc67dda9e22bb4a16aa120c",
+      "bytes": 15799,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/observation-transport.mjs",
+      "role": "accepted-dependency",
+      "sha256": "06c01348d20c3e8b118b74aae086e24de8945e7ab043df4d4715eff21b4f6ca3",
+      "gitBlobSha1": "1b7cefd7ff7d11c39c4170319dd8940e7d90e3f0",
+      "bytes": 17814,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/reader-only-authority.mjs",
+      "role": "accepted-dependency",
+      "sha256": "ff38a8cc18184281e153dee0bd1b38d620015cc98ba281c7a241b39437efd3f8",
+      "gitBlobSha1": "21bfe3eee14239aee96fb8542cd957fe66b002ce",
+      "bytes": 15969,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-host-runtime-offline-01/runtime-config.mjs",
+      "role": "accepted-dependency",
+      "sha256": "4843ecb038f9d91b9f5725f9476838a95ae4e4e49a99ec82fbd846a5a846c62e",
+      "gitBlobSha1": "340106ca85054344efd575edc26245d7add39330",
+      "bytes": 5716,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-production-integration-offline-01/attestation-source-channel.mjs",
+      "role": "accepted-dependency",
+      "sha256": "eb484e7a558de4fc59883718340e98bc6489acefdf53d295e41df9b96a8306ed",
+      "gitBlobSha1": "6b50184b93098c5bde4be38a1189e2b5cd8d35e3",
+      "bytes": 8214,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-production-integration-offline-01/gateway-observation-caller.mjs",
+      "role": "accepted-dependency",
+      "sha256": "d710087d28cf02a7a7676290f87b0d1da28f293cc035291870d1ccbdabeef8e7",
+      "gitBlobSha1": "d8096fe5038d585c7d2bf446adf83053cf4c0a74",
+      "bytes": 9480,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-production-integration-offline-01/integration-config.mjs",
+      "role": "accepted-dependency",
+      "sha256": "d3c86a6fd9ecc3607f904f684791e2269f6428b79ecd765ad9e803b7f2446adb",
+      "gitBlobSha1": "c44343ee56f1d71c2ae2f6e4fe829c02971d7b0e",
+      "bytes": 4458,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-attestation.mjs",
+      "role": "accepted-dependency",
+      "sha256": "42964752dcb7035abddd7decd6ea40a7c27321112f96176379c8983ce72b3d5e",
+      "gitBlobSha1": "19692b9a6ccb4d3ae29516b9355423659665b968",
+      "bytes": 9039,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-session.mjs",
+      "role": "accepted-dependency",
+      "sha256": "064021ba88e39da431249a4b5b86a2313a787c7b1c35f0190587270741b1d011",
+      "gitBlobSha1": "c24a2781b7b5f435edd653fc7fc29b84160df72f",
+      "bytes": 9199,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-activation-boundary-01/approval-verify.mjs",
+      "role": "accepted-dependency",
+      "sha256": "88212feed6e30a08069a12e1e0c1999f7df07487b3c52e035f5e5b1486fb29f3",
+      "gitBlobSha1": "5ced554cf147659879375e6aad4b66576d467061",
+      "bytes": 17571,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-activation-boundary-01/pricing-approval-contract.mjs",
+      "role": "accepted-dependency",
+      "sha256": "59ef03ea3b0532100cf59c19a7f4f174543a4dea0e688359ced858e974312ad3",
+      "gitBlobSha1": "91b780da978af3ef138ddde0d3fb1f37d530fe3d",
+      "bytes": 11740,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-executor-runtime-01/canonical-timestamp.mjs",
+      "role": "accepted-dependency",
+      "sha256": "d0c48f3af5e8e802ff129d178ed6064eff99b49877db5616f257f928ec810e8e",
+      "gitBlobSha1": "776c3e7aaefd143dd2a00b1a5bbb51fb0e8b3afc",
+      "bytes": 4822,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-executor-runtime-01/db-target-binding.mjs",
+      "role": "accepted-dependency",
+      "sha256": "c1fec8b68fe79ec2d7615ff9b401034d8f96a7e8b82ab342a5b53f1c6fbdd0ea",
+      "gitBlobSha1": "59fc58d72e5da9691e274ec3e113c0179802c5c5",
+      "bytes": 5882,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-executor-runtime-01/production-authority.mjs",
+      "role": "accepted-dependency",
+      "sha256": "6da4a3a98b98bf84d74955ddceb65ab073069f84f1852e48141976e6020890f6",
+      "gitBlobSha1": "54bfc3ffceb714f722c21ae2c4da7ff21bf77b5d",
+      "bytes": 4040,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-executor-runtime-01/runtime-config.mjs",
+      "role": "accepted-dependency",
+      "sha256": "c0035996b6fcf3a36a402d220ac1559bdcb8cdf2f943d72deaa714c72ec197ae",
+      "gitBlobSha1": "36bb91442c2ae90daa9a2ac7c19e39c8a3eea4d1",
+      "bytes": 5264,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-executor-runtime-01/trusted-read-adapter.mjs",
+      "role": "accepted-dependency",
+      "sha256": "12f9c439371b2cb11728fde821ac29208553797e72fb7be5d0db561e476d660b",
+      "gitBlobSha1": "ff4e286551293d8db9aa4be16a5d5add560b71ca",
+      "bytes": 12055,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-authority-composition.mjs",
+      "role": "accepted-dependency",
+      "sha256": "a0e84399bd3c858b61a3a57b3590ff8115335ea5942a78685ad753403b651f69",
+      "gitBlobSha1": "026e6711fb5b90e1fa7a10dba80b79e3cb1c79fc",
+      "bytes": 8983,
+      "baselineBlobVerified": true
+    },
+    {
+      "repoPath": "scripts/live-ai-03b/trusted-runtime-live-binding-offline-01/production-read-queries.mjs",
+      "role": "accepted-dependency",
+      "sha256": "42ddf87d268183183d3851a91e9df57b8e9e2a1c3d629412a24a489e9646ed0c",
+      "gitBlobSha1": "c2416401b5c40c42bc20eb7f69e7bc68c4983295",
+      "bytes": 18744,
+      "baselineBlobVerified": true
+    }
+  ],
+  "liveAuthorization": "THIS_MANIFEST_GRANTS_NO_AUTHORIZATION"
+}
