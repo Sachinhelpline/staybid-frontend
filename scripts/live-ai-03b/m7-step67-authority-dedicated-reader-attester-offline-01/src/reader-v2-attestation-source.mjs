@@ -34,6 +34,24 @@ const fail = (reason) => Object.freeze({ ok: false, reason });
 const SAFE = /[^a-z0-9_:.-]/g;
 
 /**
+ * R4 REMEDIATION (reader_v2_attester_destination_not_single). The accepted resolver validates EVERY record of the ONE
+ * approved `*.railway.internal` name as an exact private host and explicitly admits a single replica's dual-stack
+ * pair (A + AAAA; DEFAULT_MAX_ADDRESSES "allowing dual-stack"). The single-replica contract is therefore "one
+ * instance": AT MOST ONE address per IP family. Two addresses of the same family (a second replica / host) remain
+ * refused as `not_single`; nothing else is widened. The dial target is deterministic — the IPv6 address when present
+ * (Railway private networking's native family), else the IPv4 address — and the destination is still authenticated
+ * end to end by the channel HMAC and the pinned reader-attester trust root, never by its address.
+ */
+export function selectSingleInstanceDestination(addresses) {
+  if (!Array.isArray(addresses) || addresses.length < 1 || addresses.length > 2) return fail("not_single");
+  const v4 = addresses.filter((x) => x && x.type === "ipv4"), v6 = addresses.filter((x) => x && x.type === "ipv6");
+  if (v4.length + v6.length !== addresses.length || v4.length > 1 || v6.length > 1) return fail("not_single");
+  const pick = v6.length ? v6[0] : v4[0];
+  if (typeof pick.address !== "string" || !pick.address) return fail("not_single");
+  return Object.freeze({ ok: true, address: pick.address, type: pick.type, dualStack: v4.length === 1 && v6.length === 1 });
+}
+
+/**
  * @param a.session   accepted reader session (establishReaderSession(...).session) — the SAME physical the attester binds
  * @param a.attester  { host, port } — host is the dedicated attester's Railway private service name (loopback only in tests)
  * @param a.channelSecret  dedicated reader-attester v2 channel secret (value used only to MAC the request)
@@ -62,8 +80,9 @@ export async function acquireReaderV2Attestation(a) {
   if (RAILWAY_INTERNAL_RE.test(attester.host)) {
     const r = await resolvePeerAllowlist({ serviceName: attester.host, ...(seams.resolver ? { resolver: seams.resolver } : {}) });
     if (!r.ok) return fail("reader_v2_attester_destination_" + r.reason);
-    if (r.addresses.length !== 1) return fail("reader_v2_attester_destination_not_single");   // single-replica contract
-    host = r.addresses[0].address;
+    const d = selectSingleInstanceDestination(r.addresses);
+    if (!d.ok) return fail("reader_v2_attester_destination_" + d.reason);
+    host = d.address;
   } else if (testBoundary && (attester.host === "127.0.0.1" || attester.host === "::1")) {
     host = attester.host;
   } else return fail("reader_v2_attester_destination_not_private_service");
