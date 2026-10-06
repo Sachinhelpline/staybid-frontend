@@ -1,0 +1,9 @@
+{
+  "schema": "m7-reader-v2-candidate-syntax-v1",
+  "files": [
+    "src/production-entrypoint.mjs",
+    "src/provisioner.mjs",
+    "src/provisioning-config.mjs"
+  ],
+  "nodeCheck": "PASS"
+}

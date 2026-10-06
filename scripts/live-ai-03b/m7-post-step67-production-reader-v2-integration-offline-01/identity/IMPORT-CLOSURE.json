@@ -1,0 +1,22 @@
+{
+  "frozenReaderV2Source": {
+    "path": "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/reader-v2-attestation-source.mjs",
+    "blob": "1a6853596c52553f5c734539e59110307659a5c9"
+  },
+  "directAcceptedBootstrapDependencies": {
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/reader-bootstrap.mjs": "eb547bb69dad6b5c6f8becdb4988ef364cd8d03d",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-state.mjs": "20b5ae828475f3a3f05d6cb90e5d4f61679b388d",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs": "e385e8e5c1f454d9616d00e632b7ec305dfcf78b",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/private-peer-resolver.mjs": "967d81a721e76e339274c11630a7401b29305ccc",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attestation-channel-v2.mjs": "cacc2c0cb25f4f70dd17594ec365dbd4f22a0a36"
+  },
+  "newConfigAcceptedDependencies": {
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-config.mjs": "8ac2b5f2c6f570d5035355342d2682ad0150a5ec",
+    "scripts/live-ai-03b/private-reader-attester-offline-01/target-binding.mjs": "198d4dc66b048c3b9580afa1da14075a9b8d892a",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/private-peer-resolver.mjs": "967d81a721e76e339274c11630a7401b29305ccc"
+  },
+  "verifiedEqualAcrossRefs": [
+    "caad383d9002a2c76a5d20b2a024dc234cb043dd",
+    "6a33c653326466fb8eb21e7f42dc2a2a9648e726"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "dbAction": false,
+  "g5Authorized": false,
+  "githubWrite": false,
+  "liveAuthorization": "NONE",
+  "mode": "OFFLINE_IMPLEMENTATION_ONLY",
+  "payloadCount": 13,
+  "payloads": {
+    "IMPLEMENTATION-RECEIPT.md": {
+      "bytes": 4291,
+      "sha256": "93e3bd6a3848f4e20bfb1b0956944ca423ad44a4608b324fd0f4de8d8d9ad30b"
+    },
+    "OWNER-NEXT-STEP.md": {
+      "bytes": 301,
+      "sha256": "66ccf2f605391bddeada9359d1c24cc4ea85da022f19dad693e7329dbdfb167e"
+    },
+    "REVIEW-SCOPE.md": {
+      "bytes": 1805,
+      "sha256": "175b3c22f0ab4b0fec0b2aa4fd9cdaae9aa94798442c6dce7a61a0bb962687cb"
+    },
+    "SYNTAX-CHECK.json": {
+      "bytes": 190,
+      "sha256": "46929c5d8d8672ef248e621269f5261882ad67dbd1b8eff0d9bc774821e43420"
+    },
+    "TEST-RESULTS.json": {
+      "bytes": 4429,
+      "sha256": "87be2e5136f8eceae782e3a75c8c31c88f159cb59187289faa90b6b4419f1a1b"
+    },
+    "identity/CANDIDATE-SOURCE-IDENTITY.json": {
+      "bytes": 516,
+      "sha256": "101078d1eabe42fa067e1fb51e374a7943fe85af516fdf884da33f0685947822"
+    },
+    "identity/FROZEN-BASELINE.json": {
+      "bytes": 2041,
+      "sha256": "bf70bc4e3176e2626bf2d68ec300460fe4e38f30adba59047ff6943f291cef77"
+    },
+    "identity/GITHUB-FROZEN-BYTE-VERIFICATION.json": {
+      "bytes": 3113,
+      "sha256": "9bea270ad1d48844753fc8061bcad188406c3b57bf210a1430e2e76795d29db8"
+    },
+    "identity/IMPORT-CLOSURE.json": {
+      "bytes": 1556,
+      "sha256": "5cd0a90f508d3a7f160a5b0d9e9d3c97f14c2aac574f6c33498b3ca99f1a703b"
+    },
+    "src/production-entrypoint.mjs": {
+      "bytes": 11022,
+      "sha256": "e4001c8a07c74adf263f485c49bbbff2939e56246e956058113430a5f46059eb"
+    },
+    "src/provisioner.mjs": {
+      "bytes": 9641,
+      "sha256": "f2815f3fc080fecbe79b3462a8aced689c228a68c8627cec3b3d0e45ff2723e3"
+    },
+    "src/provisioning-config.mjs": {
+      "bytes": 8654,
+      "sha256": "df4488fb4fe8555baa8b3f9b93fcf2c761d34fefd41f7c8d61d80898c17d889c"
+    },
+    "tests/run-all.mjs": {
+      "bytes": 22630,
+      "sha256": "ab9ecd4bd2712ed7889f0e5ccaa8ca1f5204aba6e72cddd95072e2d86625d1d9"
+    }
+  },
+  "railwayAction": false,
+  "runtimeChangeBoundary": [
+    "src/provisioning-config.mjs",
+    "src/production-entrypoint.mjs",
+    "src/provisioner.mjs"
+  ],
+  "schema": "m7-post-step67-production-reader-v2-offline-implementation-candidate-01-manifest-v1",
+  "tests": {
+    "fail": 0,
+    "pass": 45,
+    "total": 45
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "files": {
+    "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/runtime/v2-production-authority.mjs": "b8a503ac005808c3141d719d60eb83bac460d94f",
+    "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/runtime/v2-query-registry.mjs": "abd9bc4f757c23242b8a1a5e4befcd4439b9f5ea",
+    "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/runtime/v2-runtime-config.mjs": "fefd0e7e2d814fdb89ea3c55b491c01eaab5dc00",
+    "scripts/live-ai-03b/m7-step2-runtime-rebinding-offline-01/runtime/v2-trusted-executor-runtime.mjs": "8cf0de47a80da06d93165555149114284cc97358",
+    "scripts/live-ai-03b/m7-step67-authority-dedicated-reader-attester-offline-01/src/reader-v2-attestation-source.mjs": "1a6853596c52553f5c734539e59110307659a5c9",
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/activation-source.mjs": "4091969f4d4370c4408380f1150a4945df7530e9",
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/executor-attestation.mjs": "f0c8dd3a9b35cf56c35479ac9e67b7925ed21f23",
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/executor-session.mjs": "566480c145f608a06cc13d38f1bbcf9881b4cb74",
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/guarded-clients.mjs": "ed98464c81a3535b0c94283dd362febc68c7cde0",
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/reviewer-trust-root.mjs": "191c57071fe180732c6e87492f1ce0be75139bc3",
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/role-binding.mjs": "c154a884e58ab1d1609c74eb4148754c30bc14a7",
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/trusted-clock.mjs": "07ddb1eadd1a8a2fc832a105e35f09e7db238428",
+    "scripts/live-ai-03b/private-reader-attester-offline-01/target-binding.mjs": "198d4dc66b048c3b9580afa1da14075a9b8d892a",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/attestation-channel-v2.mjs": "cacc2c0cb25f4f70dd17594ec365dbd4f22a0a36",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/bootstrap-state.mjs": "20b5ae828475f3a3f05d6cb90e5d4f61679b388d",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/private-peer-resolver.mjs": "967d81a721e76e339274c11630a7401b29305ccc",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-config.mjs": "8ac2b5f2c6f570d5035355342d2682ad0150a5ec",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/production-db-clock.mjs": "e385e8e5c1f454d9616d00e632b7ec305dfcf78b",
+    "scripts/live-ai-03b/private-reader-bootstrap-clock-peer-offline-01/reader-bootstrap.mjs": "eb547bb69dad6b5c6f8becdb4988ef364cd8d03d",
+    "scripts/live-ai-03b/private-reader-production-integration-offline-01/reader-session.mjs": "c24a2781b7b5f435edd653fc7fc29b84160df72f"
+  },
+  "refs": [
+    "caad383d9002a2c76a5d20b2a024dc234cb043dd",
+    "6a33c653326466fb8eb21e7f42dc2a2a9648e726"
+  ],
+  "schema": "m7-post-step67-reader-v2-frozen-byte-verification-v1",
+  "verifiedEqualAcrossRefs": true
+}

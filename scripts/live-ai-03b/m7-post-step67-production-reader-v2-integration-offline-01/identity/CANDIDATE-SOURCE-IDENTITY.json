@@ -1,0 +1,17 @@
+{
+  "files": {
+    "src/production-entrypoint.mjs": {
+      "bytes": 11022,
+      "sha256": "e4001c8a07c74adf263f485c49bbbff2939e56246e956058113430a5f46059eb"
+    },
+    "src/provisioner.mjs": {
+      "bytes": 9641,
+      "sha256": "f2815f3fc080fecbe79b3462a8aced689c228a68c8627cec3b3d0e45ff2723e3"
+    },
+    "src/provisioning-config.mjs": {
+      "bytes": 8654,
+      "sha256": "df4488fb4fe8555baa8b3f9b93fcf2c761d34fefd41f7c8d61d80898c17d889c"
+    }
+  },
+  "schema": "m7-reader-v2-candidate-source-identity-v1"
+}
