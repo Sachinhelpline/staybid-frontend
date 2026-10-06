@@ -18,7 +18,7 @@ import { loadAttesterProductionConfig, rejectTestInjection } from "./production-
 import { makeProductionClockSampler } from "./production-db-clock.mjs";
 import { createPeerSupervisor } from "./private-peer-resolver.mjs";
 import { createSigningAdapter } from "../private-reader-attester-offline-01/signing-adapter.mjs";
-import { makeObserverPgFactory, establishObserverSession } from "../private-reader-attester-offline-01/observer-connection.mjs";
+import { makeObserverPgFactory, establishObserverSession, OBSERVER_CLEANUP_DEADLINE_MS } from "../private-reader-attester-offline-01/observer-connection.mjs";
 
 export const ATTESTER_PRODUCTION_VERSION = "reader-attester-bootstrap-production-v1";
 export const ATTESTER_PROOF_LIFETIME_MS = 60000;   // ≤ accepted 5-min ceiling
@@ -70,7 +70,9 @@ export async function composeAttesterProduction(opts = {}) {
 
   // the accepted least-privilege observer provider (a fresh read-only session per observation)
   const observerFactory = makeObserverPgFactory({ env, connectionStringEnvName: cfg.observerDbUrlEnvName });
-  const observerProvider = async () => establishObserverSession(await observerFactory.open());
+  // OBSERVER-ROLE CONNECTION-BUDGET FIX (candidate): a physical whose session setup fails is destroyed here — the
+  // accepted coordinator never receives (and therefore can never close) a physical behind an { ok:false } result.
+  const observerProvider = makeClosingObserverProvider(observerFactory);
 
   const channelSecret = env[cfg.channelSecretEnvName];
 
@@ -96,6 +98,28 @@ export async function composeAttesterProduction(opts = {}) {
   attRef = att;              // wire the supervisor's invalidation to the running attester, then start supervision
   supervisor.start();
   return Object.freeze({ ...att, version: ATTESTER_PRODUCTION_VERSION, stop: makeContainedAttesterStop({ supervisor, baseStop: att.stop, sampler }) });
+}
+
+/**
+ * OBSERVER-ROLE CONNECTION-BUDGET FIX (candidate). The production observer provider: open ONE physical, run the
+ * accepted establishObserverSession unchanged, and — when setup fails (statement error, setup deadline, or an
+ * unverified statement_timeout / read-only read-back) — destroy that physical before returning the failure, bounded
+ * by the accepted cleanup deadline. b076 returned the failure WITHOUT closing the physical, so every failed setup left
+ * one live observer-role session (keepAlive) until process exit. The accepted containment test T-E already required
+ * exactly this behaviour of its test provider; production now matches it. Success is byte-for-byte unchanged.
+ */
+export function makeClosingObserverProvider(factory, { cleanupDeadlineMs = OBSERVER_CLEANUP_DEADLINE_MS } = {}) {
+  return async () => {
+    const physical = await factory.open();
+    const es = await establishObserverSession(physical);
+    if (!es || es.ok !== true) {
+      let t;
+      const bound = new Promise((r) => { t = setTimeout(r, Math.max(1, cleanupDeadlineMs)); });
+      try { await Promise.race([Promise.resolve().then(() => (typeof physical.destroy === "function" ? physical.destroy() : physical.close())).catch(() => {}), bound]); }
+      finally { clearTimeout(t); }
+    }
+    return es;
+  };
 }
 
 /**
