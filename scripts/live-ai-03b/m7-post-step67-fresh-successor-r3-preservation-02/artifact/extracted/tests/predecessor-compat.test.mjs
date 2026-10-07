@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';import path from 'node:path';
+import * as G from '../src/v3-digest-gen.mjs';
+let pass=0;const test=(n,f)=>{try{f();pass++;}catch(e){console.error('FAIL',n,e);process.exitCode=1;}};
+test('V1/V2 canonical predecessor self-check 6/6',()=>{assert.equal(G.PREDECESSOR_CHECKS.length,6);assert.equal(G.PREDECESSOR_FAILURES.length,0);});
+test('V1 timestamps immutable',()=>{assert.equal(G.V1.t0,'2026-09-18T18:37:35Z');assert.equal(G.V1.expiry,'2026-09-25T18:37:35Z');});
+test('V2 timestamps immutable',()=>{assert.equal(G.V2.t0,'2026-09-28T15:26:23Z');assert.equal(G.V2.expiry,'2026-10-05T15:26:23Z');});
+test('V2 digests immutable',()=>{assert.equal(G.V2.source_digest,'ec23657bf0c20390afec4d4f233f14300e43b136cc6f27c25d6ffc35e1d7b357');assert.equal(G.V2.inactive_catalog_digest,'36355fab5be8009fa66352ce678394d4963f2927a39d1a8eea63f4aa5b939b62');assert.equal(G.V2.active_catalog_digest,'836548ef0274f3a068c83cf4d8e952eb6388921f2064c5e29e8ec25cd7eb798b');});
+test('existing oneprobe-v2 economic authority reused',()=>{assert.equal(G.ONECALL_POLICY_ID,'live-ai-03b-policy-oneprobe-v2');assert.equal(G.ONECALL_POLICY_ACTIVE_DIGEST,'864e24817b2f98d741495bb403c20ada31cd4f27db3d9dfe1c50bb7d99ad9245');assert.equal(G.V3_CEILING_MICROS,105920);});
+test('successor parent exact preserved reader-v2 commit',()=>assert.equal(G.SUCCESSOR_PARENT_COMMIT,'37349fe9b33bb1045d0c7b062d4b5c4d7c330c1d'));
+const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');const mig=fs.readFileSync(path.join(root,'sql/m7-v3-02-trusted-successor-migration.sql'),'utf8');const seed=fs.readFileSync(path.join(root,'sql/m7-v3-01-inactive-catalog-seed.sql'),'utf8');
+test('SQL never updates historical V1/V2',()=>{for(const line of (seed+'\n'+mig).split('\n').filter(x=>/^\s*UPDATE\b/i.test(x)))assert.ok(!line.includes(G.V1.id)&&!line.includes(G.V2.id),line);});
+test('SQL has no historical DELETE',()=>assert.ok(!/DELETE\s+FROM\s+public\.budget_price_catalog/i.test(seed+'\n'+mig)));
+test('trusted_v2 is not replaced or altered',()=>{assert.ok(!/CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+live_ai_03b_trusted_v2/i.test(mig));assert.ok(!/ALTER\s+(SCHEMA|FUNCTION).*live_ai_03b_trusted_v2/i.test(mig));});
+console.log(`predecessor-compat: ${pass} passed, 0 failed`);if(process.exitCode)process.exit(process.exitCode);

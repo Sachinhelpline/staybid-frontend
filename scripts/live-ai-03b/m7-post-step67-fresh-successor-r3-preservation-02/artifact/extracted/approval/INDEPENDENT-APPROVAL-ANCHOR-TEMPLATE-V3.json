@@ -1,0 +1,74 @@
+{
+  "_status": "UNSIGNED INDEPENDENT APPROVAL TEMPLATE (authority B). Cannot verify or activate as-is. successor_runtime_pin_ref must come from the separately accepted preservation binding; private reviewer key remains outside repo/Railway/services.",
+  "alg": "ed25519",
+  "signature_b64": "<REVIEWER-SIGNS-OFFLINE-AFTER-INDEPENDENT-REVIEW>",
+  "payload": {
+    "domain": "staybid.live-ai.pricing-evidence-approval.v3",
+    "purpose": "activate-catalog-v3+one-call-probe",
+    "approval_id": "<REVIEWER-FILLS>",
+    "reviewer_public_key_fingerprint": "<PINNED-REVIEWER-FINGERPRINT>",
+    "evidence": {
+      "receipt_id": "m7-v3-pricing-evidence-openai-gpt-5-6-terra-standard-short-20261006T224442Z",
+      "content_digest": "2e39555c39ad4bb87bf589405aa4e2f74de5573768cfe16c80fc394c4231bad7",
+      "verified_at": "2026-10-06T22:44:42Z",
+      "evidence_expiry": "2026-10-13T22:44:42Z"
+    },
+    "scope": {
+      "openai_account_ref": "<NON-SECRET-ACCOUNT-REF>",
+      "openai_project_ref": "<NON-SECRET-PROJECT-REF>",
+      "provider": "openai",
+      "model": "gpt-5.6-terra",
+      "account_mode": "direct",
+      "processing_mode": "standard",
+      "service_tier": "default",
+      "context_tier": "short",
+      "regional_uplift": false,
+      "currency": "USD",
+      "unit_size": 1000000,
+      "input_rate_micros": 2000000,
+      "cache_write_rate_micros": 2500000,
+      "output_rate_micros": 12000000,
+      "excluded_paths": {
+        "batch": false,
+        "bedrock": false,
+        "fast": false,
+        "flex": false,
+        "long_context": false,
+        "priority": false,
+        "regional": false,
+        "scale_tier": false
+      },
+      "catalog_version_id": "openai-gpt-5-6-terra-standard-short-v3",
+      "source_id": "openai-api-pricing/gpt-5.6-terra/standard/short-context/v1",
+      "source_digest": "13c536bcc4afbc6d2706468f072528fc4f7737919c6917653218eb861964ba9a"
+    },
+    "target": {
+      "ai_staging_project": "4ad1abb3-823a-4acf-b889-6d34ae46d7f9",
+      "ai_staging_environment": "aa397bd7-b316-4fd8-b05a-0a5f6c5e3abc",
+      "ai_staging_postgres": "b7362594-a01b-4623-a982-394707a6cec2",
+      "ai_staging_gateway": "dd96c7cd-02c1-4d02-89eb-7e217930ebfa",
+      "core_excluded_project": "04c8b523-5b15-4d81-af06-8c2aa1a83499",
+      "core_excluded_postgres": "1fbd7632-95ad-46f3-a20c-5be5b8e44e6b",
+      "base_commit": "9270c282d5fd65e9fe49261391badfe92c777b8f",
+      "base_tree": "c46da04123dc44cd9954fe350de0b1bc20ff0948",
+      "activation_bundle_digest": "6daa1c678589124cc9a0b01ab7d54aa8b0f46f1d80f4489c0f54cc6cbcacd8bc",
+      "inactive_catalog_digest": "414d4844d10222473b68e2574676fcc3049e025b6b84f2c32a1fbf3c73bd9d74",
+      "active_catalog_digest": "bc38931203f797d0360818de429e618a1407fc7f9065f9da7257e6c686c10558",
+      "catalog_verification_expiry": "2026-10-13T22:44:42Z",
+      "one_call_policy_id": "live-ai-03b-policy-oneprobe-v2",
+      "one_call_policy_digest": "864e24817b2f98d741495bb403c20ada31cd4f27db3d9dfe1c50bb7d99ad9245",
+      "one_call_money_ceiling_micros": 105920,
+      "one_call_provider_calls": 1,
+      "one_call_execution_admissions": 1,
+      "successor_parent_commit": "37349fe9b33bb1045d0c7b062d4b5c4d7c330c1d",
+      "successor_runtime_pin_ref": "<RESOLVED-AFTER-SUCCESSOR-PRESERVATION>"
+    },
+    "execution": {
+      "execution_id": "<ONE-SHOT-EXECUTION-ID>",
+      "issued_at": "<RFC3339-UTC>",
+      "not_before": "<RFC3339-UTC>",
+      "expiry": "<RFC3339-UTC <= 2026-10-13T22:44:42Z>",
+      "max_uses": 1
+    }
+  }
+}

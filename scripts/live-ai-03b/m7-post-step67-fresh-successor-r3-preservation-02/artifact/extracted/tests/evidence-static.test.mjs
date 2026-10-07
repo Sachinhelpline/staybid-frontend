@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';
+import * as G from '../src/v3-digest-gen.mjs';import { evidenceContentDigestV3 } from '../src/pricing-approval-contract-v3.mjs';
+const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');const raw=JSON.parse(fs.readFileSync(path.join(root,'evidence/FRESH-PRICING-EVIDENCE.json'),'utf8'));const supplied=JSON.parse(fs.readFileSync(path.join(root,'evidence/SUPPLIED-EVIDENCE-RECEIPT-CANDIDATE-V3.json'),'utf8'));const tpl=JSON.parse(fs.readFileSync(path.join(root,'approval/INDEPENDENT-APPROVAL-ANCHOR-TEMPLATE-V3.json'),'utf8'));
+let pass=0;const test=(n,f)=>{try{f();pass++;}catch(e){console.error('FAIL',n,e);process.exitCode=1;}};
+test('fresh evidence timestamp equals V3 T0',()=>assert.equal(raw.retrieved_at_utc,G.T0));
+test('fresh evidence expiry equals V3 expiry',()=>assert.equal(raw.freshness.verification_expiry,G.T0_PLUS_7_DAYS));
+test('fresh official rates are exact three accepted dimensions',()=>assert.deepEqual(raw.required_billing_dimensions.map(x=>x.rate_micros),[2000000,2500000,12000000]));
+test('raw evidence records nonregional/default/standard',()=>{assert.equal(raw.regional_uplift,false);assert.equal(raw.service_tier,'default');assert.equal(raw.processing_mode,'standard');});
+test('supplied receipt digest recomputes',()=>assert.equal(evidenceContentDigestV3(supplied.receipt.content),supplied.receipt.digest));
+test('supplied receipt binds V3',()=>assert.equal(supplied.receipt.content.catalog_version_id,G.V3_ID));
+test('approval template is unsigned and preservation-pin unresolved',()=>{assert.match(tpl.signature_b64,/REVIEWER-SIGNS-OFFLINE/);assert.equal(tpl.payload.target.successor_runtime_pin_ref,'<RESOLVED-AFTER-SUCCESSOR-PRESERVATION>');});
+test('expired V2 remains historical in evidence',()=>{assert.equal(raw.predecessor.v2_t0,G.V2.t0);assert.equal(raw.predecessor.v2_expiry,G.V2.expiry);assert.match(raw.predecessor.v2_rule,/immutable/i);});
+console.log(`evidence-static: ${pass} passed, 0 failed`);if(process.exitCode)process.exit(process.exitCode);

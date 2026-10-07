@@ -1,0 +1,19 @@
+PASS sticky-proof-flags-absent
+PASS materialized-single-clock-observation-present
+PASS single-row-pre-conjunction
+PASS single-row-post-conjunction
+PASS all-required-proof-present
+PASS split-pre-valid-but-not-blocked-refused
+PASS split-after-blocked-but-expired-refused
+PASS split-observations-cannot-compose
+PASS already-expired-cannot-pass
+PASS never-blocked-cannot-pass
+PASS wrong-blocker-cannot-pass
+PASS multiple-blockers-cannot-pass
+PASS same-backend-cannot-pass
+PASS observer-collision-cannot-pass
+PASS early-release-cannot-pass
+PASS wrong-activation-post-cannot-pass
+PASS unrelated-error-cannot-pass
+PASS dirty-rollback-cannot-pass
+interleaving-proof-gate-r3: 18 passed, 0 failed

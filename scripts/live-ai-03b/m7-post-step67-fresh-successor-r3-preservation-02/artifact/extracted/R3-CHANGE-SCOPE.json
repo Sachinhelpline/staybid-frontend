@@ -1,0 +1,92 @@
+{
+  "contract": "M7FreshSuccessorRemediationR3ChangeScopeV1",
+  "superseded_r2": {
+    "size": 133362,
+    "sha256": "de3ee5c2f2a8e987e4fbd674450e339b8186060148687ea5a03d144a12b3df1c"
+  },
+  "scope": "HARNESS_AND_EVIDENCE_ONLY",
+  "review_trigger": "HOLD_FRESH_SUCCESSOR_R2_LOCK_WAIT_REGRESSION_INTERLEAVING_NOT_PROVEN",
+  "r3_fix": "single-observation PRE and POST proof gates; no sticky/accumulated observation flags",
+  "changed": [
+    {
+      "path": "IMPLEMENTATION-RECEIPT.md",
+      "r2_sha256": "45b7c264d77aa2add453475d1c4fbd28d9c1b79783a3bd23f6e88dedc5d14305",
+      "r3_sha256": "0343608b9fe2710935535a76e20ab37142bf47ab6929b57d3b1b03c5e350ec41"
+    },
+    {
+      "path": "INDEPENDENT-REVIEW-HOLD.md",
+      "r2_sha256": "daaceee67a412c9a0f4d7797f39969bdea7590b6517d9c31eb0641f8330b947a",
+      "r3_sha256": "8dc4ec183ce40d0fda922c2ea40cfcf00b43350d0e9f588cd7ec28e7d7f35e04"
+    },
+    {
+      "path": "OWNER-LOCALPG-CLOSURE.md",
+      "r2_sha256": "6a435d9a1b52e11a0e6264bfb7d27d062cf463b8924939e7d8b25d4b7d60fceb",
+      "r3_sha256": "a18e334299f9b13750bd5da155f82b2db720adff0bfa1da62a8456b4a3e57540"
+    },
+    {
+      "path": "README.md",
+      "r2_sha256": "4608b8b4efc52ae3ebd7ab987ce5b804d04fc2bc4d5394618b7e07c9d4135454",
+      "r3_sha256": "196af8210df57666c908d952a13b98e25517704fce9a0bc53fe682c8ffb0026c"
+    },
+    {
+      "path": "SUCCESSOR-VERSION-BOUNDARY-MAP.md",
+      "r2_sha256": "e9bf9d72ca2bc5d5a7d0f0696c82f7f188e66658d858f6e79f4adce470bea29a",
+      "r3_sha256": "fa574a68853bbcbb04aecbb683905960a105795ef770525d237ebc2e4543ddfe"
+    },
+    {
+      "path": "tests/interleaving-proof-gate.sh",
+      "r2_sha256": "424f43e1ffba7502c8c2d6b46a89101e5f6b6c7b7b575fd0c8f80bab100ad305",
+      "r3_sha256": "15e5669eafebe7e9b2281abc1e219c19d1b6354f8e2519499ec485d436033188"
+    },
+    {
+      "path": "tests/interleaving-proof-gate.test.sh",
+      "r2_sha256": "9b83c2976344a6331e0a5000d8a30342efb35a91d517b4de0345acd581f3187e",
+      "r3_sha256": "b11748dc918dacd4ac4fdfe1bca2c1403a7e215734bd635952321bdb68094afa"
+    },
+    {
+      "path": "tests/localpg-expiry-lock-regression.sh",
+      "r2_sha256": "ecab1f7e2a100f3b7e453ba35a594bf06fe07b34cec406055c4ec746013f37e6",
+      "r3_sha256": "c1b3bb7e6592d4dea412a0569a9b1e9007fa0e967b6088857b9e0bf4aefb234c"
+    },
+    {
+      "path": "tests/out/interleaving-proof-gate.log",
+      "r2_sha256": "50cd1caff60c1084df4f8a7378ab99428a3f5ac13ad9f05e4dde0757f7b48799",
+      "r3_sha256": "8b1ce70a4dd03b97cf3ea8c6048c4d61a9c7ae6110363fcf91612d8d0b1a87e0"
+    },
+    {
+      "path": "tests/run-all.sh",
+      "r2_sha256": "0bee27550a2788203834028f76e9d67220cf2eadf875f2366105abf089909cde",
+      "r3_sha256": "13b035124e96be02c9763ef48ed2494d482e8a0f684ddfa6e638d9a7aa01efe5"
+    },
+    {
+      "path": "tools/package-identity.mjs",
+      "r2_sha256": "a93cd7bd52451b3d448f45e3751cc8265e9b5a6c79e13f9beda49162e4671561",
+      "r3_sha256": "5184c0be427434fa8b22ce9b1af12f86fe5d01f0a61ad685deedd2b76d4c8597"
+    }
+  ],
+  "added": [
+    {
+      "path": "tests/out/aggregate-r3-current-sandbox.log",
+      "r3_sha256": "6cfae1f3140ebe629a47da6c0a1f8c2a71c85ebc1d16d630bb38a19b4502b9da"
+    }
+  ],
+  "removed": [],
+  "generated_identity_files_excluded_from_diff_listing": [
+    "MANIFEST.json",
+    "IDENTITY-RECEIPT.json"
+  ],
+  "self_file_excluded_from_diff_listing": "R3-CHANGE-SCOPE.json",
+  "protected_path_prefixes": [
+    "sql/",
+    "src/",
+    "approval/",
+    "evidence/",
+    "historical/"
+  ],
+  "protected_exact_files": [
+    "FROZEN-V1-EXECUTOR-ATTESTATION-REFERENCE.json"
+  ],
+  "protected_file_count": 23,
+  "protected_mismatches": [],
+  "production_and_frozen_bytes_unchanged": true
+}

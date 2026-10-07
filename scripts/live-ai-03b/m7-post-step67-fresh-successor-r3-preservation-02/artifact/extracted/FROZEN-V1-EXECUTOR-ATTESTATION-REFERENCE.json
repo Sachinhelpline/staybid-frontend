@@ -1,0 +1,20 @@
+{
+  "parent_commit": "37349fe9b33bb1045d0c7b062d4b5c4d7c330c1d",
+  "statement": "Reference-only proof. R1 does not modify the frozen V1 executor-attestation contract/issuer files.",
+  "frozen_blobs": {
+    "scripts/live-ai-03b/m7-v2-production-authority-provisioning-offline-01/src/executor-attestation.mjs": "f0c8dd3a9b35cf56c35479ac9e67b7925ed21f23",
+    "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-signing-adapter.mjs": "338dff144d3d6755ee79a6d61c93747cc9c585c7",
+    "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-evidence-evaluator.mjs": "b9f919659b482a2e8f1ae5f0d3c4665ddba99629",
+    "scripts/live-ai-03b/m7-v2-executor-attester-issuer-offline-01/src/executor-evidence-queries.mjs": "f609d5e5f1dc470aec0aed99f9e05d4e051f59bb"
+  },
+  "frozen_v1_expected_privilege_shape": {
+    "trusted_schema_usage_count": 2,
+    "executable_routine_count": 4
+  },
+  "r1_additive_successor": {
+    "contract": "AiStagingExecutorAttestationV2",
+    "issuer": "staybid.live-ai-03b.executor-attester.v2",
+    "trusted_schema_usage_count": 3,
+    "executable_routine_count": 6
+  }
+}

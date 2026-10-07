@@ -1,0 +1,66 @@
+{
+  "contract": "M7FreshPricingEvidenceV1",
+  "retrieved_at_utc": "2026-10-06T22:44:42Z",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "account_mode": "direct",
+  "processing_mode": "standard",
+  "service_tier": "default",
+  "context_tier": "short",
+  "regional_uplift": false,
+  "currency": "USD",
+  "unit_size": 1000000,
+  "official_sources": [
+    {
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "observed": "Standard short-context GPT-5.6 Terra: input $2.00, cached input $0.20, cache writes $2.50, output $12.00 per 1M tokens; regional processing endpoints have a separate 10% uplift."
+    },
+    {
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/create",
+      "observed": "service_tier=default uses standard pricing and performance; auto may follow project settings."
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+      "observed": "GPT-5.6 Terra remains available; model page corroborates $2 input / $12 output and long-context threshold above 272K input tokens."
+    }
+  ],
+  "required_billing_dimensions": [
+    {
+      "billing_dimension": "reasoning_input_token",
+      "service_tier": null,
+      "rate_micros": 2000000
+    },
+    {
+      "billing_dimension": "reasoning_input_token",
+      "service_tier": "cache_write",
+      "rate_micros": 2500000
+    },
+    {
+      "billing_dimension": "reasoning_output_token",
+      "service_tier": null,
+      "rate_micros": 12000000
+    }
+  ],
+  "cached_input_rate_usd_per_1m": 0.2,
+  "note": "Cached-input reads are cheaper than base input. The existing accepted StayBid accounting boundary does not add a separate cached-read billing dimension; worst-case reservation remains conservative by using the highest input-side rate (cache_write).",
+  "freshness": {
+    "t0": "2026-10-06T22:44:42Z",
+    "verification_expiry": "2026-10-13T22:44:42Z",
+    "window_days": 7
+  },
+  "predecessor": {
+    "v2_t0": "2026-09-28T15:26:23Z",
+    "v2_expiry": "2026-10-05T15:26:23Z",
+    "v2_rule": "immutable historical; never extend, patch or regenerate"
+  },
+  "fresh_successor_identity": {
+    "catalog_version_id": "openai-gpt-5-6-terra-standard-short-v3",
+    "source_digest": "13c536bcc4afbc6d2706468f072528fc4f7737919c6917653218eb861964ba9a",
+    "inactive_catalog_digest": "414d4844d10222473b68e2574676fcc3049e025b6b84f2c32a1fbf3c73bd9d74",
+    "active_catalog_digest": "bc38931203f797d0360818de429e618a1407fc7f9065f9da7257e6c686c10558",
+    "activation_bundle_digest": "6daa1c678589124cc9a0b01ab7d54aa8b0f46f1d80f4489c0f54cc6cbcacd8bc",
+    "one_call_policy_id": "live-ai-03b-policy-oneprobe-v2",
+    "one_call_policy_digest": "864e24817b2f98d741495bb403c20ada31cd4f27db3d9dfe1c50bb7d99ad9245",
+    "worst_case_micros": 105920
+  }
+}

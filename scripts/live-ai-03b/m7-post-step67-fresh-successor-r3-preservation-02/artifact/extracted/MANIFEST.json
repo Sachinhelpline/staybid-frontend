@@ -1,0 +1,335 @@
+{
+  "contract": "M7FreshSuccessorRemediationR3PackageManifestV1",
+  "parent_commit": "37349fe9b33bb1045d0c7b062d4b5c4d7c330c1d",
+  "superseded_r2_zip_sha256": "de3ee5c2f2a8e987e4fbd674450e339b8186060148687ea5a03d144a12b3df1c",
+  "superseded_r1_harness_fix_zip_sha256": "83b2a81a07f6eca05a593d183c2eed8583dfefa8690ab9851054dfb492d64e75",
+  "rejected_predecessor_zip_sha256": "21e11bbb300b1b3150cca7d78415e539e16a3b22276047b9c20da80ce6674466",
+  "payload_count": 65,
+  "files": [
+    {
+      "path": "approval/INDEPENDENT-APPROVAL-ANCHOR-TEMPLATE-V3.json",
+      "size": 3512,
+      "sha256": "7c6426ac51b6a45a97b7d6061c533c62512e7704f573453ef5d9326e9e90711d"
+    },
+    {
+      "path": "evidence/FRESH-PRICING-EVIDENCE.json",
+      "size": 2797,
+      "sha256": "c9633345a9d4b1b9c7f492a62f4d0a1271e2af5f1fa5f7e9ebac4edcd80d9d2d"
+    },
+    {
+      "path": "evidence/SUPPLIED-EVIDENCE-RECEIPT-CANDIDATE-V3.json",
+      "size": 1961,
+      "sha256": "2825ce87034b9b504595b746c3e83b04989cfac5073457f60e098f474aaae1bb"
+    },
+    {
+      "path": "FROZEN-V1-EXECUTOR-ATTESTATION-REFERENCE.json",
+      "size": 1131,
+      "sha256": "3581b176a028607ae64764cda6876a0db201643115b337f558dc5f4bd5697958"
+    },
+    {
+      "path": "historical/M7_POST_STEP67_FRESH_PRICING_CATALOG_SUCCESSOR_01_REJECTED.zip",
+      "size": 57208,
+      "sha256": "21e11bbb300b1b3150cca7d78415e539e16a3b22276047b9c20da80ce6674466"
+    },
+    {
+      "path": "IMPLEMENTATION-RECEIPT.md",
+      "size": 2232,
+      "sha256": "0343608b9fe2710935535a76e20ab37142bf47ab6929b57d3b1b03c5e350ec41"
+    },
+    {
+      "path": "INDEPENDENT-REVIEW-HOLD.md",
+      "size": 1141,
+      "sha256": "8dc4ec183ce40d0fda922c2ea40cfcf00b43350d0e9f588cd7ec28e7d7f35e04"
+    },
+    {
+      "path": "OWNER-LOCALPG-CLOSURE.md",
+      "size": 1096,
+      "sha256": "a18e334299f9b13750bd5da155f82b2db720adff0bfa1da62a8456b4a3e57540"
+    },
+    {
+      "path": "R1-CHANGE-SCOPE.json",
+      "size": 4587,
+      "sha256": "fb31cea1890ced1e8bcca8f71bccb9d0b869223474e4a63f0365348ccf3c23e7"
+    },
+    {
+      "path": "R2-CHANGE-SCOPE.json",
+      "size": 3246,
+      "sha256": "3a49688d69c086cb2e105a647e9702d865abda2d9436bb2324bed4bfaf6133b9"
+    },
+    {
+      "path": "R3-CHANGE-SCOPE.json",
+      "size": 3668,
+      "sha256": "f09300e76f0159a38473b8d956ecadc099e1fa418b6c50afb06b7188bbe79f1e"
+    },
+    {
+      "path": "README.md",
+      "size": 2668,
+      "sha256": "196af8210df57666c908d952a13b98e25517704fce9a0bc53fe682c8ffb0026c"
+    },
+    {
+      "path": "sql/m7-v3-01-inactive-catalog-seed.sql",
+      "size": 20959,
+      "sha256": "2ece362f07f9ee25db325095a87bc924e346142db17ccafe41fabc43ea8f063e"
+    },
+    {
+      "path": "sql/m7-v3-02-trusted-successor-migration.sql",
+      "size": 45550,
+      "sha256": "74201097498a4d4805b89f26041ce6ac196f1a12e64c3a9c7d3827cd1a34415c"
+    },
+    {
+      "path": "sql/m7-v3-03-catalog-activation.sql",
+      "size": 427,
+      "sha256": "0ee25e489084bb8823d8cbdd22a146d1c9d76145a19959876ae7da6901bbecaf"
+    },
+    {
+      "path": "sql/m7-v3-06-catalog-restoration.sql",
+      "size": 376,
+      "sha256": "f28e9ce6dc6ff15a1c668635fe25643394aab840a48bb6547ee280ed6d1b5673"
+    },
+    {
+      "path": "src/approval-verify-v3.mjs",
+      "size": 7755,
+      "sha256": "6424562331cc437546e34a76ffe5c61e94840d8eb3b9d6faaed1492057b22c6f"
+    },
+    {
+      "path": "src/executor-attestation-v2.mjs",
+      "size": 7139,
+      "sha256": "a72907075d00aad1e2bcf1db7b9acd40d531f2742efeed29a32dc9ba7c5703f8"
+    },
+    {
+      "path": "src/executor-attester-issuer-v2.mjs",
+      "size": 1480,
+      "sha256": "879756f5d9b6d9f67d61d980136b9f0906c2efe7732088b6fe93cfa1e928e694"
+    },
+    {
+      "path": "src/executor-attester-signing-v2.mjs",
+      "size": 2756,
+      "sha256": "04fd3540ef7bdced9a4e80220bf97954b7fac25a77a6a29b4b8ac183f184421a"
+    },
+    {
+      "path": "src/executor-evidence-policy-v2.mjs",
+      "size": 2756,
+      "sha256": "59266ed9c40f7cfea97a6cc7265cdc6dcf42e8b1865b2788a6ca4341b44ed996"
+    },
+    {
+      "path": "src/pricing-approval-contract-v3.mjs",
+      "size": 8242,
+      "sha256": "9f87639bff7460c47b2e0b0d71cc52f57b33b4a77137c4fc1d153ae9350c7703"
+    },
+    {
+      "path": "src/v3-catalog-contract.mjs",
+      "size": 3335,
+      "sha256": "c17e2d97d6fa5252590f728d5450b65e79c6236dfb0dbe965134e08a30736285"
+    },
+    {
+      "path": "src/v3-digest-gen.mjs",
+      "size": 8469,
+      "sha256": "d193066338fe26b34ff5af40f39579eb573ca1737f56576a6af286e1c41f0e06"
+    },
+    {
+      "path": "src/v3-production-integration.mjs",
+      "size": 948,
+      "sha256": "4603e88d9dd9d329f6f39a515aa65e04a501f353e3dfbf23c465d6312bde5c33"
+    },
+    {
+      "path": "src/v3-query-registry.mjs",
+      "size": 2245,
+      "sha256": "4089f61d4f859d61427e98a1c95539cab23ecaa6784dbdfd0c74c253c69b5bdf"
+    },
+    {
+      "path": "src/v3-restricted-activation-adapter.mjs",
+      "size": 1440,
+      "sha256": "1f659d351a27cdb7e47e4373623b7491c67c6c0169b44459cac9ac24d852dec2"
+    },
+    {
+      "path": "src/v3-runtime-config.mjs",
+      "size": 2030,
+      "sha256": "564c8722cacf5488f6cd0999dc560b687987a26af44695e2661a0683327f477e"
+    },
+    {
+      "path": "src/v3-runtime-contract.mjs",
+      "size": 3587,
+      "sha256": "e07117c9cfdd461579bbb9780ee0eebdabfd55598ed01b01a65eb90c3d564d24"
+    },
+    {
+      "path": "src/v3-runtime-identity.mjs",
+      "size": 1337,
+      "sha256": "b42d79ded99fe7f5610956556561916d7c16cc502d0d671951afabb2d529ad7a"
+    },
+    {
+      "path": "SUCCESSOR-VERSION-BOUNDARY-MAP.md",
+      "size": 972,
+      "sha256": "fa574a68853bbcbb04aecbb683905960a105795ef770525d237ebc2e4543ddfe"
+    },
+    {
+      "path": "tests/core.test.mjs",
+      "size": 5225,
+      "sha256": "0eef6d45a6eaf97c1885fa4d6541f1de35394d5dd571e0de4f51f6fb82471b39"
+    },
+    {
+      "path": "tests/evidence-static.test.mjs",
+      "size": 2108,
+      "sha256": "a82ae56a5579947e9294cf1e872290da140903dcc249adaa60f83d44a0dd103c"
+    },
+    {
+      "path": "tests/executor-attestation-v2.test.mjs",
+      "size": 9796,
+      "sha256": "ea2c71b484936d0921c81a6c8d8ba159095236dc251d31c62dddd32233347923"
+    },
+    {
+      "path": "tests/historical-rejected-identity.test.mjs",
+      "size": 571,
+      "sha256": "e20e8a45138cb62779f0d64324983278483d256dd2ff282f67a4b4e75da181a8"
+    },
+    {
+      "path": "tests/interleaving-proof-gate.sh",
+      "size": 6026,
+      "sha256": "15e5669eafebe7e9b2281abc1e219c19d1b6354f8e2519499ec485d436033188"
+    },
+    {
+      "path": "tests/interleaving-proof-gate.test.sh",
+      "size": 4863,
+      "sha256": "b11748dc918dacd4ac4fdfe1bca2c1403a7e215734bd635952321bdb68094afa"
+    },
+    {
+      "path": "tests/localpg-expiry-lock-regression.sh",
+      "size": 10923,
+      "sha256": "c1b3bb7e6592d4dea412a0569a9b1e9007fa0e967b6088857b9e0bf4aefb234c"
+    },
+    {
+      "path": "tests/make-localpg-fixture.mjs",
+      "size": 4766,
+      "sha256": "752dc7c93b8f2190d3e7da4092a337a18f90d2ca235113629dfc83369302831f"
+    },
+    {
+      "path": "tests/make-valid-claims-v3.mjs",
+      "size": 1464,
+      "sha256": "216fc6a8ab7bc94b642bc5afd0c615d024912ba0b3fa3e4e657d388495d70a5a"
+    },
+    {
+      "path": "tests/out/aggregate-r1-current-sandbox.log",
+      "size": 285,
+      "sha256": "e9b1d6e4c49079aa7d4350cc421b4eb3901acfe618b5d8395e3417e5aed9dc6d"
+    },
+    {
+      "path": "tests/out/aggregate-r1-harness-fix-current-sandbox.log",
+      "size": 303,
+      "sha256": "300089fd122e2e9fd811234857656d5cdeb3ab79cb852f0ed43adab19bcc3702"
+    },
+    {
+      "path": "tests/out/aggregate-r2-current-sandbox.log",
+      "size": 332,
+      "sha256": "6cfae1f3140ebe629a47da6c0a1f8c2a71c85ebc1d16d630bb38a19b4502b9da"
+    },
+    {
+      "path": "tests/out/aggregate-r3-current-sandbox.log",
+      "size": 332,
+      "sha256": "6cfae1f3140ebe629a47da6c0a1f8c2a71c85ebc1d16d630bb38a19b4502b9da"
+    },
+    {
+      "path": "tests/out/aggregate.log",
+      "size": 332,
+      "sha256": "6cfae1f3140ebe629a47da6c0a1f8c2a71c85ebc1d16d630bb38a19b4502b9da"
+    },
+    {
+      "path": "tests/out/core.log",
+      "size": 26,
+      "sha256": "e15b5a084b37b59840253529ef586825f454e2c2c4bb08c61943a77adec4a628"
+    },
+    {
+      "path": "tests/out/digest.log",
+      "size": 997,
+      "sha256": "74af38ada43abeb63b58fd23fb21ee23e5e2175a95985918bfdd6b10c24ef191"
+    },
+    {
+      "path": "tests/out/evidence-static.log",
+      "size": 36,
+      "sha256": "9eae6da299db41904f8c7edfe1b35621add0a7534427a26e61650606410fd534"
+    },
+    {
+      "path": "tests/out/executor-attestation-v2.log",
+      "size": 45,
+      "sha256": "2afac5b5218246d2c36a8b9ca97eea54dd673ae42524609bb7586dc0d67c5734"
+    },
+    {
+      "path": "tests/out/historical-rejected-identity.log",
+      "size": 49,
+      "sha256": "51caf229d63449ed58c122066b09bc665a52ae0e2c953ccd3ce7332443bdd70c"
+    },
+    {
+      "path": "tests/out/interleaving-proof-gate.log",
+      "size": 687,
+      "sha256": "8b1ce70a4dd03b97cf3ea8c6048c4d61a9c7ae6110363fcf91612d8d0b1a87e0"
+    },
+    {
+      "path": "tests/out/localpg-expiry-lock.log",
+      "size": 39,
+      "sha256": "3302620e90fae87d23526b2150527637d569fa353804c85bea5698b33cb29e57"
+    },
+    {
+      "path": "tests/out/predecessor.log",
+      "size": 39,
+      "sha256": "944c7486e68013c9557001c8aca51b57d95dc7481399ca1f3b828e813af55853"
+    },
+    {
+      "path": "tests/out/runtime-static.log",
+      "size": 35,
+      "sha256": "8f6aafe4288ee1eaa3a436fe2917d4c1d598384622c3b2acb59ee2e52f97d5d7"
+    },
+    {
+      "path": "tests/out/secret-scan.log",
+      "size": 84,
+      "sha256": "7fa4990060aa2988d2dc7d1ac013e64a2fdd3f61b54bf4882b46bef655a36ac2"
+    },
+    {
+      "path": "tests/out/sql-check.log",
+      "size": 19,
+      "sha256": "39073ed572b7803b08141e87219a5a5ce604880ff851107c1d6a53d979fa9d27"
+    },
+    {
+      "path": "tests/out/sql-static.log",
+      "size": 32,
+      "sha256": "1411ca37d459dfc25bf08db89db1f82613d3d3a1588d2fda39c9c7488a502009"
+    },
+    {
+      "path": "tests/predecessor-compat.test.mjs",
+      "size": 2362,
+      "sha256": "385164a600a3dd300188c3ebdd9382aec277a02fa3885962fa2eb0861766c824"
+    },
+    {
+      "path": "tests/run-all.sh",
+      "size": 1695,
+      "sha256": "13b035124e96be02c9763ef48ed2494d482e8a0f684ddfa6e638d9a7aa01efe5"
+    },
+    {
+      "path": "tests/runtime-static.test.mjs",
+      "size": 5129,
+      "sha256": "90f238cce0cd75390a5c4f6ecdbd077a33fc1adc37de415532772eccfc877a06"
+    },
+    {
+      "path": "tests/sql-static.test.mjs",
+      "size": 4551,
+      "sha256": "bb129cdaa3cb257872e4d0e195f45c590ed7cca0963e1f4568354c3c765a91c9"
+    },
+    {
+      "path": "tools/build-sql.mjs",
+      "size": 23046,
+      "sha256": "d00df397ca0c7635f383ddd2a42d89496a4b766d95710ef2f02702947f239330"
+    },
+    {
+      "path": "tools/make-evidence.mjs",
+      "size": 3328,
+      "sha256": "af7b941711b4d42d52ec8b9708a575f7e62ed369e210a1cebd1789a2383dfb5d"
+    },
+    {
+      "path": "tools/package-identity.mjs",
+      "size": 6579,
+      "sha256": "5184c0be427434fa8b22ce9b1af12f86fe5d01f0a61ad685deedd2b76d4c8597"
+    },
+    {
+      "path": "tools/secret-scan.mjs",
+      "size": 1030,
+      "sha256": "04722756a2b1681074a05afd7ebe0f6a854eb84d8f75916cf6f171ac94b88ad7"
+    }
+  ]
+}

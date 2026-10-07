@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import { generateKeyPairSync,createHash,sign as edSign } from 'node:crypto';
+import { canonicalize,publicKeyFingerprintFromDerB64,FIXED_V3 } from '../src/pricing-approval-contract-v3.mjs';
+import { EXECUTOR_ROLE,EXECUTOR_ATTESTATION_CONTRACT_V2,EXECUTOR_ATTESTATION_DOMAIN_V2,EXECUTOR_ATTESTATION_ISSUER_V2,EXPECTED_EXECUTOR_PRIVILEGES_V2,verifyExecutorAttestationV2,validateMeasuredExecutorPrivilegesV2 } from '../src/executor-attestation-v2.mjs';
+import { evaluateObservedExecutorEvidenceV2 } from '../src/executor-evidence-policy-v2.mjs';
+import { createExecutorSigningAdapterV2 } from '../src/executor-attester-signing-v2.mjs';
+import { validateV3ProductionExecutorAuthority } from '../src/v3-production-integration.mjs';
+import { createExecutorAttesterIssuerV2,EXECUTOR_OBSERVER_ADAPTER_CONTRACT_V2 } from '../src/executor-attester-issuer-v2.mjs';
+
+let pass=0;const test=async(n,f)=>{try{await f();pass++;}catch(e){console.error('FAIL',n,e);process.exitCode=1;}};
+const kp=generateKeyPairSync('ed25519');
+const priv=kp.privateKey.export({format:'der',type:'pkcs8'}).toString('base64');
+const pub=kp.publicKey.export({format:'der',type:'spki'}).toString('base64');
+const fp=publicKeyFingerprintFromDerB64(pub);
+const readerFp=createHash('sha256').update('reader-distinct').digest('hex');
+const now=1791327600000;
+const signerResult=createExecutorSigningAdapterV2({privateKeyPkcs8B64:priv,expectedPublicKeyDerB64:pub,expectedFingerprint:fp,readerAttesterFingerprint:readerFp,proofLifetimeMs:60000,nowProvider:()=>now});
+assert.equal(signerResult.ok,true);const signer=signerResult.signer;
+const trustRoot={issuer:EXECUTOR_ATTESTATION_ISSUER_V2,publicKeyDerB64:pub,fingerprint:fp};
+const token='a'.repeat(64),nonce='b'.repeat(32);
+const target={projectId:FIXED_V3.ai_staging_project,environmentId:FIXED_V3.ai_staging_environment,pgServiceId:FIXED_V3.ai_staging_postgres};
+const privileges=()=>({budgetTablePrivilegeCount:0,currentUser:EXECUTOR_ROLE,executableRoutines:[...EXPECTED_EXECUTOR_PRIVILEGES_V2.executableRoutines],ledgerPrivilegeCount:0,publicOrDefaultPrivilegeWidening:false,rolbypassrls:false,rolcreatedb:false,rolcreaterole:false,rolreplication:false,rolsuper:false,roleMemberships:[],schemaCreate:[],sessionUser:EXECUTOR_ROLE,trustedSchemaUsage:[...EXPECTED_EXECUTOR_PRIVILEGES_V2.trustedSchemaUsage],unapprovedRoutineExecute:false});
+const context=()=>({databaseCreate:false,databaseOwner:false,extendedFindings:[],observerIndependent:true,ownedCount:0,prohibitedReachable:[],schemaOwner:false,serverVersionMajor:18,unexpectedUsage:[]});
+function evalEvidence(over={}){return evaluateObservedExecutorEvidenceV2({connection:{role:EXECUTOR_ROLE,token},context:context(),dbNowMs:now,observedAtMs:now,privileges:privileges(),target,...over});}
+function issued(){const ev=evalEvidence();assert.equal(ev.ok,true);const r=signer.issue({requestNonce:nonce,evidence:ev.evidence});assert.equal(r.ok,true);return r.envelope;}
+function resign(payload){return {payload,signatureB64:edSign(null,Buffer.from(canonicalize(payload),'utf8'),kp.privateKey).toString('base64')};}
+await test('A2-01 exact successor privilege contract is 3 schemas + 6 routines',()=>{assert.equal(EXPECTED_EXECUTOR_PRIVILEGES_V2.trustedSchemaUsage.length,3);assert.equal(EXPECTED_EXECUTOR_PRIVILEGES_V2.executableRoutines.length,6);assert.ok(EXPECTED_EXECUTOR_PRIVILEGES_V2.trustedSchemaUsage.includes('live_ai_03b_trusted_v3'));assert.ok(EXPECTED_EXECUTOR_PRIVILEGES_V2.executableRoutines.some(x=>x.includes('activate_catalog_v3')));});
+await test('A2-02 exact measured privileges pass',()=>assert.equal(validateMeasuredExecutorPrivilegesV2(privileges()).ok,true));
+await test('A2-03 independently evaluated evidence signs and verifies',()=>{const env=issued();const v=verifyExecutorAttestationV2(env,{trustRoot,expectedConnectionToken:token,expectedRequestNonce:nonce,now:now+1});assert.equal(v.ok,true);});
+await test('A2-04 raw caller evidence cannot be signed',()=>assert.equal(signer.issue({requestNonce:nonce,evidence:{target,connection:{role:EXECUTOR_ROLE,token},privileges:privileges(),dbNowMs:now}}).reason,'evidence_not_independently_evaluated'));
+await test('A2-05 V1 contract rejected even with valid signature',()=>{const env=issued();const payload={...env.payload,contract:'AiStagingExecutorAttestationV1',domain:'staybid.live-ai-03b.executor-authority-attestation.v1'};assert.equal(verifyExecutorAttestationV2(resign(payload),{trustRoot,expectedConnectionToken:token,expectedRequestNonce:nonce,now:now+1}).reason,'executor_attestation_contract_mismatch');});
+await test('A2-06 V1 issuer/trust-root refused',()=>{const env=issued();const tr={...trustRoot,issuer:'staybid.live-ai-03b.executor-attester.v1'};assert.equal(verifyExecutorAttestationV2(env,{trustRoot:tr,expectedConnectionToken:token,expectedRequestNonce:nonce,now:now+1}).reason,'executor_trust_root_issuer_not_v2');});
+await test('A2-07 extra trusted schema refused',()=>{const p=privileges();p.trustedSchemaUsage.push('live_ai_03b_extra');assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_schema_usage');});
+await test('A2-08 missing V3 schema refused',()=>{const p=privileges();p.trustedSchemaUsage=p.trustedSchemaUsage.filter(x=>!x.endsWith('_v3'));assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_schema_usage');});
+await test('A2-09 extra routine refused',()=>{const p=privileges();p.executableRoutines.push('public.evil()');assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_routine_execute');});
+await test('A2-10 missing V3 routine refused',()=>{const p=privileges();p.executableRoutines=p.executableRoutines.slice(0,5);assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_routine_execute');});
+await test('A2-11 direct budget privilege refused',()=>{const p=privileges();p.budgetTablePrivilegeCount=1;assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_budget_table_privilege');});
+await test('A2-12 direct ledger privilege refused',()=>{const p=privileges();p.ledgerPrivilegeCount=1;assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_ledger_privilege');});
+await test('A2-13 schema CREATE refused',()=>{const p=privileges();p.schemaCreate=['live_ai_03b_trusted_v3'];assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_schema_create');});
+await test('A2-14 membership refused',()=>{const p=privileges();p.roleMemberships=['postgres'];assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_role_membership');});
+await test('A2-15 PUBLIC/default widening refused',()=>{const p=privileges();p.publicOrDefaultPrivilegeWidening=true;assert.equal(validateMeasuredExecutorPrivilegesV2(p).reason,'executor_drift_public_or_default_widening');});
+await test('A2-16 observer independence required',()=>{const x=context();x.observerIndependent=false;assert.equal(evalEvidence({context:x}).reason,'observer_not_independent');});
+await test('A2-17 extended finding refused',()=>{const x=context();x.extendedFindings=['shdepend:extra'];assert.equal(evalEvidence({context:x}).reason,'drift_extendedFindings');});
+await test('A2-18 CORE target refused',()=>assert.equal(evalEvidence({target:{...target,projectId:FIXED_V3.core_excluded_project}}).reason,'target_not_ai_staging'));
+await test('A2-19 physical connection mismatch refused',()=>{const env=issued();assert.equal(verifyExecutorAttestationV2(env,{trustRoot,expectedConnectionToken:'c'.repeat(64),expectedRequestNonce:nonce,now:now+1}).reason,'executor_attestation_connection_mismatch');});
+await test('A2-20 request nonce mismatch refused',()=>{const env=issued();assert.equal(verifyExecutorAttestationV2(env,{trustRoot,expectedConnectionToken:token,expectedRequestNonce:'d'.repeat(32),now:now+1}).reason,'executor_attestation_request_nonce_mismatch');});
+await test('A2-21 successor issuer accepts only nonce/token and obtains evidence from observer seam',async()=>{const observed={connection:{role:EXECUTOR_ROLE,token},context:context(),dbNowMs:now,observedAtMs:now,privileges:privileges(),target};let seen=null;const ir=createExecutorAttesterIssuerV2({observerAdapter:{contract:EXECUTOR_OBSERVER_ADAPTER_CONTRACT_V2,observeExecutorEvidence:async t=>{seen=t;return observed;}},signingAdapter:signer});assert.equal(ir.ok,true);const out=await ir.issuer.issue({requestNonce:nonce,claimedConnectionToken:token});assert.equal(out.ok,true);assert.equal(seen,token);assert.equal(verifyExecutorAttestationV2(out.envelope,{trustRoot,expectedConnectionToken:token,expectedRequestNonce:nonce,now:now+1}).ok,true);});
+await test('A2-22 issuer refuses caller-shaped raw privilege injection surface',async()=>{const ir=createExecutorAttesterIssuerV2({observerAdapter:{contract:EXECUTOR_OBSERVER_ADAPTER_CONTRACT_V2,observeExecutorEvidence:async()=>{throw new Error('must not be bypassed');}},signingAdapter:signer});const out=await ir.issuer.issue({requestNonce:nonce,claimedConnectionToken:token,privileges:privileges()});assert.equal(out.reason,'bad_request');});
+await test('A2-23 V3 production integration requires V2 attestation + resolved preservation binding',()=>{const env=issued();const r=validateV3ProductionExecutorAuthority({executorAttestation:env,executorTrustRoot:trustRoot,expectedConnectionToken:token,expectedRequestNonce:nonce,now:now+1,runtimePreservationBinding:{contract:'M7V3SuccessorRuntimePreservationBindingV1',parent:'37349fe9b33bb1045d0c7b062d4b5c4d7c330c1d',commit:'1'.repeat(40),tree:'2'.repeat(40),runtime_digest:'3'.repeat(64)}});assert.equal(r.ok,true);assert.match(r.successorRuntimePinRef,/^[0-9a-f]{64}$/);});
+console.log(`executor-attestation-v2: ${pass} passed, 0 failed`);if(process.exitCode)process.exit(process.exitCode);

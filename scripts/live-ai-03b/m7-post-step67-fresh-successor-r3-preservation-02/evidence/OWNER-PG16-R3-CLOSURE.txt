@@ -1,0 +1,16 @@
+M7 POST-STEP67 / FRESH PRICING-CATALOG SUCCESSOR R3
+OWNER REAL POSTGRESQL 16.15 CLOSURE EVIDENCE
+
+postgres (PostgreSQL) 16.15 (Homebrew)
+
+R3_PRE_EXPIRY_SINGLE_OBSERVATION_PROVEN activation_pid=31115 blocker_pid=31105 observer_pid=31124 db_observed_at=2026-10-07T06:48:23.579Z expiry=2026-10-07T06:48:33Z wait_event=transactionid blocker_count=1
+
+R3_POST_EXPIRY_SINGLE_OBSERVATION_PROVEN activation_pid=31115 blocker_pid=31105 observer_pid=31384 db_observed_at=2026-10-07T06:48:33.036Z expiry=2026-10-07T06:48:33Z wait_event=transactionid blocker_count=1
+
+R3_FRESHNESS_REFUSAL_PROVEN activation_rc=3 blocker_rc=2 error=mutation-boundary-freshness-failed
+
+R3_ROLLBACK_PROVEN state=inactive|3|0
+
+A1_R3_LOCALPG_SINGLE_OBSERVATION_INTERLEAVING_PASS state=inactive|3|0 activation_rc=3 pg_major=16 activation_pid=31115 blocker_pid=31105 pre_observer_pid=31124 post_observer_pid=31384 expiry=2026-10-07T06:48:33Z
+
+RESULT: PASS (12/12 required checks)

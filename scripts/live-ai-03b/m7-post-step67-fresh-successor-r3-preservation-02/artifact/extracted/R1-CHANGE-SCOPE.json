@@ -1,0 +1,115 @@
+{
+  "contract": "M7FreshSuccessorRemediationR1ChangeScopeV1",
+  "base_rejected_zip_sha256": "21e11bbb300b1b3150cca7d78415e539e16a3b22276047b9c20da80ce6674466",
+  "changed": [
+    {
+      "path": "IMPLEMENTATION-RECEIPT.md",
+      "base_sha256": "58f78e643b41f6f7c02fcccb5997a54d25909732e42b7337888be92176557f57",
+      "r1_sha256": "ec7f676ca494edb84fac958eefc53121236cc5b2696499cbd09ab364a4adb88f"
+    },
+    {
+      "path": "README.md",
+      "base_sha256": "a39b63b73217c4e7001ee67d4302464f874e71d10b15e762b0462b9dc059e678",
+      "r1_sha256": "177ff6f04afe26e1b8bdadcd51980b7a9453dbbc8d3b3088112d4fc30baecf72"
+    },
+    {
+      "path": "SUCCESSOR-VERSION-BOUNDARY-MAP.md",
+      "base_sha256": "9faa4f67127f65b1802f43657ba5cb1601d2437f5b41f7b03d9e93a185c63d09",
+      "r1_sha256": "642198ef817259dba6949843deb1b6823dcee794a07837a611b30b8cb217633b"
+    },
+    {
+      "path": "sql/m7-v3-02-trusted-successor-migration.sql",
+      "base_sha256": "c724e9e7b5b463fef9d7cc197751053b43d8dc85f4d3306283e6eeb3f8b57bf9",
+      "r1_sha256": "74201097498a4d4805b89f26041ce6ac196f1a12e64c3a9c7d3827cd1a34415c"
+    },
+    {
+      "path": "src/v3-runtime-config.mjs",
+      "base_sha256": "2b1d3024106ccabcfdcce9cfae188b7bd9b9a3f324a637b42e1a34603de5c182",
+      "r1_sha256": "564c8722cacf5488f6cd0999dc560b687987a26af44695e2661a0683327f477e"
+    },
+    {
+      "path": "tests/run-all.sh",
+      "base_sha256": "6ae13beacfd7ca2f8ba3e638ef46d3cf41c9ed7c5f985a5fa534e4152c1a3093",
+      "r1_sha256": "f4864791651873df31560b886774b13230ba35b34528267f24da054c016ce982"
+    },
+    {
+      "path": "tests/runtime-static.test.mjs",
+      "base_sha256": "433c3fafb0539015042bf1843ff7ac2403ddf219665bf4a6fc10d8f791030077",
+      "r1_sha256": "90f238cce0cd75390a5c4f6ecdbd077a33fc1adc37de415532772eccfc877a06"
+    },
+    {
+      "path": "tests/sql-static.test.mjs",
+      "base_sha256": "dc5f5fb8dbb896e256c318bfb6f2a52d6afdf9da0cb93bc6607b9147486893bd",
+      "r1_sha256": "5f795393efb602cad69e469fe985564b65c6ce9d9545e71cf4fb55690652d4c8"
+    },
+    {
+      "path": "tools/build-sql.mjs",
+      "base_sha256": "65c6dee70cbec714f497014aa84a4d19c5d92f49329796503cad9284f01ffb39",
+      "r1_sha256": "d00df397ca0c7635f383ddd2a42d89496a4b766d95710ef2f02702947f239330"
+    },
+    {
+      "path": "tools/package-identity.mjs",
+      "base_sha256": "acadb559494668199fa0d5ddf830d17e2989a60d4dcaa28575dd18af4d1541ed",
+      "r1_sha256": "0ffd873123232832d180e135d9c9af1eb415159a04353ca0972744107c63cefc"
+    }
+  ],
+  "added": [
+    {
+      "path": "FROZEN-V1-EXECUTOR-ATTESTATION-REFERENCE.json",
+      "sha256": "3581b176a028607ae64764cda6876a0db201643115b337f558dc5f4bd5697958"
+    },
+    {
+      "path": "INDEPENDENT-REVIEW-HOLD.md",
+      "sha256": "3ae6cad605617724af05d9ba654acfead331e556758a41830d89e7cf6b01b9e7"
+    },
+    {
+      "path": "OWNER-LOCALPG-CLOSURE.md",
+      "sha256": "aa0617b3ecf85889aaaab0a8306cacd6ba2d8d0e00decc3dd87451f01481022c"
+    },
+    {
+      "path": "src/executor-attestation-v2.mjs",
+      "sha256": "a72907075d00aad1e2bcf1db7b9acd40d531f2742efeed29a32dc9ba7c5703f8"
+    },
+    {
+      "path": "src/executor-attester-issuer-v2.mjs",
+      "sha256": "879756f5d9b6d9f67d61d980136b9f0906c2efe7732088b6fe93cfa1e928e694"
+    },
+    {
+      "path": "src/executor-attester-signing-v2.mjs",
+      "sha256": "04fd3540ef7bdced9a4e80220bf97954b7fac25a77a6a29b4b8ac183f184421a"
+    },
+    {
+      "path": "src/executor-evidence-policy-v2.mjs",
+      "sha256": "59266ed9c40f7cfea97a6cc7265cdc6dcf42e8b1865b2788a6ca4341b44ed996"
+    },
+    {
+      "path": "src/v3-production-integration.mjs",
+      "sha256": "4603e88d9dd9d329f6f39a515aa65e04a501f353e3dfbf23c465d6312bde5c33"
+    },
+    {
+      "path": "tests/executor-attestation-v2.test.mjs",
+      "sha256": "ea2c71b484936d0921c81a6c8d8ba159095236dc251d31c62dddd32233347923"
+    },
+    {
+      "path": "tests/historical-rejected-identity.test.mjs",
+      "sha256": "e20e8a45138cb62779f0d64324983278483d256dd2ff282f67a4b4e75da181a8"
+    },
+    {
+      "path": "tests/localpg-expiry-lock-regression.sh",
+      "sha256": "bb1c9b822c1e5834e9b291f140bfebbd6748ac5c9459731852abba1f1af9705e"
+    },
+    {
+      "path": "tests/make-localpg-fixture.mjs",
+      "sha256": "53102b4054d7dc2f95b7fb898fae047f71f6839b8b4f584dec69652e5e72fd2c"
+    },
+    {
+      "path": "tests/make-valid-claims-v3.mjs",
+      "sha256": "216fc6a8ab7bc94b642bc5afd0c615d024912ba0b3fa3e4e657d388495d70a5a"
+    },
+    {
+      "path": "tools/secret-scan.mjs",
+      "sha256": "04722756a2b1681074a05afd7ebe0f6a854eb84d8f75916cf6f171ac94b88ad7"
+    }
+  ],
+  "removed": []
+}

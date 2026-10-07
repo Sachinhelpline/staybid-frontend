@@ -1,0 +1,84 @@
+{
+  "contract": "M7FreshSuccessorRemediationR2ChangeScopeV1",
+  "superseded_r1_harness_fix_zip_sha256": "83b2a81a07f6eca05a593d183c2eed8583dfefa8690ab9851054dfb492d64e75",
+  "scope": "HARNESS_AND_EVIDENCE_ONLY",
+  "changed": [
+    {
+      "path": "IMPLEMENTATION-RECEIPT.md",
+      "r1_sha256": "2cddfc4f1981ab88eeadb95a64db506eab820f99e8f347c7e097cb3223e7a3e5",
+      "r2_sha256": "45b7c264d77aa2add453475d1c4fbd28d9c1b79783a3bd23f6e88dedc5d14305"
+    },
+    {
+      "path": "INDEPENDENT-REVIEW-HOLD.md",
+      "r1_sha256": "3ae6cad605617724af05d9ba654acfead331e556758a41830d89e7cf6b01b9e7",
+      "r2_sha256": "daaceee67a412c9a0f4d7797f39969bdea7590b6517d9c31eb0641f8330b947a"
+    },
+    {
+      "path": "OWNER-LOCALPG-CLOSURE.md",
+      "r1_sha256": "3c42eea59474b1a46289910f3e8405f865ebda54376780e55d16f1c808e6a85b",
+      "r2_sha256": "6a435d9a1b52e11a0e6264bfb7d27d062cf463b8924939e7d8b25d4b7d60fceb"
+    },
+    {
+      "path": "README.md",
+      "r1_sha256": "c2ecaa872825226cfb08d2f33d790cac9b8ee5726770e99be19705a84492ec51",
+      "r2_sha256": "4608b8b4efc52ae3ebd7ab987ce5b804d04fc2bc4d5394618b7e07c9d4135454"
+    },
+    {
+      "path": "SUCCESSOR-VERSION-BOUNDARY-MAP.md",
+      "r1_sha256": "36b17eee4bf60fc8324ff805a69aeee0377abdedde0f9237b2bf4f81f76c883b",
+      "r2_sha256": "e9bf9d72ca2bc5d5a7d0f0696c82f7f188e66658d858f6e79f4adce470bea29a"
+    },
+    {
+      "path": "tests/localpg-expiry-lock-regression.sh",
+      "r1_sha256": "03b263056b650102e0c7b7bee2c3642f3a791f1bebd4741408b203804df99647",
+      "r2_sha256": "ecab1f7e2a100f3b7e453ba35a594bf06fe07b34cec406055c4ec746013f37e6"
+    },
+    {
+      "path": "tests/out/aggregate.log",
+      "r1_sha256": "300089fd122e2e9fd811234857656d5cdeb3ab79cb852f0ed43adab19bcc3702",
+      "r2_sha256": "6cfae1f3140ebe629a47da6c0a1f8c2a71c85ebc1d16d630bb38a19b4502b9da"
+    },
+    {
+      "path": "tests/run-all.sh",
+      "r1_sha256": "f4864791651873df31560b886774b13230ba35b34528267f24da054c016ce982",
+      "r2_sha256": "0bee27550a2788203834028f76e9d67220cf2eadf875f2366105abf089909cde"
+    },
+    {
+      "path": "tools/package-identity.mjs",
+      "r1_sha256": "7f5c994f90667f5709480cf246e0e43f5bb14e12f76788dcd573aabb9a9b8803",
+      "r2_sha256": "a93cd7bd52451b3d448f45e3751cc8265e9b5a6c79e13f9beda49162e4671561"
+    }
+  ],
+  "added": [
+    {
+      "path": "tests/interleaving-proof-gate.sh",
+      "r2_sha256": "424f43e1ffba7502c8c2d6b46a89101e5f6b6c7b7b575fd0c8f80bab100ad305"
+    },
+    {
+      "path": "tests/interleaving-proof-gate.test.sh",
+      "r2_sha256": "9b83c2976344a6331e0a5000d8a30342efb35a91d517b4de0345acd581f3187e"
+    },
+    {
+      "path": "tests/out/aggregate-r2-current-sandbox.log",
+      "r2_sha256": "6cfae1f3140ebe629a47da6c0a1f8c2a71c85ebc1d16d630bb38a19b4502b9da"
+    },
+    {
+      "path": "tests/out/interleaving-proof-gate.log",
+      "r2_sha256": "50cd1caff60c1084df4f8a7378ab99428a3f5ac13ad9f05e4dde0757f7b48799"
+    }
+  ],
+  "removed": [],
+  "protected_path_prefixes": [
+    "sql/",
+    "src/",
+    "approval/",
+    "evidence/",
+    "historical/"
+  ],
+  "protected_exact_files": [
+    "FROZEN-V1-EXECUTOR-ATTESTATION-REFERENCE.json"
+  ],
+  "protected_file_count": 23,
+  "protected_mismatches": [],
+  "production_and_frozen_bytes_unchanged": true
+}

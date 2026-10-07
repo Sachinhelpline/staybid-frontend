@@ -1,0 +1,13 @@
+PASS digest
+PASS sql-check
+PASS core
+PASS predecessor
+PASS sql-static
+PASS runtime-static
+PASS evidence-static
+PASS executor-attestation-v2
+PASS historical-rejected-identity
+PASS secret-scan
+FAIL localpg-expiry-lock rc=77
+LOCALPG_REQUIRED_BINARY_MISSING:initdb
+RESULT: FAIL (pass=10 fail=1 required=11)

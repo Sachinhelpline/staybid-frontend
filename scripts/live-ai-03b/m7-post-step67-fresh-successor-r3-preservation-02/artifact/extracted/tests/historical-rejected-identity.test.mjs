@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import { createHash } from 'node:crypto';import path from 'node:path';
+const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');const p=path.join(root,'historical/M7_POST_STEP67_FRESH_PRICING_CATALOG_SUCCESSOR_01_REJECTED.zip');const b=fs.readFileSync(p);const h=createHash('sha256').update(b).digest('hex');assert.equal(b.length,57208);assert.equal(h,'21e11bbb300b1b3150cca7d78415e539e16a3b22276047b9c20da80ce6674466');console.log('historical-rejected-identity: 2 passed, 0 failed');

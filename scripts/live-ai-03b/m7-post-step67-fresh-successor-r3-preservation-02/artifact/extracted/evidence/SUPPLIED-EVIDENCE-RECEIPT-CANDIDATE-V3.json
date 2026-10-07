@@ -1,0 +1,56 @@
+{
+  "_status": "CANDIDATE SUPPLIED RECEIPT (authority A) — NOT APPROVAL. Fresh official pricing facts were verified before generation; independent reviewer must re-verify before signing.",
+  "receipt": {
+    "id": "m7-v3-pricing-evidence-openai-gpt-5-6-terra-standard-short-20261006T224442Z",
+    "digest": "2e39555c39ad4bb87bf589405aa4e2f74de5573768cfe16c80fc394c4231bad7",
+    "content": {
+      "account_mode": "direct",
+      "catalog_version_id": "openai-gpt-5-6-terra-standard-short-v3",
+      "context_tier": "short",
+      "currency": "USD",
+      "excluded_paths": {
+        "batch": false,
+        "bedrock": false,
+        "fast": false,
+        "flex": false,
+        "long_context": false,
+        "priority": false,
+        "regional": false,
+        "scale_tier": false
+      },
+      "long_context_threshold_input_tokens": 272000,
+      "max_input_tokens": 32768,
+      "max_output_tokens": 2000,
+      "model": "gpt-5.6-terra",
+      "processing_mode": "standard",
+      "provider": "openai",
+      "rates": [
+        {
+          "billing_dimension": "reasoning_input_token",
+          "rate_micros": 2000000,
+          "service_tier": null,
+          "unit_size": 1000000
+        },
+        {
+          "billing_dimension": "reasoning_input_token",
+          "rate_micros": 2500000,
+          "service_tier": "cache_write",
+          "unit_size": 1000000
+        },
+        {
+          "billing_dimension": "reasoning_output_token",
+          "rate_micros": 12000000,
+          "service_tier": null,
+          "unit_size": 1000000
+        }
+      ],
+      "regional_uplift": false,
+      "service_tier": "default",
+      "source_digest": "13c536bcc4afbc6d2706468f072528fc4f7737919c6917653218eb861964ba9a",
+      "source_id": "openai-api-pricing/gpt-5.6-terra/standard/short-context/v1",
+      "source_url": "https://developers.openai.com/api/docs/pricing",
+      "unit_size": 1000000,
+      "verified_at": "2026-10-06T22:44:42Z"
+    }
+  }
+}
