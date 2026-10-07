@@ -1,0 +1,38 @@
+{
+  "contract": "M7R3ProductionIntegration01FrozenInputsV1",
+  "r3_preservation": {
+    "commit": "f1e1f1272b751b99c8a705d868e7762e928c6238",
+    "tree": "5659ea8432f3ca76e267ff9e0a6b3896e0b79b88",
+    "parent": "37349fe9b33bb1045d0c7b062d4b5c4d7c330c1d",
+    "zip_size": 145161,
+    "zip_sha256": "1e824619a31bcbfcf86bfe6b941c51fc4436ef372b12d3c522f7613304c052e8",
+    "manifest_sha256": "f71a7b25431c7e7b4d7969cd2bf52b2f7a49225fbe6a3465ca5720cd44b38407",
+    "payload_count": 65,
+    "independent_review": "ACCEPTED_FRESH_SUCCESSOR_R3_READY_FOR_PRESERVATION_AND_PRODUCTION_INTEGRATION",
+    "owner_pg16_closure": "PASS_12_OF_12"
+  },
+  "frozen_reader_v2_and_authority_blobs": {
+    "post_step67_reader_entrypoint": "42dd5da4b15996f59f224b3bb718b4e5f8f34759",
+    "post_step67_reader_provisioner": "81bae0acdcdb941d136f3d37dcf5bdb934dba44f",
+    "post_step67_reader_config": "1f87eed22110a09ab00f111da9771f08614b9bcb",
+    "executor_session": "566480c145f608a06cc13d38f1bbcf9881b4cb74",
+    "reader_session": "c24a2781b7b5f435edd653fc7fc29b84160df72f",
+    "role_binding": "c154a884e58ab1d1609c74eb4148754c30bc14a7",
+    "trusted_clock": "07ddb1eadd1a8a2fc832a105e35f09e7db238428"
+  },
+  "live_actions_at_build": {
+    "github_write": 0,
+    "railway_write": 0,
+    "live_db_connection": 0,
+    "live_sql": 0,
+    "approval_signing": 0,
+    "catalog_activation": 0,
+    "provider_call": 0,
+    "restart": 0,
+    "redeploy": 0,
+    "g4": 0,
+    "g5": 0,
+    "gateway": 0,
+    "core_prod": 0
+  }
+}

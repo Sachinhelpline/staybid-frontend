@@ -1,0 +1,105 @@
+{
+  "contract": "M7R3ProductionIntegration01IdentityBindingRemediation01PackageManifestV1",
+  "supersedes_zip_sha256": "8511c806303a750ccd807bc7ff73b506443a8e2c790987e69ca0ded9891b9ff5",
+  "reviewer_hold_closed_target": "HOLD_PRODUCTION_INTEGRATION_01_RUNTIME_BLOB_IDENTITY_MISMATCH",
+  "frozen_r3_commit": "f1e1f1272b751b99c8a705d868e7762e928c6238",
+  "frozen_r3_tree": "5659ea8432f3ca76e267ff9e0a6b3896e0b79b88",
+  "payload_count": 19,
+  "files": [
+    {
+      "path": "IMPLEMENTATION-RECEIPT.md",
+      "size": 1383,
+      "sha256": "0a4836415d4731d872034d1ea289be4fcc925477d6a70e657662d17c6a255525"
+    },
+    {
+      "path": "OWNER-NEXT-STEP.md",
+      "size": 331,
+      "sha256": "8aba7857421e53de01084dfd61b8e8eeb0e0da9b730bf20bb233d7b86c569506"
+    },
+    {
+      "path": "README.md",
+      "size": 2015,
+      "sha256": "16abba43d2059ea85106029aa6442146c1f971aa8ab1c03ebc616acd86eda77c"
+    },
+    {
+      "path": "REVIEW-SCOPE.md",
+      "size": 1289,
+      "sha256": "bbb6821300f5d5ddf5e7e9300bcb0abd6ad6ad60babc927245df2443bc364438"
+    },
+    {
+      "path": "evidence/IDENTITY-VERIFICATION.log",
+      "size": 338,
+      "sha256": "ce0ec0fa4ed696c2661d50b881c46950563620eab3d11c105d9dcb6b05c51abe"
+    },
+    {
+      "path": "evidence/SECRET-SCAN.log",
+      "size": 84,
+      "sha256": "7fa4990060aa2988d2dc7d1ac013e64a2fdd3f61b54bf4882b46bef655a36ac2"
+    },
+    {
+      "path": "evidence/SYNTAX-CHECK.log",
+      "size": 20,
+      "sha256": "c7013bf390dfbd5b32ff0a7e073d71e51b66c069f0dc514815e00dfc74761ad5"
+    },
+    {
+      "path": "evidence/TEST-RESULTS.log",
+      "size": 2332,
+      "sha256": "1e36d1950227d9499779cb15f0f2bd6469e5020675b33c2fadf5fc48f6bb0325"
+    },
+    {
+      "path": "identity/FROZEN-INPUTS.json",
+      "size": 1497,
+      "sha256": "442f99733040970c1aa31a88e26c4e80f211a5a4c50c628d36477f5527f51c40"
+    },
+    {
+      "path": "identity/RUNTIME-BLOB-MANIFEST.json",
+      "size": 2285,
+      "sha256": "c7def8c95b5eaa3c68ee96c7ddeefd71dc5fa2674b43b2f08b8a6391a7bbf599"
+    },
+    {
+      "path": "identity/RUNTIME-DIGEST-INPUT.json",
+      "size": 2063,
+      "sha256": "c01c3c72bd3043e64a22d498d7535fcf0284b4a1ed303b5fba6f5eb9e7df9ed5"
+    },
+    {
+      "path": "identity/RUNTIME-PRESERVATION-BINDING.json",
+      "size": 415,
+      "sha256": "67ed71f358a6320e2a6c28d2abd6368f38424b2edec911c17d3b72771488d034"
+    },
+    {
+      "path": "src/production-composition.mjs",
+      "size": 3515,
+      "sha256": "4ccecd14b0160bbae5aed7e6c7b3a76cb8a345f02b82016559892f4484cfd5f7"
+    },
+    {
+      "path": "src/reader-v2-binding.mjs",
+      "size": 2650,
+      "sha256": "970f59e86b2f10feac688b32c07327e4120875234fa4064884a479bb66670b3b"
+    },
+    {
+      "path": "src/runtime-preservation-binding.mjs",
+      "size": 1945,
+      "sha256": "1cd7343cc416e979941fea2433a79ece152c47f56c40d7ada86658c5e5dd2910"
+    },
+    {
+      "path": "src/v3-guarded-clients.mjs",
+      "size": 2753,
+      "sha256": "325d6cc9b3788dfa65185b882b5e2148f522872c63281ead43d7a577d430c07f"
+    },
+    {
+      "path": "src/v3-integration-core.mjs",
+      "size": 11464,
+      "sha256": "1c55866b62529b4a2b18979616c4aeb23958e19ace2c9f9517ffa03944504ecd"
+    },
+    {
+      "path": "tests/run-all.mjs",
+      "size": 19101,
+      "sha256": "7063dbcbeb345a444a6f067de5266296e312cc8814b6cae86eba12d32ec89ad0"
+    },
+    {
+      "path": "tools/verify-package.mjs",
+      "size": 2758,
+      "sha256": "51789f45fd964a12115120b638e7bdfba10679ae143c48778f1c3a069d5c256d"
+    }
+  ]
+}

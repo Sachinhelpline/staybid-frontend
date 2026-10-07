@@ -1,0 +1,118 @@
+STAYBID LIVE-AI / LIVE-AI-03B
+M7 POST-STEP67
+
+PRODUCTION INTEGRATION 01
+LIVE READINESS REMEDIATION 01
+INDEPENDENT WORK v2 ACCEPTANCE
+
+FINAL VERDICT:
+ACCEPTED_LIVE_READINESS_REMEDIATION_01_READY_FOR_PRESERVATION
+
+A. Candidate identity
+Exact 195787 bytes.
+SHA256:
+1ce7b6c0c95ce55e734e4a58a9642db4f940dfc003349ca9aac1fb76362d13cd
+CRC PASS; no unsafe paths or symlinks.
+
+B. Manifest
+SHA256:
+cf0dc7e54cf50321ba6bdc0064ca52faec3eb9f022320bf537147e145f34b8b1
+85/85 payload hashes/sizes match.
+86 entries total.
+No missing/unlisted payloads.
+
+C. Frozen sources
+Fresh GitHub evidence confirmed authoritative preservation:
+branch m7-post-step67-production-integration-01-preservation-01-remediation-01
+commit cbcb268939b2c8384188239ba8c228e8ca77c10d
+tree 36b25416a331d56175853190559dbd9948925309
+parent/frozen R3 f1e1f1272b751b99c8a705d868e7762e928c6238
+
+58/58 dependency identities and four historical V1 files matched.
+Accepted PI01 materialization was 21/21 byte-identical.
+All 39 overlay paths were additive.
+Corrupt historical preservation 63d15b78755120f8cd640a03ce29b3e7a5c65ce3 was excluded.
+
+D. Authority V3
+Accepted PI01 composition remains unchanged.
+Seven intended dependencies are bound.
+Reader V2 uses the exact established reader session.
+Executor V2 and runtime preservation binding remain mandatory.
+Construction/standby performs no activation or network/DB operation.
+
+E. Executor V2
+Distinct V2 protocol, issuer and contract.
+No V1 fallback or translation.
+Independent observation re-derives the session token, enforces exact privileges
+and anchored target, and feeds frozen policy/signing modules.
+Every released envelope is reverified.
+All four adaptation diffs reconstruct the exact candidate from fresh frozen source.
+
+F. Reader conclusion
+NO CODE CHANGE REQUIRED.
+Sticky peer invalidation cannot be cleared by clock recovery.
+Fresh Control-Room evidence resolves Authority-replacement trigger and deployed
+caad383d9002a2c76a5d20b2a024dc234cb043dd cleanup fix.
+Controlled restart belongs after final Authority identity is established.
+DB capacity/headroom remains UNKNOWN.
+
+G. Variable plan
+Accepted as separately authorized migration/verification plan.
+V3 contract, V2 issuer/reference, public identities, secret custody and
+post-Authority peer refresh are covered.
+V1/V2 key reuse is cryptographically acceptable under signed
+contract/domain/issuer separation.
+Fresh V2 key is recommended, not materially mandatory.
+
+H. One-shot runner
+Inclusion accepted.
+Standby cannot reach it.
+Exact CLI/request checks, advisory expiry refusal, exclusive attempt lock and
+one boundary.run() preserve accepted activation boundary.
+Thrown/ambiguous results stop without retry or automatic restoration.
+Genuine approval and separate authorization remain required.
+
+I. Tests/regressions
+Independent:
+Authority V3 84/84 PASS
+Executor V2 60/60 PASS
+One-shot 17/17 PASS
+Static available without reconstructed Git checkout 28/28 PASS
+Accepted PI01 runtime 52/52 PASS
+PI01 identity verifier PASS
+Additional cancellation/cleanup 4/4 PASS
+Candidate/materialized PI01 syntax 25 files PASS
+
+Independent real-PostgreSQL reproduction:
+UNKNOWN — binaries unavailable.
+Aggregate correctly returned FAIL/exit 1 with local-PG SKIPPED/UNPROVEN.
+Packaged PostgreSQL 20/20, R3 12/12 and predecessor evidence were inspected,
+not represented as independently reproduced.
+
+G10 is a working-tree cleanliness assertion:
+exact preservation followed by a clean checkout removes its untracked-file failure.
+Historical G11 and paired baseline failures do not establish candidate-induced drift.
+Fresh source/tree verification supports the three Git-dependent static assertions
+omitted from the independent run.
+No test gates were weakened.
+
+J. Security/live actions
+No packaged private key, API key or credential-bearing DB URL.
+No new provider/gateway mutation path.
+All prohibited live actions remained zero.
+
+K. Material blockers
+0 A-class blockers.
+
+L. Future HOLD gates
+Live variable/reference correctness, observer capacity/headroom, final peer
+identity and allowlist, healthy Reader restart, exact preserved/deployed source,
+V3 DB prerequisites, genuine approval and remaining expiry window must be proven
+separately.
+
+This acceptance grants NO deployment, restart, variable change, DB operation,
+approval signing or catalog activation authorization.
+
+SV-B remains consumed.
+Historical G4 remains immutable HOLD.
+G5 remains unauthorized.

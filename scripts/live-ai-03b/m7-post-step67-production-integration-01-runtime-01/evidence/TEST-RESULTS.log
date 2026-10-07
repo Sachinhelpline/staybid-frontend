@@ -1,0 +1,53 @@
+PASS runtime pin ref exact
+PASS runtime binding exact pass
+PASS runtime binding altered commit fails
+PASS runtime binding extra key fails
+PASS guard executor exact V3 SQL once
+PASS guard executor rejects other SQL
+PASS guard executor rejects bad params
+PASS guard reader exact registry
+PASS guard reader rejects non-registry SQL
+PASS guard reader ledger params exact
+PASS integration rejects extra dep
+PASS integration rejects bad runtime config
+PASS integration composes with exact deps
+PASS request extra authority key rejected before I/O
+PASS one-shot boundary refuses second run
+PASS executor open failure fail-closed
+PASS executor session failure fail-closed
+PASS clock bind failure fail-closed
+PASS reader open failure fail-closed
+PASS reader session failure fail-closed
+PASS executor attestation source failure fail-closed
+PASS executor attestation V2 rejection fail-closed
+PASS reader provider failure fail-closed
+PASS reader v1 protocol rejected
+PASS reader binding rejection fail-closed
+PASS same physical connection rejected
+PASS reader provider receives exact established session
+PASS executor source receives exact V2 contract role token nonce
+PASS preactivation failure prevents activation
+PASS replay precheck rejects consumed approval
+PASS approval rejection prevents activation
+PASS activation refusal returned without retry
+PASS activation uncertain flag preserved
+PASS malformed activation receipt is uncertain hold
+PASS post ledger zero rows is uncertain hold
+PASS post ledger duplicate rows is uncertain hold
+PASS post ledger mismatch is uncertain hold
+PASS post activated state mismatch is uncertain hold
+PASS success returns V3 correlated stage and no probe ready
+PASS connections closed after success
+PASS connections closed after post-activation hold
+PASS composition imports exact R3 preservation path
+PASS composition consumes Executor Attestation V2
+PASS composition has no V1 executor verifier import
+PASS reader-only binder has no Executor V1 dependency
+PASS composition reuses frozen executor session
+PASS composition reuses frozen reader session
+PASS composition uses reader-only V2 binder
+PASS composition reuses frozen DB-bound clock
+PASS composition pins binding internally not request
+PASS core does not auto-restore
+PASS core does not call provider or gateway
+RESULT: PASS (52 passed, 0 failed)

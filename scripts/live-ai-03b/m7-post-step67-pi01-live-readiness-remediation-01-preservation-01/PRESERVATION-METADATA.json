@@ -1,0 +1,70 @@
+{
+  "schema": "M7PI01LiveReadinessRemediation01GitPreservation01MetadataV1",
+  "version": "LIVE_READINESS_REMEDIATION_01_GIT_PRESERVATION_01",
+  "mode": "GIT_PRESERVATION_ONLY",
+  "repository": "Sachinhelpline/staybid-frontend",
+  "branch": "m7-post-step67-pi01-live-readiness-remediation-01-preservation-01",
+  "base_commit": "cbcb268939b2c8384188239ba8c228e8ca77c10d",
+  "base_tree": "36b25416a331d56175853190559dbd9948925309",
+  "authoritative_previous_preservation": {
+    "branch": "m7-post-step67-production-integration-01-preservation-01-remediation-01",
+    "commit": "cbcb268939b2c8384188239ba8c228e8ca77c10d"
+  },
+  "frozen_r3": {
+    "commit": "f1e1f1272b751b99c8a705d868e7762e928c6238",
+    "tree": "5659ea8432f3ca76e267ff9e0a6b3896e0b79b88"
+  },
+  "superseded_corrupt_preservation_not_an_anchor": "63d15b78755120f8cd640a03ce29b3e7a5c65ce3",
+  "accepted_candidate": {
+    "filename": "M7_POST_STEP67_PI01_LIVE_READINESS_REMEDIATION_01.zip",
+    "preserved_path": "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01-preservation-01/artifact/M7_POST_STEP67_PI01_LIVE_READINESS_REMEDIATION_01.zip",
+    "size": 195787,
+    "sha256": "1ce7b6c0c95ce55e734e4a58a9642db4f940dfc003349ca9aac1fb76362d13cd",
+    "manifest_sha256": "cf0dc7e54cf50321ba6bdc0064ca52faec3eb9f022320bf537147e145f34b8b1",
+    "payload_count": 85,
+    "zip_entries": 86,
+    "overlay_count": 39
+  },
+  "overlay": {
+    "path_count": 39,
+    "rule": "each manifest payload beginning overlay/ written at its path with the leading overlay/ stripped; exact ZIP bytes; no normalization",
+    "roots": [
+      "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/",
+      "scripts/live-ai-03b/m7-post-step67-production-integration-01-runtime-01/"
+    ]
+  },
+  "preservation_evidence_files": [
+    "artifact/M7_POST_STEP67_PI01_LIVE_READINESS_REMEDIATION_01.zip",
+    "evidence/INDEPENDENT-WORK-ACCEPTANCE.txt",
+    "PRESERVATION-METADATA.json",
+    "PRESERVATION-RECEIPT.txt"
+  ],
+  "new_files_total": 43,
+  "independent_verdict": "ACCEPTED_LIVE_READINESS_REMEDIATION_01_READY_FOR_PRESERVATION",
+  "independent_acceptance_sha256": "754ed031d0148951cb511c698e44e7cd7b0fbed0ce87ef98ad87d8d2a737bff5",
+  "accepted_pi01_artifact_sha256": "d9c9c6edb6111618c0388b25a8df7375aa00b1f2b5d96e9dd600b877d89f8956",
+  "runtime_digest": "3e4be815d493b6854e3ef4467cad1b8d3c0494fc677049a099f351ebdb4e55f8",
+  "successor_runtime_pin_ref": "78804a8648e684bcdfb7d52dd34463310dec43c592fb2530216be19a04bc203d",
+  "existing_frozen_files_modified": false,
+  "live_counters": {
+    "railway_write": 0,
+    "railway_staged_write": 0,
+    "railway_source_switch": 0,
+    "railway_restart": 0,
+    "railway_redeploy": 0,
+    "db_connection": 0,
+    "db_mutation": 0,
+    "sql": 0,
+    "approval_signing": 0,
+    "catalog_activation": 0,
+    "provider_call": 0,
+    "sql03": 0,
+    "g4": 0,
+    "g5": 0,
+    "gateway_action": 0,
+    "core_prod_action": 0,
+    "production_traffic_change": 0,
+    "production_dns_domain_change": 0
+  },
+  "live_authorization_granted": false
+}

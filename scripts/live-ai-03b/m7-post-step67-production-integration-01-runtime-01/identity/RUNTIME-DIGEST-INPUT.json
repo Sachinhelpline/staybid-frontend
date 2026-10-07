@@ -1,0 +1,75 @@
+{
+  "contract": "M7V3SuccessorRuntimeBlobManifestV1",
+  "files": [
+    {
+      "path": "src/approval-verify-v3.mjs",
+      "git_blob": "1ce06bc19cc1f9fe810ef489263af4223f91e12b",
+      "size": 7755
+    },
+    {
+      "path": "src/executor-attestation-v2.mjs",
+      "git_blob": "55e05aca51b1f1e00778d4830002d985bc63293d",
+      "size": 7139
+    },
+    {
+      "path": "src/executor-attester-issuer-v2.mjs",
+      "git_blob": "b31270f25e9119ff8f57b0d8e0a28d1a7d5a01a7",
+      "size": 1480
+    },
+    {
+      "path": "src/executor-attester-signing-v2.mjs",
+      "git_blob": "f1417531dc5c19d55270b963ebb875f9e620cdb9",
+      "size": 2756
+    },
+    {
+      "path": "src/executor-evidence-policy-v2.mjs",
+      "git_blob": "8795f85764aa6a13f7759999c26bfd350a19bb45",
+      "size": 2756
+    },
+    {
+      "path": "src/pricing-approval-contract-v3.mjs",
+      "git_blob": "926ae93f01af95759c87634c6adfc4e6cc085504",
+      "size": 8242
+    },
+    {
+      "path": "src/v3-catalog-contract.mjs",
+      "git_blob": "451a54643277f96855a25f0be96b5d88d71cca6d",
+      "size": 3335
+    },
+    {
+      "path": "src/v3-digest-gen.mjs",
+      "git_blob": "5ccebf2c768ff8530c0f1ea5456705164619f878",
+      "size": 8469
+    },
+    {
+      "path": "src/v3-production-integration.mjs",
+      "git_blob": "d0b3a6318971c836d8e8e8d0bb6849879b72bb80",
+      "size": 948
+    },
+    {
+      "path": "src/v3-query-registry.mjs",
+      "git_blob": "61076cb946ea605a2e6f45caf12c6a97ee0da6e0",
+      "size": 2245
+    },
+    {
+      "path": "src/v3-restricted-activation-adapter.mjs",
+      "git_blob": "2b09ae5e64e6ece86cd3a18398a2ab8f447fbaa2",
+      "size": 1440
+    },
+    {
+      "path": "src/v3-runtime-config.mjs",
+      "git_blob": "95c6c1dd4b07ac8b08818e77f7c3ee4bc2f177f0",
+      "size": 2030
+    },
+    {
+      "path": "src/v3-runtime-contract.mjs",
+      "git_blob": "235ea45b459b1283fe78c009ba257e736825a126",
+      "size": 3587
+    },
+    {
+      "path": "src/v3-runtime-identity.mjs",
+      "git_blob": "ac29a55f686e6826858580ffee3b38d2af7559f9",
+      "size": 1337
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "contract": "M7R3ProductionIntegration01IdentityBindingRemediation01ReceiptV1",
+  "status": "PRODUCTION_INTEGRATION_01_IDENTITY_BINDING_REMEDIATION_01_COMPLETE_READY_FOR_ONE_INDEPENDENT_REVIEW",
+  "frozen_r3": {
+    "commit": "f1e1f1272b751b99c8a705d868e7762e928c6238",
+    "tree": "5659ea8432f3ca76e267ff9e0a6b3896e0b79b88",
+    "zip_sha256": "1e824619a31bcbfcf86bfe6b941c51fc4436ef372b12d3c522f7613304c052e8",
+    "manifest_sha256": "f71a7b25431c7e7b4d7969cd2bf52b2f7a49225fbe6a3465ca5720cd44b38407"
+  },
+  "runtime_binding": {
+    "runtime_digest": "3e4be815d493b6854e3ef4467cad1b8d3c0494fc677049a099f351ebdb4e55f8",
+    "successor_runtime_pin_ref": "78804a8648e684bcdfb7d52dd34463310dec43c592fb2530216be19a04bc203d",
+    "runtime_file_count": 14
+  },
+  "tests": {
+    "deterministic_integration": "PASS_52_OF_52",
+    "syntax": "PASS_7_FILES",
+    "identity": "PASS_WITH_40_HEX_GIT_BLOB_ENFORCEMENT",
+    "secret_scan": "PASS"
+  },
+  "manifest_sha256": "dbf49804e224d3b7a1cd3c4a0c5e63c76d374f3500f6ca28e8059e1dedb371af",
+  "payload_count": 19,
+  "live_actions": {
+    "github_write": 0,
+    "railway_write": 0,
+    "live_db_connection": 0,
+    "live_sql": 0,
+    "sql03": 0,
+    "approval_signing": 0,
+    "catalog_activation": 0,
+    "provider_call": 0,
+    "restart": 0,
+    "redeploy": 0,
+    "g4": 0,
+    "g5": 0,
+    "gateway": 0,
+    "core_prod": 0
+  },
+  "next_boundary": "ONE_SAME_EXISTING_CHATGPT_WORK_V2_INDEPENDENT_REVIEW",
+  "live_authorization_granted": false,
+  "supersedes": {
+    "zip_sha256": "8511c806303a750ccd807bc7ff73b506443a8e2c790987e69ca0ded9891b9ff5",
+    "hold": "HOLD_PRODUCTION_INTEGRATION_01_RUNTIME_BLOB_IDENTITY_MISMATCH"
+  },
+  "remediation": {
+    "scope": "IDENTITY_BINDING_ONLY",
+    "corrected_path": "src/v3-production-integration.mjs",
+    "correct_git_blob": "d0b3a6318971c836d8e8e8d0bb6849879b72bb80",
+    "correct_git_blob_length": 40,
+    "production_behavior_changed": false,
+    "frozen_source_changed": false,
+    "verifier_hardened": true
+  },
+  "production_source_comparison": {
+    "production_composition_unchanged": true,
+    "reader_v2_binding_unchanged": true,
+    "v3_guarded_clients_unchanged": true,
+    "v3_integration_core_unchanged": true,
+    "runtime_preservation_binding_changed_only_for_regenerated_digest_and_pin": true
+  }
+}
