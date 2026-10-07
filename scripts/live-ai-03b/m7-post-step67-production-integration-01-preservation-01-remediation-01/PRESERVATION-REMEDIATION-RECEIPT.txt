@@ -1,0 +1,57 @@
+STAYBID LIVE-AI / LIVE-AI-03B
+M7 POST-STEP67
+PRODUCTION INTEGRATION 01 — GIT PRESERVATION 01 — REMEDIATION 01
+RECEIPT
+
+MODE: GIT_PRESERVATION_REMEDIATION_ONLY
+OWNER AUTHORIZATION: GO AHEAD — PRODUCTION INTEGRATION 01 GIT PRESERVATION 01 REMEDIATION 01
+
+WHY THIS REMEDIATION EXISTS
+---------------------------
+The earlier preservation
+  branch  m7-post-step67-production-integration-01-preservation-01
+  commit  63d15b78755120f8cd640a03ce29b3e7a5c65ce3
+  tree    9ecbd3c9515053f357f05e0315297fdacec4dcb4
+is SUPERSEDED. Its artifact blob 4333da91462d4b4271465f547bfe0a95527c24b6 is truncated/corrupt:
+  stored size     6024 bytes (expected 25341)
+  stored sha256   7d800ffd6c6f993da7e29c76422480659716e1c2f2ba021afffc0e25a95b04e6 (expected d9c9c6ed...)
+  structure       9 ZIP local headers, no central directory, no end-of-central-directory record;
+                  it cannot be opened. Its first 3733 bytes equal the accepted ZIP, then the bytes diverge.
+Its PRESERVATION-METADATA.json claims 25341 bytes / d9c9c6ed..., which is false for the bytes stored in that tree.
+The 63d15b78 commit and its branch are kept UNTOUCHED as historical evidence only. They were not amended, rebased,
+force-pushed, deleted, moved or replaced.
+
+WHAT THIS REMEDIATION PRESERVES
+-------------------------------
+Base: frozen R3 commit f1e1f1272b751b99c8a705d868e7762e928c6238, tree 5659ea8432f3ca76e267ff9e0a6b3896e0b79b88.
+New additive path only:
+  scripts/live-ai-03b/m7-post-step67-production-integration-01-preservation-01-remediation-01/
+    artifact/M7_POST_STEP67_FRESH_SUCCESSOR_R3_PRODUCTION_INTEGRATION_01_IDENTITY_BINDING_REMEDIATION_01.zip
+    PRESERVATION-METADATA.json
+    PRESERVATION-REMEDIATION-RECEIPT.txt
+    evidence/INDEPENDENT-WORK-ACCEPTANCE.txt
+
+Accepted artifact identity (verified locally from the Owner-attached bytes BEFORE any Git write):
+  size              25341 bytes
+  sha256            d9c9c6edb6111618c0388b25a8df7375aa00b1f2b5d96e9dd600b877d89f8956
+  git blob          8e9cc8ce06311763bfb0dd625606eae38198b5dd
+  ZIP opens         yes (21 entries, CRC check clean)
+  manifest sha256   dbf49804e224d3b7a1cd3c4a0c5e63c76d374f3500f6ca28e8059e1dedb371af
+  payload           19/19 manifest size+sha256 identities verified
+  runtime digest    3e4be815d493b6854e3ef4467cad1b8d3c0494fc677049a099f351ebdb4e55f8
+  successor pin     78804a8648e684bcdfb7d52dd34463310dec43c592fb2530216be19a04bc203d
+  review verdict    ACCEPTED_PRODUCTION_INTEGRATION_01_READY_FOR_PRESERVATION
+
+The independent WORK acceptance evidence is a byte-exact copy of the intact acceptance text from the superseded
+preservation (Git blob 4eeffb5dcc54e04e7234d592077c4a1d3dcf99b5, 1074 bytes).
+
+No deployable runtime source was added or modified. No existing file was modified.
+Post-push remote byte verification is reported separately to Owner Control Room; it cannot be recorded inside the
+commit it verifies.
+
+LIVE ACTION COUNTERS
+--------------------
+Railway write 0 | live DB action 0 | deployment 0 | approval signing 0 | catalog activation 0 | provider call 0 |
+SQL03 0 | G4 0 | G5 0 | gateway action 0 | CORE-PROD action 0
+
+This receipt grants no live authorization.
