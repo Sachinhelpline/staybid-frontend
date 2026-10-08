@@ -1,0 +1,68 @@
+LIVE-AI-03B — V3 RUNTIME PG BIGINT NORMALIZATION REMEDIATION 01 — GIT PRESERVATION 01 — PRESERVATION RECEIPT
+
+PART 1 OF 2 — IN-COMMIT RECEIPT (generated immediately BEFORE the single preservation commit)
+
+Self-reference note: a file stored inside a Git commit cannot contain that commit's own SHA or its tree SHA, and
+this gate permits exactly ONE commit (no amend, no second commit). The new commit SHA, new tree SHA, push result,
+remote compare (ahead/behind) and the FRESH-REMOTE byte verification are therefore recorded in PART 2 — the
+post-push receipt delivered to the Owner Control Room with the final report (verified from a fresh separate clone of
+the remote branch, never from this working tree). Every value below was recomputed from bytes, not copied.
+
+mode:                         GIT_PRESERVATION_ONLY
+repository:                   Sachinhelpline/staybid-frontend
+new branch:                   m7-v3-runtime-pg-bigint-normalization-remediation-01-preservation-01
+parent commit (= baseline):   a2b84c4fc3acf14e2f63e6ffe3e4a80805833ae3
+parent tree:                  24111eb96fd60b238292bb98fdf6106ce0b3d487
+baseline branch head (fresh read-only ls-remote immediately before write): a2b84c4fc3acf14e2f63e6ffe3e4a80805833ae3
+new branch on remote before write: absent
+workspace: fresh separate clone of the baseline branch; HEAD/tree exact; status clean before applying
+
+ACCEPTED ARTIFACT (exact bytes, not rebuilt):
+  artifact/M7_V3_RUNTIME_PG_BIGINT_NORMALIZATION_REMEDIATION_01_OFFLINE_CANDIDATE.zip
+  bytes 57561 · sha256 5a90b00ad17cffaae3d09c7859ef4da0da1b58c752b74d33771536f7ecc42d4a
+  MANIFEST.json sha256 68ae366909b674dcaa93aa76c9f9c967ed4e6ab5555590bdd5367471a393d1cd
+  32 archive entries (14 directories, 18 regular files incl. MANIFEST.json) · 17/17 payload sha256 verified ·
+  no unsafe path · no symlink · no missing/unexpected payload · CRC test OK
+
+SIX ACCEPTED PRODUCTION/TEST FILES (extracted byte-for-byte from the accepted ZIP; bytes · sha256 · git blob):
+  M scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/src/authority-v3-composition.mjs
+      9691 · b9ae52730432e02fa6ef573f781fea06325945a0e9d5931d69e210e56f315072 · 7492985f9a55ef2d208507729a07ee9e49987efc
+      (baseline 9417 · a0764f5ce4aee7091b8441b5e0fb10faa29d7581e1405f5510c5c131025208ce · 2f981a7bbe553d6d442a8350044c846fe8748a1c)
+  A scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/src/authority-v3-int8-observation-normalizer.mjs
+      6801 · 5a328140547c3439112a5a6b12c7ee332b46ee7ae3ecd2b802d93f9ba4101f35 · 84cd6ceabd325ebbc80a41b40fbff3beb5bdfabd
+  A scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/int8-normalizer.test.mjs
+      16526 · d31505f00710fddb7fff475ed7c6a3d14cf182fa3860025e53bd6f2762060d31 · d1d742bb378952607b68ce7116ae1e1d70a6d66f
+  A scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/int8-remediation-static.test.mjs
+      7282 · 845bfa4e95b4d61f419d609d4dd567396a69e4538bb386c179fdafd5f72a2761 · 891d8316dc5d218fcd0bbb06b98b87d0ef2a8c91
+  A scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/localpg/authority-v3-int8-localpg.test.mjs
+      26889 · 37ac6a6ecd570b57f082f8bc43b986ad0dbcc67d60d71f303d791e8a45543284 · ce834dac5633e7c72bfb5eece08dfc07c61d5f5c
+  A scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/run-bigint01.mjs
+      3520 · 751431d0b4c710967068b4c5918dac3b04d8d99aacc12f043559f5c3adb71126 · d357c9d3a1598ca9e92658462ddeddaf25f0137a
+
+FROZEN FILES (git blob recomputed in the commit workspace; all 12 EXACT):
+  v3-runtime-contract.mjs 235ea45b459b1283fe78c009ba257e736825a126 · v3-query-registry.mjs 61076cb946ea605a2e6f45caf12c6a97ee0da6e0
+  v3-digest-gen.mjs 5ccebf2c768ff8530c0f1ea5456705164619f878 · v3-catalog-contract.mjs 451a54643277f96855a25f0be96b5d88d71cca6d
+  approval-verify-v3.mjs 1ce06bc19cc1f9fe810ef489263af4223f91e12b · pricing-approval-contract-v3.mjs 926ae93f01af95759c87634c6adfc4e6cc085504
+  runtime-preservation-binding.mjs 785e74dc40a0f417752c5f922a379cd7d16d7b02 · v3-integration-core.mjs 0899e56af084b8591a470fdd3d8b774ebba1a3bb
+  production-composition.mjs 465fb9022ee1d5680ec3e13d2e88b3cabe24aa46 · reader-session.mjs c24a2781b7b5f435edd653fc7fc29b84160df72f
+  authority-v3-activation-oneshot.mjs a6a8d15941cb8b1c5683408f8762f0fa0b1e48da · authority-v3-standby-entrypoint.mjs 12fa7d345455a10c406478d8a0c97ee97619311f
+
+SUCCESSOR RUNTIME PIN (recomputed: runtimePinRef(PINNED_RUNTIME_BINDING) + validateRuntimePreservationBinding):
+  78804a8648e684bcdfb7d52dd34463310dec43c592fb2530216be19a04bc203d — equals PINNED_SUCCESSOR_RUNTIME_PIN_REF — binding valid
+
+INTENDED COMMIT SCOPE: exactly 10 paths = the 6 files above + this directory's 4 evidence objects
+  (artifact ZIP, INDEPENDENT_REVIEW_ACCEPTANCE.txt, PRESERVATION-METADATA.json, PRESERVATION-RECEIPT.txt).
+
+INDEPENDENT REVIEW: SAME existing ChatGPT WORK v2 · V3_RUNTIME_PG_BIGINT_NORMALIZATION_REMEDIATION_01_INDEPENDENT_REVIEW_ACCEPTED ·
+  material_blocker_count 0 · real-PostgreSQL suite NOT independently rerun (binaries unavailable) · no independent
+  481/481 claim (see INDEPENDENT_REVIEW_ACCEPTANCE.txt).
+
+HISTORICAL ONE-SHOT: attempts 1 · retries 0 · reason predecessor_not_byte_exact · no activation / no consumption ·
+  closed, not retried, lock not cleared or bypassed.
+
+PROHIBITED LIVE ACTION COUNTERS (this gate): railway_mutations 0 · source_switch 0 · variable_changes 0 · staged_config 0 ·
+  restarts 0 · redeploys 0 · deployment_acceptance 0 · live_db_connections 0 · live_sql 0 · db_mutations 0 · sql01 0 ·
+  sql02 0 · sql03 0 · sql06 0 · signing 0 · new_approvals 0 · api_keys 0 · provider_calls 0 · gateway_actions 0 ·
+  activation 0 · activation_retry 0 · oneshot_lock_actions 0 · g4 0 · g5 0 · core_prod 0 · main_branch_writes 0 ·
+  force_pushes 0 · old_preservation_branch_writes 0.
+GitHub write scope: ONLY the new branch above, ONE commit, ONE push.

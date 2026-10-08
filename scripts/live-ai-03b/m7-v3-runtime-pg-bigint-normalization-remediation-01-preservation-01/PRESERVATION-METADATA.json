@@ -1,0 +1,139 @@
+{
+  "schema": "LiveAi03bGitPreservationMetadataV1",
+  "version": 1,
+  "gate": "V3 RUNTIME PG BIGINT NORMALIZATION REMEDIATION 01 — GIT PRESERVATION 01",
+  "mode": "GIT_PRESERVATION_ONLY",
+  "repository": "Sachinhelpline/staybid-frontend",
+  "sourceBaselineBranch": "m7-post-step67-pi01-live-readiness-remediation-01-preservation-01",
+  "parentCommit": "a2b84c4fc3acf14e2f63e6ffe3e4a80805833ae3",
+  "parentTree": "24111eb96fd60b238292bb98fdf6106ce0b3d487",
+  "newBranch": "m7-v3-runtime-pg-bigint-normalization-remediation-01-preservation-01",
+  "acceptedArtifact": {
+    "filename": "M7_V3_RUNTIME_PG_BIGINT_NORMALIZATION_REMEDIATION_01_OFFLINE_CANDIDATE.zip",
+    "path": "scripts/live-ai-03b/m7-v3-runtime-pg-bigint-normalization-remediation-01-preservation-01/artifact/M7_V3_RUNTIME_PG_BIGINT_NORMALIZATION_REMEDIATION_01_OFFLINE_CANDIDATE.zip",
+    "bytes": 57561,
+    "sha256": "5a90b00ad17cffaae3d09c7859ef4da0da1b58c752b74d33771536f7ecc42d4a",
+    "gitBlob": "6d574aea3d5d05492d1a12f928e3b614ba03e7ff",
+    "manifestSha256": "68ae366909b674dcaa93aa76c9f9c967ed4e6ab5555590bdd5367471a393d1cd",
+    "manifestPayloadCount": 17,
+    "regularFileCountIncludingManifest": 18,
+    "archiveEntriesIncludingDirectories": 32
+  },
+  "acceptedProductionAndTestFiles": [
+    {
+      "path": "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/src/authority-v3-composition.mjs",
+      "bytes": 9691,
+      "sha256": "b9ae52730432e02fa6ef573f781fea06325945a0e9d5931d69e210e56f315072",
+      "gitBlob": "7492985f9a55ef2d208507729a07ee9e49987efc",
+      "status": "modified",
+      "baseline": {
+        "bytes": 9417,
+        "sha256": "a0764f5ce4aee7091b8441b5e0fb10faa29d7581e1405f5510c5c131025208ce",
+        "gitBlob": "2f981a7bbe553d6d442a8350044c846fe8748a1c"
+      }
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/src/authority-v3-int8-observation-normalizer.mjs",
+      "bytes": 6801,
+      "sha256": "5a328140547c3439112a5a6b12c7ee332b46ee7ae3ecd2b802d93f9ba4101f35",
+      "gitBlob": "84cd6ceabd325ebbc80a41b40fbff3beb5bdfabd",
+      "status": "added"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/int8-normalizer.test.mjs",
+      "bytes": 16526,
+      "sha256": "d31505f00710fddb7fff475ed7c6a3d14cf182fa3860025e53bd6f2762060d31",
+      "gitBlob": "d1d742bb378952607b68ce7116ae1e1d70a6d66f",
+      "status": "added"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/int8-remediation-static.test.mjs",
+      "bytes": 7282,
+      "sha256": "845bfa4e95b4d61f419d609d4dd567396a69e4538bb386c179fdafd5f72a2761",
+      "gitBlob": "891d8316dc5d218fcd0bbb06b98b87d0ef2a8c91",
+      "status": "added"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/localpg/authority-v3-int8-localpg.test.mjs",
+      "bytes": 26889,
+      "sha256": "37ac6a6ecd570b57f082f8bc43b986ad0dbcc67d60d71f303d791e8a45543284",
+      "gitBlob": "ce834dac5633e7c72bfb5eece08dfc07c61d5f5c",
+      "status": "added"
+    },
+    {
+      "path": "scripts/live-ai-03b/m7-post-step67-pi01-live-readiness-remediation-01/tests/run-bigint01.mjs",
+      "bytes": 3520,
+      "sha256": "751431d0b4c710967068b4c5918dac3b04d8d99aacc12f043559f5c3adb71126",
+      "gitBlob": "d357c9d3a1598ca9e92658462ddeddaf25f0137a",
+      "status": "added"
+    }
+  ],
+  "independentReview": {
+    "actor": "SAME existing ChatGPT WORK v2",
+    "verdict": "V3_RUNTIME_PG_BIGINT_NORMALIZATION_REMEDIATION_01_INDEPENDENT_REVIEW_ACCEPTED",
+    "materialBlockerCount": 0,
+    "independentlyExecutedPassingChecks": 385,
+    "additionalAdversarialObservations": 380,
+    "realPostgresRerunByReviewer": false,
+    "realPostgresRerunReason": "PostgreSQL binaries unavailable in reviewer environment",
+    "independent481Reproduction": false,
+    "packagedRealPgEvidenceAccepted": true
+  },
+  "rootCauseIdentifier": "PG_INT8_STRING_VS_JS_NUMBER_OBSERVATION_MISMATCH",
+  "int8Surface": {
+    "catalogEntries": [
+      "unit_size",
+      "rate_micros"
+    ],
+    "policy": [
+      "session_money_ceiling_micros",
+      "session_provider_calls",
+      "session_execution_admissions",
+      "subject_day_money_ceiling_micros",
+      "project_day_money_ceiling_micros",
+      "project_month_money_ceiling_micros",
+      "global_day_money_ceiling_micros"
+    ],
+    "controls": [
+      "control_epoch"
+    ]
+  },
+  "successorRuntimePin": "78804a8648e684bcdfb7d52dd34463310dec43c592fb2530216be19a04bc203d",
+  "successorRuntimePinRecomputedFromStoredBinding": true,
+  "frozenRuntimeChanged": false,
+  "runtimePinChanged": false,
+  "v3InactiveDigest": "414d4844d10222473b68e2574676fcc3049e025b6b84f2c32a1fbf3c73bd9d74",
+  "v3ActiveDigest": "bc38931203f797d0360818de429e618a1407fc7f9065f9da7257e6c686c10558",
+  "evidenceContentDigest": "2e39555c39ad4bb87bf589405aa4e2f74de5573768cfe16c80fc394c4231bad7",
+  "historicalOneShot": {
+    "status": "CLOSED_NO_RETRY",
+    "attempts": 1,
+    "retries": 0,
+    "stage": "pre_activation_observation",
+    "reason": "predecessor_not_byte_exact",
+    "postState": "no activation / no approval consumption",
+    "lockClearedOrBypassed": false
+  },
+  "existingApproval": {
+    "approvalId": "sa01-appr-20261008T112009Z-22470e078c9c19d8",
+    "executionId": "sa01-exec-20261008T112009Z-77cacd69164f50d1",
+    "consumedAtLastReconciliation": false,
+    "expiry": "2026-10-09T11:20:09Z"
+  },
+  "deploymentStatus": "NOT_AUTHORIZED_IN_THIS_GATE",
+  "counters": {
+    "activationRetry": 0,
+    "railwayMutations": 0,
+    "liveDbActions": 0,
+    "signing": 0,
+    "providerCalls": 0,
+    "gatewayActions": 0,
+    "g4": 0,
+    "g5": 0,
+    "coreProd": 0,
+    "restarts": 0,
+    "redeploys": 0,
+    "mainBranchWrites": 0,
+    "forcePushes": 0
+  }
+}

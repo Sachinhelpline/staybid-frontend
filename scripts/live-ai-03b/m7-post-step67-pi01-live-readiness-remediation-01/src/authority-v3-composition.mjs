@@ -21,6 +21,8 @@ import { makePgPhysicalFactory } from "../../private-reader-production-integrati
 import { acquireReaderV2Attestation, READER_PROTOCOL } from "../../m7-step67-authority-dedicated-reader-attester-offline-01/src/reader-v2-attestation-source.mjs";
 import { loadAuthorityV3Config, AUTHORITY_V3_CONFIG_VERSION, EXECUTOR_ATTESTER_ENV, READER_ATTESTER_ENV } from "./authority-v3-config.mjs";
 import { createExecutorAttestationSourceChannelV2 } from "./executor-attestation-channel-v2.mjs";
+// BIGINT normalization remediation 01: reader-observation INT8 text → safe integer, scoped to the frozen observation SQL.
+import { makeInt8NormalizingReaderPhysicalFactory } from "./authority-v3-int8-observation-normalizer.mjs";
 
 export const AUTHORITY_V3_COMPOSITION_VERSION = "pi01-authority-v3-composition-lrr01";
 export const READER_V2_PROTOCOL = "reader-attestation-channel-v2";
@@ -94,7 +96,7 @@ export function composeAuthorityV3(opts = {}) {
       executorPhysicalFactory: makeExecutorPgPhysicalFactory({ env, connectionStringEnvName: config.executorDbUrlEnvName }),
       executorTrustRoot: config.executorAttester.trustRoot,
       readerAttestationProvider: rd.provider,
-      readerPhysicalFactory: makePgPhysicalFactory({ env, connectionStringEnvName: config.readerDbUrlEnvName }),
+      readerPhysicalFactory: makeInt8NormalizingReaderPhysicalFactory(makePgPhysicalFactory({ env, connectionStringEnvName: config.readerDbUrlEnvName })),
       readerTrustRoot: config.readerAttester.trustRoot,
     });
   } catch { return unavailable("pi01_composition_threw"); }

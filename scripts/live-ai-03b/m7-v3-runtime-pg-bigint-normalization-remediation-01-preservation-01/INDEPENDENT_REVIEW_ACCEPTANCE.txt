@@ -1,0 +1,39 @@
+LIVE-AI-03B — V3 RUNTIME PG BIGINT NORMALIZATION REMEDIATION 01 — INDEPENDENT REVIEW ACCEPTANCE (record)
+
+Recorded by: Claude Executor v2 (candidate author), transcribing the Owner Control Room relay of the reviewer verdict.
+This file records the reviewer's verdict and its stated scope. It is not the reviewer's own signed statement.
+
+review actor:             SAME existing ChatGPT WORK v2
+reviewed artifact:        M7_V3_RUNTIME_PG_BIGINT_NORMALIZATION_REMEDIATION_01_OFFLINE_CANDIDATE.zip
+artifact bytes:           57561
+artifact SHA256:          5a90b00ad17cffaae3d09c7859ef4da0da1b58c752b74d33771536f7ecc42d4a
+MANIFEST.json SHA256:     68ae366909b674dcaa93aa76c9f9c967ed4e6ab5555590bdd5367471a393d1cd
+verdict:                  V3_RUNTIME_PG_BIGINT_NORMALIZATION_REMEDIATION_01_INDEPENDENT_REVIEW_ACCEPTED
+material_blocker_count:   0
+
+Reviewer verified (as relayed): ZIP size/SHA exact; MANIFEST SHA exact; 17/17 payloads; baseline identity; root
+cause; complete 10-field BIGINT normalization surface; normalizer correctness/security; connection/attestation
+semantics preserved; frozen runtime/pin unchanged; candidate scope minimal.
+
+Reviewer independently EXECUTED (as relayed):
+  - normalizer unit suite ............ 143/143
+  - authority-v3 ..................... 84/84
+  - executor-v2 ...................... 60/60
+  - one-shot ......................... 17/17
+  - applicable accepted static ....... 28/28
+  - PI01 runtime ..................... 52/52
+  - PI01 identity .................... PASS
+  = 385 passing checks independently executed (143+84+60+17+28+52+1)
+  - plus 380 additional adversarial invalid observations
+  - plus syntax PASS for the candidate modules
+
+IMPORTANT QUALIFICATION — preserved exactly:
+  - The independent reviewer could NOT rerun the real-PostgreSQL integration suite
+    (authority-v3-int8-localpg, and the accepted executor-v2-localpg) because PostgreSQL binaries were
+    unavailable in the reviewer environment.
+  - The reviewer did NOT claim an independent 481/481 reproduction. The packaged 481-assertion aggregate was found
+    internally and arithmetically consistent, not independently re-executed in full.
+  - The packaged real-PostgreSQL evidence (author-executed, PostgreSQL 16.13 + pg 8.23.0: 53/53 remediation
+    localpg, 20/20 executor-v2-localpg, before-fix reproduction) was inspected and accepted as sufficient
+    alongside the reviewer's own independent checks.
+  - Real-PostgreSQL reproduction status from an independent environment: UNKNOWN (not independently reproduced).
