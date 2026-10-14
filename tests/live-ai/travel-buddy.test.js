@@ -280,8 +280,13 @@ section("Render — feature OFF unchanged; preview ON = one activator, no popup;
       ['"@/lib/live-ai/audio-playback"', JSON.stringify(path.join(outC, "audio-playback.js"))],
     ]);
     const shellPath = transpile("components/live-ai/LiveAiShell.tsx", "LiveAiShell.js", [['"./LiveAiProvider"', JSON.stringify(providerPath)]]);
+    // PRODUCT-02 — the founder-only TEXT hook (inert with the founder flag unset, as here).
+    const founderHookPath = transpile("components/live-ai/useFounderText.ts", "useFounderText.js", [
+      ['"@/lib/live-ai/founder-text"', JSON.stringify(path.join(outC, "founder-text.js"))],
+    ]);
     const tbPath = transpile("components/live-ai/TravelBuddy.tsx", "TravelBuddy.js", [
       ['"./LiveAiProvider"', JSON.stringify(providerPath)],
+      ['"./useFounderText"', JSON.stringify(founderHookPath)],
       ['"next/navigation"', JSON.stringify(navStub)],
       ['"@/lib/launch/curation"', JSON.stringify(path.join(OUT, "launch/curation.js"))],
       ['"@/lib/travel-buddy/conversation"', JSON.stringify(path.join(OUT, "travel-buddy/conversation.js"))],

@@ -92,6 +92,13 @@ export interface GatewayTransportDeps {
    *  factory when `createMediaSession` is absent; prefer `createMediaSession`. */
   media?: GatewayMedia | null;
   brokerPath?: string;
+  /** PRODUCT-02 — founder-only TEXT seam. When present, the broker request carries
+   *  `Authorization: Bearer <value>` (the browser's existing verified admin session token;
+   *  the server re-verifies it — nothing here is trusted for identity). A missing or
+   *  malformed value FAILS CLOSED (no broker request). Absent ⇒ behavior unchanged. */
+  brokerAuthorization?: () => string | null;
+  /** PRODUCT-02 — refuse any microphone start (the staging surface is TEXT ONLY). */
+  textOnly?: boolean;
   /** R5C — the MONOTONIC clock for the controller-lifetime capture ledger (defaults to
    *  performance.now() when available, else Date.now()). Tests inject a deterministic
    *  monotonic fake. */
@@ -305,6 +312,8 @@ export function createGatewayTransport(deps: GatewayTransportDeps): LiveAiTransp
       if (!isValidId(input.sessionId) || !isValidId(input.turnId) || !isEpoch(input.generation)) {
         return { ok: false, code: "invalid_response" };
       }
+      // PRODUCT-02 — a text-only transport never acquires a microphone.
+      if (deps.textOnly && input.mode === "microphone") return { ok: false, code: "unsupported" };
       // R3-03 — SINGLE-START OWNER: a start is honored ONLY from the DISCONNECTED state.
       // A start while the transport already owns a session (connecting / connected /
       // error / offline) is REFUSED and NEVER disturbs the current owner — no supersede,
@@ -383,11 +392,22 @@ export function createGatewayTransport(deps: GatewayTransportDeps): LiveAiTransp
         // physical capture can NEVER exist without an active controller lease.
         if (!owner.captureAcquired || !owner.captureLeaseToken) { releaseOwner(owner, "error"); return { ok: false, code: "unsupported" }; }
       }
+      // PRODUCT-02 — optional bearer for the founder-only staging broker; fail closed.
+      const brokerHeaders: Record<string, string> = { "content-type": "application/json" };
+      if (deps.brokerAuthorization) {
+        let bearer: string | null = null;
+        try { bearer = deps.brokerAuthorization(); } catch { bearer = null; }
+        if (typeof bearer !== "string" || !/^[A-Za-z0-9._~+/-]{16,4096}={0,2}$/.test(bearer)) {
+          releaseOwner(owner, "error");
+          return { ok: false, code: "broker_unavailable" };
+        }
+        brokerHeaders.authorization = `Bearer ${bearer}`;
+      }
       let res: Response;
       try {
         res = await fetchImpl(brokerPath, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: brokerHeaders,
           credentials: "same-origin",
           body: JSON.stringify(input.mode === "microphone" ? { mode: "microphone", sessionId: input.sessionId, offerSdp } : { mode: "text", sessionId: input.sessionId }),
           ...(abortSignal ? { signal: abortSignal } : {}),
@@ -501,6 +521,8 @@ export function createGatewayTransport(deps: GatewayTransportDeps): LiveAiTransp
     },
     submitApproval(input: { sessionId: string; turnId: string; generation: number; planId: string; authorityRef: string; textHash: string }): boolean {
       // R2-08 — the browser's approval of an emitted plan; the SOLE trigger for TTS.
+      // PRODUCT-02 — a TEXT-ONLY transport never approves speech (no TTS provider activation).
+      if (deps.textOnly) return false;
       return sendFrame({ t: "answer.approve", sessionId: input.sessionId, turnId: input.turnId, generation: input.generation, planId: input.planId, authorityRef: input.authorityRef, textHash: input.textHash });
     },
     interrupt(input: { sessionId: string; turnId: string; generation: number; reason: InterruptReason }): void {

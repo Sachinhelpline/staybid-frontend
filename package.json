@@ -28,7 +28,7 @@
     "typecheck:gateway": "tsc -p server/voice-gateway/tsconfig.json --noEmit",
     "build:gateway": "tsc -p server/voice-gateway/tsconfig.json",
     "start:live-ai-staging": "node server/voice-gateway/dist/live-ai-staging-main.js",
-    "test:live-ai-staging": "node tests/live-ai/live-ai-03b-staging-authority.test.js && node tests/live-ai/live-ai-03b-staging-runtime.test.js",
+    "test:live-ai-staging": "node tests/live-ai/live-ai-03b-staging-authority.test.js && node tests/live-ai/live-ai-03b-staging-runtime.test.js && node tests/live-ai/founder-text.test.js",
     "vr": "playwright test",
     "vr:update": "playwright test --update-snapshots",
     "audit:responsive": "bash responsive-audit/run.sh"
