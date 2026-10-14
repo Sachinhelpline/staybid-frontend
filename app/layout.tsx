@@ -38,6 +38,9 @@ import { AutoNextMount } from "@/components/AutoNextMount";
 // the orb only appears on the registered /hotels + /hotels/[id] pages.
 import { LiveAiProvider } from "@/components/live-ai/LiveAiProvider";
 import LiveAiShell from "@/components/live-ai/LiveAiShell";
+// Travel Buddy screen-first UX PREVIEW — renders nothing unless V=1, provider OFF
+// and NEXT_PUBLIC_TRAVEL_BUDDY_UX_PREVIEW === "1" (default OFF).
+import TravelBuddy from "@/components/live-ai/TravelBuddy";
 export const viewport: Viewport = {
   // Black theme color so the OS status-bar / app-switcher chrome blends
   // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
@@ -256,6 +259,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <LiveAiProvider>
             <main className="min-h-screen">{children}</main>
             <LiveAiShell />
+            <TravelBuddy />
             </LiveAiProvider>
             {/* Global in-app toaster — subscribes to "sb:notify" events
                 dispatched via lib/notifications.ts notify(). Used by

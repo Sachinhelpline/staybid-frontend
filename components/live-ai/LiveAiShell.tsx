@@ -30,8 +30,14 @@ export function LiveAiShell() {
   const { enabled, providerEnabled, registeredPageId, activated, orbState, toggle, startProvider, submitText, bargeIn, resumeAudio, audioNeedsResume } = useLiveAi();
   const [draft, setDraft] = useState("");
 
+  if (!enabled) return null;
+  // TRAVEL BUDDY UX PREVIEW (default OFF): when V=1, provider P OFF and
+  // NEXT_PUBLIC_TRAVEL_BUDDY_UX_PREVIEW === "1", the screen-first <TravelBuddy/>
+  // (mounted beside this shell) is the SINGLE voice owner — the orb never renders
+  // alongside it. Same predicate as lib/travel-buddy resolveTravelBuddyGate.
+  if (!providerEnabled && process.env.NEXT_PUBLIC_TRAVEL_BUDDY_UX_PREVIEW === "1") return null;
   // Render ONLY with the feature enabled AND a supported authoritative page.
-  if (!enabled || !registeredPageId) return null;
+  if (!registeredPageId) return null;
 
   const label = STATE_LABEL[orbState] || STATE_LABEL.sleep;
   // The composer/mic appear ONLY when the provider path is enabled AND the session
