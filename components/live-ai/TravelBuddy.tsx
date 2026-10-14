@@ -38,6 +38,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLiveAi } from "./LiveAiProvider";
+import { useFounderText } from "./useFounderText";
 import { LAUNCH_ZONES } from "@/lib/launch/curation";
 import type { LiveAiOperation, VisibleHotelSummary } from "@/lib/live-ai/contracts";
 import type { ExecutionResult } from "@/lib/live-ai/runtime";
@@ -106,7 +107,7 @@ const EXAMPLES = [
 ];
 
 type Who = "buddy" | "you" | "note";
-interface Caption { who: Who; text: string }
+interface Caption { who: Who; text: string; ai?: boolean } // ai: from the founder-only provider (PRODUCT-02)
 type ListenMode = "gesture" | "auto";
 
 // ---- page geometry probe (UX finishing F1) -----------------------------------
@@ -227,6 +228,10 @@ function TravelBuddyPreview() {
   const [micBlocked, setMicBlocked] = useState(false);   // the guest/browser denied the mic (this session)
   const [voiceMissing, setVoiceMissing] = useState(false); // no SpeechRecognition in this browser
   const [hadTurn, setHadTurn] = useState(false); // example chips only until the first guest turn
+  // PRODUCT-02 — founder-only REAL AI TEXT (inert unless its build flag + server eligibility + explicit opt-in).
+  const founder = useFounderText(runtime);
+  const founderRef = useRef(founder);
+  founderRef.current = founder;
 
   // Generation: bumped by every new turn, stop, end and foreign route change. Any
   // async continuation (speech, verification, deferred apply, recognition result)
@@ -580,6 +585,27 @@ function TravelBuddyPreview() {
       showCaption({ who: "you", text });
       await sleep(Math.min(1400, 500 + text.length * 18));
       if (gen !== genRef.current) return;
+      // PRODUCT-02 — founder-only REAL AI TEXT: TYPED turns only (voice stays scripted), shown as
+      // captions and never spoken. Any failure falls back to the scripted Buddy below.
+      const founderNow = founderRef.current;
+      if (founderNow.active && !fromVoice) {
+        const r = await founderNow.ask(text);
+        if (gen !== genRef.current) return;
+        if (r.ok) {
+          for (const c of captionChunks(r.text, CAPTION_CHUNK)) {
+            if (gen !== genRef.current) return;
+            setStandby(false);
+            showCaption({ who: "buddy", text: c, ai: true });
+            await sleep(Math.max(1600, c.length * 45));
+          }
+          if (gen !== genRef.current) return;
+          scheduleFade();
+          setBusy(false);
+          armSilence(gen);
+          return;
+        }
+        if (!(await say(langRef.current === "en" ? "Real AI is unavailable right now — Buddy will answer instead." : "Real AI abhi available nahi hai — Buddy jawab dega.", gen, "note"))) return;
+      }
       const parsed = parseUtterance(text, CITIES, langRef.current);
       langRef.current = parsed.lang;
       const plan = planTurn(parsed, plannerContext(), slotsRef.current, CITIES);
@@ -634,7 +660,7 @@ function TravelBuddyPreview() {
     } finally {
       if (gen === genRef.current) setBusy(false);
     }
-  }, [announceResults, applyRefinement, armSilence, cancelSpeech, clearTimers, continueListening, endSession, execOp, plannerContext, router, runtime, say, showCaption, stopListening, waitForList]);
+  }, [announceResults, applyRefinement, armSilence, cancelSpeech, clearTimers, continueListening, endSession, execOp, plannerContext, router, runtime, say, scheduleFade, showCaption, stopListening, waitForList]);
   handleUserTextRef.current = handleUserText;
 
   // ---- activation / end ------------------------------------------------------
@@ -1131,7 +1157,7 @@ function TravelBuddyPreview() {
 
       {captionVisible && caption && (
         <p className={`tb-caption tb-who-${caption.who}`} style={floatStyle(capW)}>
-          <span className="tb-who">{whoLabel(caption.who)}:</span> {caption.text}
+          <span className="tb-who">{whoLabel(caption.who)}{caption.ai ? " · Real AI" : ""}:</span> {caption.text}
         </p>
       )}
 
@@ -1205,12 +1231,20 @@ function TravelBuddyPreview() {
                 {micBlocked && !voiceMissing && activated && (
                   <button type="button" className="tb-chip" onClick={retryMic}>Try mic again</button>
                 )}
+                {founder.available && (
+                  <button type="button" className="tb-chip" aria-pressed={founder.active}
+                    onClick={() => { founder.setActive(!founder.active); setOptionsOpen(false); }}>
+                    {founder.active ? "Real AI text: on" : "Real AI text: off"}
+                  </button>
+                )}
                 <button type="button" className="tb-chip" onClick={resetPosition}>Reset position</button>
                 <button type="button" className="tb-chip" onClick={hideBuddy}>Hide Buddy</button>
                 {activated && <button type="button" className="tb-chip tb-chip-end" onClick={() => { setOptionsOpen(false); endSession(); }}>End</button>}
               </div>
               <p className="tb-disclose">
-                Scripted preview — not live AI. Voice uses your browser&apos;s speech service; typed words stay in this browser. Never books, bids or pays.
+                {founder.active
+                  ? "Founder-only Real AI text: typed turns go to the StayBid staging AI; voice stays scripted. Never books, bids or pays."
+                  : <>Scripted preview — not live AI. Voice uses your browser&apos;s speech service; typed words stay in this browser. Never books, bids or pays.</>}
                 {isTemp ? " Placeholder buddy art (final plush pending)." : ""}
               </p>
             </>
