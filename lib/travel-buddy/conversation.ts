@@ -44,6 +44,15 @@ export function resolveTravelBuddyGate(
   return liveAiEnabled === true && providerEnabled !== true && flag === "1";
 }
 
+/**
+ * Typed-only preview (no SpeechRecognition, no speechSynthesis at all). Exactly "1" only;
+ * anything else keeps the existing voice-capable presentation.
+ */
+export const TRAVEL_BUDDY_TEXT_ONLY_FLAG = "NEXT_PUBLIC_TRAVEL_BUDDY_PREVIEW_TEXT_ONLY";
+export function isTextOnlyPreview(flag: string | undefined = process.env.NEXT_PUBLIC_TRAVEL_BUDDY_PREVIEW_TEXT_ONLY): boolean {
+  return flag === "1";
+}
+
 // ---- surfaces ---------------------------------------------------------------
 export type BuddySurface = "home" | "hotels" | "hotel-detail" | "other";
 
@@ -59,7 +68,7 @@ export function surfaceForPath(pathname: string | null | undefined): BuddySurfac
 // ---- language ---------------------------------------------------------------
 export type BuddyLang = "hinglish" | "en";
 
-const HINGLISH_MARKERS = /\b(hai|hain|ho|kar|karo|kardo|kar do|dikhao|dikha|batao|chahiye|chaahiye|jana|jaana|mein|me|ke|ka|ki|ko|kya|nahi|nahin|aur|wala|wali|andar|tak|se|kitna|kitne|kab|log|raat|ghumne|ghoomne|pahad|doosra|dusra|pehla|teesra|zaroor|accha|achha|haan|ji|namaste|bhai|thik|theek)\b/i;
+const HINGLISH_MARKERS = /\b(hai|hain|ho|kar|karo|kardo|kar do|dikhao|dikha|batao|chahiye|chaahiye|jana|jaana|mein|me|ke|ka|ki|ko|kya|nahi|nahin|aur|wala|wali|andar|tak|se|kitna|kitne|kab|log|raat|ghumne|ghoomne|pahad|doosra|dusra|pehla|teesra|zaroor|accha|achha|haan|ji|namaste|bhai|thik|theek|par|lagao|lagado|kholo|isko)\b/i;
 const DEVANAGARI = /[ऀ-ॿ]/;
 
 export function detectLang(text: string, previous: BuddyLang = "hinglish"): BuddyLang {
@@ -162,6 +171,14 @@ export interface ParsedUtterance {
   compare: boolean;
   results: boolean;
   inspiration: "mountains" | "beach" | "spiritual" | "heritage" | null;
+  /** a destination the guest named that is NOT in the app's allow-list (honestly reported, never navigated). */
+  place: string | null;
+  /** a StayBid inventory category mentioned (the guest surface has no category filter — honestly reported). */
+  category: "operated" | "circle" | "traditional" | null;
+  /** "open it / isko kholo / yeh wala dikhao" — open without a number (only resolvable when ONE stay is visible). */
+  openThis: boolean;
+  /** availability / vacancy / capacity question (never answered as confirmed). */
+  availability: boolean;
 }
 
 const MONTHS = "jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december";
@@ -174,6 +191,37 @@ const UNSUPPORTED_FILTERS: Array<{ re: RegExp; label: string }> = [
   { re: /\b(pet|pets|dog)\b/, label: "pet-friendly" },
   { re: /\b(balcony|fireplace|bonfire)\b/, label: "room feature" },
 ];
+
+// Words that can follow "hotels in …" / precede "… mein hotel" without being a place name.
+const NOT_A_PLACE = new Set([
+  "hotel", "hotels", "stay", "stays", "room", "rooms", "budget", "parking", "family", "the", "a", "an", "my", "our", "your",
+  "good", "best", "cheap", "sasta", "saste", "achha", "accha", "acha", "koi", "kuch", "top", "which", "this", "that", "is",
+  "iss", "us", "yahan", "wahan", "city", "area", "town", "pahad", "pahadon", "mountain", "mountains", "hills", "beach",
+  "sea", "india", "bharat", "circle", "staybid", "operated", "traditional", "classic", "demo", "aur", "and", "or", "with",
+  "under", "below", "near", "nearby", "pass", "paas", "kam", "zyada", "mehenga", "luxury", "premium", "weekend",
+]);
+function placeOf(t: string): string | null {
+  const pats = [
+    /\b(?:hotels?|stays?|rooms?)\s+(?:in|at|near)\s+([a-z]{3,20}(?:\s[a-z]{3,20})?)\b/,
+    /\b([a-z]{3,20})\s+(?:mein|me|ke|ka|ki)\s+(?:hotels?|stays?|rooms?)\b/,
+  ];
+  for (const re of pats) {
+    const m = t.match(re);
+    if (!m) continue;
+    const tokens = m[1].split(" ");
+    if (NOT_A_PLACE.has(tokens[0])) continue;
+    // keep a two-word name ("new york") unless the 2nd word is a filler ("goa under" → "goa")
+    return tokens.length === 2 && !NOT_A_PLACE.has(tokens[1]) ? m[1] : tokens[0];
+  }
+  return null;
+}
+
+function categoryOf(t: string): ParsedUtterance["category"] {
+  if (/\b(staybid\s+)?circle\b/.test(t)) return "circle";
+  if (/\b(staybid[\s-]+operated|operated|managed by staybid)\b/.test(t)) return "operated";
+  if (/\b(traditional|classic|owner[\s-]?run)\b/.test(t)) return "traditional";
+  return null;
+}
 
 function ordinalOf(t: string): number | null {
   if (/\b(pehla|pehle|first|1st|number 1|option 1)\b/.test(t)) return 1;
@@ -254,6 +302,10 @@ export function parseUtterance(raw: string, cities: readonly string[], previous:
     compare: /\b(compare|comparison|tulna|dono|both|top ?2|top two|vs|versus|behtar kaun|which is better)\b/.test(t),
     results: /\b(kitne|how many|what.?s on screen|kya dikh raha|results?)\b/.test(t),
     inspiration,
+    place: city ? null : placeOf(t),
+    category: categoryOf(t),
+    openThis: ord == null && openCue && /\b(isko|ise|isse|usko|use|is hotel|us hotel|yeh wala|ye wala|yeh hotel|ye hotel|this one|this hotel|that one|that hotel|it|wahi)\b/.test(t),
+    availability: /\b(available|availability|khali|vacant|vacancy|sold out|room milega|rooms milenge|jagah hai)\b/.test(t),
   };
 }
 
@@ -290,7 +342,7 @@ export interface PlannerContext {
 export type PlanStep =
   | { kind: "say"; text: string }
   | { kind: "navigate_hotels"; city: string }               // home → /hotels?city=<allow-listed>
-  | { kind: "op"; op: LiveAiOperation; purpose: "refine" | "results" | "compare" | "open" | "facts" | "section" }
+  | { kind: "op"; op: LiveAiOperation; purpose: "refine" | "results" | "compare" | "open" | "facts" | "section" | "rooms" }
   | { kind: "end" };
 
 export interface TurnPlan {
@@ -336,16 +388,43 @@ export function greetingFor(surface: BuddySurface, lang: BuddyLang = "hinglish")
 }
 
 /** The ONE gentle post-activation follow-up after silence (then quiet standby). */
-export function silenceFollowUp(surface: BuddySurface, slots: BuddySlots, lang: BuddyLang): string {
+export function silenceFollowUp(surface: BuddySurface, slots: BuddySlots, lang: BuddyLang, visibleCount: number | null = null): string {
   if (surface === "hotel-detail") return L(lang, "Rooms aur price dekhne hain? Bas \"rooms dikhao\" boliye.", "Want to see rooms and prices? Just say \"show rooms\".");
+  // Grounded in the CURRENT ready list: never ask to narrow / open options that don't exist.
+  if (surface === "hotels" && visibleCount === 0) return L(lang, "Koi aur destination ya budget try karein?", "Try another destination or budget?");
+  if (surface === "hotels" && visibleCount === 1) return L(lang, "Is stay ko dekhna ho toh \"isko kholo\" boliye.", "To see this stay, say \"open it\".");
   if (!slots.city) return L(lang, "Pahad, beach ya quiet weekend? Ek jagah ka naam boliye ya type kariye.", "Mountains, beach or a quiet weekend? Say or type a place.");
   if (slots.maxPrice == null) return L(lang, "Per night budget bata dein toh options aur saaf ho jayenge.", "Tell me a per-night budget and I'll narrow the options.");
   return L(lang, "Kisi option ko kholna ho toh \"doosra option dikhao\" boliye.", "To open one, say \"show the second option\".");
 }
 
 export const BOOKING_GUIDANCE = {
-  hinglish: "Main booking, bid ya payment khud submit nahi karta. Hotel page par \"Check availability\" ya \"Bid\" aap khud tap karke steps follow kar sakte hain.",
-  en: "I never submit a booking, bid or payment myself. On the hotel page you can tap \"Check availability\" or \"Bid\" and follow the steps yourself.",
+  hinglish: "Main booking, bid ya payment khud submit nahi karta. Yeh listings abhi StayBid demo inventory hain — price aur availability confirm nahi hai. Aage badhna ho toh hotel page ke steps aap khud dekhein.",
+  en: "I never submit a booking, bid or payment myself. These listings are StayBid demo inventory — prices and availability aren't confirmed. To go further, follow the hotel page's steps yourself.",
+} as const;
+
+/** Small honest disclosure, shown once per Buddy session (Owner policy: current catalogue = demo inventory). */
+export const DEMO_NOTE = {
+  // Shown with the caption's own "Note:" label — so no "Note:" prefix here.
+  hinglish: "Yeh StayBid demo listings hain — price aur availability confirm nahi hai.",
+  en: "These are StayBid demo listings — prices and availability are not confirmed.",
+} as const;
+
+/** Typed-only preview: what Buddy says instead of a voice/microphone hint. */
+export const TYPED_PREVIEW_NOTE = {
+  hinglish: "Yeh typed preview hai — neeche likhiye, jaise \"Mussoorie mein 5000 tak\".",
+  en: "This is a typed preview — type below, e.g. \"Mussoorie under 5000\".",
+} as const;
+
+const CATEGORY_LABEL: Record<NonNullable<ParsedUtterance["category"]>, string> = {
+  operated: "StayBid Operated",
+  circle: "StayBid Circle",
+  traditional: "Traditional",
+};
+
+const AVAILABILITY_NOTE = {
+  hinglish: "Availability ya room capacity main check nahi karta — yeh demo listing hai. Rooms page par dates chunkar aap khud dekhiye.",
+  en: "I don't check availability or room capacity — this is a demo listing. Pick dates on the rooms page to see for yourself.",
 } as const;
 
 export const PREVIEW_LIMITS = {
@@ -425,8 +504,21 @@ export function planTurn(p: ParsedUtterance, ctx: PlannerContext, prev: BuddySlo
         `The app has no "${label}" filter yet, so I'm not applying it.`);
   }
   if (noted.length) {
-    say(`${noted.join(", ")} note kar liya. Dates se availability main abhi check nahi karta — dates aap rooms page par khud chunein.`,
-        `Noted ${noted.join(", ")}. I don't check availability by date yet — please pick dates on the rooms page yourself.`);
+    say(`${noted.join(", ")} note kar liya. Dates aur guest count sirf note hain — availability ya room capacity confirm nahi hui. Dates rooms page par aap khud chunein.`,
+        `Noted ${noted.join(", ")}. Dates and guest count are noted only — availability and room capacity are not confirmed. Please pick dates on the rooms page yourself.`);
+  } else if (p.availability) {
+    steps.push({ kind: "say", text: AVAILABILITY_NOTE[lang] });
+  }
+  if (p.category) {
+    const label = CATEGORY_LABEL[p.category];
+    say(`"${label}" category ka filter Buddy mein nahi hai — screen par jo demo stays hain, sabko ek hi tarah dikhata hoon.`,
+        `There's no "${label}" category filter here — I treat every demo stay on screen the same way.`);
+  }
+  if (p.place && !knownCity && ctx.surface !== "hotel-detail") {
+    const ideas = ["mussoorie", "rishikesh", "goa", "jaipur", "manali"].filter((c) => cities.includes(c)).slice(0, 3).map(titleCase);
+    const place = titleCase(p.place);
+    say(`"${place}" abhi StayBid ki destination list mein nahi hai.${ideas.length ? ` Jaise: ${ideas.join(", ")} — inmein se koi boliye.` : ""}`,
+        `"${place}" isn't in StayBid's destination list yet.${ideas.length ? ` Try ${ideas.join(", ")}.` : ""}`);
   }
 
   // Detail-page questions first (grounded facts from the validated detail snapshot).
@@ -437,12 +529,17 @@ export function planTurn(p: ParsedUtterance, ctx: PlannerContext, prev: BuddySlo
     } else if (p.section) {
       const o = op({ op: "SHOW_HOTEL_SECTION", section: p.section });
       if (o) steps.push({ kind: "op", op: o, purpose: "section" });
+      // Rooms: also READ the validated detail snapshot so Buddy can name the room types it lists.
+      if (p.section === "rooms") {
+        const f = op({ op: "READ_CURRENT_HOTEL_FACTS" });
+        if (f) steps.push({ kind: "op", op: f, purpose: "rooms" });
+      }
     } else if (knownCity) {
       say(`${titleCase(knownCity)} ke stays ke liye neeche Explore tab kholiye — yeh page abhi is hotel ka hai.`,
           `For stays in ${titleCase(knownCity)}, open the Explore tab below — this page is about the current hotel.`);
     } else if (p.greeting || p.help) {
       steps.push({ kind: "say", text: PREVIEW_LIMITS[lang] });
-    } else if (!noted.length && !p.unsupported.length) {
+    } else if (!noted.length && !p.unsupported.length && !p.availability && !p.category) {
       say("Is hotel ke rooms, breakfast ya parking ke baare mein poochiye.", "Ask me about this hotel's rooms, breakfast or parking.");
     }
   } else {
@@ -467,7 +564,7 @@ export function planTurn(p: ParsedUtterance, ctx: PlannerContext, prev: BuddySlo
         deferred = Object.keys(d).length ? d : null;
       } else if (p.maxPrice != null || p.parking) {
         say("Note kar liya. Pehle bataiye kahan jaana hai?", "Noted. First, where would you like to go?");
-      } else if (p.open != null || p.compare) {
+      } else if (p.open != null || p.compare || p.openThis) {
         say("Pehle ek destination boliye, phir main options khol sakta hoon.", "Tell me a destination first, then I can open options.");
       }
     }
@@ -486,12 +583,28 @@ export function planTurn(p: ParsedUtterance, ctx: PlannerContext, prev: BuddySlo
           steps.push({ kind: "op", op: o, purpose: "refine" });
         }
       }
+      // Grounded result-count handling: when the CURRENT (ready, unchanged) list is known, never
+      // ask the runtime for a comparison it cannot make and never invent a second stay.
+      const countKnown = ctx.listReady && !touched;
       if (p.compare) {
-        const o = op({ op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: ["price", "rating"] });
-        if (o) steps.push({ kind: "op", op: o, purpose: "compare" });
+        if (countKnown && ctx.visibleCount === 0) {
+          say("Screen par abhi compare karne ke liye koi stay nahi hai.", "There are no stays on screen to compare right now.");
+        } else if (countKnown && ctx.visibleCount === 1) {
+          say("Screen par abhi sirf ek stay hai — compare ke liye do chahiye. \"Isko kholo\" boliye toh details dikhata hoon.",
+              "Only one stay is on screen — comparing needs two. Say \"open it\" and I'll show its details.");
+        } else {
+          const o = op({ op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: ["price", "rating"] });
+          if (o) steps.push({ kind: "op", op: o, purpose: "compare" });
+        }
       }
-      if (p.open != null) {
-        const o = op({ op: "OPEN_VISIBLE_HOTEL", position: p.open });
+      let openPos: number | null = p.open;
+      if (openPos == null && p.openThis && !p.compare) {
+        if (countKnown && ctx.visibleCount === 1) openPos = 1;
+        else if (countKnown && ctx.visibleCount === 0) say("Screen par abhi koi stay nahi hai.", "There are no stays on screen right now.");
+        else say("Kaun sa? Uska number boliye, jaise \"doosra kholo\".", "Which one? Say its number, like \"open the second\".");
+      }
+      if (openPos != null) {
+        const o = op({ op: "OPEN_VISIBLE_HOTEL", position: openPos });
         if (o) steps.push({ kind: "op", op: o, purpose: "open" });
       }
       if (p.results && !touched && p.open == null && !p.compare) {
@@ -519,23 +632,64 @@ export function planTurn(p: ParsedUtterance, ctx: PlannerContext, prev: BuddySlo
 }
 
 // ---- grounded outcome captions ---------------------------------------------
-export function formatResults(lang: BuddyLang, rows: VisibleHotelSummary[], city: string | null): string {
+/**
+ * Grounded results caption from the page's OWN visible rows only.
+ *   0 → honest none-found (relax a filter only if one is actually applied);
+ *   1 → that stay's name + "open it" (never a pretend comparison);
+ *   2+ → count + lowest known price + how to compare / open.
+ */
+export function formatResults(
+  lang: BuddyLang,
+  rows: VisibleHotelSummary[],
+  city: string | null,
+  opts: { filtered?: boolean } = {},
+): string {
   const n = rows.length;
   const where = city ? titleCase(city) : "";
   if (!n) {
-    return L(lang,
-      `${where ? where + " mein " : ""}is filter ke saath abhi koi stay screen par nahi hai. Budget badha kar dekhein?`,
-      `No stays${where ? " in " + where : ""} match this filter right now. Try a higher budget?`);
+    return opts.filtered === false
+      ? L(lang,
+          `${where ? where + " mein " : ""}abhi koi StayBid stay listed nahi hai. Koi aur destination boliye?`,
+          `No StayBid stays are listed${where ? " in " + where : ""} right now. Try another destination?`)
+      : L(lang,
+          `${where ? where + " mein " : ""}is filter ke saath abhi koi stay screen par nahi hai. Budget badha kar dekhein?`,
+          `No stays${where ? " in " + where : ""} match this filter right now. Try a higher budget?`);
   }
   const prices = rows.map((r) => r.minPrice).filter((x): x is number => typeof x === "number" && x > 0);
   const from = prices.length ? Math.min(...prices) : null;
-  const stays = L(lang, n === 1 ? "1 stay" : `${n} stays`, n === 1 ? "1 stay" : `${n} stays`);
+  if (n === 1) {
+    const r = rows[0];
+    const price = from != null ? L(lang, ` — ${inr(from)} se listed`, ` — listed from ${inr(from)}`) : "";
+    return L(lang,
+      `${where ? where + " mein " : ""}1 stay screen par hai: ${r.name}${price}. "Isko kholo" boliye toh details dikhata hoon.`,
+      `1 stay on screen${where ? " in " + where : ""}: ${r.name}${price}. Say "open it" for details.`);
+  }
+  const stays = `${n} stays`;
+  const hint = L(lang, " \"Top do compare karo\" ya number boliye.", " Say \"compare the top two\" or a number.");
   if (from != null) {
     return L(lang,
-      `${where ? where + " mein " : ""}${stays} screen par ${n === 1 ? "hai" : "hain"} — ${inr(from)} se shuru.`,
-      `${stays} on screen${where ? " in " + where : ""} — from ${inr(from)}.`);
+      `${where ? where + " mein " : ""}${stays} screen par hain — ${inr(from)} se shuru.${hint}`,
+      `${stays} on screen${where ? " in " + where : ""} — from ${inr(from)}.${hint}`);
   }
-  return L(lang, `${where ? where + " mein " : ""}${stays} screen par ${n === 1 ? "hai" : "hain"}.`, `${stays} on screen${where ? " in " + where : ""}.`);
+  return L(lang, `${where ? where + " mein " : ""}${stays} screen par hain.${hint}`, `${stays} on screen${where ? " in " + where : ""}.${hint}`);
+}
+
+/**
+ * Room guidance from the VALIDATED detail snapshot only: the room-type NAMES the listing carries.
+ * Never states a rate, availability or capacity (the page itself shows its own prices).
+ */
+export function formatRooms(lang: BuddyLang, roomTypes: ReadonlyArray<{ name: string }> | null | undefined, hotelName: string | null): string {
+  const who = hotelName || L(lang, "is hotel", "this hotel");
+  const names = (Array.isArray(roomTypes) ? roomTypes : []).map((r) => (r && typeof r.name === "string" ? r.name.trim() : "")).filter(Boolean);
+  const uniq = names.filter((x, i) => names.indexOf(x) === i);
+  if (!uniq.length) {
+    return L(lang, `${who} ke rooms ki list abhi data mein nahi hai.`, `${who}'s room list isn't in the current data.`);
+  }
+  const shown = uniq.slice(0, 3).join(", ");
+  const more = uniq.length > 3 ? L(lang, ` aur ${uniq.length - 3} aur`, ` and ${uniq.length - 3} more`) : "";
+  return L(lang,
+    `${who} mein ${uniq.length} room type listed: ${shown}${more}. Price page par dikh rahe hain; availability confirm nahi hai.`,
+    `${who} lists ${uniq.length} room type${uniq.length === 1 ? "" : "s"}: ${shown}${more}. Prices are on this page; availability isn't confirmed.`);
 }
 
 export function formatCompare(
@@ -549,6 +703,12 @@ export function formatCompare(
   const parts: string[] = [];
   if (cheapestPosition != null && name(cheapestPosition)) parts.push(L(lang, `sasta: ${name(cheapestPosition)}`, `lower price: ${name(cheapestPosition)}`));
   if (topRatedPosition != null && name(topRatedPosition)) parts.push(L(lang, `behtar rating: ${name(topRatedPosition)}`, `higher rating: ${name(topRatedPosition)}`));
+  // Parking only when the listing data itself says so (present / absent); unknown is never asserted.
+  const withParking = rows.filter((r) => r.parking === "present").map((r) => r.name).filter(Boolean);
+  const knownParking = rows.every((r) => r.parking === "present" || r.parking === "absent");
+  if (withParking.length && withParking.length < rows.length && knownParking) {
+    parts.push(L(lang, `parking listed: ${withParking.join(", ")}`, `parking listed: ${withParking.join(", ")}`));
+  }
   if (!parts.length) return L(lang, "In dono ka comparable price/rating data poora nahi hai.", "Comparable price/rating data is incomplete for these two.");
   return L(lang, `Top do mein — ${parts.join("; ")}.`, `Of the top two — ${parts.join("; ")}.`);
 }

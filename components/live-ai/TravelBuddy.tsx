@@ -43,14 +43,18 @@ import { LAUNCH_ZONES } from "@/lib/launch/curation";
 import type { LiveAiOperation, VisibleHotelSummary } from "@/lib/live-ai/contracts";
 import type { ExecutionResult } from "@/lib/live-ai/runtime";
 import {
+  DEMO_NOTE,
+  TYPED_PREVIEW_NOTE,
   captionChunks,
   emptySlots,
   formatCompare,
   formatFact,
   formatRefusal,
   formatResults,
+  formatRooms,
   greetingFor,
   hotelsHrefFor,
+  isTextOnlyPreview,
   parseUtterance,
   planTurn,
   resolveTravelBuddyGate,
@@ -199,7 +203,7 @@ function makePageProbe(root: Element | null, vw: number, vh: number): PageProbe 
 }
 
 const getRecognition = (): any =>
-  process.env.NEXT_PUBLIC_TRAVEL_BUDDY_PREVIEW_TEXT_ONLY === "1" ? null :
+  isTextOnlyPreview() ? null :
   typeof window !== "undefined" ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null) : null;
 
 /** Gate wrapper: nothing at all (no hooks/listeners) unless the preview gate holds. */
@@ -258,6 +262,8 @@ function TravelBuddyPreview() {
   const micBlockedRef = useRef(false);
   micBlockedRef.current = micBlocked;
   const listenNoteShownRef = useRef(false);
+  const demoNoteShownRef = useRef(false);     // the small DEMO-inventory disclosure, once per session
+  const announcedCountRef = useRef<number | null>(null); // result count announced in THIS turn (null = none)
   const captionSeqRef = useRef(0);
   const fadeTimerRef = useRef<number | null>(null);
   const handleUserTextRef = useRef<(raw: string, fromVoice?: boolean) => Promise<void>>(async () => {});
@@ -277,7 +283,8 @@ function TravelBuddyPreview() {
   const sleep = (ms: number) => new Promise<void>((r) => { window.setTimeout(r, ms); });
 
   const cancelSpeech = useCallback(() => {
-    try { if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* no-op */ }
+    // Typed-only preview never touches speechSynthesis at all (not even cancel()).
+    try { if (!isTextOnlyPreview() && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* no-op */ }
     if (speakingRef.current) ignoreUntilRef.current = Date.now() + SELF_CAPTURE_GUARD_MS;
     speakingRef.current = false;
     setSpeaking(false);
@@ -312,7 +319,7 @@ function TravelBuddyPreview() {
     const readable = new Promise<void>((r) => { window.setTimeout(r, Math.max(1800, text.length * 50)); });
     const spoken = new Promise<void>((resolve) => {
       const fallbackMs = Math.max(2200, text.length * 62);
-      if (mutedRef.current || process.env.NEXT_PUBLIC_TRAVEL_BUDDY_PREVIEW_TEXT_ONLY === "1" || typeof window === "undefined" || !("speechSynthesis" in window)) {
+      if (mutedRef.current || isTextOnlyPreview() || typeof window === "undefined" || !("speechSynthesis" in window)) {
         window.setTimeout(resolve, fallbackMs);
         return;
       }
@@ -366,6 +373,19 @@ function TravelBuddyPreview() {
     return run;
   }, [say]);
 
+  /** The small DEMO-inventory disclosure — once per session, right after the first grounded listing caption. */
+  const noteDemoOnce = useCallback(async (gen: number): Promise<void> => {
+    if (demoNoteShownRef.current || gen !== genRef.current) return;
+    demoNoteShownRef.current = true;
+    await say(DEMO_NOTE[langRef.current], gen, "note");
+  }, [say]);
+
+  /** Is a guest-applied list filter (budget / parking) active in the page's OWN snapshot? */
+  const listFiltered = useCallback((): boolean => {
+    const pub = runtime ? runtime.publishedContext() : null;
+    return !!pub && pub.pageId === "hotels" && (pub.refinement?.maxPrice != null || !!pub.refinement?.parking);
+  }, [runtime]);
+
   const enterStandby = useCallback((gen: number) => {
     if (gen !== genRef.current) return;
     stopListening();
@@ -383,14 +403,16 @@ function TravelBuddyPreview() {
       later(async () => {
         if (gen !== genRef.current || !activeRef.current || surfaceRef.current === "other") return;
         followUpUsedRef.current = true;
-        const ok = await say(silenceFollowUp(surfaceRef.current, slotsRef.current, langRef.current), gen);
+        const pub = runtime ? runtime.publishedContext() : null;
+        const visibleNow = pub && pub.pageId === "hotels" && pub.loadState === "ready" ? pub.visibleHotels.length : null;
+        const ok = await say(silenceFollowUp(surfaceRef.current, slotsRef.current, langRef.current, visibleNow), gen);
         // The follow-up never re-opens the mic; standby always switches it off.
         if (ok) later(() => enterStandby(gen), STANDBY_MS);
       }, SILENCE_FOLLOW_UP_MS);
     } else {
       later(() => enterStandby(gen), STANDBY_MS);
     }
-  }, [clearTimers, enterStandby, later, say]);
+  }, [clearTimers, enterStandby, later, runtime, say]);
 
   // ---- browser speech recognition -------------------------------------------
   // Returns true if listening started. MUST be called synchronously inside the
@@ -520,11 +542,12 @@ function TravelBuddyPreview() {
     const res = execOp({ op: "READ_CURRENT_RESULTS" });
     const pub = runtime ? runtime.publishedContext() : null;
     if (res.ok && res.results) {
-      await say(formatResults(langRef.current, res.results as VisibleHotelSummary[], pub?.destination ?? null), gen);
+      announcedCountRef.current = res.results.length;
+      if (await say(formatResults(langRef.current, res.results as VisibleHotelSummary[], pub?.destination ?? null, { filtered: listFiltered() }), gen)) await noteDemoOnce(gen);
     } else {
       await say(formatRefusal(langRef.current, res.status), gen);
     }
-  }, [execOp, runtime, say]);
+  }, [execOp, listFiltered, noteDemoOnce, runtime, say]);
 
   const applyRefinement = useCallback(async (gen: number, op: LiveAiOperation): Promise<boolean> => {
     if (op.op !== "APPLY_HOTEL_REFINEMENT") return false;
@@ -581,6 +604,7 @@ function TravelBuddyPreview() {
     setStandby(false);
     setBusy(true);
     setHadTurn(true);
+    announcedCountRef.current = null;
     try {
       showCaption({ who: "you", text });
       await sleep(Math.min(1400, 500 + text.length * 18));
@@ -638,9 +662,10 @@ function TravelBuddyPreview() {
         if (step.purpose === "refine") { await applyRefinement(gen, o); continue; }
         const res = execOp(o);
         if (!res.ok) { await say(formatRefusal(langRef.current, res.status), gen); continue; }
-        if (step.purpose === "results" && res.results) await say(formatResults(langRef.current, res.results, plannerContext().listDestination), gen);
-        else if (step.purpose === "compare" && res.comparison) await say(formatCompare(langRef.current, res.comparison.rows, res.comparison.cheapestPosition, res.comparison.topRatedPosition), gen);
-        else if (step.purpose === "facts" && res.facts && plan.factTopic) await say(formatFact(langRef.current, plan.factTopic, res.facts[plan.factTopic], res.facts.hotel?.name ?? null), gen);
+        if (step.purpose === "results" && res.results) { announcedCountRef.current = res.results.length; if (await say(formatResults(langRef.current, res.results, plannerContext().listDestination, { filtered: listFiltered() }), gen)) await noteDemoOnce(gen); }
+        else if (step.purpose === "compare" && res.comparison) { if (await say(formatCompare(langRef.current, res.comparison.rows, res.comparison.cheapestPosition, res.comparison.topRatedPosition), gen)) await noteDemoOnce(gen); }
+        else if (step.purpose === "facts" && res.facts && plan.factTopic) { if (await say(formatFact(langRef.current, plan.factTopic, res.facts[plan.factTopic], res.facts.hotel?.name ?? null), gen)) await noteDemoOnce(gen); }
+        else if (step.purpose === "rooms" && res.facts) { if (await say(formatRooms(langRef.current, res.facts.roomTypes, res.facts.hotel?.name ?? null), gen)) await noteDemoOnce(gen); }
         else if (step.purpose === "section") await say(langRef.current === "en" ? "Showing the rooms and prices on this page." : "Is page par rooms aur prices dikha raha hoon.", gen);
         else if (step.purpose === "open" && res.resolvedHotelId) {
           const id = res.resolvedHotelId;
@@ -650,7 +675,10 @@ function TravelBuddyPreview() {
         }
       }
       if (gen !== genRef.current) return;
-      if (plan.followUp) { if (!(await say(plan.followUp, gen))) return; }
+      // A follow-up about narrowing / opening options is incoherent after "none listed" or a single
+      // stay (whose caption already says how to open it) — skip it then.
+      const fewAnnounced = announcedCountRef.current != null && announcedCountRef.current <= 1;
+      if (plan.followUp && !fewAnnounced) { if (!(await say(plan.followUp, gen))) return; }
       if (gen !== genRef.current) return;
       setBusy(false);
       // Two-way voice: after a VOICE turn, re-open listening once (visible state).
@@ -677,13 +705,18 @@ function TravelBuddyPreview() {
     turnFromVoiceRef.current = false;
     setStandby(false);
     setOptionsOpen(false);
+    demoNoteShownRef.current = false;
     const gen = ++genRef.current;
     seqRef.current = Promise.resolve();
     const listeningNow = micBlockedRef.current ? false : startRecognition(gen, "gesture");
+    const typedOnlyPreview = isTextOnlyPreview();
+    if (typedOnlyPreview) { focusInputRef.current = true; setTyping(true); } // typed preview: the keyboard IS the input (same tap)
     seqRef.current = (async () => {
       const ok = await say(greetingFor(surfaceRef.current, langRef.current), gen);
       if (!ok) return;
-      if (!getRecognition()) {
+      if (typedOnlyPreview) {
+        await say(TYPED_PREVIEW_NOTE[langRef.current], gen, "note");
+      } else if (!getRecognition()) {
         await say(langRef.current === "en" ? "Voice input isn't available in this browser — tap Type to write." : "Is browser mein voice input nahi hai — Type dabakar likhiye.", gen, "note");
       } else if (listeningNow) {
         continueListening(gen, "greeting");
@@ -1066,7 +1099,8 @@ function TravelBuddyPreview() {
   const whoLabel = (w: Who) => (w === "buddy" ? "Buddy" : w === "you" ? (en ? "You" : "Aap") : "Note");
   const mascot = mascotById(prefs.buddyId);
   const isTemp = mascot.final === null;
-  const typedOnly = voiceMissing || micBlocked;
+  const textOnlyPreview = isTextOnlyPreview();
+  const typedOnly = voiceMissing || micBlocked || textOnlyPreview;
   const state = !activated ? "idle" : standby ? "standby" : listening ? "listening" : speaking ? "speaking" : busy ? "busy" : typedOnly ? "type" : "ready";
   const stateText = {
     idle: "tap to talk",
@@ -1074,7 +1108,9 @@ function TravelBuddyPreview() {
     listening: en ? "listening — tap to stop" : "sun raha hoon — tap to stop",
     speaking: en ? "speaking — tap to interrupt and talk" : "bol raha hoon — tap karke boliye",
     busy: en ? "working — tap to interrupt" : "dekh raha hoon — tap karke boliye",
-    type: en ? "voice unavailable — tap to type" : "voice nahi — tap karke type kariye",
+    type: textOnlyPreview
+      ? (en ? "typed preview — tap to type" : "typed preview — tap karke type kariye")
+      : (en ? "voice unavailable — tap to type" : "voice nahi — tap karke type kariye"),
     ready: en ? "tap to talk" : "tap karke boliye",
   }[state];
   const mascotAria = `${mascot.name} Travel Buddy${isTemp ? " (temporary placeholder art)" : ""}, scripted preview — ${activated ? stateText : "Talk to StayBid"}. Drag or use arrow keys to move.`;
@@ -1224,10 +1260,12 @@ function TravelBuddyPreview() {
                   disabled={!activated} title={activated ? undefined : "Tap the buddy first"}>
                   {typing ? "Hide keyboard" : "Type instead"}
                 </button>
-                <button type="button" className="tb-chip" aria-pressed={muted}
-                  onClick={() => { setMuted((m) => { const n = !m; if (n) cancelSpeech(); return n; }); setOptionsOpen(false); }}>
-                  {muted ? "Sound on" : "Mute voice"}
-                </button>
+                {!textOnlyPreview && (
+                  <button type="button" className="tb-chip" aria-pressed={muted}
+                    onClick={() => { setMuted((m) => { const n = !m; if (n) cancelSpeech(); return n; }); setOptionsOpen(false); }}>
+                    {muted ? "Sound on" : "Mute voice"}
+                  </button>
+                )}
                 {micBlocked && !voiceMissing && activated && (
                   <button type="button" className="tb-chip" onClick={retryMic}>Try mic again</button>
                 )}
@@ -1244,7 +1282,9 @@ function TravelBuddyPreview() {
               <p className="tb-disclose">
                 {founder.active
                   ? "Founder-only Real AI text: typed turns go to the StayBid staging AI; voice stays scripted. Never books, bids or pays."
-                  : <>Scripted preview — not live AI. Voice uses your browser&apos;s speech service; typed words stay in this browser. Never books, bids or pays.</>}
+                  : textOnlyPreview
+                    ? "Typed scripted preview — not live AI; no microphone or voice. Typed words stay in this browser. Listings are StayBid demo inventory: prices and availability are not confirmed. Never books, bids or pays."
+                    : "Scripted preview — not live AI. Voice uses your browser's speech service; typed words stay in this browser. Listings are StayBid demo inventory: prices and availability are not confirmed. Never books, bids or pays."}
                 {isTemp ? " Placeholder buddy art (final plush pending)." : ""}
               </p>
             </>

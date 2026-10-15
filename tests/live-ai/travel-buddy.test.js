@@ -159,7 +159,8 @@ section("Planner — detail: grounded facts + sections only");
 {
   eq(ops(plan("Breakfast hai?", detailCtx)), [{ op: "READ_CURRENT_HOTEL_FACTS" }], "breakfast question → facts read");
   eq(ops(plan("breakfast milega", detailCtx)), [{ op: "READ_CURRENT_HOTEL_FACTS" }], "voice-style breakfast (no '?') → facts read");
-  eq(ops(plan("Rooms dikhao", detailCtx)), [{ op: "SHOW_HOTEL_SECTION", section: "rooms" }], "rooms → show section");
+  // Track P: "rooms" now ALSO reads the validated detail snapshot so Buddy can name the listed room types.
+  eq(ops(plan("Rooms dikhao", detailCtx)), [{ op: "SHOW_HOTEL_SECTION", section: "rooms" }, { op: "READ_CURRENT_HOTEL_FACTS" }], "rooms → show section + read validated room facts");
 }
 
 section("NO WRITES — booking / bid / payment are guidance only (every surface)");
@@ -529,6 +530,227 @@ section("UX FINISHING F1/F2 — source proofs (picker DPR, geometry-only probe, 
   const kd = comp.slice(comp.indexOf("const onMascotKeyDown"), comp.indexOf("const hideBuddy"));
   ok(/for \(let i = 0; probe && i < 12 && !probe\.isClear\(rectsAt\(c\)\); i\+\+\)/.test(kd), "F1: arrow keys skip over spots that would cover a native control");
   ok((comp.match(/makePageProbe\(/g) || []).length === 4, "F1: the probe is created only by its definition + clearSpot / placeNow / keyboard (3 call sites)");
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// TRACK P — DEMO-INVENTORY GUEST JOURNEY (offline candidate 01).
+// All hotel fixtures below are SYNTHETIC and labelled TEST ONLY: they prove
+// branching / grounding logic only, never production inventory, counts or
+// category membership.
+// ═════════════════════════════════════════════════════════════════════════
+const says = (pl) => pl.steps.filter((s) => s.kind === "say").map((s) => s.text).join(" ");
+
+section("TP-01 Parser — unknown place, category, deictic open, availability");
+{
+  eq(P("Paris mein hotel").place, "paris", "non-allow-listed 'Paris mein hotel' → place noted (never a destination)");
+  eq(P("Hotels in Delhi under 5000").place, "delhi", "'Hotels in Delhi under 5000' → place 'delhi' (filler word dropped)");
+  eq(P("Delhi ke hotels dikhao").place, "delhi", "Hinglish '<X> ke hotels' → place");
+  eq(P("Mussoorie ke hotels dikhao").place, null, "allow-listed city never reported as unknown place");
+  eq(P("best hotels in the hills").place, null, "filler words are never a place");
+  eq(P("StayBid Circle hotels dikhao").category, "circle", "category: StayBid Circle");
+  eq(P("staybid operated stays").category, "operated", "category: StayBid Operated");
+  eq(P("traditional hotel chahiye").category, "traditional", "category: Traditional");
+  eq(P("Mussoorie 5000").category, null, "no category word → null");
+  ok(P("isko kholo").openThis && P("open it").openThis && P("yeh wala dikhao").openThis, "deictic open (isko kholo / open it / yeh wala dikhao)");
+  ok(!P("Mussoorie ke hotels dikhao").openThis && !P("doosra kholo").openThis, "no deictic open for a list request or a numbered open");
+  ok(P("kya room available hai").availability && P("is it available on 18 oct").availability, "availability question detected");
+}
+
+section("TP-02 Zero / one / many results — grounded, never a pretend comparison");
+{
+  const one = plan("Top do compare karo", listCtx({ listDestination: "mussoorie", visibleCount: 1 }));
+  eq(ops(one).length, 0, "1 visible stay: NO compare op is issued");
+  ok(/sirf ek stay/.test(says(one)) && /kholo/.test(says(one)), "1 visible stay: says only one + offers to open it");
+  const oneEn = plan("compare the top two", listCtx({ listDestination: "mussoorie", visibleCount: 1 }));
+  ok(/Only one stay/.test(says(oneEn)) && /open it/.test(says(oneEn)), "1 visible stay (English) caption");
+  const zero = plan("Top do compare karo", listCtx({ listDestination: "goa", visibleCount: 0 }));
+  ok(ops(zero).length === 0 && /koi stay nahi/.test(says(zero)), "0 visible stays: no op, honest none");
+  eq(ops(plan("Top do compare karo", listCtx({ visibleCount: 2 }))), [{ op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: ["price", "rating"] }], "2+ visible stays: bounded compare of the top two");
+  eq(ops(plan("Top do compare karo", listCtx({ listReady: false, visibleCount: 0 }))).length, 1, "list still loading: count unknown → op goes to the runtime (which refuses not_ready), never assumed");
+  eq(ops(plan("isko kholo", listCtx({ visibleCount: 1 }))), [{ op: "OPEN_VISIBLE_HOTEL", position: 1 }], "1 visible stay + 'isko kholo' → opens that stay");
+  const many = plan("isko kholo", listCtx({ visibleCount: 3 }));
+  ok(ops(many).length === 0 && /number/.test(says(many)), "3 visible + 'isko kholo' → asks which number (no guess)");
+  const none = plan("open it", listCtx({ visibleCount: 0 }));
+  ok(ops(none).length === 0 && /no stays/i.test(says(none)), "0 visible + 'open it' → honest none");
+  const home = plan("isko kholo", homeCtx);
+  ok(ops(home).length === 0 && /destination/.test(says(home)), "home + 'isko kholo' → asks for a destination first");
+  // A refinement in the same turn means the current count is stale → no count-based shortcut.
+  const refine = plan("budget 4000 aur isko kholo", listCtx({ listDestination: "mussoorie", visibleCount: 1 }));
+  ok(ops(refine).length === 1 && ops(refine)[0].op === "APPLY_HOTEL_REFINEMENT", "refine + deictic open in one turn → only the refinement (count not trusted mid-change)");
+}
+
+section("TP-03 Results / compare / rooms captions — page data only");
+{
+  const r1 = [{ position: 1, id: "test-only-1", name: "TEST ONLY Ridge", city: "Mussoorie", minPrice: 4200, rating: 4.6, parking: "present" }];
+  const c1 = TB.formatResults("hinglish", r1, "mussoorie");
+  ok(/1 stay screen par hai: TEST ONLY Ridge/.test(c1) && /₹4,200 se listed/.test(c1) && /kholo/.test(c1), "1 result: names the stay + its listed price + how to open");
+  ok(/1 stay on screen in Mussoorie: TEST ONLY Ridge — listed from ₹4,200\. Say "open it"/.test(TB.formatResults("en", r1, "mussoorie")), "1 result (English)");
+  const r1np = [{ ...r1[0], minPrice: null }];
+  ok(!/₹/.test(TB.formatResults("en", r1np, "mussoorie")), "no price in data → no price stated");
+  const r2 = r1.concat([{ position: 2, id: "test-only-2", name: "TEST ONLY Cloud", city: "Mussoorie", minPrice: 5100, rating: 4.1, parking: "absent" }]);
+  ok(/2 stays/.test(TB.formatResults("en", r2, "mussoorie")) && /compare the top two/.test(TB.formatResults("en", r2, "mussoorie")), "2+ results: count + how to compare");
+  ok(/listed nahi/.test(TB.formatResults("hinglish", [], "kasol", { filtered: false })) && /destination/.test(TB.formatResults("hinglish", [], "kasol", { filtered: false })), "0 results, no filter applied → 'none listed', suggests another destination (not a budget change)");
+  ok(/Budget badha/.test(TB.formatResults("hinglish", [], "goa", { filtered: true })), "0 results with a filter applied → suggests relaxing the budget");
+  ok(/parking listed: TEST ONLY Ridge/.test(TB.formatCompare("en", r2, 1, 1)), "compare: parking stated only from present/absent listing data");
+  const r2u = [r2[0], { ...r2[1], parking: "unknown" }];
+  ok(!/parking/.test(TB.formatCompare("en", r2u, 1, 1)), "compare: an UNKNOWN parking fact is never asserted");
+  const rooms = TB.formatRooms("en", [{ name: "Deluxe", floorPrice: 4200 }, { name: "Suite", floorPrice: 6100 }], "TEST ONLY Ridge");
+  ok(/TEST ONLY Ridge lists 2 room types: Deluxe, Suite/.test(rooms) && /availability isn't confirmed/.test(rooms) && !/₹|4200|6100/.test(rooms), "rooms: names only from the validated snapshot; no rate / availability claim");
+  ok(/aur 2 aur/.test(TB.formatRooms("hinglish", [{ name: "A" }, { name: "B" }, { name: "C" }, { name: "D" }, { name: "E" }], null)), "rooms: long list bounded to 3 names + count");
+  ok(/data mein nahi/.test(TB.formatRooms("hinglish", [], "X")) && /isn't in the current data/.test(TB.formatRooms("en", null, null)), "rooms: none loaded → honest 'not in data'");
+}
+
+section("TP-04 Dates / guests / availability — noted only, never a vacancy or capacity claim");
+{
+  const pl = plan("18 se 20 October, 2 adults, 5000 ke andar, parking", listCtx({ listDestination: "dhanaulti" }));
+  eq(ops(pl), [{ op: "APPLY_HOTEL_REFINEMENT", maxPrice: 5000, parking: true }], "only budget + parking applied; dates/guests are NOT operations");
+  ok(/availability ya room capacity confirm nahi/.test(says(pl)), "Hinglish: availability AND capacity explicitly unconfirmed");
+  eq([pl.slots.guests, !!pl.slots.dates], [2, true], "dates + guests kept as ephemeral noted slots");
+  const av = plan("kya room available hai", detailCtx);
+  ok(/Availability ya room capacity main check nahi karta/.test(says(av)) && says(av).indexOf("Availability") >= 0, "availability question on a hotel → honest 'not checked' caption FIRST");
+  ok(ops(av).every((o) => o.op === "SHOW_HOTEL_SECTION" || o.op === "READ_CURRENT_HOTEL_FACTS"), "… plus at most the UI-local rooms view + room-name read (no availability op exists)");
+  const avNoRoom = plan("kya yeh available hai", detailCtx);
+  ok(ops(avNoRoom).length === 0 && /check nahi karta/.test(says(avNoRoom)), "availability question without 'room' → caption only, no op");
+  const avEn = plan("is this available next weekend", listCtx());
+  ok(/availability and room capacity are not confirmed/.test(says(avEn)) && ops(avEn).length === 0, "English dates + availability → noted only");
+}
+
+section("TP-05 Unknown destination + inventory categories — honest, no invented mapping");
+{
+  const d = plan("Delhi ke hotels dikhao", homeCtx);
+  ok(d.steps.every((s) => s.kind !== "navigate_hotels") && ops(d).length === 0, "unknown destination: no navigation, no op");
+  ok(/"Delhi" abhi StayBid ki destination list mein nahi hai/.test(says(d)) && /Mussoorie/.test(says(d)), "unknown destination: says so + offers allow-listed destinations");
+  ok(!/Maaf kijiye/.test(says(d)), "unknown destination is NOT a 'didn't understand' fallback");
+  const c = plan("StayBid Circle hotels in Mussoorie", homeCtx);
+  ok(c.steps.some((s) => s.kind === "navigate_hotels" && s.city === "mussoorie"), "category + city: the city journey proceeds");
+  ok(/no "StayBid Circle" category filter/.test(says(c)), "category (English): honestly says there is no category filter");
+  ok(/"StayBid Circle" category ka filter Buddy mein nahi hai/.test(says(plan("Mussoorie mein StayBid Circle wale hotel dikhao", homeCtx))), "category (Hinglish): honestly says there is no category filter");
+  eq(c.deferred, null, "category is never turned into a hidden filter");
+  for (const t of ["traditional hotels dikhao", "staybid operated stays", "circle wale hotel"]) {
+    const pl = plan(t, listCtx({ listDestination: "mussoorie" }));
+    ok(ops(pl).every((o) => o.op !== "APPLY_HOTEL_REFINEMENT"), `[hotels] '${t}' → no refinement invented for a category`);
+  }
+}
+
+section("TP-06 Booking / bid / payment — guidance + demo caveat, still no write");
+{
+  for (const ctx of [homeCtx, listCtx(), detailCtx]) {
+    const pl = plan("is hotel par bid lagao", ctx);
+    ok(/demo inventory/.test(says(pl)) && /khud/.test(says(pl)), `[${ctx.surface}] booking guidance names DEMO inventory + manual-only`);
+    ok(!/tap "Bid"|Bid" aap khud tap/.test(says(pl)), `[${ctx.surface}] guidance no longer nudges the guest into a bid on demo stock`);
+  }
+  const corpus = ["isko kholo", "open it", "Top do compare karo", "Delhi ke hotels", "StayBid Circle hotels", "kya room available hai", "18 October 2 adults", "rooms dikhao", "traditional hotel"];
+  let all = [];
+  for (const ctx of [homeCtx, listCtx({ visibleCount: 1 }), listCtx({ visibleCount: 3 }), detailCtx]) for (const t of corpus) all = all.concat(ops(plan(t, ctx)));
+  ok(all.length > 3 && all.every((o) => ["READ", "UI_LOCAL"].includes(C.OPERATION_AUTHORITY[o.op]) && C.validateOperation(o) !== null), "every new-intent op is READ / UI_LOCAL and passes the closed validator");
+}
+
+section("TP-07 THREE demo categories (TEST ONLY synthetic) — identical handling through the REAL runtime");
+{
+  // TEST ONLY: shapes mimic the three Owner-declared categories using the admin discriminator fields
+  // (owner_type / account_type / ownerId prefix). The PUBLIC card projection does not carry them; the
+  // journey must therefore be category-independent. NOT production data or counts.
+  const hotels = [
+    { id: "test-only-circle-1", name: "TEST ONLY Circle Stay", city: "Mussoorie", ownerId: "hco_test_only_1", owner_type: "host_circle", avgRating: 4.4, amenities: ["Parking"], rooms: [{ name: "TEST Deluxe", floorPrice: 4000 }] },
+    { id: "test-only-operated-1", name: "TEST ONLY Operated Stay", city: "Mussoorie", ownerId: "owner_test_only_2", owner_type: "circle", account_type: "staybid_operated", avgRating: 4.7, amenities: ["WiFi"], rooms: [{ name: "TEST Suite", floorPrice: 6500 }] },
+    { id: "test-only-traditional-1", name: "TEST ONLY Traditional Stay", city: "Mussoorie", ownerId: "owner_test_only_3", avgRating: 4.1, amenities: ["Parking", "Breakfast"], rooms: [{ name: "TEST Standard", floorPrice: 3100 }] },
+  ];
+  const page = { list: hotels, calls: [] };
+  const snap = () => C.buildHotelsSnapshot({
+    displayHotels: page.list, city: "Mussoorie", query: "", checkIn: "", checkOut: "", guests: 2,
+    maxPrice: null, sort: "default", stars: [], appliedAmenities: [], amenityOpts: ["WiFi", "Parking", "Breakfast"],
+    loading: false, error: "", resolvedCity: "Mussoorie", resolvedQuery: "", resolvedStatus: "ready", role: "anonymous",
+  });
+  const s = snap();
+  eq(s.visibleHotels.map((h) => h.id), hotels.map((h) => h.id), "all three categories become visible rows in their true positions");
+  ok(s.visibleHotels.every((h) => JSON.stringify(Object.keys(h)) === JSON.stringify(["position", "id", "name", "city", "minPrice", "rating", "parking"])), "visible rows carry NO category/owner field (no category leakage or invention)");
+  ok(!/host_circle|staybid_operated|owner_test_only|hco_test/.test(JSON.stringify(s)), "snapshot (incl. contextRevision) contains no owner/category discriminator");
+  const rt = R.createLiveAiRuntime("anonymous");
+  rt.invalidateRoute("/hotels");
+  rt.registerPage({ pageId: "hotels", routeKey: "/hotels", getSnapshot: snap, execute: (cmd) => page.calls.push(cmd) });
+  rt.activate();
+  for (let pos = 1; pos <= 3; pos++) {
+    rt.beginTurn("open " + pos);
+    const res = rt.execute(rt.makeEnvelope({ op: "OPEN_VISIBLE_HOTEL", position: pos }));
+    ok(res.ok && res.resolvedHotelId === hotels[pos - 1].id, `open position ${pos} → ${hotels[pos - 1].id} (same path for every category)`);
+  }
+  rt.beginTurn("compare");
+  const cmp = rt.execute(rt.makeEnvelope({ op: "COMPARE_VISIBLE_HOTELS", positions: [1, 2], factors: ["price", "rating"] }));
+  ok(cmp.ok && cmp.comparison.cheapestPosition === 1 && cmp.comparison.topRatedPosition === 2, "compare across categories uses only price/rating data");
+  ok(/sasta: TEST ONLY Circle Stay/.test(TB.formatCompare("hinglish", cmp.comparison.rows, cmp.comparison.cheapestPosition, cmp.comparison.topRatedPosition)), "compare caption grounded in the rows");
+  for (const h of hotels) {
+    const d = C.buildHotelDetailSnapshot({ routeId: h.id, hotel: h, loading: false, loadErr: false, tab: "rooms", role: "anonymous" });
+    ok(d.validated && d.roomTypes.length === 1 && !/host_circle|staybid_operated/.test(JSON.stringify(d)), `detail snapshot validated identically for ${h.id}; no category leak`);
+  }
+  ok(page.calls.every((c) => c.kind === "open_hotel"), "only typed UI_LOCAL open commands reached the page");
+}
+
+section("TP-08 ONE-stay city end-to-end (TEST ONLY) — planner context derived from the REAL published snapshot");
+{
+  const one = [{ id: "test-only-single", name: "TEST ONLY Single Retreat", city: "Mussoorie", avgRating: 4.5, amenities: ["Parking"], rooms: [{ name: "TEST Deluxe", floorPrice: 4500 }, { name: "TEST Family", floorPrice: 6200 }] }];
+  const page = { calls: [] };
+  const snap = () => C.buildHotelsSnapshot({
+    displayHotels: one, city: "Mussoorie", query: "", checkIn: "", checkOut: "", guests: 2, maxPrice: null, sort: "default",
+    stars: [], appliedAmenities: [], amenityOpts: ["Parking"], loading: false, error: "", resolvedCity: "Mussoorie",
+    resolvedQuery: "", resolvedStatus: "ready", role: "anonymous",
+  });
+  const rt = R.createLiveAiRuntime("anonymous");
+  rt.invalidateRoute("/hotels");
+  rt.registerPage({ pageId: "hotels", routeKey: "/hotels", getSnapshot: snap, execute: (cmd) => page.calls.push(cmd) });
+  rt.activate();
+  // Same derivation as TravelBuddy.plannerContext().
+  const pub = rt.publishedContext();
+  const ctx = { surface: "hotels", listDestination: pub.destination, listMaxPrice: pub.refinement ? pub.refinement.maxPrice ?? null : null, listParking: !!(pub.refinement && pub.refinement.parking), listReady: pub.loadState === "ready", visibleCount: pub.visibleHotels.length, detailValidated: false };
+  eq([ctx.listReady, ctx.visibleCount], [true, 1], "published context: ready, exactly one visible stay");
+  const results = rt.execute(rt.makeEnvelope({ op: "READ_CURRENT_RESULTS" }));
+  ok(/1 stay screen par hai: TEST ONLY Single Retreat/.test(TB.formatResults("hinglish", results.results, ctx.listDestination)), "announcement names the single stay");
+  const cmp = TB.planTurn(P("dono compare karo"), ctx, TB.emptySlots(), CITIES);
+  ok(ops(cmp).length === 0, "compare on a one-stay city → no runtime op (no fabricated second hotel)");
+  const open = TB.planTurn(P("isko kholo"), ctx, TB.emptySlots(), CITIES);
+  rt.beginTurn("isko kholo");
+  const res = rt.execute(rt.makeEnvelope(ops(open)[0]));
+  ok(res.ok && res.resolvedHotelId === "test-only-single" && page.calls[0].kind === "open_hotel", "'isko kholo' opens the single stay via the typed envelope");
+  const d = C.buildHotelDetailSnapshot({ routeId: "test-only-single", hotel: one[0], loading: false, loadErr: false, tab: "about", role: "anonymous" });
+  ok(/2 room types: TEST Deluxe, TEST Family/.test(TB.formatRooms("en", d.roomTypes, d.hotel.name)), "detail rooms guidance names the snapshot's room types");
+  const stale = C.buildHotelDetailSnapshot({ routeId: "test-only-single", hotel: { ...one[0], id: "other-id" }, loading: false, loadErr: false, tab: "rooms", role: "anonymous" });
+  ok(!stale.validated && stale.roomTypes.length === 0, "a stale / other hotel never yields room guidance");
+}
+
+section("TP-09 Typed-only preview + demo disclosure — source proofs");
+{
+  eq([TB.isTextOnlyPreview("1"), TB.isTextOnlyPreview(undefined), TB.isTextOnlyPreview("true"), TB.isTextOnlyPreview(" 1")], [true, false, false, false], "typed-only flag: exactly '1' only");
+  ok(/demo/.test(TB.DEMO_NOTE.hinglish) && /confirm nahi/.test(TB.DEMO_NOTE.hinglish) && /demo listings/.test(TB.DEMO_NOTE.en) && /not confirmed/.test(TB.DEMO_NOTE.en), "DEMO note (both languages) says demo + not confirmed");
+  ok(TB.DEMO_NOTE.en.length <= 90 && TB.DEMO_NOTE.hinglish.length <= 90, "DEMO note is small (≤ 90 chars)");
+  ok(!/^Note:/i.test(TB.DEMO_NOTE.en) && !/^Note:/i.test(TB.DEMO_NOTE.hinglish), "DEMO note carries no own 'Note:' prefix (the caption label supplies it — no 'Note: Note:')");
+  ok(/typed preview/.test(TB.TYPED_PREVIEW_NOTE.hinglish) && /typed preview/.test(TB.TYPED_PREVIEW_NOTE.en), "typed-preview note");
+  const strip = (x) => x.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  const comp = strip(fs.readFileSync(path.join(REPO, "components/live-ai/TravelBuddy.tsx"), "utf8"));
+  const body = (name) => { const i = comp.indexOf(`const ${name} = useCallback(`); if (i < 0) return ""; const j = comp.indexOf("\n  }, [", i); return comp.slice(i, j); };
+  ok(/isTextOnlyPreview\(\) \? null :/.test(comp), "typed-only: SpeechRecognition is never resolved");
+  ok(/!isTextOnlyPreview\(\) && typeof window !== "undefined" && "speechSynthesis" in window\) window\.speechSynthesis\.cancel\(\)/.test(body("cancelSpeech")), "typed-only: speechSynthesis.cancel() is never called");
+  ok(/mutedRef\.current \|\| isTextOnlyPreview\(\)/.test(comp), "typed-only: speechSynthesis.speak() is never reached");
+  const ss = body("startSession");
+  ok(/if \(typedOnlyPreview\) \{ focusInputRef\.current = true; setTyping\(true\); \}/.test(ss) && ss.indexOf("setTyping(true)") < ss.indexOf("await"), "typed-only: the keyboard opens SYNCHRONOUSLY in the activation tap");
+  ok(/TYPED_PREVIEW_NOTE\[langRef\.current\]/.test(ss) && /demoNoteShownRef\.current = false/.test(ss), "typed-only note replaces the 'browser has no voice' hint; demo note re-armed per session");
+  ok(/\{!textOnlyPreview && \(\s*<button type="button" className="tb-chip" aria-pressed=\{muted\}/.test(comp), "typed-only: no 'Mute voice' control (nothing to mute)");
+  ok((comp.match(/Listings are StayBid demo inventory: prices and availability are not confirmed\./g) || []).length === 2, "options disclosure names DEMO inventory (typed + voice variants)");
+  ok((comp.match(/await noteDemoOnce\(gen\)/g) || []).length === 5, "demo note follows results (×2 paths), compare, facts and rooms captions");
+  ok(/demoNoteShownRef\.current \|\| gen !== genRef\.current\) return;\s*demoNoteShownRef\.current = true;/.test(body("noteDemoOnce")), "demo note shown at most once per session");
+  ok(/step\.purpose === "rooms" && res\.facts/.test(comp) && /formatRooms\(langRef\.current, res\.facts\.roomTypes/.test(comp), "rooms guidance reads ONLY the runtime facts result (validated detail snapshot)");
+  ok(/filtered: listFiltered\(\)/.test(comp) && /pub\.refinement\?\.maxPrice != null \|\| !!pub\.refinement\?\.parking/.test(body("listFiltered")), "0-result advice keyed to the page's OWN applied filters");
+  // Follow-ups stay coherent with what the list actually shows.
+  ok(/announcedCountRef\.current = null;/.test(comp) && (comp.match(/announcedCountRef\.current = res\.results\.length;/g) || []).length === 2, "per-turn announced result count is reset and recorded on both result paths");
+  ok(/const fewAnnounced = announcedCountRef\.current != null && announcedCountRef\.current <= 1;\s*if \(plan\.followUp && !fewAnnounced\)/.test(comp), "no 'open an option / budget' follow-up after a 0- or 1-stay announcement");
+  ok(/silenceFollowUp\(surfaceRef\.current, slotsRef\.current, langRef\.current, visibleNow\)/.test(body("armSilence")) && /pub\.loadState === "ready" \? pub\.visibleHotels\.length : null/.test(body("armSilence")), "silence nudge reads the CURRENT ready list count");
+}
+
+section("TP-10 Silence nudge — grounded in the current list count");
+{
+  ok(/destination ya budget/.test(TB.silenceFollowUp("hotels", { ...TB.emptySlots(), city: "goa" }, "hinglish", 0)), "0 stays → suggests another destination / budget (never 'open an option')");
+  ok(/open it/.test(TB.silenceFollowUp("hotels", { ...TB.emptySlots(), city: "mussoorie", maxPrice: 5000 }, "en", 1)), "1 stay → 'open it' (never 'say its number')");
+  ok(/second option/.test(TB.silenceFollowUp("hotels", { ...TB.emptySlots(), city: "rishikesh", maxPrice: 5000 }, "en", 2)), "2+ stays → unchanged 'open the second option' hint");
+  ok(/budget/.test(TB.silenceFollowUp("hotels", { ...TB.emptySlots(), city: "rishikesh" }, "en", null)), "count unknown (loading) → unchanged behaviour");
+  ok(/rooms/.test(TB.silenceFollowUp("hotel-detail", TB.emptySlots(), "en", 0)), "detail page nudge unchanged");
 }
 
 console.log(`\n${"─".repeat(54)}`);
