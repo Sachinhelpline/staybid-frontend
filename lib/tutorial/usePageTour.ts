@@ -21,6 +21,7 @@ import { useEffect, useRef } from "react";
 import { driver, type Driver } from "driver.js";
 import { useTutorial, type TutorialKey } from "./tutorial-store";
 import { useLocalisedSteps, type TourStep } from "./tutorial-content";
+import { endTour, isBuddyEngaged, setTourActive } from "./buddy-coordination";
 
 export type UsePageTourOptions = {
   /** ms to wait after mount before firing — gives DOM time to render. Default 900ms. */
@@ -47,6 +48,9 @@ export function usePageTour(
     if (disabled && !options.force) return;
     if (!options.force && isSeen(key)) return;
     if (active && active !== key) return; // another tour running — welcome / different page
+    // R2 — the guest is in an active Travel Buddy session: never auto-fire a page tour over it
+    // (an explicit help replay passes `force`). The tour is not marked seen, so it can show later.
+    if (!options.force && isBuddyEngaged()) return;
 
     // If welcome story is still open, defer until it closes.
     // (The welcome story sets active=null on dismiss; we re-run via deps.)
@@ -64,6 +68,7 @@ export function usePageTour(
     // mounting their CTAs. Give up gracefully after ~1.5s.
     const tryStart = (attempt = 0) => {
       if (cancelled) return;
+      if (!options.force && isBuddyEngaged()) { polledRef.current = false; return; } // R2 — Buddy engaged during the delay
       const firstSel = localisedSteps[0]?.element;
       const found = firstSel ? document.querySelector(firstSel) : null;
       if (!found) {
@@ -171,6 +176,7 @@ export function usePageTour(
           onDestroyed: () => {
             markSeen(key);
             setActive(null);
+            endTour(key); // R2 — Travel Buddy may come back
             // v140.1 — broadcast tour-end so step-gated pages (like
             // /bid) can reset to their initial step for the user to
             // actually fill the form.
@@ -186,10 +192,12 @@ export function usePageTour(
         });
         driverRef.current = drv;
         setActive(key);
+        setTourActive(key); // R2 — Travel Buddy steps aside while the overlay is up
         drv.drive();
       } catch {
         // driver.js failed — bail silently, never block the page
         polledRef.current = false;
+        endTour(key); // R2 — never leave Travel Buddy hidden behind a tour that did not start
       }
     };
 

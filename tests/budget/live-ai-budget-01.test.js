@@ -245,7 +245,8 @@ function mkCatalog(o) {
     Object.assign({ provider: "openai", model: "gpt-5.6-terra", billingDimension: "reasoning_output_token", unitSize: 1n, rateMicros: 15n }, base),
     Object.assign({ provider: "openai", model: "gpt-live-transcribe", billingDimension: "realtime_audio_second", unitSize: 1n, rateMicros: 100n }, base),
   ];
-  if (o.withTts) entries.push(Object.assign({ provider: "openai", model: "gpt-4o-mini-tts", billingDimension: "tts_output_token", unitSize: 1n, rateMicros: 20n }, base));
+  // CHANGED FIXTURE (TEMPORARY tts-1 FALLBACK): the bound TTS model is tts-1, char-priced (tts_input_character); assertion meaning unchanged.
+  if (o.withTts) entries.push(Object.assign({ provider: "openai", model: "tts-1", billingDimension: "tts_input_character", unitSize: 1n, rateMicros: 20n }, base));
   return P.createPriceCatalog(o.version || "test.v1", o.entries || entries);
 }
 // worst-case: reasoning = 2000*5 + 2000*15 = 40000; transcription = 180*100 = 18000
@@ -548,11 +549,11 @@ section("BUDGET01-H — price catalog rollover pins the lease; TTS with an injec
 }
 {
   // TTS becomes available ONLY when a complete reservation rule + a matching catalog entry are injected.
-  const { core } = mkCore({ catalog: mkCatalog({ withTts: true }), ttsRule: { dimension: "tts_output_token", units: 1000n, serviceTier: null } });
+  const { core } = mkCore({ catalog: mkCatalog({ withTts: true }), ttsRule: { dimension: "tts_input_character", units: 1000n, serviceTier: null } });
   await prepProvider(core, "gw.tts", provAmt(100000n, 5n));
   const tts = core.providerSpendAuthority({ providerSpendClass: "TTS", gatewaySessionId: "gw.tts", providerTurnId: "pt" });
   const id = tts.reserve("gw.tts", 2000);
-  ok(typeof id === "string", "H03 — TTS reserve works with an injected rule + catalog entry (1000 tokens × 20 = 20000)");
+  ok(typeof id === "string", "H03 — TTS reserve works with an injected rule + catalog entry (1000 characters × 20 = 20000)");
   eq(core.inspect("gw.tts").provider.openReservedMoneyMicros, "20000", "H04 — TTS worst-case = rule.units × rate");
   core.stop();
 }
@@ -800,7 +801,7 @@ section("BUDGET01-N — P1-01: child idempotency across facade recreation + dura
 // ═══════════════════════════ P1-02 — provider call binding / coverage ══════
 section("BUDGET01-O — P1-02: non-empty trusted provider-call id + transcription via DPBEL");
 {
-  const { core } = mkCore({ catalog: mkCatalog({ withTts: true }), ttsRule: { dimension: "tts_output_token", units: 1000n, serviceTier: null } });
+  const { core } = mkCore({ catalog: mkCatalog({ withTts: true }), ttsRule: { dimension: "tts_input_character", units: 1000n, serviceTier: null } });
   await prepProvider(core, "gw.O", provAmt(1000000n, 50n));
   const empty = core.providerSpendAuthority({ providerSpendClass: "REASONING", gatewaySessionId: "gw.O", providerTurnId: "" });
   eq(empty.reserve("gw.O", 4000), null, "O01 — an EMPTY providerTurnId is refused (fail closed)");
@@ -814,7 +815,7 @@ section("BUDGET01-O — P1-02: non-empty trusted provider-call id + transcriptio
 }
 {
   // all three classes fail closed with a store but NO provider lease.
-  const { core } = mkCore({ catalog: mkCatalog({ withTts: true }), ttsRule: { dimension: "tts_output_token", units: 1000n, serviceTier: null } });
+  const { core } = mkCore({ catalog: mkCatalog({ withTts: true }), ttsRule: { dimension: "tts_input_character", units: 1000n, serviceTier: null } });
   for (const cls of ["REASONING", "TRANSCRIPTION", "TTS"]) {
     const a = core.providerSpendAuthority({ providerSpendClass: cls, gatewaySessionId: "gw.noLease", providerTurnId: "pt" });
     eq(a.reserve("gw.noLease", 1000), null, "O05 — " + cls + " fails closed without a DPBEL provider lease");

@@ -102,6 +102,12 @@ export interface ConversationDeps {
   now?: () => number;
   onEvent?: (e: ConversationEvent) => void;
   limits?: Partial<ConversationLimits>;
+  /** G-TTS — OPTIONAL: whether a VERIFIED 03B compiled answer may be voiced now (voice output on, not
+   *  muted). Only when it returns exactly true does the browser APPROVE that exact verified answer
+   *  (planId + current authorityRef + the envelope's verified textHash) through the accepted
+   *  answer.approve path; the gateway then voices exactly that server-side canonical text. Absent ⇒
+   *  never approved (byte-identical prior behaviour: captions/text only, zero TTS spend). */
+  speakCompiledAnswers?: () => boolean;
 }
 
 interface MemoryTurn { role: "user" | "assistant"; text: string; at: number }
@@ -817,6 +823,14 @@ export function createConversation(deps: ConversationDeps): Conversation {
     lastAnswer = text;
     pushMemory("assistant", text);
     emit({ type: "answer", text });
+    // G-TTS — voice ONLY this verified answer, ONLY on an explicit opt-in, under the CURRENT authority. The
+    // envelope's textHash was proven === sha256(canonicalText) by verifyCompiledAnswer, so the approval binds
+    // the exact bytes the gateway will speak; audio for any other plan stays dropped (approvedPlanId gate).
+    let speak = false;
+    if (deps.speakCompiledAnswers) { try { speak = deps.speakCompiledAnswers() === true; } catch { speak = false; } }
+    if (speak && transport.submitApproval({ sessionId: runtime.sessionId, turnId: cur.turnId, generation, planId: envelope.planId, authorityRef: cur.authorityRef, textHash: envelope.textHash })) {
+      approvedPlanId = envelope.planId;
+    }
     touch();
   }
 

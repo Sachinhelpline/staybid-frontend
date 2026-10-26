@@ -222,6 +222,10 @@ export interface StagingLiveAiCompositionDeps {
   /** BUDGET control-watcher timers (default real setTimeout/clearTimeout). Tests inject inert timers so
    *  the hermetic composition never leaves a dangling interval; production omits it. */
   readonly controlTimers?: ControlWatcherTimers;
+  /** G-TTS — OPTIONAL owner-supplied TTS reservation rule (catalog billing dimension + bounded units),
+   *  passed through to the RELEASED createBudgetCore. Absent (the staging default) ⇒ TTS spend authority
+   *  stays UNAVAILABLE exactly as before. No unit/price value is invented here. */
+  readonly ttsReservationRule?: { readonly dimension: "tts_input_character"; readonly units: bigint } | null; // TEMPORARY tts-1 FALLBACK
 }
 
 /** The `liveAi` runtime bundle the staging composition injects into `buildGateway`. NOTE (P1-01): the
@@ -263,6 +267,7 @@ export function buildStagingLiveAi(deps: StagingLiveAiCompositionDeps): StagingL
     bootNonce: deps.bootNonce,
     controlIntervalMs: deps.controlIntervalMs,
     controlTimers: deps.controlTimers,
+    ...(deps.ttsReservationRule ? { ttsReservationRule: { dimension: deps.ttsReservationRule.dimension, units: deps.ttsReservationRule.units, serviceTier: null } } : {}),
   });
 
   const makeExecution = (loopPort: Ic01LoopPort, sessionCtx?: Live03bExecutionSessionContext): ExecutionSafety => {
@@ -277,7 +282,13 @@ export function buildStagingLiveAi(deps: StagingLiveAiCompositionDeps): StagingL
       mintId: { mint: (kind: string, seq: number) => `exec-${kind}-${seq}-${randomUUID()}` },
       budgetGate: budgetCore.executionAdmissionGate(gatewaySessionId),
       adapter: makeClosedExecutionAdapter(),
-      contexts: { current: () => (binding ? projectScreenContext(binding, published) : null) },
+      // G-REBIND — project the turn's CURRENT authority: after an accepted in-turn IC01 rebind the gateway's
+      // session context getters advance; absent (older callers) ⇒ the turn-start binding (unchanged).
+      contexts: { current: () => {
+        const b = sessionCtx && sessionCtx.currentBinding ? sessionCtx.currentBinding() : binding;
+        const ctx = sessionCtx && sessionCtx.currentContext ? sessionCtx.currentContext() : published;
+        return b ? projectScreenContext(b, ctx) : null;
+      } },
       loop: loopPort,
       audit: { emit: () => { /* bounded, no secret/PII logging */ } },
     });

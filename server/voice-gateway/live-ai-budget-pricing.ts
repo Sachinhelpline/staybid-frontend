@@ -38,6 +38,9 @@ export const BILLING_DIMENSIONS = Object.freeze([
   "realtime_audio_second",
   "tts_output_token",
   "tts_output_second",
+  // TEMPORARY tts-1 FALLBACK (Owner-approved narrow additive exception, offline candidate): tts-1 is billed per
+  // INPUT CHARACTER by the provider. Additive only — every existing dimension and all validation are unchanged.
+  "tts_input_character",
 ] as const);
 export type BillingDimension = (typeof BILLING_DIMENSIONS)[number];
 

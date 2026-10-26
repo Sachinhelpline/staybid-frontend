@@ -36,6 +36,10 @@ export function LiveAiShell() {
   // (mounted beside this shell) is the SINGLE voice owner — the orb never renders
   // alongside it. Same predicate as lib/travel-buddy resolveTravelBuddyGate.
   if (!providerEnabled && process.env.NEXT_PUBLIC_TRAVEL_BUDDY_UX_PREVIEW === "1") return null;
+  // LIVE controller presentation (provider P ON + preview + live flag): Teddy presents the SAME
+  // original controller; the orb never renders beside it (one presentation, one mic owner).
+  // Same predicate as lib/travel-buddy resolveTravelBuddyLiveGate.
+  if (providerEnabled && process.env.NEXT_PUBLIC_TRAVEL_BUDDY_UX_PREVIEW === "1" && process.env.NEXT_PUBLIC_TRAVEL_BUDDY_LIVE_CONTROLLER === "1") return null;
   // Render ONLY with the feature enabled AND a supported authoritative page.
   if (!registeredPageId) return null;
 

@@ -263,7 +263,8 @@ function fakeBudget(cap) {
     ok(RESP.createReasoningAdapter({ model: "gpt-wrong", call: async () => ({ ok: true, candidate: {} }) }).available === false, "a wrong reasoning model → unavailable adapter");
     ok(TTS.createTtsAdapter({ model: "gpt-wrong", call: async () => ({ ok: true, chunks: [] }) }).available === false, "a wrong tts model → unavailable adapter");
     eq(RESP.REASONING_MODEL, "gpt-5.6-terra", "the reasoning model constant is fixed");
-    eq(TTS.TTS_MODEL, "gpt-4o-mini-tts", "the tts model constant is fixed");
+    // CHANGED EXPECTATION (TEMPORARY tts-1 FALLBACK): the single bound TTS model constant is now tts-1 (still asserted fixed).
+    eq(TTS.TTS_MODEL, "tts-1", "the tts model constant is fixed");
     eq(STT.STT_MODEL, "gpt-live-transcribe", "the stt model constant is fixed");
   }
 
@@ -706,7 +707,7 @@ function fakeBudget(cap) {
     const tcfg = STT.buildTranscriptionSessionConfig();
     ok(tcfg.type === "transcription" && tcfg.audio && tcfg.audio.input && tcfg.audio.input.transcription && tcfg.audio.input.transcription.model === STT.STT_MODEL, "R2-02 — the transcription session config names the fixed STT model");
     let captured = null;
-    const seam = STT.createDefaultTranscriptionSeam("sk-test", async (url, init) => { captured = { url, init }; return { ok: true, text: async () => "v=0\r\no=- 1 1 IN IP4 0.0.0.0\r\n" }; });
+    const seam = STT.createDefaultTranscriptionSeam("sk-test", async (url, init) => { captured = { url, init }; return { ok: true, headers: { get: (key) => key.toLowerCase() === "location" ? "/v1/realtime/calls/rtc_testfixture" : null }, text: async () => "v=0\r\no=- 1 1 IN IP4 0.0.0.0\r\n" }; });
     const neg = await seam.negotiate("v=0\r\no=- 2 2 IN IP4 0.0.0.0\r\n");
     ok(neg.ok === true, "the injected Realtime seam returns a bounded SDP answer (no network)");
     ok(captured && captured.url === STT.OPENAI_REALTIME_CALLS_URL, "R2-02 — the Realtime call POSTs to the fixed calls URL");

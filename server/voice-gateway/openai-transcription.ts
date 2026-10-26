@@ -28,7 +28,7 @@ export interface TranscriptionInput {
  *  and relays ONLY the bounded answer back. Fail-closed by default (no answer ⇒ mic
  *  unsupported at the browser). */
 export type RealtimeNegotiation =
-  | { ok: true; answerSdp: string }
+  | { ok: true; answerSdp: string; providerCallId?: string }
   | { ok: false; reason: string };
 export const MAX_SDP_BYTES = 20 * 1024;
 
@@ -38,12 +38,15 @@ export interface TranscriptionAdapter {
   transcribe(input: TranscriptionInput): Promise<TranscriptionResult>;
   /** Exchange a bounded SDP offer for the provider's bounded SDP answer. */
   negotiate(offerSdp: string, opts?: { signal?: AbortSignal; deadlineMs?: number }): Promise<RealtimeNegotiation>;
+  /** Server-only: best-effort provider hangup; no client-selected call ID. */
+  hangup?: (providerCallId: string) => Promise<boolean>;
 }
 
 /** The injected network seams — the ONLY place a real call could happen. Tests and
  *  the dormant build never provide a real one. */
 export type TranscriptionCall = (input: TranscriptionInput) => Promise<TranscriptionResult>;
 export type NegotiateCall = (offerSdp: string, opts?: { signal?: AbortSignal; deadlineMs?: number }) => Promise<RealtimeNegotiation>;
+export type HangupCall = (providerCallId: string) => Promise<boolean>;
 
 export const unavailableTranscription: TranscriptionAdapter = Object.freeze({
   available: false,
@@ -65,11 +68,12 @@ function boundedSdp(v: unknown): string | null {
 
 /** Build a fixed-model transcription/realtime adapter over injected calls. A model
  *  other than the single allowlisted STT model disables it (fail closed). */
-export function createTranscriptionAdapter(deps: { model?: string; call: TranscriptionCall; negotiate?: NegotiateCall }): TranscriptionAdapter {
+export function createTranscriptionAdapter(deps: { model?: string; call: TranscriptionCall; negotiate?: NegotiateCall; hangup?: HangupCall }): TranscriptionAdapter {
   if ((deps.model || STT_MODEL) !== STT_MODEL || typeof deps.call !== "function") return unavailableTranscription;
   return Object.freeze({
     available: true,
     model: STT_MODEL,
+    hangup: deps.hangup,
     async transcribe(input: TranscriptionInput): Promise<TranscriptionResult> {
       try {
         const r = await deps.call(input);
@@ -89,7 +93,7 @@ export function createTranscriptionAdapter(deps: { model?: string; call: Transcr
         if (!r || r.ok !== true) return { ok: false, reason: r ? r.reason : "realtime_error" };
         const answer = boundedSdp(r.answerSdp);
         if (answer === null) return { ok: false, reason: "realtime_invalid" };
-        return { ok: true, answerSdp: answer };
+        return { ok: true, answerSdp: answer, ...(r.providerCallId ? { providerCallId: r.providerCallId } : {}) };
       } catch {
         return { ok: false, reason: "realtime_error" };
       }
@@ -114,9 +118,18 @@ export function buildTranscriptionSessionConfig(): Record<string, unknown> {
   };
 }
 
-export type FetchLike = (url: string, init: Record<string, unknown>) => Promise<{ ok: boolean; text(): Promise<string> }>;
+export const parseRealtimeCallId = (location: unknown): string | null => {
+  if (typeof location !== "string") return null;
+  const m = /^\/v1\/realtime\/calls\/(rtc_[A-Za-z0-9_-]{1,128})$/.exec(location);
+  return m ? m[1] : null;
+};
+export type FetchLike = (url: string, init: Record<string, unknown>) => Promise<{
+  ok: boolean;
+  text(): Promise<string>;
+  headers?: { get(name: string): string | null };
+}>;
 
-async function abortableFetch(fetchImpl: FetchLike, url: string, init: Record<string, unknown>, opts?: { signal?: AbortSignal; deadlineMs?: number }): Promise<{ ok: boolean; text(): Promise<string> }> {
+async function abortableFetch(fetchImpl: FetchLike, url: string, init: Record<string, unknown>, opts?: { signal?: AbortSignal; deadlineMs?: number }): Promise<{ ok: boolean; text(): Promise<string>; headers?: { get(name: string): string | null } }> {
   const ctrl = new AbortController();
   const onAbort = () => ctrl.abort();
   if (opts?.signal) { if (opts.signal.aborted) ctrl.abort(); else opts.signal.addEventListener("abort", onAbort, { once: true }); }
@@ -127,13 +140,25 @@ async function abortableFetch(fetchImpl: FetchLike, url: string, init: Record<st
 
 /** Real STT + Realtime seams over the fixed provider — dormant until a key is given.
  *  `fetchImpl` is injectable so tests assert the exact request WITHOUT network. */
-export function createDefaultTranscriptionSeam(apiKey: string | null, fetchImpl?: FetchLike): { call: TranscriptionCall; negotiate: NegotiateCall } | null {
+export function createDefaultTranscriptionSeam(apiKey: string | null, fetchImpl?: FetchLike): { call: TranscriptionCall; negotiate: NegotiateCall; hangup: HangupCall } | null {
   if (!apiKey) return null;
-  const doFetch: FetchLike = fetchImpl || ((url, init) => fetch(url, init as RequestInit) as unknown as Promise<{ ok: boolean; text(): Promise<string> }>);
+  const doFetch: FetchLike = fetchImpl || ((url, init) => fetch(url, init as RequestInit) as unknown as Promise<{ ok: boolean; text(): Promise<string>; headers?: { get(name: string): string | null } }>);
   const call: TranscriptionCall = async (input) => {
     // text mode passes text straight through (no audio to transcribe).
     if (typeof input.text === "string" && input.text) return { ok: true, text: input.text, language: input.languageHint || "en" };
     return { ok: false, reason: "transcription_unavailable" };
+  };
+  // This private callback is the only hangup route: a fixed OpenAI origin and an
+  // opaque ID captured from OpenAI's Location header, never a browser parameter.
+  const hangup: HangupCall = async (id) => {
+    if (!/^rtc_[A-Za-z0-9_-]{1,128}$/.test(id)) return false;
+    try {
+      const r = await abortableFetch(doFetch, `${OPENAI_REALTIME_CALLS_URL}/${id}/hangup`, {
+        method: "POST", headers: { authorization: `Bearer ${apiKey}` },
+      }, { deadlineMs: 10_000 });
+      // 2xx indicates provider teardown initiated, NOT physically finished.
+      return r.ok === true;
+    } catch { return false; }
   };
   const negotiate: NegotiateCall = async (offerSdp, opts) => {
     try {
@@ -149,11 +174,24 @@ export function createDefaultTranscriptionSeam(apiKey: string | null, fetchImpl?
         body: form,
       }, opts);
       if (!res.ok) return { ok: false, reason: "realtime_error" };
-      const answerSdp = await res.text();
-      return { ok: true, answerSdp };
+      const providerCallId = parseRealtimeCallId(res.headers?.get("location"));
+      // A successful SDP exchange without the provider's call ID cannot be
+      // safely terminated by the server. Fail closed, don't expose the SDP.
+      if (!providerCallId) return { ok: false, reason: "realtime_call_id_missing" };
+      try {
+        const answerSdp = await res.text();
+        if (boundedSdp(answerSdp) === null || opts?.signal?.aborted) {
+          await hangup(providerCallId);
+          return { ok: false, reason: "realtime_invalid_or_cancelled" };
+        }
+        return { ok: true, answerSdp, providerCallId };
+      } catch {
+        await hangup(providerCallId);
+        return { ok: false, reason: "realtime_invalid" };
+      }
     } catch {
       return { ok: false, reason: "realtime_error" };
     }
   };
-  return { call, negotiate };
+  return { call, negotiate, hangup };
 }

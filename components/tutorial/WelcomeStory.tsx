@@ -25,6 +25,7 @@ import { useTutorial } from "@/lib/tutorial/tutorial-store";
 import { WELCOME_STORY } from "@/lib/tutorial/tutorial-content";
 import { LanguageToggle } from "./LanguageToggle";
 import { WelcomeScene } from "./WelcomeScenes";
+import { endTour, isBuddyEngaged, setTourActive } from "@/lib/tutorial/buddy-coordination";
 
 const SKIP_PREFIXES = ["/admin", "/partner", "/onboard", "/auth", "/circle", "/host", "/worker"];
 const REVEAL_DELAY_MS = 1200;
@@ -73,6 +74,8 @@ export function WelcomeStory() {
     if (SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return;
 
     revealTimerRef.current = setTimeout(() => {
+      // R2 — the guest is already being guided by Travel Buddy: defer (NOT marked shown/seen).
+      if (isBuddyEngaged()) return;
       markWelcomeShownThisSession(); // v323 — latch before showing, survives hard-nav within the tab
       setIdx(0);
       setExiting(false);
@@ -83,6 +86,13 @@ export function WelcomeStory() {
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
     };
   }, [hydrated, disabled, pathname, isSeen, active, setActive]);
+
+  // R2 — while the story is open Travel Buddy steps aside (it returns when the story closes).
+  useEffect(() => {
+    if (active !== "welcome") return;
+    setTourActive("welcome");
+    return () => endTour("welcome");
+  }, [active]);
 
   // ── Lock body scroll while open ─────────────────────────────────────
   useEffect(() => {

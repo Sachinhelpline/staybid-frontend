@@ -56,7 +56,7 @@ export const PROVIDER_LEDGER_MAX = 512 as const;
 export const BUDGET_PROVIDER = "openai" as const;
 export const REASONING_MODEL = "gpt-5.6-terra" as const;
 export const TRANSCRIPTION_MODEL = "gpt-live-transcribe" as const;
-export const TTS_MODEL = "gpt-4o-mini-tts" as const;
+export const TTS_MODEL = "tts-1" as const; // TEMPORARY tts-1 FALLBACK (narrow exception; revert = previous "gpt-4o-mini-tts")
 
 // The frozen per-class reservation profiles — the request-CEILING native units per
 // billing dimension (NOT rates). Reasoning reserves the worst case = max input at the

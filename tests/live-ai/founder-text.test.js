@@ -366,8 +366,12 @@ function eligInput(over) {
     ok(!/NEXT_PUBLIC_LIVE_AI_PROVIDER_BETA\s*[=:]\s*"1"/.test(all), "nothing sets the global provider flag");
     const contracts = fs.readFileSync(path.join(REPO, "lib/live-ai/contracts.ts"), "utf8");
     ok(!/PLACE_BID|CREATE_BOOKING|PAY|CHECKOUT/.test(contracts), "the typed LiveAiOperation set has no bid/booking/payment op");
-    const gitDiff = cp.spawnSync("git", ["diff", "--name-only", "HEAD", "--", "app/api/live-ai/session", "app/api/live-ai/staging/session", "lib/live-ai/staging-authority.ts", "lib/live-ai/broker.ts", "lib/live-ai/conversation.ts", "components/live-ai/LiveAiProvider.tsx"], { cwd: REPO, encoding: "utf8" });
-    ok(gitDiff.status === 0 && gitDiff.stdout.trim() === "", "customer broker, staging broker, staging authority, conversation + provider shell are byte-unchanged vs HEAD");
+    // CHANGED EXPECTATION (REAL-TEDDY consolidated batch, disclosed): the customer broker route, conversation and
+    // provider shell are now INTENTIONALLY changed by the authorized G-PUBLIC / G-TTS work and are pinned by that
+    // batch's exact changed-file allowlist test (tests/live-ai/travel-buddy-real-teddy.test.js). The PRODUCT-02
+    // staging surfaces and the pure broker helpers MUST still be byte-unchanged — that guard is unchanged here.
+    const gitDiff = cp.spawnSync("git", ["diff", "--name-only", "HEAD", "--", "app/api/live-ai/staging/session", "lib/live-ai/staging-authority.ts", "lib/live-ai/broker.ts"], { cwd: REPO, encoding: "utf8" });
+    ok(gitDiff.status === 0 && gitDiff.stdout.trim() === "", "staging broker, staging authority + pure broker helpers are byte-unchanged vs HEAD");
   }
 
   console.log(`\nfounder-text: ${pass} passed, ${fail} failed`);

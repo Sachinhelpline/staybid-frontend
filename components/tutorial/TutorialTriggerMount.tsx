@@ -20,6 +20,7 @@ import { useEffect, useRef } from "react";
 import { driver, type Driver } from "driver.js";
 import { useTutorial } from "@/lib/tutorial/tutorial-store";
 import { useLocalisedSteps } from "@/lib/tutorial/tutorial-content";
+import { endTour, setTourActive } from "@/lib/tutorial/buddy-coordination";
 
 export function TutorialTriggerMount() {
   const {
@@ -152,6 +153,7 @@ export function TutorialTriggerMount() {
           onDestroyed: () => {
             markSeen(key);
             setActive(null);
+            endTour(key); // R2 — Travel Buddy may come back
             try {
               window.dispatchEvent(new CustomEvent("sb:tour-end", { detail: { key } }));
             } catch {}
@@ -165,10 +167,12 @@ export function TutorialTriggerMount() {
         });
         driverRef.current = drv;
         setActive(key);
+        setTourActive(key); // R2 — Travel Buddy steps aside while the overlay is up
         drv.drive();
       } catch {
         clearPendingTrigger();
         handledRef.current = null;
+        endTour(key); // R2 — never leave Travel Buddy hidden behind a tour that did not start
       }
     };
 

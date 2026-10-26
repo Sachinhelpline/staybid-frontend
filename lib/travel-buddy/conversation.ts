@@ -45,6 +45,23 @@ export function resolveTravelBuddyGate(
 }
 
 /**
+ * LIVE controller presentation (integration candidate): with the provider gate P ON, Teddy is
+ * the SINGLE presentation of the ORIGINAL Live-AI controller instead of the legacy orb — only
+ * when BOTH the preview flag and the dedicated live flag are exactly "1". This flag enables no
+ * network by itself: the provider gate P (existing NEXT_PUBLIC_LIVE_AI_PROVIDER_BETA) still
+ * decides whether the original gateway transport exists at all. Fail-closed otherwise.
+ */
+export const TRAVEL_BUDDY_LIVE_FLAG = "NEXT_PUBLIC_TRAVEL_BUDDY_LIVE_CONTROLLER";
+export function resolveTravelBuddyLiveGate(
+  liveAiEnabled: boolean,
+  providerEnabled: boolean,
+  previewFlag: string | undefined = process.env.NEXT_PUBLIC_TRAVEL_BUDDY_UX_PREVIEW,
+  liveFlag: string | undefined = process.env.NEXT_PUBLIC_TRAVEL_BUDDY_LIVE_CONTROLLER,
+): boolean {
+  return liveAiEnabled === true && providerEnabled === true && previewFlag === "1" && liveFlag === "1";
+}
+
+/**
  * Typed-only preview (no SpeechRecognition, no speechSynthesis at all). Exactly "1" only;
  * anything else keeps the existing voice-capable presentation.
  */
@@ -199,6 +216,8 @@ const NOT_A_PLACE = new Set([
   "iss", "us", "yahan", "wahan", "city", "area", "town", "pahad", "pahadon", "mountain", "mountains", "hills", "beach",
   "sea", "india", "bharat", "circle", "staybid", "operated", "traditional", "classic", "demo", "aur", "and", "or", "with",
   "under", "below", "near", "nearby", "pass", "paas", "kam", "zyada", "mehenga", "luxury", "premium", "weekend",
+  // English "<verb> me <stays>" — the Hinglish "X me(in) hotels" pattern must not read these as a place
+  "show", "tell", "give", "find", "get", "help", "send", "let", "take", "book",
 ]);
 function placeOf(t: string): string | null {
   const pats = [
@@ -363,6 +382,20 @@ function op(x: unknown): LiveAiOperation | null {
 
 function titleCase(c: string): string {
   return c.replace(/\b([a-z])/g, (m) => m.toUpperCase());
+}
+
+/**
+ * Untrusted listing text (hotel / room names come from data, not from StayBid copy): strip
+ * control and bidi-override characters and clamp, so a name can only ever be displayed as
+ * plain data inside a caption — it is never parsed, planned or executed as an instruction.
+ */
+export function safeName(s: unknown, max = 80): string {
+  return String(s == null ? "" : s)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 }
 
 export function inr(n: number): string {
@@ -624,7 +657,9 @@ export function planTurn(p: ParsedUtterance, ctx: PlannerContext, prev: BuddySlo
   let followUp: string | null = null;
   const willNavigate = steps.some((s) => s.kind === "navigate_hotels");
   const hasAction = steps.some((s) => s.kind === "op");
-  if (!willNavigate || deferred == null) {
+  // Opening a stay leaves the list: a list follow-up ("say a number to open…") would be incoherent.
+  const opensStay = steps.some((s) => s.kind === "op" && s.purpose === "open");
+  if ((!willNavigate || deferred == null) && !opensStay) {
     const q = nextQuestion(slots, ctx.surface === "home" && willNavigate ? "hotels" : ctx.surface, lang);
     if (q && (hasAction || willNavigate || !knownCity || ctx.surface !== "hotels")) { followUp = q.text; slots.asked.push(q.key); }
   }
@@ -661,8 +696,8 @@ export function formatResults(
     const r = rows[0];
     const price = from != null ? L(lang, ` — ${inr(from)} se listed`, ` — listed from ${inr(from)}`) : "";
     return L(lang,
-      `${where ? where + " mein " : ""}1 stay screen par hai: ${r.name}${price}. "Isko kholo" boliye toh details dikhata hoon.`,
-      `1 stay on screen${where ? " in " + where : ""}: ${r.name}${price}. Say "open it" for details.`);
+      `${where ? where + " mein " : ""}1 stay screen par hai: ${safeName(r.name)}${price}. "Isko kholo" boliye toh details dikhata hoon.`,
+      `1 stay on screen${where ? " in " + where : ""}: ${safeName(r.name)}${price}. Say "open it" for details.`);
   }
   const stays = `${n} stays`;
   const hint = L(lang, " \"Top do compare karo\" ya number boliye.", " Say \"compare the top two\" or a number.");
@@ -679,8 +714,8 @@ export function formatResults(
  * Never states a rate, availability or capacity (the page itself shows its own prices).
  */
 export function formatRooms(lang: BuddyLang, roomTypes: ReadonlyArray<{ name: string }> | null | undefined, hotelName: string | null): string {
-  const who = hotelName || L(lang, "is hotel", "this hotel");
-  const names = (Array.isArray(roomTypes) ? roomTypes : []).map((r) => (r && typeof r.name === "string" ? r.name.trim() : "")).filter(Boolean);
+  const who = safeName(hotelName) || L(lang, "is hotel", "this hotel");
+  const names = (Array.isArray(roomTypes) ? roomTypes : []).map((r) => (r && typeof r.name === "string" ? safeName(r.name, 60) : "")).filter(Boolean);
   const uniq = names.filter((x, i) => names.indexOf(x) === i);
   if (!uniq.length) {
     return L(lang, `${who} ke rooms ki list abhi data mein nahi hai.`, `${who}'s room list isn't in the current data.`);
@@ -699,12 +734,12 @@ export function formatCompare(
   topRatedPosition: number | null,
 ): string {
   if (rows.length < 2) return L(lang, "Compare karne ke liye screen par do stays chahiye.", "I need two stays on screen to compare.");
-  const name = (pos: number | null) => rows.find((r) => r.position === pos)?.name || "";
+  const name = (pos: number | null) => safeName(rows.find((r) => r.position === pos)?.name);
   const parts: string[] = [];
   if (cheapestPosition != null && name(cheapestPosition)) parts.push(L(lang, `sasta: ${name(cheapestPosition)}`, `lower price: ${name(cheapestPosition)}`));
   if (topRatedPosition != null && name(topRatedPosition)) parts.push(L(lang, `behtar rating: ${name(topRatedPosition)}`, `higher rating: ${name(topRatedPosition)}`));
   // Parking only when the listing data itself says so (present / absent); unknown is never asserted.
-  const withParking = rows.filter((r) => r.parking === "present").map((r) => r.name).filter(Boolean);
+  const withParking = rows.filter((r) => r.parking === "present").map((r) => safeName(r.name)).filter(Boolean);
   const knownParking = rows.every((r) => r.parking === "present" || r.parking === "absent");
   if (withParking.length && withParking.length < rows.length && knownParking) {
     parts.push(L(lang, `parking listed: ${withParking.join(", ")}`, `parking listed: ${withParking.join(", ")}`));
@@ -714,7 +749,7 @@ export function formatCompare(
 }
 
 export function formatFact(lang: BuddyLang, topic: "breakfast" | "parking", fact: FacilityFact | null | undefined, hotelName: string | null): string {
-  const who = hotelName || L(lang, "is hotel", "this hotel");
+  const who = safeName(hotelName) || L(lang, "is hotel", "this hotel");
   const word = topic === "breakfast" ? L(lang, "breakfast", "breakfast") : "parking";
   if (fact === "present") return L(lang, `${who} ki listing mein ${word} hai.`, `${who} lists ${word}.`);
   if (fact === "absent") return L(lang, `${who} ki listing mein ${word} nahi dikh raha.`, `${who} does not list ${word}.`);

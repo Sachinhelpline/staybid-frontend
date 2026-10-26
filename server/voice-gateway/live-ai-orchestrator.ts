@@ -22,7 +22,7 @@
 import { randomBytes } from "node:crypto";
 import { validateModelOperation, validateModelAnswer, renderPlanSpokenText, approvedTextHash, evidenceSupportsPlan, resolveSourceHotelId } from "./live-ai-schemas";
 import { type ReasoningAdapter, MAX_REASONING_INPUT_TOKENS, MAX_REASONING_OUTPUT_TOKENS } from "./openai-responses";
-import { type TtsAdapter, TTS_SAMPLE_RATE, MAX_TTS_TEXT_CHARS } from "./openai-tts";
+import { type TtsAdapter, TTS_SAMPLE_RATE, MAX_TTS_TEXT_CHARS, MAX_TTS_BILLABLE_CHARS, ttsBillableCharUpperBound } from "./openai-tts";
 import { type LiveAiSession, type LiveAiSessionStore, type BudgetAuthority } from "./live-ai-sessions";
 
 export interface OrchestratorDeps {
@@ -310,6 +310,10 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     // approval invalidates the speech).
     if (session.ackAuthorityRef !== plan.authorityRef) return;
     if (!deps.tts.available || !plan.ttsText) return;
+    // TEMPORARY tts-1 FALLBACK — cap the exact input BEFORE any reservation: no provable billable-character bound
+    // within the admission cap ⇒ no reservation, no provider call (captions only).
+    const billableBound = ttsBillableCharUpperBound(plan.ttsText);
+    if (billableBound === null || billableBound > MAX_TTS_BILLABLE_CHARS) return;
     // P1-02 A/B — TTS also carries a NON-EMPTY gateway-owned trusted provider-call id
     // (minted here, never caller-chosen), bound through reserve → synthesize → settle.
     const ttsProviderTurnId = genId("pt");
@@ -317,6 +321,14 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     if (rres === null) { emit({ t: "turn.error", ...b, code: "budget_exceeded" }); return; }
     // P1-01 5A — durably persist the provider child BEFORE synthesis; failure ⇒ NO provider invocation.
     if (!(await persistProviderChild(session, ttsProviderTurnId))) { settle(session, "TTS", rres, null, RESERVE_TTS_UNITS, ttsProviderTurnId); emit({ t: "turn.error", ...b, code: "budget_exceeded" }); return; }
+    // CANCELLATION OWNERSHIP — re-check AFTER the durable persist await: a barge-in / Stop / termination /
+    // authority change during that wait must never START the synthesis. Conservative retention (settle null),
+    // exactly like the persist-failure path above; no usage is invented.
+    if (!alive() || session.ackAuthorityRef !== plan.authorityRef) {
+      settle(session, "TTS", rres, null, RESERVE_TTS_UNITS, ttsProviderTurnId);
+      await persistProviderSettlementBarrier(session, ttsProviderTurnId);
+      return;
+    }
     let ttsRaced;
     try { ttsRaced = await withDeadline(deps.tts.synthesize({ text: plan.ttsText, language: plan.language, signal, deadlineMs })); }
     catch { ttsRaced = null; }
@@ -325,7 +337,12 @@ export function createLiveAiOrchestrator(deps: OrchestratorDeps) {
     // timeout / failure / absent-or-malformed usage.
     const tRes = ttsRaced && !(ttsRaced as { __timedOut?: true }).__timedOut ? (ttsRaced as { ok?: boolean; usage?: unknown; chunks?: unknown }) : null;
     const ttsActual = tRes && tRes.ok === true && typeof tRes.usage === "number" && Number.isFinite(tRes.usage) && tRes.usage >= 0 ? tRes.usage : null;
-    settle(session, "TTS", rres, ttsActual, RESERVE_TTS_UNITS, ttsProviderTurnId);
+    // G-TTS — under the DPBEL core the TTS reservation is priced in the CATALOG's billing dimension
+    // (tts-1 fallback: tts_input_character via the composition's ttsReservationRule, ≥ the conservative bound);
+    // the adapter's usage figure is JS code units voiced, NOT the provider-billable count. Passing characters as the actual would compare
+    // unlike units (a false over-cap revoke, or an under-charge). The full reservation is therefore
+    // RETAINED (settle null) — conservative, never under-counted. The legacy path is unchanged.
+    settle(session, "TTS", rres, deps.budgetCore ? null : ttsActual, RESERVE_TTS_UNITS, ttsProviderTurnId);
     await persistProviderSettlementBarrier(session, ttsProviderTurnId);                  // P0-01B — durable post-settlement barrier
     if (!alive() || !ttsRaced || (ttsRaced as { __timedOut?: true }).__timedOut) return;
     // stale-authority re-check AFTER the provider call — already-generated audio for

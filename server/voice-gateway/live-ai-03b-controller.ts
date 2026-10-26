@@ -156,6 +156,14 @@ export interface Controller03bDeps {
    *  AWAITING_CAPABILITY, so the gateway can emit the browser proposal frame for the RETAINED
    *  lifecycle. The controller itself authorizes nothing here; 03A owns the admission. */
   readonly onCapabilityAdmitted?: (admission: unknown, dispatch: unknown) => void;
+  /** G-REBIND — OPTIONAL gateway-owned resolver of the CURRENT, already-ACKNOWLEDGED trusted binding +
+   *  validated published context for THIS turn. When IC01 returns REBIND_REQUIRED (an advanceable
+   *  capability — refine / show-section — legitimately advanced the bound context), the controller hands
+   *  this to the accepted `loop.rebind`, which re-validates it EXACTLY (same session + turn, advancing,
+   *  equal to the pinned expected result authority, coherent fresh context) and continues the SAME turn
+   *  with a replan. Never browser/model chosen; null / a rejected rebind ⇒ the turn ends REBIND_REQUIRED
+   *  (the gateway then emits an explicit, browser-valid turn.error — never a silent stall). */
+  readonly resolveRebind?: () => { readonly binding: TrustedBinding; readonly context: unknown } | null;
   /** P1-03 — a CONTROLLER-OWNED bounded provider-call ceiling for this turn. NEVER
    *  browser/model/user controlled. Omitted ⇒ the accepted IC01 bounded model-attempt
    *  ceiling (MAX_MODEL_CALLS_PER_TURN). An explicitly configured FIRST-PROBE mode passes 1
@@ -279,12 +287,15 @@ export function create03bController(deps: Controller03bDeps) {
 
   function emitCompiled(req: TextTurnRequest, eff: Extract<LoopEffect, { kind: "TERMINAL" }>): boolean {
     if (!eff.envelope) return false;
-    const env = eff.envelope as { binding?: { turnId?: unknown; generation?: unknown } };
+    const env = eff.envelope as { binding?: { turnId?: unknown; generation?: unknown; authorityRef?: unknown } };
     const turnId = typeof env.binding?.turnId === "string" ? env.binding.turnId : req.binding.turnId;
     const generation = typeof env.binding?.generation === "number" ? env.binding.generation : req.binding.generation;
+    // G-REBIND — the frame authority is the envelope's OWN compiled binding (after an in-turn rebind it is
+    // the advanced, acknowledged authority the browser holds), exactly like turnId/generation above.
+    const authorityRef = typeof env.binding?.authorityRef === "string" ? env.binding.authorityRef : req.binding.authorityRef;
     deps.emit({
       t: "answer.compiled", sessionId: req.binding.sessionId, turnId, generation,
-      authorityRef: req.binding.authorityRef, envelope: eff.envelope,
+      authorityRef, envelope: eff.envelope,
     });
     return true;
   }
@@ -323,9 +334,20 @@ export function create03bController(deps: Controller03bDeps) {
           // out-of-band and resumed via resumeWithObservation(...) on the SAME retained controller.
           return { state: "AWAITING_CAPABILITY", compiledEmitted: false, providerCalls };
         }
-        case "REBIND_REQUIRED":
+        case "REBIND_REQUIRED": {
           clearActiveCapability();
+          // G-REBIND — continue the SAME turn through the accepted IC01 rebind when the gateway can supply
+          // the current acknowledged binding; the loop itself is the authority that accepts or rejects it.
+          let rb: { readonly binding: TrustedBinding; readonly context: unknown } | null = null;
+          if (deps.resolveRebind) { try { rb = deps.resolveRebind(); } catch { rb = null; } }
+          if (rb) {
+            let next: LoopEffect;
+            try { next = deps.loop.rebind({ nowMs: monoNow(), binding: rb.binding, context: rb.context }); }
+            catch { next = { kind: "REJECTED", why: "rebind_error" }; }
+            if (next.kind !== "REJECTED") { eff = next; continue; }
+          }
           return { state: "REBIND_REQUIRED", compiledEmitted: false, providerCalls };
+        }
         case "TERMINAL": {
           clearActiveCapability();
           const emitted = emitCompiled(req, eff);

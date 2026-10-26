@@ -97,7 +97,7 @@ export interface GatewayConfig {
  *  other value DISABLES the provider (fail closed). Unset ⇒ the constant. */
 export const LIVE_AI_STT_MODEL = "gpt-live-transcribe" as const;
 export const LIVE_AI_REASONING_MODEL = "gpt-5.6-terra" as const;
-export const LIVE_AI_TTS_MODEL = "gpt-4o-mini-tts" as const;
+export const LIVE_AI_TTS_MODEL = "tts-1" as const; // TEMPORARY tts-1 FALLBACK — must equal openai-tts / budget-authority TTS_MODEL
 
 export interface LiveAiConfig {
   /** R — LIVE_AI_RUNTIME_ENABLED === "1": the gateway may create a session. */
@@ -128,7 +128,16 @@ export interface LiveAiConfig {
    *  authenticated provider call). Default OFF ⇒ the normal accepted IC01 bounded
    *  model-attempt ceiling. Configuration only; never browser/model/user controlled. */
   stagingFirstProbeOneCall: boolean;    // LIVE_AI_03B_FIRST_PROBE_ONE_CALL === "1" (default OFF)
+  /** G-PUBLIC — LIVE_AI_03B_PUBLIC_ADMISSION_ENABLED === "1": a SEPARATE, standalone gate (default OFF)
+   *  that admits SIGNED-IN public customers to the verified 03B route. Admission additionally requires
+   *  an `auth:true` assertion whose subject has the exact broker-derived public shape `pub1.<64 hex>`
+   *  (an HMAC of the VERIFIED customer id, minted only by the Next broker). It NEVER touches, widens or
+   *  bypasses the staging subject allowlist, and an `auth:false` (`px.*`) session can never enter. */
+  publicAdmissionEnabled: boolean;
 }
+
+/** G-PUBLIC — the exact opaque public-customer subject shape minted by the broker (versioned). */
+export const PUBLIC_SUBJECT_SHAPE = /^pub1\.[0-9a-f]{64}$/;
 
 function resolveLiveAiModel(raw: string | undefined, allowed: string): string {
   const v = nonEmpty(raw);
@@ -154,6 +163,7 @@ export function loadLiveAiConfig(env: GatewayEnv): LiveAiConfig {
     stagingTextEnabled: exactlyOne(env.LIVE_AI_03B_STAGING_TEXT_ENABLED),
     stagingSubjectAllowlist: parseSubjectAllowlist(env.LIVE_AI_03B_STAGING_SUBJECT_ALLOWLIST),
     stagingFirstProbeOneCall: exactlyOne(env.LIVE_AI_03B_FIRST_PROBE_ONE_CALL),
+    publicAdmissionEnabled: exactlyOne(env.LIVE_AI_03B_PUBLIC_ADMISSION_ENABLED),
   };
 }
 
@@ -199,6 +209,22 @@ export function liveAi03bStagingSubjectAllowed(c: LiveAiConfig, subjectDigest: s
  * enter 03B, even if its subject somehow matched the allowlist. Fail-closed on every axis. */
 export function liveAi03bStagingSessionAllowed(c: LiveAiConfig, authenticated: boolean, subjectDigest: string): boolean {
   return authenticated === true && liveAi03bStagingSubjectAllowed(c, subjectDigest);
+}
+/** G-PUBLIC — the public 03B TEXT route is configured ONLY when its own gate is ON and the exact 03B
+ *  TEXT provider prerequisites hold. Default OFF. */
+export function liveAi03bPublicTextConfigured(c: LiveAiConfig): boolean {
+  return Boolean(c.publicAdmissionEnabled && liveAi03bTextProviderConfigured(c));
+}
+/** G-PUBLIC — the per-session PUBLIC admission predicate: an AUTHENTICATED (`auth:true`) session whose
+ *  signed subject has the exact broker-derived `pub1.<64 hex>` shape, under the public gate. Fail closed
+ *  on every axis; an `auth:false` / `px.*` / staging-shaped subject can never satisfy it. */
+export function liveAi03bPublicSessionAllowed(c: LiveAiConfig, authenticated: boolean, subjectDigest: string): boolean {
+  return authenticated === true && liveAi03bPublicTextConfigured(c)
+    && typeof subjectDigest === "string" && PUBLIC_SUBJECT_SHAPE.test(subjectDigest);
+}
+/** The SINGLE 03B routing predicate: the UNCHANGED staging allowlist route OR the separate public route. */
+export function liveAi03bRouteAllowed(c: LiveAiConfig, authenticated: boolean, subjectDigest: string): boolean {
+  return liveAi03bStagingSessionAllowed(c, authenticated, subjectDigest) || liveAi03bPublicSessionAllowed(c, authenticated, subjectDigest);
 }
 
 /** Fail-closed: the Live-AI provider is reachable only with a key + all three models. */
@@ -462,6 +488,8 @@ export function safeConfigSummary(c: GatewayConfig): Record<string, unknown> {
       textProviderConfigured: liveAi03bTextProviderConfigured(c.liveAi),
       stagingTextConfigured: liveAi03bStagingTextConfigured(c.liveAi),
       stagingFirstProbeOneCall: c.liveAi.stagingFirstProbeOneCall,
+      publicAdmissionEnabled: c.liveAi.publicAdmissionEnabled,
+      publicTextConfigured: liveAi03bPublicTextConfigured(c.liveAi),
     },
   };
 }

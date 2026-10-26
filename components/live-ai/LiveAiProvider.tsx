@@ -37,7 +37,7 @@ import {
   type PageRegistration,
 } from "@/lib/live-ai/runtime";
 import { createNullTransport, type LiveAiTransport } from "@/lib/live-ai/transport";
-import { createGatewayTransport, createBrowserMedia, resolveClientGates } from "@/lib/live-ai/gateway-client";
+import { createGatewayTransport, createBrowserMedia, resolveClientGates, resolvePublicAdmissionClientGate, readPublicCustomerBearer } from "@/lib/live-ai/gateway-client";
 import { createConversation, type Conversation, type ConversationState } from "@/lib/live-ai/conversation";
 import { createAudioPlayback, createWebAudioSink } from "@/lib/live-ai/audio-playback";
 
@@ -76,6 +76,18 @@ interface LiveAiContextValue {
    *  ONLY this exact registration (a stale/older bridge cleanup can never remove
    *  a newer registration — REV-04). No-op when disabled. */
   registerPage: (reg: Omit<PageRegistration, "routeKey">) => () => void;
+  /** G-TTS — whether a verified compiled answer may be voiced (false while muted ⇒ no approval, no TTS). */
+  setVoiceOutput: (on: boolean) => void;
+  /** G-REBIND — the most recent explicit turn.error the controller received ({code, at ms}), or null, so a
+   *  presentation can tell the guest exactly what happened (never a silent stall). */
+  getLastTurnError: () => { code: string; at: number } | null;
+  /** G-PUBLIC — the compile-time public-admission build gate (exact "1"). */
+  publicAdmission: boolean;
+  /** G-PUBLIC — whether a signed-in guest's BACKEND session token is available for the broker now. */
+  hasCustomerBearer: () => boolean;
+  /** G-PUBLIC — ensure a backend customer token exists (a Firebase-only session is upgraded ONCE through the
+   *  existing exchange). Resolves true only when a usable backend token is available afterwards. */
+  ensureCustomerBearer: () => Promise<boolean>;
 }
 
 const DISABLED_VALUE: LiveAiContextValue = {
@@ -97,6 +109,11 @@ const DISABLED_VALUE: LiveAiContextValue = {
   audioNeedsResume: false,
   notifyContext: () => {},
   registerPage: () => () => {},
+  setVoiceOutput: () => {},
+  getLastTurnError: () => null,
+  publicAdmission: false,
+  hasCustomerBearer: () => false,
+  ensureCustomerBearer: async () => false,
 };
 
 const LiveAiContext = createContext<LiveAiContextValue>(DISABLED_VALUE);
@@ -215,6 +232,27 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
   // and flushed once the controller reaches IDLE (connected + acked); the first text
   // turn thus safely STARTS the transport instead of being silently dropped.
   const pendingTextRef = useRef<string | null>(null);
+  // G-TTS — the guest's voice-output preference (Teddy's mute toggles it). Read at answer time.
+  const voiceOutputRef = useRef<boolean>(true);
+  const setVoiceOutput = useCallback((on: boolean) => { voiceOutputRef.current = on === true; }, []);
+  const lastTurnErrorRef = useRef<{ code: string; at: number } | null>(null);
+  const getLastTurnError = useCallback(() => lastTurnErrorRef.current, []);
+  const publicAdmissionGate = useMemo(() => resolvePublicAdmissionClientGate(), []);
+  const hasCustomerBearer = useCallback(() => {
+    try { return !!readPublicCustomerBearer(typeof window !== "undefined" ? window.localStorage : null); } catch { return false; }
+  }, []);
+  const ensureCustomerBearer = useCallback(async (): Promise<boolean> => {
+    if (hasCustomerBearer()) return true;
+    try {
+      const ls = typeof window !== "undefined" ? window.localStorage : null;
+      // lazy (public sign-in path only): the existing one-time Firebase → backend session exchange.
+      if (ls && ls.getItem("sb_token") && ls.getItem("sb_token_type") === "firebase") {
+        const m = await import("@/lib/auth/ensure-backend-session");
+        await m.ensureBackendSessionToken();
+      }
+    } catch { return false; }
+    return hasCustomerBearer();
+  }, [hasCustomerBearer]);
 
   // V=1,P=1 → lazily construct the gateway transport (WITH the browser mic media
   // adapter — REV-03) + conversation controller (browser only). Nothing starts here:
@@ -234,7 +272,16 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
     // R4-03 — pass a media FACTORY (not a shared object): the transport mints a FRESH media
     // session per start(), so an old (superseded) start can never close a newer start's mic /
     // peer / data channel. A start that returns null ⇒ mic unavailable (fails closed).
+    // G-PUBLIC / G-GATE — ONLY a public-admission build forwards the signed-in customer's backend token to
+    // the same-origin broker (which verifies it server-side). Gate OFF ⇒ no getter ⇒ byte-identical prior
+    // behaviour. Gate ON + no usable token ⇒ the client refuses to call the broker (fail closed).
+    const publicAdmission = resolvePublicAdmissionClientGate();
     const transport = createGatewayTransport({
+      // G-RATE — a public build keeps the SAME gateway session across mic capture → reviewed text.
+      ...(publicAdmission ? { retainSessionAfterCapture: true } : {}),
+      ...(publicAdmission ? { brokerAuthorization: () => {
+        try { return readPublicCustomerBearer(typeof window !== "undefined" ? window.localStorage : null); } catch { return null; }
+      } } : {}),
       createMediaSession: () => createBrowserMedia({
         onFinalTranscript: (t) => { try { conversationRef.current?.submitText(t); } catch { /* no-op */ } },
         currentGeneration: () => { try { return conversationRef.current?.getGeneration() ?? 0; } catch { return 0; } },
@@ -245,7 +292,10 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
       runtime,
       transport,
       audio: createAudioPlayback({ sink }),
+      // G-TTS — voice a verified compiled answer only in a public-admission build and only while not muted.
+      ...(publicAdmission ? { speakCompiledAnswers: () => voiceOutputRef.current === true } : {}),
       onEvent: (ev) => {
+        if (ev.type === "error") { lastTurnErrorRef.current = { code: String((ev as { code?: unknown }).code || "error"), at: Date.now() }; }
         if (ev.type === "state") {
           setConvState(ev.state);
           // REV-04 — flush a buffered first-text turn once connected + acked.
@@ -438,8 +488,13 @@ export function LiveAiProvider({ children }: { children: React.ReactNode }) {
       audioNeedsResume,
       notifyContext,
       registerPage,
+      setVoiceOutput,
+      getLastTurnError,
+      publicAdmission: publicAdmissionGate,
+      hasCustomerBearer,
+      ensureCustomerBearer,
     }),
-    [enabled, providerEnabled, runtime, registeredPageId, activated, orbState, convState, audioNeedsResume, activate, deactivate, toggle, startProvider, submitText, bargeIn, resumeAudio, notifyContext, registerPage],
+    [enabled, providerEnabled, runtime, registeredPageId, activated, orbState, convState, audioNeedsResume, activate, deactivate, toggle, startProvider, submitText, bargeIn, resumeAudio, notifyContext, registerPage, setVoiceOutput, getLastTurnError, publicAdmissionGate, hasCustomerBearer, ensureCustomerBearer],
   );
 
   return <LiveAiContext.Provider value={enabled ? value : DISABLED_VALUE}>{children}</LiveAiContext.Provider>;

@@ -9,7 +9,7 @@
 // it (derived from a validated AnswerPlan + verified evidence) — never model prose.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const TTS_MODEL = "gpt-4o-mini-tts" as const;
+export const TTS_MODEL = "tts-1" as const; // TEMPORARY tts-1 FALLBACK (deprecated by the provider; scheduled removal 2027-01-06)
 export const TTS_SAMPLE_RATE = 24000;
 export const MAX_TTS_CHUNK_BYTES = 12 * 1024;
 export const MAX_TTS_TOTAL_BYTES = 90 * 24000 * 2; // 90 s ceiling
@@ -18,6 +18,27 @@ export const MAX_TTS_TOTAL_BYTES = 90 * 24000 * 2; // 90 s ceiling
 // an unbounded call. Also the conservative budget reservation unit (characters — the
 // provider's TTS billing unit) so the settled ACTUAL (characters voiced) is ≤ reservation.
 export const MAX_TTS_TEXT_CHARS = 2000;
+// TEMPORARY tts-1 FALLBACK — tts-1 is billed per INPUT CHARACTER; the provider documents a 4,096-character input
+// maximum. The exact server-sent `input` is admitted ONLY when its conservative billable-character upper bound is
+// ≤ this cap, and the owner TTS reservation rule must reserve ≥ this many characters (live-ai-public-main.ts).
+export const MAX_TTS_BILLABLE_CHARS = 4096;
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+/** Conservative upper bound of the provider-billable "characters" of the EXACT `input` string, or null (refuse).
+ *  The provider's precise counting unit is not published, so take the MAXIMUM UTF-8 byte length over the string and
+ *  its NFC / NFD / NFKC / NFKD forms. For every well-formed string: grapheme clusters ≤ code points ≤ UTF-16 code units
+ *  ≤ UTF-8 bytes, so this dominates each of those counts under any of the four normalization forms (incl. Devanagari,
+ *  combining marks, emoji / ZWJ sequences and normalization-expanding code points). Empty, non-string, over the
+ *  2,000-code-unit ceiling or ill-formed (lone surrogate) text ⇒ null. Small integers only (≤ 2,000 × 18 × 4). */
+export function ttsBillableCharUpperBound(text: unknown): number | null {
+  if (typeof text !== "string" || text.length === 0 || text.length > MAX_TTS_TEXT_CHARS) return null;
+  if (LONE_SURROGATE.test(text)) return null;
+  let max = 0;
+  for (const f of [text, text.normalize("NFC"), text.normalize("NFD"), text.normalize("NFKC"), text.normalize("NFKD")]) {
+    const n = Buffer.byteLength(f, "utf8");
+    if (n > max) max = n;
+  }
+  return max;
+}
 
 export interface TtsChunk { seq: number; bytes: string } // base64 PCM16 LE
 export type TtsResult =
@@ -157,6 +178,9 @@ export function createTtsAdapter(deps: { model?: string; call: TtsCall }): TtsAd
         // unbounded synthesis). `input.text.length` is then the measurable billing unit.
         if (typeof input.text !== "string" || input.text.length === 0) return { ok: false, reason: "tts_invalid" };
         if (input.text.length > MAX_TTS_TEXT_CHARS) return { ok: false, reason: "tts_too_long" };
+        // TEMPORARY tts-1 FALLBACK — the exact provider `input` must have a provable billable-character bound ≤ the cap.
+        const billable = ttsBillableCharUpperBound(input.text);
+        if (billable === null || billable > MAX_TTS_BILLABLE_CHARS) return { ok: false, reason: "tts_too_long" };
         const r = await deps.call(input);
         if (!r || r.ok !== true) return { ok: false, reason: r ? r.reason : "tts_error" };
         if (!Array.isArray(r.chunks)) return { ok: false, reason: "tts_invalid" };

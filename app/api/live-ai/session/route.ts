@@ -31,9 +31,15 @@ import {
   ASSERTION_TTL_SEC,
   LIVE_AI_SCOPE,
 } from "@/lib/live-ai/broker";
+import { publicAdmissionEnabled, decidePublicAdmission } from "@/lib/live-ai/public-admission";
+import { createMediaCustomerAuthority, resolveVerifiedMediaCustomer } from "@/lib/auth/media-customer-authority";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// G-PUBLIC — the STRICT verified-customer authority (JWT_ACCESS_SECRET HS256 + fresh backend account proof),
+// built once per server instance and consulted ONLY when the public admission gate is on.
+const customerAuthority = createMediaCustomerAuthority();
 
 function nonEmpty(v: string | undefined): string | null {
   return typeof v === "string" && v.trim().length > 0 ? v : null;
@@ -83,10 +89,24 @@ export async function POST(req: Request): Promise<Response> {
   const sessionReq = validateSessionRequest(parsed);
   if (!sessionReq) return NextResponse.json({ error: "invalid_body" }, { status: 400 });
 
-  // 5) one-use ~60s ES256 assertion (server-generated pseudonymous subject).
-  const subject = "px." + randomUUID().replace(/-/g, "");
+  // 4b) G-PUBLIC — with the dedicated public admission gate ON, ONLY a VERIFIED signed-in customer is
+  //     admitted (auth:true, broker-derived opaque `pub1.` subject); there is NO anonymous fallback.
+  //     Gate OFF ⇒ the original anonymous broker behaviour below is byte-for-byte unchanged.
+  let subject: string;
+  let authenticated = false;
+  if (publicAdmissionEnabled(env)) {
+    const decision = await decidePublicAdmission({ env, verifyCustomer: () => resolveVerifiedMediaCustomer(req, customerAuthority) });
+    if (!decision.ok) return NextResponse.json({ error: decision.error }, { status: decision.status });
+    subject = decision.subject;
+    authenticated = true;
+  } else {
+    // 5) one-use ~60s ES256 assertion (server-generated pseudonymous subject).
+    subject = "px." + randomUUID().replace(/-/g, "");
+  }
   const jti = randomUUID().replace(/-/g, "");
-  const claims = buildAssertionClaims({ subject, jti, origin: canonicalOrigin });
+  const claims = authenticated
+    ? { scope: LIVE_AI_SCOPE, sub: subject, jti, origin: canonicalOrigin, auth: true as const }
+    : buildAssertionClaims({ subject, jti, origin: canonicalOrigin });
   let assertion: string;
   try {
     const key = await importPKCS8(signingPrivateKey, "ES256");

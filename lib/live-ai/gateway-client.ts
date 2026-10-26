@@ -49,7 +49,14 @@ export interface ClientGates {
   provider: boolean;
 }
 export function resolveClientGates(env?: Record<string, string | undefined>): ClientGates {
-  const e = env || (typeof process !== "undefined" && process.env ? process.env : {});
+  // G-GATE — Next.js inlines ONLY literal `process.env.NEXT_PUBLIC_*` member reads into client
+  // bundles; an aliased `process.env` object is the EMPTY browser polyfill, which made P a silent
+  // no-op in every real browser build. Read the two flags literally (Node behaviour unchanged;
+  // unset ⇒ OFF, exactly as before).
+  const e = env || {
+    NEXT_PUBLIC_VOICE_AI_BETA: process.env.NEXT_PUBLIC_VOICE_AI_BETA,
+    NEXT_PUBLIC_LIVE_AI_PROVIDER_BETA: process.env.NEXT_PUBLIC_LIVE_AI_PROVIDER_BETA,
+  };
   const v = e.NEXT_PUBLIC_VOICE_AI_BETA === "1";
   const p = v && e.NEXT_PUBLIC_LIVE_AI_PROVIDER_BETA === "1";
   return { runtime: v, provider: p };
@@ -99,6 +106,11 @@ export interface GatewayTransportDeps {
   brokerAuthorization?: () => string | null;
   /** PRODUCT-02 — refuse any microphone start (the staging surface is TEXT ONLY). */
   textOnly?: boolean;
+  /** G-RATE — OPT-IN: when true, a capture-closing interrupt on an INSTALLED microphone owner releases ONLY
+   *  the capture (tracks + peer/dc + the exact lease, finalized once; cumulative ledger untouched) and KEEPS
+   *  the authenticated control socket, so the reviewed transcript is sent on the SAME gateway session (one
+   *  session start per voice turn). Default false ⇒ the accepted R5C behaviour (full teardown) is unchanged. */
+  retainSessionAfterCapture?: boolean;
   /** R5C — the MONOTONIC clock for the controller-lifetime capture ledger (defaults to
    *  performance.now() when available, else Date.now()). Tests inject a deterministic
    *  monotonic fake. */
@@ -233,6 +245,23 @@ export function createGatewayTransport(deps: GatewayTransportDeps): LiveAiTransp
     // R5C3 (§5 REV-01) — select the exact current MICROPHONE owner by MICROPHONE OWNERSHIP (mode),
     // NOT by captureAcquired: a PENDING mic owner MUST be cancellable BEFORE getUserMedia resolves.
     // Priority: the installed mic owner, else the pending mic owner. MUT-R5C3-01 anchor.
+    // G-RATE (OPT-IN, deps.retainSessionAfterCapture) — an INSTALLED microphone owner releases ONLY its capture (media tracks + peer/dc + the exact
+    // lease, finalized once with the actual elapsed time; the cumulative ledger is untouched) and KEEPS its
+    // authenticated control socket, so the reviewed transcript is submitted as turn.text on the SAME gateway
+    // session — one session start per voice turn instead of two. A PENDING mic start (not yet installed) is
+    // still fully torn down, exactly as before. Re-capturing still requires a fresh explicit
+    // start(mode:"microphone") (which needs a disconnected transport ⇒ a new session); no lease is re-admitted.
+    if (deps.retainSessionAfterCapture === true && installedOwner && installedOwner.mode === "microphone") {
+      const i = installedOwner;
+      const md = i.media, tok = i.captureLeaseToken;
+      if (!md && !tok) return;                                      // capture already released (idempotent)
+      i.media = null; i.captureLeaseToken = null; i.captureAcquired = false;
+      if (ownerMedia === md) ownerMedia = null;
+      micActive = false;
+      try { md?.close(); } catch { /* no-op */ }                    // stop tracks + close peer/dc (provider capture ends)
+      try { ledger.finalize(tok, "partial"); } catch { /* no-op */ } // exactly once; actual elapsed charged
+      return;
+    }
     const holder = (installedOwner && installedOwner.mode === "microphone") ? installedOwner
                  : (pendingOwner && pendingOwner.mode === "microphone") ? pendingOwner
                  : null;
@@ -950,3 +979,30 @@ function defaultSocketOpener(): SocketOpener {
 
 /** Re-export so callers can construct the fully dormant default. */
 export { createNullTransport };
+
+// ─────────────────────────────────────────────────────────────────────────
+// G-PUBLIC / G-GATE — browser-side public-customer session helpers (PURE). The browser NEVER decides
+// admission: the same-origin broker verifies the customer token server-side and the gateway re-checks
+// the signed subject shape. These only read the COMPILE-TIME client gate (a LITERAL process.env member)
+// and the signed-in customer's BACKEND token to forward as the broker Bearer (never a Firebase token).
+// ─────────────────────────────────────────────────────────────────────────
+/** The bearer shape the gateway client accepts (mirrors its own guard). */
+const PUBLIC_BEARER_SHAPE = /^[A-Za-z0-9._~+/-]{16,4096}={0,2}$/;
+
+/** G-GATE — the compile-time public-admission client gate (exact "1"; anything else ⇒ OFF). */
+export function resolvePublicAdmissionClientGate(): boolean {
+  return process.env.NEXT_PUBLIC_LIVE_AI_PUBLIC_ADMISSION === "1";
+}
+
+export interface TokenStorageLike { getItem(key: string): string | null }
+
+/** The signed-in customer's backend (HS256) session token, or null (anonymous / Firebase-only / malformed). */
+export function readPublicCustomerBearer(storage: TokenStorageLike | null | undefined): string | null {
+  if (!storage) return null;
+  let token: string | null = null;
+  let type: string | null = null;
+  try { token = storage.getItem("sb_token"); type = storage.getItem("sb_token_type"); } catch { return null; }
+  if (typeof token !== "string" || !PUBLIC_BEARER_SHAPE.test(token)) return null;
+  if (type === "firebase") return null;            // never forward a Firebase ID token to the broker
+  return token;
+}

@@ -30,10 +30,19 @@
 //     No DOM scraping, no selectors, no free-form URLs, no new API routes.
 //   • Bookings / bids / payments / messages / account changes are NEVER executed:
 //     guidance captions only. No provider, no paid AI, no secrets.
-//   • Speech uses ONLY browser-native speechSynthesis (after the tap, mutable) and
-//     browser SpeechRecognition (which may use the browser vendor's speech
-//     service — disclosed; NOT an offline mode). Typed input works without any
-//     permission and sends the typed words nowhere. Clearly labelled preview.
+//   • Integrated TEXT + VOICE (offline candidate): typed and voice turns share ONE
+//     conversation (one log, one slot/context model, one planner via the
+//     lib/travel-buddy/voice-io reasoning seam). A voice transcript is NEVER acted
+//     on directly: it opens a review card (verbatim, editable) and low-confidence
+//     critical fields (destination / budget / guests / nights / dates) must be
+//     confirmed or edited before Send — nothing is silently corrected.
+//   • Voice I/O is injected and FAIL-CLOSED: default "off". "Simulated" demo voice
+//     (NEXT_PUBLIC_TRAVEL_BUDDY_DEMO_VOICE=1) uses NO microphone and plays NO audio —
+//     sample phrases stand in for speech and every surface is labelled SIMULATED.
+//     Browser SpeechRecognition (vendor speech service) only with
+//     NEXT_PUBLIC_TRAVEL_BUDDY_BROWSER_STT=1; speechSynthesis only with on-device
+//     voices and NEXT_PUBLIC_TRAVEL_BUDDY_DEVICE_TTS=1. Real provider STT / model /
+//     TTS egress is not compiled at all. Typed input sends the typed words nowhere.
 // ─────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -46,6 +55,7 @@ import {
   DEMO_NOTE,
   TYPED_PREVIEW_NOTE,
   captionChunks,
+  detectLang,
   emptySlots,
   formatCompare,
   formatFact,
@@ -55,14 +65,14 @@ import {
   greetingFor,
   hotelsHrefFor,
   isTextOnlyPreview,
-  parseUtterance,
-  planTurn,
   resolveTravelBuddyGate,
+  resolveTravelBuddyLiveGate,
   silenceFollowUp,
   surfaceForPath,
   type BuddyLang,
   type BuddySlots,
   type PlannerContext,
+  type PlanStep,
 } from "@/lib/travel-buddy/conversation";
 import {
   DEFAULT_PREFS,
@@ -88,6 +98,29 @@ import {
   type Rect,
   type SafeBox,
 } from "@/lib/travel-buddy/mascots";
+import {
+  DEMO_VOICE_NOTE,
+  LIVE_VOICE_NOTE,
+  SIMULATED_FAILURES,
+  SIMULATED_PHRASES,
+  VOICE_OFF_NOTE,
+  createSimulatedStt,
+  resolveVoiceIo,
+  selectReasoning,
+  type SimulatedUtterance,
+  type SttFailure,
+  type SttResult,
+  type VoiceIoConfig,
+} from "@/lib/travel-buddy/voice-io";
+import {
+  appendEntry,
+  criticalLabel,
+  reviewTranscript,
+  type ConversationEntry,
+  type CriticalKey,
+} from "@/lib/travel-buddy/session";
+import { installTranscriptReview, type TranscriptReviewBridge } from "@/lib/travel-buddy/live-bridge";
+import { getActiveTour, setBuddyEngaged, subscribeTour, tourOverlayPresent } from "@/lib/tutorial/buddy-coordination";
 
 // The app's OWN launch destination list is the destination allow-list.
 const CITIES: readonly string[] = Object.freeze(
@@ -111,7 +144,7 @@ const EXAMPLES = [
 ];
 
 type Who = "buddy" | "you" | "note";
-interface Caption { who: Who; text: string; ai?: boolean } // ai: from the founder-only provider (PRODUCT-02)
+interface Caption { who: Who; text: string; ai?: boolean; live?: boolean } // ai: founder-only provider (PRODUCT-02); live: ORIGINAL controller answer
 type ListenMode = "gesture" | "auto";
 
 // ---- page geometry probe (UX finishing F1) -----------------------------------
@@ -204,23 +237,69 @@ function makePageProbe(root: Element | null, vw: number, vh: number): PageProbe 
 
 const getRecognition = (): any =>
   isTextOnlyPreview() ? null :
+  voiceIoNow().stt !== "browser" ? null : // the vendor speech service is OFF unless explicitly flagged
   typeof window !== "undefined" ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null) : null;
+
+/** Voice I/O modes for THIS build (each flag exactly "1"; real provider egress is never compiled). */
+function voiceIoNow(): VoiceIoConfig {
+  return resolveVoiceIo(
+    isTextOnlyPreview(),
+    process.env.NEXT_PUBLIC_TRAVEL_BUDDY_DEMO_VOICE,
+    process.env.NEXT_PUBLIC_TRAVEL_BUDDY_BROWSER_STT,
+    process.env.NEXT_PUBLIC_TRAVEL_BUDDY_DEVICE_TTS,
+    liveControllerBuild(),
+  );
+}
+
+/** The live-controller presentation predicate from the BUILD flags (V, P, preview, live). */
+function liveControllerBuild(): boolean {
+  return resolveTravelBuddyLiveGate(
+    process.env.NEXT_PUBLIC_VOICE_AI_BETA === "1",
+    process.env.NEXT_PUBLIC_VOICE_AI_BETA === "1" && process.env.NEXT_PUBLIC_LIVE_AI_PROVIDER_BETA === "1",
+  );
+}
+
+const LIVE_ANSWER_MAX_MS = 30_000; // a live turn with no verified answer by then ends honestly
+
+
+const LIVE_POLL_MS = 150;
+
+const SIM_STT = createSimulatedStt();          // no microphone, no audio, no network
+const REASONING = selectReasoning(voiceIoNow()); // ONE shared core for typed + voice (scripted; provider disabled)
+
+type VoicePanel = "consent" | "listening" | "hearing";
+interface Review { result: SttResult; draft: string; confirmed: CriticalKey[] }
 
 /** Gate wrapper: nothing at all (no hooks/listeners) unless the preview gate holds. */
 export default function TravelBuddy() {
   const { enabled, providerEnabled } = useLiveAi();
-  if (!resolveTravelBuddyGate(enabled, providerEnabled)) return null;
-  return <TravelBuddyPreview />;
+  // Scripted preview (provider P OFF) OR live-controller presentation (P ON + live flag).
+  const live = resolveTravelBuddyLiveGate(enabled, providerEnabled);
+  if (!resolveTravelBuddyGate(enabled, providerEnabled) && !live) return null;
+  return <TravelBuddyPreview live={live} />;
 }
 
-function TravelBuddyPreview() {
-  const { runtime, activated, activate, deactivate } = useLiveAi();
+function TravelBuddyPreview({ live = false }: { live?: boolean }) {
+  const { runtime, activated, activate, deactivate, startProvider, submitText: liveSubmitText, bargeIn, conversation, orbState, setVoiceOutput, getLastTurnError, publicAdmission, hasCustomerBearer, ensureCustomerBearer } = useLiveAi();
+  // LIVE controller mode: every turn goes to the ORIGINAL controller (no scripted reply).
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  const liveMicRef = useRef(false);                    // the ORIGINAL controller owns a live mic right now
+  const bargeInRef = useRef(bargeIn);
+  bargeInRef.current = bargeIn;
+  const convRef = useRef(conversation);
+  convRef.current = conversation;
+  const bridgeRef = useRef<TranscriptReviewBridge | null>(null);
+  const [tourActive, setTourActiveState] = useState<string | null>(null);
   const pathname = usePathname() || "/";
   const router = useRouter();
   const surface = surfaceForPath(pathname);
 
   const [caption, setCaption] = useState<Caption | null>(null);
   const [muted, setMuted] = useState(false);
+  // G-PUBLIC — the real AI is for SIGNED-IN guests when the public-admission build gate is on (the broker
+  // enforces it server-side; this only explains it and offers the existing sign-in-then-resume flow).
+  const [signInNeeded, setSignInNeeded] = useState(false);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const [listening, setListening] = useState(false);
@@ -232,6 +311,12 @@ function TravelBuddyPreview() {
   const [micBlocked, setMicBlocked] = useState(false);   // the guest/browser denied the mic (this session)
   const [voiceMissing, setVoiceMissing] = useState(false); // no SpeechRecognition in this browser
   const [hadTurn, setHadTurn] = useState(false); // example chips only until the first guest turn
+  // Integrated TEXT + VOICE: simulated voice panel, transcript review, ONE shared conversation log.
+  const [voicePanel, setVoicePanel] = useState<VoicePanel | null>(null);
+  const [review, setReview] = useState<Review | null>(null);
+  const [log, setLog] = useState<ConversationEntry[]>([]);
+  const [logOpen, setLogOpen] = useState(false);
+  const [panelH, setPanelH] = useState(0);
   // PRODUCT-02 — founder-only REAL AI TEXT (inert unless its build flag + server eligibility + explicit opt-in).
   const founder = useFounderText(runtime);
   const founderRef = useRef(founder);
@@ -266,7 +351,14 @@ function TravelBuddyPreview() {
   const announcedCountRef = useRef<number | null>(null); // result count announced in THIS turn (null = none)
   const captionSeqRef = useRef(0);
   const fadeTimerRef = useRef<number | null>(null);
-  const handleUserTextRef = useRef<(raw: string, fromVoice?: boolean) => Promise<void>>(async () => {});
+  const handleUserTextRef = useRef<(raw: string, fromVoice?: boolean, voiceSource?: SttResult["source"]) => Promise<void>>(async () => {});
+  const openReviewRef = useRef<(result: SttResult) => void>(() => {});
+  const simConsentRef = useRef(false);          // simulated-mic "permission" granted this session
+  const simAbortRef = useRef<AbortController | null>(null);
+  const reviewRef = useRef<Review | null>(null);
+  reviewRef.current = review;
+  const bottomPanelRef = useRef<HTMLDivElement | null>(null);
+  const logListRef = useRef<HTMLOListElement | null>(null);
   const seqRef = useRef<Promise<unknown>>(Promise.resolve()); // the greeting sequence; async notes queue behind it
 
   // ---- timers / speech primitives -------------------------------------------
@@ -284,7 +376,7 @@ function TravelBuddyPreview() {
 
   const cancelSpeech = useCallback(() => {
     // Typed-only preview never touches speechSynthesis at all (not even cancel()).
-    try { if (!isTextOnlyPreview() && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* no-op */ }
+    try { const tts = voiceIoNow().tts; if ((tts === "device" || tts === "browser") && !isTextOnlyPreview() && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* no-op */ }
     if (speakingRef.current) ignoreUntilRef.current = Date.now() + SELF_CAPTURE_GUARD_MS;
     speakingRef.current = false;
     setSpeaking(false);
@@ -294,6 +386,13 @@ function TravelBuddyPreview() {
     const r = recogRef.current;
     recogRef.current = null;
     if (r) { try { r.onresult = null; r.onerror = null; r.onend = null; r.abort(); } catch { /* no-op */ } }
+    const sim = simAbortRef.current;            // simulated "hearing…" in flight → cancelled
+    simAbortRef.current = null;
+    if (sim) { try { sim.abort(); } catch { /* no-op */ } }
+    // LIVE: the ORIGINAL controller owns the mic — stopping listening is its capture-closing
+    // barge-in (closes media + lease). Only when a live mic was actually started by Teddy.
+    if (liveMicRef.current) { liveMicRef.current = false; try { bargeInRef.current(); } catch { /* no-op */ } }
+    setVoicePanel(null);
     setListening(false);
   }, []);
 
@@ -319,9 +418,17 @@ function TravelBuddyPreview() {
     const readable = new Promise<void>((r) => { window.setTimeout(r, Math.max(1800, text.length * 50)); });
     const spoken = new Promise<void>((resolve) => {
       const fallbackMs = Math.max(2200, text.length * 62);
-      if (mutedRef.current || isTextOnlyPreview() || typeof window === "undefined" || !("speechSynthesis" in window)) {
-        window.setTimeout(resolve, fallbackMs);
+      const tts = voiceIoNow().tts;
+      if (mutedRef.current || isTextOnlyPreview() || (tts !== "device" && tts !== "browser") || typeof window === "undefined" || !("speechSynthesis" in window)) {
+        window.setTimeout(resolve, fallbackMs); // simulated / controller-owned playback: the caption is the output here
         return;
+      }
+      // Device TTS: ON-DEVICE voices only (localService) — a remote/network voice is never used.
+      // Legacy "browser" TTS (R1, no voice flag set): the pre-Candidate01 behaviour, default voice.
+      let local: SpeechSynthesisVoice | undefined;
+      if (tts === "device") {
+        try { local = window.speechSynthesis.getVoices().find((v) => v.localService && v.lang.toLowerCase().startsWith(lang === "en" ? "en" : "hi")); } catch { local = undefined; }
+        if (!local) { window.setTimeout(resolve, fallbackMs); return; }
       }
       let done = false;
       const finish = () => {
@@ -334,6 +441,7 @@ function TravelBuddyPreview() {
       try {
         const u = new SpeechSynthesisUtterance(text);
         u.lang = lang === "en" ? "en-IN" : "hi-IN";
+        if (local) u.voice = local;
         u.rate = 1;
         u.onend = finish;
         u.onerror = finish;
@@ -349,6 +457,7 @@ function TravelBuddyPreview() {
   /** Show a caption as ≤2-line chunks (spoken when not muted). Returns false if superseded. */
   const say = useCallback(async (text: string, gen: number, who: Who = "buddy"): Promise<boolean> => {
     const chunks = captionChunks(text, CAPTION_CHUNK);
+    if (gen === genRef.current && who !== "you") setLog((l) => appendEntry(l, { who, text }));
     for (const c of chunks) {
       if (gen !== genRef.current) return false;
       setStandby(false);
@@ -422,6 +531,44 @@ function TravelBuddyPreview() {
   const startRecognition = useCallback((gen: number, mode: ListenMode): boolean => {
     if (!activeRef.current) return false;
     if (mode === "auto" && micBlockedRef.current) return false;
+    if (voiceIoNow().stt === "provider") {
+      // LIVE: the ORIGINAL controller is the single mic owner (startProvider → transport media).
+      // It is started ONLY by an explicit gesture and never re-opened automatically.
+      if (mode === "auto") return false;
+      // G-PUBLIC — the broker admits only a signed-in guest's backend session; a Firebase-only session is
+      // upgraded in the background (tap again once it is ready). No token ⇒ explain + offer sign-in.
+      if (publicAdmission && !hasCustomerBearer()) {
+        setSignInNeeded(true);
+        void ensureCustomerBearer();
+        void say(langRef.current === "en" ? "Please sign in to talk with Teddy's real AI, then tap the mic again." : "Teddy ke real AI ke liye sign in kariye, phir mic dobara dabaiye.", gen, "note");
+        return true;
+      }
+      stopListening();
+      setTyping(false);
+      setStandby(false);
+      // A microphone needs a FRESH start (the original transport's single-start owner): end a
+      // live text session first — exactly what the provider's own beginStart does for ERROR.
+      const c = convRef.current;
+      const st = c ? c.getState() : "DISCONNECTED";
+      if (c && st !== "DISCONNECTED" && st !== "ERROR" && st !== "OFFLINE") { try { c.end("user"); } catch { /* no-op */ } }
+      liveMicRef.current = true;
+      startProvider("microphone");
+      setVoicePanel("listening");
+      setListening(true);
+      return true;
+    }
+    if (voiceIoNow().stt === "simulated") {
+      // Simulated demo voice: NO microphone. The panel stands in for the mic; the first use
+      // asks a simulated permission (honest copy), mirroring the browser's own prompt.
+      stopListening();
+      if (mode === "auto" && !simConsentRef.current) return false;
+      if (mode === "gesture") setTyping(false); // the guest chose to talk: the voice panel takes the bottom band
+      setStandby(false);
+      if (!simConsentRef.current) { setVoicePanel("consent"); return true; }
+      setVoicePanel("listening");
+      setListening(true);
+      return true;
+    }
     const SR = getRecognition();
     if (!SR) { setVoiceMissing(true); return false; }
     stopListening();
@@ -445,7 +592,9 @@ function TravelBuddyPreview() {
           const t = res[0]?.transcript;
           if (typeof t === "string" && t.trim()) {
             stopListening();
-            void handleUserTextRef.current(t, true);
+            // Never acted on directly: the transcript opens the review card (verbatim, editable).
+            const conf = typeof res[0]?.confidence === "number" ? res[0].confidence : 0;
+            openReviewRef.current({ transcript: t.slice(0, MAX_INPUT), confidence: conf, alternatives: [], source: "browser" });
             return;
           }
         }
@@ -487,7 +636,7 @@ function TravelBuddyPreview() {
       }
       return false;
     }
-  }, [sayAfter, stopListening]);
+  }, [sayAfter, stopListening, say, publicAdmission, hasCustomerBearer, ensureCustomerBearer, startProvider]);
 
   /** After Buddy finished speaking: keep (or once restore) listening, visibly. */
   const continueListening = useCallback((gen: number, reason: "greeting" | "turn") => {
@@ -588,12 +737,104 @@ function TravelBuddyPreview() {
     setDraft("");
     setStandby(false);
     setBusy(false);
-    deactivate();             // existing teardown (no transport exists while P is off)
+    setReview(null);
+    setLogOpen(false);
+    setLog([]);               // the conversation lives in memory only for this session
+    deactivate();             // existing teardown (ends the ORIGINAL controller session when P is on)
     activeRef.current = false;
+    setBuddyEngaged(false);   // R2 — page tours may auto-fire again
   }, [cancelSpeech, clearTimers, deactivate, showCaption, stopListening]);
 
+  /** The ONLY allow-listed navigation (home → /hotels?city=<City>); shared by scripted + live turns. */
+  const navigateToCity = useCallback(async (gen: number, city: string): Promise<"nohref" | boolean> => {
+    const href = hotelsHrefFor(city, CITIES);
+    if (!href) return "nohref";
+    expectNavRef.current = { gen, match: (p) => p === "/hotels" };
+    router.push(href);
+    return waitForList(gen, { destination: city });
+  }, [router, waitForList]);
+
+  /**
+   * LIVE turn: ONE submit to the ORIGINAL controller (LiveAiProvider.submitText → conversation →
+   * gateway transport). The answer shown is ONLY what the controller itself accepted into its
+   * memory — i.e. a browser-verified compiled answer (or its own bounded downgrade). Nothing is
+   * composed by Teddy; a missing / failed answer is reported honestly, never guessed.
+   */
+  const runLiveTurn = useCallback(async (text: string, gen: number): Promise<void> => {
+    langRef.current = detectLang(text, langRef.current);
+    const en = () => langRef.current === "en";
+    if (publicAdmission && !(await ensureCustomerBearer())) {
+      if (gen !== genRef.current) return;
+      setSignInNeeded(true);
+      await say(en() ? "Please sign in to talk with Teddy's real AI — tap \"Sign in\" below." : "Teddy ke real AI se baat karne ke liye sign in kariye — neeche \"Sign in\" dabaiye.", gen, "note");
+      return;
+    }
+    if (publicAdmission) setSignInNeeded(false);
+    if (surfaceRef.current === "home") {
+      // The controller works on the Hotels list / hotel pages only: first the allow-listed navigation.
+      const { plan } = REASONING.plan({ text, context: plannerContext(), slots: slotsRef.current, cities: CITIES, lang: langRef.current });
+      slotsRef.current = plan.slots;
+      const nav = plan.steps.find((st) => st.kind === "navigate_hotels") as Extract<PlanStep, { kind: "navigate_hotels" }> | undefined;
+      if (!nav) {
+        await say(en() ? "Tell me a city, e.g. \"Mussoorie\" — the AI answers about the stays on the Hotels list and hotel pages." : "City bataiye, jaise \"Mussoorie\" — AI Hotels list aur hotel page ke stays ke baare mein jawab deta hai.", gen, "note");
+        return;
+      }
+      const ready = await navigateToCity(gen, nav.city);
+      if (gen !== genRef.current) return;
+      if (ready !== true) { await say(en() ? "The stays didn't load yet — please try again." : "Stays abhi load nahi hue — dobara try kariye.", gen, "note"); return; }
+    }
+    const t0 = Date.now();
+    const surf0 = surfaceRef.current;
+    bridgeRef.current?.allow(text);                                        // a typed / reviewed turn passes the transcript gate
+    expectNavRef.current = { gen, match: (p) => surfaceForPath(p) !== "other" }; // an AI-proposed open may navigate
+    liveSubmitText(text);
+    while (Date.now() - t0 < LIVE_ANSWER_MAX_MS) {
+      if (gen !== genRef.current) return;
+      const conv = convRef.current;
+      let answer: { text: string } | null = null;
+      if (conv) for (const m of conv.getMemory()) if (m.role === "assistant" && m.at >= t0) answer = m;
+      if (answer) {
+        const g = gen;
+        for (const c of captionChunks(answer.text, CAPTION_CHUNK)) {
+          if (g !== genRef.current) return;
+          setStandby(false);
+          showCaption({ who: "buddy", text: c, live: true });
+          // the SAME verified text, spoken ONLY with on-device voices when the device-TTS flag is on
+          // (speakChunk is caption-paced otherwise); never a provider/network voice.
+          setSpeaking(true);
+          await speakChunk(c, langRef.current);
+          if (g === genRef.current) setSpeaking(false);
+        }
+        if (g !== genRef.current) return;
+        setLog((l) => appendEntry(l, { who: "buddy", text: answer!.text, source: "ai" }));
+        scheduleFade();
+        await noteDemoOnce(g);
+        return;
+      }
+      if (surfaceRef.current !== surf0) {
+        // The AI's own validated proposal moved the page (e.g. opened a stay): the route itself is the outcome.
+        await say(en() ? "The page changed — ask about this stay's rooms or facilities." : "Page badal gaya — is stay ke rooms ya facilities ke baare mein poochiye.", gen, "note");
+        return;
+      }
+      // G-REBIND — an explicit turn error from the controller is reported as such (never a silent stall).
+      const terr = getLastTurnError();
+      if (terr && terr.at >= t0) {
+        if (terr.code === "stale") { await say(en() ? "The page changed while I was checking — please ask again." : "Check karte waqt page badal gaya — kripya dobara poochiye.", gen, "note"); return; }
+        if (terr.code === "budget_exceeded") { await say(en() ? "Teddy's AI limit is reached for now — please browse the list yourself or try later." : "Abhi Teddy ki AI limit poori ho gayi — list khud dekhiye ya baad mein try kariye.", gen, "note"); return; }
+        if (terr.code === "timeout") { await say(en() ? "That took too long — please ask again." : "Isme bahut der lagi — kripya dobara poochiye.", gen, "note"); return; }
+      }
+      const st = conv ? conv.getState() : "DISCONNECTED";
+      if (st === "ERROR" || st === "OFFLINE") {
+        await say(en() ? "The AI couldn't answer right now — please try again, or browse the list yourself." : "AI abhi jawab nahi de paaya — dobara try kariye, ya list khud dekhiye.", gen, "note");
+        return;
+      }
+      await sleep(LIVE_POLL_MS);
+    }
+    await say(en() ? "No verified answer arrived — I won't guess." : "Verified jawab nahi aaya — main andaza nahi lagaunga.", gen, "note");
+  }, [liveSubmitText, navigateToCity, noteDemoOnce, plannerContext, say, scheduleFade, showCaption, speakChunk, publicAdmission, getLastTurnError, ensureCustomerBearer]);
+
   // ---- one user turn ----------------------------------------------------------
-  const handleUserText = useCallback(async (raw: string, fromVoice = false) => {
+  const handleUserText = useCallback(async (raw: string, fromVoice = false, voiceSource: SttResult["source"] = "browser") => {
     const text = String(raw || "").slice(0, MAX_INPUT).trim();
     if (!text || !activeRef.current) return;
     const gen = ++genRef.current;
@@ -607,8 +848,16 @@ function TravelBuddyPreview() {
     announcedCountRef.current = null;
     try {
       showCaption({ who: "you", text });
+      setLog((l) => appendEntry(l, fromVoice ? { who: "you", text, modality: "voice", voiceSource } : { who: "you", text, modality: "typed" }));
       await sleep(Math.min(1400, 500 + text.length * 18));
       if (gen !== genRef.current) return;
+      // LIVE controller mode: typed AND reviewed-voice turns both go to the ORIGINAL controller.
+      // The scripted planner below is never used as a reply in this mode.
+      if (liveRef.current) {
+        await runLiveTurn(text, gen);
+        if (gen === genRef.current) { setBusy(false); armSilence(gen); }
+        return;
+      }
       // PRODUCT-02 — founder-only REAL AI TEXT: TYPED turns only (voice stays scripted), shown as
       // captions and never spoken. Any failure falls back to the scripted Buddy below.
       const founderNow = founderRef.current;
@@ -630,9 +879,9 @@ function TravelBuddyPreview() {
         }
         if (!(await say(langRef.current === "en" ? "Real AI is unavailable right now — Buddy will answer instead." : "Real AI abhi available nahi hai — Buddy jawab dega.", gen, "note"))) return;
       }
-      const parsed = parseUtterance(text, CITIES, langRef.current);
+      // ONE shared core for typed AND voice turns (scripted reasoning seam; provider disabled).
+      const { parsed, plan } = REASONING.plan({ text, context: plannerContext(), slots: slotsRef.current, cities: CITIES, lang: langRef.current });
       langRef.current = parsed.lang;
-      const plan = planTurn(parsed, plannerContext(), slotsRef.current, CITIES);
       slotsRef.current = plan.slots;
       try { runtime?.beginTurn(text); } catch { /* no-op */ }
       for (const step of plan.steps) {
@@ -640,11 +889,8 @@ function TravelBuddyPreview() {
         if (step.kind === "say") { if (!(await say(step.text, gen))) return; continue; }
         if (step.kind === "end") { endSession(); return; }
         if (step.kind === "navigate_hotels") {
-          const href = hotelsHrefFor(step.city, CITIES);
-          if (!href) continue;
-          expectNavRef.current = { gen, match: (p) => p === "/hotels" };
-          router.push(href);
-          const ready = await waitForList(gen, { destination: step.city });
+          const ready = await navigateToCity(gen, step.city);
+          if (ready === "nohref") continue;
           if (gen !== genRef.current) return;
           if (!ready) { await say(langRef.current === "en" ? "The stays didn't load yet — please try again." : "Stays abhi load nahi hue — dobara try kariye.", gen); continue; }
           if (plan.deferred) {
@@ -688,7 +934,7 @@ function TravelBuddyPreview() {
     } finally {
       if (gen === genRef.current) setBusy(false);
     }
-  }, [announceResults, applyRefinement, armSilence, cancelSpeech, clearTimers, continueListening, endSession, execOp, plannerContext, router, runtime, say, scheduleFade, showCaption, stopListening, waitForList]);
+  }, [announceResults, applyRefinement, armSilence, cancelSpeech, clearTimers, continueListening, endSession, execOp, navigateToCity, plannerContext, runLiveTurn, runtime, say, scheduleFade, showCaption, stopListening]);
   handleUserTextRef.current = handleUserText;
 
   // ---- activation / end ------------------------------------------------------
@@ -706,18 +952,29 @@ function TravelBuddyPreview() {
     setStandby(false);
     setOptionsOpen(false);
     demoNoteShownRef.current = false;
+    setBuddyEngaged(true);   // R2 — no page tour auto-fires over an active Buddy session
+    setLog([]);
+    setReview(null);
     const gen = ++genRef.current;
     seqRef.current = Promise.resolve();
-    const listeningNow = micBlockedRef.current ? false : startRecognition(gen, "gesture");
+    // LIVE: activation never opens the mic (original contract: mic only on its own explicit gesture).
+    const listeningNow = liveRef.current ? false : micBlockedRef.current ? false : startRecognition(gen, "gesture");
     const typedOnlyPreview = isTextOnlyPreview();
+    const io = voiceIoNow();
     if (typedOnlyPreview) { focusInputRef.current = true; setTyping(true); } // typed preview: the keyboard IS the input (same tap)
+    else if (io.stt === "off") { focusInputRef.current = true; setTyping(true); } // voice switched off in this build: typed fallback
+    else if (io.stt === "provider") { focusInputRef.current = true; setTyping(true); } // live: typed first, mic on the next explicit tap
     seqRef.current = (async () => {
       const ok = await say(greetingFor(surfaceRef.current, langRef.current), gen);
       if (!ok) return;
       if (typedOnlyPreview) {
         await say(TYPED_PREVIEW_NOTE[langRef.current], gen, "note");
+      } else if (io.stt === "provider") {
+        await say(LIVE_VOICE_NOTE[langRef.current], gen, "note");
+      } else if (io.stt === "simulated") {
+        await say(DEMO_VOICE_NOTE[langRef.current], gen, "note");
       } else if (!getRecognition()) {
-        await say(langRef.current === "en" ? "Voice input isn't available in this browser — tap Type to write." : "Is browser mein voice input nahi hai — Type dabakar likhiye.", gen, "note");
+        await say(io.stt === "off" ? VOICE_OFF_NOTE[langRef.current] : (langRef.current === "en" ? "Voice input isn't available in this browser — tap Type to write." : "Is browser mein voice input nahi hai — Type dabakar likhiye."), gen, "note");
       } else if (listeningNow) {
         continueListening(gen, "greeting");
         if (recogRef.current && !listenNoteShownRef.current) {
@@ -731,6 +988,7 @@ function TravelBuddyPreview() {
 
   const openTyping = useCallback(() => {
     stopListening();
+    setReview(null);
     clearTimers();            // the guest chose to type: no silence nudge / standby while they write
     focusInputRef.current = true;
     setOptionsOpen(false);
@@ -743,7 +1001,8 @@ function TravelBuddyPreview() {
     setOptionsOpen(false);
     if (listening) { stopListening(); armSilence(genRef.current); return; }   // stop listening only
     const SR = getRecognition();
-    if (!SR || micBlocked) { openTyping(); return; }                          // honest typed path
+    const sttNow = voiceIoNow().stt;
+    if ((!SR && sttNow !== "simulated" && sttNow !== "provider") || micBlocked) { openTyping(); return; } // honest typed path
     clearTimers();
     cancelSpeech();                                                           // barge-in
     const gen = ++genRef.current;
@@ -767,6 +1026,110 @@ function TravelBuddyPreview() {
     if (startRecognition(gen, "gesture")) armSilence(gen);
   }, [armSilence, cancelSpeech, clearTimers, startRecognition]);
 
+  // ---- integrated voice: simulated mic, review / confirm, stop -----------------
+  /** A voice transcript is NEVER acted on directly: it opens the review card with the verbatim text. */
+  const openReview = useCallback((result: SttResult) => {
+    genRef.current += 1;      // the review owns the turn: older captions / timers are superseded
+    clearTimers();
+    cancelSpeech();
+    stopListening();
+    setTyping(false);
+    setStandby(false);
+    setReview({ result, draft: result.transcript, confirmed: [] });
+  }, [cancelSpeech, clearTimers, stopListening]);
+  openReviewRef.current = openReview;
+
+  const sttFailed = useCallback((error: SttFailure, gen: number) => {
+    if (error === "cancelled") { armSilence(gen); return; }
+    const en = langRef.current === "en";
+    const denied = error === "permission-denied" || error === "permission-dismissed";
+    if (denied) { setMicBlocked(true); micBlockedRef.current = true; }
+    const text = denied
+      ? (en ? "Microphone permission wasn't given — tap Type to write instead." : "Mic permission nahi mili — Type dabakar likh sakte hain.")
+      : error === "no-speech"
+        ? (en ? "I didn't hear anything (simulated) — pick a phrase again, or type." : "Kuch sunai nahi diya (simulated) — phrase phir chuniye, ya type kariye.")
+        : (en ? "Voice didn't work this time (simulated error) — tap the mic to retry, or type." : "Voice abhi nahi chala (simulated error) — mic dabakar phir try kariye, ya type kariye.");
+    void sayAfter(text, gen).then(() => { if (gen === genRef.current) armSilence(gen); });
+  }, [armSilence, sayAfter]);
+
+  /** Simulated recognition of one sample phrase (no microphone, no audio, cancellable). */
+  const simulateUtterance = useCallback(async (u: SimulatedUtterance) => {
+    if (!activeRef.current) return;
+    const gen = genRef.current;
+    clearTimers();
+    cancelSpeech();
+    const prev = simAbortRef.current;
+    if (prev) { try { prev.abort(); } catch { /* no-op */ } }
+    const ctl = new AbortController();
+    simAbortRef.current = ctl;
+    setVoicePanel("hearing");
+    setListening(true);
+    const out = await SIM_STT.recognize(u, ctl.signal);
+    if (simAbortRef.current !== ctl || ctl.signal.aborted) return; // cancelled / superseded
+    simAbortRef.current = null;
+    if (gen !== genRef.current) return;
+    if (out.ok) { openReview(out.result); return; }
+    stopListening();
+    sttFailed(out.error, gen);
+  }, [cancelSpeech, clearTimers, openReview, stopListening, sttFailed]);
+
+  const answerConsent = useCallback((allow: boolean) => {
+    const gen = genRef.current;
+    if (!allow) {
+      setMicBlocked(true);
+      micBlockedRef.current = true;
+      openTyping();           // honest typed fallback (closes the panel)
+      void sayAfter(langRef.current === "en" ? "No problem — no microphone. Type below instead." : "Theek hai — mic nahi. Neeche type kariye.", gen);
+      return;
+    }
+    simConsentRef.current = true;
+    setVoicePanel("listening");
+    setListening(true);
+    armSilence(gen);
+  }, [armSilence, openTyping, sayAfter]);
+
+  const cancelVoice = useCallback(() => {
+    stopListening();
+    armSilence(genRef.current);
+  }, [armSilence, stopListening]);
+
+  const sendReview = useCallback(() => {
+    const r = reviewRef.current;
+    if (!r) return;
+    if (!reviewTranscript(r.result, r.draft, r.confirmed, CITIES, langRef.current).canSend) return;
+    setReview(null);
+    void handleUserTextRef.current(r.draft, true, r.result.source); // the SAME shared turn path as typing
+  }, []);
+
+  const rerecord = useCallback(() => {
+    setReview(null);
+    clearTimers();
+    const gen = ++genRef.current;
+    startRecognition(gen, "gesture");   // synchronous inside the tap
+  }, [clearTimers, startRecognition]);
+
+  const cancelReview = useCallback(() => {
+    setReview(null);
+    armSilence(genRef.current);
+  }, [armSilence]);
+
+  const toggleConfirm = useCallback((key: CriticalKey) => {
+    setReview((r) => (r ? { ...r, confirmed: r.confirmed.includes(key) ? r.confirmed.filter((k) => k !== key) : r.confirmed.concat([key]) } : r));
+  }, []);
+
+  /** Explicit Stop: cancel speech, recognition, pending verification and the in-flight turn. */
+  const stopNow = useCallback(() => {
+    const gen = ++genRef.current;
+    const hadLiveMic = liveMicRef.current;
+    clearTimers();
+    cancelSpeech();
+    stopListening();
+    // LIVE: Stop also interrupts the ORIGINAL controller's turn (inert-ing late answers); never auto-restarts.
+    if (liveRef.current && !hadLiveMic) { try { bargeInRef.current(); } catch { /* no-op */ } }
+    setBusy(false);
+    void say(langRef.current === "en" ? "Stopped." : "Ruk gaya.", gen, "note").then((ok) => { if (ok) armSilence(gen); });
+  }, [armSilence, cancelSpeech, clearTimers, say, stopListening]);
+
   // ---- route epoch: a foreign navigation cancels pending work ---------------
   useEffect(() => {
     const exp = expectNavRef.current;
@@ -785,6 +1148,7 @@ function TravelBuddyPreview() {
       showCaption(null);
       setOptionsOpen(false);
       setTyping(false);
+      setReview(null);
       setStandby(true);            // quiet: the guest navigated themselves; no re-greeting
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -802,16 +1166,17 @@ function TravelBuddyPreview() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [cancelSpeech, clearTimers, stopListening]);
 
+  const reviewOpen = review !== null;
   // Keyboard-aware placement while typing (visual viewport shrinks under the OSK).
   useEffect(() => {
-    if (!typing || typeof window === "undefined" || !window.visualViewport) { setKbOffset(0); return; }
+    if (!(typing || reviewOpen) || typeof window === "undefined" || !window.visualViewport) { setKbOffset(0); return; }
     const vv = window.visualViewport;
     const apply = () => setKbOffset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
     apply();
     vv.addEventListener("resize", apply);
     vv.addEventListener("scroll", apply);
     return () => { vv.removeEventListener("resize", apply); vv.removeEventListener("scroll", apply); };
-  }, [typing]);
+  }, [typing, reviewOpen]);
 
   useEffect(() => {
     if (typing && focusInputRef.current) { focusInputRef.current = false; try { inputRef.current?.focus(); } catch { /* no-op */ } }
@@ -826,10 +1191,70 @@ function TravelBuddyPreview() {
       cancelSpeech();
       setOptionsOpen(false);
       if (typing) setTyping(false);
+      setVoicePanel(null);
+      setReview(null);
+      setLogOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [activated, cancelSpeech, listening, stopListening, typing]);
+
+  // LIVE — mediate raw microphone transcripts at the ORIGINAL controller's submitText boundary:
+  // a final transcript from the provider's media adapter opens the review card instead of
+  // becoming a turn (deferred one task so capture teardown never runs inside the media handler).
+  useEffect(() => {
+    if (!live || !conversation) return;
+    const b = installTranscriptReview(conversation, (text) => {
+      const t = String(text || "").slice(0, MAX_INPUT);
+      if (!t.trim()) return;
+      window.setTimeout(() => { openReviewRef.current({ transcript: t, confidence: 0, alternatives: [], source: "provider" }); }, 0);
+    });
+    bridgeRef.current = b;
+    return () => { b.uninstall(); if (bridgeRef.current === b) bridgeRef.current = null; };
+  }, [live, conversation]);
+
+  // R2 — a running page tour owns the screen: Buddy steps aside (and goes quiet) until it ends.
+  useEffect(() => {
+    setTourActiveState(getActiveTour());
+    return subscribeTour((k) => {
+      setTourActiveState(k);
+      if (k && activeRef.current) { genRef.current += 1; clearTimers(); cancelSpeech(); stopListening(); setBusy(false); setOptionsOpen(false); setStandby(true); }
+    });
+  }, [cancelSpeech, clearTimers, stopListening]);
+
+  // R2 watchdog — a tour flag with NO tour/story overlay in the DOM for ~2 s is stale (e.g. a tour
+  // engine that never started): Buddy comes back instead of staying hidden.
+  useEffect(() => {
+    if (!tourActive || typeof window === "undefined") return;
+    let misses = 0;
+    const id = window.setInterval(() => {
+      const shown = tourOverlayPresent();
+      misses = shown ? 0 : misses + 1;
+      if (misses >= 5) setTourActiveState(null);
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [tourActive]);
+
+  // LIVE — the original controller failed while it owned the mic: release + offer typing.
+  useEffect(() => {
+    if (!live || !liveMicRef.current || orbState !== "error") return;
+    liveMicRef.current = false;
+    setListening(false);
+    setVoicePanel(null);
+    const gen = ++genRef.current;
+    void say(langRef.current === "en" ? "The live mic couldn't start — you can type instead." : "Live mic start nahi hua — aap type kar sakte hain.", gen, "note").then(() => { if (gen === genRef.current) openTyping(); });
+  }, [live, orbState, openTyping, say]);
+
+  // G-TTS — the controller voices a verified answer ONLY while voice output is on (muted ⇒ no approval, no TTS).
+  useEffect(() => { if (live) { try { setVoiceOutput(!muted); } catch { /* no-op */ } } }, [live, muted, setVoiceOutput]);
+
+  // LIVE — mute also silences the controller's own answer audio (barge-in flushes playback).
+  useEffect(() => {
+    if (live && muted && orbState === "speaking") { try { bargeInRef.current(); } catch { /* no-op */ } }
+  }, [live, muted, orbState]);
+
+  // R2 — unmount ONLY (empty deps): an unmounted Buddy is no longer engaged.
+  useEffect(() => () => { setBuddyEngaged(false); }, []);
 
   // Unmount: never leave speech/recognition/timers running.
   useEffect(() => () => {
@@ -889,7 +1314,28 @@ function TravelBuddyPreview() {
 
   // Protected bottom band per surface: mobile bottom dock (64) or dock + sticky
   // "Check availability" CTA on hotel detail (128); while typing, also the input row.
-  const reservedBottom = (vp && vp.w < 1024 ? (surface === "hotel-detail" ? 128 : 64) : 8) + (typing ? (kbOffset > 0 ? kbOffset : 0) + 64 : 0);
+  const sidePanelOpen = !typing && (voicePanel !== null || review !== null); // voice panel / review card use the same bottom band
+  const reservedBottom = (vp && vp.w < 1024 ? (surface === "hotel-detail" ? 128 : 64) : 8) + (typing ? (kbOffset > 0 ? kbOffset : 0) + 64 : 0)
+    + (sidePanelOpen ? (kbOffset > 0 ? kbOffset : 0) + Math.max(64, panelH) + 8 : 0);
+
+  // The conversation view always shows the newest turn.
+  useEffect(() => {
+    if (!logOpen) return;
+    const el = logListRef.current?.parentElement;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [logOpen, log]);
+
+  // Measure the voice panel / review card so Buddy and captions never sit on it.
+  useEffect(() => {
+    if (!sidePanelOpen) { setPanelH(0); return; }
+    const el = bottomPanelRef.current;
+    if (!el) return;
+    const apply = () => setPanelH(Math.round(el.getBoundingClientRect().height));
+    apply();
+    let ro: ResizeObserver | null = null;
+    try { if (typeof ResizeObserver !== "undefined") { ro = new ResizeObserver(apply); ro.observe(el); } } catch { ro = null; }
+    return () => { if (ro) ro.disconnect(); };
+  }, [sidePanelOpen, voicePanel, review]);
   // Protected top band: the desktop navbar is fixed above Buddy's layer (z ~1100) — a mascot
   // dragged under it could not be grabbed again, so it can never go there.
   const reservedTop = vp && vp.w >= 1024 ? 96 : 0;
@@ -1093,7 +1539,7 @@ function TravelBuddyPreview() {
     void handleUserText(t, false);
   };
 
-  if (surface === "other") return null;
+  if (surface === "other" || tourActive) return null;
 
   const en = langRef.current === "en";
   const whoLabel = (w: Who) => (w === "buddy" ? "Buddy" : w === "you" ? (en ? "You" : "Aap") : "Note");
@@ -1113,8 +1559,8 @@ function TravelBuddyPreview() {
       : (en ? "voice unavailable — tap to type" : "voice nahi — tap karke type kariye"),
     ready: en ? "tap to talk" : "tap karke boliye",
   }[state];
-  const mascotAria = `${mascot.name} Travel Buddy${isTemp ? " (temporary placeholder art)" : ""}, scripted preview — ${activated ? stateText : "Talk to StayBid"}. Drag or use arrow keys to move.`;
-  const captionVisible = activated && caption && !standby && !optionsOpen && (prefs.captions || caption.who === "note"); // options yield the same spot
+  const mascotAria = `${mascot.name} Travel Buddy${isTemp ? " (temporary placeholder art)" : ""}, ${live ? "live AI preview" : "scripted preview"} — ${activated ? stateText : "Talk to StayBid"}. Drag or use arrow keys to move.`;
+  const captionVisible = activated && caption && !standby && !optionsOpen && !logOpen && (prefs.captions || caption.who === "note"); // options / log yield the same spot
   const vw = vp?.w ?? 390;
   const vh = vp?.h ?? 844;
   const capW = Math.min(320, vw - 24);
@@ -1140,6 +1586,27 @@ function TravelBuddyPreview() {
   const showMore = !prefs.hidden && (activated || mascotFocus || optionsOpen);
   showBadgeRef.current = showMore;
   const typeBottom = kbOffset > 0 ? kbOffset + 8 : (vp && vp.w < 1024 ? (surface === "hotel-detail" ? 128 : 64) : 16) + 8;
+  const voiceIo = voiceIoNow();
+  const lang: BuddyLang = en ? "en" : "hinglish";
+  const reviewState = review ? reviewTranscript(review.result, review.draft, review.confirmed, CITIES, lang) : null;
+  const pendingLabels = reviewState ? reviewState.pending.map((k) => criticalLabel(k, lang)).join(", ") : "";
+  const simulatedTag = en
+    ? "SIMULATED VOICE · demo · no microphone, no audio leaves this browser · not real AI"
+    : "SIMULATED VOICE · demo · mic nahi, koi audio bahar nahi jaata · real AI nahi";
+  const logWho = (e: ConversationEntry) => (e.who === "you"
+    ? `${whoLabel("you")} · ${e.modality === "voice" ? (e.voiceSource === "simulated" ? "voice (simulated)" : "voice") : "typed"}`
+    : e.who === "buddy" ? (e.source === "ai" ? "Buddy · AI" : live ? "Buddy" : "Buddy · demo") : "Note");
+  const liveTag = en
+    ? "LIVE AI MIC · your words are shown for review before anything is sent"
+    : "LIVE AI MIC · bhejne se pehle aapke shabd review ke liye dikhte hain";
+  // the ORIGINAL controller sits in IDLE once the mic session is connected (LISTENING only follows a
+  // gateway turn.state), so read its state directly: CONNECTING ⇒ connecting, connected ⇒ listening.
+  const convState = conversation ? conversation.getState() : null;
+  const liveHear = orbState === "error" || convState === "ERROR"
+    ? (en ? "The mic hit a problem." : "Mic mein dikkat aayi.")
+    : convState === "IDLE" || convState === "LISTENING" || convState === "TRANSCRIBING"
+      ? (en ? "Listening… speak now." : "Sun raha hoon… boliye.")
+      : (en ? "Connecting the mic…" : "Mic connect ho raha hai…");
 
   return (
     <div ref={rootRef} className={`tb-root${surface === "hotel-detail" ? " tb-on-detail" : ""}`} data-travel-buddy-preview="1">
@@ -1193,7 +1660,7 @@ function TravelBuddyPreview() {
 
       {captionVisible && caption && (
         <p className={`tb-caption tb-who-${caption.who}`} style={floatStyle(capW)}>
-          <span className="tb-who">{whoLabel(caption.who)}{caption.ai ? " · Real AI" : ""}:</span> {caption.text}
+          <span className="tb-who">{whoLabel(caption.who)}{caption.ai ? " · Real AI" : caption.live ? " · AI" : caption.who === "buddy" && !live ? " · demo" : ""}:</span> {caption.text}
         </p>
       )}
 
@@ -1213,6 +1680,9 @@ function TravelBuddyPreview() {
               onChange={(e) => { clearTimers(); setDraft(e.target.value.slice(0, MAX_INPUT)); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitDraft(); } }}
             />
+            {(busy || speaking) && (
+              <button type="button" className="tb-stop" aria-label={en ? "Stop Buddy" : "Buddy ko roko"} onClick={stopNow}>Stop</button>
+            )}
             <button type="button" className="tb-send" aria-label="Send" onClick={submitDraft} disabled={!draft.trim()}>Send</button>
             <button type="button" className="tb-close-type" aria-label="Close typing" onClick={() => setTyping(false)}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" /></svg>
@@ -1224,6 +1694,121 @@ function TravelBuddyPreview() {
                 <button key={x} type="button" className="tb-example" onClick={() => { void handleUserText(x, false); }}>{x}</button>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {voicePanel && live && !typing && !review && !standby && !prefs.hidden && (
+        <div className="tb-voice tb-voice-live" ref={bottomPanelRef} style={{ bottom: typeBottom }} role="group" aria-label="Live AI microphone">
+          <p className="tb-panel-tag">{liveTag}</p>
+          <div className="tb-panel-row">
+            <p className="tb-panel-text" aria-live="polite">{liveHear}</p>
+            <button type="button" className="tb-ghost" onClick={cancelVoice}>Stop</button>
+          </div>
+        </div>
+      )}
+
+      {voicePanel && !live && !typing && !review && !standby && !prefs.hidden && (
+        <div className="tb-voice" ref={bottomPanelRef} style={{ bottom: typeBottom }} role="group" aria-label="Simulated voice input">
+          <p className="tb-panel-tag">{simulatedTag}</p>
+          {voicePanel === "consent" ? (
+            <>
+              <p className="tb-panel-text">{en ? "Use demo voice? This build only simulates the microphone — nothing is recorded or sent." : "Demo voice use karein? Yeh build sirf mic simulate karta hai — kuch record ya bheja nahi jaata."}</p>
+              <div className="tb-panel-row">
+                <button type="button" className="tb-send" onClick={() => answerConsent(true)}>{en ? "Allow demo mic" : "Demo mic allow karein"}</button>
+                <button type="button" className="tb-ghost" onClick={() => answerConsent(false)}>{en ? "Not now" : "Abhi nahi"}</button>
+              </div>
+            </>
+          ) : voicePanel === "hearing" ? (
+            <div className="tb-panel-row">
+              <p className="tb-panel-text" aria-live="polite">{en ? "Hearing… (simulated)" : "Sun raha hoon… (simulated)"}</p>
+              <button type="button" className="tb-ghost" onClick={cancelVoice}>Cancel</button>
+            </div>
+          ) : (
+            <>
+              <p className="tb-panel-text">{en ? "Listening (simulated) — tap what you would say:" : "Sun raha hoon (simulated) — jo bolna hai woh tap kariye:"}</p>
+              <div className="tb-examples tb-phrases" aria-label="Simulated phrases">
+                {SIMULATED_PHRASES.map((ph) => (
+                  <button key={ph.id} type="button" className="tb-example tb-phrase" onClick={() => { void simulateUtterance(ph); }}>{ph.said}</button>
+                ))}
+              </div>
+              <div className="tb-panel-row">
+                {SIMULATED_FAILURES.map((ph) => (
+                  <button key={ph.id} type="button" className="tb-ghost tb-test" onClick={() => { void simulateUtterance(ph); }}>
+                    {ph.fail === "no-speech" ? (en ? "Test: no speech" : "Test: awaaz nahi") : (en ? "Test: voice error" : "Test: voice error")}
+                  </button>
+                ))}
+                <button type="button" className="tb-ghost" onClick={cancelVoice}>Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {review && reviewState && !standby && !prefs.hidden && (
+        <div className="tb-review" ref={bottomPanelRef} style={{ bottom: typeBottom }} role="group" aria-label="Review what Buddy heard before sending">
+          <p className="tb-panel-tag">
+            {review.result.source === "simulated" ? "SIMULATED TRANSCRIPT · demo" : review.result.source === "provider" ? "MIC TRANSCRIPT" : "BROWSER TRANSCRIPT"}
+            {en ? " · check or edit before sending" : " · bhejne se pehle check ya edit kariye"}
+          </p>
+          <div className="tb-type-row">
+            <input
+              className="tb-input-review"
+              type="text"
+              inputMode="text"
+              enterKeyHint="send"
+              maxLength={MAX_INPUT}
+              aria-label="Edit what Buddy heard"
+              value={review.draft}
+              onChange={(e) => { const v = e.target.value.slice(0, MAX_INPUT); setReview((r) => (r ? { ...r, draft: v } : r)); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendReview(); } }}
+            />
+            <button type="button" className="tb-send" aria-label="Send what Buddy heard" onClick={sendReview} disabled={!reviewState.canSend}>Send</button>
+          </div>
+          {reviewState.fields.length > 0 && (
+            <ul className="tb-fields" aria-label="Important details">
+              {reviewState.fields.map((f) => (
+                <li key={f.key} className={`tb-field${f.flagged && !f.edited && !f.confirmed ? " is-pending" : ""}`}>
+                  <span>{criticalLabel(f.key, lang)}: <b>{f.value}</b>{f.edited && f.heard ? <em>{en ? ` (heard ${f.heard})` : ` (suna: ${f.heard})`}</em> : null}</span>
+                  {f.flagged && !f.edited ? (
+                    <button type="button" className="tb-confirm" aria-pressed={f.confirmed} onClick={() => toggleConfirm(f.key)}>
+                      {f.confirmed ? (en ? "Confirmed" : "Confirm hua") : (en ? "Confirm" : "Confirm kariye")}
+                    </button>
+                  ) : f.edited ? <span className="tb-edited">{en ? "edited by you" : "aapne badla"}</span> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          {reviewState.pending.length > 0 && (
+            <p className="tb-panel-text tb-warn" role="status">
+              {en
+                ? `Not sure I heard right — please confirm ${pendingLabels} (or edit the text) before sending. Nothing is corrected automatically.`
+                : `Shayad theek se nahi suna — bhejne se pehle ${pendingLabels} confirm kariye (ya text edit kariye). Kuch apne aap nahi badla jaata.`}
+            </p>
+          )}
+          <div className="tb-panel-row">
+            <button type="button" className="tb-ghost" onClick={rerecord}>{en ? "Speak again" : "Phir boliye"}</button>
+            <button type="button" className="tb-ghost" onClick={cancelReview}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {logOpen && !prefs.hidden && (
+        <div className="tb-log" id="tb-log" role="region" aria-label="Conversation, typed and voice" style={floatStyle(Math.min(340, vw - 24))}>
+          <div className="tb-log-head">
+            <span>{en ? `Conversation · typed + voice · ${live ? "live AI" : "demo"}` : `Baatcheet · typed + voice · ${live ? "live AI" : "demo"}`}</span>
+            <button type="button" className="tb-close-type" aria-label="Close conversation" onClick={() => setLogOpen(false)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" /></svg>
+            </button>
+          </div>
+          {log.length === 0 ? (
+            <p className="tb-panel-text">{en ? "Nothing yet." : "Abhi kuch nahi."}</p>
+          ) : (
+            <ol className="tb-log-list" ref={logListRef}>
+              {log.slice(-16).map((e) => (
+                <li key={e.id} className={`tb-log-item tb-log-${e.who}`}><span className="tb-who">{logWho(e)}:</span> {e.text}</li>
+              ))}
+            </ol>
           )}
         </div>
       )}
@@ -1269,11 +1854,17 @@ function TravelBuddyPreview() {
                 {micBlocked && !voiceMissing && activated && (
                   <button type="button" className="tb-chip" onClick={retryMic}>Try mic again</button>
                 )}
+                {publicAdmission && signInNeeded && (
+                  <button type="button" className="tb-chip" onClick={() => { setOptionsOpen(false); void import("@/lib/auth-intent").then((m) => m.redirectToSignIn(router, { route: pathname })).catch(() => { /* no-op */ }); }}>Sign in</button>
+                )}
                 {founder.available && (
                   <button type="button" className="tb-chip" aria-pressed={founder.active}
                     onClick={() => { founder.setActive(!founder.active); setOptionsOpen(false); }}>
                     {founder.active ? "Real AI text: on" : "Real AI text: off"}
                   </button>
+                )}
+                {activated && (
+                  <button type="button" className="tb-chip" aria-expanded={logOpen} aria-controls="tb-log" onClick={() => { setLogOpen(true); setOptionsOpen(false); }}>Conversation</button>
                 )}
                 <button type="button" className="tb-chip" onClick={resetPosition}>Reset position</button>
                 <button type="button" className="tb-chip" onClick={hideBuddy}>Hide Buddy</button>
@@ -1284,7 +1875,9 @@ function TravelBuddyPreview() {
                   ? "Founder-only Real AI text: typed turns go to the StayBid staging AI; voice stays scripted. Never books, bids or pays."
                   : textOnlyPreview
                     ? "Typed scripted preview — not live AI; no microphone or voice. Typed words stay in this browser. Listings are StayBid demo inventory: prices and availability are not confirmed. Never books, bids or pays."
-                    : "Scripted preview — not live AI. Voice uses your browser's speech service; typed words stay in this browser. Listings are StayBid demo inventory: prices and availability are not confirmed. Never books, bids or pays."}
+                    : `${live
+                      ? "Live AI preview: typed words, and spoken words only after you review them, go to the StayBid AI controller; only its verified answers are shown. The microphone opens only when you tap the mic."
+                      : `Scripted preview — not live AI. ${voiceIo.stt === "simulated" ? "Voice is SIMULATED: no microphone, no audio recorded or sent; sample phrases stand in for speech." : voiceIo.stt === "browser" ? "Voice uses your browser's speech service." : "Voice is off in this build."}${voiceIo.tts === "device" ? " Spoken replies use on-device voices only." : voiceIo.tts === "browser" ? " Spoken replies use your browser's voice." : voiceIo.tts === "simulated" ? " Spoken replies are simulated (no audio)." : ""} Typed words stay in this browser.`} Listings are StayBid demo inventory: prices and availability are not confirmed. Never books, bids or pays.`}
                 {isTemp ? " Placeholder buddy art (final plush pending)." : ""}
               </p>
             </>
@@ -1353,6 +1946,40 @@ function TravelBuddyPreview() {
         .tb-examples { display: flex; gap: 6px; overflow-x: auto; padding: 0 2px 2px; scrollbar-width: none; }
         .tb-examples::-webkit-scrollbar { display: none; }
         .tb-example { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(214, 175, 90, 0.45); background: rgba(255, 251, 240, 0.95); color: #5a4214; font-size: 12px; white-space: nowrap; cursor: pointer; }
+        .tb-stop { min-width: 56px; min-height: 44px; border: 1px solid rgba(160, 60, 30, .45); border-radius: 999px; background: #fff1ea; color: #8a2f12; font-weight: 700; font-size: 13px; cursor: pointer; }
+        .tb-voice, .tb-review {
+          pointer-events: auto; position: fixed; left: 12px; right: 12px; max-width: 520px; margin: 0 auto; box-sizing: border-box;
+          display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 16px;
+          background: rgba(255, 251, 240, 0.98); border: 1px solid rgba(214, 175, 90, 0.55); box-shadow: 0 6px 18px rgba(60, 44, 12, 0.18);
+          max-height: 60vh; overflow-y: auto; overscroll-behavior: contain;
+        }
+        .tb-panel-tag { margin: 0; font-size: 10.5px; font-weight: 800; letter-spacing: .03em; color: #8a5a00; text-transform: none; }
+        .tb-panel-text { margin: 0; font-size: 13px; line-height: 1.35; color: #3c2c0c; }
+        .tb-warn { color: #8a2f12; font-weight: 650; }
+        .tb-panel-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .tb-ghost { min-height: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(214, 175, 90, 0.55); background: transparent; color: #5a4214; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+        .tb-test { min-height: 36px; font-size: 11.5px; color: #7a6a4a; }
+        .tb-phrases { flex-wrap: wrap; overflow-x: visible; }
+        .tb-phrase { min-height: 40px; white-space: normal; text-align: left; }
+        .tb-input-review { flex: 1 1 auto; min-width: 0; border: 0; outline: none; background: transparent; padding: 6px 10px; font-size: 16px; color: #3c2c0c; }
+        .tb-fields { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .tb-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 10px; background: rgba(214, 175, 90, 0.12); font-size: 13px; color: #3c2c0c; }
+        .tb-field em { font-style: normal; color: #7a6a4a; font-size: 12px; }
+        .tb-field.is-pending { background: rgba(242, 160, 80, 0.22); outline: 1px solid rgba(190, 100, 30, .45); }
+        .tb-confirm { min-height: 36px; min-width: 44px; padding: 0 10px; border-radius: 999px; border: 1px solid #b06a1e; background: #fff; color: #8a4a0e; font-weight: 700; font-size: 12px; cursor: pointer; }
+        .tb-confirm[aria-pressed="true"] { background: #2f6b2f; border-color: #2f6b2f; color: #fff; }
+        .tb-edited { font-size: 11.5px; color: #2f6b2f; font-weight: 650; }
+        .tb-log {
+          pointer-events: auto; position: fixed; box-sizing: border-box; padding: 8px; border-radius: 16px; overflow-y: auto; overscroll-behavior: contain;
+          background: rgba(18, 14, 9, 0.97); color: #fff8e8; box-shadow: 0 8px 22px rgba(0, 0, 0, .25);
+          backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .tb-log .tb-panel-text { color: #fff8e8; }
+        .tb-log-head { position: sticky; top: -8px; z-index: 1; margin: -8px -8px 0; padding: 8px 8px 4px; background: #15110b; display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; font-weight: 750; color: #f6e7bf; }
+        .tb-log-head .tb-close-type { color: #f6e7bf; }
+        .tb-log-list { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.35; }
+        .tb-log-you .tb-who { color: #cfe3c8; } .tb-log-note .tb-who { color: #f5d3a3; }
+        .tb-ghost:focus-visible, .tb-confirm:focus-visible, .tb-stop:focus-visible, .tb-phrase:focus-visible { outline: 2px solid #b07a10; outline-offset: 2px; }
         .tb-options {
           pointer-events: auto; position: fixed; box-sizing: border-box; padding: 8px; border-radius: 16px; overflow-y: auto; overscroll-behavior: contain;
           background: rgba(18, 14, 9, 0.9); box-shadow: 0 8px 22px rgba(0, 0, 0, .25);

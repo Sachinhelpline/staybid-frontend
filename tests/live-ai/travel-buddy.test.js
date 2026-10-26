@@ -28,13 +28,19 @@ const SRC = path.join(BUILD, "src");
 const OUT = path.join(BUILD, "out");
 
 fs.rmSync(BUILD, { recursive: true, force: true });
-for (const d of ["live-ai", "travel-buddy", "launch"]) fs.mkdirSync(path.join(SRC, d), { recursive: true });
+for (const d of ["live-ai", "travel-buddy", "launch", "tutorial"]) fs.mkdirSync(path.join(SRC, d), { recursive: true });
 for (const f of fs.readdirSync(path.join(REPO, "lib/live-ai"))) {
   if (f.endsWith(".ts")) fs.copyFileSync(path.join(REPO, "lib/live-ai", f), path.join(SRC, "live-ai", f));
 }
 fs.copyFileSync(path.join(REPO, "lib/travel-buddy/conversation.ts"), path.join(SRC, "travel-buddy", "conversation.ts"));
 fs.copyFileSync(path.join(REPO, "lib/travel-buddy/mascots.ts"), path.join(SRC, "travel-buddy", "mascots.ts"));
+// Integrated TEXT + VOICE candidate: the voice I/O adapter seam + shared session model.
+fs.copyFileSync(path.join(REPO, "lib/travel-buddy/voice-io.ts"), path.join(SRC, "travel-buddy", "voice-io.ts"));
+fs.copyFileSync(path.join(REPO, "lib/travel-buddy/session.ts"), path.join(SRC, "travel-buddy", "session.ts"));
 fs.copyFileSync(path.join(REPO, "lib/launch/curation.ts"), path.join(SRC, "launch", "curation.ts"));
+// Live-controller candidate: the transcript-review bridge + the tutorial coordination seam.
+fs.copyFileSync(path.join(REPO, "lib/travel-buddy/live-bridge.ts"), path.join(SRC, "travel-buddy", "live-bridge.ts"));
+fs.copyFileSync(path.join(REPO, "lib/tutorial/buddy-coordination.ts"), path.join(SRC, "tutorial", "buddy-coordination.ts"));
 fs.writeFileSync(path.join(SRC, "tsconfig.json"), JSON.stringify({
   compilerOptions: {
     module: "commonjs", target: "es2020", esModuleInterop: true, skipLibCheck: true,
@@ -42,7 +48,7 @@ fs.writeFileSync(path.join(SRC, "tsconfig.json"), JSON.stringify({
     typeRoots: [path.join(REPO, "node_modules/@types")], types: ["node"],
     lib: ["es2020", "dom"], noEmitOnError: true, strict: true,
   },
-  include: ["live-ai/**/*.ts", "travel-buddy/**/*.ts", "launch/**/*.ts"],
+  include: ["live-ai/**/*.ts", "travel-buddy/**/*.ts", "launch/**/*.ts", "tutorial/**/*.ts"],
 }));
 let TSC_BIN;
 try { TSC_BIN = require.resolve("typescript/bin/tsc", { paths: [REPO] }); }
@@ -292,6 +298,10 @@ section("Render — feature OFF unchanged; preview ON = one activator, no popup;
       ['"@/lib/launch/curation"', JSON.stringify(path.join(OUT, "launch/curation.js"))],
       ['"@/lib/travel-buddy/conversation"', JSON.stringify(path.join(OUT, "travel-buddy/conversation.js"))],
       ['"@/lib/travel-buddy/mascots"', JSON.stringify(path.join(OUT, "travel-buddy/mascots.js"))],
+      ['"@/lib/travel-buddy/voice-io"', JSON.stringify(path.join(OUT, "travel-buddy/voice-io.js"))],
+      ['"@/lib/travel-buddy/session"', JSON.stringify(path.join(OUT, "travel-buddy/session.js"))],
+      ['"@/lib/travel-buddy/live-bridge"', JSON.stringify(path.join(OUT, "travel-buddy/live-bridge.js"))],
+      ['"@/lib/tutorial/buddy-coordination"', JSON.stringify(path.join(OUT, "tutorial/buddy-coordination.js"))],
     ]);
     const Provider = require(providerPath);
     const Shell = require(shellPath).default;
