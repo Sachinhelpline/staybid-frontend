@@ -28,6 +28,8 @@
     "typecheck:gateway": "tsc -p server/voice-gateway/tsconfig.json --noEmit",
     "build:gateway": "tsc -p server/voice-gateway/tsconfig.json",
     "start:live-ai-staging": "node server/voice-gateway/dist/live-ai-staging-main.js",
+    "start:live-ai-public": "node server/voice-gateway/dist/live-ai-public-main.js",
+    "test:live-ai-public": "node tests/live-ai/travel-buddy-real-teddy.test.js && node tests/live-ai/travel-buddy-tts-cancel.test.js && node tests/live-ai/travel-buddy-voice.test.js && node tests/budget/live-ai-public-teddy.pg.test.js",
     "test:live-ai-staging": "node tests/live-ai/live-ai-03b-staging-authority.test.js && node tests/live-ai/live-ai-03b-staging-runtime.test.js && node tests/live-ai/founder-text.test.js",
     "vr": "playwright test",
     "vr:update": "playwright test --update-snapshots",
