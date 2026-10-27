@@ -594,7 +594,23 @@ function fakeTranscription() {
       "server/voice-gateway/live-ai-budget-pricing.ts", "server/voice-gateway/live-ai-budget-authority.ts", "server/voice-gateway/openai-tts.ts",
       "tests/budget/live-ai-budget-01.test.js", "tests/live-ai/real-teddy-tts1-billing.test.js",
     ]);
-    const extra = all.filter((f) => !ALLOWED.has(f));
+    // Public gateway release adds only the two reviewed package.json scripts. Keep this
+    // exception exact: an unrelated script, dependency or package edit remains a hard FAIL.
+    if (all.includes("package.json")) {
+      const basePackage = JSON.parse(cp.execFileSync("git", ["show", "HEAD:package.json"], { cwd: REPO, encoding: "utf8" }));
+      const candidatePackage = JSON.parse(fs.readFileSync(path.join(REPO, "package.json"), "utf8"));
+      eq(candidatePackage.scripts["start:live-ai-public"], "node server/voice-gateway/dist/live-ai-public-main.js",
+        "P12: public gateway start script has only the reviewed entrypoint");
+      eq(candidatePackage.scripts["test:live-ai-public"],
+        "node tests/live-ai/travel-buddy-real-teddy.test.js && node tests/live-ai/travel-buddy-tts-cancel.test.js && node tests/live-ai/travel-buddy-voice.test.js && node tests/budget/live-ai-public-teddy.pg.test.js",
+        "P12: public suite script is exactly the reviewed offline test sequence");
+      const normalized = JSON.parse(JSON.stringify(candidatePackage));
+      delete normalized.scripts["start:live-ai-public"];
+      delete normalized.scripts["test:live-ai-public"];
+      eq(JSON.stringify(normalized), JSON.stringify(basePackage),
+        "P12: package.json has no changes beyond those exact two scripts");
+    }
+    const extra = all.filter((f) => !ALLOWED.has(f) && f !== "package.json");
     eq(extra.length, 0, `every changed/new path is on the exact allowlist (${all.length} paths${extra.length ? "; extra: " + extra.join(", ") : ""})`);
     // RECONCILED (TEMPORARY tts-1 FALLBACK): exactly FOUR frozen files carry an authorized, previously reviewed change and
     // are therefore NOT byte-identical to HEAD: the three TTS1 files and (separately, already disclosed) the A3 Control
